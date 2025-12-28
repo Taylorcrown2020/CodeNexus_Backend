@@ -880,136 +880,129 @@
     <!-- ========================================
          JAVASCRIPT
     ======================================== -->
-    <script>
-        // Sample lead data (in production, this would come from a database)
-        let leads = [
-            {
-                id: 1,
-                firstName: 'John',
-                lastName: 'Smith',
-                email: 'john@example.com',
-                phone: '+1 (555) 123-4567',
-                service: 'Professional Package',
-                budget: '$3,000 - $5,000',
-                details: 'Need a complete website redesign for my consulting business. Looking for modern design with contact forms and blog integration.',
-                date: '2024-12-28',
-                status: 'new',
-                priority: 'high',
-                notes: []
-            },
-            {
-                id: 2,
-                firstName: 'Sarah',
-                lastName: 'Johnson',
-                email: 'sarah.j@techstartup.com',
-                phone: '+1 (555) 234-5678',
-                service: 'Enterprise Solution',
-                budget: '$10,000+',
-                details: 'Building a SaaS platform for project management. Need custom web application with user authentication, dashboard, and API integrations.',
-                date: '2024-12-27',
-                status: 'pending',
-                priority: 'high',
-                notes: [
-                    { date: '2024-12-27', text: 'Initial email sent with consultation booking link.' }
-                ]
-            },
-            {
-                id: 3,
-                firstName: 'Mike',
-                lastName: 'Davis',
-                email: 'mike@localshop.com',
-                phone: '+1 (555) 345-6789',
-                service: 'Starter Package',
-                budget: '$1,000 - $3,000',
-                details: 'Small business website with 5 pages, contact form, and location map.',
-                date: '2024-12-26',
-                status: 'contacted',
-                priority: 'medium',
-                notes: [
-                    { date: '2024-12-26', text: 'Called and discussed requirements. Sending proposal tomorrow.' },
-                    { date: '2024-12-27', text: 'Proposal sent. Waiting for feedback.' }
-                ]
-            },
-            {
-                id: 4,
-                firstName: 'Emily',
-                lastName: 'Rodriguez',
-                email: 'emily.r@design.com',
-                phone: '+1 (555) 456-7890',
-                service: 'Professional Package',
-                budget: '$5,000 - $10,000',
-                details: 'Portfolio website for creative agency. Need animations, case studies, and client testimonials.',
-                date: '2024-12-25',
-                status: 'contacted',
-                priority: 'medium',
-                notes: [
-                    { date: '2024-12-25', text: 'Initial consultation completed. Very interested in our work.' },
-                    { date: '2024-12-26', text: 'Sent detailed proposal with timeline and pricing breakdown.' }
-                ]
-            },
-            {
-                id: 5,
-                firstName: 'David',
-                lastName: 'Chen',
-                email: 'david@ecommerce.com',
-                phone: '+1 (555) 567-8901',
-                service: 'Enterprise Solution',
-                budget: '$10,000+',
-                details: 'E-commerce platform with inventory management, payment processing, and order tracking.',
-                date: '2024-12-24',
-                status: 'new',
-                priority: 'high',
-                notes: []
-            }
-        ];
 
+<script>
+        const API_URL = window.location.origin;
+        let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+        let leads = [];
         let currentLead = null;
         let currentFilter = 'all';
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            renderLeads();
-            updateStats();
+        // Check authentication on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!authToken) {
+                console.log('No auth token found, redirecting to login');
+                window.location.href = '/admin';
+                return;
+            }
+            
+            // Verify token is still valid
+            try {
+                const response = await fetch(`${API_URL}/api/admin/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.log('Token invalid, redirecting to login');
+                    localStorage.removeItem('adminToken');
+                    sessionStorage.removeItem('adminToken');
+                    window.location.href = '/admin';
+                    return;
+                }
+            } catch (error) {
+                console.error('Token verification failed:', error);
+                window.location.href = '/admin';
+                return;
+            }
+            
+            // Load data
+            await loadLeads();
+            await loadStats();
         });
 
+        // Load leads from API
+        async function loadLeads() {
+            try {
+                const response = await fetch(`${API_URL}/api/leads?status=${currentFilter}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.removeItem('adminToken');
+                    sessionStorage.removeItem('adminToken');
+                    window.location.href = '/admin';
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    leads = data.leads;
+                    renderLeads();
+                    updateStats();
+                }
+            } catch (error) {
+                console.error('Error loading leads:', error);
+            }
+        }
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/api/leads/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('newCount').textContent = data.stats.new;
+                    document.getElementById('pendingCount').textContent = data.stats.pending;
+                    document.getElementById('contactedCount').textContent = data.stats.contacted;
+                    document.getElementById('totalCount').textContent = data.stats.total;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
         // Render leads table
-        function renderLeads(filter = 'all', searchQuery = '') {
+        function renderLeads(searchQuery = '') {
             const tbody = document.getElementById('leadsTableBody');
             tbody.innerHTML = '';
 
             let filteredLeads = leads;
 
-            // Apply status filter
-            if (filter !== 'all') {
-                filteredLeads = filteredLeads.filter(lead => lead.status === filter);
-            }
-
-            // Apply search filter
             if (searchQuery) {
                 const query = searchQuery.toLowerCase();
                 filteredLeads = filteredLeads.filter(lead =>
-                    lead.firstName.toLowerCase().includes(query) ||
-                    lead.lastName.toLowerCase().includes(query) ||
+                    lead.first_name.toLowerCase().includes(query) ||
+                    lead.last_name.toLowerCase().includes(query) ||
                     lead.email.toLowerCase().includes(query) ||
-                    lead.phone.includes(query)
+                    (lead.phone && lead.phone.includes(query))
                 );
             }
 
-            // Sort by date (newest first)
-            filteredLeads.sort((a, b) => new Date(b.date) - new Date(a.date));
+            filteredLeads.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-            // Render rows
             filteredLeads.forEach(lead => {
                 const row = document.createElement('tr');
                 row.onclick = () => openLeadModal(lead.id);
                 
                 row.innerHTML = `
-                    <td>${lead.firstName} ${lead.lastName}</td>
+                    <td>${lead.first_name} ${lead.last_name}</td>
                     <td>${lead.email}</td>
-                    <td>${lead.phone}</td>
-                    <td>${lead.service}</td>
-                    <td>${lead.budget}</td>
-                    <td>${formatDate(lead.date)}</td>
+                    <td>${lead.phone || 'N/A'}</td>
+                    <td>${lead.service || 'Not specified'}</td>
+                    <td>${lead.budget || 'Not specified'}</td>
+                    <td>${formatDate(lead.created_at)}</td>
                     <td><span class="status-badge status-${lead.status}">${lead.status}</span></td>
                     <td><span class="priority-badge priority-${lead.priority}">${lead.priority}</span></td>
                     <td onclick="event.stopPropagation()">
@@ -1025,7 +1018,6 @@
             }
         }
 
-        // Update statistics
         function updateStats() {
             const newCount = leads.filter(l => l.status === 'new').length;
             const pendingCount = leads.filter(l => l.status === 'pending').length;
@@ -1037,25 +1029,21 @@
             document.getElementById('totalCount').textContent = leads.length;
         }
 
-        // Filter leads
-        function filterLeads(filter) {
+        async function filterLeads(filter) {
             currentFilter = filter;
             
-            // Update button styles
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             event.target.classList.add('active');
             
-            renderLeads(filter);
+            await loadLeads();
         }
 
-        // Search leads
         function searchLeads(query) {
-            renderLeads(currentFilter, query);
+            renderLeads(query);
         }
 
-        // Format date
         function formatDate(dateString) {
             const date = new Date(dateString);
             return date.toLocaleDateString('en-US', { 
@@ -1065,35 +1053,42 @@
             });
         }
 
-        // Open lead modal
-        function openLeadModal(leadId) {
-            const lead = leads.find(l => l.id === leadId);
-            if (!lead) return;
-            
-            currentLead = lead;
-            
-            // Populate modal with lead data
-            document.getElementById('modalName').textContent = `${lead.firstName} ${lead.lastName}`;
-            document.getElementById('modalEmail').textContent = lead.email;
-            document.getElementById('modalPhone').textContent = lead.phone;
-            document.getElementById('modalService').textContent = lead.service;
-            document.getElementById('modalBudget').textContent = lead.budget;
-            document.getElementById('modalDate').textContent = formatDate(lead.date);
-            document.getElementById('modalDetails').textContent = lead.details;
-            
-            // Set status and priority
-            document.getElementById('leadStatus').value = lead.status;
-            document.getElementById('leadPriority').value = lead.priority;
-            
-            // Render notes
-            renderNotes();
-            
-            // Show modal
-            document.getElementById('leadModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
+        async function openLeadModal(leadId) {
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentLead = data.lead;
+                    currentLead.notes = data.notes;
+                    
+                    document.getElementById('modalName').textContent = `${currentLead.first_name} ${currentLead.last_name}`;
+                    document.getElementById('modalEmail').textContent = currentLead.email;
+                    document.getElementById('modalPhone').textContent = currentLead.phone || 'Not provided';
+                    document.getElementById('modalService').textContent = currentLead.service || 'Not specified';
+                    document.getElementById('modalBudget').textContent = currentLead.budget || 'Not specified';
+                    document.getElementById('modalDate').textContent = formatDate(currentLead.created_at);
+                    document.getElementById('modalDetails').textContent = currentLead.details || 'No details provided';
+                    
+                    document.getElementById('leadStatus').value = currentLead.status;
+                    document.getElementById('leadPriority').value = currentLead.priority;
+                    
+                    renderNotes();
+                    
+                    document.getElementById('leadModal').classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+            } catch (error) {
+                console.error('Error loading lead:', error);
+                alert('Error loading lead details');
+            }
         }
 
-        // Close modal
         function closeModal() {
             document.getElementById('leadModal').classList.remove('active');
             document.body.style.overflow = '';
@@ -1101,7 +1096,6 @@
             currentLead = null;
         }
 
-        // Render notes
         function renderNotes() {
             const notesList = document.getElementById('notesList');
             
@@ -1112,24 +1106,20 @@
             
             notesList.innerHTML = '';
             
-            // Sort notes by date (newest first)
-            const sortedNotes = [...currentLead.notes].sort((a, b) => new Date(b.date) - new Date(a.date));
-            
-            sortedNotes.forEach(note => {
+            currentLead.notes.forEach(note => {
                 const noteEl = document.createElement('div');
                 noteEl.className = 'note-item';
                 noteEl.innerHTML = `
                     <div class="note-header">
-                        <span class="note-date">${formatDate(note.date)}</span>
+                        <span class="note-date">${formatDate(note.created_at)}</span>
                     </div>
-                    <div class="note-text">${note.text}</div>
+                    <div class="note-text">${note.note_text}</div>
                 `;
                 notesList.appendChild(noteEl);
             });
         }
 
-        // Add new note
-        function addNote() {
+        async function addNote() {
             if (!currentLead) return;
             
             const noteText = document.getElementById('newNote').value.trim();
@@ -1139,89 +1129,121 @@
                 return;
             }
             
-            // Add note to lead
-            const newNote = {
-                date: new Date().toISOString().split('T')[0],
-                text: noteText
-            };
-            
-            currentLead.notes.push(newNote);
-            
-            // Clear input
-            document.getElementById('newNote').value = '';
-            
-            // Re-render notes
-            renderNotes();
-            
-            // Show success message
-            alert('Note saved successfully!');
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ noteText })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('newNote').value = '';
+                    await openLeadModal(currentLead.id);
+                    alert('✅ Note saved successfully!');
+                }
+            } catch (error) {
+                console.error('Error adding note:', error);
+                alert('❌ Error saving note');
+            }
         }
 
-        // Update lead status
-        function updateLeadStatus() {
+        async function updateLeadStatus() {
             if (!currentLead) return;
             
             const newStatus = document.getElementById('leadStatus').value;
-            currentLead.status = newStatus;
             
-            // Update table and stats
-            renderLeads(currentFilter);
-            updateStats();
-            
-            // Auto-add note about status change
-            const statusNote = {
-                date: new Date().toISOString().split('T')[0],
-                text: `Status changed to: ${newStatus}`
-            };
-            currentLead.notes.push(statusNote);
-            renderNotes();
-            
-            alert('Status updated successfully!');
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentLead.status = newStatus;
+                    await loadLeads();
+                    await loadStats();
+                    alert('✅ Status updated successfully!');
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('❌ Error updating status');
+            }
         }
 
-        // Update lead priority
-        function updateLeadPriority() {
+        async function updateLeadPriority() {
             if (!currentLead) return;
             
             const newPriority = document.getElementById('leadPriority').value;
-            currentLead.priority = newPriority;
             
-            // Update table
-            renderLeads(currentFilter);
-            
-            alert('Priority updated successfully!');
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/priority`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ priority: newPriority })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentLead.priority = newPriority;
+                    await loadLeads();
+                    alert('✅ Priority updated successfully!');
+                }
+            } catch (error) {
+                console.error('Error updating priority:', error);
+                alert('❌ Error updating priority');
+            }
         }
 
-        // Show section (for sidebar navigation)
         function showSection(section) {
-            // Update active menu item
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.classList.remove('active');
             });
             event.target.classList.add('active');
             
-            // Filter based on section
             if (section === 'new') {
-                filterLeads('new');
+                currentFilter = 'new';
+                loadLeads();
             } else if (section === 'pending') {
-                filterLeads('pending');
+                currentFilter = 'pending';
+                loadLeads();
             } else if (section === 'contacted') {
-                filterLeads('contacted');
+                currentFilter = 'contacted';
+                loadLeads();
             } else if (section === 'leads' || section === 'dashboard') {
-                filterLeads('all');
+                currentFilter = 'all';
+                loadLeads();
             }
         }
 
-        // Logout
+        // FIXED LOGOUT FUNCTION
         function logout() {
             if (confirm('Are you sure you want to logout?')) {
-                alert('Logging out...');
-                // In production, redirect to login page
-                // window.location.href = 'login.html';
+                console.log('Logging out...');
+                
+                // Clear all tokens
+                localStorage.removeItem('adminToken');
+                sessionStorage.removeItem('adminToken');
+                
+                // Force redirect
+                window.location.replace('/admin');
             }
         }
 
-        // Close modal when clicking outside
         document.getElementById('leadModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();

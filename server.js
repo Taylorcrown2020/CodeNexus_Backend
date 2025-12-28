@@ -520,6 +520,24 @@ app.get('/admin/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin_portal.html'));
 });
 
+// Privacy Policy page
+app.get('/privacy-policy', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'privacy_policy.html'));
+});
+
+app.get('/privacy', (req, res) => {
+    res.redirect('/privacy-policy');
+});
+
+// Terms of Service page
+app.get('/terms-of-service', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'terms_of_service.html'));
+});
+
+app.get('/terms', (req, res) => {
+    res.redirect('/terms-of-service');
+});
+
 // ========================================
 // HEALTH CHECK
 // ========================================
@@ -543,8 +561,8 @@ app.use((req, res) => {
             message: 'API endpoint not found' 
         });
     } else {
-        // Otherwise, serve the index page (for client-side routing)
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+        // Serve the custom 404 page
+        res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
     }
 });
 

@@ -40,6 +40,148 @@
         /* ========================================
            NAVIGATION BAR
         ======================================== */
+
+/* ========================================
+   COOKIE CONSENT BANNER
+======================================== */
+.cookie-consent {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--dark-secondary);
+    border-top: 2px solid var(--primary);
+    padding: 24px;
+    z-index: 10000;
+    box-shadow: 0 -4px 30px rgba(16, 185, 129, 0.2);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cookie-consent.show {
+    transform: translateY(0);
+}
+
+.cookie-consent-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.cookie-consent-text {
+    flex: 1;
+    min-width: 300px;
+}
+
+.cookie-consent-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+
+.cookie-consent-description {
+    font-size: 13px;
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+.cookie-consent-description a {
+    color: var(--primary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--primary);
+}
+
+.cookie-consent-description a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.cookie-consent-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.cookie-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.cookie-btn-accept {
+    background: var(--primary);
+    color: var(--dark);
+}
+
+.cookie-btn-accept:hover {
+    background: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.cookie-btn-decline {
+    background: transparent;
+    color: var(--text-light);
+    border: 1px solid rgba(160, 160, 160, 0.3);
+}
+
+.cookie-btn-decline:hover {
+    background: rgba(160, 160, 160, 0.1);
+    color: #ffffff;
+}
+
+.cookie-btn-settings {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+.cookie-btn-settings:hover {
+    background: var(--primary);
+    color: var(--dark);
+}
+
+/* Cookie Icon Animation */
+.cookie-icon {
+    font-size: 24px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .cookie-consent {
+        padding: 20px;
+    }
+
+    .cookie-consent-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cookie-consent-actions {
+        flex-direction: column;
+    }
+
+    .cookie-btn {
+        width: 100%;
+    }
+}
+
         .navbar {
             position: fixed;
             top: 0;
@@ -1744,6 +1886,15 @@
             </div>
 
             <div>
+    <h4 class="footer-title">Legal</h4>
+    <ul class="footer-links">
+        <li><a href="/privacy-policy">Privacy Policy</a></li>
+        <li><a href="/terms-of-service">Terms of Service</a></li>
+        <li><a href="#contact">Contact</a></li>
+    </ul>
+</div>
+
+            <div>
                 <h4 class="footer-title">Connect</h4>
                 <ul class="footer-links">
                     <li><a href="mailto:hello@codenexus.dev">hello@codenexus.dev</a></li>
@@ -1823,6 +1974,13 @@
                 </div>
 
                 <button type="submit" class="form-submit">Send Message</button>
+
+<p style="font-size: 11px; color: var(--text-light); margin-top: 16px; text-align: center; line-height: 1.5;">
+    By submitting this form, you agree to our 
+    <a href="/privacy-policy" target="_blank" style="color: var(--primary); text-decoration: none; border-bottom: 1px solid var(--primary);">Privacy Policy</a>
+    and
+    <a href="/terms-of-service" target="_blank" style="color: var(--primary); text-decoration: none; border-bottom: 1px solid var(--primary);">Terms of Service</a>.
+</p>
             </form>
         </div>
     </div>
@@ -1966,6 +2124,82 @@
             }
         });
 
+        // ========================================
+// COOKIE CONSENT FUNCTIONALITY
+// ========================================
+
+// Check if user has already made a choice
+document.addEventListener('DOMContentLoaded', function() {
+    const cookieConsent = localStorage.getItem('cookieConsent');
+    
+    if (!cookieConsent) {
+        // Show banner after 1 second delay
+        setTimeout(() => {
+            document.getElementById('cookieConsent').classList.add('show');
+        }, 1000);
+    }
+});
+
+// Accept all cookies
+function acceptCookies() {
+    localStorage.setItem('cookieConsent', 'accepted');
+    localStorage.setItem('cookiePreferences', JSON.stringify({
+        necessary: true,
+        analytics: true,
+        marketing: true
+    }));
+    
+    hideCookieBanner();
+    
+    // Initialize analytics or tracking here if needed
+    console.log('✅ Cookies accepted');
+}
+
+// Decline all non-essential cookies
+function declineCookies() {
+    localStorage.setItem('cookieConsent', 'declined');
+    localStorage.setItem('cookiePreferences', JSON.stringify({
+        necessary: true,
+        analytics: false,
+        marketing: false
+    }));
+    
+    hideCookieBanner();
+    
+    console.log('❌ Cookies declined');
+}
+
+// Open cookie settings (customize)
+function openCookieSettings() {
+    // For now, just accept cookies
+    // In a full implementation, you'd open a modal with detailed settings
+    alert('Cookie customization coming soon! For now, please accept or decline all cookies.');
+}
+
+// Hide the cookie banner
+function hideCookieBanner() {
+    const banner = document.getElementById('cookieConsent');
+    banner.classList.remove('show');
+    
+    // Remove from DOM after animation
+    setTimeout(() => {
+        banner.style.display = 'none';
+    }, 400);
+}
+
+// Optional: Function to check if a specific cookie type is allowed
+function isCookieAllowed(type) {
+    const preferences = JSON.parse(localStorage.getItem('cookiePreferences') || '{}');
+    return preferences[type] === true;
+}
+
+// Optional: Function to reset cookie consent (for testing)
+function resetCookieConsent() {
+    localStorage.removeItem('cookieConsent');
+    localStorage.removeItem('cookiePreferences');
+    location.reload();
+}
+
         // Smooth Scrolling for Navigation
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -1980,5 +2214,30 @@
             });
         });
     </script>
+    <div class="cookie-consent" id="cookieConsent">
+    <div class="cookie-consent-container">
+        <div class="cookie-consent-text">
+            <div class="cookie-consent-title">
+                <span class="cookie-icon">🍪</span> We Value Your Privacy
+            </div>
+            <p class="cookie-consent-description">
+                We use cookies to enhance your browsing experience, analyze site traffic, and personalize content. 
+                By clicking "Accept All", you consent to our use of cookies. 
+                Read our <a href="/privacy-policy">Privacy Policy</a> and <a href="/terms-of-service">Terms of Service</a>.
+            </p>
+        </div>
+        <div class="cookie-consent-actions">
+            <button class="cookie-btn cookie-btn-accept" onclick="acceptCookies()">
+                Accept All
+            </button>
+            <button class="cookie-btn cookie-btn-decline" onclick="declineCookies()">
+                Decline
+            </button>
+            <button class="cookie-btn cookie-btn-settings" onclick="openCookieSettings()">
+                Customize
+            </button>
+        </div>
+    </div>
+</div>
 </body>
 </html>

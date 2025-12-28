@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found — CodeNexus</title>
+    <style>
+        /* ========================================
+           CSS VARIABLES
+        ======================================== */
+        :root {
+            --primary: #10b981;
+            --secondary: #059669;
+            --accent: #34d399;
+            --dark: #0a0a0a;
+            --dark-secondary: #1a1a1a;
+            --dark-tertiary: #2a2a2a;
+            --text-light: #a0a0a0;
+            --danger: #ef4444;
+        }
+
+        /* ========================================
+           RESET & BASE STYLES
+        ======================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+        }
+
+        body {
+            background: var(--dark);
+            color: #ffffff;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* ========================================
+           404 CONTAINER
+        ======================================== */
+        .error-container {
+            max-width: 800px;
+            text-align: center;
+            animation: fadeIn 0.8s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-code {
+            font-size: 180px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: glitch 3s infinite;
+        }
+
+        @keyframes glitch {
+            0%, 100% {
+                transform: translate(0);
+            }
+            20% {
+                transform: translate(-2px, 2px);
+            }
+            40% {
+                transform: translate(-2px, -2px);
+            }
+            60% {
+                transform: translate(2px, 2px);
+            }
+            80% {
+                transform: translate(2px, -2px);
+            }
+        }
+
+        .error-title {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            color: #ffffff;
+        }
+
+        .error-message {
+            font-size: 18px;
+            color: var(--text-light);
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .error-code-block {
+            background: var(--dark-secondary);
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 40px 0;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.8;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+        }
+
+        .code-line {
+            margin-bottom: 8px;
+            opacity: 0;
+            animation: typeLine 0.5s forwards;
+        }
+
+        .code-line:nth-child(1) { animation-delay: 0.2s; }
+        .code-line:nth-child(2) { animation-delay: 0.4s; }
+        .code-line:nth-child(3) { animation-delay: 0.6s; }
+        .code-line:nth-child(4) { animation-delay: 0.8s; }
+        .code-line:nth-child(5) { animation-delay: 1.0s; }
+
+        @keyframes typeLine {
+            to { opacity: 1; }
+        }
+
+        .code-prompt {
+            color: var(--primary);
+        }
+
+        .code-command {
+            color: var(--accent);
+        }
+
+        .code-error {
+            color: var(--danger);
+        }
+
+        .code-output {
+            color: var(--text-light);
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--dark);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.6);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: var(--dark);
+        }
+
+        .error-links {
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .error-links-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+        }
+
+        .error-links-list {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            flex-wrap: wrap;
+            list-style: none;
+        }
+
+        .error-links-list a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .error-links-list a:hover {
+            color: var(--primary);
+        }
+
+        /* ========================================
+           RESPONSIVE DESIGN
+        ======================================== */
+        @media (max-width: 768px) {
+            .error-code {
+                font-size: 120px;
+            }
+
+            .error-title {
+                font-size: 32px;
+            }
+
+            .error-message {
+                font-size: 16px;
+            }
+
+            .error-code-block {
+                padding: 20px;
+                font-size: 12px;
+            }
+
+            .error-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-code">404</div>
+        
+        <h1 class="error-title">// Page Not Found</h1>
+        
+        <p class="error-message">
+            Looks like this page took a wrong turn in the code. 
+            It might have been moved, deleted, or never existed in the first place.
+        </p>
+
+        <div class="error-code-block">
+            <div class="code-line">
+                <span class="code-prompt">$</span>
+                <span class="code-command"> navigate_to_page()</span>
+            </div>
+            <div class="code-line">
+                <span class="code-output">⚡ Searching for page...</span>
+            </div>
+            <div class="code-line">
+                <span class="code-output">🔍 Checking routes...</span>
+            </div>
+            <div class="code-line">
+                <span class="code-error">❌ Error: Page not found (404)</span>
+            </div>
+            <div class="code-line">
+                <span class="code-output">💡 Suggestion: Return to homepage or contact support</span>
+            </div>
+        </div>
+
+        <div class="error-actions">
+            <a href="/" class="btn btn-primary">← Back to Home</a>
+            <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+        </div>
+
+        <div class="error-links">
+            <div class="error-links-title">// Popular Pages</div>
+            <ul class="error-links-list">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#portfolio">Portfolio</a></li>
+                <li><a href="/#services">Services</a></li>
+                <li><a href="/#contact">Contact</a></li>
+                <li><a href="/admin">Admin Login</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Log 404 error (optional - for analytics)
+        console.error('404 Error: Page not found -', window.location.href);
+
+        // Optional: Auto-redirect after 10 seconds
+        // setTimeout(() => {
+        //     window.location.href = '/';
+        // }, 10000);
+    </script>
+</body>
+</html>

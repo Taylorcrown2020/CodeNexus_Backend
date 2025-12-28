@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service — CodeNexus</title>
+    <style>
+        /* ========================================
+           CSS VARIABLES
+        ======================================== */
+        :root {
+            --primary: #10b981;
+            --secondary: #059669;
+            --accent: #34d399;
+            --dark: #0a0a0a;
+            --dark-secondary: #1a1a1a;
+            --dark-tertiary: #2a2a2a;
+            --text-light: #a0a0a0;
+            --max-width: 900px;
+            --border-radius: 16px;
+        }
+
+        /* ========================================
+           RESET & BASE STYLES
+        ======================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+        }
+
+        body {
+            background: var(--dark);
+            color: #ffffff;
+            overflow-x: hidden;
+            padding-top: 60px;
+        }
+
+        /* ========================================
+           NAVIGATION BAR
+        ======================================== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(16, 185, 129, 0.1);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-logo::before {
+            content: "{ }";
+            color: var(--accent);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-cta-btn {
+            background: var(--primary);
+            color: var(--dark);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .nav-cta-btn:hover {
+            background: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        /* ========================================
+           LEGAL PAGE STYLES
+        ======================================== */
+        .legal-container {
+            max-width: var(--max-width);
+            margin: 80px auto 60px;
+            padding: 0 28px;
+        }
+
+        .legal-header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .legal-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: var(--dark);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .legal-title {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            color: #ffffff;
+        }
+
+        .legal-updated {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .legal-content {
+            background: var(--dark-secondary);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: var(--border-radius);
+            padding: 50px;
+            line-height: 1.8;
+        }
+
+        .legal-content h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-top: 40px;
+            margin-bottom: 16px;
+        }
+
+        .legal-content h2:first-child {
+            margin-top: 0;
+        }
+
+        .legal-content h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-top: 28px;
+            margin-bottom: 12px;
+        }
+
+        .legal-content p {
+            margin-bottom: 16px;
+            color: #e5e5e5;
+            font-size: 14px;
+        }
+
+        .legal-content ul {
+            margin-left: 24px;
+            margin-bottom: 16px;
+            color: #e5e5e5;
+        }
+
+        .legal-content li {
+            margin-bottom: 10px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .legal-content a {
+            color: var(--primary);
+            text-decoration: none;
+            border-bottom: 1px solid var(--primary);
+            transition: all 0.2s;
+        }
+
+        .legal-content a:hover {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .legal-content strong {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .info-box {
+            background: var(--dark-tertiary);
+            border-left: 3px solid var(--primary);
+            padding: 20px;
+            margin: 24px 0;
+            border-radius: 8px;
+        }
+
+        .info-box p {
+            margin-bottom: 0;
+        }
+
+        /* ========================================
+           FOOTER
+        ======================================== */
+        .footer {
+            background: var(--dark);
+            padding: 60px 28px 30px;
+            border-top: 1px solid rgba(16, 185, 129, 0.2);
+            margin-top: 100px;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-brand {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-brand::before {
+            content: "{ }";
+            color: var(--accent);
+        }
+
+        .footer-description {
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .footer-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 12px;
+        }
+
+        .footer-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        /* ========================================
+           RESPONSIVE DESIGN
+        ======================================== */
+        @media (max-width: 768px) {
+            .navbar .nav-links {
+                display: none;
+            }
+
+            .legal-title {
+                font-size: 32px;
+            }
+
+            .legal-content {
+                padding: 30px 24px;
+            }
+
+            .legal-content h2 {
+                font-size: 24px;
+            }
+
+            .legal-content h3 {
+                font-size: 18px;
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ========================================
+         NAVIGATION BAR
+    ======================================== -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">CodeNexus</a>
+            <ul class="nav-links">
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#portfolio">Portfolio</a></li>
+                <li><a href="/#services">Services</a></li>
+                <li><a href="/" class="nav-cta-btn">Home</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- ========================================
+         LEGAL CONTENT
+    ======================================== -->
+    <div class="legal-container">
+        <div class="legal-header">
+            <span class="legal-badge">// Legal</span>
+            <h1 class="legal-title">Terms of Service</h1>
+            <p class="legal-updated">Last Updated: December 28, 2024</p>
+        </div>
+
+        <div class="legal-content">
+            <p>Welcome to CodeNexus. These Terms of Service ("Terms") govern your use of our website and services. By accessing our website or engaging our services, you agree to be bound by these Terms.</p>
+
+            <div class="info-box">
+                <p><strong>Important:</strong> Please read these Terms carefully before using our services. If you do not agree to these Terms, please do not use our website or services.</p>
+            </div>
+
+            <h2>1. Acceptance of Terms</h2>
+            
+            <p>By accessing and using CodeNexus's website (codenexus.dev) or engaging our web development services, you accept and agree to be bound by these Terms of Service and our Privacy Policy. These Terms apply to all visitors, users, and clients of our services.</p>
+
+            <p>If you are entering into this agreement on behalf of a company or other legal entity, you represent that you have the authority to bind such entity to these Terms.</p>
+
+            <h2>2. Description of Services</h2>
+            
+            <p>CodeNexus provides web development and design services for small to medium-sized businesses, including but not limited to:</p>
+            
+            <ul>
+                <li>Custom website design and development</li>
+                <li>E-commerce platform development</li>
+                <li>Web application development</li>
+                <li>Landing page creation</li>
+                <li>Website redesign and optimization</li>
+                <li>Website maintenance and support</li>
+                <li>SEO optimization services</li>
+                <li>Hosting and deployment services</li>
+            </ul>
+
+            <p>Specific services, deliverables, timelines, and pricing will be outlined in individual project agreements or statements of work.</p>
+
+            <h2>3. Client Responsibilities</h2>
+            
+            <h3>3.1 Content and Materials</h3>
+            <p>You are responsible for providing:</p>
+            <ul>
+                <li>All text, images, logos, and other content for your website in a timely manner</li>
+                <li>Legal rights and permissions for all materials provided</li>
+                <li>Accurate information about your business, products, and services</li>
+                <li>Timely feedback and approvals at project milestones</li>
+            </ul>
+
+            <h3>3.2 Communication and Collaboration</h3>
+            <p>Clients agree to:</p>
+            <ul>
+                <li>Respond to requests for information within a reasonable timeframe</li>
+                <li>Designate a primary point of contact for the project</li>
+                <li>Attend scheduled meetings and review sessions</li>
+                <li>Provide constructive feedback in a timely manner</li>
+            </ul>
+
+            <h3>3.3 Third-Party Services</h3>
+            <p>You are responsible for:</p>
+            <ul>
+                <li>Obtaining and maintaining your own domain name</li>
+                <li>Providing access to necessary third-party accounts (hosting, email services, etc.)</li>
+                <li>Paying for any third-party services required for your project</li>
+            </ul>
+
+            <h2>4. Payment Terms</h2>
+            
+            <h3>4.1 Pricing and Invoicing</h3>
+            <p>Project pricing will be outlined in your project proposal or contract. Unless otherwise specified:</p>
+            <ul>
+                <li>A 50% deposit is required before work begins</li>
+                <li>The remaining 50% is due upon project completion</li>
+                <li>Invoices are payable within 14 days of receipt</li>
+                <li>Late payments may incur a 1.5% monthly interest charge</li>
+            </ul>
+
+            <h3>4.2 Additional Work</h3>
+            <p>Work beyond the original scope will be billed separately at our standard hourly rate or as agreed upon in writing. You will be notified before additional charges are incurred.</p>
+
+            <h3>4.3 Refund Policy</h3>
+            <p>Due to the custom nature of our services:</p>
+            <ul>
+                <li>Deposits are non-refundable once work has commenced</li>
+                <li>Refunds may be considered on a case-by-case basis for work not yet started</li>
+                <li>No refunds will be issued for completed work</li>
+            </ul>
+
+            <h2>5. Project Timeline and Delays</h2>
+            
+            <p>We will make reasonable efforts to complete your project within the estimated timeline. However:</p>
+            <ul>
+                <li>Timelines are estimates and not guarantees</li>
+                <li>Delays caused by client feedback, content delivery, or scope changes may extend the timeline</li>
+                <li>We are not liable for delays caused by circumstances beyond our control</li>
+                <li>Significant delays in client response (30+ days) may result in project suspension or cancellation</li>
+            </ul>
+
+            <h2>6. Intellectual Property Rights</h2>
+            
+            <h3>6.1 Client Ownership</h3>
+            <p>Upon full payment, you own:</p>
+            <ul>
+                <li>Custom design elements created specifically for your project</li>
+                <li>Content you provided</li>
+                <li>Final delivered website files and code</li>
+            </ul>
+
+            <h3>6.2 CodeNexus Rights</h3>
+            <p>CodeNexus retains ownership of:</p>
+            <ul>
+                <li>Pre-existing code, frameworks, and development tools</li>
+                <li>Design templates and code libraries used across multiple projects</li>
+                <li>General methodologies and development processes</li>
+                <li>The right to showcase your project in our portfolio (unless otherwise agreed)</li>
+            </ul>
+
+            <h3>6.3 Third-Party Assets</h3>
+            <p>Some projects may include third-party assets (fonts, icons, stock photos, plugins) that have their own licensing terms. You are responsible for complying with these licenses.</p>
+
+            <h2>7. Warranties and Disclaimers</h2>
+            
+            <h3>7.1 Our Warranty</h3>
+            <p>We warrant that:</p>
+            <ul>
+                <li>Services will be performed in a professional manner</li>
+                <li>Work will be free from defects in workmanship for 30 days after project completion</li>
+                <li>Code will be original or properly licensed</li>
+            </ul>
+
+            <h3>7.2 Client Warranty</h3>
+            <p>You warrant that:</p>
+            <ul>
+                <li>You have legal rights to all content provided</li>
+                <li>Your content does not infringe on third-party rights</li>
+                <li>Information provided is accurate and not misleading</li>
+            </ul>
+
+            <h3>7.3 Disclaimers</h3>
+            <p>EXCEPT AS EXPRESSLY PROVIDED ABOVE, SERVICES ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. WE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.</p>
+
+            <h2>8. Limitation of Liability</h2>
+            
+            <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW:</p>
+            <ul>
+                <li>OUR TOTAL LIABILITY SHALL NOT EXCEED THE AMOUNT PAID FOR THE SPECIFIC PROJECT</li>
+                <li>WE ARE NOT LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES</li>
+                <li>WE ARE NOT LIABLE FOR LOSS OF PROFITS, DATA, OR BUSINESS OPPORTUNITIES</li>
+                <li>WE ARE NOT RESPONSIBLE FOR THIRD-PARTY SERVICES OR HOSTING ISSUES</li>
+            </ul>
+
+            <h2>9. Indemnification</h2>
+            
+            <p>You agree to indemnify and hold CodeNexus harmless from any claims, damages, or expenses arising from:</p>
+            <ul>
+                <li>Your breach of these Terms</li>
+                <li>Content you provide that infringes on third-party rights</li>
+                <li>Your use of the website or services</li>
+                <li>Any illegal or harmful content on your website</li>
+            </ul>
+
+            <h2>10. Confidentiality</h2>
+            
+            <p>Both parties agree to keep confidential any proprietary information shared during the project, including but not limited to business strategies, technical information, and customer data. This obligation survives termination of our relationship.</p>
+
+            <h2>11. Termination</h2>
+            
+            <h3>11.1 Termination by Client</h3>
+            <p>You may terminate the project at any time with written notice. Upon termination:</p>
+            <ul>
+                <li>You will be billed for all work completed to date</li>
+                <li>Deposits are non-refundable</li>
+                <li>You will receive files for work completed and paid for</li>
+            </ul>
+
+            <h3>11.2 Termination by CodeNexus</h3>
+            <p>We may terminate if:</p>
+            <ul>
+                <li>Payment is not received within 30 days of invoice</li>
+                <li>You breach these Terms</li>
+                <li>You request illegal or unethical work</li>
+                <li>Communication ceases for more than 30 days</li>
+            </ul>
+
+            <h2>12. Support and Maintenance</h2>
+            
+            <p>Post-launch support terms:</p>
+            <ul>
+                <li>Bug fixes for issues present at launch are included for 30 days</li>
+                <li>Extended support and maintenance plans are available separately</li>
+                <li>Emergency support may be available for additional fees</li>
+                <li>Updates to content or features beyond the original scope are billed separately</li>
+            </ul>
+
+            <h2>13. Website Use and Conduct</h2>
+            
+            <p>When using our website, you agree not to:</p>
+            <ul>
+                <li>Use the site for illegal purposes</li>
+                <li>Attempt to hack, disrupt, or damage our systems</li>
+                <li>Upload viruses or malicious code</li>
+                <li>Harvest data from our website</li>
+                <li>Impersonate others or provide false information</li>
+                <li>Spam or harass our team or other users</li>
+            </ul>
+
+            <h2>14. Force Majeure</h2>
+            
+            <p>Neither party is liable for failure to perform due to circumstances beyond reasonable control, including natural disasters, war, terrorism, pandemics, government actions, or internet/utility failures.</p>
+
+            <h2>15. Modifications to Terms</h2>
+            
+            <p>We reserve the right to modify these Terms at any time. Changes will be posted on this page with an updated "Last Updated" date. Continued use of our services after changes constitutes acceptance of the new Terms.</p>
+
+            <h2>16. Governing Law and Dispute Resolution</h2>
+            
+            <h3>16.1 Governing Law</h3>
+            <p>These Terms are governed by the laws of the State of Texas, United States, without regard to conflict of law principles.</p>
+
+            <h3>16.2 Dispute Resolution</h3>
+            <p>In the event of a dispute:</p>
+            <ul>
+                <li>Parties agree to first attempt informal resolution</li>
+                <li>If unresolved, disputes will be settled through binding arbitration</li>
+                <li>Arbitration will be conducted in Texas</li>
+                <li>Each party bears their own legal costs unless otherwise determined by the arbitrator</li>
+            </ul>
+
+            <h2>17. Severability</h2>
+            
+            <p>If any provision of these Terms is found to be unenforceable, the remaining provisions will remain in full force and effect.</p>
+
+            <h2>18. Entire Agreement</h2>
+            
+            <p>These Terms, together with any project-specific agreements and our Privacy Policy, constitute the entire agreement between you and CodeNexus regarding our services.</p>
+
+            <h2>19. Contact Information</h2>
+            
+            <p>Questions about these Terms should be directed to:</p>
+            
+            <div class="info-box">
+                <p><strong>CodeNexus</strong><br>
+                Email: <a href="mailto:legal@codenexus.dev">legal@codenexus.dev</a><br>
+                General Inquiries: <a href="mailto:hello@codenexus.dev">hello@codenexus.dev</a><br>
+                Website: <a href="https://codenexus.dev">https://codenexus.dev</a></p>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid rgba(16, 185, 129, 0.2); margin: 40px 0;">
+
+            <p style="font-size: 12px; color: var(--text-light); line-height: 1.6;">
+                <strong>Disclaimer:</strong> These Terms of Service are provided as a template and may not cover all legal requirements for your specific jurisdiction or business model. We recommend consulting with a legal professional to ensure compliance with all applicable laws and regulations.
+            </p>
+        </div>
+    </div>
+
+    <!-- ========================================
+         FOOTER
+    ======================================== -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div>
+                <div class="footer-brand">CodeNexus</div>
+                <p class="footer-description">
+                    Building exceptional web experiences for businesses that want to win. 
+                    Clean code, fast delivery, real results.
+                </p>
+            </div>
+
+            <div>
+                <h4 class="footer-title">Legal</h4>
+                <ul class="footer-links">
+                    <li><a href="/privacy-policy">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service">Terms of Service</a></li>
+                    <li><a href="/#contact">Contact Us</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="footer-title">Services</h4>
+                <ul class="footer-links">
+                    <li><a href="/#services">Web Design</a></li>
+                    <li><a href="/#services">Web Development</a></li>
+                    <li><a href="/#services">E-commerce</a></li>
+                    <li><a href="/#services">Web Applications</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="footer-title">Connect</h4>
+                <ul class="footer-links">
+                    <li><a href="mailto:hello@codenexus.dev">hello@codenexus.dev</a></li>
+                    <li><a href="mailto:legal@codenexus.dev">legal@codenexus.dev</a></li>
+                    <li>// Available Mon-Fri<br>9AM - 6PM PST</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>© 2024 CodeNexus. Built with code and caffeine.</p>
+        </div>
+    </footer>
+</body>
+</html>

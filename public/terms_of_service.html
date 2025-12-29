@@ -107,6 +107,28 @@
             color: var(--primary);
         }
 
+        .mobile-menu-btn.active span:nth-child(1) {
+    transform: rotate(-45deg) translate(-6px, 6px);
+}
+
+.mobile-menu-btn.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-menu-btn.active span:nth-child(3) {
+    transform: rotate(45deg) translate(-6px, -6px);
+}
+
+@media (max-width: 768px) {
+    .mobile-menu-btn {
+        display: block;
+    }
+
+    .mobile-nav-overlay {
+        display: block;
+    }
+}
+
         /* ========================================
            NAVIGATION BAR
         ======================================== */
@@ -741,5 +763,32 @@
             <p>© 2024 CodeNexus. Built with code and caffeine.</p>
         </div>
     </footer>
+    <script>
+    // Mobile Menu Functions
+    function toggleMobileMenu() {
+        const btn = document.querySelector('.mobile-menu-btn');
+        const nav = document.getElementById('mobileNav');
+        const body = document.body;
+        
+        btn.classList.toggle('active');
+        nav.classList.toggle('active');
+        
+        if (nav.classList.contains('active')) {
+            body.style.overflow = 'hidden';
+        } else {
+            body.style.overflow = '';
+        }
+    }
+
+    function closeMobileMenu() {
+        const btn = document.querySelector('.mobile-menu-btn');
+        const nav = document.getElementById('mobileNav');
+        const body = document.body;
+        
+        btn.classList.remove('active');
+        nav.classList.remove('active');
+        body.style.overflow = '';
+    }
+</script>
 </body>
 </html>

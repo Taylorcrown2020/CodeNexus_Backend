@@ -713,6 +713,78 @@
             line-height: 1.6;
         }
 
+        /* Add this to your existing @media (max-width: 768px) section */
+@media (max-width: 768px) {
+    /* ... your existing mobile styles ... */
+
+    /* Hide portfolio grid on mobile */
+    .portfolio-grid {
+        display: none;
+    }
+
+    /* Add a "View Portfolio" button for mobile */
+    .portfolio-mobile-btn {
+        display: block;
+        width: 100%;
+        max-width: 300px;
+        margin: 40px auto 0;
+        background: var(--primary);
+        color: var(--dark);
+        padding: 16px 32px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+    }
+
+    .portfolio-mobile-btn:hover {
+        background: var(--accent);
+        transform: translateY(-3px);
+        box-shadow: 0 0 40px rgba(16, 185, 129, 0.6);
+    }
+
+    /* Better features grid on mobile */
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .feature-card {
+        padding: 24px;
+    }
+
+    .feature-icon {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 16px;
+    }
+
+    .feature-icon svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .feature-title {
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+
+    .feature-description {
+        font-size: 13px;
+        line-height: 1.5;
+    }
+}
+
+/* Hide mobile portfolio button on desktop */
+.portfolio-mobile-btn {
+    display: none;
+}
+
         /* ========================================
            PORTFOLIO SECTION
         ======================================== */
@@ -1734,7 +1806,7 @@
                 <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
                 <li><a href="pricing.html" onclick="closeMobileMenu()">Pricing</a></li>
                 <li><a href="#features" onclick="closeMobileMenu()">Features</a></li>
-                <li><a href="#portfolio" onclick="closeMobileMenu()">Portfolio</a></li>
+                <li><a href="portfolio.html" onclick="closeMobileMenu()">Portfolio</a></li>
                 <li><a href="#services" onclick="closeMobileMenu()">Services</a></li>
                 <li><a href="#contact" onclick="closeMobileMenu()">Contact</a></li>
             </ul>
@@ -1905,15 +1977,15 @@
     <!-- ========================================
          PORTFOLIO SECTION
     ======================================== -->
-    <section class="portfolio-section" id="portfolio">
-        <div class="section-header">
-            <div class="section-subtitle">// Our Work</div>
-            <h2 class="section-title">Projects We've Shipped</h2>
-            <p class="section-description">
-                Real websites for real businesses. Check out some of our recent work 
-                and see what we can build for you.
-            </p>
-        </div>
+<section class="portfolio-section" id="portfolio">
+    <div class="section-header">
+        <div class="section-subtitle">// Our Work</div>
+        <h2 class="section-title">Projects We've Shipped</h2>
+        <p class="section-description">
+            Real websites for real businesses. Check out some of our recent work 
+            and see what we can build for you.
+        </p>
+    </div>
 
         <div class="portfolio-grid">
             <div class="portfolio-item">

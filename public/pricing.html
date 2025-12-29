@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing — CodeNexus Web Development</title>
+    <style>
+        /* ========================================
+           CSS VARIABLES
+        ======================================== */
+        :root {
+            --primary: #10b981;
+            --secondary: #059669;
+            --accent: #34d399;
+            --dark: #0a0a0a;
+            --dark-secondary: #1a1a1a;
+            --dark-tertiary: #2a2a2a;
+            --text-light: #a0a0a0;
+            --max-width: 1200px;
+            --border-radius: 16px;
+        }
+
+        /* ========================================
+           RESET & BASE STYLES
+        ======================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+        }
+
+        body {
+            background: var(--dark);
+            color: #ffffff;
+            overflow-x: hidden;
+            padding-top: 60px;
+        }
+
+        /* ========================================
+           NAVIGATION BAR
+        ======================================== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(16, 185, 129, 0.1);
+        }
+
+        .nav-container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 16px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-logo::before {
+            content: "{ }";
+            color: var(--accent);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-cta-btn {
+            background: var(--primary);
+            color: var(--dark);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .nav-cta-btn:hover {
+            background: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        /* ========================================
+           MOBILE MENU
+        ======================================== */
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 1001;
+            background: var(--dark-secondary);
+            border: 1px solid var(--primary);
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .mobile-menu-btn span {
+            display: block;
+            width: 28px;
+            height: 3px;
+            background: var(--primary);
+            margin: 5px 0;
+            transition: 0.3s;
+            border-radius: 2px;
+        }
+
+        .mobile-nav-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            height: 100vh;
+            background: var(--dark);
+            z-index: 1000;
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+        }
+
+        .mobile-nav-overlay.active {
+            right: 0;
+        }
+
+        .mobile-nav-content {
+            padding: 100px 30px 40px;
+        }
+
+        .mobile-nav-links {
+            list-style: none;
+            margin-bottom: 40px;
+        }
+
+        .mobile-nav-links li {
+            margin-bottom: 30px;
+        }
+
+        .mobile-nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 20px;
+            font-weight: 600;
+            display: block;
+            padding: 10px 0;
+            transition: color 0.2s;
+        }
+
+        .mobile-nav-links a:hover {
+            color: var(--primary);
+        }
+
+        /* ========================================
+           PRICING HERO
+        ======================================== */
+        .pricing-hero {
+            max-width: var(--max-width);
+            margin: 80px auto 60px;
+            padding: 0 28px;
+            text-align: center;
+        }
+
+        .pricing-hero-badge {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            border: 1px solid var(--primary);
+        }
+
+        .pricing-hero-title {
+            font-size: 52px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.1;
+        }
+
+        .pricing-hero-subtitle {
+            font-size: 18px;
+            color: var(--text-light);
+            max-width: 700px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+
+        /* ========================================
+           PRICING CARDS
+        ======================================== */
+        .pricing-section {
+            max-width: var(--max-width);
+            margin: 0 auto 100px;
+            padding: 0 28px;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 32px;
+            margin-bottom: 80px;
+        }
+
+        .pricing-card {
+            background: var(--dark-secondary);
+            padding: 48px;
+            border-radius: 24px;
+            border: 2px solid rgba(16, 185, 129, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pricing-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary);
+            box-shadow: 0 0 50px rgba(16, 185, 129, 0.3);
+        }
+
+        .pricing-card.featured {
+            border-color: var(--primary);
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.2);
+            transform: scale(1.05);
+        }
+
+        .pricing-card.featured .pricing-badge {
+            display: block;
+        }
+
+        .pricing-badge {
+            display: none;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: var(--dark);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .pricing-tier {
+            font-size: 14px;
+            color: var(--primary);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+
+        .pricing-price {
+            font-size: 56px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .pricing-period {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 24px;
+        }
+
+        .pricing-description {
+            font-size: 15px;
+            color: var(--text-light);
+            line-height: 1.6;
+            margin-bottom: 32px;
+            min-height: 80px;
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 40px;
+        }
+
+        .pricing-features li {
+            padding: 14px 0;
+            font-size: 14px;
+            color: var(--text-light);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .pricing-features li:last-child {
+            border-bottom: none;
+        }
+
+        .pricing-features li::before {
+            content: "✓";
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .pricing-cta {
+            width: 100%;
+            background: var(--primary);
+            color: var(--dark);
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+
+        .pricing-cta:hover {
+            background: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+        }
+
+        /* ========================================
+           DETAILED SERVICES
+        ======================================== */
+        .services-detail-section {
+            max-width: var(--max-width);
+            margin: 100px auto;
+            padding: 0 28px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-subtitle {
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        .section-description {
+            font-size: 16px;
+            color: var(--text-light);
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .service-detail {
+            background: var(--dark-secondary);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 20px;
+            padding: 48px;
+            margin-bottom: 32px;
+            transition: all 0.3s ease;
+        }
+
+        .service-detail:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+        }
+
+        .service-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .service-detail-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .service-detail-price {
+            font-size: 32px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .service-detail-description {
+            font-size: 15px;
+            color: var(--text-light);
+            line-height: 1.8;
+            margin-bottom: 32px;
+        }
+
+        .service-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        .service-category {
+            background: var(--dark);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .service-category-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .service-category-title::before {
+            content: ">";
+            font-size: 20px;
+        }
+
+        .service-category ul {
+            list-style: none;
+        }
+
+        .service-category li {
+            padding: 8px 0;
+            font-size: 13px;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .service-category li::before {
+            content: "•";
+            color: var(--primary);
+            font-size: 16px;
+        }
+
+        .service-detail-cta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--dark);
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary);
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            border: 2px solid var(--primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: var(--dark);
+        }
+
+        /* ========================================
+           FAQ SECTION
+        ======================================== */
+        .faq-section {
+            max-width: 900px;
+            margin: 100px auto;
+            padding: 0 28px;
+        }
+
+        .faq-item {
+            background: var(--dark-secondary);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .faq-item:hover {
+            border-color: var(--primary);
+        }
+
+        .faq-question {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .faq-icon {
+            color: var(--primary);
+            font-size: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(45deg);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            font-size: 14px;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 500px;
+            margin-top: 16px;
+        }
+
+        /* ========================================
+           CTA SECTION
+        ======================================== */
+        .cta-section {
+            background: linear-gradient(135deg, var(--dark-secondary), var(--dark-tertiary));
+            padding: 80px 28px;
+            text-align: center;
+            border-top: 1px solid var(--primary);
+            margin-top: 100px;
+        }
+
+        .cta-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .cta-title {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 20px;
+        }
+
+        .cta-description {
+            font-size: 16px;
+            margin-bottom: 32px;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        /* ========================================
+           FOOTER
+        ======================================== */
+        .footer {
+            background: var(--dark);
+            padding: 60px 28px 30px;
+            border-top: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .footer-container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-brand {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-brand::before {
+            content: "{ }";
+            color: var(--accent);
+        }
+
+        .footer-description {
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .footer-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 12px;
+        }
+
+        .footer-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        /* ========================================
+           RESPONSIVE DESIGN
+        ======================================== */
+        @media (max-width: 768px) {
+            .navbar .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .mobile-nav-overlay {
+                display: block;
+            }
+
+            .pricing-hero-title {
+                font-size: 36px;
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-card.featured {
+                transform: scale(1);
+            }
+
+            .service-detail {
+                padding: 32px 24px;
+            }
+
+            .service-detail-header {
+                flex-direction: column;
+            }
+
+            .service-detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section-title {
+                font-size: 32px;
+            }
+
+            .cta-title {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ========================================
+         NAVIGATION
+    ======================================== -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">CodeNexus</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#portfolio">Portfolio</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#contact" class="nav-cta-btn">Get Started</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav-overlay" id="mobileNav">
+        <div class="mobile-nav-content">
+            <ul class="mobile-nav-links">
+                <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
+                <li><a href="pricing.html" onclick="closeMobileMenu()">Pricing</a></li>
+                <li><a href="#features" onclick="closeMobileMenu()">Features</a></li>
+                <li><a href="#portfolio" onclick="closeMobileMenu()">Portfolio</a></li>
+                <li><a href="#services" onclick="closeMobileMenu()">Services</a></li>
+                <li><a href="#contact" onclick="closeMobileMenu()">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ========================================
+         PRICING HERO
+    ======================================== -->
+    <section class="pricing-hero">
+        <span class="pricing-hero-badge">// Transparent Pricing</span>
+        <h1 class="pricing-hero-title">Simple, Honest Pricing</h1>
+        <p class="pricing-hero-subtitle">
+            No hidden fees. No surprises. Just quality web development at fair prices. 
+            Choose the package that fits your needs, and let's build something great together.
+        </p>
+    </section>
+
+    <!-- ========================================
+         PRICING CARDS
+    ======================================== -->
+    <section class="pricing-section">
+        <div class="pricing-grid">
+            <!-- Starter Package -->
+            <div class="pricing-card">
+                <div class="pricing-tier">Starter</div>
+                <div class="pricing-price">$1,499</div>
+                <div class="pricing-period">one-time payment</div>
+                <p class="pricing-description">
+                    Perfect for small businesses and startups looking to establish a professional 
+                    web presence without breaking the bank.
+                </p>
+                <ul class="pricing-features">
+                    <li>Up to 5 custom pages</li>
+                    <li>Mobile responsive design</li>
+                    <li>Contact form integration</li>
+                    <li>Basic SEO optimization</li>
+                    <li>Render deployment</li>
+                    <li>PostgreSQL database</li>
+                    <li>30 days of support</li>
+                    <li>1 round of revisions</li>
+                </ul>
+                <a href="index.html#contact" class="pricing-cta">Get Started</a>
+            </div>
+
+            <!-- Professional Package -->
+            <div class="pricing-card featured">
+                <span class="pricing-badge">Most Popular</span>
+                <div class="pricing-tier">Professional</div>
+                <div class="pricing-price">$3,999</div>
+                <div class="pricing-period">one-time payment</div>
+                <p class="pricing-description">
+                    For growing businesses that need advanced features, custom functionality, 
+                    and a competitive edge online.
+                </p>
+                <ul class="pricing-features">
+                    <li>Up to 15 custom pages</li>
+                    <li>Custom animations & interactions</li>
+                    <li>CMS integration (Contentful/Sanity)</li>
+                    <li>Advanced SEO & analytics</li>
+                    <li>E-commerce ready (WooCommerce/Shopify)</li>
+                    <li>Render deployment</li>
+                    <li>PostgreSQL database</li>
+                    <li>90 days of support</li>
+                    <li>3 rounds of revisions</li>
+                    <li>Performance optimization</li>
+                </ul>
+                <a href="index.html#contact" class="pricing-cta">Get Started</a>
+            </div>
+
+            <!-- Enterprise Package -->
+            <div class="pricing-card">
+                <div class="pricing-tier">Enterprise</div>
+                <div class="pricing-price">Custom</div>
+                <div class="pricing-period">let's discuss</div>
+                <p class="pricing-description">
+                    Large-scale web applications and platforms. Custom solutions tailored 
+                    to your unique business requirements.
+                </p>
+                <ul class="pricing-features">
+                    <li>Unlimited pages</li>
+                    <li>Custom web application</li>
+                    <li>API integrations</li>
+                    <li>Render deployment infrastructure</li>
+                    <li>Scalable PostgreSQL architecture</li>
+                    <li>Dedicated project manager</li>
+                    <li>12 months support</li>
+                    <li>Unlimited revisions</li>
+                    <li>Security audit</li>
+                    <li>Training & documentation</li>
+                </ul>
+                <a href="index.html#contact" class="pricing-cta">Contact Us</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================
+         DETAILED SERVICES
+    ======================================== -->
+    <section class="services-detail-section">
+        <div class="section-header">
+            <div class="section-subtitle">// What's Included</div>
+            <h2 class="section-title">Deep Dive Into Our Services</h2>
+            <p class="section-description">
+                Here's exactly what you get with each package. Every detail, every feature, 
+                everything you need to make an informed decision.
+            </p>
+        </div>
+
+        <!-- Starter Package Details -->
+        <div class="service-detail">
+            <div class="service-detail-header">
+                <h3 class="service-detail-title">Starter Package</h3>
+                <div class="service-detail-price">$1,499</div>
+            </div>
+            <p class="service-detail-description">
+                The Starter package is ideal for small businesses, freelancers, and startups who need 
+                a professional website to establish their online presence. You'll get a clean, modern design 
+                that works perfectly on all devices, with all the essential features to get you up and running quickly.
+            </p>
+
+            <div class="service-detail-grid">
+                <div class="service-category">
+                    <h4 class="service-category-title">Design & Development</h4>
+                    <ul>
+                        <li>Custom homepage design</li>
+                        <li>Up to 4 additional pages (About, Services, Contact, etc.)</li>
+                        <li>Modern, professional layout</li>
+                        <li>Mobile-first responsive design</li>
+                        <li>Cross-browser compatibility</li>
+                        <li>Clean, maintainable code</li>
+                    </ul>
+                </div>
+
+                <div class="service-category">
+                    <h4 class="service-category-title">Features & Functionality</h4>
+                    <ul>
+                        <li>Contact form with email notifications</li>
+                        <li>Google Maps integration</li>
+                        <li>Social media integration</li>
+                        <li>Image optimization</li>
+                        <li>Fast page load speeds</li>
+                    </ul>
+                </div>
+
+                <div class="service-category">
+                    <h4 class="service-category-title">Deployment & Hosting</h4>
+                    <ul>
+                        <li>Render.com deployment setup</li>
+                        <li>PostgreSQL database configuration</li>
+                        <li>SSL certificate (HTTPS)</li>
+                        <li>Custom domain connection</li>
+                        <li>Basic SEO setup</li>
+                    </ul>
+                </div>
+
+                <div class="service-category">
+                    <h4 class="service-category-title">Support & Maintenance</h4>
+                    <ul>
+                        <li>30 days of post-launch support</li>
+                        <li>1 round of design revisions</li>
+                        <li>Bug fixes during support period</li>
+                        <li>Basic training on content updates</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="service-detail-cta">
+                <a href="index.html#contact" class="btn-primary">Get Started with Starter</a>
+                <a href="#faq" class="btn-secondary">View FAQs</a>
+            </div>
+        </div>
+
+        <!-- Professional Package Details -->
+        <div class="service-detail">
+            <div class="service-detail-header">
+                <h3 class="service-detail-title">Professional Package</h3>
+                <div class="service-detail-price">$3,999</div>
+            </div>
+            <p class="service-detail-description">
+                Our most popular package for businesses that need more than just a basic website. You'll get 
+                advanced features, custom animations, CMS integration, and everything needed to compete in 
+                today's digital marketplace. Perfect for growing companies ready to scale.
+            </p>
+
+            <div class="service-detail-grid">
+                <div class="service-category">
+                    <h4 class="service-category-title">Design & Development</h4>
+                    <ul>
+                        <li>Custom homepage with hero section</li>
+                        <li>Up to 14 additional pages</li>
+                        <li>Premium animations & micro-interactions</li>
+                        <li>Custom illustrations or graphics</li>
+                        <li>Advanced mobile optimization</li>
+                        <li>Interactive UI elements</li>
+                        <li>Performance-optimized code</li>
+                    </ul>
+                </div>
+
+                <div class="service-category">
+                    <h4 class="service-category-title">Features & Functionality</h4>
+                    <ul>
+                        <li>CMS integration (Contentful or Sanity)</li>
+                        <li>Blog platform with categories</li>
+                        <li>E-commerce ready (WooCommerce or Shopify)</li>
+                        <li>Advanced contact forms</li>
+                        <li>Newsletter integration (Mailchimp)</li>
+                        <li>Search functionality</li>
+                        <li>User authentication (if needed)</li>
+                        <li>Third-party API integrations</li>
+                    </ul>
+                </div>
+
+                <div class="service-category">
+                    <h4 class="service-category-title">SEO & Analytics</h4>
+                    <ul>
+                        <li>Comprehensive SEO optimization</li>
+                        <li>Google Analytics setup</li>
+                        <li>Google Search Console integration</li>
+                        <li>Schema markup implementation</li>
+                        <li>XML sitemap generation</li>
+                        <li>Meta tags optimization</li>
+                        <li>Social media preview optimization</li>
+                    </ul>
+                </div>
+
+                <div class="service-category">
+                    <h4 class="service-category-title">Deployment & Support</h4>
+                    <ul>
+                        <li>Render.com professional deployment</li>
+                        <li>Scalable PostgreSQL database</li>
+                        <li>CDN integration for assets</li>
+                        <li>90 days of comprehensive support</li>
+                        <li>3 rounds of design revisions</li>
+                        <li>Priority bug fixes</li>
+                        <li>Content management training</li>
+                        <li>Performance monitoring</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="service-detail-cta">
+                <a href="index.html#contact" class="btn-primary">Get Started with Professional</a>
+                <a href="#faq" class="btn-secondary">View FAQs</a>
+            </div>
+        </div>
+
+        <!-- Enterprise Package Details -->
+        <div class="service-detail">
+            <div class="service-detail-header">
+                <h3 class="service-detail-title">Enterprise Package</h3>
+                <div class="service-detail-price">Custom Pricing</div>
+            </div>
+            <p class="service-detail-description">
+                Built for organizations with complex requirements and large-scale needs. We'll work with you 
+                to create a completely custom solution that scales with your business. From web applications 
+                to complex integrations, we've got the expertise to handle enterprise-level projects.
+            </p>
+
+            <div class="service-detail-grid">
+                <div class="service-category">
+                    <h4 class="service-category-title">Custom Development</h4>
+                    <ul>
+                        <li>Unlimited pages and features</li>
+                        <li>Custom web application development</li>
+                        <li>Complex database architecture</li>
+                        <li>Real-time features (WebSockets)</li>
+                        <li>Advanced user roles & permissions</li>
+                        <li>Custom admin dashboard</li>
+                        <li>Multi-language support</li>
+                    </ul>
+                </div>
+
+                <div class="service-category">
+                    <h4 class="service-category-title">Integrations & APIs</h4>
+                    <ul>
+                        <li>Payment gateway integration</li>
+                        <li>CRM integration (Salesforce, HubSpot)</li>
+                        <li>ERP system integration</li>
+                        <li>Custom API development</li>
+                        <li>Third-party service integrations</li>
+                        <li>Data migration services</li>
+                        <li>Legacy system integration</li>
+                    </ul>
+                </div>
+
+                <div class="service-category">
+                    <h4 class="service-category-title">Enterprise Infrastructure</h4>
+                    <ul>
+                        <li>Scalable Render.com architecture</li>
+                        <li>Load balancing & auto-scaling</li>
+                        <li>Advanced PostgreSQL optimization</li>
+                        <li>Redis caching implementation</li>
+                        <li>CDN & edge computing</li>
+                        <li>Backup & disaster recovery</li>
+                        <li>Security hardening & audits</li>
+                    </ul>
+                </div>
+
+                <div class="service-category">
+                    <h4 class="service-category-title">Premium Support</h4>
+                    <ul>
+                        <li>Dedicated project manager</li>
+                        <li>12 months comprehensive support</li>
+                        <li>Unlimited design revisions</li>
+                        <li>Priority 24/7 support</li>
+                        <li>Regular performance reviews</li>
+                        <li>Team training & workshops</li>
+                        <li>Detailed documentation</li>
+                        <li>Ongoing consultation</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="service-detail-cta">
+                <a href="index.html#contact" class="btn-primary">Discuss Enterprise Project</a>
+                <a href="#faq" class="btn-secondary">View FAQs</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================
+         FAQ SECTION
+    ======================================== -->
+    <section class="faq-section" id="faq">
+        <div class="section-header">
+            <div class="section-subtitle">// Questions?</div>
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <p class="section-description">
+                Everything you need to know about our pricing and services. 
+                Can't find the answer you're looking for? Just reach out.
+            </p>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>What's included in the base price?</span>
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                All packages include design, development, deployment, and the specified support period. 
+                You'll get a fully functional website with no hidden costs. The only additional expenses 
+                would be for custom features beyond the package scope or ongoing hosting fees (typically $20-50/month).
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>How long does it take to build a website?</span>
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                Starter packages typically take 2-3 weeks, Professional packages take 4-6 weeks, and 
+                Enterprise projects vary based on complexity (usually 8-16 weeks). Timelines depend on 
+                how quickly you provide feedback and content during the project.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>Do you offer payment plans?</span>
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                Yes! We offer flexible payment plans for all packages. Typically, we split payments into 
+                50% upfront and 50% upon completion. For Enterprise projects, we can structure milestone-based 
+                payments. Contact us to discuss payment options that work for your budget.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>What happens after the support period ends?</span>
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                After your included support period, you can choose to purchase extended support packages 
+                starting at $99/month. This covers bug fixes, security updates, and minor content changes. 
+                Major updates or new features would be quoted separately.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>Can I upgrade my package later?</span>
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                Absolutely! Many clients start with our Starter package and upgrade as they grow. We'll 
+                credit your initial payment toward the upgraded package. We're here to support your business 
+                at every stage of growth.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>Will I own my website code?</span>
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                Yes! Upon final payment, you receive full ownership of all code, designs, and assets. 
+                We'll provide you with complete source code and documentation. You're free to host it anywhere 
+                and make changes as needed.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>Do you provide hosting?</span>
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                We deploy your site on Render.com, which offers excellent performance and reliability. 
+                Hosting costs are separate and typically range from $20-50/month depending on traffic. 
+                We'll help you set up hosting, and you'll pay Render directly.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>What if I need features not listed in the packages?</span>
+                <span class="faq-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                No problem! We can customize any package or build completely custom solutions. Just tell us 
+                what you need, and we'll provide a detailed quote. Enterprise clients often need unique features, 
+                and we're equipped to handle complex requirements.
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================
+         CTA SECTION
+    ======================================== -->
+    <section class="cta-section">
+        <div class="cta-container">
+            <h2 class="cta-title">Ready to Get Started?</h2>
+            <p class="cta-description">
+                // Let's discuss your project requirements and find the perfect package for your needs. 
+                Get a free consultation and detailed quote within 24 hours.
+            </p>
+            <a href="index.html#contact" class="btn-primary">Start Your Project Today</a>
+        </div>
+    </section>
+
+    <!-- ========================================
+         FOOTER
+    ======================================== -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div>
+                <div class="footer-brand">CodeNexus</div>
+                <p class="footer-description">
+                    Building exceptional web experiences for businesses that want to win. 
+                    Clean code, fast delivery, real results.
+                </p>
+            </div>
+
+            <div>
+                <h4 class="footer-title">Services</h4>
+                <ul class="footer-links">
+                    <li><a href="pricing.html">Pricing</a></li>
+                    <li><a href="index.html#portfolio">Portfolio</a></li>
+                    <li><a href="index.html#features">Features</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="footer-title">Company</h4>
+                <ul class="footer-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="index.html#contact">Contact</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="footer-title">Legal</h4>
+                <ul class="footer-links">
+                    <li><a href="/privacy-policy">Privacy Policy</a></li>
+                    <li><a href="/terms-of-service">Terms of Service</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="footer-title">Connect</h4>
+                <ul class="footer-links">
+                    <li><a href="mailto:hello@codenexus.dev">hello@codenexus.dev</a></li>
+                    <li><a href="tel:+1234567890">+1 (234) 567-890</a></li>
+                    <li>// Available Mon-Fri<br>9AM - 6PM PST</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>© 2026 CodeNexus. Built with code and caffeine.</p>
+        </div>
+    </footer>
+
+    <!-- ========================================
+         JAVASCRIPT
+    ======================================== -->
+    <script>
+        // Mobile Menu Functions
+        function toggleMobileMenu() {
+            const btn = document.querySelector('.mobile-menu-btn');
+            const nav = document.getElementById('mobileNav');
+            const body = document.body;
+            
+            btn.classList.toggle('active');
+            nav.classList.toggle('active');
+            
+            if (nav.classList.contains('active')) {
+                body.style.overflow = 'hidden';
+            } else {
+                body.style.overflow = '';
+            }
+        }
+
+        function closeMobileMenu() {
+            const btn = document.querySelector('.mobile-menu-btn');
+            const nav = document.getElementById('mobileNav');
+            const body = document.body;
+            
+            btn.classList.remove('active');
+            nav.classList.remove('active');
+            body.style.overflow = '';
+        }
+
+        // FAQ Toggle
+        function toggleFaq(element) {
+            element.classList.toggle('active');
+        }
+
+        // Smooth Scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

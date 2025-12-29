@@ -38,6 +38,76 @@
         }
 
         /* ========================================
+           MOBILE MENU
+        ======================================== */
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 1001;
+            background: var(--dark-secondary);
+            border: 1px solid var(--primary);
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .mobile-menu-btn span {
+            display: block;
+            width: 28px;
+            height: 3px;
+            background: var(--primary);
+            margin: 5px 0;
+            transition: 0.3s;
+            border-radius: 2px;
+        }
+
+        .mobile-nav-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            height: 100vh;
+            background: var(--dark);
+            z-index: 1000;
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+        }
+
+        .mobile-nav-overlay.active {
+            right: 0;
+        }
+
+        .mobile-nav-content {
+            padding: 100px 30px 40px;
+        }
+
+        .mobile-nav-links {
+            list-style: none;
+            margin-bottom: 40px;
+        }
+
+        .mobile-nav-links li {
+            margin-bottom: 30px;
+        }
+
+        .mobile-nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 20px;
+            font-weight: 600;
+            display: block;
+            padding: 10px 0;
+            transition: color 0.2s;
+        }
+
+        .mobile-nav-links a:hover {
+            color: var(--primary);
+        }
+
+        /* ========================================
            NAVIGATION BAR
         ======================================== */
         .navbar {
@@ -332,19 +402,41 @@
 </head>
 <body>
     <!-- ========================================
-         NAVIGATION BAR
+         NAVIGATION
     ======================================== -->
     <nav class="navbar">
         <div class="nav-container">
-            <a href="/" class="nav-logo">CodeNexus</a>
+            <a href="index.html" class="nav-logo">CodeNexus</a>
             <ul class="nav-links">
-                <li><a href="/#features">Features</a></li>
-                <li><a href="/#portfolio">Portfolio</a></li>
-                <li><a href="/#services">Services</a></li>
-                <li><a href="/" class="nav-cta-btn">Home</a></li>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#portfolio">Portfolio</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#contact" class="nav-cta-btn">Get Started</a></li>
             </ul>
         </div>
     </nav>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav-overlay" id="mobileNav">
+        <div class="mobile-nav-content">
+            <ul class="mobile-nav-links">
+                <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
+                <li><a href="pricing.html" onclick="closeMobileMenu()">Pricing</a></li>
+                <li><a href="#features" onclick="closeMobileMenu()">Features</a></li>
+                <li><a href="#portfolio" onclick="closeMobileMenu()">Portfolio</a></li>
+                <li><a href="#services" onclick="closeMobileMenu()">Services</a></li>
+                <li><a href="#contact" onclick="closeMobileMenu()">Contact</a></li>
+            </ul>
+        </div>
+    </div>
 
     <!-- ========================================
          LEGAL CONTENT

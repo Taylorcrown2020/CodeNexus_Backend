@@ -101,6 +101,18 @@ async function initializeDatabase() {
             )
         `);
 
+        await client.query(`
+    CREATE TABLE IF NOT EXISTS cookie_consent (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255),
+        consent_type VARCHAR(50) NOT NULL,
+        preferences JSONB,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
         await client.query('COMMIT');
         console.log('✅ Database tables initialized');
 
@@ -484,6 +496,47 @@ app.post('/api/leads/:id/notes', authenticateToken, async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Server error.' 
+        });
+    }
+});
+
+// ========================================
+// COOKIE CONSENT ROUTE
+// ========================================
+
+// Save cookie consent (PUBLIC)
+app.post('/api/cookie-consent', async (req, res) => {
+    try {
+        const { consentType, preferences, userId } = req.body;
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const userAgent = req.headers['user-agent'];
+
+        if (!consentType) {
+            return res.status(400).json({
+                success: false,
+                message: 'Consent type is required.'
+            });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO app.cookie_consent (user_id, consent_type, preferences, ip_address, user_agent)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+            [userId || null, consentType, JSON.stringify(preferences || {}), ipAddress, userAgent]
+        );
+
+        console.log('✅ Cookie consent saved:', result.rows[0]);
+
+        res.json({
+            success: true,
+            message: 'Cookie consent saved successfully.',
+            data: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Save cookie consent error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error. Please try again.' 
         });
     }
 });

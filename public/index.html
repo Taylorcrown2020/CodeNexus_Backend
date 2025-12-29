@@ -1071,6 +1071,296 @@
             font-size: 13px;
         }
 
+/* ========================================
+           MARKETING POPUP
+        ======================================== */
+        .marketing-popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .marketing-popup-overlay.active {
+            display: flex;
+        }
+
+        .marketing-popup {
+            background: linear-gradient(135deg, var(--dark-secondary), var(--dark-tertiary));
+            border: 2px solid var(--primary);
+            border-radius: 24px;
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 80px rgba(16, 185, 129, 0.6);
+            animation: popupSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes popupSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .marketing-popup::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
+            background-size: 200% 100%;
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .marketing-popup-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--dark);
+            border: 2px solid var(--primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+
+        .marketing-popup-close:hover {
+            background: var(--primary);
+            transform: rotate(90deg);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+
+        .marketing-popup-close::before,
+        .marketing-popup-close::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .marketing-popup-close:hover::before,
+        .marketing-popup-close:hover::after {
+            background: var(--dark);
+        }
+
+        .marketing-popup-close::before {
+            transform: rotate(45deg);
+        }
+
+        .marketing-popup-close::after {
+            transform: rotate(-45deg);
+        }
+
+        .marketing-popup-content {
+            padding: 60px 50px 50px;
+            text-align: center;
+        }
+
+        .marketing-popup-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        .marketing-popup-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: var(--dark);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .marketing-popup-title {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            color: #ffffff;
+            line-height: 1.2;
+        }
+
+        .marketing-popup-discount {
+            font-size: 72px;
+            font-weight: 900;
+            color: var(--primary);
+            line-height: 1;
+            margin-bottom: 16px;
+            text-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+        }
+
+        .marketing-popup-subtitle {
+            font-size: 18px;
+            color: var(--text-light);
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .marketing-popup-features {
+            list-style: none;
+            margin-bottom: 32px;
+            text-align: left;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .marketing-popup-features li {
+            padding: 12px 0;
+            font-size: 14px;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .marketing-popup-features li:last-child {
+            border-bottom: none;
+        }
+
+        .marketing-popup-features li::before {
+            content: "✓";
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .marketing-popup-cta {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .marketing-popup-btn {
+            background: var(--primary);
+            color: var(--dark);
+            padding: 18px 40px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+        }
+
+        .marketing-popup-btn:hover {
+            background: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 0 50px rgba(16, 185, 129, 0.8);
+        }
+
+        .marketing-popup-btn-secondary {
+            background: transparent;
+            color: var(--primary);
+            padding: 18px 40px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            border: 2px solid var(--primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .marketing-popup-btn-secondary:hover {
+            background: var(--primary);
+            color: var(--dark);
+        }
+
+        .marketing-popup-timer {
+            margin-top: 24px;
+            padding: 16px;
+            background: var(--dark);
+            border-radius: 12px;
+            border: 1px solid var(--primary);
+        }
+
+        .marketing-popup-timer-text {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+
+        .marketing-popup-countdown {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .marketing-popup-content {
+                padding: 50px 30px 40px;
+            }
+
+            .marketing-popup-title {
+                font-size: 32px;
+            }
+
+            .marketing-popup-discount {
+                font-size: 56px;
+            }
+
+            .marketing-popup-subtitle {
+                font-size: 16px;
+            }
+
+            .marketing-popup-cta {
+                flex-direction: column;
+            }
+
+            .marketing-popup-btn,
+            .marketing-popup-btn-secondary {
+                width: 100%;
+            }
+        }
+
         /* ========================================
            MODAL
         ======================================== */
@@ -2205,6 +2495,73 @@ function resetCookieConsent() {
     location.reload();
 }
 
+// ========================================
+        // MARKETING POPUP FUNCTIONALITY
+        // ========================================
+
+        // Show marketing popup on page load (only on homepage)
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user has already seen the popup in this session
+            const popupSeen = sessionStorage.getItem('marketingPopupSeen');
+            
+            if (!popupSeen) {
+                // Show popup after 2 seconds delay
+                setTimeout(() => {
+                    showMarketingPopup();
+                }, 2000);
+            }
+
+            // Start countdown timer
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        });
+
+        function showMarketingPopup() {
+            const popup = document.getElementById('marketingPopup');
+            popup.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMarketingPopup() {
+            const popup = document.getElementById('marketingPopup');
+            popup.classList.remove('active');
+            document.body.style.overflow = '';
+            
+            // Mark as seen for this session
+            sessionStorage.setItem('marketingPopupSeen', 'true');
+        }
+
+        // Close popup when clicking outside
+        document.getElementById('marketingPopup').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeMarketingPopup();
+            }
+        });
+
+        // Countdown timer - counts down to end of month
+        function updateCountdown() {
+            const now = new Date();
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+            const timeLeft = endOfMonth - now;
+
+            if (timeLeft > 0) {
+                const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                const countdownElement = document.getElementById('countdown');
+                if (countdownElement) {
+                    countdownElement.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+                }
+            } else {
+                const countdownElement = document.getElementById('countdown');
+                if (countdownElement) {
+                    countdownElement.textContent = 'Offer Expired';
+                }
+            }
+        }
+
         // Smooth Scrolling for Navigation
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
@@ -2244,6 +2601,50 @@ function resetCookieConsent() {
                 <button class="cookie-btn cookie-btn-settings" onclick="openCookieSettings()">
                     Customize
                 </button>
+            </div>
+        </div>
+    </div>
+    <!-- ========================================
+         MARKETING POPUP
+    ======================================== -->
+    <div class="marketing-popup-overlay" id="marketingPopup">
+        <div class="marketing-popup">
+            <button class="marketing-popup-close" onclick="closeMarketingPopup()"></button>
+            
+            <div class="marketing-popup-content">
+                <div class="marketing-popup-icon">🚀</div>
+                
+                <span class="marketing-popup-badge">Limited Time Offer</span>
+                
+                <h2 class="marketing-popup-title">Launch Your Website This Month</h2>
+                
+                <div class="marketing-popup-discount">20% OFF</div>
+                
+                <p class="marketing-popup-subtitle">
+                    Start your project this month and save big on any package. 
+                    Premium web development at an unbeatable price.
+                </p>
+
+                <ul class="marketing-popup-features">
+                    <li>Professional custom design</li>
+                    <li>Mobile-responsive development</li>
+                    <li>Fast delivery & deployment</li>
+                    <li>Post-launch support included</li>
+                </ul>
+
+                <div class="marketing-popup-cta">
+                    <button class="marketing-popup-btn" onclick="closeMarketingPopup(); openModal();">
+                        Claim Your Discount
+                    </button>
+                    <a href="pricing.html" class="marketing-popup-btn-secondary" onclick="closeMarketingPopup()">
+                        View Pricing
+                    </a>
+                </div>
+
+                <div class="marketing-popup-timer">
+                    <div class="marketing-popup-timer-text">⏰ Offer ends in:</div>
+                    <div class="marketing-popup-countdown" id="countdown">Loading...</div>
+                </div>
             </div>
         </div>
     </div>

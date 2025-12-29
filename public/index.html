@@ -42,52 +42,94 @@
         ======================================== */
 
 /* ========================================
-   COOKIE CONSENT BANNER
+   COOKIE CONSENT BANNER - COMPACT VERSION
 ======================================== */
 .cookie-consent {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 20px;
+    right: 20px;
+    max-width: 420px;
     background: var(--dark-secondary);
-    border-top: 2px solid var(--primary);
-    padding: 24px;
-    z-index: 10000;
-    box-shadow: 0 -4px 30px rgba(16, 185, 129, 0.2);
-    transform: translateY(100%);
+    border: 2px solid var(--primary);
+    border-radius: 16px;
+    padding: 20px;
+    z-index: 10001;
+    box-shadow: 0 8px 40px rgba(16, 185, 129, 0.3);
+    transform: translateX(500px);
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .cookie-consent.show {
-    transform: translateY(0);
+    transform: translateX(0);
 }
 
 .cookie-consent-container {
-    max-width: 1200px;
-    margin: 0 auto;
+    position: relative;
+}
+
+.cookie-consent-close {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--dark);
+    border: 2px solid var(--primary);
+    cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    flex-wrap: wrap;
+    justify-content: center;
+    transition: all 0.3s;
+    z-index: 10;
+}
+
+.cookie-consent-close:hover {
+    background: var(--primary);
+    transform: rotate(90deg);
+}
+
+.cookie-consent-close::before,
+.cookie-consent-close::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 2px;
+    background: var(--primary);
+    border-radius: 2px;
+}
+
+.cookie-consent-close:hover::before,
+.cookie-consent-close:hover::after {
+    background: var(--dark);
+}
+
+.cookie-consent-close::before {
+    transform: rotate(45deg);
+}
+
+.cookie-consent-close::after {
+    transform: rotate(-45deg);
 }
 
 .cookie-consent-text {
-    flex: 1;
-    min-width: 300px;
+    margin-bottom: 16px;
 }
 
 .cookie-consent-title {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--primary);
     margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .cookie-consent-description {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-light);
-    line-height: 1.6;
+    line-height: 1.5;
 }
 
 .cookie-consent-description a {
@@ -103,14 +145,14 @@
 
 .cookie-consent-actions {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
 .cookie-btn {
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
     font-weight: 700;
     border: none;
     cursor: pointer;
@@ -121,6 +163,7 @@
 .cookie-btn-accept {
     background: var(--primary);
     color: var(--dark);
+    flex: 1;
 }
 
 .cookie-btn-accept:hover {
@@ -153,24 +196,23 @@
 
 /* Cookie Icon Animation */
 .cookie-icon {
-    font-size: 24px;
+    font-size: 18px;
     animation: bounce 2s infinite;
 }
 
 @keyframes bounce {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
+    50% { transform: translateY(-3px); }
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
     .cookie-consent {
-        padding: 20px;
-    }
-
-    .cookie-consent-container {
-        flex-direction: column;
-        align-items: stretch;
+        bottom: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        padding: 16px;
     }
 
     .cookie-consent-actions {
@@ -1072,294 +1114,307 @@
         }
 
 /* ========================================
-           MARKETING POPUP
-        ======================================== */
-        .marketing-popup-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(8px);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            animation: fadeIn 0.3s ease;
-        }
+   MARKETING POPUP - COMPACT VERSION
+======================================== */
+.marketing-popup-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 9998;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
 
-        .marketing-popup-overlay.active {
-            display: flex;
-        }
+.marketing-popup-overlay.active {
+    display: flex;
+}
 
-        .marketing-popup {
-            background: linear-gradient(135deg, var(--dark-secondary), var(--dark-tertiary));
-            border: 2px solid var(--primary);
-            border-radius: 24px;
-            max-width: 600px;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 0 80px rgba(16, 185, 129, 0.6);
-            animation: popupSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+.marketing-popup {
+    background: linear-gradient(135deg, var(--dark-secondary), var(--dark-tertiary));
+    border: 2px solid var(--primary);
+    border-radius: 16px;
+    max-width: 420px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(16, 185, 129, 0.6);
+    animation: popupSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-        @keyframes popupSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-50px) scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
+@keyframes popupSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
 
-        .marketing-popup::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
-            background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
-            background-size: 200% 100%;
-            animation: shimmer 3s infinite;
-        }
+.marketing-popup::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--accent), var(--primary));
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite;
+}
 
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
 
-        .marketing-popup-close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--dark);
-            border: 2px solid var(--primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-            z-index: 10;
-        }
+.marketing-popup-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--dark);
+    border: 2px solid var(--primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    z-index: 10;
+}
 
-        .marketing-popup-close:hover {
-            background: var(--primary);
-            transform: rotate(90deg);
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
-        }
+.marketing-popup-close:hover {
+    background: var(--primary);
+    transform: rotate(90deg);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+}
 
-        .marketing-popup-close::before,
-        .marketing-popup-close::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 3px;
-            background: var(--primary);
-            border-radius: 2px;
-        }
+.marketing-popup-close::before,
+.marketing-popup-close::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 2px;
+    background: var(--primary);
+    border-radius: 2px;
+}
 
-        .marketing-popup-close:hover::before,
-        .marketing-popup-close:hover::after {
-            background: var(--dark);
-        }
+.marketing-popup-close:hover::before,
+.marketing-popup-close:hover::after {
+    background: var(--dark);
+}
 
-        .marketing-popup-close::before {
-            transform: rotate(45deg);
-        }
+.marketing-popup-close::before {
+    transform: rotate(45deg);
+}
 
-        .marketing-popup-close::after {
-            transform: rotate(-45deg);
-        }
+.marketing-popup-close::after {
+    transform: rotate(-45deg);
+}
 
-        .marketing-popup-content {
-            padding: 60px 50px 50px;
-            text-align: center;
-        }
+.marketing-popup-content {
+    padding: 35px 25px 25px;
+    text-align: center;
+}
 
-        .marketing-popup-icon {
-            font-size: 80px;
-            margin-bottom: 20px;
-            animation: bounce 2s infinite;
-        }
+.marketing-popup-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+}
 
-        .marketing-popup-badge {
-            display: inline-block;
-            background: var(--primary);
-            color: var(--dark);
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
+.marketing-popup-badge {
+    display: inline-block;
+    background: var(--primary);
+    color: var(--dark);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
+.marketing-popup-title {
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    color: #ffffff;
+    line-height: 1.2;
+}
 
-        .marketing-popup-title {
-            font-size: 42px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            color: #ffffff;
-            line-height: 1.2;
-        }
+.marketing-popup-discount {
+    font-size: 42px;
+    font-weight: 900;
+    color: var(--primary);
+    line-height: 1;
+    margin-bottom: 10px;
+    text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+}
 
-        .marketing-popup-discount {
-            font-size: 72px;
-            font-weight: 900;
-            color: var(--primary);
-            line-height: 1;
-            margin-bottom: 16px;
-            text-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
-        }
+.marketing-popup-subtitle {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
 
-        .marketing-popup-subtitle {
-            font-size: 18px;
-            color: var(--text-light);
-            margin-bottom: 32px;
-            line-height: 1.6;
-        }
+.marketing-popup-features {
+    list-style: none;
+    margin-bottom: 18px;
+    text-align: left;
+    max-width: 340px;
+    margin-left: auto;
+    margin-right: auto;
+}
 
-        .marketing-popup-features {
-            list-style: none;
-            margin-bottom: 32px;
-            text-align: left;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-        }
+.marketing-popup-features li {
+    padding: 7px 0;
+    font-size: 12px;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+}
 
-        .marketing-popup-features li {
-            padding: 12px 0;
-            font-size: 14px;
-            color: var(--text-light);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid rgba(16, 185, 129, 0.1);
-        }
+.marketing-popup-features li:last-child {
+    border-bottom: none;
+}
 
-        .marketing-popup-features li:last-child {
-            border-bottom: none;
-        }
+.marketing-popup-features li::before {
+    content: "✓";
+    color: var(--primary);
+    font-weight: bold;
+    font-size: 16px;
+    flex-shrink: 0;
+}
 
-        .marketing-popup-features li::before {
-            content: "✓";
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 20px;
-            flex-shrink: 0;
-        }
+.marketing-popup-cta {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
 
-        .marketing-popup-cta {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
+.marketing-popup-btn {
+    background: var(--primary);
+    color: var(--dark);
+    padding: 11px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
 
-        .marketing-popup-btn {
-            background: var(--primary);
-            color: var(--dark);
-            padding: 18px 40px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
-        }
+.marketing-popup-btn:hover {
+    background: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
+}
 
-        .marketing-popup-btn:hover {
-            background: var(--accent);
-            transform: translateY(-3px);
-            box-shadow: 0 0 50px rgba(16, 185, 129, 0.8);
-        }
+.marketing-popup-btn-secondary {
+    background: transparent;
+    color: var(--primary);
+    padding: 11px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    border: 2px solid var(--primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
 
-        .marketing-popup-btn-secondary {
-            background: transparent;
-            color: var(--primary);
-            padding: 18px 40px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
-            border: 2px solid var(--primary);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
+.marketing-popup-btn-secondary:hover {
+    background: var(--primary);
+    color: var(--dark);
+}
 
-        .marketing-popup-btn-secondary:hover {
-            background: var(--primary);
-            color: var(--dark);
-        }
+.marketing-popup-timer {
+    margin-top: 16px;
+    padding: 10px;
+    background: var(--dark);
+    border-radius: 8px;
+    border: 1px solid var(--primary);
+}
 
-        .marketing-popup-timer {
-            margin-top: 24px;
-            padding: 16px;
-            background: var(--dark);
-            border-radius: 12px;
-            border: 1px solid var(--primary);
-        }
+.marketing-popup-timer-text {
+    font-size: 10px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+}
 
-        .marketing-popup-timer-text {
-            font-size: 13px;
-            color: var(--text-light);
-            margin-bottom: 8px;
-        }
+.marketing-popup-countdown {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    font-family: 'Courier New', monospace;
+}
 
-        .marketing-popup-countdown {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary);
-            font-family: 'Courier New', monospace;
-        }
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+    .marketing-popup {
+        max-width: 90%;
+        margin: 0 10px;
+    }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .marketing-popup-content {
-                padding: 50px 30px 40px;
-            }
+    .marketing-popup-content {
+        padding: 30px 20px 20px;
+    }
 
-            .marketing-popup-title {
-                font-size: 32px;
-            }
+    .marketing-popup-icon {
+        font-size: 35px;
+    }
 
-            .marketing-popup-discount {
-                font-size: 56px;
-            }
+    .marketing-popup-title {
+        font-size: 20px;
+    }
 
-            .marketing-popup-subtitle {
-                font-size: 16px;
-            }
+    .marketing-popup-discount {
+        font-size: 36px;
+    }
 
-            .marketing-popup-cta {
-                flex-direction: column;
-            }
+    .marketing-popup-subtitle {
+        font-size: 12px;
+    }
 
-            .marketing-popup-btn,
-            .marketing-popup-btn-secondary {
-                width: 100%;
-            }
-        }
+    .marketing-popup-features li {
+        font-size: 11px;
+        padding: 6px 0;
+    }
+
+    .marketing-popup-cta {
+        flex-direction: column;
+    }
+
+    .marketing-popup-btn,
+    .marketing-popup-btn-secondary {
+        width: 100%;
+        padding: 10px 20px;
+        font-size: 12px;
+    }
+
+    .marketing-popup-countdown {
+        font-size: 14px;
+    }
+}
 
         /* ========================================
            MODAL

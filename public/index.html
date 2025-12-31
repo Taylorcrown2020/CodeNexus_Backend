@@ -1524,6 +1524,404 @@
     }
 }
 
+/* QUIZ MODAL STYLES */
+.quiz-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.quiz-modal-overlay.active {
+    display: flex;
+}
+
+.quiz-modal-content {
+    background: var(--dark-secondary);
+    border: 2px solid var(--primary);
+    border-radius: 24px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 0 60px rgba(16, 185, 129, 0.4);
+    position: relative;
+    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.quiz-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--dark);
+    border: 1px solid var(--primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+    z-index: 10;
+}
+
+.quiz-close:hover {
+    background: var(--primary);
+    transform: rotate(90deg);
+}
+
+.quiz-close::before,
+.quiz-close::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 2px;
+    background: var(--primary);
+}
+
+.quiz-close:hover::before,
+.quiz-close:hover::after {
+    background: var(--dark);
+}
+
+.quiz-close::before {
+    transform: rotate(45deg);
+}
+
+.quiz-close::after {
+    transform: rotate(-45deg);
+}
+
+.quiz-header {
+    padding: 40px 40px 30px;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+    text-align: center;
+}
+
+.quiz-badge {
+    display: inline-block;
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--primary);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    border: 1px solid var(--primary);
+}
+
+.quiz-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: var(--primary);
+}
+
+.quiz-subtitle {
+    font-size: 14px;
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+.quiz-progress {
+    padding: 20px 40px;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.progress-text {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--dark-tertiary);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 20px;
+    transition: width 0.4s ease;
+}
+
+.quiz-body {
+    padding: 40px;
+}
+
+.quiz-step {
+    display: none;
+}
+
+.quiz-step.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.step-question {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.step-description {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.option-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+}
+
+.quiz-option {
+    background: var(--dark-tertiary);
+    border: 2px solid rgba(16, 185, 129, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.quiz-option:hover {
+    border-color: var(--primary);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+}
+
+.quiz-option.selected {
+    border-color: var(--primary);
+    background: rgba(16, 185, 129, 0.1);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+.option-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+.option-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.option-desc {
+    font-size: 11px;
+    color: var(--text-light);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--primary);
+    display: block;
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s;
+    background: var(--dark);
+    color: #ffffff;
+    font-family: inherit;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.btn-next {
+    width: 100%;
+    background: var(--primary);
+    color: var(--dark);
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 8px;
+    font-family: inherit;
+}
+
+.btn-next:hover {
+    background: var(--accent);
+    transform: translateY(-2px);
+}
+
+.quiz-navigation {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 32px;
+}
+
+.btn-back,
+.btn-skip {
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    color: var(--primary);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.btn-back:hover,
+.btn-skip:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: var(--primary);
+}
+
+.results-container {
+    text-align: center;
+}
+
+.results-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.results-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 24px;
+}
+
+.results-plan {
+    background: var(--dark-tertiary);
+    border: 2px solid var(--primary);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 24px;
+}
+
+.plan-name {
+    font-size: 32px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 12px;
+}
+
+.plan-price {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 16px;
+}
+
+.plan-reason {
+    font-size: 14px;
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+.results-details {
+    background: var(--dark-tertiary);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--text-light);
+    line-height: 1.8;
+}
+
+.results-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.results-note {
+    font-size: 12px;
+    color: var(--primary);
+    margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+    .quiz-header,
+    .quiz-body {
+        padding: 24px;
+    }
+    
+    .quiz-progress {
+        padding: 16px 24px;
+    }
+    
+    .option-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .results-actions {
+        flex-direction: column;
+    }
+}
+
         /* ========================================
            MODAL
         ======================================== */
@@ -1853,10 +2251,10 @@
         <div class="mobile-nav-content">
             <ul class="mobile-nav-links">
                 <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
-                <li><a href="pricing.html" onclick="closeMobileMenu()">Pricing</a></li>
+                <li><a href="pricing.html" onclick="closeMobileMenu()">Pricing & Services</a></li>
                 <li><a href="#features" onclick="closeMobileMenu()">Features</a></li>
                 <li><a href="portfolio.html" onclick="closeMobileMenu()">Portfolio</a></li>
-                <li><a href="#services" onclick="closeMobileMenu()">Services</a></li>
+                <li><a href="pricing.html#services-detail-section" onclick="closeMobileMenu()">Services</a></li>
                 <li><a href="#contact" onclick="closeMobileMenu()">Contact</a></li>
             </ul>
             <button class="nav-cta-btn" onclick="openModal(); closeMobileMenu();">Start Your Project</button>
@@ -1872,6 +2270,27 @@
             <span class="announcement-text">// Get 20% off your first project — Launch this month</span>
         </div>
     </div>
+
+<style>
+    #quizButtonContainer {
+        max-width: 1200px;
+        margin: 10px auto -80px;
+        padding: 0 28px;
+        text-align: center;
+    }
+    
+    @media (max-width: 768px) {
+        #quizButtonContainer {
+            margin: 20px auto 80px !important;
+        }
+    }
+</style>
+
+<div id="quizButtonContainer">
+    <button class="btn-primary" onclick="openQuizModal()" style="display: inline-flex; align-items: center; gap: 8px;">
+        🎯 Take Our Quiz - Find Your Perfect Plan
+    </button>
+</div>
 
     <!-- ========================================
          HERO SECTION
@@ -2505,6 +2924,343 @@
          JAVASCRIPT
     ======================================== -->
     <script>
+
+let quizData = {
+    business_type: '',
+    primary_goal: '',
+    page_count: '',
+    ecommerce: '',
+    user_accounts: '',
+    crm: '',
+    marketing: '',
+    name: '',
+    email: '',
+    phone: '',
+    budget: '',
+    timeline: ''
+};
+
+let currentStep = 1;
+const totalSteps = 10;
+
+// Open Quiz Modal
+function openQuizModal() {
+    document.getElementById('quizModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    resetQuiz();
+}
+
+// Close Quiz Modal
+function closeQuizModal() {
+    document.getElementById('quizModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Reset Quiz
+function resetQuiz() {
+    currentStep = 1;
+    quizData = {
+        business_type: '',
+        primary_goal: '',
+        page_count: '',
+        ecommerce: '',
+        user_accounts: '',
+        crm: '',
+        marketing: '',
+        name: '',
+        email: '',
+        phone: '',
+        budget: '',
+        timeline: ''
+    };
+    
+    document.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+    document.querySelectorAll('.quiz-step').forEach((step, index) => {
+        step.classList.remove('active');
+        if (index === 0) step.classList.add('active');
+    });
+    
+    updateProgress();
+    updateNavigationButtons();
+}
+
+// Select Option and Move to Next Step
+function selectOption(element, key, value) {
+    // Save the answer
+    quizData[key] = value;
+    
+    // Visual feedback
+    const siblings = element.parentElement.querySelectorAll('.quiz-option');
+    siblings.forEach(opt => opt.classList.remove('selected'));
+    element.classList.add('selected');
+    
+    // Auto-advance after a brief delay
+    setTimeout(() => {
+        nextStep();
+    }, 300);
+}
+
+// Validate Contact Form and Move Next
+function validateAndNext() {
+    const name = document.getElementById('quizName').value.trim();
+    const email = document.getElementById('quizEmail').value.trim();
+    const phone = document.getElementById('quizPhone').value.trim();
+    
+    if (!name || !email || !phone) {
+        alert('⚠️ Please fill out all required fields.');
+        return;
+    }
+    
+    if (!email.includes('@')) {
+        alert('⚠️ Please enter a valid email address.');
+        return;
+    }
+    
+    // Save contact info
+    const nameParts = name.split(' ');
+    quizData.name = name;
+    quizData.firstName = nameParts[0] || '';
+    quizData.lastName = nameParts.slice(1).join(' ') || '';
+    quizData.email = email;
+    quizData.phone = phone;
+    
+    nextStep();
+}
+
+// Next Step
+function nextStep() {
+    if (currentStep < totalSteps) {
+        currentStep++;
+        updateStep();
+    } else {
+        // Calculate and show results
+        calculateResults();
+    }
+}
+
+// Previous Step
+function previousStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStep();
+    }
+}
+
+// Skip Step (for optional questions)
+function skipStep() {
+    nextStep();
+}
+
+// Update Step Display
+function updateStep() {
+    document.querySelectorAll('.quiz-step').forEach((step, index) => {
+        step.classList.remove('active');
+        if (index + 1 === currentStep) {
+            step.classList.add('active');
+        }
+    });
+    
+    updateProgress();
+    updateNavigationButtons();
+}
+
+// Update Progress Bar
+function updateProgress() {
+    const progress = (currentStep / totalSteps) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+    document.getElementById('currentStep').textContent = currentStep;
+    document.getElementById('totalSteps').textContent = totalSteps;
+}
+
+// Update Navigation Buttons
+function updateNavigationButtons() {
+    const backBtn = document.getElementById('backBtn');
+    const skipBtn = document.getElementById('skipBtn');
+    const navContainer = document.getElementById('quizNav');
+    
+    if (currentStep === 1) {
+        backBtn.style.display = 'none';
+    } else {
+        backBtn.style.display = 'block';
+    }
+    
+    // Hide skip button on contact info step
+    if (currentStep === 8) {
+        skipBtn.style.display = 'none';
+    } else if (currentStep < 8 || currentStep === 9 || currentStep === 10) {
+        skipBtn.style.display = 'block';
+    } else {
+        skipBtn.style.display = 'none';
+    }
+    
+    // Hide navigation on results page
+    if (currentStep === 11) {
+        navContainer.style.display = 'none';
+    } else {
+        navContainer.style.display = 'flex';
+    }
+}
+
+// Calculate Results and Submit
+async function calculateResults() {
+    let recommendedPlan = 'Starter';
+    let planPrice = '$599.99';
+    let planReason = '';
+    let score = 0;
+    
+    // Scoring system
+    if (quizData.business_type === 'enterprise' || quizData.business_type === 'growing_company') score += 2;
+    if (quizData.business_type === 'small_business') score += 1;
+    
+    if (quizData.primary_goal === 'custom_app') score += 3;
+    if (quizData.primary_goal === 'sell_online') score += 2;
+    if (quizData.primary_goal === 'generate_leads') score += 1;
+    
+    if (quizData.page_count === '25+') score += 3;
+    if (quizData.page_count === '16-25') score += 2;
+    if (quizData.page_count === '6-15') score += 1;
+    
+    if (quizData.ecommerce === 'advanced') score += 3;
+    if (quizData.ecommerce === 'full') score += 2;
+    if (quizData.ecommerce === 'basic') score += 1;
+    
+    if (quizData.user_accounts === 'complex') score += 3;
+    if (quizData.user_accounts === 'advanced') score += 2;
+    if (quizData.user_accounts === 'basic') score += 1;
+    
+    if (quizData.crm === 'custom') score += 3;
+    if (quizData.crm === 'advanced') score += 2;
+    if (quizData.crm === 'basic') score += 1;
+    
+    if (quizData.marketing === 'advanced') score += 2;
+    if (quizData.marketing === 'both' || quizData.marketing === 'email') score += 1;
+    
+    if (quizData.budget === '5000+') score += 3;
+    if (quizData.budget === '2500-5000') score += 2;
+    if (quizData.budget === '1000-2500') score += 1;
+    
+    // Determine plan based on score
+    if (score >= 15) {
+        recommendedPlan = 'Enterprise';
+        planPrice = 'Custom Pricing';
+        planReason = 'Based on your needs for advanced features, custom workflows, complex user systems, and scalability, our Enterprise package offers the flexibility and power you need. We\'ll build a custom solution tailored specifically to your business requirements.';
+    } else if (score >= 8) {
+        recommendedPlan = 'Professional';
+        planPrice = '$999.99';
+        planReason = 'Your requirements indicate a need for advanced features, more pages, and enhanced functionality. The Professional package gives you robust CRM capabilities, advanced analytics, and the tools to scale your growing business effectively.';
+    } else {
+        recommendedPlan = 'Starter';
+        planPrice = '$599.99';
+        planReason = 'Perfect for getting your business online with a solid foundation! The Starter package includes all essential features like lead capture, basic CRM, e-commerce capabilities, and room to grow. It\'s the ideal starting point that won\'t break the bank.';
+    }
+    
+    // Update results display
+    document.querySelector('.plan-name').textContent = recommendedPlan + ' Package';
+    document.querySelector('.plan-price').textContent = planPrice;
+    document.querySelector('.plan-reason').textContent = planReason;
+    
+    // Create detailed breakdown
+    let detailsHTML = '<strong>Based on your answers:</strong><br><br>';
+    detailsHTML += `✓ Business Type: ${formatValue(quizData.business_type)}<br>`;
+    detailsHTML += `✓ Primary Goal: ${formatValue(quizData.primary_goal)}<br>`;
+    detailsHTML += `✓ Page Count: ${quizData.page_count} pages<br>`;
+    detailsHTML += `✓ E-commerce: ${formatValue(quizData.ecommerce)}<br>`;
+    detailsHTML += `✓ User Accounts: ${formatValue(quizData.user_accounts)}<br>`;
+    detailsHTML += `✓ CRM Needs: ${formatValue(quizData.crm)}<br>`;
+    detailsHTML += `✓ Marketing: ${formatValue(quizData.marketing)}<br>`;
+    detailsHTML += `✓ Budget Range: ${quizData.budget}<br>`;
+    detailsHTML += `✓ Timeline: ${formatValue(quizData.timeline)}`;
+    
+    document.getElementById('resultsDetails').innerHTML = detailsHTML;
+    
+    // Submit to backend
+    await submitQuizLead(recommendedPlan);
+    
+    // Show results
+    currentStep = 11;
+    updateStep();
+}
+
+// Format values for display
+function formatValue(value) {
+    if (!value) return 'Not specified';
+    return value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+// Submit Quiz Lead to Backend
+async function submitQuizLead(recommendedPlan) {
+    try {
+        // Prepare detailed message
+        const details = `
+QUIZ RESULTS - Recommended Plan: ${recommendedPlan}
+
+BUSINESS INFORMATION:
+- Business Type: ${formatValue(quizData.business_type)}
+- Primary Goal: ${formatValue(quizData.primary_goal)}
+- Timeline: ${formatValue(quizData.timeline)}
+
+TECHNICAL REQUIREMENTS:
+- Page Count: ${quizData.page_count}
+- E-commerce: ${formatValue(quizData.ecommerce)}
+- User Accounts: ${formatValue(quizData.user_accounts)}
+- CRM Needs: ${formatValue(quizData.crm)}
+- Marketing Automation: ${formatValue(quizData.marketing)}
+
+BUDGET & CONTACT:
+- Budget Range: ${quizData.budget}
+- Name: ${quizData.name}
+- Email: ${quizData.email}
+- Phone: ${quizData.phone}
+        `.trim();
+        
+        const response = await fetch(`${window.location.origin}/api/leads`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                firstName: quizData.firstName,
+                lastName: quizData.lastName,
+                email: quizData.email,
+                phone: quizData.phone,
+                service: `Pricing Quiz - ${recommendedPlan} Package`,
+                budget: quizData.budget,
+                details: details
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('✅ Quiz lead submitted successfully');
+        }
+    } catch (error) {
+        console.error('Error submitting quiz lead:', error);
+    }
+}
+
+// Go to Pricing Page
+function goToPricing() {
+    closeQuizModal();
+    // Scroll to pricing section if on same page
+    const pricingSection = document.querySelector('.pricing-section');
+    if (pricingSection) {
+        pricingSection.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('DOMContentLoaded', function() {
+    const quizModal = document.getElementById('quizModal');
+    if (quizModal) {
+        quizModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeQuizModal();
+            }
+        });
+    }
+});
+
         // Mobile Menu Functions
         function toggleMobileMenu() {
             const btn = document.querySelector('.mobile-menu-btn');
@@ -2869,5 +3625,328 @@ function resetCookieConsent() {
             </div>
         </div>
     </div>
+    <!-- ========================================
+     QUIZ MODAL - ADD THIS BEFORE THE CLOSING </body> TAG
+======================================== -->
+
+<div class="quiz-modal-overlay" id="quizModal">
+    <div class="quiz-modal-content">
+        <button class="quiz-close" onclick="closeQuizModal()"></button>
+        
+        <!-- Quiz Header -->
+        <div class="quiz-header">
+            <span class="quiz-badge">// Find Your Plan</span>
+            <h2 class="quiz-title">Which Package Is Right For You?</h2>
+            <p class="quiz-subtitle">Answer a few quick questions and we'll recommend the perfect plan for your needs.</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="quiz-progress">
+            <div class="progress-text">Question <span id="currentStep">1</span> of <span id="totalSteps">10</span></div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar" style="width: 10%;"></div>
+            </div>
+        </div>
+
+        <!-- Quiz Body -->
+        <div class="quiz-body">
+            <!-- Step 1: Business Type -->
+            <div class="quiz-step active" data-step="1">
+                <h3 class="step-question">What type of business are you?</h3>
+                <p class="step-description">This helps us understand your needs and scale.</p>
+                <div class="option-grid">
+                    <div class="quiz-option" onclick="selectOption(this, 'business_type', 'startup')">
+                        <div class="option-icon">🚀</div>
+                        <div class="option-title">Startup</div>
+                        <div class="option-desc">Just getting started</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'business_type', 'small_business')">
+                        <div class="option-icon">🏪</div>
+                        <div class="option-title">Small Business</div>
+                        <div class="option-desc">Established with customers</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'business_type', 'growing_company')">
+                        <div class="option-icon">📈</div>
+                        <div class="option-title">Growing Company</div>
+                        <div class="option-desc">Scaling operations</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'business_type', 'enterprise')">
+                        <div class="option-icon">🏢</div>
+                        <div class="option-title">Enterprise</div>
+                        <div class="option-desc">Large organization</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Primary Goal -->
+            <div class="quiz-step" data-step="2">
+                <h3 class="step-question">What's your primary goal?</h3>
+                <p class="step-description">What do you want your website to accomplish?</p>
+                <div class="option-grid">
+                    <div class="quiz-option" onclick="selectOption(this, 'primary_goal', 'online_presence')">
+                        <div class="option-icon">🌐</div>
+                        <div class="option-title">Online Presence</div>
+                        <div class="option-desc">Professional website</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'primary_goal', 'generate_leads')">
+                        <div class="option-icon">📧</div>
+                        <div class="option-title">Generate Leads</div>
+                        <div class="option-desc">Capture customer info</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'primary_goal', 'sell_online')">
+                        <div class="option-icon">🛒</div>
+                        <div class="option-title">Sell Online</div>
+                        <div class="option-desc">E-commerce platform</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'primary_goal', 'custom_app')">
+                        <div class="option-icon">⚙️</div>
+                        <div class="option-title">Custom Application</div>
+                        <div class="option-desc">Specific functionality</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Number of Pages -->
+            <div class="quiz-step" data-step="3">
+                <h3 class="step-question">How many pages do you need?</h3>
+                <p class="step-description">Roughly how many unique pages will your site have?</p>
+                <div class="option-grid">
+                    <div class="quiz-option" onclick="selectOption(this, 'page_count', '1-5')">
+                        <div class="option-icon">📄</div>
+                        <div class="option-title">1-5 Pages</div>
+                        <div class="option-desc">Simple site</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'page_count', '6-15')">
+                        <div class="option-icon">📑</div>
+                        <div class="option-title">6-15 Pages</div>
+                        <div class="option-desc">Standard website</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'page_count', '16-25')">
+                        <div class="option-icon">📚</div>
+                        <div class="option-title">16-25 Pages</div>
+                        <div class="option-desc">Larger site</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'page_count', '25+')">
+                        <div class="option-icon">📖</div>
+                        <div class="option-title">25+ Pages</div>
+                        <div class="option-desc">Complex site</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: E-commerce Need -->
+            <div class="quiz-step" data-step="4">
+                <h3 class="step-question">Do you need e-commerce functionality?</h3>
+                <p class="step-description">Will you be selling products or services online?</p>
+                <div class="option-grid">
+                    <div class="quiz-option" onclick="selectOption(this, 'ecommerce', 'no')">
+                        <div class="option-icon">❌</div>
+                        <div class="option-title">No E-commerce</div>
+                        <div class="option-desc">Information only</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'ecommerce', 'basic')">
+                        <div class="option-icon">🛍️</div>
+                        <div class="option-title">Basic Store</div>
+                        <div class="option-desc">Few products</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'ecommerce', 'full')">
+                        <div class="option-icon">🏬</div>
+                        <div class="option-title">Full Store</div>
+                        <div class="option-desc">Many products</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'ecommerce', 'advanced')">
+                        <div class="option-icon">💳</div>
+                        <div class="option-title">Advanced</div>
+                        <div class="option-desc">Complex checkout</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: User Accounts -->
+            <div class="quiz-step" data-step="5">
+                <h3 class="step-question">Do you need user accounts & logins?</h3>
+                <p class="step-description">Will customers need to create accounts?</p>
+                <div class="option-grid">
+                    <div class="quiz-option" onclick="selectOption(this, 'user_accounts', 'no')">
+                        <div class="option-icon">🚫</div>
+                        <div class="option-title">Not Needed</div>
+                        <div class="option-desc">Public site only</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'user_accounts', 'basic')">
+                        <div class="option-icon">👤</div>
+                        <div class="option-title">Basic Logins</div>
+                        <div class="option-desc">Simple accounts</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'user_accounts', 'advanced')">
+                        <div class="option-icon">👥</div>
+                        <div class="option-title">Advanced</div>
+                        <div class="option-desc">Roles & permissions</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'user_accounts', 'complex')">
+                        <div class="option-icon">🔐</div>
+                        <div class="option-title">Complex System</div>
+                        <div class="option-desc">Multiple user types</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 6: CRM & Lead Management -->
+            <div class="quiz-step" data-step="6">
+                <h3 class="step-question">Do you need CRM or lead tracking?</h3>
+                <p class="step-description">Want to manage customer relationships and track leads?</p>
+                <div class="option-grid">
+                    <div class="quiz-option" onclick="selectOption(this, 'crm', 'no')">
+                        <div class="option-icon">❌</div>
+                        <div class="option-title">Not Needed</div>
+                        <div class="option-desc">No tracking</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'crm', 'basic')">
+                        <div class="option-icon">📋</div>
+                        <div class="option-title">Basic CRM</div>
+                        <div class="option-desc">Simple contact list</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'crm', 'advanced')">
+                        <div class="option-icon">📊</div>
+                        <div class="option-title">Advanced CRM</div>
+                        <div class="option-desc">Lead pipelines</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'crm', 'custom')">
+                        <div class="option-icon">🎯</div>
+                        <div class="option-title">Custom System</div>
+                        <div class="option-desc">Complex workflows</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 7: Marketing Automation -->
+            <div class="quiz-step" data-step="7">
+                <h3 class="step-question">Need email/SMS marketing automation?</h3>
+                <p class="step-description">Automated campaigns and customer communications?</p>
+                <div class="option-grid">
+                    <div class="quiz-option" onclick="selectOption(this, 'marketing', 'no')">
+                        <div class="option-icon">❌</div>
+                        <div class="option-title">Not Needed</div>
+                        <div class="option-desc">Manual only</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'marketing', 'email')">
+                        <div class="option-icon">📧</div>
+                        <div class="option-title">Email Only</div>
+                        <div class="option-desc">Email automation</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'marketing', 'both')">
+                        <div class="option-icon">📱</div>
+                        <div class="option-title">Email & SMS</div>
+                        <div class="option-desc">Both channels</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'marketing', 'advanced')">
+                        <div class="option-icon">🚀</div>
+                        <div class="option-title">Advanced</div>
+                        <div class="option-desc">Multi-channel</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 8: Contact Information -->
+            <div class="quiz-step" data-step="8">
+                <h3 class="step-question">Let's get your contact info</h3>
+                <p class="step-description">So we can send you personalized recommendations.</p>
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" id="quizName" class="form-input" placeholder="John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address *</label>
+                    <input type="email" id="quizEmail" class="form-input" placeholder="john@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone Number *</label>
+                    <input type="tel" id="quizPhone" class="form-input" placeholder="+1 (234) 567-8900" required>
+                </div>
+                <button class="btn-next" onclick="validateAndNext()">Continue</button>
+            </div>
+
+            <!-- Step 9: Budget -->
+            <div class="quiz-step" data-step="9">
+                <h3 class="step-question">What's your estimated budget?</h3>
+                <p class="step-description">This helps us recommend the right plan for you.</p>
+                <div class="option-grid">
+                    <div class="quiz-option" onclick="selectOption(this, 'budget', 'under_1000')">
+                        <div class="option-icon">💰</div>
+                        <div class="option-title">Under $1,000</div>
+                        <div class="option-desc">Starter budget</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'budget', '1000-2500')">
+                        <div class="option-icon">💵</div>
+                        <div class="option-title">$1,000 - $2,500</div>
+                        <div class="option-desc">Standard range</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'budget', '2500-5000')">
+                        <div class="option-icon">💸</div>
+                        <div class="option-title">$2,500 - $5,000</div>
+                        <div class="option-desc">Professional tier</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'budget', '5000+')">
+                        <div class="option-icon">💎</div>
+                        <div class="option-title">$5,000+</div>
+                        <div class="option-desc">Enterprise level</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 10: Timeline -->
+            <div class="quiz-step" data-step="10">
+                <h3 class="step-question">When do you need this launched?</h3>
+                <p class="step-description">Your desired project timeline.</p>
+                <div class="option-grid">
+                    <div class="quiz-option" onclick="selectOption(this, 'timeline', 'asap')">
+                        <div class="option-icon">🔥</div>
+                        <div class="option-title">ASAP</div>
+                        <div class="option-desc">Urgent need</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'timeline', '1-2_months')">
+                        <div class="option-icon">📅</div>
+                        <div class="option-title">1-2 Months</div>
+                        <div class="option-desc">Soon but flexible</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'timeline', '2-3_months')">
+                        <div class="option-icon">🗓️</div>
+                        <div class="option-title">2-3 Months</div>
+                        <div class="option-desc">Normal timeline</div>
+                    </div>
+                    <div class="quiz-option" onclick="selectOption(this, 'timeline', 'flexible')">
+                        <div class="option-icon">⏰</div>
+                        <div class="option-title">Flexible</div>
+                        <div class="option-desc">No rush</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div class="quiz-step" data-step="11">
+                <div class="results-container">
+                    <div class="results-icon">🎉</div>
+                    <h3 class="results-title">Your Perfect Plan:</h3>
+                    <div class="results-plan" id="recommendedPlan">
+                        <div class="plan-name">Loading...</div>
+                        <div class="plan-price">$0</div>
+                        <div class="plan-reason"></div>
+                    </div>
+                    <div class="results-details" id="resultsDetails"></div>
+                    <div class="results-actions">
+                        <button class="btn-primary" onclick="goToPricing()">View Full Pricing Details</button>
+                        <button class="btn-secondary" onclick="closeQuizModal()">Close</button>
+                    </div>
+                    <p class="results-note">✅ We've sent your results and will contact you within 24 hours!</p>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="quiz-navigation" id="quizNav">
+                <button class="btn-back" onclick="previousStep()" id="backBtn">← Back</button>
+                <button class="btn-skip" onclick="skipStep()" id="skipBtn">Skip →</button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

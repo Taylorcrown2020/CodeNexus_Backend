@@ -279,20 +279,31 @@
             color: var(--primary);
         }
 
-        .nav-cta-btn {
-            background: var(--primary);
-            color: var(--dark);
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 700;
-            transition: all 0.2s;
-        }
+        .nav-links a:not(.nav-cta-btn) {
+    color: var(--text-light);
+}
 
-        .nav-cta-btn:hover {
-            background: var(--accent);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-        }
+
+.nav-links a.nav-cta-btn {
+    background: linear-gradient(180deg, #10b981, #059669);
+    color: #ffffff !important;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    padding: 8px 18px;
+    border-radius: 999px; /* pill */
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    box-shadow: none;
+    opacity: 0.92;
+}
+
+.nav-links a.nav-cta-btn:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+}
 
         /* ========================================
            MOBILE MENU BUTTON

@@ -592,6 +592,63 @@ app.get('/terms', (req, res) => {
 });
 
 // ========================================
+// COOKIE CONSENT ADMIN ROUTES
+// ========================================
+
+// Get all cookie consents
+app.get('/api/admin/cookie-consent', authenticateToken, async (req, res) => {
+    try {
+        const { limit = 100, offset = 0 } = req.query;
+        
+        const result = await pool.query(
+            `SELECT * FROM app.cookie_consent 
+             ORDER BY created_at DESC 
+             LIMIT $1 OFFSET $2`,
+            [limit, offset]
+        );
+
+        const countResult = await pool.query('SELECT COUNT(*) FROM app.cookie_consent');
+
+        res.json({
+            success: true,
+            consents: result.rows,
+            total: parseInt(countResult.rows[0].count)
+        });
+    } catch (error) {
+        console.error('Get cookie consents error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Get cookie consent statistics
+app.get('/api/admin/cookie-consent/stats', authenticateToken, async (req, res) => {
+    try {
+        const stats = await pool.query(`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(CASE WHEN consent_type = 'accepted' THEN 1 END) as accepted,
+                COUNT(CASE WHEN consent_type = 'declined' THEN 1 END) as declined,
+                COUNT(CASE WHEN consent_type = 'custom' THEN 1 END) as custom
+            FROM app.cookie_consent
+        `);
+
+        res.json({
+            success: true,
+            stats: stats.rows[0]
+        });
+    } catch (error) {
+        console.error('Get cookie stats error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// ========================================
 // HEALTH CHECK
 // ========================================
 app.get('/api/health', (req, res) => {

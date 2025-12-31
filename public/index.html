@@ -3395,7 +3395,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // ========================================
+// ========================================
 // COOKIE CONSENT FUNCTIONALITY
 // ========================================
 
@@ -3933,6 +3933,11 @@ function resetCookieConsent() {
                     <div class="results-details" id="resultsDetails"></div>
                     <div class="results-actions">
                         <button class="btn-primary" onclick="goToPricing()">View Full Pricing Details</button>
+<script>
+function goToPricing() {
+    window.location.href = "pricing.html";
+}
+</script>
                         <button class="btn-secondary" onclick="closeQuizModal()">Close</button>
                     </div>
                     <p class="results-note">✅ We've sent your results and will contact you within 24 hours!</p>

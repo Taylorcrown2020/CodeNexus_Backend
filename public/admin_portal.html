@@ -870,6 +870,10 @@ document.getElementById('totalCount').textContent = leads.length;
 
             let filteredLeads = leads;
 
+if (currentFilter !== 'all') {
+    filteredLeads = filteredLeads.filter(l => l.status === currentFilter);
+}
+
             if (searchQuery) {
                 const query = searchQuery.toLowerCase();
                 filteredLeads = filteredLeads.filter(lead =>

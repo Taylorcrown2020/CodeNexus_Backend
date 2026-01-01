@@ -679,6 +679,25 @@
             color: var(--dark);
         }
 
+        .btn-danger {
+            background: transparent;
+            color: var(--danger);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            border: 1px solid var(--danger);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: 12px;
+            font-family: inherit;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
         /* ========================================
            RESPONSIVE DESIGN
         ======================================== */
@@ -837,8 +856,12 @@
                     document.getElementById('newCount').textContent = leads.filter(l => l.status === 'new').length;
                     document.getElementById('pendingCount').textContent = leads.filter(l => l.status === 'pending').length;
                     document.getElementById('contactedCount').textContent = leads.filter(l => l.status === 'contacted').length;
-                    document.getElementById('totalCount').textContent = leads.length;
-                    document.getElementById('customerCount').textContent = customers.length;
+document.getElementById('totalCount').textContent = leads.length;
+                    // Only count customers that are not in 'completed', 'churned', or 'cancelled' status
+                    const activeCustomers = customers.filter(c => 
+                        !['completed', 'churned', 'cancelled'].includes(c.customer_status)
+                    ).length;
+                    document.getElementById('customerCount').textContent = activeCustomers;
                 }
             } catch (error) {
                 console.error('Error loading stats:', error);
@@ -879,6 +902,7 @@
                     <td><span class="priority-badge priority-${lead.priority}">${lead.priority}</span></td>
                     <td onclick="event.stopPropagation()">
                         <button class="action-btn" onclick="openLeadModal(${lead.id})">View</button>
+                        <button class="action-btn" onclick="deleteLead(${lead.id})" style="border-color: var(--danger); color: var(--danger);">Delete</button>
                     </td>
                 `;
                 
@@ -926,6 +950,7 @@
                     <td><span class="priority-badge priority-${customer.priority}">${customer.priority}</span></td>
                     <td onclick="event.stopPropagation()">
                         <button class="action-btn" onclick="openLeadModal(${customer.id})">View</button>
+                        <button class="action-btn" onclick="deleteLead(${customer.id})" style="border-color: var(--danger); color: var(--danger);">Delete</button>
                     </td>
                 `;
                 
@@ -944,9 +969,11 @@
             
             document.getElementById('newCount').textContent = newCount;
             document.getElementById('pendingCount').textContent = pendingCount;
-            document.getElementById('contactedCount').textContent = contactedCount;
-            document.getElementById('totalCount').textContent = leads.length;
-            document.getElementById('customerCount').textContent = customers.length;
+            // Only count customers that are not in 'completed', 'churned', or 'cancelled' status
+            const activeCustomers = customers.filter(c => 
+                !['completed', 'churned', 'cancelled'].includes(c.customer_status)
+            ).length;
+            document.getElementById('customerCount').textContent = activeCustomers;
         }
 
         async function filterLeads(filter) {
@@ -1233,6 +1260,36 @@
             }
         }
 
+        async function deleteLead(leadId) {
+            if (!confirm('⚠️ Are you sure you want to permanently delete this lead/customer? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    await loadLeads();
+                    await loadCustomers();
+                    await loadStats();
+                    closeModal();
+                    alert('✅ Deleted successfully!');
+                } else {
+                    alert('❌ Error deleting: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error deleting:', error);
+                alert('❌ Error deleting');
+            }
+        }
+
         document.getElementById('leadModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();
@@ -1485,6 +1542,7 @@
 
                 <button class="btn-primary" onclick="addNote()">Save Note</button>
                 <button class="btn-secondary" onclick="closeModal()">Close</button>
+                <button class="btn-danger" onclick="deleteLead(currentLead.id)">Delete Lead/Customer</button>
             </div>
         </div>
     </div>

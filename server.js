@@ -442,6 +442,39 @@ app.post('/api/leads', async (req, res) => {
     }
 });
 
+// Delete lead/customer
+app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.id;
+
+        // First delete all notes associated with the lead
+        await pool.query('DELETE FROM lead_notes WHERE lead_id = $1', [leadId]);
+        
+        // Then delete the lead/customer
+        const result = await pool.query('DELETE FROM leads WHERE id = $1 RETURNING *', [leadId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Lead not found.' 
+            });
+        }
+
+        console.log(`✅ Lead/Customer ${leadId} deleted`);
+
+        res.json({
+            success: true,
+            message: 'Lead/Customer deleted successfully.'
+        });
+    } catch (error) {
+        console.error('Delete lead error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
 // Update lead status (HANDLES CUSTOMER CONVERSION)
 app.patch('/api/leads/:id/status', authenticateToken, async (req, res) => {
     try {

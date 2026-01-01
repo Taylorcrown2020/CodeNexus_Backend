@@ -272,6 +272,7 @@
         .filter-buttons {
             display: flex;
             gap: 12px;
+            flex-wrap: wrap;
         }
 
         .filter-btn {
@@ -731,593 +732,43 @@
         }
     </style>
 </head>
+
 <body>
-    <!-- ========================================
-         JAVASCRIPT
-    ======================================== -->
-    <script>
-        const API_URL = window.location.origin;
-        let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
-        let leads = [];
-        let customers = [];
-        let currentLead = null;
-        let currentFilter = 'all';
-        let viewMode = 'leads'; // 'leads' or 'customers'
 
-        // Check authentication on page load
-        document.addEventListener('DOMContentLoaded', async function() {
-            if (!authToken) {
-                console.log('No auth token found, redirecting to login');
-                window.location.href = '/admin';
-                return;
-            }
-            
-            // Verify token is still valid
-            try {
-                const response = await fetch(`${API_URL}/api/admin/verify`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    console.log('Token invalid, redirecting to login');
-                    localStorage.removeItem('adminToken');
-                    sessionStorage.removeItem('adminToken');
-                    window.location.href = '/admin';
-                    return;
-                }
-            } catch (error) {
-                console.error('Token verification failed:', error);
-                window.location.href = '/admin';
-                return;
-            }
-            
-            // Load data
-            await loadLeads();
-            await loadCustomers();
-            await loadStats();
-        });
-
-        // Load leads from API
-async function loadLeads() {
-    try {
-        const response = await fetch(`${API_URL}/api/leads?type=lead`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-
-        if (!response.ok) {
-            logout();
-            return;
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-            leads = data.leads.filter(l => !l.is_customer) || [];
-            renderLeads();
-            updateStats();
-        }
-    } catch (error) {
-        console.error('Error loading leads:', error);
-    }
-}
-
-        // Load customers from API
-        async function loadCustomers() {
-            try {
-                const response = await fetch(`${API_URL}/api/leads`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (response.status === 401 || response.status === 403) {
-                    localStorage.removeItem('adminToken');
-                    sessionStorage.removeItem('adminToken');
-                    window.location.href = '/admin';
-                    return;
-                }
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    customers = data.leads.filter(l => l.is_customer) || [];
-                    if (viewMode === 'customers') {
-                        renderCustomers();
-                    }
-                    updateStats();
-                }
-            } catch (error) {
-                console.error('Error loading customers:', error);
-            }
-        }
-
-        // Render leads table
-        function renderLeads(searchQuery = '') {
-            const tbody = document.getElementById('leadsTableBody');
-            tbody.innerHTML = '';
-
-            let filteredLeads = leads;
-
-if (currentFilter !== 'all') {
-    filteredLeads = filteredLeads.filter(l => l.status === currentFilter);
-}
-
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                filteredLeads = filteredLeads.filter(lead =>
-                    lead.first_name.toLowerCase().includes(query) ||
-                    lead.last_name.toLowerCase().includes(query) ||
-                    lead.email.toLowerCase().includes(query) ||
-                    (lead.phone && lead.phone.includes(query))
-                );
-            }
-
-            filteredLeads.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-            filteredLeads.forEach(lead => {
-                const row = document.createElement('tr');
-                row.onclick = () => openLeadModal(lead.id);
-                
-                row.innerHTML = `
-                    <td>${lead.first_name} ${lead.last_name}</td>
-                    <td>${lead.email}</td>
-                    <td>${lead.phone || 'N/A'}</td>
-                    <td>${lead.service || 'Not specified'}</td>
-                    <td>${lead.budget || 'Not specified'}</td>
-                    <td>${formatDate(lead.created_at)}</td>
-                    <td><span class="status-badge status-${lead.status}">${lead.status}</span></td>
-                    <td><span class="priority-badge priority-${lead.priority}">${lead.priority}</span></td>
-                    <td onclick="event.stopPropagation()">
-                        <button class="action-btn" onclick="openLeadModal(${lead.id})">View</button>
-                        <button class="action-btn" onclick="deleteLead(${lead.id})" style="border-color: var(--danger); color: var(--danger);">Delete</button>
-                    </td>
-                `;
-                
-                tbody.appendChild(row);
-            });
-
-            if (filteredLeads.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-light);">No leads found</td></tr>';
-            }
-        }
-
-        // Render customers table
-        function renderCustomers(searchQuery = '') {
-            const tbody = document.getElementById('leadsTableBody');
-            tbody.innerHTML = '';
-
-            let filteredCustomers = customers;
-
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                filteredCustomers = filteredCustomers.filter(customer =>
-                    customer.first_name.toLowerCase().includes(query) ||
-                    customer.last_name.toLowerCase().includes(query) ||
-                    customer.email.toLowerCase().includes(query) ||
-                    (customer.phone && customer.phone.includes(query))
-                );
-            }
-
-            filteredCustomers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-            filteredCustomers.forEach(customer => {
-                const row = document.createElement('tr');
-                row.onclick = () => openLeadModal(customer.id);
-                
-                const statusDisplay = customer.customer_status || 'onboarding';
-                
-                row.innerHTML = `
-                    <td>${customer.first_name} ${customer.last_name}</td>
-                    <td>${customer.email}</td>
-                    <td>${customer.phone || 'N/A'}</td>
-                    <td>${customer.service || 'Not specified'}</td>
-                    <td>${customer.budget || 'Not specified'}</td>
-                    <td>${formatDate(customer.created_at)}</td>
-                    <td><span class="status-badge status-${statusDisplay}">${statusDisplay.replace('-', ' ')}</span></td>
-                    <td><span class="priority-badge priority-${customer.priority}">${customer.priority}</span></td>
-                    <td onclick="event.stopPropagation()">
-                        <button class="action-btn" onclick="openLeadModal(${customer.id})">View</button>
-                        <button class="action-btn" onclick="deleteLead(${customer.id})" style="border-color: var(--danger); color: var(--danger);">Delete</button>
-                    </td>
-                `;
-                
-                tbody.appendChild(row);
-            });
-
-            if (filteredCustomers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-light);">No customers found</td></tr>';
-            }
-        }
-
-        function updateStats() {
-            const newCount = leads.filter(l => l.status === 'new').length;
-            const pendingCount = leads.filter(l => l.status === 'pending').length;
-            const contactedCount = leads.filter(l => l.status === 'contacted').length;
-            
-            document.getElementById('newCount').textContent = newCount;
-            document.getElementById('pendingCount').textContent = pendingCount;
-            // Only count customers that are not in 'completed', 'churned', or 'cancelled' status
-            const activeCustomers = customers.filter(c => 
-                !['completed', 'churned', 'cancelled'].includes(c.customer_status)
-            ).length;
-            document.getElementById('customerCount').textContent = activeCustomers;
-        }
-
-async function filterCustomers(filter) {
-            currentFilter = filter;
-            
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            renderCustomers();
-        }
-
-        function searchLeads(query) {
-            if (viewMode === 'leads') {
-                renderLeads(query);
-            } else {
-                renderCustomers(query);
-            }
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-            });
-        }
-
-        async function openLeadModal(leadId) {
-            try {
-                const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    currentLead = data.lead;
-                    currentLead.notes = data.notes;
-                    
-                    const isCustomer = currentLead.is_customer;
-                    
-                    document.getElementById('modalName').textContent = `${currentLead.first_name} ${currentLead.last_name}`;
-                    document.getElementById('modalEmail').textContent = currentLead.email;
-                    document.getElementById('modalPhone').textContent = currentLead.phone || 'Not provided';
-                    document.getElementById('modalService').textContent = currentLead.service || 'Not specified';
-                    document.getElementById('modalBudget').textContent = currentLead.budget || 'Not specified';
-                    document.getElementById('modalDate').textContent = formatDate(currentLead.created_at);
-                    document.getElementById('modalDetails').textContent = currentLead.details || 'No details provided';
-                    
-                    // Show/hide appropriate management sections
-                    if (isCustomer) {
-                        document.getElementById('leadManagement').style.display = 'none';
-                        document.getElementById('customerManagement').style.display = 'block';
-                        document.getElementById('customerStatus').value = currentLead.customer_status || 'onboarding';
-                        document.getElementById('customerPriority').value = currentLead.priority;
-                    } else {
-                        document.getElementById('leadManagement').style.display = 'block';
-                        document.getElementById('customerManagement').style.display = 'none';
-                        document.getElementById('leadStatus').value = currentLead.status;
-                        document.getElementById('leadPriority').value = currentLead.priority;
-                    }
-                    
-                    renderNotes();
-                    
-                    document.getElementById('leadModal').classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                }
-            } catch (error) {
-                console.error('Error loading lead:', error);
-                alert('Error loading lead details');
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('leadModal').classList.remove('active');
-            document.body.style.overflow = '';
-            document.getElementById('newNote').value = '';
-            currentLead = null;
-        }
-
-        function renderNotes() {
-            const notesList = document.getElementById('notesList');
-            
-            if (!currentLead.notes || currentLead.notes.length === 0) {
-                notesList.innerHTML = '<p style="color: var(--text-light); font-size: 13px;">No notes yet. Add your first note below.</p>';
-                return;
-            }
-            
-            notesList.innerHTML = '';
-            
-            currentLead.notes.forEach(note => {
-                const noteEl = document.createElement('div');
-                noteEl.className = 'note-item';
-                noteEl.innerHTML = `
-                    <div class="note-header">
-                        <span class="note-date">${formatDate(note.created_at)}</span>
-                    </div>
-                    <div class="note-text">${note.note_text}</div>
-                `;
-                notesList.appendChild(noteEl);
-            });
-        }
-
-        async function addNote() {
-            if (!currentLead) return;
-            
-            const noteText = document.getElementById('newNote').value.trim();
-            
-            if (!noteText) {
-                alert('Please enter a note before saving.');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/notes`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ noteText })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    document.getElementById('newNote').value = '';
-                    await openLeadModal(currentLead.id);
-                    alert('✅ Note saved successfully!');
-                }
-            } catch (error) {
-                console.error('Error adding note:', error);
-                alert('❌ Error saving note');
-            }
-        }
-
-        async function updateLeadStatus() {
-            if (!currentLead) return;
-            
-            const newStatus = document.getElementById('leadStatus').value;
-            
-            // Check if converting to customer
-            if (newStatus === 'closed') {
-                if (!confirm('This will convert the lead to a customer. Continue?')) {
-                    document.getElementById('leadStatus').value = currentLead.status;
-                    return;
-                }
-            }
-            
-            try {
-                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/status`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ 
-                        status: newStatus,
-                        isCustomer: newStatus === 'closed',
-                        customerStatus: newStatus === 'closed' ? 'onboarding' : null
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    await loadLeads();
-                    await loadCustomers();
-                    await loadStats();
-                    closeModal();
-                    alert(newStatus === 'closed' ? '✅ Lead converted to customer!' : '✅ Status updated successfully!');
-                }
-            } catch (error) {
-                console.error('Error updating status:', error);
-                alert('❌ Error updating status');
-            }
-        }
-
-        async function updateCustomerStatus() {
-            if (!currentLead) return;
-            
-            const newStatus = document.getElementById('customerStatus').value;
-            
-            try {
-                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/customer-status`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ customerStatus: newStatus })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    await loadCustomers();
-                    alert('✅ Customer status updated successfully!');
-                }
-            } catch (error) {
-                console.error('Error updating customer status:', error);
-                alert('❌ Error updating customer status');
-            }
-        }
-
-        async function updateLeadPriority() {
-            if (!currentLead) return;
-            
-            const newPriority = currentLead.is_customer 
-                ? document.getElementById('customerPriority').value 
-                : document.getElementById('leadPriority').value;
-            
-            try {
-                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/priority`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ priority: newPriority })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    await loadLeads();
-                    await loadCustomers();
-                    alert('✅ Priority updated successfully!');
-                }
-            } catch (error) {
-                console.error('Error updating priority:', error);
-                alert('❌ Error updating priority');
-            }
-        }
-
-        function showSection(section, el) {
-    document.querySelectorAll('.menu-item').forEach(item => {
-        item.classList.remove('active');
-    });
-
-    if (el) el.classList.add('active');
-
-    const pageTitle = document.querySelector('.page-title');
-
-    if (section === 'customers') {
-        viewMode = 'customers';
-        pageTitle.textContent = '// Customers';
-        renderCustomers();
-        document.querySelector('.filter-buttons').style.display = 'none';
-    } else {
-        viewMode = 'leads';
-        pageTitle.textContent = '// Dashboard';
-        document.querySelector('.filter-buttons').style.display = 'flex';
-
-        currentFilter = section === 'dashboard' || section === 'leads'
-            ? 'all'
-            : section;
-
-        renderLeads();
-    }
-}
-
-        function filterLeads(filter, buttonEl) {
-    currentFilter = filter;
-
-    // Highlight active button
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-
-    if (buttonEl) {
-        buttonEl.classList.add('active');
-    }
-
-    // Re-render with new filter
-    renderLeads(document.querySelector('.search-input')?.value || '');
-}
-
-        function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('adminToken');
-                sessionStorage.removeItem('adminToken');
-                window.location.replace('/admin');
-            }
-        }
-
-        async function deleteLead(leadId) {
-            if (!confirm('⚠️ Are you sure you want to permanently delete this lead/customer? This action cannot be undone.')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    await loadLeads();
-                    await loadCustomers();
-                    await loadStats();
-                    closeModal();
-                    alert('✅ Deleted successfully!');
-                } else {
-                    alert('❌ Error deleting: ' + (data.error || 'Unknown error'));
-                }
-            } catch (error) {
-                console.error('Error deleting:', error);
-                alert('❌ Error deleting');
-            }
-        }
-
-        document.getElementById('leadModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
-        });
-    </script>
-
-<!-- End of modal -->
+    <!-- End of modal -->
     <aside class="sidebar">
         <div class="sidebar-logo">
             <div class="logo">CodeNexus</div>
         </div>
         <ul class="sidebar-menu">
-            <li class="menu-item active" onclick="showSection('dashboard')">
-                <span class="menu-icon">📊</span>
-                Dashboard
+            <li class="menu-item active" onclick="showSection('dashboard', this)">
+                <span class="menu-icon">📊</span> Dashboard
             </li>
-            <li class="menu-item" onclick="showSection('leads')">
-                <span class="menu-icon">👥</span>
-                All Leads
+            <li class="menu-item" onclick="showSection('leads', this)">
+                <span class="menu-icon">👥</span> All Leads
             </li>
             <li class="menu-item" onclick="showSection('new', this)">
-                <span class="menu-icon">🆕</span>
-                New Messages
+                <span class="menu-icon">🆕</span> New Messages
             </li>
             <li class="menu-item" onclick="showSection('pending', this)">
-                <span class="menu-icon">⏳</span>
-                Pending
+                <span class="menu-icon">⏳</span> Pending
             </li>
             <li class="menu-item" onclick="showSection('contacted', this)">
-                <span class="menu-icon">✅</span>
-                Contacted
+                <span class="menu-icon">✅</span> Contacted
             </li>
             <li class="menu-item" onclick="showSection('customers', this)">
-                <span class="menu-icon">🎯</span>
-                Customers
+                <span class="menu-icon">🎯</span> Customers
             </li>
-            <li class="menu-item" onclick="showSection('analytics')">
-                <span class="menu-icon">📈</span>
-                Analytics
+            <li class="menu-item" onclick="showSection('analytics', this)">
+                <span class="menu-icon">📈</span> Analytics
             </li>
-            <li class="menu-item" onclick="showSection('settings')">
-                <span class="menu-icon">⚙️</span>
-                Settings
+            <li class="menu-item" onclick="showSection('settings', this)">
+                <span class="menu-icon">⚙️</span> Settings
             </li>
         </ul>
     </aside>
 
-    <!-- ========================================
-         MAIN CONTENT
-    ======================================== -->
+    <!-- ======================================== MAIN CONTENT ======================================== -->
     <main class="main-content">
         <!-- Top Bar -->
         <div class="top-bar">
@@ -1377,13 +828,13 @@ async function filterCustomers(filter) {
                 <span class="search-icon">🔍</span>
                 <input type="text" class="search-input" placeholder="Search by name, email, or phone..." onkeyup="searchLeads(this.value)">
             </div>
-            <div class="filter-buttons">
-<button class="filter-btn active" onclick="filterLeads('all', this)">All</button>
-<button class="filter-btn" onclick="filterLeads('new', this)">New</button>
-<button class="filter-btn" onclick="filterLeads('pending', this)">Pending</button>
-<button class="filter-btn" onclick="filterLeads('contacted', this)">Contacted</button>
-<button class="filter-btn" onclick="filterLeads('lost', this)">Lost</button>
 
+            <div class="filter-buttons" id="filterButtons">
+                <button class="filter-btn active" onclick="filterLeads('all', this)">All</button>
+                <button class="filter-btn" onclick="filterLeads('new', this)">New</button>
+                <button class="filter-btn" onclick="filterLeads('pending', this)">Pending</button>
+                <button class="filter-btn" onclick="filterLeads('contacted', this)">Contacted</button>
+                <button class="filter-btn" onclick="filterLeads('lost', this)">Lost</button>
             </div>
         </div>
 
@@ -1410,15 +861,14 @@ async function filterCustomers(filter) {
         </div>
     </main>
 
-    <!-- ========================================
-         LEAD DETAIL MODAL
-    ======================================== -->
+    <!-- ======================================== LEAD DETAIL MODAL ======================================== -->
     <div class="modal-overlay" id="leadModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title">// Lead Details</h2>
                 <button class="modal-close" onclick="closeModal()">×</button>
             </div>
+
             <div class="modal-body">
                 <!-- Lead Information -->
                 <div class="detail-grid">
@@ -1506,9 +956,7 @@ async function filterCustomers(filter) {
 
                 <!-- Notes Section -->
                 <div class="section-title">// Contact Notes</div>
-                <div class="notes-list" id="notesList">
-                    <!-- Populated by JavaScript -->
-                </div>
+                <div class="notes-list" id="notesList"></div>
 
                 <!-- Add New Note -->
                 <div class="form-group">
@@ -1523,7 +971,592 @@ async function filterCustomers(filter) {
         </div>
     </div>
 
-    <!-- End of modal -->
+    <!-- ======================================== JAVASCRIPT (FIXED) ======================================== -->
+    <script>
+        const API_URL = window.location.origin;
+        let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+        let leads = [];
+        let customers = [];
+        let currentLead = null;
 
+        // Separate filters for leads vs customers
+        let currentLeadFilter = 'all';
+        let currentCustomerFilter = 'all';
+        let viewMode = 'leads'; // 'leads' or 'customers'
+
+        // Config for repurposing the existing filter buttons in customer view
+        const CUSTOMER_FILTERS = [
+            { key: 'all', label: 'All' },
+            { key: 'onboarding', label: 'Onboarding' },
+            { key: 'in-progress', label: 'In Progress' },
+            { key: 'review', label: 'In Review' },
+            { key: 'on-hold', label: 'On Hold' },
+            { key: 'completed', label: 'Completed' },
+            { key: 'churned', label: 'Churned' },
+            { key: 'cancelled', label: 'Cancelled' },
+        ];
+
+        const LEAD_FILTERS = [
+            { key: 'all', label: 'All' },
+            { key: 'new', label: 'New' },
+            { key: 'pending', label: 'Pending' },
+            { key: 'contacted', label: 'Contacted' },
+            { key: 'lost', label: 'Lost' },
+        ];
+
+        // Check authentication on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!authToken) {
+                console.log('No auth token found, redirecting to login');
+                window.location.href = '/admin';
+                return;
+            }
+
+            // Verify token is still valid
+            try {
+                const response = await fetch(`${API_URL}/api/admin/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    console.log('Token invalid, redirecting to login');
+                    localStorage.removeItem('adminToken');
+                    sessionStorage.removeItem('adminToken');
+                    window.location.href = '/admin';
+                    return;
+                }
+            } catch (error) {
+                console.error('Token verification failed:', error);
+                window.location.href = '/admin';
+                return;
+            }
+
+            // Load data
+            await loadLeads();
+            await loadCustomers();
+            await loadStats();
+
+            // Ensure filter buttons are initialized for leads
+            setFilterButtonsForMode('leads');
+        });
+
+        function setFilterButtonsForMode(mode) {
+            const container = document.getElementById('filterButtons');
+            if (!container) return;
+
+            const filters = mode === 'customers' ? CUSTOMER_FILTERS : LEAD_FILTERS;
+            container.innerHTML = '';
+
+            filters.forEach((f, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn' + ((mode === 'customers' ? currentCustomerFilter : currentLeadFilter) === f.key ? ' active' : '');
+                btn.textContent = f.label;
+                btn.onclick = () => {
+                    if (mode === 'customers') {
+                        currentCustomerFilter = f.key;
+                        highlightActiveFilterButton(f.key, mode);
+                        renderCustomers(document.querySelector('.search-input')?.value || '');
+                    } else {
+                        currentLeadFilter = f.key;
+                        highlightActiveFilterButton(f.key, mode);
+                        renderLeads(document.querySelector('.search-input')?.value || '');
+                    }
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function highlightActiveFilterButton(filterKey, mode) {
+            const container = document.getElementById('filterButtons');
+            if (!container) return;
+            const buttons = container.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            const filters = mode === 'customers' ? CUSTOMER_FILTERS : LEAD_FILTERS;
+            const idx = filters.findIndex(f => f.key === filterKey);
+            if (idx >= 0 && buttons[idx]) buttons[idx].classList.add('active');
+        }
+
+        // Load leads from API
+        async function loadLeads() {
+            try {
+                const response = await fetch(`${API_URL}/api/leads?type=lead`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    logout();
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    leads = (data.leads || []).filter(l => !l.is_customer) || [];
+                    if (viewMode === 'leads') {
+                        renderLeads(document.querySelector('.search-input')?.value || '');
+                    }
+                    updateStats();
+                }
+            } catch (error) {
+                console.error('Error loading leads:', error);
+            }
+        }
+
+        // Load customers from API
+        async function loadCustomers() {
+            try {
+                const response = await fetch(`${API_URL}/api/leads`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.removeItem('adminToken');
+                    sessionStorage.removeItem('adminToken');
+                    window.location.href = '/admin';
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    customers = (data.leads || []).filter(l => l.is_customer) || [];
+                    if (viewMode === 'customers') {
+                        renderCustomers(document.querySelector('.search-input')?.value || '');
+                    }
+                    updateStats();
+                }
+            } catch (error) {
+                console.error('Error loading customers:', error);
+            }
+        }
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                // This endpoint isn't required for the UI counts as you compute from arrays,
+                // but keeping it to match your original intent.
+                const response = await fetch(`${API_URL}/api/leads/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    // UI counts are computed from current arrays for consistency.
+                    updateStats();
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Render leads table
+        function renderLeads(searchQuery = '') {
+            const tbody = document.getElementById('leadsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            let filteredLeads = [...leads];
+            if (currentLeadFilter !== 'all') {
+                filteredLeads = filteredLeads.filter(l => l.status === currentLeadFilter);
+            }
+
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                filteredLeads = filteredLeads.filter(lead =>
+                    (lead.first_name || '').toLowerCase().includes(query) ||
+                    (lead.last_name || '').toLowerCase().includes(query) ||
+                    (lead.email || '').toLowerCase().includes(query) ||
+                    (lead.phone && String(lead.phone).includes(query))
+                );
+            }
+
+            filteredLeads.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            filteredLeads.forEach(lead => {
+                const row = document.createElement('tr');
+                row.onclick = () => openLeadModal(lead.id);
+
+                row.innerHTML = `
+                    <td>${lead.first_name || ''} ${lead.last_name || ''}</td>
+                    <td>${lead.email || ''}</td>
+                    <td>${lead.phone || 'N/A'}</td>
+                    <td>${lead.service || 'Not specified'}</td>
+                    <td>${lead.budget || 'Not specified'}</td>
+                    <td>${formatDate(lead.created_at)}</td>
+                    <td><span class="status-badge status-${lead.status}">${lead.status}</span></td>
+                    <td><span class="priority-badge priority-${lead.priority}">${lead.priority}</span></td>
+                    <td onclick="event.stopPropagation()">
+                        <button class="action-btn" onclick="openLeadModal(${lead.id}); event.stopPropagation();">View</button>
+                        <button class="action-btn" onclick="deleteLead(${lead.id}); event.stopPropagation();" style="border-color: var(--danger); color: var(--danger);">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (filteredLeads.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-light);">No leads found</td></tr>';
+            }
+        }
+
+        // Render customers table
+        function renderCustomers(searchQuery = '') {
+            const tbody = document.getElementById('leadsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            let filteredCustomers = [...customers];
+
+            // Customer filtering now works (separate filter)
+            if (currentCustomerFilter !== 'all') {
+                filteredCustomers = filteredCustomers.filter(c => (c.customer_status || 'onboarding') === currentCustomerFilter);
+            }
+
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                filteredCustomers = filteredCustomers.filter(customer =>
+                    (customer.first_name || '').toLowerCase().includes(query) ||
+                    (customer.last_name || '').toLowerCase().includes(query) ||
+                    (customer.email || '').toLowerCase().includes(query) ||
+                    (customer.phone && String(customer.phone).includes(query))
+                );
+            }
+
+            filteredCustomers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            filteredCustomers.forEach(customer => {
+                const row = document.createElement('tr');
+                row.onclick = () => openLeadModal(customer.id);
+                const statusDisplay = customer.customer_status || 'onboarding';
+
+                row.innerHTML = `
+                    <td>${customer.first_name || ''} ${customer.last_name || ''}</td>
+                    <td>${customer.email || ''}</td>
+                    <td>${customer.phone || 'N/A'}</td>
+                    <td>${customer.service || 'Not specified'}</td>
+                    <td>${customer.budget || 'Not specified'}</td>
+                    <td>${formatDate(customer.created_at)}</td>
+                    <td><span class="status-badge status-${statusDisplay}">${String(statusDisplay).replace('-', ' ')}</span></td>
+                    <td><span class="priority-badge priority-${customer.priority}">${customer.priority}</span></td>
+                    <td onclick="event.stopPropagation()">
+                        <button class="action-btn" onclick="openLeadModal(${customer.id}); event.stopPropagation();">View</button>
+                        <button class="action-btn" onclick="deleteLead(${customer.id}); event.stopPropagation();" style="border-color: var(--danger); color: var(--danger);">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (filteredCustomers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-light);">No customers found</td></tr>';
+            }
+        }
+
+        function updateStats() {
+            const newCount = leads.filter(l => l.status === 'new').length;
+            const pendingCount = leads.filter(l => l.status === 'pending').length;
+            const contactedCount = leads.filter(l => l.status === 'contacted').length;
+
+            const newEl = document.getElementById('newCount');
+            const pendingEl = document.getElementById('pendingCount');
+            const contactedEl = document.getElementById('contactedCount');
+            const totalEl = document.getElementById('totalCount');
+            const customerEl = document.getElementById('customerCount');
+
+            if (newEl) newEl.textContent = String(newCount);
+            if (pendingEl) pendingEl.textContent = String(pendingCount);
+            if (contactedEl) contactedEl.textContent = String(contactedCount);
+            if (totalEl) totalEl.textContent = String(leads.length);
+
+            const activeCustomers = customers.filter(c => !['completed', 'churned', 'cancelled'].includes(c.customer_status)).length;
+            if (customerEl) customerEl.textContent = String(activeCustomers);
+        }
+
+        function searchLeads(query) {
+            if (viewMode === 'leads') {
+                renderLeads(query);
+            } else {
+                renderCustomers(query);
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        async function openLeadModal(leadId) {
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    currentLead = data.lead;
+                    currentLead.notes = data.notes;
+                    const isCustomer = !!currentLead.is_customer;
+
+                    document.getElementById('modalName').textContent = `${currentLead.first_name || ''} ${currentLead.last_name || ''}`;
+                    document.getElementById('modalEmail').textContent = currentLead.email || '';
+                    document.getElementById('modalPhone').textContent = currentLead.phone || 'Not provided';
+                    document.getElementById('modalService').textContent = currentLead.service || 'Not specified';
+                    document.getElementById('modalBudget').textContent = currentLead.budget || 'Not specified';
+                    document.getElementById('modalDate').textContent = formatDate(currentLead.created_at);
+                    document.getElementById('modalDetails').textContent = currentLead.details || 'No details provided';
+
+                    // Show/hide appropriate management sections
+                    if (isCustomer) {
+                        document.getElementById('leadManagement').style.display = 'none';
+                        document.getElementById('customerManagement').style.display = 'block';
+                        document.getElementById('customerStatus').value = currentLead.customer_status || 'onboarding';
+                        document.getElementById('customerPriority').value = currentLead.priority;
+                    } else {
+                        document.getElementById('leadManagement').style.display = 'block';
+                        document.getElementById('customerManagement').style.display = 'none';
+                        document.getElementById('leadStatus').value = currentLead.status;
+                        document.getElementById('leadPriority').value = currentLead.priority;
+                    }
+
+                    renderNotes();
+                    document.getElementById('leadModal').classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+            } catch (error) {
+                console.error('Error loading lead:', error);
+                alert('Error loading lead details');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('leadModal').classList.remove('active');
+            document.body.style.overflow = '';
+            const noteBox = document.getElementById('newNote');
+            if (noteBox) noteBox.value = '';
+            currentLead = null;
+        }
+
+        function renderNotes() {
+            const notesList = document.getElementById('notesList');
+            if (!notesList) return;
+
+            if (!currentLead?.notes || currentLead.notes.length === 0) {
+                notesList.innerHTML = '<p style="color: var(--text-light); font-size: 13px;">No notes yet. Add your first note below.</p>';
+                return;
+            }
+
+            notesList.innerHTML = '';
+            currentLead.notes.forEach(note => {
+                const noteEl = document.createElement('div');
+                noteEl.className = 'note-item';
+                noteEl.innerHTML = `
+                    <div class="note-header">
+                        <span class="note-date">${formatDate(note.created_at)}</span>
+                    </div>
+                    <div class="note-text">${note.note_text}</div>
+                `;
+                notesList.appendChild(noteEl);
+            });
+        }
+
+        async function addNote() {
+            if (!currentLead) return;
+            const noteText = document.getElementById('newNote').value.trim();
+
+            if (!noteText) {
+                alert('Please enter a note before saving.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ noteText })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('newNote').value = '';
+                    await openLeadModal(currentLead.id);
+                    alert('✅ Note saved successfully!');
+                }
+            } catch (error) {
+                console.error('Error adding note:', error);
+                alert('❌ Error saving note');
+            }
+        }
+
+        async function updateLeadStatus() {
+            if (!currentLead) return;
+            const newStatus = document.getElementById('leadStatus').value;
+
+            // Check if converting to customer
+            if (newStatus === 'closed') {
+                if (!confirm('This will convert the lead to a customer. Continue?')) {
+                    document.getElementById('leadStatus').value = currentLead.status;
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        status: newStatus,
+                        isCustomer: newStatus === 'closed',
+                        customerStatus: newStatus === 'closed' ? 'onboarding' : null
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadLeads();
+                    await loadCustomers();
+                    await loadStats();
+                    closeModal();
+                    alert(newStatus === 'closed' ? '✅ Lead converted to customer!' : '✅ Status updated successfully!');
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('❌ Error updating status');
+            }
+        }
+
+        async function updateCustomerStatus() {
+            if (!currentLead) return;
+            const newStatus = document.getElementById('customerStatus').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/customer-status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ customerStatus: newStatus })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadCustomers();
+                    // keep modal open and refresh content
+                    await openLeadModal(currentLead.id);
+                    alert('✅ Customer status updated successfully!');
+                }
+            } catch (error) {
+                console.error('Error updating customer status:', error);
+                alert('❌ Error updating customer status');
+            }
+        }
+
+        async function updateLeadPriority() {
+            if (!currentLead) return;
+            const newPriority = currentLead.is_customer ? document.getElementById('customerPriority').value : document.getElementById('leadPriority').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/priority`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ priority: newPriority })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadLeads();
+                    await loadCustomers();
+                    // refresh modal to reflect priority
+                    await openLeadModal(currentLead.id);
+                    alert('✅ Priority updated successfully!');
+                }
+            } catch (error) {
+                console.error('Error updating priority:', error);
+                alert('❌ Error updating priority');
+            }
+        }
+
+        function showSection(section, el) {
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            const pageTitle = document.querySelector('.page-title');
+
+            if (section === 'customers') {
+                viewMode = 'customers';
+                pageTitle.textContent = '// Customers';
+                setFilterButtonsForMode('customers');
+                currentCustomerFilter = 'all';
+                highlightActiveFilterButton('all', 'customers');
+                renderCustomers(document.querySelector('.search-input')?.value || '');
+            } else {
+                viewMode = 'leads';
+                pageTitle.textContent = '// Dashboard';
+                setFilterButtonsForMode('leads');
+
+                // sidebar lead filters
+                currentLeadFilter = (section === 'dashboard' || section === 'leads') ? 'all' : section;
+                highlightActiveFilterButton(currentLeadFilter, 'leads');
+                renderLeads(document.querySelector('.search-input')?.value || '');
+            }
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('adminToken');
+                sessionStorage.removeItem('adminToken');
+                window.location.replace('/admin');
+            }
+        }
+
+        async function deleteLead(leadId) {
+            if (!confirm('⚠️ Are you sure you want to permanently delete this lead/customer? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    await loadLeads();
+                    await loadCustomers();
+                    await loadStats();
+                    closeModal();
+                    alert('✅ Deleted successfully!');
+                } else {
+                    alert('❌ Error deleting: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error deleting:', error);
+                alert('❌ Error deleting');
+            }
+        }
+
+        document.getElementById('leadModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
 </body>
 </html>

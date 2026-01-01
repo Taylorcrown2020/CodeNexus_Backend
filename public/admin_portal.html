@@ -781,35 +781,30 @@
         });
 
         // Load leads from API
-        async function loadLeads() {
-            try {
-                const filterParam = currentFilter === 'all' ? '' : `&status=${currentFilter}`;
-                const response = await fetch(`${API_URL}/api/leads?type=lead${filterParam}`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                if (response.status === 401 || response.status === 403) {
-                    localStorage.removeItem('adminToken');
-                    sessionStorage.removeItem('adminToken');
-                    window.location.href = '/admin';
-                    return;
-                }
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    leads = data.leads.filter(l => !l.is_customer) || [];
-                    if (viewMode === 'leads') {
-                        renderLeads();
-                    }
-                    updateStats();
-                }
-            } catch (error) {
-                console.error('Error loading leads:', error);
+async function loadLeads() {
+    try {
+        const response = await fetch(`${API_URL}/api/leads?type=lead`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
             }
+        });
+
+        if (!response.ok) {
+            logout();
+            return;
         }
+
+        const data = await response.json();
+
+        if (data.success) {
+            leads = data.leads.filter(l => !l.is_customer) || [];
+            renderLeads();
+            updateStats();
+        }
+    } catch (error) {
+        console.error('Error loading leads:', error);
+    }
+}
 
         // Load customers from API
         async function loadCustomers() {
@@ -976,7 +971,7 @@ document.getElementById('totalCount').textContent = leads.length;
             document.getElementById('customerCount').textContent = activeCustomers;
         }
 
-        async function filterLeads(filter) {
+async function filterCustomers(filter) {
             currentFilter = filter;
             
             document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -984,9 +979,7 @@ document.getElementById('totalCount').textContent = leads.length;
             });
             event.target.classList.add('active');
             
-            if (viewMode === 'leads') {
-                await loadLeads();
-            }
+            renderCustomers();
         }
 
         function searchLeads(query) {
@@ -1403,11 +1396,12 @@ document.getElementById('totalCount').textContent = leads.length;
                 <input type="text" class="search-input" placeholder="Search by name, email, or phone..." onkeyup="searchLeads(this.value)">
             </div>
             <div class="filter-buttons">
-                <button class="filter-btn active" onclick="filterLeads('all')">All</button>
-                <button class="filter-btn" onclick="filterLeads('new')">New</button>
-                <button class="filter-btn" onclick="filterLeads('pending')">Pending</button>
-                <button class="filter-btn" onclick="filterLeads('contacted')">Contacted</button>
-                <button class="filter-btn" onclick="filterLeads('lost')">Lost</button>
+<button class="filter-btn active" onclick="filterLeads('all', this)">All</button>
+<button class="filter-btn" onclick="filterLeads('new', this)">New</button>
+<button class="filter-btn" onclick="filterLeads('pending', this)">Pending</button>
+<button class="filter-btn" onclick="filterLeads('contacted', this)">Contacted</button>
+<button class="filter-btn" onclick="filterLeads('lost', this)">Lost</button>
+
             </div>
         </div>
 

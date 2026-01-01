@@ -1213,41 +1213,48 @@ async function filterCustomers(filter) {
             }
         }
 
-        function showSection(section) {
-            document.querySelectorAll('.menu-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            // Update page title
-            const pageTitle = document.querySelector('.page-title');
-            
-            if (section === 'customers') {
-                viewMode = 'customers';
-                pageTitle.textContent = '// Customers';
-                renderCustomers();
-                // Hide lead filters for customer view
-                document.querySelector('.filter-buttons').style.display = 'none';
-            } else {
-                viewMode = 'leads';
-                pageTitle.textContent = '// Dashboard';
-                document.querySelector('.filter-buttons').style.display = 'flex';
-                
-                if (section === 'new') {
-                    currentFilter = 'new';
-                    loadLeads();
-                } else if (section === 'pending') {
-                    currentFilter = 'pending';
-                    loadLeads();
-                } else if (section === 'contacted') {
-                    currentFilter = 'contacted';
-                    loadLeads();
-                } else if (section === 'leads' || section === 'dashboard') {
-                    currentFilter = 'all';
-                    loadLeads();
-                }
-            }
-        }
+        function showSection(section, el) {
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    if (el) el.classList.add('active');
+
+    const pageTitle = document.querySelector('.page-title');
+
+    if (section === 'customers') {
+        viewMode = 'customers';
+        pageTitle.textContent = '// Customers';
+        renderCustomers();
+        document.querySelector('.filter-buttons').style.display = 'none';
+    } else {
+        viewMode = 'leads';
+        pageTitle.textContent = '// Dashboard';
+        document.querySelector('.filter-buttons').style.display = 'flex';
+
+        currentFilter = section === 'dashboard' || section === 'leads'
+            ? 'all'
+            : section;
+
+        renderLeads();
+    }
+}
+
+        function filterLeads(filter, buttonEl) {
+    currentFilter = filter;
+
+    // Highlight active button
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    if (buttonEl) {
+        buttonEl.classList.add('active');
+    }
+
+    // Re-render with new filter
+    renderLeads(document.querySelector('.search-input')?.value || '');
+}
 
         function logout() {
             if (confirm('Are you sure you want to logout?')) {

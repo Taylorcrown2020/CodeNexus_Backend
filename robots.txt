@@ -1,7 +1,19 @@
 User-agent: *
 Allow: /
-Sitemap: https://codenexus-backend-zf4h.onrender.com/sitemap.xml
 
-User-agent: *
+# Disallow admin and API routes
 Disallow: /api/
 Disallow: /admin/
+
+# Sitemap Location
+Sitemap: https://craftedcodeco.com/sitemap.xml
+
+# Block AI Crawlers (Optional)
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /

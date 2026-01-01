@@ -439,8 +439,126 @@ app.post('/api/leads', async (req, res) => {
             success: false, 
             message: 'Server error. Please try again.' 
         });
-    }
+    }function showSection(section) {
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update page title
+            const pageTitle = document.querySelector('.page-title');
+            const filterButtons = document.querySelector('.filter-buttons');
+            
+            if (section === 'customers') {
+                viewMode = 'customers';
+                pageTitle.textContent = '// Customers';
+                // Show customer-specific filters
+                filterButtons.style.display = 'flex';
+                filterButtons.innerHTML = `
+                    <button class="filter-btn active" onclick="filterCustomers('all')">All</button>
+                    <button class="filter-btn" onclick="filterCustomers('onboarding')">Onboarding</button>
+                    <button class="filter-btn" onclick="filterCustomers('in-progress')">In Progress</button>
+                    <button class="filter-btn" onclick="filterCustomers('review')">Review</button>
+                    <button class="filter-btn" onclick="filterCustomers('completed')">Completed</button>
+                    <button class="filter-btn" onclick="filterCustomers('on-hold')">On Hold</button>
+                    <button class="filter-btn" onclick="filterCustomers('churned')">Churned</button>
+                    <button class="filter-btn" onclick="filterCustomers('cancelled')">Cancelled</button>
+                `;
+                // Render customers table
+        function renderCustomers(searchQuery = '') {
+            const tbody = document.getElementById('leadsTableBody');
+            tbody.innerHTML = '';
+
+            let filteredCustomers = customers;
+
+            // Apply status filter
+            if (currentFilter && currentFilter !== 'all') {
+                filteredCustomers = filteredCustomers.filter(c => 
+                    (c.customer_status || 'onboarding') === currentFilter
+                );
+            }
+
+            // Apply search filter
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                filteredCustomers = filteredCustomers.filter(customer =>
+                    customer.first_name.toLowerCase().includes(query) ||
+                    customer.last_name.toLowerCase().includes(query) ||
+                    customer.email.toLowerCase().includes(query) ||
+                    (customer.phone && customer.phone.includes(query))
+                );
+            }
+
+            filteredCustomers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            filteredCustomers.forEach(customer => {
+                const row = document.createElement('tr');
+                row.onclick = () => openLeadModal(customer.id);
+                
+                const statusDisplay = customer.customer_status || 'onboarding';
+                
+                row.innerHTML = `
+                    <td>${customer.first_name} ${customer.last_name}</td>
+                    <td>${customer.email}</td>
+                    <td>${customer.phone || 'N/A'}</td>
+                    <td>${customer.service || 'Not specified'}</td>
+                    <td>${customer.budget || 'Not specified'}</td>
+                    <td>${formatDate(customer.created_at)}</td>
+                    <td><span class="status-badge status-${statusDisplay}">${statusDisplay.replace('-', ' ')}</span></td>
+                    <td><span class="priority-badge priority-${customer.priority}">${customer.priority}</span></td>
+                    <td onclick="event.stopPropagation()">
+                        <button class="action-btn" onclick="openLeadModal(${customer.id})">View</button>
+                        <button class="action-btn" onclick="deleteLead(${customer.id})" style="border-color: var(--danger); color: var(--danger);">Delete</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+
+            if (filteredCustomers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-light);">No customers found</td></tr>';
+            }
+        };
+            } else {
+                viewMode = 'leads';
+                pageTitle.textContent = '// Dashboard';
+                // Show lead-specific filters
+                filterButtons.style.display = 'flex';
+                filterButtons.innerHTML = `
+                    <button class="filter-btn active" onclick="filterLeads('all')">All</button>
+                    <button class="filter-btn" onclick="filterLeads('new')">New</button>
+                    <button class="filter-btn" onclick="filterLeads('pending')">Pending</button>
+                    <button class="filter-btn" onclick="filterLeads('contacted')">Contacted</button>
+                    <button class="filter-btn" onclick="filterLeads('lost')">Lost</button>
+                `;
+                
+                if (section === 'new') {
+                    currentFilter = 'new';
+                    loadLeads();
+                } else if (section === 'pending') {
+                    currentFilter = 'pending';
+                    loadLeads();
+                } else if (section === 'contacted') {
+                    currentFilter = 'contacted';
+                    loadLeads();
+                } else if (section === 'leads' || section === 'dashboard') {
+                    currentFilter = 'all';
+                    loadLeads();
+                }
+            }
+        }
 });
+
+async function filterCustomers(filter) {
+            currentFilter = filter;
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderCustomers();
+        }
 
 // Delete lead/customer
 app.delete('/api/leads/:id', authenticateToken, async (req, res) => {

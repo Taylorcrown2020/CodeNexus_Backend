@@ -836,33 +836,6 @@ async function loadLeads() {
             }
         }
 
-        // Load statistics
-        async function loadStats() {
-            try {
-                const response = await fetch(`${API_URL}/api/leads/stats`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    document.getElementById('newCount').textContent = leads.filter(l => l.status === 'new').length;
-                    document.getElementById('pendingCount').textContent = leads.filter(l => l.status === 'pending').length;
-                    document.getElementById('contactedCount').textContent = leads.filter(l => l.status === 'contacted').length;
-document.getElementById('totalCount').textContent = leads.length;
-                    // Only count customers that are not in 'completed', 'churned', or 'cancelled' status
-                    const activeCustomers = customers.filter(c => 
-                        !['completed', 'churned', 'cancelled'].includes(c.customer_status)
-                    ).length;
-                    document.getElementById('customerCount').textContent = activeCustomers;
-                }
-            } catch (error) {
-                console.error('Error loading stats:', error);
-            }
-        }
-
         // Render leads table
         function renderLeads(searchQuery = '') {
             const tbody = document.getElementById('leadsTableBody');
@@ -1315,19 +1288,19 @@ async function filterCustomers(filter) {
                 <span class="menu-icon">👥</span>
                 All Leads
             </li>
-            <li class="menu-item" onclick="showSection('new')">
+            <li class="menu-item" onclick="showSection('new', this)">
                 <span class="menu-icon">🆕</span>
                 New Messages
             </li>
-            <li class="menu-item" onclick="showSection('pending')">
+            <li class="menu-item" onclick="showSection('pending', this)">
                 <span class="menu-icon">⏳</span>
                 Pending
             </li>
-            <li class="menu-item" onclick="showSection('contacted')">
+            <li class="menu-item" onclick="showSection('contacted', this)">
                 <span class="menu-icon">✅</span>
                 Contacted
             </li>
-            <li class="menu-item" onclick="showSection('customers')">
+            <li class="menu-item" onclick="showSection('customers', this)">
                 <span class="menu-icon">🎯</span>
                 Customers
             </li>

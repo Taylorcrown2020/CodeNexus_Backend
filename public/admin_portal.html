@@ -1189,6 +1189,35 @@
             }
         }
 
+        await client.query(`
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'app'
+          AND table_name = 'leads'
+          AND column_name = 'is_customer'
+    ) THEN
+        ALTER TABLE app.leads
+        ADD COLUMN is_customer BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'app'
+          AND table_name = 'leads'
+          AND column_name = 'customer_status'
+    ) THEN
+        ALTER TABLE app.leads
+        ADD COLUMN customer_status VARCHAR(50);
+    END IF;
+END
+$$ LANGUAGE plpgsql;
+`);
+
+
         function showSection(section) {
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.classList.remove('active');

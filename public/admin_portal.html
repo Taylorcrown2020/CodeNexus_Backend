@@ -373,6 +373,50 @@
             border: 1px solid #9ca3af;
         }
 
+        .status-lost {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        /* Customer status badges */
+        .status-onboarding {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+            border: 1px solid #a78bfa;
+        }
+
+        .status-in-progress {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--info);
+            border: 1px solid var(--info);
+        }
+
+        .status-review {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .status-completed {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .status-on-hold {
+            background: rgba(107, 114, 128, 0.2);
+            color: #9ca3af;
+            border: 1px solid #9ca3af;
+        }
+
+        .status-churned,
+        .status-cancelled {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
         .priority-badge {
             display: inline-block;
             padding: 4px 8px;
@@ -670,223 +714,16 @@
 </head>
 <body>
     <!-- ========================================
-         SIDEBAR NAVIGATION
-    ======================================== -->
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <div class="logo">CodeNexus</div>
-        </div>
-        <ul class="sidebar-menu">
-            <li class="menu-item active" onclick="showSection('dashboard')">
-                <span class="menu-icon">📊</span>
-                Dashboard
-            </li>
-            <li class="menu-item" onclick="showSection('leads')">
-                <span class="menu-icon">👥</span>
-                All Leads
-            </li>
-            <li class="menu-item" onclick="showSection('new')">
-                <span class="menu-icon">🆕</span>
-                New Messages
-            </li>
-            <li class="menu-item" onclick="showSection('pending')">
-                <span class="menu-icon">⏳</span>
-                Pending
-            </li>
-            <li class="menu-item" onclick="showSection('contacted')">
-                <span class="menu-icon">✅</span>
-                Contacted
-            </li>
-            <li class="menu-item" onclick="showSection('analytics')">
-                <span class="menu-icon">📈</span>
-                Analytics
-            </li>
-            <li class="menu-item" onclick="showSection('settings')">
-                <span class="menu-icon">⚙️</span>
-                Settings
-            </li>
-        </ul>
-    </aside>
-
-    <!-- ========================================
-         MAIN CONTENT
-    ======================================== -->
-    <main class="main-content">
-        <!-- Top Bar -->
-        <div class="top-bar">
-            <h1 class="page-title">// Dashboard</h1>
-            <div class="user-info">
-                <div class="user-avatar">AD</div>
-                <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-header">
-                    <span class="stat-label">New Messages</span>
-                    <div class="stat-icon new">📬</div>
-                </div>
-                <div class="stat-value" id="newCount">8</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-header">
-                    <span class="stat-label">Pending</span>
-                    <div class="stat-icon pending">⏳</div>
-                </div>
-                <div class="stat-value" id="pendingCount">12</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-header">
-                    <span class="stat-label">Contacted</span>
-                    <div class="stat-icon contacted">✅</div>
-                </div>
-                <div class="stat-value" id="contactedCount">45</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-header">
-                    <span class="stat-label">Total Leads</span>
-                    <div class="stat-icon contacted">💼</div>
-                </div>
-                <div class="stat-value" id="totalCount">65</div>
-            </div>
-        </div>
-
-        <!-- Controls Bar -->
-        <div class="controls-bar">
-            <div class="search-box">
-                <span class="search-icon">🔍</span>
-                <input type="text" class="search-input" placeholder="Search by name, email, or phone..." onkeyup="searchLeads(this.value)">
-            </div>
-            <div class="filter-buttons">
-                <button class="filter-btn active" onclick="filterLeads('all')">All</button>
-                <button class="filter-btn" onclick="filterLeads('new')">New</button>
-                <button class="filter-btn" onclick="filterLeads('pending')">Pending</button>
-                <button class="filter-btn" onclick="filterLeads('contacted')">Contacted</button>
-                <button class="filter-btn" onclick="filterLeads('closed')">Closed</button>
-            </div>
-        </div>
-
-        <!-- Leads Table -->
-        <div class="table-container">
-            <table class="leads-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Phone</th>
-                        <th>Service</th>
-                        <th>Budget</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Priority</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="leadsTableBody">
-                    <!-- Populated by JavaScript -->
-                </tbody>
-            </table>
-        </div>
-    </main>
-
-    <!-- ========================================
-         LEAD DETAIL MODAL
-    ======================================== -->
-    <div class="modal-overlay" id="leadModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">// Lead Details</h2>
-                <button class="modal-close" onclick="closeModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <!-- Lead Information -->
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <div class="detail-label">Full Name</div>
-                        <div class="detail-value" id="modalName">-</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Email</div>
-                        <div class="detail-value" id="modalEmail">-</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Phone</div>
-                        <div class="detail-value" id="modalPhone">-</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Service Requested</div>
-                        <div class="detail-value" id="modalService">-</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Budget Range</div>
-                        <div class="detail-value" id="modalBudget">-</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Date Submitted</div>
-                        <div class="detail-value" id="modalDate">-</div>
-                    </div>
-                    <div class="detail-item full-width">
-                        <div class="detail-label">Project Details</div>
-                        <div class="detail-value" id="modalDetails">-</div>
-                    </div>
-                </div>
-
-                <!-- Status & Priority Management -->
-                <div class="section-title">// Manage Lead</div>
-                <div class="detail-grid">
-                    <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <select class="form-select" id="leadStatus" onchange="updateLeadStatus()">
-                            <option value="new">New</option>
-                            <option value="pending">Pending</option>
-                            <option value="contacted">Contacted</option>
-                            <option value="closed">Closed Won</option>
-                            <option value="lost">Closed Lost</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Priority</label>
-                        <select class="form-select" id="leadPriority" onchange="updateLeadPriority()">
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Notes Section -->
-                <div class="section-title">// Contact Notes</div>
-                <div class="notes-list" id="notesList">
-                    <!-- Populated by JavaScript -->
-                </div>
-
-                <!-- Add New Note -->
-                <div class="form-group">
-                    <label class="form-label">Add New Note</label>
-                    <textarea class="form-textarea" id="newNote" placeholder="Enter your notes about this contact..."></textarea>
-                </div>
-
-                <button class="btn-primary" onclick="addNote()">Save Note</button>
-                <button class="btn-secondary" onclick="closeModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================
          JAVASCRIPT
     ======================================== -->
-
-<script>
+    <script>
         const API_URL = window.location.origin;
         let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
         let leads = [];
+        let customers = [];
         let currentLead = null;
         let currentFilter = 'all';
+        let viewMode = 'leads'; // 'leads' or 'customers'
 
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', async function() {
@@ -920,13 +757,15 @@
             
             // Load data
             await loadLeads();
+            await loadCustomers();
             await loadStats();
         });
 
         // Load leads from API
         async function loadLeads() {
             try {
-                const response = await fetch(`${API_URL}/api/leads?status=${currentFilter}`, {
+                const filterParam = currentFilter === 'all' ? '' : `&status=${currentFilter}`;
+                const response = await fetch(`${API_URL}/api/leads?type=lead${filterParam}`, {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
                     }
@@ -942,12 +781,44 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    leads = data.leads;
-                    renderLeads();
+                    leads = data.leads.filter(l => !l.is_customer) || [];
+                    if (viewMode === 'leads') {
+                        renderLeads();
+                    }
                     updateStats();
                 }
             } catch (error) {
                 console.error('Error loading leads:', error);
+            }
+        }
+
+        // Load customers from API
+        async function loadCustomers() {
+            try {
+                const response = await fetch(`${API_URL}/api/leads`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.removeItem('adminToken');
+                    sessionStorage.removeItem('adminToken');
+                    window.location.href = '/admin';
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    customers = data.leads.filter(l => l.is_customer) || [];
+                    if (viewMode === 'customers') {
+                        renderCustomers();
+                    }
+                    updateStats();
+                }
+            } catch (error) {
+                console.error('Error loading customers:', error);
             }
         }
 
@@ -963,10 +834,11 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    document.getElementById('newCount').textContent = data.stats.new;
-                    document.getElementById('pendingCount').textContent = data.stats.pending;
-                    document.getElementById('contactedCount').textContent = data.stats.contacted;
-                    document.getElementById('totalCount').textContent = data.stats.total;
+                    document.getElementById('newCount').textContent = leads.filter(l => l.status === 'new').length;
+                    document.getElementById('pendingCount').textContent = leads.filter(l => l.status === 'pending').length;
+                    document.getElementById('contactedCount').textContent = leads.filter(l => l.status === 'contacted').length;
+                    document.getElementById('totalCount').textContent = leads.length;
+                    document.getElementById('customerCount').textContent = customers.length;
                 }
             } catch (error) {
                 console.error('Error loading stats:', error);
@@ -1018,6 +890,53 @@
             }
         }
 
+        // Render customers table
+        function renderCustomers(searchQuery = '') {
+            const tbody = document.getElementById('leadsTableBody');
+            tbody.innerHTML = '';
+
+            let filteredCustomers = customers;
+
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                filteredCustomers = filteredCustomers.filter(customer =>
+                    customer.first_name.toLowerCase().includes(query) ||
+                    customer.last_name.toLowerCase().includes(query) ||
+                    customer.email.toLowerCase().includes(query) ||
+                    (customer.phone && customer.phone.includes(query))
+                );
+            }
+
+            filteredCustomers.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            filteredCustomers.forEach(customer => {
+                const row = document.createElement('tr');
+                row.onclick = () => openLeadModal(customer.id);
+                
+                const statusDisplay = customer.customer_status || 'onboarding';
+                
+                row.innerHTML = `
+                    <td>${customer.first_name} ${customer.last_name}</td>
+                    <td>${customer.email}</td>
+                    <td>${customer.phone || 'N/A'}</td>
+                    <td>${customer.service || 'Not specified'}</td>
+                    <td>${customer.budget || 'Not specified'}</td>
+                    <td>${formatDate(customer.created_at)}</td>
+                    <td><span class="status-badge status-${statusDisplay}">${statusDisplay.replace('-', ' ')}</span></td>
+                    <td><span class="priority-badge priority-${customer.priority}">${customer.priority}</span></td>
+                    <td onclick="event.stopPropagation()">
+                        <button class="action-btn" onclick="openLeadModal(${customer.id})">View</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+
+            if (filteredCustomers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-light);">No customers found</td></tr>';
+            }
+        }
+
         function updateStats() {
             const newCount = leads.filter(l => l.status === 'new').length;
             const pendingCount = leads.filter(l => l.status === 'pending').length;
@@ -1027,6 +946,7 @@
             document.getElementById('pendingCount').textContent = pendingCount;
             document.getElementById('contactedCount').textContent = contactedCount;
             document.getElementById('totalCount').textContent = leads.length;
+            document.getElementById('customerCount').textContent = customers.length;
         }
 
         async function filterLeads(filter) {
@@ -1037,11 +957,17 @@
             });
             event.target.classList.add('active');
             
-            await loadLeads();
+            if (viewMode === 'leads') {
+                await loadLeads();
+            }
         }
 
         function searchLeads(query) {
-            renderLeads(query);
+            if (viewMode === 'leads') {
+                renderLeads(query);
+            } else {
+                renderCustomers(query);
+            }
         }
 
         function formatDate(dateString) {
@@ -1067,6 +993,8 @@
                     currentLead = data.lead;
                     currentLead.notes = data.notes;
                     
+                    const isCustomer = currentLead.is_customer;
+                    
                     document.getElementById('modalName').textContent = `${currentLead.first_name} ${currentLead.last_name}`;
                     document.getElementById('modalEmail').textContent = currentLead.email;
                     document.getElementById('modalPhone').textContent = currentLead.phone || 'Not provided';
@@ -1075,8 +1003,18 @@
                     document.getElementById('modalDate').textContent = formatDate(currentLead.created_at);
                     document.getElementById('modalDetails').textContent = currentLead.details || 'No details provided';
                     
-                    document.getElementById('leadStatus').value = currentLead.status;
-                    document.getElementById('leadPriority').value = currentLead.priority;
+                    // Show/hide appropriate management sections
+                    if (isCustomer) {
+                        document.getElementById('leadManagement').style.display = 'none';
+                        document.getElementById('customerManagement').style.display = 'block';
+                        document.getElementById('customerStatus').value = currentLead.customer_status || 'onboarding';
+                        document.getElementById('customerPriority').value = currentLead.priority;
+                    } else {
+                        document.getElementById('leadManagement').style.display = 'block';
+                        document.getElementById('customerManagement').style.display = 'none';
+                        document.getElementById('leadStatus').value = currentLead.status;
+                        document.getElementById('leadPriority').value = currentLead.priority;
+                    }
                     
                     renderNotes();
                     
@@ -1157,6 +1095,14 @@
             
             const newStatus = document.getElementById('leadStatus').value;
             
+            // Check if converting to customer
+            if (newStatus === 'closed') {
+                if (!confirm('This will convert the lead to a customer. Continue?')) {
+                    document.getElementById('leadStatus').value = currentLead.status;
+                    return;
+                }
+            }
+            
             try {
                 const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/status`, {
                     method: 'PATCH',
@@ -1164,16 +1110,21 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({ status: newStatus })
+                    body: JSON.stringify({ 
+                        status: newStatus,
+                        isCustomer: newStatus === 'closed',
+                        customerStatus: newStatus === 'closed' ? 'onboarding' : null
+                    })
                 });
                 
                 const data = await response.json();
                 
                 if (data.success) {
-                    currentLead.status = newStatus;
                     await loadLeads();
+                    await loadCustomers();
                     await loadStats();
-                    alert('✅ Status updated successfully!');
+                    closeModal();
+                    alert(newStatus === 'closed' ? '✅ Lead converted to customer!' : '✅ Status updated successfully!');
                 }
             } catch (error) {
                 console.error('Error updating status:', error);
@@ -1181,10 +1132,39 @@
             }
         }
 
+        async function updateCustomerStatus() {
+            if (!currentLead) return;
+            
+            const newStatus = document.getElementById('customerStatus').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/customer-status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ customerStatus: newStatus })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    await loadCustomers();
+                    alert('✅ Customer status updated successfully!');
+                }
+            } catch (error) {
+                console.error('Error updating customer status:', error);
+                alert('❌ Error updating customer status');
+            }
+        }
+
         async function updateLeadPriority() {
             if (!currentLead) return;
             
-            const newPriority = document.getElementById('leadPriority').value;
+            const newPriority = currentLead.is_customer 
+                ? document.getElementById('customerPriority').value 
+                : document.getElementById('leadPriority').value;
             
             try {
                 const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/priority`, {
@@ -1199,8 +1179,8 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    currentLead.priority = newPriority;
                     await loadLeads();
+                    await loadCustomers();
                     alert('✅ Priority updated successfully!');
                 }
             } catch (error) {
@@ -1215,31 +1195,40 @@
             });
             event.target.classList.add('active');
             
-            if (section === 'new') {
-                currentFilter = 'new';
-                loadLeads();
-            } else if (section === 'pending') {
-                currentFilter = 'pending';
-                loadLeads();
-            } else if (section === 'contacted') {
-                currentFilter = 'contacted';
-                loadLeads();
-            } else if (section === 'leads' || section === 'dashboard') {
-                currentFilter = 'all';
-                loadLeads();
+            // Update page title
+            const pageTitle = document.querySelector('.page-title');
+            
+            if (section === 'customers') {
+                viewMode = 'customers';
+                pageTitle.textContent = '// Customers';
+                renderCustomers();
+                // Hide lead filters for customer view
+                document.querySelector('.filter-buttons').style.display = 'none';
+            } else {
+                viewMode = 'leads';
+                pageTitle.textContent = '// Dashboard';
+                document.querySelector('.filter-buttons').style.display = 'flex';
+                
+                if (section === 'new') {
+                    currentFilter = 'new';
+                    loadLeads();
+                } else if (section === 'pending') {
+                    currentFilter = 'pending';
+                    loadLeads();
+                } else if (section === 'contacted') {
+                    currentFilter = 'contacted';
+                    loadLeads();
+                } else if (section === 'leads' || section === 'dashboard') {
+                    currentFilter = 'all';
+                    loadLeads();
+                }
             }
         }
 
-        // FIXED LOGOUT FUNCTION
         function logout() {
             if (confirm('Are you sure you want to logout?')) {
-                console.log('Logging out...');
-                
-                // Clear all tokens
                 localStorage.removeItem('adminToken');
                 sessionStorage.removeItem('adminToken');
-                
-                // Force redirect
                 window.location.replace('/admin');
             }
         }
@@ -1252,3 +1241,252 @@
     </script>
 </body>
 </html>
+
+<!-- End of modal -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo">CodeNexus</div>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="menu-item active" onclick="showSection('dashboard')">
+                <span class="menu-icon">📊</span>
+                Dashboard
+            </li>
+            <li class="menu-item" onclick="showSection('leads')">
+                <span class="menu-icon">👥</span>
+                All Leads
+            </li>
+            <li class="menu-item" onclick="showSection('new')">
+                <span class="menu-icon">🆕</span>
+                New Messages
+            </li>
+            <li class="menu-item" onclick="showSection('pending')">
+                <span class="menu-icon">⏳</span>
+                Pending
+            </li>
+            <li class="menu-item" onclick="showSection('contacted')">
+                <span class="menu-icon">✅</span>
+                Contacted
+            </li>
+            <li class="menu-item" onclick="showSection('customers')">
+                <span class="menu-icon">🎯</span>
+                Customers
+            </li>
+            <li class="menu-item" onclick="showSection('analytics')">
+                <span class="menu-icon">📈</span>
+                Analytics
+            </li>
+            <li class="menu-item" onclick="showSection('settings')">
+                <span class="menu-icon">⚙️</span>
+                Settings
+            </li>
+        </ul>
+    </aside>
+
+    <!-- ========================================
+         MAIN CONTENT
+    ======================================== -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <h1 class="page-title">// Dashboard</h1>
+            <div class="user-info">
+                <div class="user-avatar">AD</div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">New Messages</span>
+                    <div class="stat-icon new">📬</div>
+                </div>
+                <div class="stat-value" id="newCount">8</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Pending</span>
+                    <div class="stat-icon pending">⏳</div>
+                </div>
+                <div class="stat-value" id="pendingCount">12</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Contacted</span>
+                    <div class="stat-icon contacted">✅</div>
+                </div>
+                <div class="stat-value" id="contactedCount">45</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Total Leads</span>
+                    <div class="stat-icon contacted">💼</div>
+                </div>
+                <div class="stat-value" id="totalCount">65</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Active Customers</span>
+                    <div class="stat-icon contacted">🎯</div>
+                </div>
+                <div class="stat-value" id="customerCount">0</div>
+            </div>
+        </div>
+
+        <!-- Controls Bar -->
+        <div class="controls-bar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" placeholder="Search by name, email, or phone..." onkeyup="searchLeads(this.value)">
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterLeads('all')">All</button>
+                <button class="filter-btn" onclick="filterLeads('new')">New</button>
+                <button class="filter-btn" onclick="filterLeads('pending')">Pending</button>
+                <button class="filter-btn" onclick="filterLeads('contacted')">Contacted</button>
+                <button class="filter-btn" onclick="filterLeads('lost')">Lost</button>
+            </div>
+        </div>
+
+        <!-- Leads Table -->
+        <div class="table-container">
+            <table class="leads-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Service</th>
+                        <th>Budget</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="leadsTableBody">
+                    <!-- Populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- ========================================
+         LEAD DETAIL MODAL
+    ======================================== -->
+    <div class="modal-overlay" id="leadModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">// Lead Details</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Lead Information -->
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Full Name</div>
+                        <div class="detail-value" id="modalName">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Email</div>
+                        <div class="detail-value" id="modalEmail">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Phone</div>
+                        <div class="detail-value" id="modalPhone">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Service Requested</div>
+                        <div class="detail-value" id="modalService">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Budget Range</div>
+                        <div class="detail-value" id="modalBudget">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Date Submitted</div>
+                        <div class="detail-value" id="modalDate">-</div>
+                    </div>
+                    <div class="detail-item full-width">
+                        <div class="detail-label">Project Details</div>
+                        <div class="detail-value" id="modalDetails">-</div>
+                    </div>
+                </div>
+
+                <!-- Lead Management (for leads) -->
+                <div id="leadManagement">
+                    <div class="section-title">// Manage Lead</div>
+                    <div class="detail-grid">
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="leadStatus" onchange="updateLeadStatus()">
+                                <option value="new">New</option>
+                                <option value="pending">Pending</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="closed">Convert to Customer</option>
+                                <option value="lost">Lost</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select" id="leadPriority" onchange="updateLeadPriority()">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Management (for customers) -->
+                <div id="customerManagement" style="display: none;">
+                    <div class="section-title">// Manage Customer</div>
+                    <div class="detail-grid">
+                        <div class="form-group">
+                            <label class="form-label">Customer Status</label>
+                            <select class="form-select" id="customerStatus" onchange="updateCustomerStatus()">
+                                <option value="onboarding">Onboarding</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="review">In Review</option>
+                                <option value="completed">Completed</option>
+                                <option value="on-hold">On Hold</option>
+                                <option value="churned">Churned</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select" id="customerPriority" onchange="updateLeadPriority()">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Section -->
+                <div class="section-title">// Contact Notes</div>
+                <div class="notes-list" id="notesList">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <!-- Add New Note -->
+                <div class="form-group">
+                    <label class="form-label">Add New Note</label>
+                    <textarea class="form-textarea" id="newNote" placeholder="Enter your notes about this contact..."></textarea>
+                </div>
+
+                <button class="btn-primary" onclick="addNote()">Save Note</button>
+                <button class="btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- End of modal -->

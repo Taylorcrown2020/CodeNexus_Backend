@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Sitemap: https://codenexus-backend-zf4h.onrender.com/sitemap.xml
+
+User-agent: *
+Disallow: /api/
+Disallow: /admin/

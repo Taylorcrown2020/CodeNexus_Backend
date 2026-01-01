@@ -2595,7 +2595,7 @@
 
         <div class="services-grid">
             <div class="service-card">
-                <div class="service-price">$499.99</div>
+                <div class="service-price">$399.99</div>
                 <div class="service-period">one-time</div>
                 <h3 class="service-name">Starter</h3>
                 <p class="service-description">
@@ -2625,7 +2625,7 @@
             </div>
 
             <div class="service-card">
-                <div class="service-price">$799.99</div>
+                <div class="service-price">$599.99</div>
                 <div class="service-period">one-time</div>
                 <h3 class="service-name">Professional</h3>
                 <p class="service-description">
@@ -2823,8 +2823,8 @@
                     <label class="form-label">// Budget Range *</label>
                     <select id="budget" class="form-input" required>
                         <option value="">Select your budget...</option>
-                        <option value="$499.99">$599.99 (Starter)</option>
-                        <option value="$799.99">$999.99 (Professional)</option>
+                        <option value="$399.99">$599.99 (Starter)</option>
+                        <option value="$599.99">$999.99 (Professional)</option>
                         <option value="Custom">Custom (Enterprise)</option>
                         <option value="Not Sure">Not Sure Yet</option>
                     </select>
@@ -3031,7 +3031,7 @@ function updateNavigationButtons() {
 // Calculate Results and Submit
 async function calculateResults() {
     let recommendedPlan = 'Starter';
-    let planPrice = '$499.99';
+    let planPrice = '$399.99';
     let planReason = '';
     let score = 0;
     
@@ -3063,8 +3063,8 @@ async function calculateResults() {
     if (quizData.marketing === 'both' || quizData.marketing === 'email') score += 1;
     
     if (quizData.budget === 'Custom') score += 3;
-    if (quizData.budget === '$499.99') score += 2;
-    if (quizData.budget === '$799.99') score += 1;
+    if (quizData.budget === '$399.99') score += 2;
+    if (quizData.budget === '$599.99') score += 1;
     
     // Determine plan based on score
     if (score >= 15) {
@@ -3077,7 +3077,7 @@ async function calculateResults() {
         planReason = 'Your requirements indicate a need for advanced features, more pages, and enhanced functionality. The Professional package gives you robust CRM capabilities, advanced analytics, and the tools to scale your growing business effectively.';
     } else {
         recommendedPlan = 'Starter';
-        planPrice = '$499.99';
+        planPrice = '$399.99';
         planReason = 'Perfect for getting your business online with a solid foundation! The Starter package includes all essential features like lead capture, basic CRM, e-commerce capabilities, and room to grow. It\'s the ideal starting point that won\'t break the bank.';
     }
     
@@ -3797,14 +3797,14 @@ function resetCookieConsent() {
                 <h3 class="step-question">What's your estimated budget?</h3>
                 <p class="step-description">This helps us recommend the right plan for you.</p>
                 <div class="option-grid">
-                    <div class="quiz-option" onclick="selectOption(this, 'budget', '$499.99')">
+                    <div class="quiz-option" onclick="selectOption(this, 'budget', '$399.99')">
                         <div class="option-icon">💵</div>
-                        <div class="option-title">$499.99</div>
+                        <div class="option-title">$399.99</div>
                         <div class="option-desc">Starter budget</div>
                     </div>
-                    <div class="quiz-option" onclick="selectOption(this, 'budget', '$799.99')">
+                    <div class="quiz-option" onclick="selectOption(this, 'budget', '$599.99')">
                         <div class="option-icon">💵</div>
-                        <div class="option-title">$799.99</div>
+                        <div class="option-title">$599.99</div>
                         <div class="option-desc">Professional tier</div>
                     </div>
                     <div class="quiz-option" onclick="selectOption(this, 'budget', 'Custom')">

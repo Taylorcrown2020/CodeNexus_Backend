@@ -1,7 +1,7 @@
 {
-  "name": "codenexus-server",
+  "name": "CraftedCode Co.-server",
   "version": "1.0.0",
-  "description": "CodeNexus Backend Server with CRM",
+  "description": "CraftedCode Co. Backend Server with CRM",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

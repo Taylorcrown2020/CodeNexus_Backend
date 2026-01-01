@@ -1,5 +1,5 @@
 // ========================================
-// server.js - Complete CodeNexus Backend
+// server.js - Complete CraftedCode Co. Backend
 // ========================================
 
 const express = require('express');
@@ -142,7 +142,7 @@ async function initializeDatabase() {
             
             await pool.query(
                 'INSERT INTO admin_users (username, email, password_hash) VALUES ($1, $2, $3)',
-                ['admin', 'admin@codenexus.dev', hashedPassword]
+                ['admin', 'admin@CraftedCode Co..dev', hashedPassword]
             );
             
             console.log('');
@@ -907,7 +907,7 @@ async function startServer() {
         app.listen(PORT, () => {
             console.log('');
             console.log('========================================');
-            console.log('🚀 CodeNexus Server Running');
+            console.log('🚀 CraftedCode Co. Server Running');
             console.log('========================================');
             console.log(`📡 Port: ${PORT}`);
             console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);

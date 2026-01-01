@@ -72,7 +72,7 @@ async function initializeDatabase() {
             )
         `);
 
-        // Create leads table
+        // Create leads table with customer columns
         await client.query(`
             CREATE TABLE IF NOT EXISTS leads (
                 id SERIAL PRIMARY KEY,
@@ -85,9 +85,26 @@ async function initializeDatabase() {
                 details TEXT,
                 status VARCHAR(50) DEFAULT 'new',
                 priority VARCHAR(50) DEFAULT 'medium',
+                is_customer BOOLEAN DEFAULT FALSE,
+                customer_status VARCHAR(50),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        `);
+
+        // Add columns if they don't exist (for existing databases)
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='is_customer') THEN
+                    ALTER TABLE leads ADD COLUMN is_customer BOOLEAN DEFAULT FALSE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='customer_status') THEN
+                    ALTER TABLE leads ADD COLUMN customer_status VARCHAR(50);
+                END IF;
+            END $$;
         `);
 
         // Create notes table
@@ -102,16 +119,16 @@ async function initializeDatabase() {
         `);
 
         await client.query(`
-    CREATE TABLE IF NOT EXISTS cookie_consent (
-        id SERIAL PRIMARY KEY,
-        user_id VARCHAR(255),
-        consent_type VARCHAR(50) NOT NULL,
-        preferences JSONB,
-        ip_address VARCHAR(45),
-        user_agent TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
+            CREATE TABLE IF NOT EXISTS cookie_consent (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(255),
+                consent_type VARCHAR(50) NOT NULL,
+                preferences JSONB,
+                ip_address VARCHAR(45),
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
         await client.query('COMMIT');
         console.log('✅ Database tables initialized');
@@ -293,11 +310,12 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
     try {
         const stats = await pool.query(`
             SELECT 
-                COUNT(*) as total,
-                COUNT(CASE WHEN status = 'new' THEN 1 END) as new,
-                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-                COUNT(CASE WHEN status = 'contacted' THEN 1 END) as contacted,
-                COUNT(CASE WHEN status = 'closed' THEN 1 END) as closed
+                COUNT(*) FILTER (WHERE is_customer = FALSE) as total_leads,
+                COUNT(*) FILTER (WHERE is_customer = TRUE) as total_customers,
+                COUNT(*) FILTER (WHERE status = 'new' AND is_customer = FALSE) as new,
+                COUNT(*) FILTER (WHERE status = 'pending' AND is_customer = FALSE) as pending,
+                COUNT(*) FILTER (WHERE status = 'contacted' AND is_customer = FALSE) as contacted,
+                COUNT(*) FILTER (WHERE status = 'closed' OR is_customer = TRUE) as closed
             FROM leads
         `);
 
@@ -424,23 +442,64 @@ app.post('/api/leads', async (req, res) => {
     }
 });
 
-// Update lead status
+// Update lead status (HANDLES CUSTOMER CONVERSION)
 app.patch('/api/leads/:id/status', authenticateToken, async (req, res) => {
     try {
         const leadId = req.params.id;
-        const { status } = req.body;
+        const { status, isCustomer, customerStatus } = req.body;
 
-        await pool.query(
-            'UPDATE leads SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-            [status, leadId]
-        );
+        // If converting to customer
+        if (isCustomer) {
+            await pool.query(
+                `UPDATE leads 
+                 SET status = $1, 
+                     is_customer = $2, 
+                     customer_status = $3,
+                     updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = $4`,
+                [status, true, customerStatus || 'onboarding', leadId]
+            );
+            
+            console.log(`✅ Lead ${leadId} converted to customer`);
+        } else {
+            await pool.query(
+                'UPDATE leads SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+                [status, leadId]
+            );
+        }
 
         res.json({
             success: true,
-            message: 'Status updated successfully.'
+            message: isCustomer ? 'Lead converted to customer successfully.' : 'Status updated successfully.'
         });
     } catch (error) {
         console.error('Update status error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Update customer status
+app.patch('/api/leads/:id/customer-status', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.id;
+        const { customerStatus } = req.body;
+
+        await pool.query(
+            'UPDATE leads SET customer_status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [customerStatus, leadId]
+        );
+
+        console.log(`✅ Customer ${leadId} status updated to ${customerStatus}`);
+
+        res.json({
+            success: true,
+            message: 'Customer status updated successfully.'
+        });
+    } catch (error) {
+        console.error('Update customer status error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Server error.' 
@@ -519,7 +578,7 @@ app.post('/api/cookie-consent', async (req, res) => {
         }
 
         const result = await pool.query(
-            `INSERT INTO app.cookie_consent (user_id, consent_type, preferences, ip_address, user_agent)
+            `INSERT INTO cookie_consent (user_id, consent_type, preferences, ip_address, user_agent)
              VALUES ($1, $2, $3, $4, $5)
              RETURNING *`,
             [userId || null, consentType, JSON.stringify(preferences || {}), ipAddress, userAgent]
@@ -601,13 +660,13 @@ app.get('/api/admin/cookie-consent', authenticateToken, async (req, res) => {
         const { limit = 100, offset = 0 } = req.query;
         
         const result = await pool.query(
-            `SELECT * FROM app.cookie_consent 
+            `SELECT * FROM cookie_consent 
              ORDER BY created_at DESC 
              LIMIT $1 OFFSET $2`,
             [limit, offset]
         );
 
-        const countResult = await pool.query('SELECT COUNT(*) FROM app.cookie_consent');
+        const countResult = await pool.query('SELECT COUNT(*) FROM cookie_consent');
 
         res.json({
             success: true,
@@ -632,7 +691,7 @@ app.get('/api/admin/cookie-consent/stats', authenticateToken, async (req, res) =
                 COUNT(CASE WHEN consent_type = 'accepted' THEN 1 END) as accepted,
                 COUNT(CASE WHEN consent_type = 'declined' THEN 1 END) as declined,
                 COUNT(CASE WHEN consent_type = 'custom' THEN 1 END) as custom
-            FROM app.cookie_consent
+            FROM cookie_consent
         `);
 
         res.json({

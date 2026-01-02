@@ -6,7 +6,7 @@ Disallow: /api/
 Disallow: /admin/
 
 # Sitemap Location
-Sitemap: https://craftedcodeco.com/sitemap.xml
+Sitemap: https://diamondbackcoding.com/sitemap.xml
 
 # Block AI Crawlers (Optional)
 User-agent: GPTBot

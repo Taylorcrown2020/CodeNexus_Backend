@@ -1786,30 +1786,27 @@ async function updateAssignment() {
         // Add this in your openLeadModal function, after the status/priority sections:
 
 // Assignment section (works for both leads and customers)
-let assignmentHTML = `
-    <div class="section-title">// Assignment</div>
-    <div class="form-group">
-        <label class="form-label">Assigned To</label>
-        <select class="form-select" id="leadAssignment" onchange="updateAssignment()">
-            <option value="">Unassigned</option>
-            ${employees.map(emp => `
-                <option value="${emp.id}" ${currentLead.assigned_to === emp.id ? 'selected' : ''}>
-                    ${emp.first_name} ${emp.last_name}
-                </option>
-            `).join('')}
-        </select>
-    </div>
-`;
+// Add assignment dropdown to the appropriate management section
+                    const assignmentHTML = `
+                        <div class="section-title">// Assignment</div>
+                        <div class="form-group">
+                            <label class="form-label">Assigned To</label>
+                            <select class="form-select" id="leadAssignment" onchange="updateAssignment()">
+                                <option value="">Unassigned</option>
+                                ${employees.map(emp => `
+                                    <option value="${emp.id}" ${currentLead.assigned_to === emp.id ? 'selected' : ''}>
+                                        ${emp.first_name} ${emp.last_name}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    `;
 
-// Add assignment display
-if (currentLead.employee_first_name) {
-    document.getElementById('modalDetails').insertAdjacentHTML('afterend', `
-        <div class="detail-item">
-            <div class="detail-label">Assigned To</div>
-            <div class="detail-value">${currentLead.employee_first_name} ${currentLead.employee_last_name}</div>
-        </div>
-    `);
-}
+                    // Insert assignment section after the appropriate management section
+                    const targetSection = isCustomer ? document.getElementById('customerManagement') : document.getElementById('leadManagement');
+                    if (targetSection) {
+                        targetSection.insertAdjacentHTML('afterend', assignmentHTML);
+                    }
 
         async function updateLeadPriority() {
             if (!currentLead) return;

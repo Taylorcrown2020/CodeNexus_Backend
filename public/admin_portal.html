@@ -1610,49 +1610,78 @@ async function updateAssignment() {
         }
 
         async function openLeadModal(leadId) {
-    try {
-        const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
+            try {
+                const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    currentLead = data.lead;
+                    currentLead.notes = data.notes;
+                    const isCustomer = !!currentLead.is_customer;
+
+                    document.getElementById('modalName').textContent = `${currentLead.first_name || ''} ${currentLead.last_name || ''}`;
+                    document.getElementById('modalEmail').textContent = currentLead.email || '';
+                    document.getElementById('modalPhone').textContent = currentLead.phone || 'Not provided';
+                    document.getElementById('modalService').textContent = currentLead.service || 'Not specified';
+                    document.getElementById('modalBudget').textContent = currentLead.budget || 'Not specified';
+                    document.getElementById('modalDate').textContent = formatDate(currentLead.created_at);
+                    document.getElementById('modalDetails').textContent = currentLead.details || 'No details provided';
+
+                    // Show/hide appropriate management sections
+                    if (isCustomer) {
+                        document.getElementById('leadManagement').style.display = 'none';
+                        document.getElementById('customerManagement').style.display = 'block';
+                        document.getElementById('customerStatus').value = currentLead.customer_status || 'onboarding';
+                        document.getElementById('customerPriority').value = currentLead.priority;
+                    } else {
+                        document.getElementById('leadManagement').style.display = 'block';
+                        document.getElementById('customerManagement').style.display = 'none';
+                        document.getElementById('leadStatus').value = currentLead.status;
+                        document.getElementById('leadPriority').value = currentLead.priority;
+                    }
+
+                    // Remove any existing assignment section first
+                    const existingAssignment = document.querySelector('.assignment-section');
+                    if (existingAssignment) {
+                        existingAssignment.remove();
+                    }
+
+                    // Add assignment dropdown
+                    const assignmentHTML = `
+                        <div class="assignment-section">
+                            <div class="section-title">// Assignment</div>
+                            <div class="form-group">
+                                <label class="form-label">Assigned To</label>
+                                <select class="form-select" id="leadAssignment" onchange="updateAssignment()">
+                                    <option value="">Unassigned</option>
+                                    ${employees.map(emp => `
+                                        <option value="${emp.id}" ${currentLead.assigned_to === emp.id ? 'selected' : ''}>
+                                            ${emp.first_name} ${emp.last_name}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                        </div>
+                    `;
+                    
+                    const targetSection = isCustomer ? document.getElementById('customerManagement') : document.getElementById('leadManagement');
+                    if (targetSection) {
+                        targetSection.insertAdjacentHTML('afterend', assignmentHTML);
+                    }
+
+                    renderNotes();
+                    document.getElementById('leadModal').classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+            } catch (error) {
+                console.error('Error loading lead:', error);
+                alert('Error loading lead details');
             }
-        });
-
-        const data = await response.json();
-        if (data.success) {
-            currentLead = data.lead;
-            currentLead.notes = data.notes;
-            const isCustomer = !!currentLead.is_customer;
-
-            document.getElementById('modalName').textContent = `${currentLead.first_name || ''} ${currentLead.last_name || ''}`;
-            document.getElementById('modalEmail').textContent = currentLead.email || '';
-            document.getElementById('modalPhone').textContent = currentLead.phone || 'Not provided';
-            document.getElementById('modalService').textContent = currentLead.service || 'Not specified';
-            document.getElementById('modalBudget').textContent = currentLead.budget || 'Not specified';
-            document.getElementById('modalDate').textContent = formatDate(currentLead.created_at);
-            document.getElementById('modalDetails').textContent = currentLead.details || 'No details provided';
-
-            // Show/hide appropriate management sections
-            if (isCustomer) {
-                document.getElementById('leadManagement').style.display = 'none';
-                document.getElementById('customerManagement').style.display = 'block';
-                document.getElementById('customerStatus').value = currentLead.customer_status || 'onboarding';
-                document.getElementById('customerPriority').value = currentLead.priority;
-            } else {
-                document.getElementById('leadManagement').style.display = 'block';
-                document.getElementById('customerManagement').style.display = 'none';
-                document.getElementById('leadStatus').value = currentLead.status;
-                document.getElementById('leadPriority').value = currentLead.priority;
-            }
-
-            renderNotes();
-            document.getElementById('leadModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
         }
-    } catch (error) {
-        console.error('Error loading lead:', error);
-        alert('Error loading lead details');
-    }
-}
 
         function closeModal() {
             document.getElementById('leadModal').classList.remove('active');

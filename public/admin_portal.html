@@ -1843,24 +1843,113 @@ if (currentLead.employee_first_name) {
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
     if (el) el.classList.add('active');
 
-    const pageTitle = document.querySelector('.page-title');
+    const mainContent = document.querySelector('.main-content');
 
+    // If going to employees, just render and return
     if (section === 'employees') {
         viewMode = 'employees';
         renderEmployees();
         return;
     }
 
+    // If COMING FROM employees view, rebuild the dashboard layout first
+    if (viewMode === 'employees') {
+        mainContent.innerHTML = `
+            <div class="top-bar">
+                <h1 class="page-title">// Dashboard</h1>
+                <div class="user-info">
+                    <div class="user-avatar">AD</div>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">New Messages</span>
+                        <div class="stat-icon new">📬</div>
+                    </div>
+                    <div class="stat-value" id="newCount">0</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Pending</span>
+                        <div class="stat-icon pending">⏳</div>
+                    </div>
+                    <div class="stat-value" id="pendingCount">0</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Contacted</span>
+                        <div class="stat-icon contacted">✅</div>
+                    </div>
+                    <div class="stat-value" id="contactedCount">0</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Leads</span>
+                        <div class="stat-icon contacted">💼</div>
+                    </div>
+                    <div class="stat-value" id="totalCount">0</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Active Customers</span>
+                        <div class="stat-icon contacted">🎯</div>
+                    </div>
+                    <div class="stat-value" id="customerCount">0</div>
+                </div>
+            </div>
+
+            <div class="controls-bar">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" placeholder="Search by name, email, or phone..." onkeyup="searchLeads(this.value)">
+                </div>
+
+                <div class="filter-buttons" id="filterButtons"></div>
+            </div>
+
+            <div class="table-container">
+                <table class="leads-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Service</th>
+                            <th>Budget</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadsTableBody"></tbody>
+                </table>
+            </div>
+        `;
+        
+        updateStats();
+    }
+
+    // Now handle the specific section
+    const pageTitle = document.querySelector('.page-title');
+    
     if (section === 'customers') {
         viewMode = 'customers';
-        pageTitle.textContent = '// Customers';
+        if (pageTitle) pageTitle.textContent = '// Customers';
         setFilterButtonsForMode('customers');
         currentCustomerFilter = 'all';
         highlightActiveFilterButton('all', 'customers');
         renderCustomers(document.querySelector('.search-input')?.value || '');
     } else {
         viewMode = 'leads';
-        pageTitle.textContent = '// Dashboard';
+        if (pageTitle) pageTitle.textContent = '// Dashboard';
         setFilterButtonsForMode('leads');
 
         currentLeadFilter = (section === 'dashboard' || section === 'leads') ? 'all' : section;

@@ -1812,36 +1812,6 @@ async function updateAssignment() {
                 alert('❌ Error updating customer status');
             }
         }
-
-        // Add this in your openLeadModal function, after the status/priority sections:
-
-// Assignment section (works for both leads and customers)
-// Add assignment dropdown to the appropriate management section
-                    renderNotes();
-            
-            // Add assignment dropdown
-            const assignmentHTML = `
-                <div class="section-title">// Assignment</div>
-                <div class="form-group">
-                    <label class="form-label">Assigned To</label>
-                    <select class="form-select" id="leadAssignment" onchange="updateAssignment()">
-                        <option value="">Unassigned</option>
-                        ${employees.map(emp => `
-                            <option value="${emp.id}" ${currentLead.assigned_to === emp.id ? 'selected' : ''}>
-                                ${emp.first_name} ${emp.last_name}
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-            `;
-            
-            const targetSection = isCustomer ? document.getElementById('customerManagement') : document.getElementById('leadManagement');
-            if (targetSection) {
-                targetSection.insertAdjacentHTML('afterend', assignmentHTML);
-            }
-            
-            document.getElementById('leadModal').classList.add('active');
-
         async function updateLeadPriority() {
             if (!currentLead) return;
             const newPriority = currentLead.is_customer ? document.getElementById('customerPriority').value : document.getElementById('leadPriority').value;

@@ -939,6 +939,7 @@
                         <th>Date</th>
                         <th>Status</th>
                         <th>Priority</th>
+                        <th>Assigned To</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -1502,6 +1503,11 @@ async function updateAssignment() {
                 const row = document.createElement('tr');
                 row.onclick = () => openLeadModal(lead.id);
 
+const assignedEmployee = employees.find(e => e.id === lead.assigned_to);
+const assignedText = assignedEmployee 
+    ? assignedEmployee.first_name + ' ' + assignedEmployee.last_name 
+    : '<span style="color: var(--text-light); font-style: italic;">Unassigned</span>';
+
                 row.innerHTML = `
                     <td>${lead.first_name || ''} ${lead.last_name || ''}</td>
                     <td>${lead.email || ''}</td>
@@ -1512,6 +1518,7 @@ async function updateAssignment() {
                     <td><span class="status-badge status-${lead.status}">${lead.status}</span></td>
                     <td><span class="priority-badge priority-${lead.priority}">${lead.priority}</span></td>
                     <td onclick="event.stopPropagation()">
+                    <td>${assignedText}</td>
                         <button class="action-btn" onclick="openLeadModal(${lead.id}); event.stopPropagation();">View</button>
                         <button class="action-btn" onclick="deleteLead(${lead.id}); event.stopPropagation();" style="border-color: var(--danger); color: var(--danger);">Delete</button>
                     </td>
@@ -1554,6 +1561,11 @@ async function updateAssignment() {
                 row.onclick = () => openLeadModal(customer.id);
                 const statusDisplay = customer.customer_status || 'onboarding';
 
+const assignedEmployee = employees.find(e => e.id === lead.assigned_to);
+const assignedText = assignedEmployee 
+    ? assignedEmployee.first_name + ' ' + assignedEmployee.last_name 
+    : '<span style="color: var(--text-light); font-style: italic;">Unassigned</span>';
+
                 row.innerHTML = `
                     <td>${customer.first_name || ''} ${customer.last_name || ''}</td>
                     <td>${customer.email || ''}</td>
@@ -1564,6 +1576,7 @@ async function updateAssignment() {
                     <td><span class="status-badge status-${statusDisplay}">${String(statusDisplay).replace('-', ' ')}</span></td>
                     <td><span class="priority-badge priority-${customer.priority}">${customer.priority}</span></td>
                     <td onclick="event.stopPropagation()">
+                        <td>${assignedText}</td>
                         <button class="action-btn" onclick="openLeadModal(${customer.id}); event.stopPropagation();">View</button>
                         <button class="action-btn" onclick="deleteLead(${customer.id}); event.stopPropagation();" style="border-color: var(--danger); color: var(--danger);">Delete</button>
                     </td>

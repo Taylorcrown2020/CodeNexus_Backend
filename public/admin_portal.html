@@ -699,6 +699,91 @@
             color: white;
         }
 
+        /* Add to your existing <style> section */
+
+.employee-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 24px;
+}
+
+.employee-card {
+    background: var(--dark-secondary);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    transition: all 0.3s;
+}
+
+.employee-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-4px);
+}
+
+.employee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 16px;
+}
+
+.employee-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.employee-role {
+    font-size: 12px;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.employee-info {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 8px;
+}
+
+.employee-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.employee-stat {
+    flex: 1;
+}
+
+.employee-stat-label {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 4px;
+}
+
+.employee-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.employee-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 11px;
+    flex: 1;
+}
+
         /* ========================================
            RESPONSIVE DESIGN
         ======================================== */
@@ -758,6 +843,9 @@
             </li>
             <li class="menu-item" onclick="showSection('customers', this)">
                 <span class="menu-icon">🎯</span> Customers
+            </li>
+            <li class="menu-item" onclick="showSection('employees', this)">
+                <span class="menu-icon">👥</span> Employees
             </li>
             <li class="menu-item" onclick="showSection('analytics', this)">
                 <span class="menu-icon">📈</span> Analytics
@@ -978,6 +1066,8 @@
         let leads = [];
         let customers = [];
         let currentLead = null;
+        let employees = [];
+        let currentEmployee = null;
 
         // Separate filters for leads vs customers
         let currentLeadFilter = 'all';
@@ -1006,42 +1096,43 @@
 
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', async function() {
-            if (!authToken) {
-                console.log('No auth token found, redirecting to login');
-                window.location.href = '/admin';
-                return;
+    if (!authToken) {
+        console.log('No auth token found, redirecting to login');
+        window.location.href = '/admin';
+        return;
+    }
+
+    // Verify token is still valid
+    try {
+        const response = await fetch(`${API_URL}/api/admin/verify`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
             }
-
-            // Verify token is still valid
-            try {
-                const response = await fetch(`${API_URL}/api/admin/verify`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-
-                if (!response.ok) {
-                    console.log('Token invalid, redirecting to login');
-                    localStorage.removeItem('adminToken');
-                    sessionStorage.removeItem('adminToken');
-                    window.location.href = '/admin';
-                    return;
-                }
-            } catch (error) {
-                console.error('Token verification failed:', error);
-                window.location.href = '/admin';
-                return;
-            }
-
-            // Load data
-            await loadLeads();
-            await loadCustomers();
-            await loadStats();
-
-            // Ensure filter buttons are initialized for leads
-            setFilterButtonsForMode('leads');
         });
+
+        if (!response.ok) {
+            console.log('Token invalid, redirecting to login');
+            localStorage.removeItem('adminToken');
+            sessionStorage.removeItem('adminToken');
+            window.location.href = '/admin';
+            return;
+        }
+    } catch (error) {
+        console.error('Token verification failed:', error);
+        window.location.href = '/admin';
+        return;
+    }
+
+    // Load data
+    await loadLeads();
+    await loadCustomers();
+    await loadEmployees(); // ADD THIS LINE
+    await loadStats();
+
+    // Ensure filter buttons are initialized for leads
+    setFilterButtonsForMode('leads');
+});
 
         function setFilterButtonsForMode(mode) {
             const container = document.getElementById('filterButtons');
@@ -1155,6 +1246,227 @@
                 console.error('Error loading stats:', error);
             }
         }
+
+        // Load employees
+async function loadEmployees() {
+    try {
+        const response = await fetch(`${API_URL}/api/employees`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (!response.ok) {
+            console.error('Failed to load employees');
+            return;
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            employees = data.employees || [];
+            if (viewMode === 'employees') {
+                renderEmployees();
+            }
+        }
+    } catch (error) {
+        console.error('Error loading employees:', error);
+    }
+}
+
+// Render employees
+function renderEmployees() {
+    const mainContent = document.querySelector('.main-content');
+    
+    mainContent.innerHTML = `
+        <div class="top-bar">
+            <h1 class="page-title">// Employee Management</h1>
+            <button class="btn-primary" onclick="openEmployeeModal()">+ Add Employee</button>
+        </div>
+
+        <div class="employee-grid" id="employeeGrid">
+            ${employees.map(emp => `
+                <div class="employee-card">
+                    <div class="employee-header">
+                        <div>
+                            <div class="employee-name">${emp.first_name} ${emp.last_name}</div>
+                            <div class="employee-role">${emp.role || 'Team Member'}</div>
+                        </div>
+                    </div>
+                    <div class="employee-info">📧 ${emp.email}</div>
+                    ${emp.phone ? `<div class="employee-info">📱 ${emp.phone}</div>` : ''}
+                    <div class="employee-actions">
+                        <button class="action-btn btn-small" onclick="editEmployee(${emp.id})">Edit</button>
+                        <button class="action-btn btn-small" style="border-color: var(--danger); color: var(--danger);" onclick="deleteEmployee(${emp.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+
+        ${employees.length === 0 ? '<p style="text-align: center; color: var(--text-light); margin-top: 40px;">No employees yet. Add your first employee above.</p>' : ''}
+    `;
+}
+
+// Open employee modal (create/edit)
+function openEmployeeModal(employeeId = null) {
+    const isEdit = !!employeeId;
+    let employee = null;
+    
+    if (isEdit) {
+        employee = employees.find(e => e.id === employeeId);
+        if (!employee) return;
+    }
+
+    const modalHTML = `
+        <div class="modal-overlay active" id="employeeModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">// ${isEdit ? 'Edit' : 'Add'} Employee</h2>
+                    <button class="modal-close" onclick="closeEmployeeModal()">×</button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="employeeForm" onsubmit="saveEmployee(event, ${isEdit ? employeeId : 'null'})">
+                        <div class="detail-grid">
+                            <div class="form-group">
+                                <label class="form-label">First Name *</label>
+                                <input type="text" class="form-input" id="empFirstName" value="${employee?.first_name || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Last Name *</label>
+                                <input type="text" class="form-input" id="empLastName" value="${employee?.last_name || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email *</label>
+                                <input type="email" class="form-input" id="empEmail" value="${employee?.email || ''}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Phone</label>
+                                <input type="tel" class="form-input" id="empPhone" value="${employee?.phone || ''}">
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label">Role</label>
+                                <input type="text" class="form-input" id="empRole" value="${employee?.role || 'Team Member'}" placeholder="e.g., Sales Manager, Developer">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary">${isEdit ? 'Update' : 'Create'} Employee</button>
+                        <button type="button" class="btn-secondary" onclick="closeEmployeeModal()">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.style.overflow = 'hidden';
+}
+
+function closeEmployeeModal() {
+    const modal = document.getElementById('employeeModal');
+    if (modal) modal.remove();
+    document.body.style.overflow = '';
+}
+
+async function saveEmployee(event, employeeId) {
+    event.preventDefault();
+
+    const employeeData = {
+        firstName: document.getElementById('empFirstName').value.trim(),
+        lastName: document.getElementById('empLastName').value.trim(),
+        email: document.getElementById('empEmail').value.trim(),
+        phone: document.getElementById('empPhone').value.trim(),
+        role: document.getElementById('empRole').value.trim()
+    };
+
+    try {
+        const url = employeeId ? `${API_URL}/api/employees/${employeeId}` : `${API_URL}/api/employees`;
+        const method = employeeId ? 'PATCH' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(employeeData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            await loadEmployees();
+            closeEmployeeModal();
+            alert(`✅ Employee ${employeeId ? 'updated' : 'created'} successfully!`);
+        } else {
+            alert('❌ ' + (data.message || 'Error saving employee'));
+        }
+    } catch (error) {
+        console.error('Save employee error:', error);
+        alert('❌ Error saving employee');
+    }
+}
+
+function editEmployee(employeeId) {
+    openEmployeeModal(employeeId);
+}
+
+async function deleteEmployee(employeeId) {
+    if (!confirm('⚠️ Are you sure you want to delete this employee? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/employees/${employeeId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            await loadEmployees();
+            alert('✅ Employee deleted successfully!');
+        } else {
+            alert('❌ ' + (data.message || 'Error deleting employee'));
+        }
+    } catch (error) {
+        console.error('Delete employee error:', error);
+        alert('❌ Error deleting employee');
+    }
+}
+
+// Update lead assignment
+async function updateAssignment() {
+    if (!currentLead) return;
+    
+    const employeeId = document.getElementById('leadAssignment').value;
+
+    try {
+        const response = await fetch(`${API_URL}/api/leads/${currentLead.id}/assign`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ 
+                employeeId: employeeId || null 
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            await loadLeads();
+            await loadCustomers();
+            alert('✅ Assignment updated successfully!');
+        }
+    } catch (error) {
+        console.error('Error updating assignment:', error);
+        alert('❌ Error updating assignment');
+    }
+}
 
         // Render leads table
         function renderLeads(searchQuery = '') {
@@ -1464,6 +1776,34 @@
             }
         }
 
+        // Add this in your openLeadModal function, after the status/priority sections:
+
+// Assignment section (works for both leads and customers)
+let assignmentHTML = `
+    <div class="section-title">// Assignment</div>
+    <div class="form-group">
+        <label class="form-label">Assigned To</label>
+        <select class="form-select" id="leadAssignment" onchange="updateAssignment()">
+            <option value="">Unassigned</option>
+            ${employees.map(emp => `
+                <option value="${emp.id}" ${currentLead.assigned_to === emp.id ? 'selected' : ''}>
+                    ${emp.first_name} ${emp.last_name}
+                </option>
+            `).join('')}
+        </select>
+    </div>
+`;
+
+// Add assignment display
+if (currentLead.employee_first_name) {
+    document.getElementById('modalDetails').insertAdjacentHTML('afterend', `
+        <div class="detail-item">
+            <div class="detail-label">Assigned To</div>
+            <div class="detail-value">${currentLead.employee_first_name} ${currentLead.employee_last_name}</div>
+        </div>
+    `);
+}
+
         async function updateLeadPriority() {
             if (!currentLead) return;
             const newPriority = currentLead.is_customer ? document.getElementById('customerPriority').value : document.getElementById('leadPriority').value;
@@ -1493,29 +1833,34 @@
         }
 
         function showSection(section, el) {
-            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
-            if (el) el.classList.add('active');
+    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+    if (el) el.classList.add('active');
 
-            const pageTitle = document.querySelector('.page-title');
+    const pageTitle = document.querySelector('.page-title');
 
-            if (section === 'customers') {
-                viewMode = 'customers';
-                pageTitle.textContent = '// Customers';
-                setFilterButtonsForMode('customers');
-                currentCustomerFilter = 'all';
-                highlightActiveFilterButton('all', 'customers');
-                renderCustomers(document.querySelector('.search-input')?.value || '');
-            } else {
-                viewMode = 'leads';
-                pageTitle.textContent = '// Dashboard';
-                setFilterButtonsForMode('leads');
+    if (section === 'employees') {
+        viewMode = 'employees';
+        renderEmployees();
+        return;
+    }
 
-                // sidebar lead filters
-                currentLeadFilter = (section === 'dashboard' || section === 'leads') ? 'all' : section;
-                highlightActiveFilterButton(currentLeadFilter, 'leads');
-                renderLeads(document.querySelector('.search-input')?.value || '');
-            }
-        }
+    if (section === 'customers') {
+        viewMode = 'customers';
+        pageTitle.textContent = '// Customers';
+        setFilterButtonsForMode('customers');
+        currentCustomerFilter = 'all';
+        highlightActiveFilterButton('all', 'customers');
+        renderCustomers(document.querySelector('.search-input')?.value || '');
+    } else {
+        viewMode = 'leads';
+        pageTitle.textContent = '// Dashboard';
+        setFilterButtonsForMode('leads');
+
+        currentLeadFilter = (section === 'dashboard' || section === 'leads') ? 'all' : section;
+        highlightActiveFilterButton(currentLeadFilter, 'leads');
+        renderLeads(document.querySelector('.search-input')?.value || '');
+    }
+}
 
         function logout() {
             if (confirm('Are you sure you want to logout?')) {

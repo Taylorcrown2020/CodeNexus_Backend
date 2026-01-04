@@ -374,12 +374,21 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
     }
 });
 
-// Get single lead with notes
+// Replace your existing GET /api/leads/:id route with this:
 app.get('/api/leads/:id', authenticateToken, async (req, res) => {
     try {
         const leadId = req.params.id;
 
-        const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
+        // Get lead with employee info
+        const leadResult = await pool.query(`
+            SELECT l.*, 
+                   e.first_name as employee_first_name, 
+                   e.last_name as employee_last_name,
+                   e.email as employee_email
+            FROM leads l
+            LEFT JOIN employees e ON l.assigned_to = e.id
+            WHERE l.id = $1
+        `, [leadId]);
         
         if (leadResult.rows.length === 0) {
             return res.status(404).json({ 
@@ -851,6 +860,237 @@ app.get('/api/admin/cookie-consent/stats', authenticateToken, async (req, res) =
         });
     } catch (error) {
         console.error('Get cookie stats error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// ========================================
+// EMPLOYEE MANAGEMENT ROUTES
+// ========================================
+
+// Get all employees
+app.get('/api/employees', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM employees WHERE is_active = TRUE ORDER BY first_name, last_name'
+        );
+
+        res.json({
+            success: true,
+            employees: result.rows
+        });
+    } catch (error) {
+        console.error('Get employees error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Get single employee
+app.get('/api/employees/:id', authenticateToken, async (req, res) => {
+    try {
+        const employeeId = req.params.id;
+
+        const result = await pool.query(
+            'SELECT * FROM employees WHERE id = $1',
+            [employeeId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Employee not found.' 
+            });
+        }
+
+        // Get assigned leads/customers count
+        const assignedCount = await pool.query(
+            'SELECT COUNT(*) FROM leads WHERE assigned_to = $1',
+            [employeeId]
+        );
+
+        res.json({
+            success: true,
+            employee: result.rows[0],
+            assignedCount: parseInt(assignedCount.rows[0].count)
+        });
+    } catch (error) {
+        console.error('Get employee error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Create new employee
+app.post('/api/employees', authenticateToken, async (req, res) => {
+    try {
+        const { firstName, lastName, email, phone, role } = req.body;
+
+        if (!firstName || !lastName || !email) {
+            return res.status(400).json({
+                success: false,
+                message: 'First name, last name, and email are required.'
+            });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO employees (first_name, last_name, email, phone, role)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+            [firstName, lastName, email, phone || null, role || 'Team Member']
+        );
+
+        console.log('✅ New employee created:', result.rows[0].email);
+
+        res.json({
+            success: true,
+            message: 'Employee created successfully.',
+            employee: result.rows[0]
+        });
+    } catch (error) {
+        if (error.code === '23505') { // Unique constraint violation
+            return res.status(400).json({
+                success: false,
+                message: 'An employee with this email already exists.'
+            });
+        }
+        console.error('Create employee error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Update employee
+app.patch('/api/employees/:id', authenticateToken, async (req, res) => {
+    try {
+        const employeeId = req.params.id;
+        const { firstName, lastName, email, phone, role } = req.body;
+
+        const result = await pool.query(
+            `UPDATE employees 
+             SET first_name = $1, 
+                 last_name = $2, 
+                 email = $3, 
+                 phone = $4, 
+                 role = $5,
+                 updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $6
+             RETURNING *`,
+            [firstName, lastName, email, phone, role, employeeId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Employee not found.' 
+            });
+        }
+
+        console.log('✅ Employee updated:', employeeId);
+
+        res.json({
+            success: true,
+            message: 'Employee updated successfully.',
+            employee: result.rows[0]
+        });
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(400).json({
+                success: false,
+                message: 'An employee with this email already exists.'
+            });
+        }
+        console.error('Update employee error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Deactivate employee (soft delete)
+app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
+    try {
+        const employeeId = req.params.id;
+
+        // Check if employee has assigned leads
+        const assignedLeads = await pool.query(
+            'SELECT COUNT(*) FROM leads WHERE assigned_to = $1',
+            [employeeId]
+        );
+
+        const count = parseInt(assignedLeads.rows[0].count);
+
+        if (count > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete employee. They have ${count} assigned lead(s)/customer(s). Please reassign them first.`
+            });
+        }
+
+        const result = await pool.query(
+            'UPDATE employees SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *',
+            [employeeId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Employee not found.' 
+            });
+        }
+
+        console.log('✅ Employee deactivated:', employeeId);
+
+        res.json({
+            success: true,
+            message: 'Employee deactivated successfully.'
+        });
+    } catch (error) {
+        console.error('Delete employee error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Assign lead to employee
+app.patch('/api/leads/:id/assign', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.id;
+        const { employeeId } = req.body;
+
+        // If employeeId is null, unassign
+        const result = await pool.query(
+            'UPDATE leads SET assigned_to = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+            [employeeId || null, leadId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Lead not found.' 
+            });
+        }
+
+        console.log(`✅ Lead ${leadId} ${employeeId ? 'assigned to employee ' + employeeId : 'unassigned'}`);
+
+        res.json({
+            success: true,
+            message: employeeId ? 'Lead assigned successfully.' : 'Lead unassigned successfully.'
+        });
+    } catch (error) {
+        console.error('Assign lead error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Server error.' 

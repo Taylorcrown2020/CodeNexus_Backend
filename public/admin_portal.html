@@ -1277,10 +1277,17 @@ async function loadEmployees() {
 function renderEmployees() {
     const mainContent = document.querySelector('.main-content');
     
+    // Store current HTML to restore later if needed
+    const originalHTML = mainContent.innerHTML;
+    
     mainContent.innerHTML = `
         <div class="top-bar">
             <h1 class="page-title">// Employee Management</h1>
-            <button class="btn-primary" onclick="openEmployeeModal()">+ Add Employee</button>
+            <div class="user-info">
+                <button class="btn-primary" onclick="openEmployeeModal()">+ Add Employee</button>
+                <div class="user-avatar">AD</div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
         </div>
 
         <div class="employee-grid" id="employeeGrid">

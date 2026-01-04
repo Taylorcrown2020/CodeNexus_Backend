@@ -864,6 +864,57 @@ app.patch('/api/employees/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Create new lead (PUBLIC - from contact form AND authenticated admin creation)
+app.post('/api/leads', async (req, res) => {
+    try {
+        const { firstName, lastName, email, phone, service, budget, details, priority, status, isCustomer, customerStatus, assignedTo } = req.body;
+
+        if (!firstName || !lastName || !email) {
+            return res.status(400).json({
+                success: false,
+                message: 'First name, last name, and email are required.'
+            });
+        }
+
+        // Check if request is authenticated (from admin portal) or public (from contact form)
+        const isAuthenticated = req.headers.authorization;
+
+        const result = await pool.query(
+            `INSERT INTO leads (first_name, last_name, email, phone, service, budget, details, priority, status, is_customer, customer_status, assigned_to)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+             RETURNING *`,
+            [
+                firstName, 
+                lastName, 
+                email, 
+                phone || '', 
+                service || '', 
+                budget || '', 
+                details || '', 
+                priority || 'medium',
+                status || 'new',
+                isCustomer || false,
+                customerStatus || null,
+                assignedTo || null
+            ]
+        );
+
+        console.log('✅ New lead created:', result.rows[0].email);
+
+        res.json({
+            success: true,
+            message: isAuthenticated ? 'Lead/Customer created successfully.' : 'Thank you for contacting us! We\'ll get back to you within 24 hours.',
+            lead: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create lead error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error. Please try again.' 
+        });
+    }
+});
+
 // Deactivate employee (soft delete)
 app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
     try {

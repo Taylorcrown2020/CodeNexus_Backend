@@ -418,6 +418,8 @@ app.get('/api/leads/:id', authenticateToken, async (req, res) => {
 
 // Create new lead (PUBLIC - from contact form)
 app.post('/api/leads', async (req, res) => {
+    // Check if authenticated (optional - allows both public form submissions and admin creation)
+    const isAuthenticated = req.headers.authorization;
     try {
         const { firstName, lastName, email, phone, service, budget, details } = req.body;
 
@@ -429,11 +431,24 @@ app.post('/api/leads', async (req, res) => {
         }
 
         const result = await pool.query(
-            `INSERT INTO leads (first_name, last_name, email, phone, service, budget, details)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             RETURNING *`,
-            [firstName, lastName, email, phone || '', service || '', budget || '', details || '']
-        );
+    `INSERT INTO leads (first_name, last_name, email, phone, service, budget, details, priority, status, is_customer, customer_status, assigned_to)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     RETURNING *`,
+    [
+        firstName, 
+        lastName, 
+        email, 
+        phone || '', 
+        service || '', 
+        budget || '', 
+        details || '', 
+        priority || 'medium',
+        status || 'new',
+        isCustomer || false,
+        customerStatus || null,
+        assignedTo || null
+    ]
+);
 
         console.log('✅ New lead created:', result.rows[0].email);
 

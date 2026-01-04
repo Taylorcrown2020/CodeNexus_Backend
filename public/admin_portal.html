@@ -860,12 +860,14 @@
     <main class="main-content">
         <!-- Top Bar -->
         <div class="top-bar">
-            <h1 class="page-title">// Dashboard</h1>
-            <div class="user-info">
-                <div class="user-avatar">AD</div>
-                <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-        </div>
+    <h1 class="page-title">// Dashboard</h1>
+    <div class="user-info">
+        <button class="btn-primary" style="margin-right: 12px;" onclick="openCreateModal('lead')">+ Add Lead</button>
+        <button class="btn-primary" style="margin-right: 12px;" onclick="openCreateModal('customer')">+ Add Customer</button>
+        <div class="user-avatar">AD</div>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+</div>
 
         <!-- Stats Cards -->
         <div class="stats-grid">
@@ -1271,6 +1273,174 @@ async function loadEmployees() {
         }
     } catch (error) {
         console.error('Error loading employees:', error);
+    }
+}
+
+// Open create lead/customer modal
+function openCreateModal(type = 'lead') {
+    const isCustomer = type === 'customer';
+    
+    const modalHTML = `
+        <div class="modal-overlay active" id="createModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">// Create ${isCustomer ? 'Customer' : 'Lead'}</h2>
+                    <button class="modal-close" onclick="closeCreateModal()">×</button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="createForm" onsubmit="saveNewContact(event, '${type}')">
+                        <div class="detail-grid">
+                            <div class="form-group">
+                                <label class="form-label">First Name *</label>
+                                <input type="text" class="form-input" id="newFirstName" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Last Name *</label>
+                                <input type="text" class="form-input" id="newLastName" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email *</label>
+                                <input type="email" class="form-input" id="newEmail" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Phone</label>
+                                <input type="tel" class="form-input" id="newPhone">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Service</label>
+                                <select class="form-select" id="newService">
+                                    <option value="">Select a service...</option>
+                                    <option value="Web Development">Web Development</option>
+                                    <option value="Mobile App">Mobile App</option>
+                                    <option value="UI/UX Design">UI/UX Design</option>
+                                    <option value="E-commerce">E-commerce</option>
+                                    <option value="Consulting">Consulting</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Budget Range</label>
+                                <select class="form-select" id="newBudget">
+                                    <option value="">Select budget...</option>
+                                    <option value="< $5,000">< $5,000</option>
+                                    <option value="$5,000 - $10,000">$5,000 - $10,000</option>
+                                    <option value="$10,000 - $25,000">$10,000 - $25,000</option>
+                                    <option value="$25,000 - $50,000">$25,000 - $50,000</option>
+                                    <option value="$50,000+">$50,000+</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Priority</label>
+                                <select class="form-select" id="newPriority">
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                            ${isCustomer ? `
+                            <div class="form-group">
+                                <label class="form-label">Customer Status</label>
+                                <select class="form-select" id="newCustomerStatus">
+                                    <option value="onboarding">Onboarding</option>
+                                    <option value="in-progress">In Progress</option>
+                                    <option value="review">In Review</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="on-hold">On Hold</option>
+                                </select>
+                            </div>
+                            ` : `
+                            <div class="form-group">
+                                <label class="form-label">Lead Status</label>
+                                <select class="form-select" id="newLeadStatus">
+                                    <option value="new">New</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="contacted">Contacted</option>
+                                </select>
+                            </div>
+                            `}
+                            <div class="form-group">
+                                <label class="form-label">Assign To</label>
+                                <select class="form-select" id="newAssignedTo">
+                                    <option value="">Unassigned</option>
+                                    ${employees.map(emp => 
+                                        `<option value="${emp.id}">${emp.first_name} ${emp.last_name}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label class="form-label">Project Details</label>
+                                <textarea class="form-textarea" id="newDetails" placeholder="Enter project details..."></textarea>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary">Create ${isCustomer ? 'Customer' : 'Lead'}</button>
+                        <button type="button" class="btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCreateModal() {
+    const modal = document.getElementById('createModal');
+    if (modal) modal.remove();
+    document.body.style.overflow = '';
+}
+
+async function saveNewContact(event, type) {
+    event.preventDefault();
+
+    const isCustomer = type === 'customer';
+    
+    const contactData = {
+        firstName: document.getElementById('newFirstName').value.trim(),
+        lastName: document.getElementById('newLastName').value.trim(),
+        email: document.getElementById('newEmail').value.trim(),
+        phone: document.getElementById('newPhone').value.trim(),
+        service: document.getElementById('newService').value,
+        budget: document.getElementById('newBudget').value,
+        details: document.getElementById('newDetails').value.trim(),
+        priority: document.getElementById('newPriority').value,
+        isCustomer: isCustomer,
+        assignedTo: document.getElementById('newAssignedTo').value || null
+    };
+
+    if (isCustomer) {
+        contactData.customerStatus = document.getElementById('newCustomerStatus').value;
+        contactData.status = 'closed';
+    } else {
+        contactData.status = document.getElementById('newLeadStatus').value;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/leads`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(contactData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            await loadLeads();
+            await loadCustomers();
+            await loadStats();
+            closeCreateModal();
+            alert(`✅ ${isCustomer ? 'Customer' : 'Lead'} created successfully!`);
+        } else {
+            alert('❌ ' + (data.message || `Error creating ${type}`));
+        }
+    } catch (error) {
+        console.error(`Create ${type} error:`, error);
+        alert(`❌ Error creating ${type}`);
     }
 }
 

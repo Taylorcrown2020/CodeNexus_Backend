@@ -775,8 +775,8 @@
     --gray-500: #64748b;
     --gray-600: #475569;
     --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
     --border: #e2e8f0;
     --border-dark: #cbd5e1;
     --max-width: 1280px;
@@ -935,8 +935,8 @@ body {
 .mobile-menu-btn {
     display: none;
     position: fixed;
-    top: 70px;
-    right: 24px;
+    top: 16px;
+    right: 16px;
     z-index: 1001;
     background: var(--white);
     border: 1px solid var(--border);
@@ -2894,10 +2894,305 @@ body {
 .service-card {
     padding: 32px 24px;
 }
+
+/* Fix hero section mobile layout */
+.hero {
+    min-height: auto;
+    padding: 60px 20px 40px;
+    margin-top: 20px;
+}
+
+.hero-title {
+    font-size: 32px;
+    line-height: 1.2;
+    margin-bottom: 16px;
+}
+
+.hero-subtitle {
+    font-size: 15px;
+    margin-bottom: 28px;
+}
+
+.hero-visual {
+    width: 100%;
+}
+
+.terminal {
+    margin: 0 auto;
+    max-width: 100%;
+}
+
+/* Fix quiz modal mobile layout */
+.quiz-modal-content {
+    max-width: 100%;
+    margin: 0;
+    max-height: 100vh;
+    border-radius: 0;
+}
+
+.quiz-header {
+    padding: 24px 20px 20px;
+}
+
+.quiz-title {
+    font-size: 24px;
+}
+
+.quiz-subtitle {
+    font-size: 14px;
+}
+
+.quiz-progress {
+    padding: 16px 20px;
+}
+
+.quiz-body {
+    padding: 24px 20px;
+}
+
+.step-question {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.step-description {
+    font-size: 13px;
+    margin-bottom: 24px;
+}
+
+.option-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.quiz-option {
+    padding: 16px 12px;
+}
+
+.option-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.option-title {
+    font-size: 13px;
+}
+
+.option-desc {
+    font-size: 11px;
+}
+
+/* Fix quiz navigation */
+.quiz-navigation {
+    padding-top: 16px;
+    margin-top: 24px;
+}
+
+.btn-back,
+.btn-skip {
+    padding: 10px 18px;
+    font-size: 13px;
+}
+
+/* Fix quiz close button */
+.quiz-close {
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+}
+
+/* Fix form inputs */
+.form-input,
+.form-textarea {
+    font-size: 16px;
+    padding: 12px 14px;
+}
+
+.form-label {
+    font-size: 13px;
+}
+
+/* Fix results screen */
+.results-title {
+    font-size: 22px;
+}
+
+.plan-name {
+    font-size: 26px;
+}
+
+.plan-price {
+    font-size: 36px;
+}
+
+.plan-reason {
+    font-size: 14px;
+}
+
+.results-details {
+    font-size: 13px;
+    padding: 16px;
+}
+
+/* Fix navbar */
+.navbar {
+    padding: 12px 0;
+}
+
+.nav-container {
+    padding: 12px 20px;
+}
+
+.nav-logo {
+    font-size: 18px;
+}
+
+/* Fix announcement banner */
+.announcement-banner {
+    padding: 25px 16px;
+}
+
+.announcement-badge {
+    font-size: 10px;
+    padding: 4px 10px;
+}
+
+.announcement-text {
+    font-size: 12px;
+}
+
+/* Fix sections spacing */
+.section-header {
+    margin-bottom: 40px;
+}
+
+.section-subtitle {
+    font-size: 12px;
+}
+
+.section-title {
+    font-size: 28px;
+}
+
+.section-description {
+    font-size: 15px;
+}
+
+/* Fix quiz button container */
+#quizButtonContainer {
+    margin: 20px auto 40px;
+    padding: 0 20px;
+}
+
+/* Fix service cards */
+.service-price {
+    font-size: 40px;
+}
+
+.service-name {
+    font-size: 20px;
+}
+
+.service-features {
+    margin-bottom: 28px;
+}
+
+.service-features li {
+    font-size: 13px;
+    padding: 10px 0;
+}
+
+/* Fix portfolio section */
+.portfolio-info-staggered .portfolio-title {
+    font-size: 28px;
+}
+
+.portfolio-info-staggered .portfolio-description {
+    font-size: 15px;
+}
+
+/* Fix CTA section */
+.cta-section {
+    padding: 60px 20px;
+}
+
+.cta-title {
+    font-size: 28px;
+}
+
+.cta-description {
+    font-size: 15px;
+}
+
+/* Fix modal */
+.modal-content {
+    padding: 24px 20px;
+    max-width: 100%;
+    border-radius: var(--border-radius-lg);
+}
+
+.modal-title {
+    font-size: 24px;
+}
+
+.modal-description {
+    font-size: 14px;
+}
+
+/* Fix marketing popup */
+.marketing-popup {
+    border-radius: var(--border-radius-lg);
+}
+
+.marketing-popup-content {
+    padding: 36px 20px 20px;
+}
+
+.marketing-popup-title {
+    font-size: 20px;
+}
+
+.marketing-popup-discount {
+    font-size: 40px;
+}
 }
 @media (max-width: 480px) {
 .hero-title {
-font-size: 28px;
+    font-size: 26px;
+}
+
+/* Even smaller adjustments for tiny screens */
+.option-grid {
+    grid-template-columns: 1fr;
+}
+
+.quiz-option {
+    padding: 20px 16px;
+}
+
+.quiz-title {
+    font-size: 22px;
+}
+
+.step-question {
+    font-size: 18px;
+}
+
+.btn-primary,
+.btn-secondary {
+    width: 100%;
+    justify-content: center;
+}
+
+.hero-cta {
+    flex-direction: column;
+    width: 100%;
+}
+
+.hero-cta button,
+.hero-cta a {
+    width: 100%;
 }
 .section-title {
     font-size: 24px;
@@ -2914,6 +3209,9 @@ font-size: 28px;
     </style>
 </head>
 <body>
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+    
     <!-- ========================================
          NAVIGATION BAR
     ======================================== -->
@@ -2935,7 +3233,11 @@ font-size: 28px;
     <!-- ========================================
          MOBILE MENU BUTTON
     ======================================== -->
-    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+    <button class="mobile-menu-btn" 
+            onclick="toggleMobileMenu()" 
+            aria-label="Toggle mobile menu"
+            aria-expanded="false"
+            aria-controls="mobileNav">
         <span></span>
         <span></span>
         <span></span>
@@ -2944,7 +3246,10 @@ font-size: 28px;
     <!-- ========================================
          MOBILE NAVIGATION
     ======================================== -->
-    <div class="mobile-nav-overlay" id="mobileNav">
+    <nav class="mobile-nav-overlay" 
+         id="mobileNav" 
+         role="navigation" 
+         aria-label="Mobile navigation">
         <div class="mobile-nav-content">
             <ul class="mobile-nav-links">
                 <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
@@ -2955,7 +3260,7 @@ font-size: 28px;
             </ul>
             <button class="nav-cta-btn" onclick="openModal(); closeMobileMenu();">Start Your Project</button>
         </div>
-    </div>
+    </nav>
 
     <!-- ========================================
          ANNOUNCEMENT BANNER
@@ -2977,7 +3282,7 @@ font-size: 28px;
     
     @media (max-width: 768px) {
         #quizButtonContainer {
-            margin: 20px auto 80px !important;
+            margin: 20px auto -30px !important;
         }
     }
 </style>
@@ -2993,7 +3298,7 @@ font-size: 28px;
         🎯 Take Our Quiz - Find Your Perfect Plan
     </button>
 </div>
-<main>
+<main id="main-content">
         <!-- ========================================
          HERO SECTION - SEO OPTIMIZED
     ======================================== -->
@@ -3495,8 +3800,7 @@ font-size: 28px;
                     business requirements.
                 </p>
                 <ul class="service-features">
-                    <li>Unlimited pages</li>
-                    <ul class="service-features">
+                <li>Unlimited pages</li>
                 <li>Everything from the previous plan (where applicable)</li>
                 <li>Fully custom feature planning & architecture</li>
                 <li>Unlimited pages or dynamic page generation</li>
@@ -3596,79 +3900,79 @@ font-size: 28px;
     <div class="service-area-grid">
     <article class="service-area-card">
         <h3><a href="web-development-llano-tx.html" style="color: var(--primary); text-decoration: none;">Web Development in Llano, TX</a></h3>
-        <p>Professional custom websites & e-commerce solutions for Llano County businesses. <a href="web-development-llano-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Professional custom websites & e-commerce solutions for Llano County businesses. <a href="web-development-llano-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Llano, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-design-marble-falls-tx.html" style="color: var(--primary); text-decoration: none;">Web Design Marble Falls, TX</a></h3>
-        <p>Custom web applications & digital platforms for Marble Falls companies. <a href="web-design-marble-falls-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Custom web applications & digital platforms for Marble Falls companies. <a href="web-design-marble-falls-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Marble Falls, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="website-developer-kingsland-tx.html" style="color: var(--primary); text-decoration: none;">Website Development Kingsland, TX</a></h3>
-        <p>Professional web design services for Kingsland area businesses. <a href="website-developer-kingsland-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Professional web design services for Kingsland area businesses. <a href="website-developer-kingsland-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Kingsland, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-services-brady-tx.html" style="color: var(--primary); text-decoration: none;">Web Services Brady, TX</a></h3>
-        <p>Local business websites & online presence for Brady. <a href="web-services-brady-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Local business websites & online presence for Brady. <a href="web-services-brady-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Brady, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="custom-websites-mason-tx.html" style="color: var(--primary); text-decoration: none;">Custom Websites Mason, TX</a></h3>
-        <p>Professional web development & services for Mason businesses. <a href="custom-websites-mason-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Professional web development & services for Mason businesses. <a href="custom-websites-mason-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Mason, TX">Learn more →</a></p>
     </article>
 
     <!-- NEW CITIES ADDED BELOW -->
 
     <article class="service-area-card">
         <h3><a href="web-development-fredericksburg-tx.html" style="color: var(--primary); text-decoration: none;">Web Development Fredericksburg, TX</a></h3>
-        <p>Custom websites for Fredericksburg wineries, tourism, and retail businesses. <a href="web-development-fredericksburg-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Custom websites for Fredericksburg wineries, tourism, and retail businesses. <a href="web-development-fredericksburg-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Fredericksburg, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-design-burnet-tx.html" style="color: var(--primary); text-decoration: none;">Web Design Burnet, TX</a></h3>
-        <p>Professional web design & digital marketing for Burnet County. <a href="web-design-burnet-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Professional web design & digital marketing for Burnet County. <a href="web-design-burnet-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Burnet, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-developer-johnson-city-tx.html" style="color: var(--primary); text-decoration: none;">Web Developer Johnson City, TX</a></h3>
-        <p>Custom web development & SEO services for Johnson City businesses. <a href="web-developer-johnson-city-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Custom web development & SEO services for Johnson City businesses. <a href="web-developer-johnson-city-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Johnson City, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-services-lampasas-tx.html" style="color: var(--primary); text-decoration: none;">Web Services Lampasas, TX</a></h3>
-        <p>Website development & marketing solutions for Lampasas area. <a href="web-services-lampasas-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Website development & marketing solutions for Lampasas area. <a href="web-services-lampasas-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Lampasas, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-development-horseshoe-bay-tx.html" style="color: var(--primary); text-decoration: none;">Web Development Horseshoe Bay, TX</a></h3>
-        <p>Websites for real estate, hospitality, and Horseshoe Bay businesses. <a href="web-development-horseshoe-bay-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Websites for real estate, hospitality, and Horseshoe Bay businesses. <a href="web-development-horseshoe-bay-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Horseshoe Bay, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="website-design-buchanan-dam-tx.html" style="color: var(--primary); text-decoration: none;">Website Design Buchanan Dam, TX</a></h3>
-        <p>Custom website design for Buchanan Dam and Lake LBJ area businesses. <a href="website-design-buchanan-dam-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Custom website design for Buchanan Dam and Lake LBJ area businesses. <a href="website-design-buchanan-dam-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Buchanan Dam, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-developer-blanco-tx.html" style="color: var(--primary); text-decoration: none;">Web Developer Blanco, TX</a></h3>
-        <p>Professional web development & online marketing for Blanco. <a href="web-developer-blanco-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Professional web development & online marketing for Blanco. <a href="web-developer-blanco-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Blanco, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-design-kerrville-tx.html" style="color: var(--primary); text-decoration: none;">Web Design Kerrville, TX</a></h3>
-        <p>Custom web design & digital marketing for Kerrville businesses. <a href="web-design-kerrville-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Custom web design & digital marketing for Kerrville businesses. <a href="web-design-kerrville-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Kerrville, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-development-boerne-tx.html" style="color: var(--primary); text-decoration: none;">Web Development Boerne, TX</a></h3>
-        <p>Professional websites & SEO services for Boerne area companies. <a href="web-development-boerne-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Professional websites & SEO services for Boerne area companies. <a href="web-development-boerne-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Boerne, TX">Learn more →</a></p>
     </article>
 
     <article class="service-area-card">
         <h3><a href="web-services-comfort-tx.html" style="color: var(--primary); text-decoration: none;">Web Services Comfort, TX</a></h3>
-        <p>Web development & marketing for Comfort and surrounding Hill Country. <a href="web-services-comfort-tx.html" style="color: var(--primary);">Learn more →</a></p>
+        <p>Web development & marketing for Comfort and surrounding Hill Country. <a href="web-services-comfort-tx.html" style="color: var(--primary);" aria-label="Learn more about web development in Comfort, TX">Learn more →</a></p>
     </article>
 </div>
     </div>
@@ -3775,7 +4079,7 @@ font-size: 28px;
     ======================================== -->
     <div class="modal-overlay" id="contactModal">
         <div class="modal-content">
-            <button class="modal-close" onclick="closeModal()"></button>
+            <button class="modal-close" onclick="closeModal()" aria-label="Close modal"></button>
             
             <span class="modal-badge">// Let's Talk</span>
             <h2 class="modal-title">Start Your Project</h2>
@@ -4193,8 +4497,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const nav = document.getElementById('mobileNav');
             const body = document.body;
             
-            btn.classList.toggle('active');
+            const isActive = btn.classList.toggle('active');
             nav.classList.toggle('active');
+            
+            // Update ARIA attributes for accessibility
+            btn.setAttribute('aria-expanded', isActive);
             
             if (nav.classList.contains('active')) {
                 body.style.overflow = 'hidden';
@@ -4210,6 +4517,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             btn.classList.remove('active');
             nav.classList.remove('active');
+            btn.setAttribute('aria-expanded', 'false');
             body.style.overflow = '';
         }
 

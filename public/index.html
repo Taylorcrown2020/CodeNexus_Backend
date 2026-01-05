@@ -701,6 +701,19 @@
     --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Screen reader only class for accessibility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
 *{
     margin: 0;
     padding: 0;
@@ -716,6 +729,8 @@ body {
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .navbar {
@@ -769,6 +784,10 @@ body {
     font-size: 15px;
     transition: var(--transition);
     position: relative;
+    padding: 8px 4px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .nav-links a:not(.nav-cta-btn):hover {
@@ -828,6 +847,8 @@ body {
     padding: 12px;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .mobile-menu-btn span {
@@ -887,9 +908,11 @@ body {
     text-decoration: none;
     font-size: 20px;
     font-weight: 600;
-    display: block;
-    padding: 12px 0;
+    display: flex;
+    align-items: center;
+    padding: 16px 0;
     transition: var(--transition);
+    min-height: 48px;
 }
 
 .mobile-nav-links a:hover {
@@ -946,6 +969,34 @@ body {
     font-size: 14px;
     font-weight: 500;
     color: var(--white);
+}
+
+/* Improve focus visibility for keyboard navigation */
+a:focus,
+button:focus,
+input:focus,
+textarea:focus,
+select:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Skip to main content link for screen readers */
+.skip-to-main {
+    position: absolute;
+    left: -9999px;
+    z-index: 9999;
+    padding: 12px 20px;
+    background: var(--primary);
+    color: var(--white);
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+}
+
+.skip-to-main:focus {
+    left: 20px;
+    top: 20px;
 }
 
 #quizButtonContainer {
@@ -2649,8 +2700,11 @@ text-align: center;
 }
 @media (max-width: 768px) {
 body {
-padding-top: 60px;
+    padding-top: 60px;
+    font-size: 16px;
+    line-height: 1.6;
 }
+
 .nav-links {
     display: none;
 }
@@ -2662,6 +2716,11 @@ padding-top: 60px;
 
 .hero-title {
     font-size: 36px;
+    line-height: 1.2;
+}
+
+.hero-subtitle {
+    font-size: 16px;
 }
 
 .section-title {
@@ -2706,6 +2765,38 @@ padding-top: 60px;
 .marketing-popup {
     max-width: 95%;
 }
+
+/* Ensure all clickable elements are at least 48x48px */
+.btn-primary,
+.btn-secondary,
+.service-btn,
+.cta-btn-white,
+.form-submit {
+    min-height: 48px;
+    padding: 14px 28px;
+    font-size: 16px;
+}
+
+/* Improve spacing on mobile */
+.hero {
+    padding: 40px 20px;
+    gap: 40px;
+}
+
+.section-header {
+    margin-bottom: 48px;
+}
+
+.features-section,
+.marketing-services-section {
+    padding: 80px 0;
+    margin-top: 80px;
+}
+
+.feature-card,
+.service-card {
+    padding: 32px 24px;
+}
 }
 @media (max-width: 480px) {
 .hero-title {
@@ -2726,6 +2817,9 @@ font-size: 28px;
     </style>
 </head>
 <body>
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+    
     <!-- ========================================
          NAVIGATION BAR
     ======================================== -->
@@ -2745,7 +2839,11 @@ font-size: 28px;
     <!-- ========================================
          MOBILE MENU BUTTON
     ======================================== -->
-    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+    <button class="mobile-menu-btn" 
+            onclick="toggleMobileMenu()" 
+            aria-label="Toggle mobile menu"
+            aria-expanded="false"
+            aria-controls="mobileNav">
         <span></span>
         <span></span>
         <span></span>
@@ -2754,7 +2852,10 @@ font-size: 28px;
     <!-- ========================================
          MOBILE NAVIGATION
     ======================================== -->
-    <div class="mobile-nav-overlay" id="mobileNav">
+    <nav class="mobile-nav-overlay" 
+         id="mobileNav" 
+         role="navigation" 
+         aria-label="Mobile navigation">
         <div class="mobile-nav-content">
             <ul class="mobile-nav-links">
                 <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
@@ -2765,7 +2866,7 @@ font-size: 28px;
             </ul>
             <button class="nav-cta-btn" onclick="openModal(); closeMobileMenu();">Start Your Project</button>
         </div>
-    </div>
+    </nav>
 
     <!-- ========================================
          ANNOUNCEMENT BANNER
@@ -2797,7 +2898,7 @@ font-size: 28px;
         🎯 Take Our Quiz - Find Your Perfect Plan
     </button>
 </div>
-<main>
+<main id="main-content">
         <!-- ========================================
          HERO SECTION - SEO OPTIMIZED
     ======================================== -->
@@ -3979,8 +4080,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const nav = document.getElementById('mobileNav');
             const body = document.body;
             
-            btn.classList.toggle('active');
+            const isActive = btn.classList.toggle('active');
             nav.classList.toggle('active');
+            
+            // Update ARIA attributes for accessibility
+            btn.setAttribute('aria-expanded', isActive);
             
             if (nav.classList.contains('active')) {
                 body.style.overflow = 'hidden';
@@ -3996,6 +4100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             btn.classList.remove('active');
             nav.classList.remove('active');
+            btn.setAttribute('aria-expanded', 'false');
             body.style.overflow = '';
         }
 

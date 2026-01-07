@@ -3144,20 +3144,25 @@ body {
         margin-top: 0;
         box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
         z-index: 50;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
     }
 
     .btn-back,
     .btn-skip {
-        padding: 8px 14px;
-        font-size: 11px;
-        min-height: 36px;
+        padding: 8px 14px !important;
+        font-size: 11px !important;
+        min-height: 36px !important;
+        display: inline-block !important;
     }
 
     .btn-next {
-        width: 100%;
-        margin-top: 10px;
-        min-height: 40px;
-        font-size: 13px;
+        width: 100% !important;
+        margin-top: 10px !important;
+        min-height: 40px !important;
+        font-size: 13px !important;
+        display: block !important;
     }
 
     /* RESULTS SCREEN */
@@ -3216,6 +3221,20 @@ body {
     .results-note {
         font-size: 11px;
         margin-top: 12px;
+    }
+
+/* FORCE QUIZ NAVIGATION TO SHOW */
+    #quizNav {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    #backBtn,
+    #skipBtn {
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 }
 
@@ -4568,6 +4587,7 @@ function resetQuiz() {
 }
 
 // Select Option and Move to Next Step
+// Select Option and Move to Next Step
 function selectOption(element, key, value) {
     // Save the answer
     quizData[key] = value;
@@ -4577,10 +4597,8 @@ function selectOption(element, key, value) {
     siblings.forEach(opt => opt.classList.remove('selected'));
     element.classList.add('selected');
     
-    // Auto-advance after a brief delay
-    setTimeout(() => {
-        nextStep();
-    }, 300);
+    // DON'T auto-advance - let user click Skip or Back buttons
+    // Users must click "Skip →" button to continue
 }
 
 // Validate Contact Form and Move Next
@@ -4664,14 +4682,14 @@ function updateNavigationButtons() {
     if (currentStep === 1) {
         backBtn.style.display = 'none';
     } else {
-        backBtn.style.display = 'block';
+        backBtn.style.display = 'inline-block';
     }
     
     // Hide skip button on contact info step
     if (currentStep === 8) {
         skipBtn.style.display = 'none';
     } else if (currentStep < 8 || currentStep === 9 || currentStep === 10) {
-        skipBtn.style.display = 'block';
+        skipBtn.style.display = 'inline-block';
     } else {
         skipBtn.style.display = 'none';
     }
@@ -5533,13 +5551,13 @@ function goToPricing() {
                 </div>
             </div>
 
-            <!-- Navigation Buttons -->
-            <div class="quiz-navigation" id="quizNav">
-                <button class="btn-back" onclick="previousStep()" id="backBtn">← Back</button>
-                <button class="btn-skip" onclick="skipStep()" id="skipBtn">Skip →</button>
-            </div>
+            <!-- Navigation Buttons - OUTSIDE quiz-body -->
+        <div class="quiz-navigation" id="quizNav">
+            <button class="btn-back" onclick="previousStep()" id="backBtn">← Back</button>
+            <button class="btn-skip" onclick="skipStep()" id="skipBtn">Skip →</button>
         </div>
     </div>
+</div>
 </div>
 </body>
 </html>

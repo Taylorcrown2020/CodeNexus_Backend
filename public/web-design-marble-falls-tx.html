@@ -767,16 +767,50 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
+/* NEW VERSION (USE THIS): */
 body {
     background: var(--white);
     color: var(--text-primary);
-    overflow-x: hidden;
     padding-top: 80px;
     line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch; /* ✅ Smooth iOS scrolling */
+    overscroll-behavior-y: contain; /* ✅ Prevent pull-to-refresh issues */
+    position: relative; /* ✅ Instead of overflow-x hidden */
+}
+
+@media (max-width: 768px) {
+    /* Fix modal scrolling */
+    .quiz-modal-overlay,
+    .modal-overlay {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+    
+    .quiz-modal-content,
+    .modal-content {
+        max-height: none;
+        overflow-y: visible;
+        margin: 20px auto;
+    }
+    
+    /* Disable problematic animations */
+    * {
+        animation-duration: 0.2s !important;
+        transition-duration: 0.2s !important;
+    }
+    
+    /* Remove hover effects on mobile */
+    .feature-card:hover,
+    .service-card:hover,
+    .portfolio-item:hover {
+        transform: none !important;
+    }
+    
+    /* Hide marketing popup on mobile */
+    .marketing-popup-overlay {
+        display: none !important;
+    }
 }
 
 .navbar {
@@ -2993,248 +3027,293 @@ body {
 }
 
 /* ========================================
-   QUIZ BUTTON - MOBILE OPTIMIZED
-======================================== */
-#quizButtonContainer {
-    margin: 20px auto 0 !important;
-    padding: 0 20px 20px;
-}
+       QUIZ MODAL - COMPLETELY REWRITTEN FOR MOBILE
+    ======================================== */
+    
+    .quiz-modal-overlay {
+        padding: 15px;
+        align-items: center;
+        overflow-y: auto;
+    }
 
-#quizButtonContainer .btn-primary {
-    width: auto;
-    max-width: 100%;
-    font-size: 13px;
-    padding: 12px 20px;
-    background: var(--white);
-    color: var(--text-primary);
-    border: 2px solid var(--border);
-    box-shadow: var(--shadow);
-    display: inline-flex;
-}
+    .quiz-modal-content {
+        max-width: 90%;
+        width: 90%;
+        max-height: 75vh;
+        min-height: auto;
+        margin: auto;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
 
-#quizButtonContainer .btn-primary:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    transform: translateY(-2px);
-}
+    .quiz-header {
+        padding: 35px 12px 10px;
+        flex-shrink: 0;
+    }
 
-#quizButtonContainer .btn-primary::before {
-    display: none;
-}
+    .quiz-title {
+        font-size: 16px;
+        line-height: 1.2;
+        margin-bottom: 5px;
+    }
 
-/* ========================================
-   QUIZ MODAL - MOBILE OPTIMIZED
-======================================== */
-.quiz-modal-overlay {
-    padding: 0;
-    align-items: flex-start;
-}
+    .quiz-subtitle {
+        font-size: 10px;
+        margin-bottom: 0;
+        line-height: 1.3;
+    }
 
-.quiz-modal-content {
-    max-width: 100%;
-    width: 100%;
-    max-height: 100vh;
-    height: 100vh;
-    margin: 0;
-    border-radius: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
+    .quiz-badge {
+        font-size: 8px;
+        padding: 3px 8px;
+        margin-bottom: 8px;
+    }
 
-.quiz-header {
-    padding: 60px 20px 20px;
-}
+    .quiz-close {
+        top: 8px;
+        right: 8px;
+        width: 32px;
+        height: 32px;
+        background: var(--white);
+        border: 2px solid var(--border);
+        box-shadow: var(--shadow-md);
+        z-index: 100;
+    }
 
-.quiz-title {
-    font-size: 22px;
-    line-height: 1.3;
-}
+    .quiz-close::before,
+    .quiz-close::after {
+        width: 14px;
+        height: 2px;
+        background: var(--text-primary);
+    }
 
-.quiz-subtitle {
-    font-size: 13px;
-}
+    .quiz-progress {
+        padding: 8px 12px;
+        flex-shrink: 0;
+    }
 
-.quiz-badge {
-    font-size: 11px;
-    padding: 5px 12px;
-}
+    .progress-text {
+        font-size: 9px;
+        margin-bottom: 5px;
+    }
 
-.quiz-close {
-    top: 16px;
-    right: 16px;
-    width: 40px;
-    height: 40px;
-    background: var(--white);
-    border: 2px solid var(--border);
-    box-shadow: var(--shadow-md);
-    z-index: 100;
-}
+    .progress-bar-container {
+        height: 3px;
+    }
 
-.quiz-close::before,
-.quiz-close::after {
-    width: 18px;
-    height: 3px;
-    background: var(--text-primary);
-}
+    .quiz-body {
+        padding: 10px 12px 70px;
+        flex: 1;
+        overflow-y: auto;
+    }
 
-.quiz-progress {
-    padding: 16px 20px;
-}
+    .step-question {
+        font-size: 14px;
+        margin-bottom: 5px;
+        line-height: 1.2;
+    }
 
-.progress-text {
-    font-size: 12px;
-    margin-bottom: 10px;
-}
+    .step-description {
+        font-size: 10px;
+        margin-bottom: 10px;
+        line-height: 1.3;
+    }
 
-.quiz-body {
-    padding: 24px 20px 80px;
-    min-height: calc(100vh - 300px);
-}
+    /* QUIZ OPTIONS - 2x2 GRID LAYOUT */
+    .option-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        grid-auto-rows: minmax(70px, auto) !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
 
-.step-question {
-    font-size: 18px;
-    margin-bottom: 12px;
-    line-height: 1.3;
-}
+    .quiz-option {
+        padding: 10px 8px !important;
+        min-height: 70px !important;
+        height: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        border-radius: 8px !important;
+    }
 
-.step-description {
-    font-size: 13px;
-    margin-bottom: 24px;
-}
+    .option-icon {
+        font-size: 20px;
+        margin-bottom: 4px;
+    }
 
-/* QUIZ OPTIONS - 2 COLUMN GRID ON MOBILE */
-.option-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-}
+    .option-title {
+        font-size: 10px;
+        margin-bottom: 2px;
+        text-align: center;
+        line-height: 1.1;
+    }
 
-.quiz-option {
-    padding: 20px 12px;
-    min-height: 140px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
+    .option-desc {
+        font-size: 8px;
+        text-align: center;
+        line-height: 1.1;
+    }
 
-.option-icon {
-    font-size: 32px;
-    margin-bottom: 10px;
-}
+    /* FORM INPUTS IN QUIZ */
+    .form-group {
+        margin-bottom: 10px;
+    }
 
-.option-title {
-    font-size: 13px;
-    margin-bottom: 4px;
-    text-align: center;
-}
+    .form-label {
+        font-size: 10px;
+        margin-bottom: 4px;
+    }
 
-.option-desc {
-    font-size: 11px;
-    text-align: center;
-}
+    .form-input,
+    .form-textarea {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
 
-/* FORM INPUTS IN QUIZ */
-.form-group {
-    margin-bottom: 20px;
-}
+    .form-textarea {
+        min-height: 60px;
+    }
 
-.form-label {
-    font-size: 13px;
-    margin-bottom: 6px;
-}
+    /* QUIZ NAVIGATION - FIXED BOTTOM */
+    .quiz-navigation {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--white);
+        border-top: 1px solid var(--border);
+        padding: 8px 12px;
+        margin-top: 0;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
+        z-index: 50;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
 
-.form-input,
-.form-textarea {
-    font-size: 16px;
-    padding: 12px 14px;
-}
+    .btn-back,
+    .btn-skip {
+        padding: 8px 14px !important;
+        font-size: 11px !important;
+        min-height: 36px !important;
+        display: inline-block !important;
+    }
 
-.form-textarea {
-    min-height: 100px;
-}
+    .btn-next {
+        width: 100% !important;
+        margin-top: 10px !important;
+        min-height: 40px !important;
+        font-size: 13px !important;
+        display: block !important;
+    }
 
-/* QUIZ NAVIGATION */
-.quiz-navigation {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--white);
-    border-top: 1px solid var(--border);
-    padding: 16px 20px;
-    margin-top: 0;
-    box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
-    z-index: 50;
-}
+    /* RESULTS SCREEN */
+    .results-container {
+        padding: 16px 0;
+    }
 
-.btn-back,
-.btn-skip {
-    padding: 12px 20px;
-    font-size: 14px;
-    min-height: 44px;
-}
+    .results-icon {
+        font-size: 40px;
+        margin-bottom: 12px;
+    }
 
-.btn-next {
-    width: 100%;
-    margin-top: 20px;
-    min-height: 48px;
-}
+    .results-title {
+        font-size: 18px;
+        margin-bottom: 16px;
+    }
 
-/* RESULTS SCREEN */
-.results-container {
-    padding: 20px 0;
-}
+    .results-plan {
+        padding: 16px 12px;
+        margin-bottom: 16px;
+    }
 
-.results-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-}
+    .plan-name {
+        font-size: 20px;
+        margin-bottom: 8px;
+    }
 
-.results-title {
-    font-size: 20px;
-    margin-bottom: 20px;
-}
+    .plan-price {
+        font-size: 28px;
+        margin-bottom: 10px;
+    }
 
-.results-plan {
-    padding: 24px 16px;
-    margin-bottom: 24px;
-}
+    .plan-reason {
+        font-size: 12px;
+        line-height: 1.5;
+    }
 
-.plan-name {
-    font-size: 24px;
-    margin-bottom: 10px;
-}
+    .results-details {
+        font-size: 11px;
+        padding: 12px;
+        margin-bottom: 16px;
+        line-height: 1.5;
+    }
 
-.plan-price {
-    font-size: 32px;
-    margin-bottom: 12px;
-}
+    .results-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
 
-.plan-reason {
-    font-size: 13px;
-    line-height: 1.6;
-}
+    .results-actions button {
+        width: 100%;
+        font-size: 13px;
+        padding: 12px 24px;
+    }
 
-.results-details {
-    font-size: 12px;
-    padding: 16px;
-    margin-bottom: 24px;
-    line-height: 1.6;
-}
+    .results-note {
+        font-size: 11px;
+        margin-top: 12px;
+    }
 
-.results-actions {
-    flex-direction: column;
-    gap: 12px;
-}
+/* FORCE QUIZ NAVIGATION TO SHOW */
+    #quizNav {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    /* FORCE NAVIGATION BUTTONS TO SHOW - DEBUG VERSION */
+    .quiz-navigation {
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        background: var(--white) !important;
+        border-top: 2px solid var(--border) !important;
+        padding: 16px 12px !important;
+        margin-top: 20px !important;
+        box-shadow: none !important;
+        z-index: 10 !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
 
-.results-actions button {
-    width: 100%;
-}
-
-.results-note {
-    font-size: 12px;
-    margin-top: 16px;
-}
+    #backBtn,
+    #skipBtn {
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        background: var(--primary) !important;
+        color: var(--white) !important;
+        padding: 12px 20px !important;
+        font-size: 13px !important;
+        min-height: 44px !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+    }
+    
+    .quiz-body {
+        padding: 10px 12px 20px !important;
+    }
 }
 
 /* VERY SMALL SCREENS */
@@ -4571,17 +4650,17 @@ let quizData = {
 let currentStep = 1;
 const totalSteps = 10;
 
-// Open Quiz Modal
+// NEW VERSION (USE THIS):
 function openQuizModal() {
     document.getElementById('quizModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
     resetQuiz();
+    // ✅ DON'T touch body overflow
 }
 
-// Close Quiz Modal
+// NEW VERSION (USE THIS):
 function closeQuizModal() {
     document.getElementById('quizModal').classList.remove('active');
-    document.body.style.overflow = '';
+    // ✅ DON'T touch body overflow
 }
 
 // Reset Quiz
@@ -4889,48 +4968,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-        // Mobile Menu Functions
-        function toggleMobileMenu() {
-            const btn = document.querySelector('.mobile-menu-btn');
-            const nav = document.getElementById('mobileNav');
-            const body = document.body;
-            
-            const isActive = btn.classList.toggle('active');
-            nav.classList.toggle('active');
-            
-            // Update ARIA attributes for accessibility
-            btn.setAttribute('aria-expanded', isActive);
-            
-            if (nav.classList.contains('active')) {
-                body.style.overflow = 'hidden';
-            } else {
-                body.style.overflow = '';
-            }
-        }
+        // NEW VERSION (USE THIS):
+function toggleMobileMenu() {
+    const btn = document.querySelector('.mobile-menu-btn');
+    const nav = document.getElementById('mobileNav');
+    
+    const isActive = btn.classList.toggle('active');
+    nav.classList.toggle('active');
+    btn.setAttribute('aria-expanded', isActive);
+    
+    // ✅ DON'T touch body overflow - let it scroll naturally
+}
 
-        function closeMobileMenu() {
-            const btn = document.querySelector('.mobile-menu-btn');
-            const nav = document.getElementById('mobileNav');
-            const body = document.body;
-            
-            btn.classList.remove('active');
-            nav.classList.remove('active');
-            btn.setAttribute('aria-expanded', 'false');
-            body.style.overflow = '';
-        }
+        // NEW VERSION (USE THIS):
+function closeMobileMenu() {
+    const btn = document.querySelector('.mobile-menu-btn');
+    const nav = document.getElementById('mobileNav');
+    
+    btn.classList.remove('active');
+    nav.classList.remove('active');
+    btn.setAttribute('aria-expanded', 'false');
+    
+    // ✅ DON'T touch body overflow
+}
 
-        // Modal Functions
-        function openModal() {
-            const modal = document.getElementById('contactModal');
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
+        // NEW VERSION (USE THIS):
+function openModal() {
+    const modal = document.getElementById('contactModal');
+    modal.classList.add('active');
+    // ✅ Let modal handle its own scrolling
+}
 
-        function closeModal() {
-            const modal = document.getElementById('contactModal');
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-        }
+        // NEW VERSION (USE THIS):
+function closeModal() {
+    const modal = document.getElementById('contactModal');
+    modal.classList.remove('active');
+    // ✅ DON'T touch body overflow
+}
 
         // Close modal when clicking outside
         document.getElementById('contactModal').addEventListener('click', function(e) {
@@ -5009,17 +5083,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Keep your existing modal functions (openModal, closeModal)
         // This is just showing them again for completeness:
         
-        function openModal() {
-            const modal = document.getElementById('contactModal');
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
+        // NEW VERSION (USE THIS):
+function openModal() {
+    const modal = document.getElementById('contactModal');
+    modal.classList.add('active');
+    // ✅ Let modal handle its own scrolling
+}
 
-        function closeModal() {
-            const modal = document.getElementById('contactModal');
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-        }
+        // NEW VERSION (USE THIS):
+function closeModal() {
+    const modal = document.getElementById('contactModal');
+    modal.classList.remove('active');
+    // ✅ DON'T touch body overflow
+}
 
         // Close modal when clicking outside
         document.getElementById('contactModal').addEventListener('click', function(e) {
@@ -5125,20 +5201,25 @@ function resetCookieConsent() {
             setInterval(updateCountdown, 1000);
         });
 
-        function showMarketingPopup() {
-            const popup = document.getElementById('marketingPopup');
-            popup.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
+        // NEW VERSION (USE THIS):
+function showMarketingPopup() {
+    // ✅ DISABLE POPUP ON MOBILE ENTIRELY
+    if (window.innerWidth <= 768) {
+        return; // Don't show on mobile
+    }
+    
+    const popup = document.getElementById('marketingPopup');
+    popup.classList.add('active');
+    // Don't touch body overflow
+}
 
-        function closeMarketingPopup() {
-            const popup = document.getElementById('marketingPopup');
-            popup.classList.remove('active');
-            document.body.style.overflow = '';
-            
-            // Mark as seen for this session
-            sessionStorage.setItem('marketingPopupSeen', 'true');
-        }
+        // NEW VERSION (USE THIS):
+function closeMarketingPopup() {
+    const popup = document.getElementById('marketingPopup');
+    popup.classList.remove('active');
+    sessionStorage.setItem('marketingPopupSeen', 'true');
+    // ✅ DON'T touch body overflow
+}
 
         // Close popup when clicking outside
         document.getElementById('marketingPopup').addEventListener('click', function(e) {
@@ -5577,13 +5658,13 @@ function goToPricing() {
                 </div>
             </div>
 
-            <!-- Navigation Buttons -->
-            <div class="quiz-navigation" id="quizNav">
-                <button class="btn-back" onclick="previousStep()" id="backBtn">← Back</button>
-                <button class="btn-skip" onclick="skipStep()" id="skipBtn">Skip →</button>
-            </div>
+            <!-- Navigation Buttons - OUTSIDE quiz-body -->
+        <div class="quiz-navigation" id="quizNav">
+            <button class="btn-back" onclick="previousStep()" id="backBtn">← Back</button>
+            <button class="btn-skip" onclick="skipStep()" id="skipBtn">Skip →</button>
         </div>
     </div>
+</div>
 </div>
 </body>
 </html>

@@ -1111,17 +1111,19 @@
         // Keep your existing modal functions (openModal, closeModal)
         // This is just showing them again for completeness:
         
-        function openModal() {
-            const modal = document.getElementById('contactModal');
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
+        // NEW VERSION (USE THIS):
+function openModal() {
+    const modal = document.getElementById('contactModal');
+    modal.classList.add('active');
+    // ✅ Let modal handle its own scrolling
+}
 
-        function closeModal() {
-            const modal = document.getElementById('contactModal');
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-        }
+        // NEW VERSION (USE THIS):
+function closeModal() {
+    const modal = document.getElementById('contactModal');
+    modal.classList.remove('active');
+    // ✅ DON'T touch body overflow
+}
 
         // Close modal when clicking outside
         document.getElementById('contactModal').addEventListener('click', function(e) {
@@ -1130,31 +1132,29 @@
             }
         });
 
-    // Mobile Menu Functions
-    function toggleMobileMenu() {
-        const btn = document.querySelector('.mobile-menu-btn');
-        const nav = document.getElementById('mobileNav');
-        const body = document.body;
-        
-        btn.classList.toggle('active');
-        nav.classList.toggle('active');
-        
-        if (nav.classList.contains('active')) {
-            body.style.overflow = 'hidden';
-        } else {
-            body.style.overflow = '';
-        }
-    }
+    // NEW VERSION (USE THIS):
+function toggleMobileMenu() {
+    const btn = document.querySelector('.mobile-menu-btn');
+    const nav = document.getElementById('mobileNav');
+    
+    const isActive = btn.classList.toggle('active');
+    nav.classList.toggle('active');
+    btn.setAttribute('aria-expanded', isActive);
+    
+    // ✅ DON'T touch body overflow - let it scroll naturally
+}
 
-    function closeMobileMenu() {
-        const btn = document.querySelector('.mobile-menu-btn');
-        const nav = document.getElementById('mobileNav');
-        const body = document.body;
-        
-        btn.classList.remove('active');
-        nav.classList.remove('active');
-        body.style.overflow = '';
-    }
+    // NEW VERSION (USE THIS):
+function closeMobileMenu() {
+    const btn = document.querySelector('.mobile-menu-btn');
+    const nav = document.getElementById('mobileNav');
+    
+    btn.classList.remove('active');
+    nav.classList.remove('active');
+    btn.setAttribute('aria-expanded', 'false');
+    
+    // ✅ DON'T touch body overflow
+}
 </script>
 </body>
 </html>

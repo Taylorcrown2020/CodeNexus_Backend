@@ -4618,7 +4618,6 @@ function resetQuiz() {
 }
 
 // Select Option and Move to Next Step
-// Select Option and Move to Next Step
 function selectOption(element, key, value) {
     // Save the answer
     quizData[key] = value;
@@ -4628,8 +4627,10 @@ function selectOption(element, key, value) {
     siblings.forEach(opt => opt.classList.remove('selected'));
     element.classList.add('selected');
     
-    // DON'T auto-advance - let user click Skip or Back buttons
-    // Users must click "Skip →" button to continue
+    // Auto-advance after a brief delay
+    setTimeout(() => {
+        nextStep();
+    }, 300);
 }
 
 // Validate Contact Form and Move Next

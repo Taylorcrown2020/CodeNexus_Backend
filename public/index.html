@@ -3230,11 +3230,42 @@ body {
         opacity: 1 !important;
     }
     
+    /* FORCE NAVIGATION BUTTONS TO SHOW - DEBUG VERSION */
+    .quiz-navigation {
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        background: var(--white) !important;
+        border-top: 2px solid var(--border) !important;
+        padding: 16px 12px !important;
+        margin-top: 20px !important;
+        box-shadow: none !important;
+        z-index: 10 !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
     #backBtn,
     #skipBtn {
         display: inline-block !important;
         visibility: visible !important;
         opacity: 1 !important;
+        background: var(--primary) !important;
+        color: var(--white) !important;
+        padding: 12px 20px !important;
+        font-size: 13px !important;
+        min-height: 44px !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+    }
+    
+    .quiz-body {
+        padding: 10px 12px 20px !important;
     }
 }
 

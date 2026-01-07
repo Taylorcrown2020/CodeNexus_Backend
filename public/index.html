@@ -4705,31 +4705,33 @@ function updateProgress() {
 }
 
 // Update Navigation Buttons
+// Update Navigation Buttons - ALWAYS SHOW
 function updateNavigationButtons() {
     const backBtn = document.getElementById('backBtn');
     const skipBtn = document.getElementById('skipBtn');
     const navContainer = document.getElementById('quizNav');
     
+    // ALWAYS show navigation container
+    navContainer.style.display = 'flex';
+    navContainer.style.visibility = 'visible';
+    navContainer.style.opacity = '1';
+    
+    // Show/hide Back button
     if (currentStep === 1) {
         backBtn.style.display = 'none';
     } else {
         backBtn.style.display = 'inline-block';
+        backBtn.style.visibility = 'visible';
+        backBtn.style.opacity = '1';
     }
     
-    // Hide skip button on contact info step
-    if (currentStep === 8) {
-        skipBtn.style.display = 'none';
-    } else if (currentStep < 8 || currentStep === 9 || currentStep === 10) {
-        skipBtn.style.display = 'inline-block';
-    } else {
-        skipBtn.style.display = 'none';
-    }
-    
-    // Hide navigation on results page
+    // ALWAYS show Skip button (except on results page)
     if (currentStep === 11) {
         navContainer.style.display = 'none';
     } else {
-        navContainer.style.display = 'flex';
+        skipBtn.style.display = 'inline-block';
+        skipBtn.style.visibility = 'visible';
+        skipBtn.style.opacity = '1';
     }
 }
 

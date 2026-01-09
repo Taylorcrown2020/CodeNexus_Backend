@@ -202,7 +202,7 @@
     "name": "How much does a website cost in Llano, TX?",
     "acceptedAnswer": {
       "@type": "Answer",
-      "text": "Our Starter package begins at $399.99, Professional at $599.99, and custom Enterprise solutions are quoted individually based on your specific needs."
+      "text": "Our Starter package begins at $199.99, Professional at $299.99, and custom Enterprise solutions are quoted individually based on your specific needs."
     }
   },
   {
@@ -575,7 +575,7 @@
     "name": "How much does a website cost in Llano, TX?",
     "acceptedAnswer": {
       "@type": "Answer",
-      "text": "Our Starter package begins at $399.99, Professional at $599.99, and custom Enterprise solutions are quoted individually based on your specific needs."
+      "text": "Our Starter package begins at $199.99, Professional at $299.99, and custom Enterprise solutions are quoted individually based on your specific needs."
     }
   },
   {
@@ -1337,7 +1337,7 @@
 }
 </script>
             <div class="service-card">
-                <div class="service-price">$399.99</div>
+                <div class="service-price">$199.99</div>
                 <div class="service-period">one-time</div>
                 <h3 class="service-name">Starter Website Package</h3>
                 <p class="service-description">
@@ -1367,7 +1367,7 @@
             </div>
 
             <div class="service-card">
-                <div class="service-price">$599.99</div>
+                <div class="service-price">$299.99</div>
                 <div class="service-period">one-time</div>
                 <h3 class="service-name">Professional Website Package</h3>
                 <p class="service-description">
@@ -1456,7 +1456,7 @@
 </div>
 
 <div class="service-card">
-    <div class="service-price">$299</div>
+    <div class="service-price">$74.99</div>
     <div class="service-period">per month</div>
     <h3 class="service-name">SEO Services</h3>
     <p class="service-description">
@@ -1736,8 +1736,8 @@
                     <label class="form-label">// Budget Range *</label>
                     <select id="budget" class="form-input" required>
                         <option value="">Select your budget...</option>
-                        <option value="$399.99">$399.99 (Starter)</option>
-                        <option value="$599.99">$599.99 (Professional)</option>
+                        <option value="$199.99">$199.99 (Starter)</option>
+                        <option value="$299.99">$299.99 (Professional)</option>
                         <option value="Custom">Custom (Enterprise)</option>
                         <option value="Not Sure">Not Sure Yet</option>
                     </select>
@@ -1944,7 +1944,7 @@ function updateNavigationButtons() {
 // Calculate Results and Submit
 async function calculateResults() {
     let recommendedPlan = 'Starter';
-    let planPrice = '$399.99';
+    let planPrice = '$199.99';
     let planReason = '';
     let score = 0;
     
@@ -1976,8 +1976,8 @@ async function calculateResults() {
     if (quizData.marketing === 'both' || quizData.marketing === 'email') score += 1;
     
     if (quizData.budget === 'Custom') score += 3;
-    if (quizData.budget === '$399.99') score += 2;
-    if (quizData.budget === '$599.99') score += 1;
+    if (quizData.budget === '$199.99') score += 2;
+    if (quizData.budget === '$299.99') score += 1;
     
     // Determine plan based on score
     if (score >= 15) {
@@ -1990,7 +1990,7 @@ async function calculateResults() {
         planReason = 'Your requirements indicate a need for advanced features, more pages, and enhanced functionality. The Professional package gives you robust CRM capabilities, advanced analytics, and the tools to scale your growing business effectively.';
     } else {
         recommendedPlan = 'Starter';
-        planPrice = '$399.99';
+        planPrice = '$199.99';
         planReason = 'Perfect for getting your business online with a solid foundation! The Starter package includes all essential features like lead capture, basic CRM, e-commerce capabilities, and room to grow. It\'s the ideal starting point that won\'t break the bank.';
     }
     
@@ -2471,9 +2471,7 @@ function closeMarketingPopup() {
             </div>
         </div>
     </div>
-    <!-- ========================================
-     QUIZ MODAL - ADD THIS BEFORE THE CLOSING </body> TAG
-======================================== -->
+
 
 <div class="quiz-modal-overlay" id="quizModal">
     <div class="quiz-modal-content">
@@ -2716,14 +2714,14 @@ function closeMarketingPopup() {
                 <h3 class="step-question">What's your estimated budget?</h3>
                 <p class="step-description">This helps us recommend the right plan for you.</p>
                 <div class="option-grid">
-                    <div class="quiz-option" onclick="selectOption(this, 'budget', '$399.99')">
+                    <div class="quiz-option" onclick="selectOption(this, 'budget', '$199.99')">
                         <div class="option-icon">💵</div>
-                        <div class="option-title">$399.99</div>
+                        <div class="option-title">$199.99</div>
                         <div class="option-desc">Starter budget</div>
                     </div>
-                    <div class="quiz-option" onclick="selectOption(this, 'budget', '$599.99')">
+                    <div class="quiz-option" onclick="selectOption(this, 'budget', '$299.99')">
                         <div class="option-icon">💵</div>
-                        <div class="option-title">$599.99</div>
+                        <div class="option-title">$299.99</div>
                         <div class="option-desc">Professional tier</div>
                     </div>
                     <div class="quiz-option" onclick="selectOption(this, 'budget', 'Custom')">

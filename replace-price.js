@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT_DIR = process.cwd();
-const SEARCH_REGEX = /\$799\.99/g;
-const REPLACEMENT = '$599.99';
+const SEARCH_REGEX = /\$499\.99/g;
+const REPLACEMENT = '$299.99';
 
 const IGNORE_DIRS = [
     'node_modules',
@@ -41,6 +41,6 @@ function walk(dir) {
     });
 }
 
-console.log('🔍 Replacing "$599.99" → "$599.99"');
+console.log('🔍 Replacing "$299.99" → "$299.99"');
 walk(ROOT_DIR);
 console.log('✅ Price replacement complete.');

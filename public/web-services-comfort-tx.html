@@ -818,6 +818,939 @@
     
     <link rel="stylesheet" href="comfort.css">
 
+<style>
+/* ========================================
+   MOBILE DESIGN IMPROVEMENTS - DIAMONDBACK CODING
+   Subtle enhancements that keep your brand identity
+   Add this AFTER your main style.css
+======================================== */
+
+@media (max-width: 768px) {
+    /* ========================================
+       IMPROVED SPACING & LAYOUT
+    ======================================== */
+    
+    body {
+        padding-top: 70px;
+        background: var(--white);
+    }
+
+    /* ========================================
+       NAVIGATION - CLEANER HEADER
+    ======================================== */
+    
+    .navbar {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+        padding: 16px 0;
+    }
+
+    .nav-container {
+        padding: 0 24px;
+    }
+
+    .nav-logo {
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .mobile-menu-btn {
+        top: 18px;
+        right: 24px;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    /* ========================================
+       MOBILE NAV MENU - FULL SCREEN FIX
+    ======================================== */
+    
+    .mobile-nav-overlay {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
+        backdrop-filter: blur(20px);
+        padding-top: 80px;
+        border: none;
+    }
+
+    .mobile-nav-content {
+        padding: 40px 32px;
+        max-width: 100%;
+    }
+
+    .mobile-nav-links {
+        list-style: none;
+        margin-bottom: 40px;
+    }
+
+    .mobile-nav-links li {
+        margin-bottom: 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .mobile-nav-links a {
+        color: var(--text-primary);
+        font-size: 24px;
+        font-weight: 700;
+        padding: 24px 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 48px;
+        transition: all 0.2s ease;
+    }
+
+    .mobile-nav-links a:hover,
+    .mobile-nav-links a:active {
+        color: var(--primary);
+        padding-left: 12px;
+    }
+
+    .mobile-nav-content .nav-cta-btn {
+        background: linear-gradient(135deg, var(--primary) 0%, #0d9668 100%);
+        color: white;
+        width: 100%;
+        padding: 18px 32px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        text-align: center;
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+        margin-top: 32px;
+        border: none;
+        display: block;
+    }
+
+    /* ========================================
+       ANNOUNCEMENT BANNER
+    ======================================== */
+    
+    .announcement-banner {
+        padding: 12px 20px;
+    }
+
+    .announcement-content {
+        font-size: 13px;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .announcement-badge {
+        font-size: 10px;
+        padding: 4px 10px;
+    }
+
+    .announcement-text {
+        font-size: 12px;
+    }
+
+    /* ========================================
+       HERO SECTION - COMPACT BUT COMPLETE
+    ======================================== */
+    
+    .hero {
+        padding: 30px 20px 50px;
+        text-align: center;
+        gap: 0;
+        margin-top: 0;
+        background: var(--white);
+    }
+
+    .hero-text {
+        max-width: 100%;
+        background: white;
+        padding: 28px 20px 24px;
+        border-radius: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--border);
+    }
+
+    /* Compact title */
+    .hero-title {
+        font-size: 26px;
+        line-height: 1.2;
+        margin-bottom: 14px;
+        font-weight: 800;
+        color: var(--black);
+        letter-spacing: -0.02em;
+    }
+
+    /* Compact description - show all text but smaller */
+    .hero-subtitle {
+        font-size: 13px !important;
+        line-height: 1.5 !important;
+        color: var(--text-secondary) !important;
+        margin-bottom: 20px !important;
+        padding: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
+        visibility: visible !important;
+        max-width: 100% !important;
+        font-weight: 400 !important;
+        display: block !important;
+    }
+
+    /* Keep links but make them inline and subtle */
+    .hero-subtitle a {
+        display: inline !important;
+        color: var(--primary) !important;
+        text-decoration: none !important;
+        border-bottom: 1px solid transparent !important;
+        font-size: 13px !important;
+    }
+
+    .hero-cta {
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .hero-cta .btn-primary,
+    .hero-cta .btn-secondary {
+        width: 100%;
+        padding: 15px 28px;
+        font-size: 15px;
+        font-weight: 700;
+        border-radius: 12px;
+    }
+
+    .hero-cta .btn-primary {
+        background: linear-gradient(135deg, var(--primary) 0%, #0d9668 100%);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+
+    .hero-cta .btn-secondary {
+        background: white;
+        border: 2px solid var(--border);
+        color: var(--secondary);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Hide terminal on mobile for cleaner look */
+    .hero-visual {
+        display: none !important;
+    }
+
+    /* Remove the separator line */
+    .hero::after {
+        display: none;
+    }
+
+    /* ========================================
+       QUIZ BUTTON - PROFESSIONAL TRANSPARENT STYLE
+    ======================================== */
+    
+    #quizButtonContainer {
+        margin: 40px auto 60px;
+        padding: 0 24px;
+    }
+
+    #quizButtonContainer .btn-primary {
+        width: 100%;
+        padding: 18px 32px;
+        font-size: 16px;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(15, 23, 42, 0.1);
+        color: var(--text-primary);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s ease;
+    }
+
+    #quizButtonContainer .btn-primary:hover {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(15, 23, 42, 0.15);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    #quizButtonContainer .btn-primary::before {
+        display: none;
+    }
+
+    /* ========================================
+       SECTIONS - IMPROVED SPACING
+    ======================================== */
+    
+    .features-section,
+    .marketing-services-section,
+    .portfolio-section,
+    .services-section,
+    .local-area-section {
+        padding: 80px 24px;
+        margin-top: 0;
+    }
+
+    .section-header {
+        margin-bottom: 48px;
+    }
+
+    .section-subtitle {
+        font-size: 12px;
+        margin-bottom: 12px;
+    }
+
+    .section-title {
+        font-size: 32px;
+        line-height: 1.2;
+        margin-bottom: 16px;
+    }
+
+    .section-description {
+        font-size: 16px;
+        line-height: 1.6;
+    }
+
+    /* ========================================
+       FEATURE CARDS - BETTER MOBILE GRID
+    ======================================== */
+    
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .feature-card {
+        padding: 32px 24px;
+        border-radius: 20px;
+    }
+
+    .feature-card:hover {
+        transform: none;
+    }
+
+    .feature-icon {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 20px;
+    }
+
+    .feature-icon svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .feature-title {
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+
+    .feature-description {
+        font-size: 15px;
+        line-height: 1.6;
+    }
+
+    /* ========================================
+       PORTFOLIO - STACKED LAYOUT
+    ======================================== */
+    
+    .portfolio-staggered {
+        gap: 60px;
+    }
+
+    .portfolio-item-staggered {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .portfolio-item-staggered.left .portfolio-image-staggered,
+    .portfolio-item-staggered.right .portfolio-image-staggered {
+        order: 1;
+    }
+
+    .portfolio-item-staggered.left .portfolio-info-staggered,
+    .portfolio-item-staggered.right .portfolio-info-staggered {
+        order: 2;
+    }
+
+    .portfolio-image-staggered {
+        height: 300px;
+        border-radius: 20px;
+    }
+
+    .portfolio-item-staggered:hover .portfolio-image-staggered {
+        transform: none;
+    }
+
+    .portfolio-info-staggered {
+        padding: 0;
+    }
+
+    .portfolio-info-staggered .portfolio-title {
+        font-size: 28px;
+        margin-bottom: 16px;
+    }
+
+    .portfolio-info-staggered .portfolio-description {
+        font-size: 15px;
+        line-height: 1.6;
+        margin-bottom: 20px;
+    }
+
+    .portfolio-tags {
+        gap: 8px;
+    }
+
+    .portfolio-tag {
+        font-size: 12px;
+        padding: 8px 14px;
+    }
+
+    .portfolio-mobile-btn {
+        display: inline-block;
+        margin-top: 40px;
+        padding: 16px 32px;
+        background: linear-gradient(135deg, var(--primary) 0%, #0d9668 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 12px;
+        font-weight: 600;
+        text-align: center;
+        width: 100%;
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+    }
+
+    /* ========================================
+       SERVICE CARDS - SINGLE COLUMN
+    ======================================== */
+    
+    .services-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .service-card {
+        padding: 40px 28px;
+        border-radius: 20px;
+    }
+
+    .service-card:hover {
+        transform: none;
+    }
+
+    .service-price {
+        font-size: 48px;
+    }
+
+    .service-period {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    .service-name {
+        font-size: 22px;
+        margin-bottom: 16px;
+    }
+
+    .service-description {
+        font-size: 15px;
+        line-height: 1.6;
+        margin-bottom: 28px;
+    }
+
+    .service-features {
+        margin-bottom: 32px;
+    }
+
+    .service-features li {
+        font-size: 14px;
+        padding: 12px 0;
+    }
+
+    .service-btn {
+        width: 100%;
+        padding: 16px 32px;
+        font-size: 15px;
+    }
+
+    .service-disclaimer {
+        font-size: 12px;
+        margin-top: 16px;
+    }
+
+    /* ========================================
+       LOCAL AREA SECTION - IMPROVED GRID
+    ======================================== */
+    
+    .service-area-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .service-area-card {
+        padding: 28px 24px;
+        border-radius: 16px;
+        text-align: left;
+    }
+
+    .service-area-card:hover {
+        transform: none;
+    }
+
+    .service-area-card h3 {
+        font-size: 18px;
+        margin-bottom: 8px;
+    }
+
+    .service-area-card p {
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    /* ========================================
+       CTA SECTION - MOBILE OPTIMIZED
+    ======================================== */
+    
+    .cta-section {
+        padding: 80px 24px;
+    }
+
+    .cta-title {
+        font-size: 32px;
+        line-height: 1.2;
+        margin-bottom: 16px;
+    }
+
+    .cta-description {
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 32px;
+    }
+
+    .cta-btn-white {
+        width: 100%;
+        padding: 18px 32px;
+        font-size: 16px;
+    }
+
+    /* ========================================
+       FOOTER - CLEANER MOBILE LAYOUT
+    ======================================== */
+    
+    .footer {
+        padding: 60px 24px 32px;
+    }
+
+    .footer-container {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        margin-bottom: 40px;
+    }
+
+    .footer-brand {
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+
+    .footer-description {
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .footer-title {
+        font-size: 16px;
+        margin-bottom: 16px;
+    }
+
+    .footer-links li {
+        margin-bottom: 12px;
+    }
+
+    .footer-links a {
+        font-size: 14px;
+    }
+
+    .footer-bottom {
+        padding-top: 24px;
+        font-size: 13px;
+    }
+
+    /* ========================================
+       MODAL - BETTER MOBILE EXPERIENCE
+    ======================================== */
+    
+    .modal-overlay,
+    .quiz-modal-overlay {
+        padding: 20px;
+        align-items: flex-end;
+    }
+
+    .modal-content,
+    .quiz-modal-content {
+        max-width: 100%;
+        width: 100%;
+        max-height: 90vh;
+        margin: 0;
+        border-radius: 24px 24px 0 0;
+        padding: 40px 24px 32px;
+    }
+
+    .modal-close,
+    .quiz-close {
+        top: 16px;
+        right: 16px;
+        width: 36px;
+        height: 36px;
+    }
+
+    .modal-badge,
+    .quiz-badge {
+        font-size: 11px;
+        padding: 6px 14px;
+        margin-bottom: 16px;
+    }
+
+    .modal-title,
+    .quiz-title {
+        font-size: 28px;
+        margin-bottom: 12px;
+    }
+
+    .modal-description,
+    .quiz-subtitle {
+        font-size: 15px;
+        line-height: 1.6;
+        margin-bottom: 32px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .form-input,
+    .form-textarea {
+        font-size: 16px;
+        padding: 14px 16px;
+        border-radius: 12px;
+    }
+
+    .form-textarea {
+        min-height: 120px;
+    }
+
+    .form-submit,
+    .btn-next {
+        width: 100%;
+        padding: 16px 32px;
+        font-size: 16px;
+        border-radius: 12px;
+    }
+
+    /* ========================================
+       QUIZ SPECIFIC IMPROVEMENTS
+    ======================================== */
+    
+    .quiz-header {
+        padding: 32px 24px 24px;
+        text-align: center;
+    }
+
+    .quiz-progress {
+        padding: 20px 24px;
+    }
+
+    .progress-text {
+        font-size: 13px;
+        margin-bottom: 12px;
+        text-align: center;
+    }
+
+    .progress-bar-container {
+        height: 6px;
+    }
+
+    .quiz-body {
+        padding: 24px;
+    }
+
+    .step-question {
+        font-size: 22px;
+        margin-bottom: 12px;
+    }
+
+    .step-description {
+        font-size: 14px;
+        margin-bottom: 24px;
+    }
+
+    .option-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .quiz-option {
+        padding: 20px 16px;
+        border-radius: 12px;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .option-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+    }
+
+    .option-title {
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+
+    .option-desc {
+        font-size: 12px;
+    }
+
+    .quiz-navigation {
+        padding: 20px 24px;
+        margin-top: 24px;
+        border-top: 1px solid var(--border);
+    }
+
+    .btn-back,
+    .btn-skip {
+        padding: 12px 20px;
+        font-size: 14px;
+        border-radius: 10px;
+    }
+
+    .results-container {
+        padding: 32px 24px;
+        text-align: center;
+    }
+
+    .results-icon {
+        font-size: 56px;
+        margin-bottom: 24px;
+    }
+
+    .results-title {
+        font-size: 26px;
+        margin-bottom: 24px;
+    }
+
+    .results-plan {
+        padding: 32px 24px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+    }
+
+    .plan-name {
+        font-size: 28px;
+        margin-bottom: 12px;
+    }
+
+    .plan-price {
+        font-size: 40px;
+        margin-bottom: 16px;
+    }
+
+    .plan-reason {
+        font-size: 15px;
+        line-height: 1.6;
+    }
+
+    .results-details {
+        font-size: 14px;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        line-height: 1.7;
+    }
+
+    .results-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .results-actions button {
+        width: 100%;
+        padding: 16px 32px;
+        font-size: 15px;
+    }
+
+    .results-note {
+        font-size: 13px;
+        margin-top: 20px;
+    }
+
+    /* ========================================
+       COOKIE CONSENT - MOBILE FRIENDLY
+    ======================================== */
+    
+    .cookie-consent {
+        bottom: 0;
+        right: 0;
+        left: 0;
+        max-width: 100%;
+        border-radius: 20px 20px 0 0;
+        padding: 24px 20px;
+    }
+
+    .cookie-consent-title {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+
+    .cookie-consent-description {
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .cookie-consent-actions {
+        gap: 8px;
+        margin-top: 20px;
+    }
+
+    .cookie-btn {
+        padding: 12px 20px;
+        font-size: 13px;
+        border-radius: 10px;
+    }
+
+    .cookie-btn-accept {
+        flex: 1;
+    }
+
+    /* ========================================
+       MARKETING POPUP - MOBILE OPTIMIZED
+    ======================================== */
+    
+    .marketing-popup {
+        max-width: 90%;
+        border-radius: 24px;
+    }
+
+    .marketing-popup-content {
+        padding: 40px 24px 24px;
+    }
+
+    .marketing-popup-icon {
+        font-size: 40px;
+        margin-bottom: 12px;
+    }
+
+    .marketing-popup-title {
+        font-size: 22px;
+        margin-bottom: 12px;
+    }
+
+    .marketing-popup-discount {
+        font-size: 40px;
+        margin-bottom: 12px;
+    }
+
+    .marketing-popup-subtitle {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    .marketing-popup-features li {
+        font-size: 13px;
+        padding: 10px 0;
+    }
+
+    .marketing-popup-cta {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .marketing-popup-btn,
+    .marketing-popup-btn-secondary {
+        width: 100%;
+        padding: 14px 24px;
+        font-size: 15px;
+    }
+
+    .marketing-popup-timer {
+        padding: 16px;
+        margin-top: 20px;
+        border-radius: 12px;
+    }
+
+    .marketing-popup-countdown {
+        font-size: 16px;
+    }
+
+    /* ========================================
+       UTILITY & POLISH
+    ======================================== */
+    
+    /* Better touch targets */
+    button,
+    a,
+    input,
+    select,
+    textarea {
+        -webkit-tap-highlight-color: rgba(16, 185, 129, 0.1);
+    }
+
+    /* Smooth scrolling */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Remove hover effects on mobile */
+    .feature-card:hover,
+    .service-card:hover,
+    .portfolio-item-staggered:hover .portfolio-image-staggered,
+    .service-area-card:hover {
+        transform: none;
+    }
+
+    /* Improve readability */
+    p,
+    li,
+    .section-description,
+    .feature-description,
+    .service-description {
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+    }
+}
+
+/* ========================================
+   VERY SMALL SCREENS (< 400px)
+======================================== */
+
+@media (max-width: 400px) {
+    .hero-title {
+        font-size: 28px;
+    }
+
+    .section-title {
+        font-size: 28px;
+    }
+
+    .option-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quiz-option {
+        min-height: 100px;
+    }
+
+    .service-price {
+        font-size: 40px;
+    }
+
+    .cta-title {
+        font-size: 28px;
+    }
+}
+</style>
+
 </head>
 <body>
     <!-- Skip to main content for accessibility -->
@@ -880,6 +1813,7 @@
         <div class="announcement-content">
             <span class="announcement-badge">Limited Offer</span>
             <span class="announcement-text">// Get 20% off your first project — Launch this month</span>
+            <span class="announcement-text" style="margin-left: 20px;">📞 Call <a href="tel:+19402178680" style="color: var(--primary); font-weight: 700; text-decoration: none; border-bottom: 1px solid var(--primary);">(940) 217-8680</a> for more information</span>
         </div>
     </div>
 

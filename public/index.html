@@ -4567,39 +4567,77 @@ Our team will be happy to answer any specific questions you have!`;
 // Debug: Log when script loads
 console.log('✅ Chatbot script loaded');
 
-// Debug: Check if chatbot is visible on mobile
+// ========================================
+// ATTACH EVENT LISTENERS - CRITICAL!
+// ========================================
+
 document.addEventListener('DOMContentLoaded', function() {
-    const container = document.getElementById('chatbotContainer');
-    const toggle = document.getElementById('chatbotToggle');
+    console.log('✅ Chatbot initializing...');
     
+    // Get elements
+    const toggle = document.getElementById('chatbotToggle');
+    const closeBtn = document.getElementById('chatbotCloseBtn');
+    const sendBtn = document.getElementById('chatbotSendBtn');
+    const input = document.getElementById('chatbotInput');
+    const quickActions = document.querySelectorAll('.quick-action-btn');
+    
+    // ATTACH TOGGLE BUTTON LISTENER
+    if (toggle) {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🖱️ Toggle clicked!');
+            toggleChatbot();
+        });
+        console.log('✅ Toggle button listener attached');
+    } else {
+        console.error('❌ Toggle button not found!');
+    }
+    
+    // ATTACH CLOSE BUTTON LISTENER
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleChatbot();
+        });
+        console.log('✅ Close button listener attached');
+    }
+    
+    // ATTACH SEND BUTTON LISTENER
+    if (sendBtn) {
+        sendBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            sendChatbotMessage();
+        });
+        console.log('✅ Send button listener attached');
+    }
+    
+    // ATTACH INPUT ENTER KEY LISTENER
+    if (input) {
+        input.addEventListener('keypress', handleChatbotKeyPress);
+        console.log('✅ Input listener attached');
+    }
+    
+    // ATTACH QUICK ACTION LISTENERS
+    quickActions.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const action = this.getAttribute('data-action');
+            sendQuickMessage(action);
+        });
+    });
+    console.log(`✅ ${quickActions.length} quick action listeners attached`);
+    
+    // Debug visibility
+    const container = document.getElementById('chatbotContainer');
     if (container) {
         const styles = window.getComputedStyle(container);
-        console.log('📱 Chatbot Container Debug:');
-        console.log('Display:', styles.display);
-        console.log('Visibility:', styles.visibility);
-        console.log('Z-Index:', styles.zIndex);
-        console.log('Position:', styles.position);
-        console.log('Bottom:', styles.bottom);
-        console.log('Right:', styles.right);
-        console.log('Opacity:', styles.opacity);
-        
-        if (toggle) {
-            const toggleStyles = window.getComputedStyle(toggle);
-            console.log('Toggle Display:', toggleStyles.display);
-            console.log('Toggle Visibility:', toggleStyles.visibility);
-        }
-    } else {
-        console.error('❌ Chatbot container not found!');
+        console.log('📱 Chatbot visible:', styles.display !== 'none' && styles.visibility !== 'hidden');
     }
 });
-
-// Auto-open chatbot after delay (optional)
-// Uncomment the lines below to auto-open after 5 seconds
-/*
-setTimeout(() => {
-    toggleChatbot();
-}, 5000);
-*/
 </script>
 
 </body>

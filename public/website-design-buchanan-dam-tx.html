@@ -3702,5 +3702,1044 @@ function goToPricing() {
     </div>
 </div>
 </div>
+
+<!-- ========================================
+     CHATBOT WIDGET - ADD THIS TO YOUR HTML
+     Place this code before the closing </body> tag
+======================================== -->
+
+<!-- Chatbot HTML -->
+<div class="chatbot-container" id="chatbotContainer">
+    <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open chat">
+        <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span class="chatbot-badge" id="chatbotBadge">1</span>
+    </button>
+
+    <div class="chatbot-window" id="chatbotWindow">
+        <!-- Header -->
+        <div class="chatbot-header">
+            <div class="chatbot-header-info">
+                <div class="chatbot-avatar">💬</div>
+                <div>
+                    <div class="chatbot-title">Diamondback Coding</div>
+                    <div class="chatbot-status">
+                        <span class="status-dot"></span>
+                        Online - We typically reply instantly
+                    </div>
+                </div>
+            </div>
+            <button class="chatbot-close" id="chatbotCloseBtn" aria-label="Close chat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Messages -->
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="message bot-message">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <p>Hi! I'm the Diamondback Coding assistant. How can I help you today?</p>
+                    <div class="message-time">Just now</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="chatbot-quick-actions" id="quickActions">
+            <button class="quick-action-btn" data-action="pricing">
+                💰 Pricing Info
+            </button>
+            <button class="quick-action-btn" data-action="timeline">
+                ⏱️ Project Timeline
+            </button>
+            <button class="quick-action-btn" data-action="services">
+                🛠️ Our Services
+            </button>
+            <button class="quick-action-btn" data-action="contact">
+                📞 Contact Us
+            </button>
+        </div>
+
+        <!-- Input -->
+        <div class="chatbot-input-container">
+            <input 
+                type="text" 
+                class="chatbot-input" 
+                id="chatbotInput" 
+                placeholder="Type your question..."
+            />
+            <button class="chatbot-send" id="chatbotSendBtn" aria-label="Send message">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Chatbot CSS -->
+<style>
+/* ========================================
+   CHATBOT STYLES
+======================================== */
+
+.chatbot-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 99999 !important; /* Higher than everything else */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: block !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+}
+
+.chatbot-toggle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981 0%, #0d9668 100%);
+    border: none;
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.chatbot-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 24px rgba(16, 185, 129, 0.5);
+}
+
+.chatbot-toggle svg {
+    width: 28px;
+    height: 28px;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.chat-icon {
+    display: block;
+}
+
+.close-icon {
+    display: none;
+}
+
+.chatbot-toggle.active .chat-icon {
+    display: none;
+}
+
+.chatbot-toggle.active .close-icon {
+    display: block;
+}
+
+.chatbot-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ef4444;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    border: 2px solid white;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.chatbot-window {
+    position: absolute;
+    bottom: 80px;
+    right: 0;
+    width: 380px;
+    height: 600px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}
+
+.chatbot-window.active {
+    display: flex;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chatbot-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    padding: 20px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chatbot-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chatbot-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #10b981 0%, #0d9668 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.chatbot-title {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.chatbot-status {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.chatbot-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.chatbot-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.chatbot-close svg {
+    width: 18px;
+    height: 18px;
+    color: white;
+}
+
+.chatbot-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.message {
+    display: flex;
+    gap: 12px;
+    animation: messageSlide 0.3s ease;
+}
+
+@keyframes messageSlide {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981 0%, #0d9668 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.user-message .message-avatar {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.message-content {
+    flex: 1;
+}
+
+.message-content p {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin: 0 0 4px 0;
+    line-height: 1.5;
+    font-size: 14px;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.user-message .message-content p {
+    background: linear-gradient(135deg, #10b981 0%, #0d9668 100%);
+    color: white;
+}
+
+.message-content a {
+    color: #10b981;
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 1px solid #10b981;
+}
+
+.user-message .message-content a {
+    color: white;
+    border-bottom-color: rgba(255, 255, 255, 0.5);
+}
+
+.message-time {
+    font-size: 11px;
+    color: #64748b;
+    padding-left: 16px;
+}
+
+.chatbot-quick-actions {
+    padding: 16px 20px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.quick-action-btn {
+    padding: 10px 16px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #0f172a;
+    text-align: left;
+}
+
+.quick-action-btn:hover {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
+}
+
+.chatbot-input-container {
+    display: flex;
+    padding: 16px 20px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    gap: 12px;
+}
+
+.chatbot-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.chatbot-input:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.chatbot-send {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #10b981 0%, #0d9668 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.chatbot-send:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.chatbot-send svg {
+    width: 20px;
+    height: 20px;
+    color: white;
+}
+
+.chatbot-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .chatbot-container {
+        bottom: 20px !important;
+        right: 20px !important;
+        z-index: 99999 !important; /* Ensure it's above everything */
+        position: fixed !important;
+        display: block !important;
+        visibility: visible !important;
+    }
+
+    .chatbot-toggle {
+        width: 56px !important;
+        height: 56px !important;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5) !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    .chatbot-toggle svg {
+        width: 26px;
+        height: 26px;
+    }
+
+    .chatbot-badge {
+        width: 22px;
+        height: 22px;
+        font-size: 11px;
+        display: flex !important;
+    }
+
+    .chatbot-window {
+        position: fixed !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 85vh !important;
+        max-height: 85vh !important;
+        border-radius: 20px 20px 0 0 !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2) !important;
+        z-index: 99998 !important;
+    }
+
+    .chatbot-window.active {
+        animation: slideUpMobile 0.3s ease;
+        display: flex !important;
+    }
+
+    @keyframes slideUpMobile {
+        from {
+            transform: translateY(100%);
+        }
+        to {
+            transform: translateY(0);
+        }
+    }
+
+    .chatbot-header {
+        padding: 16px 20px;
+    }
+
+    .chatbot-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    .chatbot-title {
+        font-size: 15px;
+    }
+
+    .chatbot-status {
+        font-size: 11px;
+    }
+
+    .chatbot-messages {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .message-content p {
+        font-size: 13px;
+        padding: 10px 14px;
+    }
+
+    .chatbot-quick-actions {
+        padding: 12px 16px;
+        gap: 8px;
+    }
+
+    .quick-action-btn {
+        font-size: 11px;
+        padding: 8px 12px;
+    }
+
+    .chatbot-input-container {
+        padding: 12px 16px;
+    }
+
+    .chatbot-input {
+        font-size: 14px;
+        padding: 10px 14px;
+    }
+
+    .chatbot-send {
+        width: 40px;
+        height: 40px;
+    }
+
+    .chatbot-send svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+    .chatbot-window {
+        height: 90vh !important;
+        max-height: 90vh !important;
+    }
+
+    .chatbot-toggle {
+        width: 52px !important;
+        height: 52px !important;
+    }
+
+    .quick-action-btn {
+        font-size: 10px;
+        padding: 6px 10px;
+    }
+    
+    .chatbot-container {
+        bottom: 16px !important;
+        right: 16px !important;
+    }
+}
+
+/* Typing Indicator */
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px;
+    background: white;
+    border-radius: 12px;
+    width: fit-content;
+}
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    background: #94a3b8;
+    border-radius: 50%;
+    animation: typingBounce 1.4s infinite;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typingBounce {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+    30% {
+        transform: translateY(-8px);
+    }
+}
+
+/* Contact Card Styles */
+.contact-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 12px;
+}
+
+.contact-card h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 12px 0;
+}
+
+.contact-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: #0f172a;
+}
+
+.contact-option:hover {
+    background: #10b981;
+    color: white;
+    transform: translateX(4px);
+}
+
+.contact-option:last-child {
+    margin-bottom: 0;
+}
+
+.contact-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #10b981 0%, #0d9668 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.contact-option:hover .contact-icon {
+    background: white;
+}
+
+.contact-info {
+    flex: 1;
+}
+
+.contact-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 2px;
+}
+
+.contact-option:hover .contact-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.contact-value {
+    font-size: 14px;
+    font-weight: 600;
+}
+</style>
+
+<!-- Chatbot JavaScript -->
+<script>
+// ========================================
+// CHATBOT FUNCTIONALITY
+// ========================================
+
+// Prevent naming conflicts by using unique function names
+window.toggleChatbot = function() {
+    console.log('Toggle chatbot clicked'); // Debug
+    const toggle = document.getElementById('chatbotToggle');
+    const window_el = document.getElementById('chatbotWindow');
+    const badge = document.getElementById('chatbotBadge');
+    
+    if (!toggle || !window_el) {
+        console.error('Chatbot elements not found');
+        return;
+    }
+    
+    toggle.classList.toggle('active');
+    window_el.classList.toggle('active');
+    
+    if (window_el.classList.contains('active')) {
+        // Hide badge when opened
+        if (badge) badge.style.display = 'none';
+        // Focus input
+        const input = document.getElementById('chatbotInput');
+        if (input) {
+            setTimeout(() => input.focus(), 300);
+        }
+    }
+};
+
+// Handle key press with unique name
+window.handleChatbotKeyPress = function(event) {
+    if (event.key === 'Enter') {
+        sendChatbotMessage();
+    }
+};
+
+// Send quick message
+window.sendQuickMessage = function(type) {
+    const messages = {
+        'pricing': 'What are your pricing packages?',
+        'timeline': 'How long does a project take?',
+        'services': 'What services do you offer?',
+        'contact': 'How can I contact you?'
+    };
+    
+    const input = document.getElementById('chatbotInput');
+    if (input) {
+        input.value = messages[type];
+        sendChatbotMessage();
+    }
+};
+
+// Send message with unique name
+window.sendChatbotMessage = function() {
+    const input = document.getElementById('chatbotInput');
+    if (!input) return;
+    
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message
+    addChatbotMessage(message, 'user');
+    
+    // Clear input
+    input.value = '';
+    
+    // Show typing indicator
+    showChatbotTyping();
+    
+    // Process message and respond
+    setTimeout(() => {
+        removeChatbotTyping();
+        const response = getChatbotResponse(message);
+        addChatbotMessage(response, 'bot');
+    }, 1000);
+};
+
+// Add message to chat
+function addChatbotMessage(text, type) {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    if (!messagesContainer) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+    
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar';
+    avatar.textContent = type === 'bot' ? '🤖' : '👤';
+    
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    
+    const textP = document.createElement('p');
+    textP.innerHTML = text.replace(/\n/g, '<br>');
+    
+    const time = document.createElement('div');
+    time.className = 'message-time';
+    time.textContent = 'Just now';
+    
+    content.appendChild(textP);
+    content.appendChild(time);
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(content);
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Show typing indicator
+function showChatbotTyping() {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    if (!messagesContainer) return;
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message bot-message';
+    typingDiv.id = 'chatbotTypingIndicator';
+    
+    typingDiv.innerHTML = `
+        <div class="message-avatar">🤖</div>
+        <div class="message-content">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(typingDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Remove typing indicator
+function removeChatbotTyping() {
+    const indicator = document.getElementById('chatbotTypingIndicator');
+    if (indicator) indicator.remove();
+}
+
+// Knowledge Base - Add your own Q&A here
+const chatbotKnowledgeBase = {
+    // Pricing Questions
+    'pricing': {
+        keywords: ['price', 'cost', 'pricing', 'how much', 'expensive', 'cheap', 'afford', 'budget', 'package'],
+        response: `Great question! We offer three main packages:
+
+📦 **Starter Package** - $199.99
+Perfect for small businesses. Includes up to 15 pages, mobile-responsive design, and 90 days support.
+
+📦 **Professional Package** - $299.99
+Our most popular! Up to 25 pages, advanced SEO, and 120 days support.
+
+📦 **Enterprise Package** - Custom Pricing
+For larger projects with unique requirements.
+
+Would you like to see the full details on our pricing page?`
+    },
+    
+    // Timeline Questions
+    'timeline': {
+        keywords: ['time', 'timeline', 'how long', 'duration', 'weeks', 'months', 'fast', 'quick', 'when', 'delivery'],
+        response: `Typical project timelines:
+
+⏱️ **Starter Package**: 2-3 weeks
+⏱️ **Professional Package**: 3-4 weeks
+⏱️ **Enterprise Package**: 4-8 weeks (varies)
+
+We can often work faster for urgent projects! The timeline depends on complexity and how quickly you provide content and feedback.`
+    },
+    
+    // Services Questions
+    'services': {
+        keywords: ['service', 'offer', 'do you', 'can you', 'help with', 'provide', 'ecommerce', 'seo', 'marketing'],
+        response: `We offer comprehensive web services:
+
+🌐 **Web Development** - Custom websites & web applications
+🛒 **E-commerce** - Online stores with payment processing
+📱 **Mobile-Responsive Design** - Works on all devices
+🎨 **UI/UX Design** - Beautiful, user-friendly interfaces
+📈 **SEO Services** - Get found on Google
+💼 **Digital Marketing** - Social media, ads, email campaigns
+🔧 **Maintenance & Support** - Ongoing updates and fixes
+
+What specific service are you interested in?`
+    },
+    
+    // Location/Area Questions
+    'location': {
+        keywords: ['location', 'where', 'area', 'serve', 'local', 'near me', 'llano', 'marble falls', 'fredericksburg', 'hill country'],
+        response: `We're based in Texas Hill Country and proudly serve:
+
+📍 Llano, Marble Falls, Kingsland
+📍 Brady, Mason, Fredericksburg
+📍 Burnet, Johnson City, Lampasas
+📍 Horseshoe Bay, Kerrville, Boerne
+📍 And all surrounding Hill Country areas!
+
+We also work with clients remotely throughout Texas and beyond.`
+    },
+    
+    // Process Questions
+    'process': {
+        keywords: ['process', 'how it works', 'steps', 'start', 'begin', 'first step', 'workflow'],
+        response: `Our process is simple:
+
+1️⃣ **Discovery Call** - We discuss your goals and requirements
+2️⃣ **Proposal & Quote** - Detailed plan and pricing
+3️⃣ **Design Phase** - We create mockups for your approval
+4️⃣ **Development** - Building your custom solution
+5️⃣ **Testing & Review** - You review and request changes
+6️⃣ **Launch** - We deploy your site live
+7️⃣ **Support** - Ongoing assistance included
+
+Ready to get started?`
+    },
+    
+    // Support Questions
+    'support': {
+        keywords: ['support', 'help', 'maintenance', 'update', 'fix', 'problem', 'issue', 'after launch'],
+        response: `We've got you covered with support:
+
+✅ **90-120 days free support** included (depends on package)
+✅ **Priority bug fixes** and updates
+✅ **Monthly maintenance plans** available
+✅ **Pay-as-you-go** support options
+✅ **24-48 hour response time**
+
+Your success is our priority, even after launch!`
+    },
+
+    // SEO Questions
+    'seo': {
+        keywords: ['seo', 'google', 'rank', 'search', 'traffic', 'visitors', 'found online'],
+        response: `Our SEO services help you get found:
+
+🔍 **Technical SEO** - Fast loading, mobile-friendly, clean code
+📊 **On-Page SEO** - Optimized content and meta tags
+🗺️ **Local SEO** - Google My Business & local listings
+📈 **Analytics** - Track your traffic and rankings
+📝 **Content Strategy** - SEO-friendly content creation
+
+Starting at $74.99/month for ongoing SEO services.`
+    },
+
+    // Payment Questions
+    'payment': {
+        keywords: ['payment', 'pay', 'deposit', 'installment', 'financing', 'credit card', 'paypal'],
+        response: `Flexible payment options:
+
+💳 We accept all major credit cards
+💰 50% deposit, 50% on completion
+📅 Payment plans available for larger projects
+🔒 Secure payment processing
+
+We make it easy to get started!`
+    }
+};
+
+// Default responses for unknown questions
+const chatbotDefaultResponses = [
+    "That's a great question! For the most accurate information, I'd recommend:",
+    "I want to make sure you get the best answer. Here's how to reach us:",
+    "I'm not 100% certain about that specific detail. Let me connect you with our team:"
+];
+
+// Get bot response
+function getChatbotResponse(message) {
+    const lowerMessage = message.toLowerCase();
+    
+    // Check for matches in knowledge base
+    for (const [key, data] of Object.entries(chatbotKnowledgeBase)) {
+        if (data.keywords.some(keyword => lowerMessage.includes(keyword))) {
+            return data.response;
+        }
+    }
+    
+    // Special case: direct contact request
+    if (lowerMessage.includes('contact') || lowerMessage.includes('call') || lowerMessage.includes('email')) {
+        return getChatbotContactResponse();
+    }
+    
+    // Default: suggest contact options
+    return getChatbotDefaultResponse();
+}
+
+// Get contact response
+function getChatbotContactResponse() {
+    return `Here's how to reach us:
+
+📧 **Email**: <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a>
+📞 **Phone**: <a href="tel:+19402178680">(940) 217-8680</a>
+📝 **Contact Form**: <a href="#" onclick="openModal(); toggleChatbot(); return false;">Click here to fill out our form</a>
+
+We typically respond within a few hours during business hours (Mon-Fri, 8AM-5PM CST).
+
+What else can I help you with?`;
+}
+
+// Get default response
+function getChatbotDefaultResponse() {
+    const random = chatbotDefaultResponses[Math.floor(Math.random() * chatbotDefaultResponses.length)];
+    
+    return `${random}
+
+📧 **Email us**: <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a>
+📞 **Call us**: <a href="tel:+19402178680">(940) 217-8680</a>
+📝 **Contact form**: <a href="#" onclick="openModal(); toggleChatbot(); return false;">Click here</a>
+
+Our team will be happy to answer any specific questions you have!`;
+}
+
+// Debug: Log when script loads
+console.log('✅ Chatbot script loaded');
+
+// Debug: Check if chatbot is visible on mobile
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('chatbotContainer');
+    const toggle = document.getElementById('chatbotToggle');
+    
+    if (container) {
+        const styles = window.getComputedStyle(container);
+        console.log('📱 Chatbot Container Debug:');
+        console.log('Display:', styles.display);
+        console.log('Visibility:', styles.visibility);
+        console.log('Z-Index:', styles.zIndex);
+        console.log('Position:', styles.position);
+        console.log('Bottom:', styles.bottom);
+        console.log('Right:', styles.right);
+        console.log('Opacity:', styles.opacity);
+        
+        if (toggle) {
+            const toggleStyles = window.getComputedStyle(toggle);
+            console.log('Toggle Display:', toggleStyles.display);
+            console.log('Toggle Visibility:', toggleStyles.visibility);
+        }
+    } else {
+        console.error('❌ Chatbot container not found!');
+    }
+});
+
+// Auto-open chatbot after delay (optional)
+// Uncomment the lines below to auto-open after 5 seconds
+/*
+setTimeout(() => {
+    toggleChatbot();
+}, 5000);
+*/
+</script>
+
 </body>
 </html>

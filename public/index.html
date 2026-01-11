@@ -3571,7 +3571,7 @@ function goToPricing() {
 
 <!-- Chatbot HTML -->
 <div class="chatbot-container" id="chatbotContainer">
-    <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open chat" onclick="toggleChatbot()">
+    <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open chat">
         <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
@@ -3595,7 +3595,7 @@ function goToPricing() {
                     </div>
                 </div>
             </div>
-            <button class="chatbot-close" onclick="toggleChatbot()" aria-label="Close chat">
+            <button class="chatbot-close" id="chatbotCloseBtn" aria-label="Close chat">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -3616,16 +3616,16 @@ function goToPricing() {
 
         <!-- Quick Actions -->
         <div class="chatbot-quick-actions" id="quickActions">
-            <button class="quick-action-btn" onclick="sendQuickMessage('pricing')">
+            <button class="quick-action-btn" data-action="pricing">
                 💰 Pricing Info
             </button>
-            <button class="quick-action-btn" onclick="sendQuickMessage('timeline')">
+            <button class="quick-action-btn" data-action="timeline">
                 ⏱️ Project Timeline
             </button>
-            <button class="quick-action-btn" onclick="sendQuickMessage('services')">
+            <button class="quick-action-btn" data-action="services">
                 🛠️ Our Services
             </button>
-            <button class="quick-action-btn" onclick="sendQuickMessage('contact')">
+            <button class="quick-action-btn" data-action="contact">
                 📞 Contact Us
             </button>
         </div>
@@ -3637,9 +3637,8 @@ function goToPricing() {
                 class="chatbot-input" 
                 id="chatbotInput" 
                 placeholder="Type your question..."
-                onkeypress="handleChatbotKeyPress(event)"
             />
-            <button class="chatbot-send" onclick="sendChatbotMessage()" aria-label="Send message">
+            <button class="chatbot-send" id="chatbotSendBtn" aria-label="Send message">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>

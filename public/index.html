@@ -3571,7 +3571,7 @@ function goToPricing() {
 
 <!-- Chatbot HTML -->
 <div class="chatbot-container" id="chatbotContainer">
-    <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open chat">
+    <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open chat" onclick="toggleChatbot()">
         <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
@@ -3579,7 +3579,7 @@ function goToPricing() {
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
-        <span class="chatbot-badge">1</span>
+        <span class="chatbot-badge" id="chatbotBadge">1</span>
     </button>
 
     <div class="chatbot-window" id="chatbotWindow">
@@ -3637,9 +3637,9 @@ function goToPricing() {
                 class="chatbot-input" 
                 id="chatbotInput" 
                 placeholder="Type your question..."
-                onkeypress="handleKeyPress(event)"
+                onkeypress="handleChatbotKeyPress(event)"
             />
-            <button class="chatbot-send" onclick="sendMessage()" aria-label="Send message">
+            <button class="chatbot-send" onclick="sendChatbotMessage()" aria-label="Send message">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -3659,8 +3659,12 @@ function goToPricing() {
     position: fixed;
     bottom: 24px;
     right: 24px;
-    z-index: 9999;
+    z-index: 99999 !important; /* Higher than everything else */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: block !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
 }
 
 .chatbot-toggle {
@@ -3998,21 +4002,141 @@ function goToPricing() {
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-    .chatbot-window {
-        width: calc(100vw - 32px);
-        height: calc(100vh - 120px);
-        bottom: 80px;
-        right: 16px;
+    .chatbot-container {
+        bottom: 20px !important;
+        right: 20px !important;
+        z-index: 99999 !important; /* Ensure it's above everything */
+        position: fixed !important;
+        display: block !important;
+        visibility: visible !important;
     }
 
-    .chatbot-container {
-        bottom: 16px;
-        right: 16px;
+    .chatbot-toggle {
+        width: 56px !important;
+        height: 56px !important;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5) !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    .chatbot-toggle svg {
+        width: 26px;
+        height: 26px;
+    }
+
+    .chatbot-badge {
+        width: 22px;
+        height: 22px;
+        font-size: 11px;
+        display: flex !important;
+    }
+
+    .chatbot-window {
+        position: fixed !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 85vh !important;
+        max-height: 85vh !important;
+        border-radius: 20px 20px 0 0 !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2) !important;
+        z-index: 99998 !important;
+    }
+
+    .chatbot-window.active {
+        animation: slideUpMobile 0.3s ease;
+        display: flex !important;
+    }
+
+    @keyframes slideUpMobile {
+        from {
+            transform: translateY(100%);
+        }
+        to {
+            transform: translateY(0);
+        }
+    }
+
+    .chatbot-header {
+        padding: 16px 20px;
+    }
+
+    .chatbot-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    .chatbot-title {
+        font-size: 15px;
+    }
+
+    .chatbot-status {
+        font-size: 11px;
+    }
+
+    .chatbot-messages {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .message-content p {
+        font-size: 13px;
+        padding: 10px 14px;
+    }
+
+    .chatbot-quick-actions {
+        padding: 12px 16px;
+        gap: 8px;
     }
 
     .quick-action-btn {
-        font-size: 12px;
+        font-size: 11px;
         padding: 8px 12px;
+    }
+
+    .chatbot-input-container {
+        padding: 12px 16px;
+    }
+
+    .chatbot-input {
+        font-size: 14px;
+        padding: 10px 14px;
+    }
+
+    .chatbot-send {
+        width: 40px;
+        height: 40px;
+    }
+
+    .chatbot-send svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+    .chatbot-window {
+        height: 90vh !important;
+        max-height: 90vh !important;
+    }
+
+    .chatbot-toggle {
+        width: 52px !important;
+        height: 52px !important;
+    }
+
+    .quick-action-btn {
+        font-size: 10px;
+        padding: 6px 10px;
+    }
+    
+    .chatbot-container {
+        bottom: 16px !important;
+        right: 16px !important;
     }
 }
 
@@ -4133,8 +4257,144 @@ function goToPricing() {
 // CHATBOT FUNCTIONALITY
 // ========================================
 
+// Prevent naming conflicts by using unique function names
+window.toggleChatbot = function() {
+    console.log('Toggle chatbot clicked'); // Debug
+    const toggle = document.getElementById('chatbotToggle');
+    const window_el = document.getElementById('chatbotWindow');
+    const badge = document.getElementById('chatbotBadge');
+    
+    if (!toggle || !window_el) {
+        console.error('Chatbot elements not found');
+        return;
+    }
+    
+    toggle.classList.toggle('active');
+    window_el.classList.toggle('active');
+    
+    if (window_el.classList.contains('active')) {
+        // Hide badge when opened
+        if (badge) badge.style.display = 'none';
+        // Focus input
+        const input = document.getElementById('chatbotInput');
+        if (input) {
+            setTimeout(() => input.focus(), 300);
+        }
+    }
+};
+
+// Handle key press with unique name
+window.handleChatbotKeyPress = function(event) {
+    if (event.key === 'Enter') {
+        sendChatbotMessage();
+    }
+};
+
+// Send quick message
+window.sendQuickMessage = function(type) {
+    const messages = {
+        'pricing': 'What are your pricing packages?',
+        'timeline': 'How long does a project take?',
+        'services': 'What services do you offer?',
+        'contact': 'How can I contact you?'
+    };
+    
+    const input = document.getElementById('chatbotInput');
+    if (input) {
+        input.value = messages[type];
+        sendChatbotMessage();
+    }
+};
+
+// Send message with unique name
+window.sendChatbotMessage = function() {
+    const input = document.getElementById('chatbotInput');
+    if (!input) return;
+    
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message
+    addChatbotMessage(message, 'user');
+    
+    // Clear input
+    input.value = '';
+    
+    // Show typing indicator
+    showChatbotTyping();
+    
+    // Process message and respond
+    setTimeout(() => {
+        removeChatbotTyping();
+        const response = getChatbotResponse(message);
+        addChatbotMessage(response, 'bot');
+    }, 1000);
+};
+
+// Add message to chat
+function addChatbotMessage(text, type) {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    if (!messagesContainer) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}-message`;
+    
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar';
+    avatar.textContent = type === 'bot' ? '🤖' : '👤';
+    
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    
+    const textP = document.createElement('p');
+    textP.innerHTML = text.replace(/\n/g, '<br>');
+    
+    const time = document.createElement('div');
+    time.className = 'message-time';
+    time.textContent = 'Just now';
+    
+    content.appendChild(textP);
+    content.appendChild(time);
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(content);
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Show typing indicator
+function showChatbotTyping() {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    if (!messagesContainer) return;
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message bot-message';
+    typingDiv.id = 'chatbotTypingIndicator';
+    
+    typingDiv.innerHTML = `
+        <div class="message-avatar">🤖</div>
+        <div class="message-content">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(typingDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Remove typing indicator
+function removeChatbotTyping() {
+    const indicator = document.getElementById('chatbotTypingIndicator');
+    if (indicator) indicator.remove();
+}
+
 // Knowledge Base - Add your own Q&A here
-const knowledgeBase = {
+const chatbotKnowledgeBase = {
     // Pricing Questions
     'pricing': {
         keywords: ['price', 'cost', 'pricing', 'how much', 'expensive', 'cheap', 'afford', 'budget', 'package'],
@@ -4253,137 +4513,18 @@ We make it easy to get started!`
 };
 
 // Default responses for unknown questions
-const defaultResponses = [
+const chatbotDefaultResponses = [
     "That's a great question! For the most accurate information, I'd recommend:",
     "I want to make sure you get the best answer. Here's how to reach us:",
     "I'm not 100% certain about that specific detail. Let me connect you with our team:"
 ];
 
-// Toggle chatbot
-function toggleChatbot() {
-    const toggle = document.getElementById('chatbotToggle');
-    const window = document.getElementById('chatbotWindow');
-    const badge = toggle.querySelector('.chatbot-badge');
-    
-    toggle.classList.toggle('active');
-    window.classList.toggle('active');
-    
-    if (window.classList.contains('active')) {
-        // Hide badge when opened
-        if (badge) badge.style.display = 'none';
-        // Focus input
-        document.getElementById('chatbotInput').focus();
-    }
-}
-
-// Handle key press
-function handleKeyPress(event) {
-    if (event.key === 'Enter') {
-        sendMessage();
-    }
-}
-
-// Send quick message
-function sendQuickMessage(type) {
-    const messages = {
-        'pricing': 'What are your pricing packages?',
-        'timeline': 'How long does a project take?',
-        'services': 'What services do you offer?',
-        'contact': 'How can I contact you?'
-    };
-    
-    const input = document.getElementById('chatbotInput');
-    input.value = messages[type];
-    sendMessage();
-}
-
-// Send message
-function sendMessage() {
-    const input = document.getElementById('chatbotInput');
-    const message = input.value.trim();
-    
-    if (!message) return;
-    
-    // Add user message
-    addMessage(message, 'user');
-    
-    // Clear input
-    input.value = '';
-    
-    // Show typing indicator
-    showTypingIndicator();
-    
-    // Process message and respond
-    setTimeout(() => {
-        removeTypingIndicator();
-        const response = getBotResponse(message);
-        addMessage(response, 'bot');
-    }, 1000);
-}
-
-// Add message to chat
-function addMessage(text, type) {
-    const messagesContainer = document.getElementById('chatbotMessages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${type}-message`;
-    
-    const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
-    avatar.textContent = type === 'bot' ? '🤖' : '👤';
-    
-    const content = document.createElement('div');
-    content.className = 'message-content';
-    
-    const textP = document.createElement('p');
-    textP.innerHTML = text.replace(/\n/g, '<br>');
-    
-    const time = document.createElement('div');
-    time.className = 'message-time';
-    time.textContent = 'Just now';
-    
-    content.appendChild(textP);
-    content.appendChild(time);
-    messageDiv.appendChild(avatar);
-    messageDiv.appendChild(content);
-    
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// Show typing indicator
-function showTypingIndicator() {
-    const messagesContainer = document.getElementById('chatbotMessages');
-    const typingDiv = document.createElement('div');
-    typingDiv.className = 'message bot-message';
-    typingDiv.id = 'typingIndicator';
-    
-    typingDiv.innerHTML = `
-        <div class="message-avatar">🤖</div>
-        <div class="message-content">
-            <div class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        </div>
-    `;
-    
-    messagesContainer.appendChild(typingDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-// Remove typing indicator
-function removeTypingIndicator() {
-    const indicator = document.getElementById('typingIndicator');
-    if (indicator) indicator.remove();
-}
-
 // Get bot response
-function getBotResponse(message) {
+function getChatbotResponse(message) {
     const lowerMessage = message.toLowerCase();
     
     // Check for matches in knowledge base
-    for (const [key, data] of Object.entries(knowledgeBase)) {
+    for (const [key, data] of Object.entries(chatbotKnowledgeBase)) {
         if (data.keywords.some(keyword => lowerMessage.includes(keyword))) {
             return data.response;
         }
@@ -4391,15 +4532,15 @@ function getBotResponse(message) {
     
     // Special case: direct contact request
     if (lowerMessage.includes('contact') || lowerMessage.includes('call') || lowerMessage.includes('email')) {
-        return getContactResponse();
+        return getChatbotContactResponse();
     }
     
     // Default: suggest contact options
-    return getDefaultResponse();
+    return getChatbotDefaultResponse();
 }
 
 // Get contact response
-function getContactResponse() {
+function getChatbotContactResponse() {
     return `Here's how to reach us:
 
 📧 **Email**: <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a>
@@ -4412,8 +4553,8 @@ What else can I help you with?`;
 }
 
 // Get default response
-function getDefaultResponse() {
-    const random = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+function getChatbotDefaultResponse() {
+    const random = chatbotDefaultResponses[Math.floor(Math.random() * chatbotDefaultResponses.length)];
     
     return `${random}
 
@@ -4424,11 +4565,42 @@ function getDefaultResponse() {
 Our team will be happy to answer any specific questions you have!`;
 }
 
+// Debug: Log when script loads
+console.log('✅ Chatbot script loaded');
+
+// Debug: Check if chatbot is visible on mobile
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('chatbotContainer');
+    const toggle = document.getElementById('chatbotToggle');
+    
+    if (container) {
+        const styles = window.getComputedStyle(container);
+        console.log('📱 Chatbot Container Debug:');
+        console.log('Display:', styles.display);
+        console.log('Visibility:', styles.visibility);
+        console.log('Z-Index:', styles.zIndex);
+        console.log('Position:', styles.position);
+        console.log('Bottom:', styles.bottom);
+        console.log('Right:', styles.right);
+        console.log('Opacity:', styles.opacity);
+        
+        if (toggle) {
+            const toggleStyles = window.getComputedStyle(toggle);
+            console.log('Toggle Display:', toggleStyles.display);
+            console.log('Toggle Visibility:', toggleStyles.visibility);
+        }
+    } else {
+        console.error('❌ Chatbot container not found!');
+    }
+});
+
 // Auto-open chatbot after delay (optional)
+// Uncomment the lines below to auto-open after 5 seconds
+/*
 setTimeout(() => {
-    // Uncomment to auto-open chatbot after 5 seconds
-    // toggleChatbot();
+    toggleChatbot();
 }, 5000);
+*/
 </script>
 
 </body>

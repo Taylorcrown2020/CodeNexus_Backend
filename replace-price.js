@@ -2,8 +2,22 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT_DIR = process.cwd();
-const SEARCH_REGEX = /\$499\.99/g;
-const REPLACEMENT = '$299.99';
+
+// Configuration
+const OLD_PRICE = 199.00;
+const NEW_PRICE = 199;
+
+// Build regex patterns for all price formats
+const OLD_INT = Math.floor(OLD_PRICE);
+const OLD_CENTS = Math.round((OLD_PRICE % 1) * 100);
+const NEW_INT = Math.floor(NEW_PRICE);
+const NEW_CENTS = Math.round((NEW_PRICE % 1) * 100);
+
+// Matches: $39.99, $39, 39.99, 39, €39.99, £39, etc.
+const SEARCH_REGEX = new RegExp(
+    `(\\$|€|£)?${OLD_INT}(\\.${OLD_CENTS.toString().padStart(2, '0')})?\\b`,
+    'g'
+);
 
 const IGNORE_DIRS = [
     'node_modules',
@@ -31,7 +45,15 @@ function walk(dir) {
             const content = fs.readFileSync(fullPath, 'utf8');
 
             if (SEARCH_REGEX.test(content)) {
-                const updated = content.replace(SEARCH_REGEX, REPLACEMENT);
+                // Reset regex lastIndex
+                SEARCH_REGEX.lastIndex = 0;
+                
+                const updated = content.replace(SEARCH_REGEX, (match, currencySymbol, cents) => {
+                    const symbol = currencySymbol || '';
+                    const newCents = cents ? `.${NEW_CENTS.toString().padStart(2, '0')}` : '';
+                    return `${symbol}${NEW_INT}${newCents}`;
+                });
+                
                 fs.writeFileSync(fullPath, updated, 'utf8');
                 console.log(`✔ Updated: ${fullPath}`);
             }
@@ -41,6 +63,6 @@ function walk(dir) {
     });
 }
 
-console.log('🔍 Replacing "$299.99" → "$299.99"');
+console.log(`🔍 Replacing "${OLD_INT}" variations → "${NEW_INT}" variations`);
 walk(ROOT_DIR);
 console.log('✅ Price replacement complete.');

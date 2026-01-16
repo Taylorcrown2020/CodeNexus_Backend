@@ -631,7 +631,7 @@
         }
 
         .hero-title .highlight {
-            color: #10b981;
+            color: #fff;
         }
 
         .hero-subtitle {
@@ -644,14 +644,14 @@
         }
 
         .hero-subtitle a {
-            color: #10b981;
+            color: #fff;
             text-decoration: none;
-            border-bottom: 1px solid rgba(16, 185, 129, 0.5);
+            border-bottom: 1px solid #fff;
             transition: border-color 0.3s ease;
         }
 
         .hero-subtitle a:hover {
-            border-bottom-color: #10b981;
+            border-bottom-color: #fff;
         }
 
         .hero-cta {
@@ -1088,7 +1088,7 @@
         }
 
         .service-area-card h3 a:hover {
-            color: #10b981;
+            color: #000;
         }
 
         .service-area-card p {
@@ -1099,7 +1099,7 @@
         }
 
         .service-area-card p a {
-            color: #10b981;
+            color: #000;
             text-decoration: none;
             font-weight: 500;
         }
@@ -2256,6 +2256,26 @@
             color: white;
         }
 
+        .mockup-body {
+    position: relative;
+    background: #fff;
+    overflow: hidden;
+    height: 380px; /* adjust if needed */
+}
+
+/* Screenshot inside the mockup */
+.mockup-screenshot {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* fills nicely */
+    display: block;
+}
+
+.portfolio-item-staggered:hover .mockup-screenshot {
+    transform: scale(1.02);
+    transition: transform 0.3s ease;
+}
+
         /* Mobile Responsive */
         @media (max-width: 1024px) {
             .nav-container {
@@ -3173,10 +3193,9 @@
                                 <div class="mockup-dot"></div>
                             </div>
                             <div class="mockup-body">
-                                <div class="mockup-line"></div>
-                                <div class="mockup-line"></div>
-                                <div class="mockup-line"></div>
-                                <div class="mockup-line"></div>
+                                <img src="lovetextforher.png"
+                                alt="LoveTextForHer application preview"
+                                class="mockup-screenshot"/>
                             </div>
                         </div>
                     </div>
@@ -3206,10 +3225,9 @@
                                 <div class="mockup-dot"></div>
                             </div>
                             <div class="mockup-body">
-                                <div class="mockup-line"></div>
-                                <div class="mockup-line"></div>
-                                <div class="mockup-line"></div>
-                                <div class="mockup-line"></div>
+                                <img src="crownceramiccoating.png"
+                                alt="Crown Ceramic Coating application preview"
+                                class="mockup-screenshot"/>
                             </div>
                         </div>
                     </div>

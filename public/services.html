@@ -408,7 +408,7 @@
         .services-hero {
             position: relative;
             padding: 100px 60px 60px;
-            background-image: url('https://diamondbackcoding.com/hill-country(3).jpg');
+            background-image: url('https://diamondbackcoding.com/hill-country.jpg');
             background-size: cover;
             background-position: center;
             text-align: center;
@@ -2229,15 +2229,14 @@
                     <a href="#" class="btn-primary" onclick="openModal(); return false;">Start Your Project</a>
                     <a href="pricing.html" class="btn-secondary">View Pricing</a>
                 </div>
+
+                <div style="margin-top: 32px;">
+                    <a href="#" onclick="openQuizModal(); return false;" style="color: rgba(255, 255, 255, 0.9); font-size: 15px; text-decoration: none; border-bottom: 1px solid rgba(255, 255, 255, 0.5); padding-bottom: 2px; transition: all 0.2s ease; display: inline-block;">
+                        🎯 Take Our Quiz - Find Your Perfect Service
+                    </a>
+                </div>
             </div>
         </section>
-
-        <!-- Quiz Button Container -->
-        <div id="quizButtonContainer" style="max-width: 1600px; margin: 40px auto 0; padding: 0 60px; text-align: center;">
-            <a href="#" class="btn-primary" onclick="openQuizModal(); return false;" style="display: inline-flex; align-items: center; gap: 12px; background: #fff; color: #000; border: 2px solid rgba(0,0,0,0.1); box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                🎯 Take Our Quiz - Find Your Perfect Service
-            </a>
-        </div>
 
         <!-- Service Cards Overview -->
         <section class="services-section">
@@ -3218,7 +3217,7 @@
             </div>
 
             <div class="quiz-progress">
-                <div class="progress-text">Question <span id="currentStep">1</span> of <span id="totalSteps">10</span></div>
+                <div class="progress-text">Question <span id="currentStep">1</span> of <span id="totalSteps">5</span></div>
                 <div class="progress-bar-container">
                     <div class="progress-bar" id="progressBar" style="width: 10%;"></div>
                 </div>
@@ -3281,36 +3280,8 @@
                     </div>
                 </div>
 
-                <!-- Step 3: Number of Pages -->
+                <!-- Step 3: E-commerce Need -->
                 <div class="quiz-step" data-step="3">
-                    <h3 class="step-question">How many pages do you need?</h3>
-                    <p class="step-description">Roughly how many unique pages will your site have?</p>
-                    <div class="option-grid">
-                        <div class="quiz-option" onclick="selectOption(this, 'page_count', '1-5')">
-                            <div class="option-icon">📄</div>
-                            <div class="option-title">1-5 Pages</div>
-                            <div class="option-desc">Simple site</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'page_count', '6-15')">
-                            <div class="option-icon">📑</div>
-                            <div class="option-title">6-15 Pages</div>
-                            <div class="option-desc">Standard website</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'page_count', '16-25')">
-                            <div class="option-icon">📚</div>
-                            <div class="option-title">16-25 Pages</div>
-                            <div class="option-desc">Larger site</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'page_count', '25+')">
-                            <div class="option-icon">📖</div>
-                            <div class="option-title">25+ Pages</div>
-                            <div class="option-desc">Complex site</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 4: E-commerce Need -->
-                <div class="quiz-step" data-step="4">
                     <h3 class="step-question">Do you need e-commerce functionality?</h3>
                     <p class="step-description">Will you be selling products or services online?</p>
                     <div class="option-grid">
@@ -3337,92 +3308,8 @@
                     </div>
                 </div>
 
-                <!-- Step 5: User Accounts -->
-                <div class="quiz-step" data-step="5">
-                    <h3 class="step-question">Do you need user accounts & logins?</h3>
-                    <p class="step-description">Will customers need to create accounts?</p>
-                    <div class="option-grid">
-                        <div class="quiz-option" onclick="selectOption(this, 'user_accounts', 'no')">
-                            <div class="option-icon">🚫</div>
-                            <div class="option-title">Not Needed</div>
-                            <div class="option-desc">Public site only</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'user_accounts', 'basic')">
-                            <div class="option-icon">👤</div>
-                            <div class="option-title">Basic Logins</div>
-                            <div class="option-desc">Simple accounts</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'user_accounts', 'advanced')">
-                            <div class="option-icon">👥</div>
-                            <div class="option-title">Advanced</div>
-                            <div class="option-desc">Roles & permissions</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'user_accounts', 'complex')">
-                            <div class="option-icon">🔐</div>
-                            <div class="option-title">Complex System</div>
-                            <div class="option-desc">Multiple user types</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 6: CRM & Lead Management -->
-                <div class="quiz-step" data-step="6">
-                    <h3 class="step-question">Do you need CRM or lead tracking?</h3>
-                    <p class="step-description">Want to manage customer relationships and track leads?</p>
-                    <div class="option-grid">
-                        <div class="quiz-option" onclick="selectOption(this, 'crm', 'no')">
-                            <div class="option-icon">❌</div>
-                            <div class="option-title">Not Needed</div>
-                            <div class="option-desc">No tracking</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'crm', 'basic')">
-                            <div class="option-icon">📋</div>
-                            <div class="option-title">Basic CRM</div>
-                            <div class="option-desc">Simple contact list</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'crm', 'advanced')">
-                            <div class="option-icon">📊</div>
-                            <div class="option-title">Advanced CRM</div>
-                            <div class="option-desc">Lead pipelines</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'crm', 'custom')">
-                            <div class="option-icon">🎯</div>
-                            <div class="option-title">Custom System</div>
-                            <div class="option-desc">Complex workflows</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 7: Marketing Automation -->
-                <div class="quiz-step" data-step="7">
-                    <h3 class="step-question">Need email/SMS marketing automation?</h3>
-                    <p class="step-description">Automated campaigns and customer communications?</p>
-                    <div class="option-grid">
-                        <div class="quiz-option" onclick="selectOption(this, 'marketing', 'no')">
-                            <div class="option-icon">❌</div>
-                            <div class="option-title">Not Needed</div>
-                            <div class="option-desc">Manual only</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'marketing', 'email')">
-                            <div class="option-icon">📧</div>
-                            <div class="option-title">Email Only</div>
-                            <div class="option-desc">Email automation</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'marketing', 'both')">
-                            <div class="option-icon">📱</div>
-                            <div class="option-title">Email & SMS</div>
-                            <div class="option-desc">Both channels</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'marketing', 'advanced')">
-                            <div class="option-icon">🚀</div>
-                            <div class="option-title">Advanced</div>
-                            <div class="option-desc">Multi-channel</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 8: Contact Information -->
-                <div class="quiz-step" data-step="8">
+                <!-- Step 4: Contact Information -->
+                <div class="quiz-step" data-step="4">
                     <h3 class="step-question">Let's get your contact info</h3>
                     <p class="step-description">So we can send you personalized recommendations.</p>
                     <div class="form-group">
@@ -3440,8 +3327,8 @@
                     <button class="btn-next" onclick="validateAndNext()">Continue</button>
                 </div>
 
-                <!-- Step 9: Budget -->
-                <div class="quiz-step" data-step="9">
+                <!-- Step 5: Budget -->
+                <div class="quiz-step" data-step="5">
                     <h3 class="step-question">What's your estimated budget?</h3>
                     <p class="step-description">This helps us recommend the right plan for you.</p>
                     <div class="option-grid">
@@ -3468,36 +3355,8 @@
                     </div>
                 </div>
 
-                <!-- Step 10: Timeline -->
-                <div class="quiz-step" data-step="10">
-                    <h3 class="step-question">When do you need this launched?</h3>
-                    <p class="step-description">Your desired project timeline.</p>
-                    <div class="option-grid">
-                        <div class="quiz-option" onclick="selectOption(this, 'timeline', 'asap')">
-                            <div class="option-icon">🔥</div>
-                            <div class="option-title">ASAP</div>
-                            <div class="option-desc">Urgent need</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'timeline', '1-2_months')">
-                            <div class="option-icon">📅</div>
-                            <div class="option-title">1-2 Months</div>
-                            <div class="option-desc">Soon but flexible</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'timeline', '2-3_months')">
-                            <div class="option-icon">🗓️</div>
-                            <div class="option-title">2-3 Months</div>
-                            <div class="option-desc">Normal timeline</div>
-                        </div>
-                        <div class="quiz-option" onclick="selectOption(this, 'timeline', 'flexible')">
-                            <div class="option-icon">⏰</div>
-                            <div class="option-title">Flexible</div>
-                            <div class="option-desc">No rush</div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Results Screen -->
-                <div class="quiz-step" data-step="11">
+                <div class="quiz-step" data-step="6">
                     <div class="results-container">
                         <div class="results-icon">🎉</div>
                         <h3 class="results-title">Your Perfect Plan:</h3>
@@ -3605,20 +3464,15 @@
         let quizData = {
             business_type: '',
             primary_goal: '',
-            page_count: '',
             ecommerce: '',
-            user_accounts: '',
-            crm: '',
-            marketing: '',
             name: '',
             email: '',
             phone: '',
-            budget: '',
-            timeline: ''
+            budget: ''
         };
 
         let currentStep = 1;
-        const totalSteps = 10;
+        const totalSteps = 5;
 
         // Quiz Functions
         function openQuizModal() {
@@ -3635,16 +3489,11 @@
             quizData = {
                 business_type: '',
                 primary_goal: '',
-                page_count: '',
                 ecommerce: '',
-                user_accounts: '',
-                crm: '',
-                marketing: '',
                 name: '',
                 email: '',
                 phone: '',
-                budget: '',
-                timeline: ''
+                budget: ''
             };
             
             document.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
@@ -3772,41 +3621,26 @@
             if (quizData.primary_goal === 'sell_online') score += 2;
             if (quizData.primary_goal === 'generate_leads') score += 1;
             
-            if (quizData.page_count === '25+') score += 3;
-            if (quizData.page_count === '16-25') score += 2;
-            if (quizData.page_count === '6-15') score += 1;
-            
             if (quizData.ecommerce === 'advanced') score += 3;
             if (quizData.ecommerce === 'full') score += 2;
             if (quizData.ecommerce === 'basic') score += 1;
-            
-            if (quizData.user_accounts === 'complex') score += 3;
-            if (quizData.user_accounts === 'advanced') score += 2;
-            if (quizData.user_accounts === 'basic') score += 1;
-            
-            if (quizData.crm === 'custom') score += 3;
-            if (quizData.crm === 'advanced') score += 2;
-            if (quizData.crm === 'basic') score += 1;
-            
-            if (quizData.marketing === 'advanced') score += 2;
-            if (quizData.marketing === 'both' || quizData.marketing === 'email') score += 1;
             
             if (quizData.budget === 'Custom') score += 3;
             if (quizData.budget === '$2999.99') score += 2;
             if (quizData.budget === '$1499.99') score += 1;
             
-            if (score >= 15) {
+            if (score >= 8) {
                 recommendedPlan = 'Enterprise';
                 planPrice = 'Custom Pricing';
-                planReason = 'Based on your needs for advanced features, custom workflows, complex user systems, and scalability, our Enterprise package offers the flexibility and power you need.';
-            } else if (score >= 8) {
+                planReason = 'Based on your needs for advanced features and scalability, our Enterprise package offers the flexibility and power you need.';
+            } else if (score >= 5) {
                 recommendedPlan = 'Professional';
                 planPrice = '$2999';
-                planReason = 'Your requirements indicate a need for advanced features, more pages, and enhanced functionality. The Professional package gives you robust CRM capabilities and tools to scale.';
+                planReason = 'Your requirements indicate a need for advanced features and enhanced functionality. The Professional package gives you robust capabilities and tools to scale.';
             } else {
                 recommendedPlan = 'Starter';
                 planPrice = '$1499';
-                planReason = 'Perfect for getting your business online with a solid foundation! The Starter package includes all essential features like lead capture, basic CRM, and room to grow.';
+                planReason = 'Perfect for getting your business online with a solid foundation! The Starter package includes all essential features and room to grow.';
             }
             
             document.querySelector('.plan-name').textContent = recommendedPlan + ' Package';
@@ -3816,19 +3650,14 @@
             let detailsHTML = '<strong>Based on your answers:</strong><br><br>';
             detailsHTML += `✓ Business Type: ${formatValue(quizData.business_type)}<br>`;
             detailsHTML += `✓ Primary Goal: ${formatValue(quizData.primary_goal)}<br>`;
-            detailsHTML += `✓ Page Count: ${quizData.page_count} pages<br>`;
             detailsHTML += `✓ E-commerce: ${formatValue(quizData.ecommerce)}<br>`;
-            detailsHTML += `✓ User Accounts: ${formatValue(quizData.user_accounts)}<br>`;
-            detailsHTML += `✓ CRM Needs: ${formatValue(quizData.crm)}<br>`;
-            detailsHTML += `✓ Marketing: ${formatValue(quizData.marketing)}<br>`;
-            detailsHTML += `✓ Budget Range: ${quizData.budget}<br>`;
-            detailsHTML += `✓ Timeline: ${formatValue(quizData.timeline)}`;
+            detailsHTML += `✓ Budget Range: ${quizData.budget}`;
             
             document.getElementById('resultsDetails').innerHTML = detailsHTML;
             
             await submitQuizLead(recommendedPlan);
             
-            currentStep = 11;
+            currentStep = 6;
             updateStep();
         }
 
@@ -3845,14 +3674,7 @@ QUIZ RESULTS - Recommended Plan: ${recommendedPlan}
 BUSINESS INFORMATION:
 - Business Type: ${formatValue(quizData.business_type)}
 - Primary Goal: ${formatValue(quizData.primary_goal)}
-- Timeline: ${formatValue(quizData.timeline)}
-
-TECHNICAL REQUIREMENTS:
-- Page Count: ${quizData.page_count}
 - E-commerce: ${formatValue(quizData.ecommerce)}
-- User Accounts: ${formatValue(quizData.user_accounts)}
-- CRM Needs: ${formatValue(quizData.crm)}
-- Marketing Automation: ${formatValue(quizData.marketing)}
 
 BUDGET & CONTACT:
 - Budget Range: ${quizData.budget}

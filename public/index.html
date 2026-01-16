@@ -1605,102 +1605,148 @@
         }
 
         .results-container {
-            padding: 48px;
-            text-align: center;
-        }
+    padding: 48px;
+    text-align: center;
+}
 
-        .results-icon {
-            font-size: 64px;
-            margin-bottom: 24px;
-        }
+.results-icon {
+    font-size: 64px;
+    margin-bottom: 24px;
+}
 
-        .results-title {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 32px;
-            letter-spacing: -1px;
-        }
+.results-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 32px;
+    letter-spacing: -1px;
+}
 
-        .results-plan {
-            background: #fafafa;
-            padding: 40px;
-            margin-bottom: 32px;
-        }
+.results-plan {
+    background: #fafafa;
+    padding: 40px;
+    margin-bottom: 32px;
+}
 
-        .plan-name {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 12px;
-            letter-spacing: -0.8px;
-        }
+.plan-name {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -0.8px;
+}
 
-        .plan-price {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            letter-spacing: -2px;
-        }
+.plan-price {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    letter-spacing: -2px;
+}
 
-        .plan-reason {
-            font-size: 16px;
-            line-height: 1.7;
-            color: #666;
-        }
+.plan-reason {
+    font-size: 16px;
+    line-height: 1.7;
+    color: #666;
+}
 
-        .results-details {
-            background: #fafafa;
-            padding: 32px;
-            font-size: 15px;
-            line-height: 1.8;
-            text-align: left;
-            margin-bottom: 32px;
-        }
+.results-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 24px;
+}
 
-        .results-actions {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-        }
+.results-actions button,
+.results-actions a {
+    padding: 16px 32px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: inline-block;
+    cursor: pointer;
+    border: none;
+}
 
-        .results-actions button,
-        .results-actions a {
-            padding: 16px 32px;
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: inline-block;
-            cursor: pointer;
-            border: none;
-        }
+.results-actions .btn-primary {
+    background: #000;
+    color: #fff;
+}
 
-        .results-actions .btn-primary {
-            background: #000;
-            color: #fff;
-        }
+.results-actions .btn-primary:hover {
+    background: #1a1a1a;
+    transform: translateY(-2px);
+}
 
-        .results-actions .btn-primary:hover {
-            background: #1a1a1a;
-            transform: translateY(-2px);
-        }
+.results-actions .btn-secondary {
+    background: #fff;
+    color: #000;
+    border: 2px solid #000;
+}
 
-        .results-actions .btn-secondary {
-            background: #fff;
-            color: #000;
-            border: 2px solid #000;
-        }
+.results-actions .btn-secondary:hover {
+    background: #f0f0f0;
+}
 
-        .results-actions .btn-secondary:hover {
-            background: #f0f0f0;
-        }
+.results-note {
+    font-size: 14px;
+    color: #666;
+    margin-top: 24px;
+}
 
-        .results-note {
-            font-size: 14px;
-            color: #666;
-            margin-top: 24px;
-        }
+/* Mobile styles for results */
+@media (max-width: 768px) {
+    .results-container {
+        padding: 32px 20px;
+    }
+
+    .results-icon {
+        font-size: 48px;
+        margin-bottom: 20px;
+    }
+
+    .results-title {
+        font-size: 24px;
+        margin-bottom: 24px;
+    }
+
+    .results-plan {
+        padding: 28px 20px;
+        margin-bottom: 24px;
+    }
+
+    .plan-name {
+        font-size: 22px;
+        margin-bottom: 10px;
+    }
+
+    .plan-price {
+        font-size: 36px;
+        margin-bottom: 12px;
+    }
+
+    .plan-reason {
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .results-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .results-actions button,
+    .results-actions a {
+        width: 100%;
+        padding: 14px 28px;
+        font-size: 13px;
+    }
+
+    .results-note {
+        font-size: 12px;
+        margin-top: 16px;
+    }
+}
 
         /* Cookie Consent */
         .cookie-consent {
@@ -3761,7 +3807,7 @@
             </div>
 
             <div class="quiz-progress">
-                <div class="progress-text">Question <span id="currentStep">1</span> of <span id="totalSteps">10</span></div>
+                <div class="progress-text">Question <span id="currentStep">1</span> of <span id="totalSteps">5</span></div>
                 <div class="progress-bar-container">
                     <div class="progress-bar" id="progressBar" style="width: 10%;"></div>
                 </div>
@@ -3880,21 +3926,45 @@
     </div>
 </div>
 
-<!-- Step 5 - Results -->
+<!-- Step 5 - Contact Information -->
 <div class="quiz-step" data-step="5">
-    <div style="text-align: center; padding: 32px 0;">
-        <div style="font-size: 64px; margin-bottom: 24px;">🎯</div>
-        <h3 style="font-size: 32px; font-weight: 700; margin-bottom: 16px;">Your Recommended Plan</h3>
-        <div id="recommendedPlan" style="background: #fafafa; padding: 40px; margin: 32px 0; border-radius: 8px;">
-            <div id="planName" style="font-size: 28px; font-weight: 700; margin-bottom: 12px;"></div>
-            <div id="planPrice" style="font-size: 48px; font-weight: 700; margin-bottom: 16px;"></div>
-            <div id="planDescription" style="font-size: 16px; color: #666; line-height: 1.7;"></div>
-        </div>
-        <div style="display: flex; gap: 16px; flex-direction: column;">
-            <button class="btn-primary" onclick="closeQuizModal(); openModal();" style="width: 100%; padding: 16px;">Get Started Now</button>
-            <a href="pricing.html" class="btn-secondary" style="width: 100%; padding: 16px; text-align: center; display: block; box-sizing: border-box;">View All Pricing</a>
-        </div>
+    <h3 class="step-question">Let's get your contact info</h3>
+    <p class="step-description">So we can send you personalized recommendations.</p>
+    <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input type="text" id="quizName" class="form-input" placeholder="John Doe" required>
     </div>
+    <div class="form-group">
+        <label class="form-label">Email Address *</label>
+        <input type="email" id="quizEmail" class="form-input" placeholder="john@example.com" required>
+    </div>
+    <div class="form-group">
+        <label class="form-label">Phone Number *</label>
+        <input type="tel" id="quizPhone" class="form-input" placeholder="+1 (234) 567-8900" required>
+    </div>
+    <button class="btn-next" onclick="validateAndNext()">Continue to Results</button>
+</div>
+
+<!-- Step 6 - Results -->
+<div class="quiz-step" data-step="6">
+    <div class="results-container">
+        <div class="results-icon">🎉</div>
+        <h3 class="results-title">Your Perfect Plan:</h3>
+        
+        <div class="results-plan" id="recommendedPlan">
+            <div class="plan-name" id="planName">Loading...</div>
+            <div class="plan-price" id="planPrice">$0</div>
+            <div class="plan-reason" id="planDescription"></div>
+        </div>
+        
+        <div class="results-actions">
+            <button class="btn-primary" onclick="closeQuizModal(); openModal();">Get Started Now</button>
+            <a href="pricing.html" class="btn-secondary">View All Pricing</a>
+        </div>
+        
+        <p class="results-note">✅ We've sent your results and will contact you within 24 hours!</p>
+    </div>
+</div>
 </div>
 
                 <!-- Additional quiz steps would continue here from original file -->
@@ -4096,142 +4166,150 @@
             }
         }
 
-        // Quiz Modal Functions
-        let quizData = {};
-        let currentStep = 1;
-        let quizScore = 0;  // ADD this at the top with other quiz variables
-        const totalSteps = 5;
+// Quiz Modal Functions
+let quizData = {
+    business_type: '',
+    pages: '',
+    ecommerce: '',
+    seo: '',
+    name: '',
+    email: '',
+    phone: ''
+};
+let currentStep = 1;
+let quizScore = 0;
+const totalSteps = 6;
 
-        function openQuizModal() {
-            document.getElementById('quizModal').classList.add('active');
-            resetQuiz();
-        }
+function openQuizModal() {
+    document.getElementById('quizModal').classList.add('active');
+    resetQuiz();
+}
 
-        function closeQuizModal() {
-            document.getElementById('quizModal').classList.remove('active');
-        }
+function closeQuizModal() {
+    document.getElementById('quizModal').classList.remove('active');
+}
 
-        function resetQuiz() {
-            currentStep = 1;
-            quizData = {};
-            document.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
-            document.querySelectorAll('.quiz-step').forEach((step, index) => {
-                step.classList.remove('active');
-                if (index === 0) step.classList.add('active');
-            });
-            updateProgress();
-        }
+function resetQuiz() {
+    currentStep = 1;
+    quizScore = 0;
+    quizData = {
+        business_type: '',
+        pages: '',
+        ecommerce: '',
+        seo: '',
+        name: '',
+        email: '',
+        phone: ''
+    };
+    document.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+    document.querySelectorAll('.quiz-step').forEach((step, index) => {
+        step.classList.remove('active');
+        if (index === 0) step.classList.add('active');
+    });
+    updateProgress();
+    updateNavigationButtons();
+}
 
-        function selectOption(element, key, value, score) {  // Added 'score' parameter
+function selectOption(element, key, value, score) {
     quizData[key] = value;
-    quizScore += score;  // ADD this line
+    quizScore += score;
     
     const siblings = element.parentElement.querySelectorAll('.quiz-option');
     siblings.forEach(opt => opt.classList.remove('selected'));
     element.classList.add('selected');
     
-    setTimeout(() => nextStep(), 500);  // Changed to 500ms
+    setTimeout(() => nextStep(), 500);
+}
+
+function validateAndNext() {
+    const name = document.getElementById('quizName').value.trim();
+    const email = document.getElementById('quizEmail').value.trim();
+    const phone = document.getElementById('quizPhone').value.trim();
+    
+    if (!name || !email || !phone) {
+        alert('⚠️ Please fill out all required fields.');
+        return;
+    }
+    
+    if (!email.includes('@')) {
+        alert('⚠️ Please enter a valid email address.');
+        return;
+    }
+    
+    const nameParts = name.split(' ');
+    quizData.name = name;
+    quizData.firstName = nameParts[0] || '';
+    quizData.lastName = nameParts.slice(1).join(' ') || '';
+    quizData.email = email;
+    quizData.phone = phone;
+    
+    nextStep();  // This will move to step 6 (results) and trigger showResults()
 }
 
 function nextStep() {
     if (currentStep < totalSteps) {
         currentStep++;
-        if (currentStep === totalSteps) {  // ADD this block
+        if (currentStep === totalSteps) {  // When we reach step 6 (results)
             showResults();
         }
         updateStep();
     }
 }
 
-        function previousStep() {
-            if (currentStep > 1) {
-                currentStep--;
-                updateStep();
-            }
-        }
+function previousStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStep();
+    }
+}
 
-        function skipStep() {
-            nextStep();
-        }
+function skipStep() {
+    nextStep();
+}
 
-        function updateStep() {
-            document.querySelectorAll('.quiz-step').forEach((step, index) => {
-                step.classList.remove('active');
-                if (index + 1 === currentStep) step.classList.add('active');
-            });
-            updateProgress();
-        }
+function updateStep() {
+    document.querySelectorAll('.quiz-step').forEach((step, index) => {
+        step.classList.remove('active');
+        if (index + 1 === currentStep) step.classList.add('active');
+    });
+    updateProgress();
+    updateNavigationButtons();
+}
 
-        function updateProgress() {
-            const progress = (currentStep / totalSteps) * 100;
-            document.getElementById('progressBar').style.width = progress + '%';
-            document.getElementById('currentStep').textContent = currentStep;
-            document.getElementById('totalSteps').textContent = totalSteps;
-        }
+function updateProgress() {
+    const progress = (currentStep / totalSteps) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+    document.getElementById('currentStep').textContent = currentStep;
+    document.getElementById('totalSteps').textContent = totalSteps;
+}
 
-        // Cookie Consent
-        document.addEventListener('DOMContentLoaded', function() {
-            const cookieConsent = localStorage.getItem('cookieConsent');
-            if (!cookieConsent) {
-                setTimeout(() => {
-                    document.getElementById('cookieConsent').classList.add('show');
-                }, 1000);
-            }
-        });
+function updateNavigationButtons() {
+    const backBtn = document.getElementById('backBtn');
+    const skipBtn = document.getElementById('skipBtn');
+    const navContainer = document.getElementById('quizNav');
+    
+    if (currentStep === 1) {
+        backBtn.style.display = 'none';
+    } else {
+        backBtn.style.display = 'block';
+    }
+    
+    // Hide skip button on contact form (step 5) and results (step 6)
+    if (currentStep === 5 || currentStep === 6) {
+        skipBtn.style.display = 'none';
+    } else {
+        skipBtn.style.display = 'block';
+    }
+    
+    // Hide navigation on results screen
+    if (currentStep === 6) {
+        navContainer.style.display = 'none';
+    } else {
+        navContainer.style.display = 'flex';
+    }
+}
 
-        function acceptCookies() {
-            localStorage.setItem('cookieConsent', 'accepted');
-            document.getElementById('cookieConsent').classList.remove('show');
-        }
-
-        function declineCookies() {
-            localStorage.setItem('cookieConsent', 'declined');
-            document.getElementById('cookieConsent').classList.remove('show');
-        }
-
-        // Marketing Popup
-        document.addEventListener('DOMContentLoaded', function() {
-            const popupSeen = sessionStorage.getItem('marketingPopupSeen');
-            if (!popupSeen && window.innerWidth > 768) {
-                setTimeout(() => showMarketingPopup(), 2000);
-            }
-            updateCountdown();
-            setInterval(updateCountdown, 1000);
-        });
-
-        function showMarketingPopup() {
-            if (window.innerWidth <= 768) return;
-            document.getElementById('marketingPopup').classList.add('active');
-        }
-
-        function closeMarketingPopup() {
-            document.getElementById('marketingPopup').classList.remove('active');
-            sessionStorage.setItem('marketingPopupSeen', 'true');
-        }
-
-        document.getElementById('marketingPopup').addEventListener('click', function(e) {
-            if (e.target === this) closeMarketingPopup();
-        });
-
-        function updateCountdown() {
-            const now = new Date();
-            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-            const timeLeft = endOfMonth - now;
-
-            if (timeLeft > 0) {
-                const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-
-                const countdownElement = document.getElementById('countdown');
-                if (countdownElement) {
-                    countdownElement.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-                }
-            }
-        }
-
-        function showResults() {
+async function showResults() {
     let planName, planPrice, planDescription;
     
     if (quizScore <= 3) {
@@ -4248,9 +4326,62 @@ function nextStep() {
         planDescription = "Large-scale applications with unique requirements. Unlimited pages, advanced features, custom workflows, and 12 months of free support.";
     }
     
+    // Update the results display
     document.getElementById('planName').textContent = planName;
     document.getElementById('planPrice').textContent = planPrice;
     document.getElementById('planDescription').textContent = planDescription;
+    
+    // Submit quiz data to admin
+    await submitQuizLead(planName);
+}
+
+async function submitQuizLead(recommendedPlan) {
+    try {
+        const details = `
+QUIZ RESULTS - Recommended Plan: ${recommendedPlan}
+
+BUSINESS INFORMATION:
+- Business Type: ${formatValue(quizData.business_type)}
+- Pages Needed: ${quizData.pages}
+- E-commerce: ${formatValue(quizData.ecommerce)}
+- SEO Needs: ${formatValue(quizData.seo)}
+
+CONTACT:
+- Name: ${quizData.name}
+- Email: ${quizData.email}
+- Phone: ${quizData.phone}
+        `.trim();
+        
+        const response = await fetch(`${window.location.origin}/api/leads`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                firstName: quizData.firstName,
+                lastName: quizData.lastName,
+                email: quizData.email,
+                phone: quizData.phone,
+                service: `Pricing Quiz - ${recommendedPlan}`,
+                budget: recommendedPlan === 'Starter Package' ? '$1499.99' : 
+                        recommendedPlan === 'Professional Package' ? '$2999.99' : 'Custom',
+                details: details
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('✅ Quiz lead submitted successfully');
+        }
+    } catch (error) {
+        console.error('Error submitting quiz lead:', error);
+    }
+}
+
+function formatValue(value) {
+    if (!value) return 'Not specified';
+    return value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
         // Chatbot

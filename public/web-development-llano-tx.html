@@ -4151,133 +4151,211 @@ CONTACT:
             }, 1000);
         }
 
-        // Chatbot
-        (function() {
-            'use strict';
+// Chatbot with AI Integration
+(function() {
+    'use strict';
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initChatbot);
+    } else {
+        initChatbot();
+    }
+    
+    function initChatbot() {
+        const toggle = document.getElementById('chatbotToggle');
+        if (!toggle) return;
+        
+        const input = document.getElementById('chatbotInput');
+        const sendBtn = document.getElementById('chatbotSendBtn');
+        const messagesContainer = document.getElementById('chatbotMessages');
+        const quickActionBtns = document.querySelectorAll('.quick-action-btn');
+        
+        // Toggle chatbot window
+        window.toggleChatbot = function() {
+            const windowEl = document.getElementById('chatbotWindow');
+            const badge = document.getElementById('chatbotBadge');
+            const isActive = toggle.classList.toggle('active');
+            windowEl.classList.toggle('active');
+            if (isActive && badge) badge.style.display = 'none';
+        };
+        
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.toggleChatbot();
+        });
+        
+        const closeBtn = document.getElementById('chatbotCloseBtn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.toggleChatbot();
+            });
+        }
+        
+        // Add user message to chat
+        function addUserMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+            messageDiv.innerHTML = `
+                <div class="message-avatar">👤</div>
+                <div class="message-content">
+                    <p>${escapeHtml(text)}</p>
+                    <div class="message-time">Just now</div>
+                </div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        
+        // Add bot message to chat
+        function addBotMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot-message';
+            messageDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <p>${escapeHtml(text)}</p>
+                    <div class="message-time">Just now</div>
+                </div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        
+        // Add typing indicator
+        function showTyping() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot-message typing-indicator';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <p>Typing...</p>
+                </div>
+            `;
+            messagesContainer.appendChild(typingDiv);
+            scrollToBottom();
+        }
+        
+        function hideTyping() {
+            const typing = document.getElementById('typingIndicator');
+            if (typing) typing.remove();
+        }
+        
+        // Scroll to bottom of messages
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Send message to AI
+        async function sendMessage(userMessage) {
+            if (!userMessage.trim()) return;
             
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initChatbot);
-            } else {
-                initChatbot();
-            }
+            addUserMessage(userMessage);
+            input.value = '';
             
-            function initChatbot() {
-                const toggle = document.getElementById('chatbotToggle');
-                if (!toggle) return;
-                
-                window.toggleChatbot = function() {
-                    const windowEl = document.getElementById('chatbotWindow');
-                    const badge = document.getElementById('chatbotBadge');
-                    const isActive = toggle.classList.toggle('active');
-                    windowEl.classList.toggle('active');
-                    if (isActive && badge) badge.style.display = 'none';
-                };
-                
-                toggle.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.toggleChatbot();
+            showTyping();
+            
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 1000,
+                        messages: [{
+                            role: 'user',
+                            content: `You are a helpful assistant for Diamondback Coding, a web development company serving Texas Hill Country. 
+                            
+Our services:
+- Starter Package: $1,499 (up to 15 pages, mobile-responsive, 90 days support)
+- Professional Package: $2,999 (up to 25 pages, advanced SEO, 120 days support)
+- Enterprise Package: Custom pricing (unlimited pages, 12 months support)
+- Digital Marketing: Custom monthly pricing
+- SEO Services: $199/month
+
+We serve: Llano, Marble Falls, Fredericksburg, Burnet, Kingsland, and all of Texas Hill Country.
+
+Contact: (940) 217-8680 or contact@diamondbackcoding.com
+
+Answer this customer question briefly and helpfully (2-3 sentences max):
+${userMessage}`
+                        }]
+                    })
                 });
                 
-                const closeBtn = document.getElementById('chatbotCloseBtn');
-                if (closeBtn) {
-                    closeBtn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        window.toggleChatbot();
-                    });
+                hideTyping();
+                
+                if (!response.ok) {
+                    throw new Error('Failed to get response');
                 }
-
-                // Quick action buttons
-                const quickButtons = document.querySelectorAll('.quick-action-btn');
-                quickButtons.forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const action = this.getAttribute('data-action');
-                        handleQuickAction(action);
-                    });
-                });
-
-                // Send button
-                const sendBtn = document.getElementById('chatbotSendBtn');
-                const input = document.getElementById('chatbotInput');
                 
-                if (sendBtn && input) {
-                    sendBtn.addEventListener('click', sendMessage);
-                    input.addEventListener('keypress', function(e) {
-                        if (e.key === 'Enter') sendMessage();
-                    });
-                }
+                const data = await response.json();
+                const botReply = data.content
+                    .filter(item => item.type === 'text')
+                    .map(item => item.text)
+                    .join('\n');
+                
+                addBotMessage(botReply || "I'm having trouble responding right now. Please call us at (940) 217-8680 or fill out our contact form.");
+                
+            } catch (error) {
+                hideTyping();
+                console.error('Chatbot error:', error);
+                addBotMessage("I'm having trouble connecting right now. Please call us at (940) 217-8680 or use our contact form for immediate assistance.");
             }
-
-            function handleQuickAction(action) {
-                const responses = {
-                    'pricing': 'Our Llano web development packages start at $1,499 for the Starter package, $2,999 for Professional, and custom pricing for Enterprise. Would you like to schedule a consultation?',
-                    'timeline': 'Most Llano business websites take 2-4 weeks from start to launch. The timeline depends on the complexity and your package selection. Ready to get started?',
-                    'services': 'We offer Web Design, Web Development, E-commerce, SEO, and Digital Marketing services for Llano businesses. What are you most interested in?',
-                    'contact': 'You can reach us at (940) 217-8680 or contact@diamondbackcoding.com. We serve Llano and all of Hill Country. Would you like to schedule a call?'
-                };
-
-                addBotMessage(responses[action] || 'How can I help your Llano business?');
-            }
-
-            function sendMessage() {
-                const input = document.getElementById('chatbotInput');
-                const message = input.value.trim();
-                
-                if (!message) return;
-                
-                addUserMessage(message);
-                input.value = '';
+        }
+        
+        // Quick action responses
+        const quickResponses = {
+            'pricing': "We offer three main packages:\n\n💰 Starter: $1,499 (perfect for small businesses)\n💼 Professional: $2,999 (most popular)\n🏢 Enterprise: Custom pricing\n\nWould you like details about a specific package?",
+            'timeline': "Most projects take 2-4 weeks from start to launch, depending on complexity:\n\n📅 Starter Package: 2-3 weeks\n📅 Professional Package: 3-4 weeks\n📅 Enterprise: Custom timeline\n\nNeed it faster? We can discuss rush options!",
+            'services': "We provide:\n\n🌐 Custom Web Development\n🛒 E-commerce Solutions\n📱 Mobile-Responsive Design\n🔍 SEO Services ($199/month)\n📊 Digital Marketing\n💼 Ongoing Support\n\nWhat service interests you most?",
+            'contact': "📞 Phone: (940) 217-8680\n📧 Email: contact@diamondbackcoding.com\n⏰ Hours: Mon-Fri 8AM-5PM CST\n\nWe typically respond within 24 hours. Want to schedule a free consultation?"
+        };
+        
+        // Quick action button handlers
+        quickActionBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const action = this.getAttribute('data-action');
+                const question = this.textContent;
+                addUserMessage(question);
                 
                 setTimeout(() => {
-                    addBotMessage('Thanks for reaching out! A team member will respond shortly. For immediate assistance with your Llano business, call us at (940) 217-8680.');
-                }, 1000);
-            }
-
-            function addUserMessage(text) {
-                const messagesContainer = document.getElementById('chatbotMessages');
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'message user-message';
-                messageDiv.innerHTML = `
-                    <div class="message-avatar">👤</div>
-                    <div class="message-content">
-                        <p>${escapeHtml(text)}</p>
-                        <div class="message-time">Just now</div>
-                    </div>
-                `;
-                messagesContainer.appendChild(messageDiv);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-
-            function addBotMessage(text) {
-                const messagesContainer = document.getElementById('chatbotMessages');
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'message bot-message';
-                messageDiv.innerHTML = `
-                    <div class="message-avatar">🤖</div>
-                    <div class="message-content">
-                        <p>${escapeHtml(text)}</p>
-                        <div class="message-time">Just now</div>
-                    </div>
-                `;
-                messagesContainer.appendChild(messageDiv);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-        })();
-
-        // Close modals on escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeModal();
-                closeQuizModal();
-                closeMarketingPopup();
+                    addBotMessage(quickResponses[action]);
+                }, 500);
+            });
+        });
+        
+        // Send button click
+        sendBtn.addEventListener('click', function() {
+            const message = input.value.trim();
+            if (message) {
+                sendMessage(message);
             }
         });
+        
+        // Enter key to send
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const message = input.value.trim();
+                if (message) {
+                    sendMessage(message);
+                }
+            }
+        });
+    }
+})();
     </script>
 
 </body>

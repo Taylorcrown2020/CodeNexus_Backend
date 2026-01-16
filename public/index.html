@@ -2276,6 +2276,71 @@
     transition: transform 0.3s ease;
 }
 
+/* =========================
+   MOBILE HERO CLEANUP
+   (Crown-style)
+========================= */
+@media (max-width: 768px) {
+
+    .hero {
+        height: 75vh;
+        min-height: 520px;
+        background-position: center top;
+    }
+
+    .hero-text {
+        position: absolute;
+        bottom: 32px;
+        left: 20px;
+        right: 20px;
+        max-width: none;
+    }
+
+    .hero-title {
+        font-size: 34px;
+        line-height: 1.15;
+        margin-bottom: 14px;
+        letter-spacing: -1px;
+    }
+
+    .hero-subtitle {
+        font-size: 15px;
+        line-height: 1.5;
+        margin-bottom: 22px;
+        opacity: 0.9;
+    }
+
+    .hero-cta {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .hero-cta a {
+        width: 100%;
+        text-align: center;
+        padding: 16px 0;
+    }
+
+    /* ❌ REMOVE SECONDARY CTA ON MOBILE (Crown does this) */
+    .hero-cta .btn-secondary {
+        display: none;
+    }
+}
+
+.mockup-body {
+    position: relative;
+    background: #fff;
+    overflow: hidden;
+    height: 380px;
+}
+
+.mockup-screenshot {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+
         /* Mobile Responsive */
         @media (max-width: 1024px) {
             .nav-container {
@@ -2336,6 +2401,22 @@
         padding: 16px 20px;
     }
 
+    .hero-quiz-link {
+        display: block;
+        margin-top: 16px;
+        font-size: 13px;
+        text-align: center;
+        color: #fff;
+        opacity: 0.7;
+        text-decoration: underline;
+    }
+
+    /* Hide quiz CTA on mobile hero (Crown behavior) */
+#quizButtonContainer {
+    display: none;
+}
+
+
     .nav-logo {
         font-size: 16px;
     }
@@ -2354,11 +2435,18 @@
     }
 
     /* Announcement Banner */
-    .announcement-banner {
-    padding: 8px 20px;  /* Reduced from 10px */
-    margin-top: 65px;
-    font-size: 11px;
-    line-height: 1.3;  /* ADDED */
+.announcement-banner {
+    padding: 6px 16px;
+    margin-top: 58px;
+    opacity: 0.85;
+}
+
+.announcement-text:last-child {
+    display: none; /* hide phone CTA on mobile hero */
+}
+
+.hero-cta .btn-secondary {
+    display: none;
 }
 
 .announcement-content {
@@ -3026,6 +3114,10 @@
                     <button class="btn-primary" onclick="openModal()">Start Your Project</button>
                     <a href="portfolio.html" class="btn-secondary">View Our Work</a>
                 </div>
+                <a href="javascript:void(0)" class="hero-quiz-link" onclick="openQuizModal()">
+                    Not sure? Take the 60-second quiz →
+                </a>
+
             </div>
         </section>
 

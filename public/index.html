@@ -2276,9 +2276,19 @@
     transition: transform 0.3s ease;
 }
 
-/* Hide mobile-only hero quiz link by default (desktop) */
 .hero-quiz-link {
-    display: none;
+    display: inline-block;
+    margin-top: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.hero-quiz-link:hover {
+    opacity: 1;
 }
 
 /* =========================
@@ -3095,13 +3105,6 @@
             <span class="announcement-text">Get 20% off your first project — Launch this month</span>
             <span class="announcement-text">📞 Call <a href="tel:+19402178680">(940) 217-8680</a> for more information</span>
         </div>
-    </div>
-
-    <!-- Quiz Button -->
-    <div id="quizButtonContainer">
-        <button class="btn-primary" onclick="openQuizModal()">
-            🎯 Take Our Quiz - Find Your Perfect Plan
-        </button>
     </div>
 
     <main id="main-content">

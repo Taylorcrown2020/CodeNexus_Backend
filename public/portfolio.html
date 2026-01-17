@@ -615,12 +615,14 @@
             padding: 0 60px;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 40px;
-            text-align: center;
-        }
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+    text-align: center;
+    max-width: 1200px;  /* ADD THIS */
+    margin: 0 auto;      /* ADD THIS */
+}
 
         .stat h3 {
             font-size: 56px;

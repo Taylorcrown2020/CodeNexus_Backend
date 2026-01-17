@@ -412,7 +412,7 @@
         .pricing-hero {
             position: relative;
             padding: 100px 60px 60px;
-            background-image: url('https://diamondbackcoding.com/pexels-vishnu-vardhan-akula-1340584312-32448258.jpg');
+            background-image: url('https://diamondbackcoding.com/pexels-lee-andrews-367418148-14534261.jpg');
             background-size: cover;
             background-position: center;
             text-align: center;
@@ -1138,8 +1138,9 @@
 
         /* Cookie Consent */
         .cookie-consent {
+            display: none;
             position: fixed;
-            bottom: -200px;
+            bottom: 20px;
             left: 20px;
             right: 20px;
             max-width: 500px;
@@ -1148,12 +1149,23 @@
             padding: 24px 28px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             z-index: 9999;
-            transition: bottom 0.4s ease;
             border: 1px solid rgba(0, 0, 0, 0.08);
         }
 
         .cookie-consent.show {
-            bottom: 20px;
+            display: block;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .cookie-consent-title {
@@ -1274,7 +1286,7 @@
             position: absolute;
             top: -5px;
             right: -5px;
-            background: #ff4444;
+            background: #10b981;
             color: #fff;
             width: 24px;
             height: 24px;
@@ -1285,6 +1297,7 @@
             font-size: 12px;
             font-weight: 700;
             animation: pulse 2s infinite;
+            border: 2px solid #fff;
         }
 
         @keyframes pulse {
@@ -1359,7 +1372,7 @@
         .status-dot {
             width: 8px;
             height: 8px;
-            background: #4ade80;
+            background: #10b981;
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
@@ -1394,6 +1407,28 @@
         .message-avatar {
             font-size: 24px;
             flex-shrink: 0;
+        }
+
+        .bot-message .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #10b981;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .user-message .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
         }
 
         .message-content {
@@ -2348,7 +2383,7 @@
             <div>
                 <h4 class="footer-title">Connect</h4>
                 <ul class="footer-links">
-                    <li><a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a></li>
+                    <li><a href="/cdn-cgi/l/email-protection#ceada1a0baafadba8eaaa7afa3a1a0aaacafada5ada1aaa7a0a9e0ada1a3"><span class="__cf_email__" data-cfemail="beddd1d0cadfddcafedad7dfd3d1d0dadcdfddd5ddd1dad7d0d990ddd1d3">[email&#160;protected]</span></a></li>
                     <li><a href="tel:+19402178680">+1 (940) 217-8680</a></li>
                     <li>Available Mon-Fri 8AM - 5PM CST</li>
                 </ul>
@@ -2683,7 +2718,7 @@
         </div>
     </div>
 
-    <script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
         // Mobile Menu Functions
         function toggleMobileMenu() {
             const btn = document.querySelector('.mobile-menu-btn');

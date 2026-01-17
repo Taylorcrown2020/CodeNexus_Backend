@@ -363,16 +363,16 @@
             display: block;
         }
 
-        /* Services Hero */
-        .services-hero {
-            position: relative;
-            padding: 100px 60px 60px;
-            background-image: url('https://diamondbackcoding.com/pexels-vishnu-vardhan-akula-1340584312-32448258.jpg');
-            background-size: cover;
-            background-position: center;
-            text-align: center;
-            overflow: hidden;
-        }
+.services-hero {
+    position: relative;
+    padding: 160px 60px 80px;  /* Match pricing.html padding */
+    margin-top: 73px;          /* Add this to account for fixed nav */
+    background-image: url('https://diamondbackcoding.com/pexels-vishnu-vardhan-akula-1340584312-32448258.jpg');
+    background-size: cover;
+    background-position: center;
+    text-align: center;
+    overflow: hidden;
+}
 
         .services-hero::before {
             content: '';
@@ -1122,7 +1122,8 @@
             }
 
             .services-hero {
-                padding: 60px 20px 40px;
+                padding: 80px 20px 60px;
+                margin-top: 58px;  /* Smaller margin for mobile nav height */
                 background-position: center top;
             }
 

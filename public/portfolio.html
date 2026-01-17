@@ -31,7 +31,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:site_name" content="Diamondback Coding">
 
-<!-- Twitter Cards (MISSING ENTIRELY) -->
+<!-- Twitter Cards -->
 <meta property="twitter:card" content="summary_large_image">
 <meta property="twitter:url" content="https://diamondbackcoding.com/portfolio.html">
 <meta property="twitter:title" content="Web Development Portfolio | Real Projects | Diamondback Coding">
@@ -225,9 +225,26 @@
             color: #1a1a1a;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Navigation */
+        /* Skip to main content */
+        .skip-to-main {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #000;
+            color: #fff;
+            padding: 8px;
+            text-decoration: none;
+            z-index: 100;
+        }
+
+        .skip-to-main:focus {
+            top: 0;
+        }
+
+        /* Navigation - Matching Services Page */
         nav {
             position: fixed;
             top: 0;
@@ -284,8 +301,26 @@
             transition: width 0.3s ease;
         }
 
+        .nav-links a:hover {
+            color: #000;
+        }
+
         .nav-links a:hover::after {
             width: 100%;
+        }
+
+        .contact-info {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .phone {
+            color: #1a1a1a;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: -0.2px;
         }
 
         .nav-cta-btn {
@@ -300,6 +335,7 @@
             transition: all 0.25s ease;
             text-transform: uppercase;
             text-decoration: none;
+            display: inline-block;
         }
 
         .nav-cta-btn:hover {
@@ -326,6 +362,18 @@
             transition: all 0.3s ease;
         }
 
+        .mobile-menu-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(6px, 6px);
+        }
+
+        .mobile-menu-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .mobile-menu-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(6px, -6px);
+        }
+
         .mobile-nav-overlay {
             display: none;
             position: fixed;
@@ -343,154 +391,147 @@
             display: block;
         }
 
-        /* Announcement Banner */
-        .announcement-banner {
-            margin-top: 73px;
-            background: #000;
-            color: #fff;
-            padding: 12px 60px;
-            text-align: center;
-            font-size: 13px;
+        .mobile-nav-content {
+            max-width: 100%;
+        }
+
+        .mobile-nav-links {
+            list-style: none;
+            margin-bottom: 24px;
+        }
+
+        .mobile-nav-links a {
+            display: block;
+            padding: 16px 0;
+            color: #1a1a1a;
+            text-decoration: none;
+            font-size: 16px;
             font-weight: 500;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .mobile-nav-links li:last-child a {
+            border-bottom: none;
+        }
+
+        .mobile-nav-content .nav-cta-btn {
+            width: 100%;
+            text-align: center;
+            display: block;
         }
 
         /* Services Hero */
-.services-hero {
-    position: relative;
-    padding: 100px 60px 60px;
-    background-image: url('https://diamondbackcoding.com/pexels-michael-brennan-173741263-14591950.jpg');
-    background-size: cover;
-    background-position: center;
-    text-align: center;
-    overflow: hidden;
-}
+        .services-hero {
+            position: relative;
+            padding: 160px 60px 80px;
+            margin-top: 73px;
+            background-image: url('https://diamondbackcoding.com/pexels-michael-brennan-173741263-14591950.jpg');
+            background-size: cover;
+            background-position: center;
+            text-align: center;
+            overflow: hidden;
+        }
 
-.services-hero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.85) 100%);
-    z-index: 1;
-}
+        .services-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.85) 100%);
+            z-index: 1;
+        }
 
-.services-hero-content {
-    max-width: 900px;
-    margin: 0 auto;
-    position: relative;
-    z-index: 2;
-}
+        .services-hero-content {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
 
-.services-badge {
-    display: inline-block;
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-    padding: 8px 20px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.services-hero-title {
-    font-size: 56px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    line-height: 1.1;
-    letter-spacing: -2px;
-    color: #fff;
-}
-
-.services-hero-subtitle {
-    font-size: 18px;
-    color: rgba(255, 255, 255, 0.95);
-    line-height: 1.6;
-    letter-spacing: -0.3px;
-    margin-bottom: 40px;
-}
-
-.services-hero-cta {
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.btn-primary {
-    background: #fff;
-    color: #000;
-    padding: 18px 48px;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    transition: all 0.3s ease;
-    display: inline-block;
-    border: none;
-    cursor: pointer;
-}
-
-.btn-primary:hover {
-    background: #f0f0f0;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
-}
-
-.btn-secondary {
-    background: transparent;
-    color: #fff;
-    padding: 18px 48px;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    border: 2px solid #fff;
-    transition: all 0.3s ease;
-    display: inline-block;
-}
-
-.btn-secondary:hover {
-    transform: translateY(-2px);
-}
-
-        .page-subtitle {
+        .services-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 20px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
-        .page-title {
+        .services-hero-title {
             font-size: 56px;
             font-weight: 700;
-            margin-bottom: 16px;
-            color: #fff;
+            margin-bottom: 20px;
+            line-height: 1.1;
             letter-spacing: -2px;
+            color: #fff;
         }
 
-        .page-description {
+        .services-hero-subtitle {
             font-size: 18px;
             color: rgba(255, 255, 255, 0.95);
-            max-width: 800px;
-            margin: 0 auto;
             line-height: 1.6;
             letter-spacing: -0.3px;
+            margin-bottom: 40px;
+        }
+
+        .services-hero-cta {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: #fff;
+            color: #000;
+            padding: 18px 48px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            display: inline-block;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #fff;
+            padding: 18px 48px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border: 2px solid #fff;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
         }
 
         /* Portfolio Grid */
         .portfolio-container {
             max-width: 1600px;
-            margin: 0 auto 120px;
-            padding: 0 60px;
+            margin: 0 auto;
+            padding: 120px 60px;
         }
 
         .portfolio-staggered {
@@ -608,14 +649,139 @@
             letter-spacing: 0.3px;
         }
 
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 40px;
-    text-align: center;
-    max-width: 1200px;  /* ADD THIS */
-    margin: 0 auto;      /* ADD THIS */
-}
+        /* Section Headers */
+        .section-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .section-subtitle {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -1.5px;
+            color: #000;
+        }
+
+        .section-description {
+            font-size: 18px;
+            color: #666;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+            letter-spacing: -0.3px;
+        }
+
+        /* What We Build Section */
+        .what-we-build {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 120px 60px;
+        }
+
+        .build-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+        }
+
+        .build-card {
+            background: #fafafa;
+            padding: 48px 40px;
+            transition: all 0.4s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+
+        .build-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            background: #fff;
+        }
+
+        .build-card h3 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #000;
+        }
+
+        .build-card p {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+
+        .build-card ul {
+            list-style: none;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .build-card li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .build-card li:last-child {
+            border-bottom: none;
+        }
+
+        /* Tech Stack Section */
+        .tech-stack {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 60px;
+            background: #fff;
+            border: 1px solid #eee;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 32px;
+            text-align: center;
+        }
+
+        .tech-item {
+            padding: 24px;
+        }
+
+        .tech-item h4 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 8px;
+        }
+
+        .tech-item p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Stats Section */
+        .stats-section {
+            background: #fafafa;
+            padding: 120px 60px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
 
         .stat h3 {
             font-size: 56px;
@@ -627,6 +793,61 @@
         .stat p {
             font-size: 15px;
             color: #666;
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            max-width: 900px;
+            margin: 120px auto;
+            padding: 0 60px;
+        }
+
+        .faq-item {
+            background: #fafafa;
+            border: 1px solid #eee;
+            padding: 24px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .faq-item:hover {
+            border-color: rgba(0, 0, 0, 0.15);
+            background: #fff;
+        }
+
+        .faq-question {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .faq-icon {
+            font-size: 24px;
+            transition: transform 0.3s ease;
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .faq-answer p {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.7;
+            margin-top: 16px;
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 500px;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(45deg);
         }
 
         /* CTA Section */
@@ -651,6 +872,7 @@
             max-width: 800px;
             margin-left: auto;
             margin-right: auto;
+            margin-bottom: 48px;
         }
 
         .cta-btn-white {
@@ -664,6 +886,8 @@
             text-transform: uppercase;
             transition: all 0.3s ease;
             display: inline-block;
+            border: none;
+            cursor: pointer;
         }
 
         .cta-btn-white:hover {
@@ -767,37 +991,37 @@
             position: relative;
         }
 
-.modal-close {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    color: #fff;
-    border: none;
-    font-size: 32px;
-    cursor: pointer;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    z-index: 100;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: none;
+            font-size: 32px;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
 
-.modal-close::before {
-    content: '×';
-}
+        .modal-close::before {
+            content: '×';
+        }
 
-.modal-close:hover {
-    background: rgba(0, 0, 0, 0.9);
-    transform: rotate(90deg);
-}
+        .modal-close:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: rotate(90deg);
+        }
 
         .modal-form {
-            padding: 48px;
+            padding: 60px 48px 48px;
         }
 
         .modal-badge {
@@ -872,837 +1096,6 @@
             background: #1a1a1a;
         }
 
-        .skip-to-main {
-    position: absolute;
-    top: -40px;
-    left: 0;
-    background: #000;
-    color: #fff;
-    padding: 8px;
-    text-decoration: none;
-    z-index: 100;
-}
-
-.skip-to-main:focus {
-    top: 0;
-}
-
-.mobile-nav-content {
-    max-width: 100%;
-}
-
-.mobile-nav-links {
-    list-style: none;
-    margin-bottom: 24px;
-}
-
-.mobile-nav-links a {
-    display: block;
-    padding: 16px 0;
-    color: #1a1a1a;
-    text-decoration: none;
-    font-size: 16px;
-    font-weight: 500;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.mobile-nav-links li:last-child a {
-    border-bottom: none;
-}
-
-.mobile-nav-content .nav-cta-btn {
-    width: 100%;
-    text-align: center;
-    display: block;
-}
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .nav-container {
-                padding: 16px 20px;
-            }
-
-            .nav-links {
-                display: none;
-            }
-
-            .mobile-menu-btn {
-                display: block;
-            }
-
-            .announcement-banner {
-                padding: 10px 20px;
-                font-size: 12px;
-                margin-top: 58px;
-            }
-
-    .services-hero {
-        padding: 60px 20px 40px;
-        background-position: center top;
-    }
-
-    .services-hero-title {
-        font-size: 32px;
-        line-height: 1.2;
-        color: #fff;
-    }
-
-    .services-hero-subtitle {
-        font-size: 16px;
-        color: rgba(255, 255, 255, 0.95);
-    }
-
-    .services-hero-cta {
-        flex-direction: column;
-    }
-
-    .btn-primary,
-    .btn-secondary {
-        width: 100%;
-        padding: 16px 32px;
-        font-size: 13px;
-    }
-
-            .page-title {
-                font-size: 32px;
-            }
-
-            .page-description {
-                font-size: 15px;
-            }
-
-            .portfolio-container {
-                padding: 0 20px;
-            }
-
-            .portfolio-staggered {
-                gap: 60px;
-            }
-
-            .portfolio-item-staggered {
-                grid-template-columns: 1fr;
-                gap: 24px;
-            }
-
-            .portfolio-image-staggered {
-                height: 300px;
-            }
-
-            .portfolio-title {
-                font-size: 24px;
-            }
-
-            .stats-section {
-                padding: 0 20px;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 32px;
-            }
-
-            .stat h3 {
-                font-size: 40px;
-            }
-
-            .cta-section {
-                padding: 80px 20px;
-            }
-
-            .cta-title {
-                font-size: 32px;
-            }
-
-            .cta-description {
-                font-size: 16px;
-            }
-
-            footer {
-                padding: 60px 20px 32px;
-            }
-
-            .footer-container {
-                grid-template-columns: 1fr;
-                gap: 40px;
-            }
-
-            .modal-form {
-                padding: 40px 24px;
-            }
-        }
-    </style>
-</head>
-<body>
-
-<main id="main-content">
-<!-- Skip to main content -->
-<a href="#main-content" class="skip-to-main">Skip to main content</a>
-
-    <!-- Navigation -->
-    <nav>
-        <div class="nav-container">
-            <a href="index.html" class="nav-logo">Diamondback Coding</a>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="pricing.html">Pricing</a></li>
-                <li><a href="portfolio.html">Portfolio</a></li>
-                <li><a href="services.html">Services</a></li>
-            </ul>
-            <div style="display: flex; gap: 24px; align-items: center;">
-                <a href="tel:+19402178680" style="color: #1a1a1a; text-decoration: none; font-size: 14px; font-weight: 500;">940-217-8680</a>
-                <button class="nav-cta-btn" onclick="openModal()">Get Started</button>
-                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Mobile Navigation -->
-<nav class="mobile-nav-overlay" id="mobileNav">
-    <div class="mobile-nav-content">
-        <ul class="mobile-nav-links">
-            <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
-            <li><a href="pricing.html" onclick="closeMobileMenu()">Pricing</a></li>
-            <li><a href="portfolio.html" onclick="closeMobileMenu()">Portfolio</a></li>
-            <li><a href="services.html" onclick="closeMobileMenu()">Services</a></li>
-            <li><a href="#contact" onclick="closeMobileMenu(); openModal(); return false;">Contact</a></li>
-        </ul>
-        <button class="nav-cta-btn" onclick="openModal(); closeMobileMenu();">Start Your Project</button>
-    </div>
-</nav>
-
-<!-- Services Hero -->
-<section class="services-hero">
-    <div class="services-hero-content">
-        <span class="services-badge">Our Work</span>
-        <h1 class="services-hero-title">
-            Texas Hill Country Web Development Portfolio
-        </h1>
-        <p class="services-hero-subtitle">
-            Real web development projects for Hill Country businesses. From SaaS applications 
-            to e-commerce platforms, we build custom websites and digital solutions for clients 
-            across Llano, Marble Falls, Fredericksburg, and surrounding Texas communities.
-        </p>
-        <div class="services-hero-cta">
-            <a href="#" class="btn-primary" onclick="openModal(); return false;">View Our Work</a>
-            <a href="pricing.html" class="btn-secondary">View Pricing</a>
-        </div>
-    </div>
-</section>
-
-    <!-- Portfolio Grid -->
-    <div class="portfolio-container">
-        <div class="portfolio-staggered">
-            <!-- Project 1 -->
-            <div class="portfolio-item-staggered left" onclick="window.location.href='https://lovetextforher.com'">
-                <div class="portfolio-image-staggered">
-                    <div class="portfolio-mockup">
-                        <div class="mockup-header">
-                            <div class="mockup-dot"></div>
-                            <div class="mockup-dot"></div>
-                            <div class="mockup-dot"></div>
-                        </div>
-                        <div class="mockup-body">
-                            <img src="https://diamondbackcoding.com/lovetextforher.png" alt="LoveTextForHer application" class="mockup-screenshot">
-                        </div>
-                    </div>
-                </div>
-                <div class="portfolio-info-staggered">
-                    <div class="portfolio-category">SaaS Application</div>
-                    <h3 class="portfolio-title">LoveTextForHer</h3>
-                    <p class="portfolio-description">
-                        Automated relationship messaging platform with subscription billing, scheduled SMS delivery via Twilio, automated email campaigns, and a full administrative dashboard.
-                    </p>
-                    <div class="portfolio-tags">
-                        <span class="portfolio-tag">JavaScript</span>
-                        <span class="portfolio-tag">Node.js</span>
-                        <span class="portfolio-tag">PostgreSQL</span>
-                        <span class="portfolio-tag">Stripe API</span>
-                        <span class="portfolio-tag">Twilio API</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Project 2 -->
-            <div class="portfolio-item-staggered right" onclick="window.location.href='https://crownceramiccoating.com'">
-                <div class="portfolio-image-staggered">
-                    <div class="portfolio-mockup">
-                        <div class="mockup-header">
-                            <div class="mockup-dot"></div>
-                            <div class="mockup-dot"></div>
-                            <div class="mockup-dot"></div>
-                        </div>
-                        <div class="mockup-body">
-                            <img src="https://diamondbackcoding.com/crownceramiccoating.png" alt="Crown Ceramic Coating website" class="mockup-screenshot">
-                        </div>
-                    </div>
-                </div>
-                <div class="portfolio-info-staggered">
-                    <div class="portfolio-category">Local Business Website</div>
-                    <h3 class="portfolio-title">Crown Ceramic Coating</h3>
-                    <p class="portfolio-description">
-                        High-end automotive detailing website built to convert visitors into customers. Features contact forms, service breakdowns, and portfolio gallery.
-                    </p>
-                    <div class="portfolio-tags">
-                        <span class="portfolio-tag">JavaScript</span>
-                        <span class="portfolio-tag">Node.js</span>
-                        <span class="portfolio-tag">PostgreSQL</span>
-                        <span class="portfolio-tag">EmailJS</span>
-                        <span class="portfolio-tag">Local SEO</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Project 3 -->
-            <div class="portfolio-item-staggered left">
-                <div class="portfolio-image-staggered">
-                    <div class="portfolio-mockup">
-                        <div class="mockup-header">
-                            <div class="mockup-dot"></div>
-                            <div class="mockup-dot"></div>
-                            <div class="mockup-dot"></div>
-                        </div>
-                        <div class="mockup-body" style="display: flex; flex-direction: column; gap: 12px; padding: 20px;">
-                            <div style="height: 12px; background: #f0f0f0; border-radius: 2px; width: 80%;"></div>
-                            <div style="height: 12px; background: #f0f0f0; border-radius: 2px; width: 60%;"></div>
-                            <div style="height: 12px; background: #f0f0f0; border-radius: 2px; width: 90%;"></div>
-                            <div style="height: 12px; background: #f0f0f0; border-radius: 2px; width: 70%;"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="portfolio-info-staggered">
-                    <div class="portfolio-category">Creative Portfolio Platform</div>
-                    <h3 class="portfolio-title">Photography Client Platform</h3>
-                    <p class="portfolio-description">
-                        Custom platform with Stripe payments, booking system, customer dashboard, and admin panel for client management and email marketing.
-                    </p>
-                    <div class="portfolio-tags">
-                        <span class="portfolio-tag">JavaScript</span>
-                        <span class="portfolio-tag">Node.js</span>
-                        <span class="portfolio-tag">PostgreSQL</span>
-                        <span class="portfolio-tag">Stripe API</span>
-                        <span class="portfolio-tag">Booking System</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-<!-- What We Build Section -->
-<section style="max-width: 1600px; margin: 120px auto; padding: 0 60px;">
-    <div style="text-align: center; margin-bottom: 80px;">
-        <div class="section-subtitle" style="color: #000; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">// OUR EXPERTISE</div>
-            <h2 style="font-size: 48px; font-weight: 700; margin-bottom: 16px; letter-spacing: -1.5px;">What We Build for Hill Country Businesses</h2>
-            <p style="font-size: 18px; color: #666; max-width: 800px; margin: 0 auto; line-height: 1.6;">
-                Specializing in custom web development, SaaS applications, and digital solutions 
-                for Texas Hill Country businesses. Every project is built with clean code, 
-                modern design, and measurable results.
-            </p>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px;">
-            <div style="background: #fafafa; padding: 48px 40px; transition: all 0.4s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);">
-                <h3 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #000;">SaaS & Web Applications</h3>
-                <p style="font-size: 15px; color: #666; line-height: 1.7; margin-bottom: 24px;">
-                    Custom software-as-a-service platforms with subscription billing, user management, 
-                    admin dashboards, and automated workflows. Built for scalability and growth.
-                </p>
-                <ul style="list-style: none; font-size: 14px; color: #666;">
-                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">✓ Subscription & payment systems</li>
-                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">✓ User authentication & roles</li>
-                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">✓ Admin dashboards & analytics</li>
-                    <li style="padding: 8px 0;">✓ API integrations</li>
-                </ul>
-            </div>
-
-            <div style="background: #fafafa; padding: 48px 40px; transition: all 0.4s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);">
-                <h3 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #000;">Local Business Websites</h3>
-                <p style="font-size: 15px; color: #666; line-height: 1.7; margin-bottom: 24px;">
-                    Professional websites designed to convert visitors into customers. Optimized for 
-                    local search and built to rank in Google for Hill Country service areas.
-                </p>
-                <ul style="list-style: none; font-size: 14px; color: #666;">
-                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">✓ Local SEO optimization</li>
-                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">✓ Contact forms & lead capture</li>
-                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">✓ Service pages & portfolios</li>
-                    <li style="padding: 8px 0;">✓ Mobile-responsive design</li>
-                </ul>
-            </div>
-
-            <div style="background: #fafafa; padding: 48px 40px; transition: all 0.4s ease; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);">
-                <h3 style="font-size: 22px; font-weight: 700; margin-bottom: 12px; color: #000;">E-commerce & Booking Systems</h3>
-                <p style="font-size: 15px; color: #666; line-height: 1.7; margin-bottom: 24px;">
-                    Complete e-commerce platforms and booking systems with secure payments, 
-                    inventory management, customer dashboards, and automated notifications.
-                </p>
-                <ul style="list-style: none; font-size: 14px; color: #666;">
-                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">✓ Stripe payment integration</li>
-                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">✓ Calendar & booking systems</li>
-                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">✓ Shopping carts & checkout</li>
-                    <li style="padding: 8px 0;">✓ Customer account portals</li>
-                </ul>
-            </div>
-        </div>
-    </section>
-
-<!-- Tech Stack Section -->
-<section style="max-width: 1600px; margin: 120px auto; padding: 60px; background: #fff; border: 1px solid #eee;">
-    <div style="text-align: center; margin-bottom: 60px;">
-        <div class="section-subtitle" style="color: #000; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">// TECH STACK</div>
-            <h2 style="font-size: 48px; font-weight: 700; margin-bottom: 16px; letter-spacing: -1.5px;">Built with Modern, Reliable Technology</h2>
-            <p style="font-size: 18px; color: #666; max-width: 700px; margin: 0 auto; line-height: 1.6;">
-                Every project uses proven technologies and industry-standard practices to ensure 
-                performance, security, and long-term reliability.
-            </p>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 32px; text-align: center;">
-            <div style="padding: 24px;">
-                <div style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Frontend</div>
-                <div style="font-size: 14px; color: #666;">HTML5, CSS3, JavaScript<br>Responsive Design</div>
-            </div>
-            <div style="padding: 24px;">
-                <div style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Backend</div>
-                <div style="font-size: 14px; color: #666;">Node.js, Express<br>RESTful APIs</div>
-            </div>
-            <div style="padding: 24px;">
-                <div style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Database</div>
-                <div style="font-size: 14px; color: #666;">PostgreSQL<br>Secure Data Storage</div>
-            </div>
-            <div style="padding: 24px;">
-                <div style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Integrations</div>
-                <div style="font-size: 14px; color: #666;">Stripe, Twilio, Brevo<br>EmailJS, APIs</div>
-            </div>
-            <div style="padding: 24px;">
-                <div style="font-size: 18px; font-weight: 700; color: #000; margin-bottom: 8px;">Hosting</div>
-                <div style="font-size: 14px; color: #666;">Render.com<br>Fast & Reliable</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-<!-- Stats Section -->
-<section class="stats-section" style="background: #fafafa; padding: 120px 60px; margin: 0;">
-    <div style="max-width: 1600px; margin: 0 auto;">
-        <div style="text-align: center; margin-bottom: 80px;">
-            <div class="section-subtitle" style="color: #000; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">// REAL RESULTS</div>
-            <h2 style="font-size: 48px; font-weight: 700; margin-bottom: 16px; letter-spacing: -1.5px;">Built for Growth & Performance</h2>
-            <p style="font-size: 18px; color: #666; max-width: 800px; margin: 0 auto; line-height: 1.6;">
-                Our Hill Country clients see measurable improvements in traffic, conversions, and revenue 
-                after launching their custom websites.
-            </p>
-        </div>
-        <div class="stats-grid">
-            <div class="stat">
-                <h3>100%</h3>
-                <p>Client Satisfaction</p>
-            </div>
-            <div class="stat">
-                <h3>3x</h3>
-                <p>Average Lead Increase</p>
-            </div>
-            <div class="stat">
-                <h3>&lt;2s</h3>
-                <p>Average Load Time</p>
-            </div>
-            <div class="stat">
-                <h3>24/7</h3>
-                <p>Uptime Reliability</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- FAQ Section -->
-<section style="max-width: 900px; margin: 120px auto; padding: 0 60px;">
-    <div style="text-align: center; margin-bottom: 60px;">
-        <div class="section-subtitle" style="color: #000; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">// QUESTIONS?</div>
-            <h2 style="font-size: 48px; font-weight: 700; margin-bottom: 16px; letter-spacing: -1.5px;">Portfolio FAQs</h2>
-            <p style="font-size: 18px; color: #666; max-width: 700px; margin: 0 auto; line-height: 1.6;">
-                Common questions about our web development work and process.
-            </p>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)" style="background: #fafafa; border: 1px solid #eee; padding: 24px; margin-bottom: 16px; cursor: pointer; transition: all 0.3s ease;">
-            <div style="font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                <span>Can I see the live websites for these projects?</span>
-                <span class="faq-icon" style="font-size: 24px; transition: transform 0.3s ease;">+</span>
-            </div>
-            <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: all 0.3s ease;">
-                <p style="font-size: 15px; color: #666; line-height: 1.7; margin-top: 16px;">
-                    Yes! Click on any project card to visit the live website. For client privacy, some internal admin features and dashboards are not publicly accessible, but the main site functionality is available to view.
-                </p>
-            </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)" style="background: #fafafa; border: 1px solid #eee; padding: 24px; margin-bottom: 16px; cursor: pointer; transition: all 0.3s ease;">
-            <div style="font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                <span>Do you work with businesses outside Texas Hill Country?</span>
-                <span class="faq-icon" style="font-size: 24px; transition: transform 0.3s ease;">+</span>
-            </div>
-            <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: all 0.3s ease;">
-                <p style="font-size: 15px; color: #666; line-height: 1.7; margin-top: 16px;">
-                    While we specialize in serving Hill Country Texas businesses (Llano, Marble Falls, Fredericksburg, Burnet, Kerrville, and surrounding areas), we work with clients anywhere in the United States.
-                </p>
-            </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)" style="background: #fafafa; border: 1px solid #eee; padding: 24px; margin-bottom: 16px; cursor: pointer; transition: all 0.3s ease;">
-            <div style="font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                <span>How long does a project like these take?</span>
-                <span class="faq-icon" style="font-size: 24px; transition: transform 0.3s ease;">+</span>
-            </div>
-            <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: all 0.3s ease;">
-                <p style="font-size: 15px; color: #666; line-height: 1.7; margin-top: 16px;">
-                    Simple websites typically take 2-4 weeks, while complex SaaS applications like LoveTextForHer take 8-16 weeks depending on features and requirements.
-                </p>
-            </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)" style="background: #fafafa; border: 1px solid #eee; padding: 24px; margin-bottom: 16px; cursor: pointer; transition: all 0.3s ease;">
-            <div style="font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                <span>Can you build something similar for my business?</span>
-                <span class="faq-icon" style="font-size: 24px; transition: transform 0.3s ease;">+</span>
-            </div>
-            <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: all 0.3s ease;">
-                <p style="font-size: 15px; color: #666; line-height: 1.7; margin-top: 16px;">
-                    Absolutely! Every project starts with understanding your unique needs. Whether you need a local business website, e-commerce platform, or custom web application, we'll build something tailored specifically for your business goals.
-                </p>
-            </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)" style="background: #fafafa; border: 1px solid #eee; padding: 24px; margin-bottom: 16px; cursor: pointer; transition: all 0.3s ease;">
-            <div style="font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                <span>What technologies do you use to build websites?</span>
-                <span class="faq-icon" style="font-size: 24px; transition: transform 0.3s ease;">+</span>
-            </div>
-            <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: all 0.3s ease;">
-                <p style="font-size: 15px; color: #666; line-height: 1.7; margin-top: 16px;">
-                    We build custom websites using modern technologies: JavaScript, Node.js, PostgreSQL databases, and industry-standard APIs like Stripe for payments and Twilio for SMS. Every site is deployed on reliable hosting and built with clean, maintainable code that you fully own.
-                </p>
-            </div>
-        </div>
-
-        <div class="faq-item" onclick="toggleFaq(this)" style="background: #fafafa; border: 1px solid #eee; padding: 24px; cursor: pointer; transition: all 0.3s ease;">
-            <div style="font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
-                <span>Do you provide ongoing support after launch?</span>
-                <span class="faq-icon" style="font-size: 24px; transition: transform 0.3s ease;">+</span>
-            </div>
-            <div class="faq-answer" style="max-height: 0; overflow: hidden; transition: all 0.3s ease;">
-                <p style="font-size: 15px; color: #666; line-height: 1.7; margin-top: 16px;">
-                    Yes! Each package includes 90-120 days of free support and updates. After that, we offer affordable monthly support plans starting at $59.99/month for bug fixes, security updates, and minor changes.
-                </p>
-            </div>
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="cta-section">
-        <h2 class="cta-title">Ready to Start Your Project?</h2>
-        <p class="cta-description">
-            Let's build something exceptional for your Texas business. From custom websites 
-            to full SaaS applications, we deliver results that drive growth.
-        </p>
-        <button class="cta-btn-white" onclick="openModal()">Get Your Free Consultation</button>
-    </section>
-
-    <!-- Footer -->
-    <footer>
-        <div class="footer-container">
-            <div>
-                <div class="footer-brand">Diamondback Coding</div>
-                <p class="footer-description">
-                    Building exceptional web experiences for businesses that want to win. 
-                    Clean code, fast delivery, real results.
-                </p>
-            </div>
-            <div>
-                <h4 class="footer-title">Services</h4>
-                <ul class="footer-links">
-                    <li><a href="services.html">Web Design</a></li>
-                    <li><a href="services.html">Web Development</a></li>
-                    <li><a href="services.html">E-commerce</a></li>
-                    <li><a href="services.html">SEO Services</a></li>
-                    <li><a href="services.html">Digital Marketing</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4 class="footer-title">Company</h4>
-                <ul class="footer-links">
-                    <li><a href="portfolio.html">Portfolio</a></li>
-                    <li><a href="#" onclick="openModal(); return false;">Contact</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4 class="footer-title">Legal</h4>
-                <ul class="footer-links">
-                    <li><a href="privacy_policy.html">Privacy Policy</a></li>
-                    <li><a href="terms_of_service.html">Terms of Service</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4 class="footer-title">Areas We Serve</h4>
-                <ul class="footer-links">
-                    <li><a href="web-development-llano-tx.html">Llano</a></li>
-                    <li><a href="web-design-marble-falls-tx.html">Marble Falls</a></li>
-                    <li><a href="website-developer-kingsland-tx.html">Kingsland</a></li>
-                    <li><a href="web-development-fredericksburg-tx.html">Fredericksburg</a></li>
-                    <li><a href="web-design-burnet-tx.html">Burnet</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4 class="footer-title">Connect</h4>
-                <ul class="footer-links">
-                    <li><a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a></li>
-                    <li><a href="tel:+19402178680">+1 (940) 217-8680</a></li>
-                    <li>Available Mon-Fri 8AM - 5PM CST</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="footer-bottom">
-            <p>© 2026 Diamondback Coding. Built with code and caffeine.</p>
-        </div>
-    </footer>
-    </main>
-
-    <!-- Contact Modal -->
-    <div class="modal-overlay" id="contactModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal()">×</button>
-            
-            <form class="modal-form" id="contactForm" onsubmit="handleSubmit(event)">
-                <span class="modal-badge">Let's Talk</span>
-                <h2 class="modal-title">Start Your Project</h2>
-                <p class="modal-description">
-                    Fill out the form below and we'll get back to you within 24 hours 
-                    with a detailed quote and project timeline.
-                </p>
-
-                <div class="form-group">
-                    <label class="form-label">Your Name *</label>
-                    <input type="text" id="fullName" class="form-input" placeholder="John Doe" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Email Address *</label>
-                    <input type="email" id="email" class="form-input" placeholder="john@example.com" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Phone Number</label>
-                    <input type="tel" id="phone" class="form-input" placeholder="+1 (234) 567-8900">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Service Needed *</label>
-                    <select id="service" class="form-input" required>
-                        <option value="">Select a service...</option>
-                        <option value="Web Design">Web Design</option>
-                        <option value="Web Development">Web Development</option>
-                        <option value="E-commerce Platform">E-commerce Platform</option>
-                        <option value="SEO Optimization">SEO Optimization</option>
-                        <option value="Marketing">Marketing</option>
-                        <option value="Other">Other / Not Sure</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Budget Range *</label>
-                    <select id="budget" class="form-input" required>
-                        <option value="">Select your budget...</option>
-                        <option value="$1499.99">$1,499 (Starter)</option>
-                        <option value="$2999.99">$2,999 (Professional)</option>
-                        <option value="Custom">Custom (Enterprise)</option>
-                        <option value="Not Sure">Not Sure Yet</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Project Details *</label>
-                    <textarea id="details" class="form-textarea" placeholder="Tell us about your project..." required></textarea>
-                </div>
-
-                <button type="submit" class="form-submit">Send Message</button>
-
-                <p style="font-size: 11px; color: #999; margin-top: 16px; text-align: center; line-height: 1.5;">
-                    By submitting this form, you agree to our 
-                    <a href="privacy_policy.html" target="_blank" style="color: #000; text-decoration: none; border-bottom: 1px solid #000;">Privacy Policy</a>
-                    and
-                    <a href="terms_of_service.html" target="_blank" style="color: #000; text-decoration: none; border-bottom: 1px solid #000;">Terms of Service</a>.
-                </p>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // Mobile Menu Functions
-        function toggleMobileMenu() {
-            const btn = document.querySelector('.mobile-menu-btn');
-            const nav = document.getElementById('mobileNav');
-            btn.classList.toggle('active');
-            nav.classList.toggle('active');
-        }
-
-        // Modal Functions
-        function openModal() {
-            document.getElementById('contactModal').classList.add('active');
-        }
-
-        function closeModal() {
-            document.getElementById('contactModal').classList.remove('active');
-        }
-
-        document.getElementById('contactModal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
-        });
-
-        // Form Submit Handler
-        async function handleSubmit(event) {
-            event.preventDefault();
-            
-            const submitBtn = event.target.querySelector('.form-submit');
-            const originalBtnText = submitBtn.textContent;
-            
-            const fullName = document.getElementById('fullName').value.trim();
-            const nameParts = fullName.split(' ');
-            
-            const formData = {
-                firstName: nameParts[0] || 'Unknown',
-                lastName: nameParts.slice(1).join(' ') || '',
-                email: document.getElementById('email').value.trim(),
-                phone: document.getElementById('phone').value.trim(),
-                service: document.getElementById('service').value,
-                budget: document.getElementById('budget').value,
-                details: document.getElementById('details').value.trim()
-            };
-            
-            submitBtn.disabled = true;
-            submitBtn.textContent = '⏳ Sending...';
-            
-            try {
-                const response = await fetch(`${window.location.origin}/api/leads`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(formData)
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert('✅ Thank you! We\'ve received your project request and will get back to you within 24 hours.');
-                    closeModal();
-                    document.getElementById('contactForm').reset();
-                } else {
-                    alert('❌ Error: ' + (data.message || 'Something went wrong. Please try again.'));
-                }
-            } catch (error) {
-                console.error('Form submission error:', error);
-                alert('❌ Network error. Please check your connection and try again.');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalBtnText;
-            }
-        }
-
-        function closeMobileMenu() {
-    const btn = document.querySelector('.mobile-menu-btn');
-    const nav = document.getElementById('mobileNav');
-    btn.classList.remove('active');
-    nav.classList.remove('active');
-}
-
-        // FAQ Toggle
-        function toggleFaq(element) {
-            const isActive = element.classList.contains('active');
-            
-            // Close all FAQs
-            document.querySelectorAll('.faq-item').forEach(item => {
-                item.classList.remove('active');
-                const answer = item.querySelector('.faq-answer');
-                const icon = item.querySelector('.faq-icon');
-                answer.style.maxHeight = '0';
-                icon.textContent = '+';
-                icon.style.transform = 'rotate(0deg)';
-            });
-            
-            // Open clicked FAQ if it wasn't active
-            if (!isActive) {
-                element.classList.add('active');
-                const answer = element.querySelector('.faq-answer');
-                const icon = element.querySelector('.faq-icon');
-                answer.style.maxHeight = '500px';
-                icon.textContent = '−';
-                icon.style.transform = 'rotate(180deg)';
-            }
-        }
-    </script>
-
-    <!-- Chatbot -->
-    <div class="chatbot-container" id="chatbotContainer">
-        <button class="chatbot-toggle" id="chatbotToggle">
-            <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-            <span class="chatbot-badge" id="chatbotBadge">1</span>
-        </button>
-
-        <div class="chatbot-window" id="chatbotWindow">
-            <div class="chatbot-header">
-                <div class="chatbot-header-info">
-                    <div class="chatbot-avatar">💬</div>
-                    <div>
-                        <div class="chatbot-title">Diamondback Coding</div>
-                        <div class="chatbot-status">
-                            <span class="status-dot"></span>
-                            Online - We reply instantly
-                        </div>
-                    </div>
-                </div>
-                <button class="chatbot-close" id="chatbotCloseBtn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="chatbot-messages" id="chatbotMessages">
-                <div class="message bot-message">
-                    <div class="message-avatar">🤖</div>
-                    <div class="message-content">
-                        <p>Hi! I'm the Diamondback Coding assistant. How can I help you today?</p>
-                        <div class="message-time">Just now</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="chatbot-quick-actions" id="quickActions">
-                <button class="quick-action-btn" data-action="pricing">💰 Pricing Info</button>
-                <button class="quick-action-btn" data-action="timeline">⏱️ Project Timeline</button>
-                <button class="quick-action-btn" data-action="services">🛠️ Our Services</button>
-                <button class="quick-action-btn" data-action="contact">📞 Contact Us</button>
-            </div>
-
-            <div class="chatbot-input-container">
-                <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Type your question..." />
-                <button class="chatbot-send" id="chatbotSendBtn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <style>
         /* Chatbot Styles */
         .chatbot-container {
             position: fixed;
@@ -1974,7 +1367,267 @@
             color: white;
         }
 
+        /* Tablet Responsive */
+        @media (max-width: 1024px) {
+            .nav-container {
+                padding: 20px 40px;
+            }
+
+            .services-hero,
+            .portfolio-container,
+            .what-we-build,
+            .stats-section,
+            .faq-section,
+            .cta-section,
+            footer {
+                padding-left: 40px;
+                padding-right: 40px;
+            }
+
+            .build-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .tech-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+
+        /* Mobile Responsive */
         @media (max-width: 768px) {
+            .nav-container {
+                padding: 16px 20px;
+            }
+
+            .nav-logo {
+                font-size: 16px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            /* Hide phone number on mobile - matching services page */
+            .contact-info .phone {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .contact-info {
+                gap: 12px;
+            }
+
+            .mobile-nav-overlay {
+                top: 58px;
+            }
+
+            .services-hero {
+                padding: 80px 20px 60px;
+                margin-top: 58px;
+                background-position: center top;
+            }
+
+            .services-hero-title {
+                font-size: 32px;
+                line-height: 1.2;
+            }
+
+            .services-hero-subtitle {
+                font-size: 16px;
+            }
+
+            .services-hero-cta {
+                flex-direction: column;
+            }
+
+            .btn-primary,
+            .btn-secondary {
+                width: 100%;
+                padding: 16px 32px;
+                font-size: 13px;
+            }
+
+            .portfolio-container {
+                padding: 60px 20px;
+            }
+
+            .portfolio-staggered {
+                gap: 60px;
+            }
+
+            .portfolio-item-staggered {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+
+            .portfolio-item-staggered.right {
+                direction: ltr;
+            }
+
+            .portfolio-image-staggered {
+                height: 280px;
+            }
+
+            .portfolio-title {
+                font-size: 24px;
+            }
+
+            .portfolio-description {
+                font-size: 15px;
+            }
+
+            .portfolio-tags {
+                gap: 8px;
+            }
+
+            .portfolio-tag {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+
+            .what-we-build {
+                padding: 60px 20px;
+            }
+
+            .section-header {
+                margin-bottom: 48px;
+            }
+
+            .section-title {
+                font-size: 32px;
+            }
+
+            .section-description {
+                font-size: 16px;
+            }
+
+            .build-grid {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+
+            .build-card {
+                padding: 32px 24px;
+            }
+
+            .build-card h3 {
+                font-size: 20px;
+            }
+
+            .tech-stack {
+                padding: 40px 20px;
+                margin: 0 20px;
+            }
+
+            .tech-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 24px;
+            }
+
+            .tech-item {
+                padding: 16px;
+            }
+
+            .tech-item h4 {
+                font-size: 16px;
+            }
+
+            .tech-item p {
+                font-size: 13px;
+            }
+
+            .stats-section {
+                padding: 60px 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 32px;
+            }
+
+            .stat h3 {
+                font-size: 40px;
+            }
+
+            .faq-section {
+                padding: 60px 20px;
+                margin: 0;
+            }
+
+            .faq-item {
+                padding: 20px;
+            }
+
+            .faq-question {
+                font-size: 16px;
+            }
+
+            .cta-section {
+                padding: 80px 20px;
+            }
+
+            .cta-title {
+                font-size: 32px;
+            }
+
+            .cta-description {
+                font-size: 16px;
+            }
+
+            .cta-btn-white {
+                width: 100%;
+                padding: 16px 32px;
+            }
+
+            footer {
+                padding: 60px 20px 32px;
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .modal-content {
+                max-width: 100%;
+                width: 100%;
+                max-height: 95vh;
+                margin: 0;
+                border-radius: 24px 24px 0 0;
+            }
+
+            .modal-close {
+                top: 16px;
+                right: 16px;
+                width: 36px;
+                height: 36px;
+            }
+
+            .modal-form {
+                padding: 50px 24px 32px;
+            }
+
+            .modal-title {
+                font-size: 28px;
+            }
+
+            .modal-description {
+                font-size: 15px;
+            }
+
             .chatbot-container {
                 bottom: 16px;
                 right: 16px;
@@ -1995,7 +1648,671 @@
                 border-radius: 20px 20px 0 0;
             }
         }
+
+        @media (max-width: 400px) {
+            .services-hero-title {
+                font-size: 28px;
+            }
+
+            .section-title {
+                font-size: 28px;
+            }
+
+            .stat h3 {
+                font-size: 36px;
+            }
+
+            .cta-title {
+                font-size: 28px;
+            }
+        }
     </style>
+</head>
+<body>
+
+    <!-- Skip to main content -->
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">Diamondback Coding</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="pricing.html">Pricing</a></li>
+                <li><a href="portfolio.html">Portfolio</a></li>
+                <li><a href="services.html">Services</a></li>
+            </ul>
+            <div class="contact-info">
+                <a href="tel:+19402178680" class="phone">940-217-8680</a>
+                <button class="nav-cta-btn" onclick="openModal()">Get Started</button>
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav-overlay" id="mobileNav">
+        <div class="mobile-nav-content">
+            <ul class="mobile-nav-links">
+                <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
+                <li><a href="pricing.html" onclick="closeMobileMenu()">Pricing</a></li>
+                <li><a href="portfolio.html" onclick="closeMobileMenu()">Portfolio</a></li>
+                <li><a href="services.html" onclick="closeMobileMenu()">Services</a></li>
+                <li><a href="#contact" onclick="closeMobileMenu(); openModal(); return false;">Contact</a></li>
+            </ul>
+            <button class="nav-cta-btn" onclick="openModal(); closeMobileMenu();">Start Your Project</button>
+        </div>
+    </nav>
+
+    <main id="main-content">
+        <!-- Services Hero -->
+        <section class="services-hero">
+            <div class="services-hero-content">
+                <span class="services-badge">Our Work</span>
+                <h1 class="services-hero-title">
+                    Texas Hill Country Web Development Portfolio
+                </h1>
+                <p class="services-hero-subtitle">
+                    Real web development projects for Hill Country businesses. From SaaS applications 
+                    to e-commerce platforms, we build custom websites and digital solutions for clients 
+                    across Llano, Marble Falls, Fredericksburg, and surrounding Texas communities.
+                </p>
+                <div class="services-hero-cta">
+                    <a href="#" class="btn-primary" onclick="openModal(); return false;">Start Your Project</a>
+                    <a href="pricing.html" class="btn-secondary">View Pricing</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Portfolio Grid -->
+        <div class="portfolio-container">
+            <div class="portfolio-staggered">
+                <!-- Project 1 -->
+                <div class="portfolio-item-staggered left" onclick="window.location.href='https://lovetextforher.com'">
+                    <div class="portfolio-image-staggered">
+                        <div class="portfolio-mockup">
+                            <div class="mockup-header">
+                                <div class="mockup-dot"></div>
+                                <div class="mockup-dot"></div>
+                                <div class="mockup-dot"></div>
+                            </div>
+                            <div class="mockup-body">
+                                <img src="https://diamondbackcoding.com/lovetextforher.png" alt="LoveTextForHer application" class="mockup-screenshot">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="portfolio-info-staggered">
+                        <div class="portfolio-category">SaaS Application</div>
+                        <h3 class="portfolio-title">LoveTextForHer</h3>
+                        <p class="portfolio-description">
+                            Automated relationship messaging platform with subscription billing, scheduled SMS delivery via Twilio, automated email campaigns, and a full administrative dashboard.
+                        </p>
+                        <div class="portfolio-tags">
+                            <span class="portfolio-tag">JavaScript</span>
+                            <span class="portfolio-tag">Node.js</span>
+                            <span class="portfolio-tag">PostgreSQL</span>
+                            <span class="portfolio-tag">Stripe API</span>
+                            <span class="portfolio-tag">Twilio API</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Project 2 -->
+                <div class="portfolio-item-staggered right" onclick="window.location.href='https://crownceramiccoating.com'">
+                    <div class="portfolio-image-staggered">
+                        <div class="portfolio-mockup">
+                            <div class="mockup-header">
+                                <div class="mockup-dot"></div>
+                                <div class="mockup-dot"></div>
+                                <div class="mockup-dot"></div>
+                            </div>
+                            <div class="mockup-body">
+                                <img src="https://diamondbackcoding.com/crownceramiccoating.png" alt="Crown Ceramic Coating website" class="mockup-screenshot">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="portfolio-info-staggered">
+                        <div class="portfolio-category">Local Business Website</div>
+                        <h3 class="portfolio-title">Crown Ceramic Coating</h3>
+                        <p class="portfolio-description">
+                            High-end automotive detailing website built to convert visitors into customers. Features contact forms, service breakdowns, and portfolio gallery.
+                        </p>
+                        <div class="portfolio-tags">
+                            <span class="portfolio-tag">JavaScript</span>
+                            <span class="portfolio-tag">Node.js</span>
+                            <span class="portfolio-tag">PostgreSQL</span>
+                            <span class="portfolio-tag">EmailJS</span>
+                            <span class="portfolio-tag">Local SEO</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Project 3 -->
+                <div class="portfolio-item-staggered left">
+                    <div class="portfolio-image-staggered">
+                        <div class="portfolio-mockup">
+                            <div class="mockup-header">
+                                <div class="mockup-dot"></div>
+                                <div class="mockup-dot"></div>
+                                <div class="mockup-dot"></div>
+                            </div>
+                            <div class="mockup-body" style="display: flex; flex-direction: column; gap: 12px; padding: 20px;">
+                                <div style="height: 12px; background: #f0f0f0; border-radius: 2px; width: 80%;"></div>
+                                <div style="height: 12px; background: #f0f0f0; border-radius: 2px; width: 60%;"></div>
+                                <div style="height: 12px; background: #f0f0f0; border-radius: 2px; width: 90%;"></div>
+                                <div style="height: 12px; background: #f0f0f0; border-radius: 2px; width: 70%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="portfolio-info-staggered">
+                        <div class="portfolio-category">Creative Portfolio Platform</div>
+                        <h3 class="portfolio-title">Photography Client Platform</h3>
+                        <p class="portfolio-description">
+                            Custom platform with Stripe payments, booking system, customer dashboard, and admin panel for client management and email marketing.
+                        </p>
+                        <div class="portfolio-tags">
+                            <span class="portfolio-tag">JavaScript</span>
+                            <span class="portfolio-tag">Node.js</span>
+                            <span class="portfolio-tag">PostgreSQL</span>
+                            <span class="portfolio-tag">Stripe API</span>
+                            <span class="portfolio-tag">Booking System</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- What We Build Section -->
+        <section class="what-we-build">
+            <div class="section-header">
+                <div class="section-subtitle">// Our Expertise</div>
+                <h2 class="section-title">What We Build for Hill Country Businesses</h2>
+                <p class="section-description">
+                    Specializing in custom web development, SaaS applications, and digital solutions 
+                    for Texas Hill Country businesses. Every project is built with clean code, 
+                    modern design, and measurable results.
+                </p>
+            </div>
+
+            <div class="build-grid">
+                <div class="build-card">
+                    <h3>SaaS & Web Applications</h3>
+                    <p>
+                        Custom software-as-a-service platforms with subscription billing, user management, 
+                        admin dashboards, and automated workflows. Built for scalability and growth.
+                    </p>
+                    <ul>
+                        <li>✓ Subscription & payment systems</li>
+                        <li>✓ User authentication & roles</li>
+                        <li>✓ Admin dashboards & analytics</li>
+                        <li>✓ API integrations</li>
+                    </ul>
+                </div>
+
+                <div class="build-card">
+                    <h3>Local Business Websites</h3>
+                    <p>
+                        Professional websites designed to convert visitors into customers. Optimized for 
+                        local search and built to rank in Google for Hill Country service areas.
+                    </p>
+                    <ul>
+                        <li>✓ Local SEO optimization</li>
+                        <li>✓ Contact forms & lead capture</li>
+                        <li>✓ Service pages & portfolios</li>
+                        <li>✓ Mobile-responsive design</li>
+                    </ul>
+                </div>
+
+                <div class="build-card">
+                    <h3>E-commerce & Booking Systems</h3>
+                    <p>
+                        Complete e-commerce platforms and booking systems with secure payments, 
+                        inventory management, customer dashboards, and automated notifications.
+                    </p>
+                    <ul>
+                        <li>✓ Stripe payment integration</li>
+                        <li>✓ Calendar & booking systems</li>
+                        <li>✓ Shopping carts & checkout</li>
+                        <li>✓ Customer account portals</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tech Stack Section -->
+        <section class="tech-stack">
+            <div class="section-header">
+                <div class="section-subtitle">// Tech Stack</div>
+                <h2 class="section-title">Built with Modern, Reliable Technology</h2>
+                <p class="section-description">
+                    Every project uses proven technologies and industry-standard practices to ensure 
+                    performance, security, and long-term reliability.
+                </p>
+            </div>
+
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <h4>Frontend</h4>
+                    <p>HTML5, CSS3, JavaScript<br>Responsive Design</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Backend</h4>
+                    <p>Node.js, Express<br>RESTful APIs</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Database</h4>
+                    <p>PostgreSQL<br>Secure Data Storage</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Integrations</h4>
+                    <p>Stripe, Twilio, Brevo<br>EmailJS, APIs</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Hosting</h4>
+                    <p>Render.com<br>Fast & Reliable</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="stats-section">
+            <div class="section-header">
+                <div class="section-subtitle">// Real Results</div>
+                <h2 class="section-title">Built for Growth & Performance</h2>
+                <p class="section-description">
+                    Our Hill Country clients see measurable improvements in traffic, conversions, and revenue 
+                    after launching their custom websites.
+                </p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat">
+                    <h3>100%</h3>
+                    <p>Client Satisfaction</p>
+                </div>
+                <div class="stat">
+                    <h3>3x</h3>
+                    <p>Average Lead Increase</p>
+                </div>
+                <div class="stat">
+                    <h3>&lt;2s</h3>
+                    <p>Average Load Time</p>
+                </div>
+                <div class="stat">
+                    <h3>24/7</h3>
+                    <p>Uptime Reliability</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq-section">
+            <div class="section-header">
+                <div class="section-subtitle">// Questions?</div>
+                <h2 class="section-title">Portfolio FAQs</h2>
+                <p class="section-description">
+                    Common questions about our web development work and process.
+                </p>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    <span>Can I see the live websites for these projects?</span>
+                    <span class="faq-icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Yes! Click on any project card to visit the live website. For client privacy, some internal admin features and dashboards are not publicly accessible, but the main site functionality is available to view.</p>
+                </div>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    <span>Do you work with businesses outside Texas Hill Country?</span>
+                    <span class="faq-icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <p>While we specialize in serving Hill Country Texas businesses (Llano, Marble Falls, Fredericksburg, Burnet, Kerrville, and surrounding areas), we work with clients anywhere in the United States.</p>
+                </div>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    <span>How long does a project like these take?</span>
+                    <span class="faq-icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Simple websites typically take 2-4 weeks, while complex SaaS applications like LoveTextForHer take 8-16 weeks depending on features and requirements.</p>
+                </div>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    <span>Can you build something similar for my business?</span>
+                    <span class="faq-icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Absolutely! Every project starts with understanding your unique needs. Whether you need a local business website, e-commerce platform, or custom web application, we'll build something tailored specifically for your business goals.</p>
+                </div>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    <span>What technologies do you use to build websites?</span>
+                    <span class="faq-icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <p>We build custom websites using modern technologies: JavaScript, Node.js, PostgreSQL databases, and industry-standard APIs like Stripe for payments and Twilio for SMS. Every site is deployed on reliable hosting and built with clean, maintainable code that you fully own.</p>
+                </div>
+            </div>
+
+            <div class="faq-item" onclick="toggleFaq(this)">
+                <div class="faq-question">
+                    <span>Do you provide ongoing support after launch?</span>
+                    <span class="faq-icon">+</span>
+                </div>
+                <div class="faq-answer">
+                    <p>Yes! Each package includes 90-120 days of free support and updates. After that, we offer affordable monthly support plans starting at $59.99/month for bug fixes, security updates, and minor changes.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <h2 class="cta-title">Ready to Start Your Project?</h2>
+            <p class="cta-description">
+                Let's build something exceptional for your Texas business. From custom websites 
+                to full SaaS applications, we deliver results that drive growth.
+            </p>
+            <button class="cta-btn-white" onclick="openModal()">Get Your Free Consultation</button>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div>
+                <div class="footer-brand">Diamondback Coding</div>
+                <p class="footer-description">
+                    Building exceptional web experiences for businesses that want to win. 
+                    Clean code, fast delivery, real results.
+                </p>
+            </div>
+            <div>
+                <h4 class="footer-title">Services</h4>
+                <ul class="footer-links">
+                    <li><a href="services.html">Web Design</a></li>
+                    <li><a href="services.html">Web Development</a></li>
+                    <li><a href="services.html">E-commerce</a></li>
+                    <li><a href="services.html">SEO Services</a></li>
+                    <li><a href="services.html">Digital Marketing</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title">Company</h4>
+                <ul class="footer-links">
+                    <li><a href="portfolio.html">Portfolio</a></li>
+                    <li><a href="#" onclick="openModal(); return false;">Contact</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title">Legal</h4>
+                <ul class="footer-links">
+                    <li><a href="privacy_policy.html">Privacy Policy</a></li>
+                    <li><a href="terms_of_service.html">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title">Areas We Serve</h4>
+                <ul class="footer-links">
+                    <li><a href="web-development-llano-tx.html">Llano</a></li>
+                    <li><a href="web-design-marble-falls-tx.html">Marble Falls</a></li>
+                    <li><a href="website-developer-kingsland-tx.html">Kingsland</a></li>
+                    <li><a href="web-development-fredericksburg-tx.html">Fredericksburg</a></li>
+                    <li><a href="web-design-burnet-tx.html">Burnet</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title">Connect</h4>
+                <ul class="footer-links">
+                    <li><a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a></li>
+                    <li><a href="tel:+19402178680">+1 (940) 217-8680</a></li>
+                    <li>Available Mon-Fri 8AM - 5PM CST</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>© 2026 Diamondback Coding. Built with code and caffeine.</p>
+        </div>
+    </footer>
+
+    <!-- Contact Modal -->
+    <div class="modal-overlay" id="contactModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()"></button>
+            
+            <form class="modal-form" id="contactForm" onsubmit="handleSubmit(event)">
+                <span class="modal-badge">Let's Talk</span>
+                <h2 class="modal-title">Start Your Project</h2>
+                <p class="modal-description">
+                    Fill out the form below and we'll get back to you within 24 hours 
+                    with a detailed quote and project timeline.
+                </p>
+
+                <div class="form-group">
+                    <label class="form-label">Your Name *</label>
+                    <input type="text" id="fullName" class="form-input" placeholder="John Doe" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email Address *</label>
+                    <input type="email" id="email" class="form-input" placeholder="john@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Phone Number</label>
+                    <input type="tel" id="phone" class="form-input" placeholder="+1 (234) 567-8900">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Service Needed *</label>
+                    <select id="service" class="form-input" required>
+                        <option value="">Select a service...</option>
+                        <option value="Web Design">Web Design</option>
+                        <option value="Web Development">Web Development</option>
+                        <option value="E-commerce Platform">E-commerce Platform</option>
+                        <option value="SEO Optimization">SEO Optimization</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Other">Other / Not Sure</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Budget Range *</label>
+                    <select id="budget" class="form-input" required>
+                        <option value="">Select your budget...</option>
+                        <option value="$1499.99">$1,499 (Starter)</option>
+                        <option value="$2999.99">$2,999 (Professional)</option>
+                        <option value="Custom">Custom (Enterprise)</option>
+                        <option value="Not Sure">Not Sure Yet</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Project Details *</label>
+                    <textarea id="details" class="form-textarea" placeholder="Tell us about your project..." required></textarea>
+                </div>
+
+                <button type="submit" class="form-submit">Send Message</button>
+
+                <p style="font-size: 11px; color: #999; margin-top: 16px; text-align: center; line-height: 1.5;">
+                    By submitting this form, you agree to our 
+                    <a href="privacy_policy.html" target="_blank" style="color: #000; text-decoration: none; border-bottom: 1px solid #000;">Privacy Policy</a>
+                    and
+                    <a href="terms_of_service.html" target="_blank" style="color: #000; text-decoration: none; border-bottom: 1px solid #000;">Terms of Service</a>.
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Mobile Menu Functions
+        function toggleMobileMenu() {
+            const btn = document.querySelector('.mobile-menu-btn');
+            const nav = document.getElementById('mobileNav');
+            btn.classList.toggle('active');
+            nav.classList.toggle('active');
+        }
+
+        function closeMobileMenu() {
+            const btn = document.querySelector('.mobile-menu-btn');
+            const nav = document.getElementById('mobileNav');
+            btn.classList.remove('active');
+            nav.classList.remove('active');
+        }
+
+        // Modal Functions
+        function openModal() {
+            document.getElementById('contactModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('contactModal').classList.remove('active');
+        }
+
+        document.getElementById('contactModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // Form Submit Handler
+        async function handleSubmit(event) {
+            event.preventDefault();
+            
+            const submitBtn = event.target.querySelector('.form-submit');
+            const originalBtnText = submitBtn.textContent;
+            
+            const fullName = document.getElementById('fullName').value.trim();
+            const nameParts = fullName.split(' ');
+            
+            const formData = {
+                firstName: nameParts[0] || 'Unknown',
+                lastName: nameParts.slice(1).join(' ') || '',
+                email: document.getElementById('email').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                service: document.getElementById('service').value,
+                budget: document.getElementById('budget').value,
+                details: document.getElementById('details').value.trim()
+            };
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Sending...';
+            
+            try {
+                const response = await fetch(`${window.location.origin}/api/leads`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Thank you! We\'ve received your project request and will get back to you within 24 hours.');
+                    closeModal();
+                    document.getElementById('contactForm').reset();
+                } else {
+                    alert('❌ Error: ' + (data.message || 'Something went wrong. Please try again.'));
+                }
+            } catch (error) {
+                console.error('Form submission error:', error);
+                alert('❌ Network error. Please check your connection and try again.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
+            }
+        }
+
+        // FAQ Toggle
+        function toggleFaq(element) {
+            const isActive = element.classList.contains('active');
+            
+            // Close all FAQs
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Open clicked FAQ if it wasn't active
+            if (!isActive) {
+                element.classList.add('active');
+            }
+        }
+    </script>
+
+    <!-- Chatbot -->
+    <div class="chatbot-container" id="chatbotContainer">
+        <button class="chatbot-toggle" id="chatbotToggle">
+            <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            <span class="chatbot-badge" id="chatbotBadge">1</span>
+        </button>
+
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="chatbot-header-info">
+                    <div class="chatbot-avatar">💬</div>
+                    <div>
+                        <div class="chatbot-title">Diamondback Coding</div>
+                        <div class="chatbot-status">
+                            <span class="status-dot"></span>
+                            Online - We reply instantly
+                        </div>
+                    </div>
+                </div>
+                <button class="chatbot-close" id="chatbotCloseBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="chatbot-messages" id="chatbotMessages">
+                <div class="message bot-message">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <p>Hi! I'm the Diamondback Coding assistant. How can I help you today?</p>
+                        <div class="message-time">Just now</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chatbot-quick-actions" id="quickActions">
+                <button class="quick-action-btn" data-action="pricing">💰 Pricing Info</button>
+                <button class="quick-action-btn" data-action="timeline">⏱️ Project Timeline</button>
+                <button class="quick-action-btn" data-action="services">🛠️ Our Services</button>
+                <button class="quick-action-btn" data-action="contact">📞 Contact Us</button>
+            </div>
+
+            <div class="chatbot-input-container">
+                <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Type your question..." />
+                <button class="chatbot-send" id="chatbotSendBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Chatbot functionality

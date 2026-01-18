@@ -2663,6 +2663,75 @@ function renderSection(section) {
     };
     
     document.getElementById('pageTitle').textContent = titles[section] || 'Dashboard';
+    
+    // Update topbar actions based on section
+    const topbarActions = document.querySelector('.topbar-actions');
+    let actionButtons = `
+        <button class="btn btn-secondary" onclick="openExportModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export
+        </button>
+    `;
+    
+    // Add section-specific action button
+    if (section === 'leads' || section === 'new' || section === 'pending' || section === 'contacted') {
+        actionButtons += `
+            <button class="btn btn-primary" onclick="openCreateModal('lead')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Lead
+            </button>
+        `;
+    } else if (section === 'invoices') {
+        actionButtons += `
+            <button class="btn btn-primary" onclick="showInvoiceLeadSelector()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Create Invoice
+            </button>
+        `;
+    } else if (section === 'employees') {
+        actionButtons += `
+            <button class="btn btn-primary" onclick="openCreateModal('employee')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Employee
+            </button>
+        `;
+    } else if (section === 'tasks') {
+        actionButtons += `
+            <button class="btn btn-primary" onclick="openCreateModal('task')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Task
+            </button>
+        `;
+    } else if (section === 'dashboard') {
+        actionButtons += `
+            <button class="btn btn-primary" onclick="openCreateModal('lead')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Lead
+            </button>
+        `;
+    }
+    
+    topbarActions.innerHTML = actionButtons;
+    
     const content = document.getElementById('contentArea');
     
     switch (section) {
@@ -2681,6 +2750,78 @@ function renderSection(section) {
         case 'tasks': renderTasks(content); break;
         case 'settings': renderSettings(content); break;
     }
+}
+
+function showInvoiceLeadSelector() {
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = 'Select Customer/Lead for Invoice';
+    
+    const allLeadsAndCustomers = [...state.leads, ...state.customers];
+    
+    bodyEl.innerHTML = `
+        <div class="form-group">
+            <label class="form-label">Search Customer/Lead</label>
+            <input type="text" class="form-input" id="leadSearch" placeholder="Search by name or email..." oninput="filterLeadSelector()">
+        </div>
+        <div id="leadSelectorList" style="max-height: 400px; overflow-y: auto; margin-top: 16px;">
+            ${allLeadsAndCustomers.map(lead => `
+                <div class="expense-item" style="cursor: pointer; margin-bottom: 8px;" onclick="selectLeadForInvoice(${lead.id})">
+                    <div class="contact-avatar">${getInitials(lead.name)}</div>
+                    <div class="expense-content">
+                        <div class="expense-description">${lead.name}</div>
+                        <div class="expense-meta">
+                            <span>${lead.email}</span>
+                            ${lead.company ? `<span>${lead.company}</span>` : ''}
+                        </div>
+                    </div>
+                    <span class="status-badge status-${lead.is_customer ? 'contacted' : lead.status}">
+                        ${lead.is_customer ? 'Customer' : 'Lead'}
+                    </span>
+                </div>
+            `).join('')}
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+            <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+function filterLeadSelector() {
+    const search = document.getElementById('leadSearch').value.toLowerCase();
+    const allLeadsAndCustomers = [...state.leads, ...state.customers];
+    const filtered = search 
+        ? allLeadsAndCustomers.filter(l => 
+            l.name.toLowerCase().includes(search) || 
+            l.email.toLowerCase().includes(search) ||
+            (l.company && l.company.toLowerCase().includes(search))
+          )
+        : allLeadsAndCustomers;
+    
+    document.getElementById('leadSelectorList').innerHTML = filtered.map(lead => `
+        <div class="expense-item" style="cursor: pointer; margin-bottom: 8px;" onclick="selectLeadForInvoice(${lead.id})">
+            <div class="contact-avatar">${getInitials(lead.name)}</div>
+            <div class="expense-content">
+                <div class="expense-description">${lead.name}</div>
+                <div class="expense-meta">
+                    <span>${lead.email}</span>
+                    ${lead.company ? `<span>${lead.company}</span>` : ''}
+                </div>
+            </div>
+            <span class="status-badge status-${lead.is_customer ? 'contacted' : lead.status}">
+                ${lead.is_customer ? 'Customer' : 'Lead'}
+            </span>
+        </div>
+    `).join('');
+}
+
+function selectLeadForInvoice(leadId) {
+    closeCreateModal();
+    openCreateModal('invoice', leadId);
 }
 // ========================================
 // RENDER FUNCTIONS

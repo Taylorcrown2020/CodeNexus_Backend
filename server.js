@@ -431,6 +431,27 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
     }
 });
 
+// Get all leads (must come BEFORE :id route)
+app.get('/api/leads', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT * FROM leads 
+            ORDER BY created_at DESC
+        `);
+
+        res.json({
+            success: true,
+            leads: result.rows
+        });
+    } catch (error) {
+        console.error('Get all leads error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
 // ========================================
 // LEAD MANAGEMENT ROUTES
 // ========================================
@@ -1055,33 +1076,31 @@ app.post('/api/leads', async (req, res) => {
 
         const isAuthenticated = req.headers.authorization;
 
+        // Log the incoming data for debugging
+        console.log('📝 New lead submission:', { name: fullName, email, phone, company, project_type, message });
+
         const result = await pool.query(
             `INSERT INTO leads (
                 name, email, phone, company, project_type, message, 
-                budget, timeline, service, details, priority, status, 
-                is_customer, customer_status, assigned_to,
-                first_name, last_name
+                budget, timeline, priority, status, 
+                is_customer, customer_status, assigned_to
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             RETURNING *`,
             [
                 fullName,
                 email, 
-                phone || '', 
-                company || '',
-                project_type || service || '',
-                message || details || '',
-                budget || '', 
-                timeline || '',
-                service || '',
-                details || '',
+                phone || null, 
+                company || null,
+                project_type || service || null,
+                message || details || null,
+                budget || null, 
+                timeline || null,
                 priority || 'medium',
                 status || 'new',
                 isCustomer || false,
                 customerStatus || null,
-                assignedTo || null,
-                firstName || null,
-                lastName || null
+                assignedTo || null
             ]
         );
 
@@ -1093,10 +1112,12 @@ app.post('/api/leads', async (req, res) => {
             lead: result.rows[0]
         });
     } catch (error) {
-        console.error('Create lead error:', error);
+        console.error('❌ Create lead error:', error);
+        console.error('Request body:', req.body);
         res.status(500).json({ 
             success: false, 
-            message: 'Server error. Please try again.' 
+            message: 'Server error. Please try again.',
+            error: error.message 
         });
     }
 });
@@ -1325,13 +1346,22 @@ app.delete('/api/expenses/:id', authenticateToken, async (req, res) => {
 // ========================================
 
 // Get all invoices
+// Get all invoices
 app.get('/api/invoices', authenticateToken, async (req, res) => {
     try {
         const { status, leadId } = req.query;
         
         let query = `
             SELECT i.*, 
-                   l.first_name, l.last_name, l.email, l.company
+                   l.name, l.email, l.company,
+                   (SELECT json_agg(json_build_object(
+                       'description', ii.description,
+                       'quantity', ii.quantity,
+                       'unit_price', ii.unit_price,
+                       'amount', ii.amount
+                   ))
+                   FROM invoice_items ii
+                   WHERE ii.invoice_id = i.id) as items
             FROM invoices i
             LEFT JOIN leads l ON i.lead_id = l.id
             WHERE 1=1
@@ -1355,9 +1385,18 @@ app.get('/api/invoices', authenticateToken, async (req, res) => {
 
         const result = await pool.query(query, params);
 
+        // Format the results
+        const invoices = result.rows.map(inv => ({
+            ...inv,
+            customer_name: inv.name,
+            customer_email: inv.email,
+            customer_company: inv.company,
+            items: inv.items || []
+        }));
+
         res.json({
             success: true,
-            invoices: result.rows
+            invoices: invoices
         });
     } catch (error) {
         console.error('Get invoices error:', error);

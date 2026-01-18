@@ -2602,7 +2602,30 @@ async function loadInvoices() {
         if (!r.ok) return;
         const d = await r.json();
         if (d.success) {
-            state.invoices = d.invoices || [];
+            state.invoices = (d.invoices || []).map(inv => {
+                // Parse items if they're stored as JSON string
+                if (typeof inv.items === 'string') {
+                    try {
+                        inv.items = JSON.parse(inv.items);
+                    } catch (e) {
+                        inv.items = [];
+                    }
+                }
+                // Ensure customer name is set
+                if (!inv.customer_name && inv.first_name) {
+                    inv.customer_name = `${inv.first_name} ${inv.last_name || ''}`.trim();
+                }
+                if (!inv.customer_name && inv.name) {
+                    inv.customer_name = inv.name;
+                }
+                if (!inv.customer_email && inv.email) {
+                    inv.customer_email = inv.email;
+                }
+                if (!inv.customer_company && inv.company) {
+                    inv.customer_company = inv.company;
+                }
+                return inv;
+            });
         }
     } catch (e) {
         console.error('Error loading invoices:', e);
@@ -2662,8 +2685,19 @@ function setupNavigation() {
 
 function renderSection(section) {
     state.currentSection = section;
-    state.currentFilter = 'all';
+    state.searchQuery = ''; // Reset search when switching sections
     
+    // Set appropriate filter based on section
+    if (section === 'leads') {
+        state.currentFilter = 'all';
+    } else if (section === 'new' || section === 'pending' || section === 'contacted') {
+        state.currentFilter = section;
+    } else if (section === 'invoices') {
+        state.currentFilter = state.currentFilter || 'all'; // Keep existing filter or set to all
+    } else {
+        state.currentFilter = 'all';
+    }
+
     const titles = {
         dashboard: 'Dashboard',
         analytics: 'Analytics',
@@ -3221,33 +3255,43 @@ function renderEmployees(content) {
 }
 
 function renderInvoices(content) {
-    const filtered = state.searchQuery 
-        ? state.invoices.filter(inv => 
-            inv.invoice_number.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-            (inv.customer_name && inv.customer_name.toLowerCase().includes(state.searchQuery.toLowerCase()))
-          )
-        : state.invoices;
+    // Filter by status first
+    let filtered = state.invoices;
+    if (state.currentFilter && state.currentFilter !== 'all') {
+        filtered = filtered.filter(inv => inv.status === state.currentFilter);
+    }
+    
+    // Then apply search
+    if (state.searchQuery) {
+        const query = state.searchQuery.toLowerCase();
+        filtered = filtered.filter(inv => 
+            inv.invoice_number.toLowerCase().includes(query) ||
+            (inv.customer_name && inv.customer_name.toLowerCase().includes(query)) ||
+            (inv.customer_email && inv.customer_email.toLowerCase().includes(query)) ||
+            (inv.customer_company && inv.customer_company.toLowerCase().includes(query))
+        );
+    }
     
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
-                <input type="text" class="search-input" placeholder="Search invoices..." value="${state.searchQuery}" oninput="handleSearch(this.value)">
+                <input type="text" class="search-input" id="invoiceSearch" placeholder="Search invoices by number or customer..." value="${state.searchQuery}" onkeyup="handleInvoiceSearch(event)">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
             </div>
             <div class="filter-group">
-                <button class="filter-btn active">All</button>
-                <button class="filter-btn">Draft</button>
-                <button class="filter-btn">Sent</button>
-                <button class="filter-btn">Paid</button>
-                <button class="filter-btn">Overdue</button>
+                <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" onclick="filterInvoices('all')">All</button>
+                <button class="filter-btn ${state.currentFilter === 'draft' ? 'active' : ''}" onclick="filterInvoices('draft')">Draft</button>
+                <button class="filter-btn ${state.currentFilter === 'sent' ? 'active' : ''}" onclick="filterInvoices('sent')">Sent</button>
+                <button class="filter-btn ${state.currentFilter === 'paid' ? 'active' : ''}" onclick="filterInvoices('paid')">Paid</button>
+                <button class="filter-btn ${state.currentFilter === 'overdue' ? 'active' : ''}" onclick="filterInvoices('overdue')">Overdue</button>
             </div>
         </div>
         
         <div class="cards-grid">
-            ${filtered.map(inv => `
+            ${filtered.length > 0 ? filtered.map(inv => `
                 <div class="card invoice-card">
                     <div class="invoice-card-header" onclick="openDetailModal('invoice', ${inv.id})">
                         <div>
@@ -3300,7 +3344,21 @@ function renderInvoices(content) {
                         </div>
                     `}
                 </div>
-            `).join('')}
+            `).join('') : `
+                <div style="grid-column: 1 / -1;">
+                    <div class="empty-state">
+                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <div class="empty-title">No invoices found</div>
+                        <div class="empty-description">
+                            ${state.searchQuery ? 'Try adjusting your search' : 'Create your first invoice to get started'}
+                        </div>
+                    </div>
+                </div>
+            `}
         </div>
     `;
 }
@@ -4138,30 +4196,34 @@ state.currentInvoice = null;
 // FORM HANDLERS
 // ========================================
 async function handleCreateLead(event) {
-event.preventDefault();
-const form = event.target;
-const formData = new FormData(form);
-const data = Object.fromEntries(formData.entries());
-try {
-    const r = await fetch(`${API_URL}/api/leads`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify(data)
-    });
-    
-    if (!r.ok) throw new Error('Failed to create lead');
-    
-    await loadLeads();
-    updateBadges();
-    closeCreateModal();
-    showToast('Lead created successfully', 'success');
-    renderSection(state.currentSection);
-} catch (e) {
-    showToast('Error creating lead', 'error');
-}
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    try {
+        const r = await fetch(`${API_URL}/api/leads`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!r.ok) {
+            const errorData = await r.json();
+            throw new Error(errorData.message || 'Failed to create lead');
+        }
+        
+        // Force complete data reload
+        await loadAllData();
+        closeCreateModal();
+        showToast('Lead created successfully', 'success');
+        renderSection(state.currentSection);
+    } catch (e) {
+        console.error('Create lead error:', e);
+        showToast(e.message || 'Error creating lead', 'error');
+    }
 }
 async function handleCreateExpense(event, leadId) {
 event.preventDefault();
@@ -4188,29 +4250,34 @@ try {
 }
 }
 async function handleCreateEmployee(event) {
-event.preventDefault();
-const form = event.target;
-const formData = new FormData(form);
-const data = Object.fromEntries(formData.entries());
-try {
-    const r = await fetch(`${API_URL}/api/employees`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify(data)
-    });
-    
-    if (!r.ok) throw new Error('Failed to create employee');
-    
-    await loadEmployees();
-    closeCreateModal();
-    showToast('Employee added successfully', 'success');
-    renderSection('employees');
-} catch (e) {
-    showToast('Error adding employee', 'error');
-}
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    try {
+        const r = await fetch(`${API_URL}/api/employees`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!r.ok) {
+            const errorData = await r.json();
+            throw new Error(errorData.message || 'Failed to create employee');
+        }
+        
+        // Force complete data reload
+        await loadAllData();
+        closeCreateModal();
+        showToast('Employee added successfully', 'success');
+        renderSection('employees');
+    } catch (e) {
+        console.error('Create employee error:', e);
+        showToast(e.message || 'Error adding employee', 'error');
+    }
 }
 function handleCreateTask(event) {
 event.preventDefault();
@@ -4658,6 +4725,14 @@ renderSection('tasks');
 function filterLeads(type) {
 state.currentFilter = type;
 renderSection(state.currentSection);
+}
+function handleInvoiceSearch(event) {
+    state.searchQuery = event.target.value.toLowerCase();
+    renderSection('invoices');
+}
+function filterInvoices(status) {
+    state.currentFilter = status;
+    renderSection('invoices');
 }
 function handleSearch(query) {
 state.searchQuery = query.toLowerCase();

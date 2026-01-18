@@ -1666,41 +1666,65 @@ body {
 /* ========================================
    INVOICE CARDS
 ======================================== */
+/* Invoice Card Improvements */
 .invoice-card {
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.invoice-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--text-primary), var(--text-secondary));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.invoice-card:hover::before {
+    opacity: 1;
 }
 
 .invoice-card-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 18px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .invoice-card-number {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--text-primary);
     font-family: var(--font-mono);
+    letter-spacing: 0.02em;
 }
 
 .invoice-card-customer {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-secondary);
-    margin-top: 4px;
+    margin-top: 6px;
 }
 
 .invoice-card-amount {
-    font-size: 24px;
+    font-size: 32px;
     font-weight: 800;
-    color: var(--accent-amber);
+    color: var(--text-primary);
     font-family: var(--font-mono);
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    letter-spacing: -0.02em;
 }
 
 .invoice-card-meta {
-    display: flex;
-    gap: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
     padding-top: 16px;
     border-top: 1px solid var(--border-subtle);
 }
@@ -1708,7 +1732,10 @@ body {
 .invoice-card-meta-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    background: var(--bg-secondary);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
 }
 
 .invoice-card-meta-label {
@@ -1720,9 +1747,14 @@ body {
 }
 
 .invoice-card-meta-value {
-    font-size: 13px;
-    color: var(--text-secondary);
+    font-size: 14px;
+    color: var(--text-primary);
     font-family: var(--font-mono);
+    font-weight: 600;
+}
+
+.invoice-card:hover .invoice-card-amount {
+    color: var(--text-primary);
 }
 
 /* ========================================

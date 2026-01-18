@@ -402,44 +402,40 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
 // ========================================
 
 // Get all leads
-// Get all leads
-app.get('/api/leads', authenticateToken, async (req, res) => {
+// Replace your existing GET /api/leads/:id route with this:
+app.get('/api/leads/:id', authenticateToken, async (req, res) => {
     try {
-        const { status, search } = req.query;
-        
-        let query = `
+        const leadId = req.params.id;
+
+        // Get lead with employee info
+        const leadResult = await pool.query(`
             SELECT l.*, 
                    e.name as employee_name,
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
-            WHERE 1=1
-        `;
-        let params = [];
-        let paramIndex = 1;
-
-        if (status && status !== 'all') {
-            query += ` AND l.status = $${paramIndex}`;
-            params.push(status);
-            paramIndex++;
+            WHERE l.id = $1
+        `, [leadId]);
+        
+        if (leadResult.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Lead not found.' 
+            });
         }
 
-        if (search) {
-            query += ` AND (l.name ILIKE $${paramIndex} OR l.email ILIKE $${paramIndex} OR l.company ILIKE $${paramIndex})`;
-            params.push(`%${search}%`);
-            paramIndex++;
-        }
-
-        query += ' ORDER BY l.created_at DESC';
-
-        const result = await pool.query(query, params);
+        const notesResult = await pool.query(
+            'SELECT * FROM lead_notes WHERE lead_id = $1 ORDER BY created_at DESC',
+            [leadId]
+        );
 
         res.json({
             success: true,
-            leads: result.rows
+            lead: leadResult.rows[0],
+            notes: notesResult.rows
         });
     } catch (error) {
-        console.error('Get leads error:', error);
+        console.error('Get lead error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Server error.' 
@@ -851,10 +847,11 @@ app.get('/api/admin/cookie-consent/stats', authenticateToken, async (req, res) =
 // ========================================
 
 // Get all employees
+// Get all employees
 app.get('/api/employees', authenticateToken, async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT * FROM employees WHERE is_active = TRUE ORDER BY first_name, last_name'
+            'SELECT * FROM employees WHERE is_active = TRUE ORDER BY name'
         );
 
         res.json({
@@ -910,20 +907,20 @@ app.get('/api/employees/:id', authenticateToken, async (req, res) => {
 // Create new employee
 app.post('/api/employees', authenticateToken, async (req, res) => {
     try {
-        const { firstName, lastName, email, phone, role } = req.body;
+        const { name, email, phone, role } = req.body;
 
-        if (!firstName || !lastName || !email) {
+        if (!name || !email) {
             return res.status(400).json({
                 success: false,
-                message: 'First name, last name, and email are required.'
+                message: 'Name and email are required.'
             });
         }
 
         const result = await pool.query(
-            `INSERT INTO employees (first_name, last_name, email, phone, role)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO employees (name, email, phone, role)
+             VALUES ($1, $2, $3, $4)
              RETURNING *`,
-            [firstName, lastName, email, phone || null, role || 'Team Member']
+            [name, email, phone || null, role || 'Team Member']
         );
 
         console.log('✅ New employee created:', result.rows[0].email);
@@ -952,19 +949,18 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
 app.patch('/api/employees/:id', authenticateToken, async (req, res) => {
     try {
         const employeeId = req.params.id;
-        const { firstName, lastName, email, phone, role } = req.body;
+        const { name, email, phone, role } = req.body;
 
         const result = await pool.query(
             `UPDATE employees 
-             SET first_name = $1, 
-                 last_name = $2, 
-                 email = $3, 
-                 phone = $4, 
-                 role = $5,
+             SET name = $1, 
+                 email = $2, 
+                 phone = $3, 
+                 role = $4,
                  updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $6
+             WHERE id = $5
              RETURNING *`,
-            [firstName, lastName, email, phone, role, employeeId]
+            [name, email, phone, role, employeeId]
         );
 
         if (result.rows.length === 0) {
@@ -1715,6 +1711,7 @@ app.use((err, req, res, next) => {
 async function startServer() {
     try {
         await initializeDatabase();
+        await initializeExpenseTables(); // THIS IS THE NEW LINE ADDED
         
         app.listen(PORT, () => {
             console.log('');

@@ -997,6 +997,510 @@ app.patch('/api/leads/:id/assign', authenticateToken, async (req, res) => {
 });
 
 // ========================================
+// EXPENSE MANAGEMENT ROUTES
+// Add these routes to your server.js file
+// ========================================
+
+// Get all expenses for a lead/customer
+app.get('/api/leads/:id/expenses', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.id;
+        const { includeInvoiced } = req.query;
+        
+        let query = 'SELECT * FROM expenses WHERE lead_id = $1';
+        const params = [leadId];
+        
+        if (includeInvoiced !== 'true') {
+            query += ' AND is_invoiced = FALSE';
+        }
+        
+        query += ' ORDER BY expense_date DESC, created_at DESC';
+        
+        const result = await pool.query(query, params);
+
+        res.json({
+            success: true,
+            expenses: result.rows
+        });
+    } catch (error) {
+        console.error('Get expenses error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Add expense to lead/customer
+app.post('/api/leads/:id/expenses', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.id;
+        const { description, amount, quantity, expenseDate, category, isBillable, notes } = req.body;
+        const userId = req.user.id;
+
+        if (!description || !amount) {
+            return res.status(400).json({
+                success: false,
+                message: 'Description and amount are required.'
+            });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO expenses (lead_id, description, amount, quantity, expense_date, category, is_billable, notes, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING *`,
+            [leadId, description, amount, quantity || 1, expenseDate || new Date(), category, isBillable !== false, notes, userId]
+        );
+
+        console.log('✅ Expense added to lead:', leadId);
+
+        res.json({
+            success: true,
+            message: 'Expense added successfully.',
+            expense: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Add expense error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Update expense
+app.patch('/api/expenses/:id', authenticateToken, async (req, res) => {
+    try {
+        const expenseId = req.params.id;
+        const { description, amount, quantity, expenseDate, category, isBillable, notes } = req.body;
+
+        const result = await pool.query(
+            `UPDATE expenses 
+             SET description = $1, amount = $2, quantity = $3, expense_date = $4, 
+                 category = $5, is_billable = $6, notes = $7
+             WHERE id = $8 AND is_invoiced = FALSE
+             RETURNING *`,
+            [description, amount, quantity, expenseDate, category, isBillable, notes, expenseId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Expense not found or already invoiced.' 
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Expense updated successfully.',
+            expense: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update expense error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Delete expense
+app.delete('/api/expenses/:id', authenticateToken, async (req, res) => {
+    try {
+        const expenseId = req.params.id;
+
+        const result = await pool.query(
+            'DELETE FROM expenses WHERE id = $1 AND is_invoiced = FALSE RETURNING *',
+            [expenseId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Expense not found or already invoiced.' 
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Expense deleted successfully.'
+        });
+    } catch (error) {
+        console.error('Delete expense error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// ========================================
+// INVOICE MANAGEMENT ROUTES
+// ========================================
+
+// Get all invoices
+app.get('/api/invoices', authenticateToken, async (req, res) => {
+    try {
+        const { status, leadId } = req.query;
+        
+        let query = `
+            SELECT i.*, 
+                   l.first_name, l.last_name, l.email, l.company
+            FROM invoices i
+            LEFT JOIN leads l ON i.lead_id = l.id
+            WHERE 1=1
+        `;
+        const params = [];
+        let paramIndex = 1;
+
+        if (status && status !== 'all') {
+            query += ` AND i.status = $${paramIndex}`;
+            params.push(status);
+            paramIndex++;
+        }
+
+        if (leadId) {
+            query += ` AND i.lead_id = $${paramIndex}`;
+            params.push(leadId);
+            paramIndex++;
+        }
+
+        query += ' ORDER BY i.created_at DESC';
+
+        const result = await pool.query(query, params);
+
+        res.json({
+            success: true,
+            invoices: result.rows
+        });
+    } catch (error) {
+        console.error('Get invoices error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Get single invoice with details
+app.get('/api/invoices/:id', authenticateToken, async (req, res) => {
+    try {
+        const invoiceId = req.params.id;
+
+        const invoiceResult = await pool.query(
+            `SELECT i.*, 
+                    l.first_name, l.last_name, l.email, l.phone, l.company, l.website
+             FROM invoices i
+             LEFT JOIN leads l ON i.lead_id = l.id
+             WHERE i.id = $1`,
+            [invoiceId]
+        );
+
+        if (invoiceResult.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Invoice not found.' 
+            });
+        }
+
+        const expensesResult = await pool.query(
+            'SELECT * FROM expenses WHERE invoice_id = $1 ORDER BY expense_date',
+            [invoiceId]
+        );
+
+        const itemsResult = await pool.query(
+            'SELECT * FROM invoice_items WHERE invoice_id = $1',
+            [invoiceId]
+        );
+
+        res.json({
+            success: true,
+            invoice: invoiceResult.rows[0],
+            expenses: expensesResult.rows,
+            items: itemsResult.rows
+        });
+    } catch (error) {
+        console.error('Get invoice error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Generate invoice number
+function generateInvoiceNumber() {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `INV-${year}${month}-${random}`;
+}
+
+// Create invoice from expenses
+app.post('/api/invoices/create', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+
+        const { leadId, expenseIds, dueDate, taxRate, discountAmount, paymentTerms, notes } = req.body;
+        const userId = req.user.id;
+
+        if (!leadId || !expenseIds || expenseIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Lead ID and at least one expense are required.'
+            });
+        }
+
+        // Get expenses
+        const expensesResult = await client.query(
+            'SELECT * FROM expenses WHERE id = ANY($1) AND lead_id = $2 AND is_invoiced = FALSE',
+            [expenseIds, leadId]
+        );
+
+        if (expensesResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                message: 'No valid uninvoiced expenses found.'
+            });
+        }
+
+        // Calculate totals
+        const subtotal = expensesResult.rows.reduce((sum, exp) => 
+            sum + (parseFloat(exp.amount) * exp.quantity), 0
+        );
+
+        const taxAmount = subtotal * (parseFloat(taxRate || 0) / 100);
+        const totalAmount = subtotal + taxAmount - parseFloat(discountAmount || 0);
+
+        // Create invoice
+        const invoiceNumber = generateInvoiceNumber();
+        const invoiceResult = await client.query(
+            `INSERT INTO invoices 
+             (invoice_number, lead_id, due_date, subtotal, tax_rate, tax_amount, 
+              discount_amount, total_amount, payment_terms, notes, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             RETURNING *`,
+            [invoiceNumber, leadId, dueDate, subtotal, taxRate || 0, taxAmount, 
+             discountAmount || 0, totalAmount, paymentTerms, notes, userId]
+        );
+
+        const invoiceId = invoiceResult.rows[0].id;
+
+        // Mark expenses as invoiced
+        await client.query(
+            'UPDATE expenses SET is_invoiced = TRUE, invoice_id = $1 WHERE id = ANY($2)',
+            [invoiceId, expenseIds]
+        );
+
+        await client.query('COMMIT');
+
+        console.log('✅ Invoice created:', invoiceNumber);
+
+        res.json({
+            success: true,
+            message: 'Invoice created successfully.',
+            invoice: invoiceResult.rows[0]
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Create invoice error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Update invoice status
+app.patch('/api/invoices/:id/status', authenticateToken, async (req, res) => {
+    try {
+        const invoiceId = req.params.id;
+        const { status } = req.body;
+
+        const validStatuses = ['draft', 'sent', 'paid', 'overdue', 'cancelled'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status.'
+            });
+        }
+
+        const paidAt = status === 'paid' ? new Date() : null;
+
+        const result = await pool.query(
+            'UPDATE invoices SET status = $1, paid_at = $2 WHERE id = $3 RETURNING *',
+            [status, paidAt, invoiceId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Invoice not found.' 
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Invoice status updated.',
+            invoice: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update invoice status error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Delete invoice (and unmark expenses)
+app.delete('/api/invoices/:id', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+
+        const invoiceId = req.params.id;
+
+        // Unmark expenses
+        await client.query(
+            'UPDATE expenses SET is_invoiced = FALSE, invoice_id = NULL WHERE invoice_id = $1',
+            [invoiceId]
+        );
+
+        // Delete invoice
+        const result = await client.query(
+            'DELETE FROM invoices WHERE id = $1 RETURNING *',
+            [invoiceId]
+        );
+
+        if (result.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Invoice not found.' 
+            });
+        }
+
+        await client.query('COMMIT');
+
+        res.json({
+            success: true,
+            message: 'Invoice deleted successfully.'
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Delete invoice error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Update database initialization function
+async function initializeExpenseTables() {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Create expenses table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS expenses (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                description VARCHAR(500) NOT NULL,
+                amount DECIMAL(10, 2) NOT NULL,
+                quantity INTEGER DEFAULT 1,
+                expense_date DATE DEFAULT CURRENT_DATE,
+                category VARCHAR(100),
+                is_billable BOOLEAN DEFAULT TRUE,
+                is_invoiced BOOLEAN DEFAULT FALSE,
+                invoice_id INTEGER,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER REFERENCES admin_users(id)
+            )
+        `);
+
+        // Create invoices table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS invoices (
+                id SERIAL PRIMARY KEY,
+                invoice_number VARCHAR(50) UNIQUE NOT NULL,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                issue_date DATE DEFAULT CURRENT_DATE,
+                due_date DATE,
+                subtotal DECIMAL(10, 2) NOT NULL,
+                tax_rate DECIMAL(5, 2) DEFAULT 0,
+                tax_amount DECIMAL(10, 2) DEFAULT 0,
+                discount_amount DECIMAL(10, 2) DEFAULT 0,
+                total_amount DECIMAL(10, 2) NOT NULL,
+                status VARCHAR(50) DEFAULT 'draft',
+                payment_terms VARCHAR(255),
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER REFERENCES admin_users(id),
+                paid_at TIMESTAMP
+            )
+        `);
+
+        // Create invoice_items table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS invoice_items (
+                id SERIAL PRIMARY KEY,
+                invoice_id INTEGER REFERENCES invoices(id) ON DELETE CASCADE,
+                description VARCHAR(500) NOT NULL,
+                quantity INTEGER DEFAULT 1,
+                unit_price DECIMAL(10, 2) NOT NULL,
+                amount DECIMAL(10, 2) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Add foreign key if not exists
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE constraint_name = 'fk_expense_invoice'
+                ) THEN
+                    ALTER TABLE expenses 
+                    ADD CONSTRAINT fk_expense_invoice 
+                    FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL;
+                END IF;
+            END $$;
+        `);
+
+        // Create indexes
+        await client.query('CREATE INDEX IF NOT EXISTS idx_expenses_lead_id ON expenses(lead_id)');
+        await client.query('CREATE INDEX IF NOT EXISTS idx_expenses_invoiced ON expenses(is_invoiced)');
+        await client.query('CREATE INDEX IF NOT EXISTS idx_invoices_lead_id ON invoices(lead_id)');
+        await client.query('CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)');
+
+        await client.query('COMMIT');
+        console.log('✅ Expense and invoice tables initialized');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+// Call this in your startServer function after initializeDatabase()
+// await initializeExpenseTables();
+
+// ========================================
 // HEALTH CHECK
 // ========================================
 app.get('/api/health', (req, res) => {

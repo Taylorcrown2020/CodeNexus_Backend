@@ -557,48 +557,6 @@ app.put('/api/leads/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Replace your existing GET /api/leads/:id route with this:
-app.get('/api/leads/:id', authenticateToken, async (req, res) => {
-    try {
-        const leadId = req.params.id;
-
-        // Get lead with employee info
-        const leadResult = await pool.query(`
-            SELECT l.*, 
-                   e.first_name as employee_first_name, 
-                   e.last_name as employee_last_name,
-                   e.email as employee_email
-            FROM leads l
-            LEFT JOIN employees e ON l.assigned_to = e.id
-            WHERE l.id = $1
-        `, [leadId]);
-        
-        if (leadResult.rows.length === 0) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Lead not found.' 
-            });
-        }
-
-        const notesResult = await pool.query(
-            'SELECT * FROM lead_notes WHERE lead_id = $1 ORDER BY created_at DESC',
-            [leadId]
-        );
-
-        res.json({
-            success: true,
-            lead: leadResult.rows[0],
-            notes: notesResult.rows
-        });
-    } catch (error) {
-        console.error('Get lead error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Server error.' 
-        });
-    }
-});
-
 // Delete lead/customer
 app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
     try {

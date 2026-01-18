@@ -3683,7 +3683,37 @@ if (type === 'lead') {
     `;
     
     footerEl.innerHTML = `
-        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+    <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+    
+    ${!lead.is_customer ? `
+        <button class="btn btn-success" onclick="convertToCustomer(${id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <polyline points="17 11 19 13 23 9"/>
+            </svg>
+            Convert to Customer
+        </button>
+    ` : ''}
+    
+    <button class="btn btn-secondary" onclick="assignEmployee(${id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="8.5" cy="7" r="4"/>
+            <line x1="20" y1="8" x2="20" y2="14"/>
+            <line x1="23" y1="11" x2="17" y2="11"/>
+        </svg>
+        Assign Employee
+    </button>
+    
+    <button class="btn btn-secondary" onclick="changePriority(${id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Change Priority
+    </button>
         ${state.selectedExpenses.length > 0 ? `
             <button class="btn btn-success" onclick="createInvoiceFromExpenses()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -4776,6 +4806,180 @@ toast.innerHTML = `
 container.appendChild(toast);
 setTimeout(() => toast.remove(), 5000);
 }
+
+// ========================================
+// LEAD ACTION FUNCTIONS (MISSING!)
+// ========================================
+
+// Change lead status
+async function changeLeadStatus(leadId, newStatus) {
+    try {
+        const r = await fetch(`${API_URL}/api/leads/${leadId}/status`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ status: newStatus })
+        });
+        
+        if (!r.ok) throw new Error('Failed to update status');
+        
+        await loadAllData();
+        showToast('Status updated successfully', 'success');
+        openDetailModal('lead', leadId);
+    } catch (e) {
+        showToast('Error updating status', 'error');
+    }
+}
+
+// Convert lead to customer
+async function convertToCustomer(leadId) {
+    if (!confirm('Convert this lead to a customer?')) return;
+    
+    try {
+        const r = await fetch(`${API_URL}/api/leads/${leadId}/status`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ 
+                status: 'closed',
+                isCustomer: true,
+                customerStatus: 'active'
+            })
+        });
+        
+        if (!r.ok) throw new Error('Failed to convert to customer');
+        
+        await loadAllData();
+        closeDetailModal();
+        showToast('Lead converted to customer successfully!', 'success');
+        renderSection('customers');
+    } catch (e) {
+        showToast('Error converting to customer', 'error');
+    }
+}
+
+// Assign employee to lead
+async function assignEmployee(leadId) {
+    if (state.employees.length === 0) {
+        showToast('No employees available. Add employees first.', 'warning');
+        return;
+    }
+    
+    const employeeOptions = state.employees.map(emp => 
+        `<option value="${emp.id}">${emp.name} (${emp.role})</option>`
+    ).join('');
+    
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = 'Assign Employee';
+    bodyEl.innerHTML = `
+        <form id="assignEmployeeForm" onsubmit="handleAssignEmployee(event, ${leadId})">
+            <div class="form-group">
+                <label class="form-label">Select Employee</label>
+                <select class="form-select" name="employeeId" required>
+                    <option value="">Choose employee...</option>
+                    ${employeeOptions}
+                </select>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Assign</button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+}
+
+async function handleAssignEmployee(event, leadId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const employeeId = formData.get('employeeId');
+    
+    try {
+        const r = await fetch(`${API_URL}/api/leads/${leadId}/assign`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ employeeId: parseInt(employeeId) })
+        });
+        
+        if (!r.ok) throw new Error('Failed to assign employee');
+        
+        await loadAllData();
+        closeCreateModal();
+        showToast('Employee assigned successfully', 'success');
+        openDetailModal('lead', leadId);
+    } catch (e) {
+        showToast('Error assigning employee', 'error');
+    }
+}
+
+// Change lead priority
+async function changePriority(leadId) {
+    const priorities = ['low', 'medium', 'high'];
+    const currentLead = [...state.leads, ...state.customers].find(l => l.id === leadId);
+    const currentPriority = currentLead?.priority || 'medium';
+    
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = 'Change Priority';
+    bodyEl.innerHTML = `
+        <form id="changePriorityForm" onsubmit="handleChangePriority(event, ${leadId})">
+            <div class="form-group">
+                <label class="form-label">Select Priority</label>
+                <select class="form-select" name="priority" required>
+                    ${priorities.map(p => `
+                        <option value="${p}" ${p === currentPriority ? 'selected' : ''}>${p.toUpperCase()}</option>
+                    `).join('')}
+                </select>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+}
+
+async function handleChangePriority(event, leadId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const priority = formData.get('priority');
+    
+    try {
+        const r = await fetch(`${API_URL}/api/leads/${leadId}/priority`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ priority })
+        });
+        
+        if (!r.ok) throw new Error('Failed to update priority');
+        
+        await loadAllData();
+        closeCreateModal();
+        showToast('Priority updated successfully', 'success');
+        openDetailModal('lead', leadId);
+    } catch (e) {
+        showToast('Error updating priority', 'error');
+    }
+}
+
 // Helper functions
 function formatDate(dateString) {
 if (!dateString) return 'N/A';

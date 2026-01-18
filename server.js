@@ -76,8 +76,8 @@ async function initializeDatabase() {
         await client.query(`
             CREATE TABLE IF NOT EXISTS leads (
                 id SERIAL PRIMARY KEY,
-                first_name VARCHAR(255) NOT NULL,
-                last_name VARCHAR(255) NOT NULL,
+                first_name VARCHAR(255),
+                last_name VARCHAR(255),
                 email VARCHAR(255) NOT NULL,
                 phone VARCHAR(50),
                 service VARCHAR(255),
@@ -93,71 +93,105 @@ async function initializeDatabase() {
         `);
 
         // Create employees table
-await client.query(`
-    CREATE TABLE IF NOT EXISTS employees (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        phone VARCHAR(50),
-        role VARCHAR(100),
-        is_active BOOLEAN DEFAULT TRUE,
-        projects_assigned INTEGER DEFAULT 0,
-        tasks_completed INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS employees (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                phone VARCHAR(50),
+                role VARCHAR(100),
+                is_active BOOLEAN DEFAULT TRUE,
+                projects_assigned INTEGER DEFAULT 0,
+                tasks_completed INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-        // Update leads table structure
-await client.query(`
-    DO $$ 
-    BEGIN 
-        -- Add missing columns
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='leads' AND column_name='name') THEN
-            ALTER TABLE leads ADD COLUMN name VARCHAR(255);
-        END IF;
-        
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='leads' AND column_name='company') THEN
-            ALTER TABLE leads ADD COLUMN company VARCHAR(255);
-        END IF;
-        
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='leads' AND column_name='project_type') THEN
-            ALTER TABLE leads ADD COLUMN project_type VARCHAR(255);
-        END IF;
-        
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='leads' AND column_name='message') THEN
-            ALTER TABLE leads ADD COLUMN message TEXT;
-        END IF;
-        
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='leads' AND column_name='timeline') THEN
-            ALTER TABLE leads ADD COLUMN timeline VARCHAR(100);
-        END IF;
-        
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='leads' AND column_name='notes') THEN
-            ALTER TABLE leads ADD COLUMN notes TEXT;
-        END IF;
-        
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                      WHERE table_name='leads' AND column_name='assigned_to') THEN
-            ALTER TABLE leads ADD COLUMN assigned_to INTEGER REFERENCES employees(id);
-        END IF;
-    END $$;
-`);
+        // Update leads table structure - ADD new columns first
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                -- Add name column if it doesn't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='name') THEN
+                    ALTER TABLE leads ADD COLUMN name VARCHAR(255);
+                END IF;
+                
+                -- Add company column if it doesn't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='company') THEN
+                    ALTER TABLE leads ADD COLUMN company VARCHAR(255);
+                END IF;
+                
+                -- Add project_type column if it doesn't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='project_type') THEN
+                    ALTER TABLE leads ADD COLUMN project_type VARCHAR(255);
+                END IF;
 
-// Migrate existing data from first_name/last_name to name
-await client.query(`
-    UPDATE leads 
-    SET name = CONCAT(first_name, ' ', last_name) 
-    WHERE name IS NULL AND first_name IS NOT NULL
-`);
+-- Add lifetime_value column if it doesn't exist
+IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+              WHERE table_name='leads' AND column_name='lifetime_value') THEN
+    ALTER TABLE leads ADD COLUMN lifetime_value DECIMAL(10, 2) DEFAULT 0;
+END IF;
 
-        // Add columns if they don't exist (for existing databases)
+-- Add last_payment_date column if it doesn't exist
+IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+              WHERE table_name='leads' AND column_name='last_payment_date') THEN
+    ALTER TABLE leads ADD COLUMN last_payment_date TIMESTAMP;
+END IF;
+                
+                -- Add message column if it doesn't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='message') THEN
+                    ALTER TABLE leads ADD COLUMN message TEXT;
+                END IF;
+                
+                -- Add timeline column if it doesn't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='timeline') THEN
+                    ALTER TABLE leads ADD COLUMN timeline VARCHAR(100);
+                END IF;
+                
+                -- Add notes column if it doesn't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='notes') THEN
+                    ALTER TABLE leads ADD COLUMN notes TEXT;
+                END IF;
+                
+                -- Add assigned_to column if it doesn't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='assigned_to') THEN
+                    ALTER TABLE leads ADD COLUMN assigned_to INTEGER REFERENCES employees(id);
+                END IF;
+            END $$;
+        `);
+
+        // Migrate existing data from first_name/last_name to name
+        await client.query(`
+            UPDATE leads 
+            SET name = CONCAT(first_name, ' ', last_name) 
+            WHERE name IS NULL AND first_name IS NOT NULL
+        `);
+
+        // NOW make first_name and last_name nullable and drop NOT NULL constraint
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                -- Make first_name nullable
+                ALTER TABLE leads ALTER COLUMN first_name DROP NOT NULL;
+                
+                -- Make last_name nullable  
+                ALTER TABLE leads ALTER COLUMN last_name DROP NOT NULL;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    -- Ignore errors if constraints already don't exist
+                    NULL;
+            END $$;
+        `);
+
+        // Add customer-related columns if they don't exist
         await client.query(`
             DO $$ 
             BEGIN 
@@ -1008,6 +1042,9 @@ app.post('/api/leads', async (req, res) => {
         if (!fullName && firstName && lastName) {
             fullName = `${firstName} ${lastName}`;
         }
+        if (!fullName && firstName) {
+            fullName = firstName;
+        }
 
         if (!fullName || !email) {
             return res.status(400).json({
@@ -1022,9 +1059,10 @@ app.post('/api/leads', async (req, res) => {
             `INSERT INTO leads (
                 name, email, phone, company, project_type, message, 
                 budget, timeline, service, details, priority, status, 
-                is_customer, customer_status, assigned_to
+                is_customer, customer_status, assigned_to,
+                first_name, last_name
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             RETURNING *`,
             [
                 fullName,
@@ -1041,7 +1079,9 @@ app.post('/api/leads', async (req, res) => {
                 status || 'new',
                 isCustomer || false,
                 customerStatus || null,
-                assignedTo || null
+                assignedTo || null,
+                firstName || null,
+                lastName || null
             ]
         );
 
@@ -1534,19 +1574,13 @@ app.delete('/api/invoices/:id', authenticateToken, async (req, res) => {
 
         const invoiceId = req.params.id;
 
-        // Unmark expenses
-        await client.query(
-            'UPDATE expenses SET is_invoiced = FALSE, invoice_id = NULL WHERE invoice_id = $1',
+        // Get invoice details first
+        const invoiceCheck = await client.query(
+            'SELECT * FROM invoices WHERE id = $1',
             [invoiceId]
         );
 
-        // Delete invoice
-        const result = await client.query(
-            'DELETE FROM invoices WHERE id = $1 RETURNING *',
-            [invoiceId]
-        );
-
-        if (result.rows.length === 0) {
+        if (invoiceCheck.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ 
                 success: false, 
@@ -1554,7 +1588,38 @@ app.delete('/api/invoices/:id', authenticateToken, async (req, res) => {
             });
         }
 
+        const invoice = invoiceCheck.rows[0];
+
+        // Don't allow deletion of paid invoices (optional - remove if you want to allow)
+        if (invoice.status === 'paid') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot delete paid invoices. Please contact support if you need to void this invoice.'
+            });
+        }
+
+        // Unmark all expenses associated with this invoice
+        await client.query(
+            'UPDATE expenses SET is_invoiced = FALSE, invoice_id = NULL WHERE invoice_id = $1',
+            [invoiceId]
+        );
+
+        // Delete invoice items
+        await client.query(
+            'DELETE FROM invoice_items WHERE invoice_id = $1',
+            [invoiceId]
+        );
+
+        // Delete the invoice
+        await client.query(
+            'DELETE FROM invoices WHERE id = $1',
+            [invoiceId]
+        );
+
         await client.query('COMMIT');
+
+        console.log(`✅ Invoice ${invoice.invoice_number} deleted successfully`);
 
         res.json({
             success: true,
@@ -1563,6 +1628,187 @@ app.delete('/api/invoices/:id', authenticateToken, async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Delete invoice error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Update invoice status with business workflow
+app.patch('/api/invoices/:id/status', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+
+        const invoiceId = req.params.id;
+        const { status, paymentMethod, paymentReference, paymentNotes } = req.body;
+
+        const validStatuses = ['draft', 'sent', 'paid', 'overdue', 'cancelled', 'void'];
+        if (!validStatuses.includes(status)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status.'
+            });
+        }
+
+        // Get invoice details
+        const invoiceResult = await client.query(
+            `SELECT i.*, l.name, l.email, l.is_customer, l.customer_status
+             FROM invoices i
+             LEFT JOIN leads l ON i.lead_id = l.id
+             WHERE i.id = $1`,
+            [invoiceId]
+        );
+
+        if (invoiceResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Invoice not found.' 
+            });
+        }
+
+        const invoice = invoiceResult.rows[0];
+        const previousStatus = invoice.status;
+
+        // Handle PAID status - Full business workflow
+        if (status === 'paid' && previousStatus !== 'paid') {
+            const paidAt = new Date();
+
+            // 1. Update invoice status to PAID
+            await client.query(
+                `UPDATE invoices 
+                 SET status = $1, 
+                     paid_at = $2,
+                     payment_method = $3,
+                     payment_reference = $4,
+                     payment_notes = $5
+                 WHERE id = $6`,
+                [status, paidAt, paymentMethod || null, paymentReference || null, paymentNotes || null, invoiceId]
+            );
+
+            // 2. If lead is not already a customer, convert them
+            if (!invoice.is_customer) {
+                await client.query(
+                    `UPDATE leads 
+                     SET is_customer = TRUE, 
+                         customer_status = 'active',
+                         status = 'closed',
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $1`,
+                    [invoice.lead_id]
+                );
+                console.log(`✅ Lead ${invoice.name} converted to ACTIVE CUSTOMER`);
+            } else {
+                // 3. If already a customer, ensure they're active
+                if (invoice.customer_status !== 'active') {
+                    await client.query(
+                        `UPDATE leads 
+                         SET customer_status = 'active',
+                             updated_at = CURRENT_TIMESTAMP
+                         WHERE id = $1`,
+                        [invoice.lead_id]
+                    );
+                    console.log(`✅ Customer ${invoice.name} status set to ACTIVE`);
+                }
+            }
+
+            // 4. Add payment received note to customer record
+            const paymentNote = {
+                text: `Payment received for invoice ${invoice.invoice_number}. Amount: $${parseFloat(invoice.total_amount).toLocaleString()}${paymentMethod ? `. Payment method: ${paymentMethod}` : ''}${paymentReference ? `. Reference: ${paymentReference}` : ''}.`,
+                author: 'System',
+                date: paidAt.toISOString()
+            };
+
+            // Get existing notes or create new array
+            const notesResult = await client.query(
+                'SELECT notes FROM leads WHERE id = $1',
+                [invoice.lead_id]
+            );
+            
+            let notes = [];
+            if (notesResult.rows[0].notes) {
+                try {
+                    notes = JSON.parse(notesResult.rows[0].notes);
+                } catch (e) {
+                    notes = [];
+                }
+            }
+            notes.push(paymentNote);
+
+            await client.query(
+                'UPDATE leads SET notes = $1 WHERE id = $2',
+                [JSON.stringify(notes), invoice.lead_id]
+            );
+
+            // 5. Update customer lifetime value and payment history
+            const lifetimeValue = await client.query(
+                `SELECT COALESCE(SUM(total_amount), 0) as total
+                 FROM invoices
+                 WHERE lead_id = $1 AND status = 'paid'`,
+                [invoice.lead_id]
+            );
+
+            await client.query(
+                `UPDATE leads 
+                 SET lifetime_value = $1,
+                     last_payment_date = $2,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $3`,
+                [lifetimeValue.rows[0].total, paidAt, invoice.lead_id]
+            );
+
+            console.log(`✅ Invoice ${invoice.invoice_number} marked as PAID`);
+            console.log(`   💰 Amount: $${parseFloat(invoice.total_amount).toLocaleString()}`);
+            console.log(`   👤 Customer: ${invoice.name}`);
+            console.log(`   📊 Lifetime Value: $${parseFloat(lifetimeValue.rows[0].total).toLocaleString()}`);
+
+        } else if (status === 'void' || status === 'cancelled') {
+            // Handle VOID/CANCELLED - Unmark expenses so they can be invoiced again
+            await client.query(
+                'UPDATE expenses SET is_invoiced = FALSE, invoice_id = NULL WHERE invoice_id = $1',
+                [invoiceId]
+            );
+
+            await client.query(
+                'UPDATE invoices SET status = $1 WHERE id = $2',
+                [status, invoiceId]
+            );
+
+            console.log(`✅ Invoice ${invoice.invoice_number} marked as ${status.toUpperCase()}`);
+
+        } else {
+            // Standard status update
+            await client.query(
+                'UPDATE invoices SET status = $1 WHERE id = $2',
+                [status, invoiceId]
+            );
+
+            console.log(`✅ Invoice ${invoice.invoice_number} status updated to ${status.toUpperCase()}`);
+        }
+
+        await client.query('COMMIT');
+
+        // Fetch updated invoice
+        const updatedInvoice = await pool.query(
+            'SELECT * FROM invoices WHERE id = $1',
+            [invoiceId]
+        );
+
+        res.json({
+            success: true,
+            message: `Invoice ${status === 'paid' ? 'marked as paid' : 'status updated'} successfully.`,
+            invoice: updatedInvoice.rows[0]
+        });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Update invoice status error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Server error.' 
@@ -1631,6 +1877,31 @@ async function initializeExpenseTables() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        // Update the CREATE TABLE IF NOT EXISTS invoices section to include these new fields:
+await client.query(`
+    CREATE TABLE IF NOT EXISTS invoices (
+        id SERIAL PRIMARY KEY,
+        invoice_number VARCHAR(50) UNIQUE NOT NULL,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        issue_date DATE DEFAULT CURRENT_DATE,
+        due_date DATE,
+        subtotal DECIMAL(10, 2) NOT NULL,
+        tax_rate DECIMAL(5, 2) DEFAULT 0,
+        tax_amount DECIMAL(10, 2) DEFAULT 0,
+        discount_amount DECIMAL(10, 2) DEFAULT 0,
+        total_amount DECIMAL(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'draft',
+        payment_terms VARCHAR(255),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER REFERENCES admin_users(id),
+        paid_at TIMESTAMP,
+        payment_method VARCHAR(100),
+        payment_reference VARCHAR(255),
+        payment_notes TEXT
+    )
+`);
 
         // Add foreign key if not exists
         await client.query(`

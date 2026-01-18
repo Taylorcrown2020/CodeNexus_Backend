@@ -2466,6 +2466,22 @@ body {
         </div>
     </div>
 
+    <!-- Payment Modal -->
+<div class="modal-overlay" id="paymentModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Record Payment</h2>
+            <button class="modal-close" onclick="closePaymentModal()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body" id="paymentModalBody"></div>
+    </div>
+</div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
@@ -3232,8 +3248,8 @@ function renderInvoices(content) {
         
         <div class="cards-grid">
             ${filtered.map(inv => `
-                <div class="card invoice-card" onclick="openDetailModal('invoice', ${inv.id})">
-                    <div class="invoice-card-header">
+                <div class="card invoice-card">
+                    <div class="invoice-card-header" onclick="openDetailModal('invoice', ${inv.id})">
                         <div>
                             <div class="invoice-card-number">${inv.invoice_number}</div>
                             <div class="invoice-card-customer">${inv.customer_name || 'Unknown'}</div>
@@ -3243,17 +3259,46 @@ function renderInvoices(content) {
                             ${inv.status}
                         </span>
                     </div>
-                    <div class="invoice-card-amount">$${parseFloat(inv.total_amount).toLocaleString()}</div>
-                    <div class="invoice-card-meta">
-                        <div class="invoice-card-meta-item">
-                            <div class="invoice-card-meta-label">Issued</div>
-                            <div class="invoice-card-meta-value">${formatDate(inv.issue_date)}</div>
-                        </div>
-                        <div class="invoice-card-meta-item">
-                            <div class="invoice-card-meta-label">Due</div>
-                            <div class="invoice-card-meta-value">${formatDate(inv.due_date)}</div>
+                    <div onclick="openDetailModal('invoice', ${inv.id})">
+                        <div class="invoice-card-amount">$${parseFloat(inv.total_amount).toLocaleString()}</div>
+                        <div class="invoice-card-meta">
+                            <div class="invoice-card-meta-item">
+                                <div class="invoice-card-meta-label">Issued</div>
+                                <div class="invoice-card-meta-value">${formatDate(inv.issue_date)}</div>
+                            </div>
+                            <div class="invoice-card-meta-item">
+                                <div class="invoice-card-meta-label">Due</div>
+                                <div class="invoice-card-meta-value">${formatDate(inv.due_date)}</div>
+                            </div>
                         </div>
                     </div>
+                    ${inv.status !== 'paid' ? `
+                        <div style="display: flex; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+                            <button class="btn btn-sm btn-success" style="flex: 1;" onclick="event.stopPropagation(); openPaymentModal(${inv.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                                Mark Paid
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteInvoice(${inv.id})" title="Delete Invoice">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    ` : `
+                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle); text-align: center;">
+                            <span style="color: var(--status-contacted); font-size: 13px; font-weight: 600;">
+                                <svg style="width: 14px; height: 14px; display: inline; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                                Paid ${inv.paid_at ? formatDate(inv.paid_at) : ''}
+                            </span>
+                        </div>
+                    `}
                 </div>
             `).join('')}
         </div>
@@ -3610,10 +3655,31 @@ if (type === 'lead') {
     const invoice = state.invoices.find(i => i.id === id);
     if (!invoice) return;
     
+    state.currentInvoice = invoice; // ADD THIS LINE - it was missing!
+    
     titleEl.textContent = 'Invoice Details';
     bodyEl.innerHTML = renderInvoicePreview(invoice);
-    footerEl.innerHTML = `
+    
+    // REPLACE THE ENTIRE footerEl.innerHTML with this:
+    let footerButtons = `
         <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+    `;
+    
+    // Add Mark as Paid button if not already paid
+    if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
+        footerButtons += `
+            <button class="btn btn-success" onclick="openPaymentModal(${invoice.id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Mark as Paid
+            </button>
+        `;
+    }
+    
+    // Add print button
+    footerButtons += `
         <button class="btn btn-primary" onclick="printInvoice()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 6 2 18 2 18 9"/>
@@ -3623,6 +3689,21 @@ if (type === 'lead') {
             Print Invoice
         </button>
     `;
+    
+    // Add delete button (only for non-paid invoices)
+    if (invoice.status !== 'paid') {
+        footerButtons += `
+            <button class="btn btn-danger" onclick="deleteInvoice(${invoice.id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                Delete Invoice
+            </button>
+        `;
+    }
+    
+    footerEl.innerHTML = footerButtons;
 }
 
 modal.classList.add('active');
@@ -4380,6 +4461,171 @@ try {
     showToast('Error deleting expense', 'error');
 }
 }
+
+// Delete Invoice Function
+async function deleteInvoice(id) {
+    const invoice = state.invoices.find(i => i.id === id);
+    
+    if (!confirm(`Are you sure you want to delete invoice ${invoice.invoice_number}?\n\nThis will unmark all associated expenses so they can be invoiced again.`)) {
+        return;
+    }
+    
+    try {
+        const r = await fetch(`${API_URL}/api/invoices/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (!r.ok) {
+            const data = await r.json();
+            throw new Error(data.message || 'Failed to delete invoice');
+        }
+        
+        await loadInvoices();
+        await loadLeads();
+        updateBadges();
+        closeDetailModal();
+        showToast('Invoice deleted successfully', 'success');
+        renderSection('invoices');
+    } catch (e) {
+        showToast(e.message || 'Error deleting invoice', 'error');
+    }
+}
+
+// Open Payment Modal
+function openPaymentModal(invoiceId) {
+    const invoice = state.invoices.find(i => i.id === invoiceId);
+    if (!invoice) return;
+    
+    const modal = document.getElementById('paymentModal');
+    const bodyEl = document.getElementById('paymentModalBody');
+    
+    bodyEl.innerHTML = `
+        <form id="paymentForm" onsubmit="handlePaymentSubmit(event, ${invoiceId})">
+            <div style="background: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-md); margin-bottom: 24px; border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 13px;">Invoice Number</span>
+                    <span style="color: var(--text-primary); font-weight: 600; font-family: var(--font-mono);">${invoice.invoice_number}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 13px;">Customer</span>
+                    <span style="color: var(--text-primary); font-weight: 600;">${invoice.customer_name || 'Unknown'}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border-subtle); margin-top: 12px;">
+                    <span style="color: var(--text-secondary); font-size: 14px; font-weight: 600;">Total Amount</span>
+                    <span style="color: var(--accent-amber); font-weight: 800; font-size: 24px; font-family: var(--font-mono);">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
+                </div>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Payment Method <span class="required">*</span></label>
+                    <select class="form-select" name="paymentMethod" required>
+                        <option value="">Select method...</option>
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="Debit Card">Debit Card</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="ACH">ACH</option>
+                        <option value="Check">Check</option>
+                        <option value="Cash">Cash</option>
+                        <option value="PayPal">PayPal</option>
+                        <option value="Stripe">Stripe</option>
+                        <option value="Venmo">Venmo</option>
+                        <option value="Zelle">Zelle</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Reference</label>
+                    <input type="text" class="form-input" name="paymentReference" placeholder="Transaction ID, Check #, etc.">
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">Payment Notes</label>
+                    <textarea class="form-textarea" name="paymentNotes" rows="3" placeholder="Additional payment details..."></textarea>
+                </div>
+            </div>
+            
+            <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 16px; border-radius: var(--radius-md); margin-top: 24px;">
+                <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <svg style="width: 20px; height: 20px; color: var(--status-contacted); flex-shrink: 0; margin-top: 2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <div>
+                        <div style="font-weight: 600; color: var(--status-contacted); margin-bottom: 4px;">Payment Processing</div>
+                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                            When you mark this invoice as paid:
+                            <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                                <li>The customer will be marked as ACTIVE</li>
+                                <li>Their lifetime value will be updated</li>
+                                <li>A payment note will be added to their record</li>
+                                <li>Invoice status will change to PAID</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Confirm Payment
+                </button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// Close Payment Modal
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.remove('active');
+}
+
+// Handle Payment Submission
+async function handlePaymentSubmit(event, invoiceId) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = {
+        status: 'paid',
+        paymentMethod: formData.get('paymentMethod'),
+        paymentReference: formData.get('paymentReference'),
+        paymentNotes: formData.get('paymentNotes')
+    };
+    
+    try {
+        const r = await fetch(`${API_URL}/api/invoices/${invoiceId}/status`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!r.ok) throw new Error('Failed to update invoice status');
+        
+        const result = await r.json();
+        
+        await loadInvoices();
+        await loadLeads();
+        updateBadges();
+        closePaymentModal();
+        closeDetailModal();
+        showToast('Payment recorded successfully! Customer updated to ACTIVE status.', 'success');
+        renderSection('invoices');
+    } catch (e) {
+        showToast('Error recording payment', 'error');
+    }
+}
+
 async function deleteEmployee(id) {
 if (!confirm('Are you sure you want to delete this employee?')) return;
 try {

@@ -246,6 +246,450 @@ document.getElementById('createModal').addEventListener('click',function(e){if(e
 document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeDetailModal();closeCreateModal()}});
     document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeDetailModal();closeCreateModal()}});
 
+import React, { useState } from 'react';
+import { DollarSign, Receipt, Download, Plus, Trash2, Edit2, CheckSquare, Square, FileText, Calendar, Send } from 'lucide-react';
+
+const ExpenseInvoiceManager = () => {
+  const [activeTab, setActiveTab] = useState('expenses');
+  const [selectedExpenses, setSelectedExpenses] = useState([]);
+  const [expenses, setExpenses] = useState([
+    { id: 1, description: 'Website Design - Homepage', amount: 2500, quantity: 1, date: '2026-01-10', category: 'Design', invoiced: false },
+    { id: 2, description: 'Backend Development - API Integration', amount: 3500, quantity: 1, date: '2026-01-12', category: 'Development', invoiced: false },
+    { id: 3, description: 'Database Setup', amount: 1200, quantity: 1, date: '2026-01-15', category: 'Development', invoiced: false },
+    { id: 4, description: 'UI/UX Consulting', amount: 150, quantity: 4, date: '2026-01-16', category: 'Consulting', invoiced: false },
+  ]);
+  const [invoices, setInvoices] = useState([
+    { id: 1, number: 'INV-202601-0001', client: 'Acme Corp', amount: 5500, status: 'sent', date: '2026-01-05', dueDate: '2026-02-05' },
+    { id: 2, number: 'INV-202601-0002', client: 'TechStart Inc', amount: 8200, status: 'paid', date: '2026-01-08', dueDate: '2026-02-08' },
+  ]);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [invoiceSettings, setInvoiceSettings] = useState({
+    taxRate: 8.5,
+    discount: 0,
+    dueInDays: 30,
+    paymentTerms: 'Net 30',
+    notes: ''
+  });
+
+  const toggleExpenseSelection = (id) => {
+    setSelectedExpenses(prev => 
+      prev.includes(id) ? prev.filter(expId => expId !== id) : [...prev, id]
+    );
+  };
+
+  const calculateInvoiceTotal = () => {
+    const selectedItems = expenses.filter(e => selectedExpenses.includes(e.id));
+    const subtotal = selectedItems.reduce((sum, e) => sum + (e.amount * e.quantity), 0);
+    const tax = subtotal * (invoiceSettings.taxRate / 100);
+    const total = subtotal + tax - invoiceSettings.discount;
+    return { subtotal, tax, total };
+  };
+
+  const generateInvoice = () => {
+    if (selectedExpenses.length === 0) {
+      alert('Please select at least one expense to invoice');
+      return;
+    }
+    setShowInvoicePreview(true);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  };
+
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  const ExpenseItem = ({ expense }) => {
+    const isSelected = selectedExpenses.includes(expense.id);
+    const totalAmount = expense.amount * expense.quantity;
+
+    return (
+      <div className={`flex items-center gap-4 p-4 rounded-lg border transition-all ${
+        expense.invoiced 
+          ? 'bg-gray-800 border-gray-700 opacity-60' 
+          : isSelected 
+            ? 'bg-emerald-500/10 border-emerald-500/30' 
+            : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+      }`}>
+        <button
+          onClick={() => !expense.invoiced && toggleExpenseSelection(expense.id)}
+          disabled={expense.invoiced}
+          className={`flex-shrink-0 ${expense.invoiced ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+          {isSelected ? (
+            <CheckSquare className="w-5 h-5 text-emerald-500" />
+          ) : (
+            <Square className="w-5 h-5 text-gray-500" />
+          )}
+        </button>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-4 mb-1">
+            <h4 className="font-semibold text-white">{expense.description}</h4>
+            <span className="text-lg font-mono font-bold text-emerald-400 flex-shrink-0">
+              {formatCurrency(totalAmount)}
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-gray-400">
+            <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-md text-xs font-medium">
+              {expense.category}
+            </span>
+            <span>Qty: {expense.quantity}</span>
+            <span>{formatCurrency(expense.amount)} each</span>
+            <span>{formatDate(expense.date)}</span>
+            {expense.invoiced && (
+              <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded-md text-xs font-medium">
+                Invoiced
+              </span>
+            )}
+          </div>
+        </div>
+
+        {!expense.invoiced && (
+          <div className="flex gap-2">
+            <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+              <Edit2 className="w-4 h-4 text-gray-400" />
+            </button>
+            <button className="p-2 hover:bg-red-500/10 rounded-lg transition-colors">
+              <Trash2 className="w-4 h-4 text-red-400" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const InvoicePreview = () => {
+    const { subtotal, tax, total } = calculateInvoiceTotal();
+    const selectedItems = expenses.filter(e => selectedExpenses.includes(e.id));
+    const invoiceNumber = `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
+    const issueDate = new Date();
+    const dueDate = new Date(issueDate.getTime() + invoiceSettings.dueInDays * 24 * 60 * 60 * 1000);
+
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-8 overflow-y-auto">
+        <div className="bg-gray-900 rounded-xl max-w-4xl w-full border border-gray-800 shadow-2xl my-8">
+          {/* Header */}
+          <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-white">Invoice Preview</h2>
+            <button
+              onClick={() => setShowInvoicePreview(false)}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Invoice Content */}
+          <div className="p-8 bg-white text-gray-900">
+            {/* Company Header */}
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h1 className="text-3xl font-bold text-emerald-600 mb-2">CraftedCode Co.</h1>
+                <p className="text-sm text-gray-600">
+                  123 Developer Street<br />
+                  Tech Valley, TX 75087<br />
+                  contact@craftedcode.dev<br />
+                  (555) 123-4567
+                </p>
+              </div>
+              <div className="text-right">
+                <h2 className="text-3xl font-bold mb-2">INVOICE</h2>
+                <p className="text-sm text-gray-600">
+                  <strong>Invoice #:</strong> {invoiceNumber}<br />
+                  <strong>Date:</strong> {formatDate(issueDate.toISOString())}<br />
+                  <strong>Due Date:</strong> {formatDate(dueDate.toISOString())}
+                </p>
+              </div>
+            </div>
+
+            {/* Bill To */}
+            <div className="mb-8 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold mb-2">Bill To:</h3>
+              <p className="text-gray-700">
+                <strong>Sample Client Name</strong><br />
+                client@example.com<br />
+                (555) 987-6543
+              </p>
+            </div>
+
+            {/* Line Items */}
+            <table className="w-full mb-8">
+              <thead>
+                <tr className="border-b-2 border-gray-300">
+                  <th className="text-left py-3 px-2">Description</th>
+                  <th className="text-right py-3 px-2">Qty</th>
+                  <th className="text-right py-3 px-2">Rate</th>
+                  <th className="text-right py-3 px-2">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedItems.map(item => (
+                  <tr key={item.id} className="border-b border-gray-200">
+                    <td className="py-3 px-2">
+                      <div className="font-medium">{item.description}</div>
+                      <div className="text-sm text-gray-500">{item.category} • {formatDate(item.date)}</div>
+                    </td>
+                    <td className="text-right py-3 px-2">{item.quantity}</td>
+                    <td className="text-right py-3 px-2">{formatCurrency(item.amount)}</td>
+                    <td className="text-right py-3 px-2 font-semibold">{formatCurrency(item.amount * item.quantity)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Totals */}
+            <div className="flex justify-end mb-8">
+              <div className="w-64">
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span>Subtotal:</span>
+                  <span className="font-semibold">{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span>Tax ({invoiceSettings.taxRate}%):</span>
+                  <span className="font-semibold">{formatCurrency(tax)}</span>
+                </div>
+                {invoiceSettings.discount > 0 && (
+                  <div className="flex justify-between py-2 border-b border-gray-200 text-emerald-600">
+                    <span>Discount:</span>
+                    <span className="font-semibold">-{formatCurrency(invoiceSettings.discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-3 border-t-2 border-gray-300 text-lg">
+                  <span className="font-bold">Total:</span>
+                  <span className="font-bold text-emerald-600">{formatCurrency(total)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Terms */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="font-semibold mb-2">Payment Terms:</h3>
+              <p className="text-sm text-gray-600 mb-4">{invoiceSettings.paymentTerms}</p>
+              {invoiceSettings.notes && (
+                <>
+                  <h3 className="font-semibold mb-2">Notes:</h3>
+                  <p className="text-sm text-gray-600">{invoiceSettings.notes}</p>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
+              Thank you for your business!
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="p-6 border-t border-gray-800 bg-gray-800/50 flex gap-4">
+            <button
+              onClick={() => {
+                // Mark expenses as invoiced
+                setExpenses(expenses.map(e => 
+                  selectedExpenses.includes(e.id) ? { ...e, invoiced: true } : e
+                ));
+                setSelectedExpenses([]);
+                setShowInvoicePreview(false);
+                alert('Invoice created successfully!');
+              }}
+              className="flex-1 px-6 py-3 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2"
+            >
+              <Send className="w-5 h-5" />
+              Create & Send Invoice
+            </button>
+            <button
+              onClick={() => alert('Downloading PDF...')}
+              className="px-6 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition-colors flex items-center gap-2"
+            >
+              <Download className="w-5 h-5" />
+              Download PDF
+            </button>
+            <button
+              onClick={() => setShowInvoicePreview(false)}
+              className="px-6 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const { subtotal, tax, total } = calculateInvoiceTotal();
+  const selectedCount = selectedExpenses.length;
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
+            Expense & Invoice Manager
+          </h1>
+          <p className="text-gray-400">Track expenses and generate professional invoices</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-4 mb-6 border-b border-gray-800">
+          <button
+            onClick={() => setActiveTab('expenses')}
+            className={`px-6 py-3 font-semibold transition-all ${
+              activeTab === 'expenses'
+                ? 'text-emerald-400 border-b-2 border-emerald-400'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Receipt className="w-5 h-5" />
+              Expenses
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('invoices')}
+            className={`px-6 py-3 font-semibold transition-all ${
+              activeTab === 'invoices'
+                ? 'text-emerald-400 border-b-2 border-emerald-400'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Invoices
+            </div>
+          </button>
+        </div>
+
+        {activeTab === 'expenses' && (
+          <>
+            {/* Summary Bar */}
+            {selectedCount > 0 && (
+              <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <div>
+                      <p className="text-sm text-gray-400">Selected Items</p>
+                      <p className="text-2xl font-bold text-white">{selectedCount}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-400">Subtotal</p>
+                      <p className="text-2xl font-bold text-emerald-400">{formatCurrency(subtotal)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-400">Tax ({invoiceSettings.taxRate}%)</p>
+                      <p className="text-2xl font-bold text-white">{formatCurrency(tax)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-400">Total</p>
+                      <p className="text-3xl font-bold text-emerald-400">{formatCurrency(total)}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setSelectedExpenses([])}
+                      className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                      Clear Selection
+                    </button>
+                    <button
+                      onClick={generateInvoice}
+                      className="px-6 py-2 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition-colors flex items-center gap-2"
+                    >
+                      <FileText className="w-5 h-5" />
+                      Generate Invoice
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Expenses List */}
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white">Unbilled Expenses</h2>
+                <button
+                  onClick={() => setShowExpenseModal(true)}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Expense
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {expenses.filter(e => !e.invoiced).map(expense => (
+                  <ExpenseItem key={expense.id} expense={expense} />
+                ))}
+              </div>
+
+              {expenses.filter(e => e.invoiced).length > 0 && (
+                <>
+                  <div className="mt-8 mb-4">
+                    <h3 className="text-lg font-semibold text-gray-400">Invoiced Expenses</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {expenses.filter(e => e.invoiced).map(expense => (
+                      <ExpenseItem key={expense.id} expense={expense} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'invoices' && (
+          <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
+            <h2 className="text-xl font-bold text-white mb-6">All Invoices</h2>
+            <div className="space-y-3">
+              {invoices.map(invoice => (
+                <div key={invoice.id} className="flex items-center gap-4 p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-all">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-2">
+                      <h4 className="font-semibold text-white">{invoice.number}</h4>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        invoice.status === 'paid' 
+                          ? 'bg-emerald-500/10 text-emerald-400'
+                          : invoice.status === 'sent'
+                            ? 'bg-blue-500/10 text-blue-400'
+                            : 'bg-gray-700 text-gray-400'
+                      }`}>
+                        {invoice.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                      <span>{invoice.client}</span>
+                      <span>•</span>
+                      <span>Issued: {formatDate(invoice.date)}</span>
+                      <span>•</span>
+                      <span>Due: {formatDate(invoice.dueDate)}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-emerald-400">{formatCurrency(invoice.amount)}</p>
+                  </div>
+                  <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
+                    <Download className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {showInvoicePreview && <InvoicePreview />}
+      </div>
+    </div>
+  );
+};
+
+export default ExpenseInvoiceManager;
+
 // Missing functions - Detail Modal
 async function openDetailModal(id){const lead=state.leads.find(l=>l.id===id)||state.customers.find(c=>c.id===id);if(!lead)return;state.currentLead=lead;const isC=lead.is_customer;const st=isC?(lead.customer_status||'onboarding'):lead.status;const init=((lead.first_name||'')[0]||'')+((lead.last_name||'')[0]||'');const emp=state.employees.find(e=>e.id===lead.assigned_to);try{const nr=await fetch(`${API_URL}/api/leads/${id}/notes`,{headers:{'Authorization':`Bearer ${authToken}`}});const nd=await nr.json();const notes=nd.success?nd.notes:[];const statusOpts=isC?['onboarding','in-progress','review','completed','on-hold','churned','cancelled']:['new','pending','contacted','closed','lost'];document.getElementById('detailModalTitle').textContent=`${isC?'Customer':'Lead'} Details`;document.getElementById('detailModalBody').innerHTML=`<div class="detail-section"><div class="section-header"><h3 class="section-title">Contact Information</h3></div><div class="detail-grid"><div class="detail-item"><div class="detail-label">Full Name</div><div class="detail-value">${lead.first_name||''} ${lead.last_name||''}</div></div><div class="detail-item"><div class="detail-label">Email</div><div class="detail-value">${lead.email||'-'}</div></div><div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value">${lead.phone||'-'}</div></div><div class="detail-item"><div class="detail-label">Service</div><div class="detail-value">${lead.service||'-'}</div></div><div class="detail-item"><div class="detail-label">Budget</div><div class="detail-value">${lead.budget||'-'}</div></div><div class="detail-item"><div class="detail-label">Date Created</div><div class="detail-value">${formatDate(lead.created_at)}</div></div></div></div><div class="detail-section"><div class="section-header"><h3 class="section-title">Management</h3></div><div class="detail-grid"><div class="detail-item"><div class="detail-label">Status</div><select class="form-select" id="modalStatus" onchange="updateStatus()"><option value="">Select status</option>${statusOpts.map(s=>`<option value="${s}" ${s===st?'selected':''}>${s.replace('-',' ')}</option>`).join('')}</select></div><div class="detail-item"><div class="detail-label">Priority</div><select class="form-select" id="modalPriority" onchange="updatePriority()"><option value="low" ${lead.priority==='low'?'selected':''}>Low</option><option value="medium" ${lead.priority==='medium'?'selected':''}>Medium</option><option value="high" ${lead.priority==='high'?'selected':''}>High</option></select></div><div class="detail-item full-width"><div class="detail-label">Assigned To</div><select class="form-select" id="modalAssignment" onchange="updateAssignment()"><option value="">Unassigned</option>${state.employees.map(e=>`<option value="${e.id}" ${e.id===lead.assigned_to?'selected':''}>${e.first_name} ${e.last_name}</option>`).join('')}</select></div></div></div>${lead.description?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Description</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.description}</div></div></div>`:''}${lead.message?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Message</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.message}</div></div></div>`:''}${lead.project_details?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Project Details</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.project_details}</div></div></div>`:''}${lead.timeline?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Timeline</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.timeline}</div></div></div>`:''}${lead.tech_stack?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Tech Stack</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.tech_stack}</div></div></div>`:''}${lead.referral_source?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Referral Source</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.referral_source}</div></div></div>`:''}${lead.website?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Website</h3></div><div class="detail-item full-width"><div class="detail-value"><a href="${lead.website}" target="_blank" style="color:var(--accent-primary)">${lead.website}</a></div></div></div>`:''}${lead.company?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Company</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.company}</div></div></div>`:''}${lead.preferred_contact?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Preferred Contact</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.preferred_contact}</div></div></div>`:''}${lead.best_time?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Best Time to Contact</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.best_time}</div></div></div>`:''}${lead.hear_about?`<div class="detail-section"><div class="section-header"><h3 class="section-title">How They Heard About Us</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.hear_about}</div></div></div>`:''}${lead.contract_value?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Contract Value</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.contract_value}</div></div></div>`:''}${lead.onboarding_notes?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Onboarding Notes</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.onboarding_notes}</div></div></div>`:''}${lead.support_level?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Support Level</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.support_level}</div></div></div>`:''}${lead.renewal_date?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Renewal Date</h3></div><div class="detail-item full-width"><div class="detail-value">${formatDate(lead.renewal_date)}</div></div></div>`:''}${lead.cancellation_reason?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Cancellation Reason</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.cancellation_reason}</div></div></div>`:''}<div class="detail-section"><div class="section-header"><h3 class="section-title">Notes</h3></div><div class="notes-list">${notes.length>0?notes.map(n=>`<div class="note-item"><div class="note-header"><span class="note-author">${n.author||'Admin'}</span><span class="note-date">${formatDate(n.created_at)}</span></div><div class="note-text">${n.note_text}</div></div>`).join(''):'<div class="note-empty">No notes yet</div>'}</div><div class="form-group"><label class="form-label">Add Note</label><textarea class="form-textarea" id="newNoteText" placeholder="Enter note..."></textarea><button class="btn btn-primary" onclick="addNote()" style="margin-top:8px">Add Note</button></div></div>`;document.getElementById('detailModalFooter').innerHTML=`<button class="btn btn-danger" onclick="deleteLead(${id})">Delete ${isC?'Customer':'Lead'}</button><button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>`;document.getElementById('detailModal').classList.add('active');document.body.style.overflow='hidden'}catch(err){console.error('Error loading details:',err);showToast('Error loading details','error')}}
 
@@ -257,7 +701,6 @@ function openCreateModal(type){const isC=type==='customer';document.getElementBy
 async function saveLead(e,isC){e.preventDefault();const ld={firstName:document.getElementById('leadFirstName').value.trim(),lastName:document.getElementById('leadLastName').value.trim(),email:document.getElementById('leadEmail').value.trim(),phone:document.getElementById('leadPhone').value.trim(),service:document.getElementById('leadService').value.trim(),budget:document.getElementById('leadBudget').value.trim(),status:isC?null:document.getElementById('leadStatus').value,priority:document.getElementById('leadPriority').value,assignedTo:document.getElementById('leadAssignee').value||null,company:document.getElementById('leadCompany').value.trim(),message:document.getElementById('leadMessage').value.trim(),isCustomer:isC,customerStatus:isC?document.getElementById('leadCustomerStatus').value:null};try{const r=await fetch(`${API_URL}/api/leads`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify(ld)});const d=await r.json();if(d.success){await loadLeads();updateBadges();closeCreateModal();renderSection(state.currentSection);showToast(`${isC?'Customer':'Lead'} added successfully`,'success')}else{showToast(d.message||`Error adding ${isC?'customer':'lead'}`,'error')}}catch(err){console.error('Save lead error:',err);showToast(`Error adding ${isC?'customer':'lead'}`,'error')}}
 
 function closeCreateModal(){document.getElementById('createModal').classList.remove('active');document.body.style.overflow=''}
-    </script>
     </script>
 </body>
 </html>

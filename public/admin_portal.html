@@ -2598,74 +2598,1691 @@ function renderSection(section) {
         case 'settings': renderSettings(content); break;
     }
 }
-function renderDashboard(c){const n=state.leads.filter(l=>l.status==='new').length;const p=state.leads.filter(l=>l.status==='pending').length;const ct=state.leads.filter(l=>l.status==='contacted').length;const ac=state.customers.filter(x=>!['completed','churned','cancelled'].includes(x.customer_status)).length;const cr=state.leads.length>0?Math.round((state.customers.length/(state.leads.length+state.customers.length))*100):0;c.innerHTML=`<div class="stats-grid"><div class="stat-card"><div class="stat-header"><span class="stat-label">New Leads</span><div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div></div><div class="stat-value">${n}</div><div class="stat-change positive">Requires attention</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Pending</span><div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div><div class="stat-value">${p}</div><div class="stat-change">In progress</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Contacted</span><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07"/></svg></div></div><div class="stat-value">${ct}</div><div class="stat-change positive">Active follow-up</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Total Leads</span><div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div><div class="stat-value">${state.leads.length}</div><div class="stat-change">Pipeline total</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Active Customers</span><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div></div><div class="stat-value">${ac}</div><div class="stat-change positive">Converting</div></div><div class="stat-card"><div class="stat-header"><span class="stat-label">Conversion Rate</span><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div><div class="stat-value">${cr}%</div><div class="stat-change positive">Lead to customer</div></div></div><div class="controls-bar"><div class="search-box"><svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="search-input" placeholder="Search leads by name, email, or phone..." id="searchInput" oninput="handleSearch(this.value)"></div><div class="filter-group" id="filterGroup"><button class="filter-btn active" data-filter="all">All</button><button class="filter-btn" data-filter="new">New</button><button class="filter-btn" data-filter="pending">Pending</button><button class="filter-btn" data-filter="contacted">Contacted</button><button class="filter-btn" data-filter="lost">Lost</button></div></div><div class="table-container"><table class="data-table"><thead><tr><th>Contact</th><th>Phone</th><th>Service</th><th>Budget</th><th>Date</th><th>Status</th><th>Priority</th><th>Assigned</th><th>Actions</th></tr></thead><tbody id="tableBody"></tbody></table><div class="table-footer"><div class="table-info" id="tableInfo">Showing 0 leads</div><div class="pagination" id="pagination"></div></div></div>`;setupFilterButtons();renderTableData('leads')}
-function renderLeadsTable(c,type){const isC=type==='customers';const filters=isC?[{key:'all',label:'All'},{key:'onboarding',label:'Onboarding'},{key:'in-progress',label:'In Progress'},{key:'review',label:'Review'},{key:'completed',label:'Completed'},{key:'on-hold',label:'On Hold'}]:[{key:'all',label:'All'},{key:'new',label:'New'},{key:'pending',label:'Pending'},{key:'contacted',label:'Contacted'},{key:'lost',label:'Lost'}];c.innerHTML=`<div class="controls-bar"><div class="search-box"><svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="search-input" placeholder="Search by name, email, or phone..." id="searchInput" oninput="handleSearch(this.value)"></div><div class="filter-group" id="filterGroup">${filters.map(f=>`<button class="filter-btn ${f.key===state.currentFilter||(state.currentFilter==='all'&&f.key==='all')?'active':''}" data-filter="${f.key}">${f.label}</button>`).join('')}</div>${isC?'<button class="btn btn-primary" onclick="openCreateModal(\'customer\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Customer</button>':''}</div><div class="table-container"><table class="data-table"><thead><tr><th>Contact</th><th>Phone</th><th>Service</th><th>Budget</th><th>Date</th><th>Status</th><th>Priority</th><th>Assigned</th><th>Actions</th></tr></thead><tbody id="tableBody"></tbody></table><div class="table-footer"><div class="table-info" id="tableInfo">Showing 0 items</div><div class="pagination" id="pagination"></div></div></div>`;setupFilterButtons();renderTableData(type)}
-function setupFilterButtons(){document.querySelectorAll('.filter-btn').forEach(btn=>{btn.addEventListener('click',function(){document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');state.currentFilter=this.dataset.filter;renderTableData(state.currentSection==='customers'?'customers':'leads')})})}
-function handleSearch(q){state.searchQuery=q.toLowerCase();renderTableData(state.currentSection==='customers'?'customers':'leads')}
-function renderTableData(type){const tbody=document.getElementById('tableBody');if(!tbody)return;const isC=type==='customers';let data=isC?[...state.customers]:[...state.leads];if(state.currentFilter!=='all'){if(isC){data=data.filter(i=>(i.customer_status||'onboarding')===state.currentFilter)}else{data=data.filter(i=>i.status===state.currentFilter)}}if(state.searchQuery){data=data.filter(i=>(i.first_name||'').toLowerCase().includes(state.searchQuery)||(i.last_name||'').toLowerCase().includes(state.searchQuery)||(i.email||'').toLowerCase().includes(state.searchQuery)||(i.phone&&String(i.phone).includes(state.searchQuery)))}data.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));if(data.length===0){tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="11" x2="23" y2="11"/></svg><div class="empty-title">No ${isC?'customers':'leads'} found</div><div class="empty-description">Try adjusting your search or filters.</div></div></td></tr>`}else{tbody.innerHTML=data.map(i=>{const init=((i.first_name||'')[0]||'')+((i.last_name||'')[0]||'');const emp=state.employees.find(e=>e.id===i.assigned_to);const st=isC?(i.customer_status||'onboarding'):i.status;return`<tr onclick="openDetailModal(${i.id})"><td><div class="contact-cell"><div class="contact-avatar">${init.toUpperCase()}</div><div class="contact-info"><div class="contact-name">${i.first_name||''} ${i.last_name||''}</div><div class="contact-email">${i.email||''}</div></div></div></td><td>${i.phone||'-'}</td><td>${i.service||'-'}</td><td>${i.budget||'-'}</td><td>${formatDate(i.created_at)}</td><td><span class="status-badge status-${st}"><span class="status-dot"></span>${st.replace('-',' ')}</span></td><td><span class="priority-badge priority-${i.priority||'medium'}">${i.priority||'medium'}</span></td><td>${emp?`${emp.first_name} ${emp.last_name}`:'<span style="color:var(--text-muted)">Unassigned</span>'}</td><td onclick="event.stopPropagation()"><div class="table-actions"><button class="table-action-btn" onclick="openDetailModal(${i.id})" title="View"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="table-action-btn danger" onclick="deleteLead(${i.id})" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></td></tr>`}).join('')}document.getElementById('tableInfo').textContent=`Showing ${data.length} ${isC?'customers':'leads'}`}
-function renderAnalytics(c){const md=[{month:'Aug',leads:12},{month:'Sep',leads:18},{month:'Oct',leads:24},{month:'Nov',leads:21},{month:'Dec',leads:28},{month:'Jan',leads:state.leads.length}];const ml=Math.max(...md.map(d=>d.leads),1);const tr=state.customers.reduce((s,x)=>{const b=parseFloat((x.budget||'').replace(/[^0-9.]/g,''))||0;return s+b},0);const ads=state.customers.length>0?tr/state.customers.length:0;const cr=(state.leads.length+state.customers.length)>0?((state.customers.length/(state.leads.length+state.customers.length))*100).toFixed(1):0;const sb={new:state.leads.filter(l=>l.status==='new').length,pending:state.leads.filter(l=>l.status==='pending').length,contacted:state.leads.filter(l=>l.status==='contacted').length,lost:state.leads.filter(l=>l.status==='lost').length};c.innerHTML=`<div class="analytics-grid"><div class="analytics-card full-width"><div class="analytics-header"><h3 class="analytics-title">Lead Acquisition Trend</h3><div class="filter-group"><button class="filter-btn active">6 Months</button><button class="filter-btn">1 Year</button></div></div><div class="chart-container">${md.map(d=>`<div class="chart-bar" style="height:${(d.leads/ml)*100}%"><span class="chart-bar-value">${d.leads}</span><span class="chart-bar-label">${d.month}</span></div>`).join('')}</div></div><div class="analytics-card"><div class="analytics-header"><h3 class="analytics-title">Key Metrics</h3></div><div class="metrics-list"><div class="metric-item"><span class="metric-label">Total Revenue</span><span class="metric-value">$${tr.toLocaleString()}</span></div><div class="metric-item"><span class="metric-label">Average Deal Size</span><span class="metric-value">$${ads.toLocaleString(undefined,{maximumFractionDigits:0})}</span></div><div class="metric-item"><span class="metric-label">Conversion Rate</span><span class="metric-value">${cr}%</span></div><div class="metric-item"><span class="metric-label">Active Pipeline</span><span class="metric-value">${state.leads.length}</span></div></div></div><div class="analytics-card"><div class="analytics-header"><h3 class="analytics-title">Pipeline Breakdown</h3></div><div class="metrics-list"><div class="metric-item"><span class="metric-label">New Leads</span><span class="metric-value">${sb.new}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${state.leads.length>0?(sb.new/state.leads.length)*100:0}%"></div></div><div class="metric-item"><span class="metric-label">Pending</span><span class="metric-value">${sb.pending}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${state.leads.length>0?(sb.pending/state.leads.length)*100:0}%"></div></div><div class="metric-item"><span class="metric-label">Contacted</span><span class="metric-value">${sb.contacted}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${state.leads.length>0?(sb.contacted/state.leads.length)*100:0}%"></div></div><div class="metric-item"><span class="metric-label">Lost</span><span class="metric-value">${sb.lost}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${state.leads.length>0?(sb.lost/state.leads.length)*100:0}%;background:var(--status-lost)"></div></div></div></div><div class="analytics-card"><div class="analytics-header"><h3 class="analytics-title">Team Performance</h3></div><div class="metrics-list">${state.employees.length>0?state.employees.map(emp=>{const al=state.leads.filter(l=>l.assigned_to===emp.id).length;const ac=state.customers.filter(x=>x.assigned_to===emp.id).length;return`<div class="metric-item"><span class="metric-label">${emp.first_name} ${emp.last_name}</span><span class="metric-value">${al+ac} assigned</span></div>`}).join(''):'<div class="metric-item"><span class="metric-label">No team members yet</span></div>'}</div></div></div>`}
-function renderEmployees(c){c.innerHTML=`<div class="controls-bar"><div class="search-box"><svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="search-input" placeholder="Search team members..." id="employeeSearch" oninput="filterEmployees(this.value)"></div><button class="btn btn-primary" onclick="openEmployeeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Team Member</button></div><div class="cards-grid" id="employeesGrid">${state.employees.length>0?state.employees.map(emp=>renderEmployeeCard(emp)).join(''):`<div class="empty-state" style="grid-column:1/-1"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><div class="empty-title">No team members yet</div><div class="empty-description">Add your first team member to start assigning leads.</div></div>`}</div>`}
-function renderEmployeeCard(emp){const init=((emp.first_name||'')[0]||'')+((emp.last_name||'')[0]||'');const al=state.leads.filter(l=>l.assigned_to===emp.id).length;const ac=state.customers.filter(x=>x.assigned_to===emp.id).length;return`<div class="employee-card"><div class="employee-header"><div class="employee-avatar">${init.toUpperCase()}</div><div class="employee-details"><div class="employee-name">${emp.first_name} ${emp.last_name}</div><div class="employee-role">${emp.role||'Team Member'}</div></div></div><div class="employee-meta"><div class="employee-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${emp.email}</div>${emp.phone?`<div class="employee-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07"/></svg>${emp.phone}</div>`:''}</div><div class="employee-stats"><div class="employee-stat"><div class="employee-stat-value">${al}</div><div class="employee-stat-label">Leads</div></div><div class="employee-stat"><div class="employee-stat-value">${ac}</div><div class="employee-stat-label">Customers</div></div><div class="employee-stat"><div class="employee-stat-value">${al+ac}</div><div class="employee-stat-label">Total</div></div></div><div class="employee-actions"><button class="btn btn-secondary" onclick="openEmployeeModal(${emp.id})">Edit</button><button class="btn btn-danger" onclick="deleteEmployee(${emp.id})">Remove</button></div></div>`}
-function filterEmployees(q){const grid=document.getElementById('employeesGrid');if(!grid)return;const f=state.employees.filter(emp=>(emp.first_name||'').toLowerCase().includes(q.toLowerCase())||(emp.last_name||'').toLowerCase().includes(q.toLowerCase())||(emp.email||'').toLowerCase().includes(q.toLowerCase()));grid.innerHTML=f.length>0?f.map(emp=>renderEmployeeCard(emp)).join(''):`<div class="empty-state" style="grid-column:1/-1"><div class="empty-title">No matches found</div><div class="empty-description">Try a different search term.</div></div>`}
-function renderTasks(c){const pt=state.tasks.filter(t=>!t.completed);const ct=state.tasks.filter(t=>t.completed);c.innerHTML=`<div class="controls-bar"><div class="search-box"><svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="search-input" placeholder="Search tasks..." id="taskSearch"></div><button class="btn btn-primary" onclick="openTaskModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Task</button></div><div class="detail-section"><div class="section-header"><h3 class="section-title">Pending Tasks (${pt.length})</h3></div><div class="tasks-container" id="pendingTasks">${pt.length>0?pt.map(t=>renderTaskItem(t)).join(''):`<div class="empty-state"><div class="empty-title">All caught up!</div><div class="empty-description">No pending tasks.</div></div>`}</div></div><div class="detail-section"><div class="section-header"><h3 class="section-title">Completed (${ct.length})</h3></div><div class="tasks-container" id="completedTasks">${ct.length>0?ct.map(t=>renderTaskItem(t)).join(''):`<div class="empty-state"><div class="empty-title">No completed tasks</div><div class="empty-description">Complete tasks to see them here.</div></div>`}</div></div>`}
-function renderTaskItem(t){const od=!t.completed&&new Date(t.dueDate)<new Date();return`<div class="task-item ${t.completed?'completed':''}"><div class="task-checkbox ${t.completed?'checked':''}" onclick="toggleTask(${t.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><div class="task-content"><div class="task-title">${t.title}</div><div class="task-meta"><span class="task-due ${od?'overdue':''}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${formatDate(t.dueDate)}</span><span class="priority-badge priority-${t.priority}">${t.priority}</span></div></div><div class="table-actions"><button class="table-action-btn" onclick="editTask(${t.id})" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button class="table-action-btn danger" onclick="deleteTask(${t.id})" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></div>`}
-function toggleTask(id){const t=state.tasks.find(x=>x.id===id);if(t){t.completed=!t.completed;renderTasks(document.getElementById('contentArea'));showToast(t.completed?'Task completed':'Task reopened','success')}}
-function deleteTask(id){if(confirm('Delete this task?')){state.tasks=state.tasks.filter(t=>t.id!==id);renderTasks(document.getElementById('contentArea'));showToast('Task deleted','success')}}
-function renderSettings(c){c.innerHTML=`<div class="settings-layout"><div class="settings-nav"><div class="settings-nav-item active" data-panel="general"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33"/></svg>General</div><div class="settings-nav-item" data-panel="notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notifications</div><div class="settings-nav-item" data-panel="security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Security</div></div><div class="settings-panel" id="settingsPanel"><div class="settings-section"><h3 class="settings-section-title">General Settings</h3><p class="settings-section-desc">Manage your account preferences and CRM configuration.</p><div class="setting-row"><div class="setting-info"><div class="setting-label">Dark Mode</div><div class="setting-desc">Use dark theme across the application</div></div><label class="toggle"><input type="checkbox" ${state.settings.darkMode?'checked':''} onchange="updateSetting('darkMode',this.checked)"><span class="toggle-slider"></span></label></div><div class="setting-row"><div class="setting-info"><div class="setting-label">Auto-assign Leads</div><div class="setting-desc">Automatically assign new leads to team members</div></div><label class="toggle"><input type="checkbox" ${state.settings.autoAssign?'checked':''} onchange="updateSetting('autoAssign',this.checked)"><span class="toggle-slider"></span></label></div></div><div class="settings-section"><h3 class="settings-section-title">Notifications</h3><p class="settings-section-desc">Configure how you receive notifications.</p><div class="setting-row"><div class="setting-info"><div class="setting-label">Email Notifications</div><div class="setting-desc">Receive email updates for new leads and activities</div></div><label class="toggle"><input type="checkbox" ${state.settings.emailNotifications?'checked':''} onchange="updateSetting('emailNotifications',this.checked)"><span class="toggle-slider"></span></label></div><div class="setting-row"><div class="setting-info"><div class="setting-label">Weekly Report</div><div class="setting-desc">Receive weekly summary reports via email</div></div><label class="toggle"><input type="checkbox" ${state.settings.weeklyReport?'checked':''} onchange="updateSetting('weeklyReport',this.checked)"><span class="toggle-slider"></span></label></div></div><div class="settings-section"><h3 class="settings-section-title">Data Management</h3><p class="settings-section-desc">Export or manage your CRM data.</p><div style="display:flex;gap:12px;margin-top:16px"><button class="btn btn-secondary" onclick="exportData('csv')">Export to CSV</button><button class="btn btn-secondary" onclick="exportData('json')">Export to JSON</button></div></div></div></div>`}
-function updateSetting(k,v){state.settings[k]=v;showToast('Settings updated','success')}
-function openEmployeeModal(id=null){const isE=!!id;let emp=null;if(isE){emp=state.employees.find(e=>e.id===id);if(!emp)return}document.getElementById('createModalTitle').textContent=`${isE?'Edit':'Add'} Team Member`;document.getElementById('createModalBody').innerHTML=`<form id="employeeForm" onsubmit="saveEmployee(event,${isE?id:'null'})"><div class="form-grid"><div class="form-group"><label class="form-label">First Name <span class="required">*</span></label><input type="text" class="form-input" id="empFirstName" value="${emp?.first_name||''}" required></div><div class="form-group"><label class="form-label">Last Name <span class="required">*</span></label><input type="text" class="form-input" id="empLastName" value="${emp?.last_name||''}" required></div><div class="form-group"><label class="form-label">Email <span class="required">*</span></label><input type="email" class="form-input" id="empEmail" value="${emp?.email||''}" required></div><div class="form-group"><label class="form-label">Phone</label><input type="tel" class="form-input" id="empPhone" value="${emp?.phone||''}"></div><div class="form-group full-width"><label class="form-label">Role</label><input type="text" class="form-input" id="empRole" value="${emp?.role||''}" placeholder="e.g., Sales Manager, Developer"></div></div><div style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px"><button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button><button type="submit" class="btn btn-primary">${isE?'Update':'Add'} Member</button></div></form>`;document.getElementById('createModal').classList.add('active');document.body.style.overflow='hidden'}
-async function saveEmployee(e,id){e.preventDefault();const ed={firstName:document.getElementById('empFirstName').value.trim(),lastName:document.getElementById('empLastName').value.trim(),email:document.getElementById('empEmail').value.trim(),phone:document.getElementById('empPhone').value.trim(),role:document.getElementById('empRole').value.trim()};try{const url=id?`${API_URL}/api/employees/${id}`:`${API_URL}/api/employees`;const method=id?'PATCH':'POST';const r=await fetch(url,{method:method,headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify(ed)});const d=await r.json();if(d.success){await loadEmployees();closeCreateModal();renderSection('employees');showToast(`Team member ${id?'updated':'added'} successfully`,'success')}else{showToast(d.message||'Error saving employee','error')}}catch(err){console.error('Save employee error:',err);showToast('Error saving employee','error')}}
-async function deleteEmployee(id){if(!confirm('Are you sure you want to remove this team member?'))return;try{const r=await fetch(`${API_URL}/api/employees/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${authToken}`}});const d=await r.json();if(d.success){await loadEmployees();renderSection('employees');showToast('Team member removed','success')}else{showToast(d.message||'Error removing employee','error')}}catch(err){console.error('Delete employee error:',err);showToast('Error removing employee','error')}}
-function openTaskModal(id=null){const isE=!!id;let t=null;if(isE){t=state.tasks.find(x=>x.id===id);if(!t)return}document.getElementById('createModalTitle').textContent=`${isE?'Edit':'Add'} Task`;document.getElementById('createModalBody').innerHTML=`<form id="taskForm" onsubmit="saveTask(event,${isE?id:'null'})"><div class="form-grid"><div class="form-group full-width"><label class="form-label">Task Title <span class="required">*</span></label><input type="text" class="form-input" id="taskTitle" value="${t?.title||''}" required></div><div class="form-group"><label class="form-label">Due Date</label><input type="date" class="form-input" id="taskDueDate" value="${t?.dueDate||''}"></div><div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="taskPriority"><option value="low" ${t?.priority==='low'?'selected':''}>Low</option><option value="medium" ${t?.priority==='medium'||!t?'selected':''}>Medium</option><option value="high" ${t?.priority==='high'?'selected':''}>High</option></select></div></div><div style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px"><button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button><button type="submit" class="btn btn-primary">${isE?'Update':'Add'} Task</button></div></form>`;document.getElementById('createModal').classList.add('active');document.body.style.overflow='hidden'}
-function saveTask(e,id){e.preventDefault();const td={id:id||Date.now(),title:document.getElementById('taskTitle').value.trim(),dueDate:document.getElementById('taskDueDate').value,priority:document.getElementById('taskPriority').value,assignee:'Admin',completed:id?state.tasks.find(t=>t.id===id)?.completed||false:false};if(id){const idx=state.tasks.findIndex(t=>t.id===id);if(idx!==-1)state.tasks[idx]=td}else{state.tasks.push(td)}closeCreateModal();renderSection('tasks');showToast(`Task ${id?'updated':'created'}`,'success')}
-function editTask(id){openTaskModal(id)}
-async function updateStatus(){if(!state.currentLead)return;const ns=document.getElementById('modalStatus').value;const isC=state.currentLead.is_customer;if(!isC&&ns==='closed'){if(!confirm('This will convert the lead to a customer. Continue?')){document.getElementById('modalStatus').value=state.currentLead.status;return}}try{const ep=isC?`${API_URL}/api/leads/${state.currentLead.id}/customer-status`:`${API_URL}/api/leads/${state.currentLead.id}/status`;const body=isC?{customerStatus:ns}:{status:ns,isCustomer:ns==='closed',customerStatus:ns==='closed'?'onboarding':null};const r=await fetch(ep,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify(body)});const d=await r.json();if(d.success){await loadLeads();updateBadges();if(!isC&&ns==='closed'){closeDetailModal();showToast('Lead converted to customer','success')}else{showToast('Status updated','success')}renderSection(state.currentSection)}}catch(err){console.error('Error updating status:',err);showToast('Error updating status','error')}}
-async function updatePriority(){if(!state.currentLead)return;const np=document.getElementById('modalPriority').value;try{const r=await fetch(`${API_URL}/api/leads/${state.currentLead.id}/priority`,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify({priority:np})});const d=await r.json();if(d.success){await loadLeads();showToast('Priority updated','success');renderSection(state.currentSection)}}catch(err){console.error('Error updating priority:',err);showToast('Error updating priority','error')}}
-async function updateAssignment(){if(!state.currentLead)return;const eid=document.getElementById('modalAssignment').value;try{const r=await fetch(`${API_URL}/api/leads/${state.currentLead.id}/assign`,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify({employeeId:eid||null})});const d=await r.json();if(d.success){await loadLeads();showToast('Assignment updated','success');renderSection(state.currentSection)}}catch(err){console.error('Error updating assignment:',err);showToast('Error updating assignment','error')}}
-async function addNote(){if(!state.currentLead)return;const nt=document.getElementById('newNoteText').value.trim();if(!nt){showToast('Please enter a note','warning');return}try{const r=await fetch(`${API_URL}/api/leads/${state.currentLead.id}/notes`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify({noteText:nt})});const d=await r.json();if(d.success){document.getElementById('newNoteText').value='';await openDetailModal(state.currentLead.id);showToast('Note added','success')}}catch(err){console.error('Error adding note:',err);showToast('Error adding note','error')}}
-async function deleteLead(id){if(!confirm('Are you sure you want to permanently delete this record? This action cannot be undone.'))return;try{const r=await fetch(`${API_URL}/api/leads/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${authToken}`}});const d=await r.json();if(d.success){await loadLeads();updateBadges();closeDetailModal();renderSection(state.currentSection);showToast('Record deleted','success')}else{showToast(d.error||'Error deleting record','error')}}catch(err){console.error('Error deleting:',err);showToast('Error deleting record','error')}}
-function formatDate(ds){if(!ds)return'-';const d=new Date(ds);return d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}
-function showToast(msg,type='success'){const c=document.getElementById('toastContainer');const t=document.createElement('div');t.className=`toast ${type}`;const icons={success:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',error:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',warning:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'};t.innerHTML=`<span class="toast-icon">${icons[type]}</span><span class="toast-message">${msg}</span><button class="toast-close" onclick="this.parentElement.remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;c.appendChild(t);setTimeout(()=>{t.remove()},4000)}
-function exportData(fmt){const all=[...state.leads,...state.customers];if(fmt==='json'){const blob=new Blob([JSON.stringify(all,null,2)],{type:'application/json'});downloadBlob(blob,'crm-export.json')}else if(fmt==='csv'){const h=['First Name','Last Name','Email','Phone','Service','Budget','Status','Priority','Date'];const rows=all.map(i=>[i.first_name||'',i.last_name||'',i.email||'',i.phone||'',i.service||'',i.budget||'',i.is_customer?(i.customer_status||'onboarding'):i.status,i.priority||'',formatDate(i.created_at)]);const csv=[h,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});downloadBlob(blob,'crm-export.csv')}showToast(`Data exported as ${fmt.toUpperCase()}`,'success')}
-function downloadBlob(blob,fn){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)}
-function openExportModal(){document.getElementById('createModalTitle').textContent='Export Data';document.getElementById('createModalBody').innerHTML=`<div class="detail-section"><p style="color:var(--text-secondary);margin-bottom:24px">Export your CRM data in your preferred format. All leads and customers will be included.</p><div style="display:flex;gap:12px"><button class="btn btn-primary" onclick="exportData('csv');closeCreateModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Export CSV</button><button class="btn btn-secondary" onclick="exportData('json');closeCreateModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Export JSON</button></div></div>`;document.getElementById('createModal').classList.add('active')}
-function logout(){if(confirm('Are you sure you want to logout?')){localStorage.removeItem('adminToken');sessionStorage.removeItem('adminToken');window.location.replace('/admin')}}
-document.getElementById('detailModal').addEventListener('click',function(e){if(e.target===this)closeDetailModal()});
-document.getElementById('createModal').addEventListener('click',function(e){if(e.target===this)closeCreateModal()});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeDetailModal();closeCreateModal()}});
-function openEmployeeModal(id=null){const isE=!!id;let emp=null;if(isE){emp=state.employees.find(e=>e.id===id);if(!emp)return}document.getElementById('createModalTitle').textContent=`${isE?'Edit':'Add'} Team Member`;document.getElementById('createModalBody').innerHTML=`<form id="employeeForm" onsubmit="saveEmployee(event,${isE?id:'null'})"><div class="form-grid"><div class="form-group"><label class="form-label">First Name <span class="required">*</span></label><input type="text" class="form-input" id="empFirstName" value="${emp?.first_name||''}" required></div><div class="form-group"><label class="form-label">Last Name <span class="required">*</span></label><input type="text" class="form-input" id="empLastName" value="${emp?.last_name||''}" required></div><div class="form-group"><label class="form-label">Email <span class="required">*</span></label><input type="email" class="form-input" id="empEmail" value="${emp?.email||''}" required></div><div class="form-group"><label class="form-label">Phone</label><input type="tel" class="form-input" id="empPhone" value="${emp?.phone||''}"></div><div class="form-group full-width"><label class="form-label">Role</label><input type="text" class="form-input" id="empRole" value="${emp?.role||''}" placeholder="e.g., Sales Manager, Developer"></div></div><div style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px"><button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button><button type="submit" class="btn btn-primary">${isE?'Update':'Add'} Member</button></div></form>`;document.getElementById('createModal').classList.add('active');document.body.style.overflow='hidden'}
-async function saveEmployee(e,id){e.preventDefault();const ed={firstName:document.getElementById('empFirstName').value.trim(),lastName:document.getElementById('empLastName').value.trim(),email:document.getElementById('empEmail').value.trim(),phone:document.getElementById('empPhone').value.trim(),role:document.getElementById('empRole').value.trim()};try{const url=id?`${API_URL}/api/employees/${id}`:`${API_URL}/api/employees`;const method=id?'PATCH':'POST';const r=await fetch(url,{method:method,headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify(ed)});const d=await r.json();if(d.success){await loadEmployees();closeCreateModal();renderSection('employees');showToast(`Team member ${id?'updated':'added'} successfully`,'success')}else{showToast(d.message||'Error saving employee','error')}}catch(err){console.error('Save employee error:',err);showToast('Error saving employee','error')}}
-async function deleteEmployee(id){if(!confirm('Are you sure you want to remove this team member?'))return;try{const r=await fetch(`${API_URL}/api/employees/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${authToken}`}});const d=await r.json();if(d.success){await loadEmployees();renderSection('employees');showToast('Team member removed','success')}else{showToast(d.message||'Error removing employee','error')}}catch(err){console.error('Delete employee error:',err);showToast('Error removing employee','error')}}
-function openTaskModal(id=null){const isE=!!id;let t=null;if(isE){t=state.tasks.find(x=>x.id===id);if(!t)return}document.getElementById('createModalTitle').textContent=`${isE?'Edit':'Add'} Task`;document.getElementById('createModalBody').innerHTML=`<form id="taskForm" onsubmit="saveTask(event,${isE?id:'null'})"><div class="form-grid"><div class="form-group full-width"><label class="form-label">Task Title <span class="required">*</span></label><input type="text" class="form-input" id="taskTitle" value="${t?.title||''}" required></div><div class="form-group"><label class="form-label">Due Date</label><input type="date" class="form-input" id="taskDueDate" value="${t?.dueDate||''}"></div><div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="taskPriority"><option value="low" ${t?.priority==='low'?'selected':''}>Low</option><option value="medium" ${t?.priority==='medium'||!t?'selected':''}>Medium</option><option value="high" ${t?.priority==='high'?'selected':''}>High</option></select></div></div><div style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px"><button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button><button type="submit" class="btn btn-primary">${isE?'Update':'Add'} Task</button></div></form>`;document.getElementById('createModal').classList.add('active');document.body.style.overflow='hidden'}
-function saveTask(e,id){e.preventDefault();const td={id:id||Date.now(),title:document.getElementById('taskTitle').value.trim(),dueDate:document.getElementById('taskDueDate').value,priority:document.getElementById('taskPriority').value,assignee:'Admin',completed:id?state.tasks.find(t=>t.id===id)?.completed||false:false};if(id){const idx=state.tasks.findIndex(t=>t.id===id);if(idx!==-1)state.tasks[idx]=td}else{state.tasks.push(td)}closeCreateModal();renderSection('tasks');showToast(`Task ${id?'updated':'created'}`,'success')}
-function editTask(id){openTaskModal(id)}
-async function updateStatus(){if(!state.currentLead)return;const ns=document.getElementById('modalStatus').value;const isC=state.currentLead.is_customer;if(!isC&&ns==='closed'){if(!confirm('This will convert the lead to a customer. Continue?')){document.getElementById('modalStatus').value=state.currentLead.status;return}}try{const ep=isC?`${API_URL}/api/leads/${state.currentLead.id}/customer-status`:`${API_URL}/api/leads/${state.currentLead.id}/status`;const body=isC?{customerStatus:ns}:{status:ns,isCustomer:ns==='closed',customerStatus:ns==='closed'?'onboarding':null};const r=await fetch(ep,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify(body)});const d=await r.json();if(d.success){await loadLeads();updateBadges();if(!isC&&ns==='closed'){closeDetailModal();showToast('Lead converted to customer','success')}else{showToast('Status updated','success')}renderSection(state.currentSection)}}catch(err){console.error('Error updating status:',err);showToast('Error updating status','error')}}
-async function updatePriority(){if(!state.currentLead)return;const np=document.getElementById('modalPriority').value;try{const r=await fetch(`${API_URL}/api/leads/${state.currentLead.id}/priority`,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify({priority:np})});const d=await r.json();if(d.success){await loadLeads();showToast('Priority updated','success');renderSection(state.currentSection)}}catch(err){console.error('Error updating priority:',err);showToast('Error updating priority','error')}}
-async function updateAssignment(){if(!state.currentLead)return;const eid=document.getElementById('modalAssignment').value;try{const r=await fetch(`${API_URL}/api/leads/${state.currentLead.id}/assign`,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify({employeeId:eid||null})});const d=await r.json();if(d.success){await loadLeads();showToast('Assignment updated','success');renderSection(state.currentSection)}}catch(err){console.error('Error updating assignment:',err);showToast('Error updating assignment','error')}}
-async function addNote(){if(!state.currentLead)return;const nt=document.getElementById('newNoteText').value.trim();if(!nt){showToast('Please enter a note','warning');return}try{const r=await fetch(`${API_URL}/api/leads/${state.currentLead.id}/notes`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify({noteText:nt})});const d=await r.json();if(d.success){document.getElementById('newNoteText').value='';await openDetailModal(state.currentLead.id);showToast('Note added','success')}}catch(err){console.error('Error adding note:',err);showToast('Error adding note','error')}}
-async function deleteLead(id){if(!confirm('Are you sure you want to permanently delete this record? This action cannot be undone.'))return;try{const r=await fetch(`${API_URL}/api/leads/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${authToken}`}});const d=await r.json();if(d.success){await loadLeads();updateBadges();closeDetailModal();renderSection(state.currentSection);showToast('Record deleted','success')}else{showToast(d.error||'Error deleting record','error')}}catch(err){console.error('Error deleting:',err);showToast('Error deleting record','error')}}
-function formatDate(ds){if(!ds)return'-';const d=new Date(ds);return d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}
-function showToast(msg,type='success'){const c=document.getElementById('toastContainer');const t=document.createElement('div');t.className=`toast ${type}`;const icons={success:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',error:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',warning:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'};t.innerHTML=`<span class="toast-icon">${icons[type]}</span><span class="toast-message">${msg}</span><button class="toast-close" onclick="this.parentElement.remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;c.appendChild(t);setTimeout(()=>{t.remove()},4000)}
-function exportData(fmt){const all=[...state.leads,...state.customers];if(fmt==='json'){const blob=new Blob([JSON.stringify(all,null,2)],{type:'application/json'});downloadBlob(blob,'crm-export.json')}else if(fmt==='csv'){const h=['First Name','Last Name','Email','Phone','Service','Budget','Status','Priority','Date'];const rows=all.map(i=>[i.first_name||'',i.last_name||'',i.email||'',i.phone||'',i.service||'',i.budget||'',i.is_customer?(i.customer_status||'onboarding'):i.status,i.priority||'',formatDate(i.created_at)]);const csv=[h,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});downloadBlob(blob,'crm-export.csv')}showToast(`Data exported as ${fmt.toUpperCase()}`,'success')}
-function downloadBlob(blob,fn){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)}
-function openExportModal(){document.getElementById('createModalTitle').textContent='Export Data';document.getElementById('createModalBody').innerHTML=`<div class="detail-section"><p style="color:var(--text-secondary);margin-bottom:24px">Export your CRM data in your preferred format. All leads and customers will be included.</p><div style="display:flex;gap:12px"><button class="btn btn-primary" onclick="exportData('csv');closeCreateModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Export CSV</button><button class="btn btn-secondary" onclick="exportData('json');closeCreateModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Export JSON</button></div></div>`;document.getElementById('createModal').classList.add('active')}
-function logout(){if(confirm('Are you sure you want to logout?')){localStorage.removeItem('adminToken');sessionStorage.removeItem('adminToken');window.location.replace('/admin')}}
-document.getElementById('detailModal').addEventListener('click',function(e){if(e.target===this)closeDetailModal()});
-document.getElementById('createModal').addEventListener('click',function(e){if(e.target===this)closeCreateModal()});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeDetailModal();closeCreateModal()}});
-    document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeDetailModal();closeCreateModal()}});
+// ========================================
+// RENDER FUNCTIONS
+// ========================================
+function renderDashboard(content) {
+    const totalLeads = state.leads.length;
+    const newLeads = state.leads.filter(l => l.status === 'new').length;
+    const activeCustomers = state.customers.length;
+    const pendingInvoices = state.invoices.filter(i => i.status === 'sent' || i.status === 'overdue').length;
+    const totalRevenue = state.invoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+    
+    content.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Total Leads</span>
+                    <div class="stat-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-value">${totalLeads}</div>
+                <div class="stat-change positive">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="18 15 12 9 6 15"/>
+                    </svg>
+                    ${newLeads} new this week
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Active Customers</span>
+                    <div class="stat-icon green">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-value">${activeCustomers}</div>
+                <div class="stat-change positive">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="18 15 12 9 6 15"/>
+                    </svg>
+                    Growing
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Pending Invoices</span>
+                    <div class="stat-icon amber">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-value">${pendingInvoices}</div>
+                <div class="stat-change">Awaiting payment</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Total Revenue</span>
+                    <div class="stat-icon purple">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-value">$${totalRevenue.toLocaleString()}</div>
+                <div class="stat-change positive">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="18 15 12 9 6 15"/>
+                    </svg>
+                    12% from last month
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 36px;">
+            <div class="table-container">
+                <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="font-size: 15px; font-weight: 700;">Recent Leads</h3>
+                    <button class="btn btn-sm btn-secondary" onclick="renderSection('leads')">View All</button>
+                </div>
+                ${renderLeadsTableHTML(state.leads.slice(0, 5))}
+            </div>
+            
+            <div class="table-container">
+                <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle);">
+                    <h3 style="font-size: 15px; font-weight: 700;">Upcoming Tasks</h3>
+                </div>
+                <div style="padding: 16px;">
+                    ${state.tasks.filter(t => !t.completed).slice(0, 5).map(task => `
+                        <div class="task-item" style="margin-bottom: 10px;">
+                            <div class="task-checkbox ${task.completed ? 'checked' : ''}" onclick="toggleTask(${task.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                            <div class="task-content">
+                                <div class="task-title">${task.title}</div>
+                                <div class="task-meta">
+                                    <div class="task-due ${new Date(task.dueDate) < new Date() ? 'overdue' : ''}">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                            <line x1="16" y1="2" x2="16" y2="6"/>
+                                            <line x1="8" y1="2" x2="8" y2="6"/>
+                                            <line x1="3" y1="10" x2="21" y2="10"/>
+                                        </svg>
+                                        ${formatDate(task.dueDate)}
+                                    </div>
+                                    <span class="priority-badge priority-${task.priority}">${task.priority}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
 
-// Missing functions - Detail Modal
-async function openDetailModal(id){const lead=state.leads.find(l=>l.id===id)||state.customers.find(c=>c.id===id);if(!lead)return;state.currentLead=lead;const isC=lead.is_customer;const st=isC?(lead.customer_status||'onboarding'):lead.status;const init=((lead.first_name||'')[0]||'')+((lead.last_name||'')[0]||'');const emp=state.employees.find(e=>e.id===lead.assigned_to);try{const nr=await fetch(`${API_URL}/api/leads/${id}/notes`,{headers:{'Authorization':`Bearer ${authToken}`}});const nd=await nr.json();const notes=nd.success?nd.notes:[];const statusOpts=isC?['onboarding','in-progress','review','completed','on-hold','churned','cancelled']:['new','pending','contacted','closed','lost'];document.getElementById('detailModalTitle').textContent=`${isC?'Customer':'Lead'} Details`;document.getElementById('detailModalBody').innerHTML=`<div class="detail-section"><div class="section-header"><h3 class="section-title">Contact Information</h3></div><div class="detail-grid"><div class="detail-item"><div class="detail-label">Full Name</div><div class="detail-value">${lead.first_name||''} ${lead.last_name||''}</div></div><div class="detail-item"><div class="detail-label">Email</div><div class="detail-value">${lead.email||'-'}</div></div><div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value">${lead.phone||'-'}</div></div><div class="detail-item"><div class="detail-label">Service</div><div class="detail-value">${lead.service||'-'}</div></div><div class="detail-item"><div class="detail-label">Budget</div><div class="detail-value">${lead.budget||'-'}</div></div><div class="detail-item"><div class="detail-label">Date Created</div><div class="detail-value">${formatDate(lead.created_at)}</div></div></div></div><div class="detail-section"><div class="section-header"><h3 class="section-title">Management</h3></div><div class="detail-grid"><div class="detail-item"><div class="detail-label">Status</div><select class="form-select" id="modalStatus" onchange="updateStatus()"><option value="">Select status</option>${statusOpts.map(s=>`<option value="${s}" ${s===st?'selected':''}>${s.replace('-',' ')}</option>`).join('')}</select></div><div class="detail-item"><div class="detail-label">Priority</div><select class="form-select" id="modalPriority" onchange="updatePriority()"><option value="low" ${lead.priority==='low'?'selected':''}>Low</option><option value="medium" ${lead.priority==='medium'?'selected':''}>Medium</option><option value="high" ${lead.priority==='high'?'selected':''}>High</option></select></div><div class="detail-item full-width"><div class="detail-label">Assigned To</div><select class="form-select" id="modalAssignment" onchange="updateAssignment()"><option value="">Unassigned</option>${state.employees.map(e=>`<option value="${e.id}" ${e.id===lead.assigned_to?'selected':''}>${e.first_name} ${e.last_name}</option>`).join('')}</select></div></div></div>${lead.description?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Description</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.description}</div></div></div>`:''}${lead.message?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Message</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.message}</div></div></div>`:''}${lead.project_details?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Project Details</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.project_details}</div></div></div>`:''}${lead.timeline?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Timeline</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.timeline}</div></div></div>`:''}${lead.tech_stack?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Tech Stack</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.tech_stack}</div></div></div>`:''}${lead.referral_source?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Referral Source</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.referral_source}</div></div></div>`:''}${lead.website?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Website</h3></div><div class="detail-item full-width"><div class="detail-value"><a href="${lead.website}" target="_blank" style="color:var(--accent-primary)">${lead.website}</a></div></div></div>`:''}${lead.company?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Company</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.company}</div></div></div>`:''}${lead.preferred_contact?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Preferred Contact</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.preferred_contact}</div></div></div>`:''}${lead.best_time?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Best Time to Contact</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.best_time}</div></div></div>`:''}${lead.hear_about?`<div class="detail-section"><div class="section-header"><h3 class="section-title">How They Heard About Us</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.hear_about}</div></div></div>`:''}${lead.contract_value?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Contract Value</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.contract_value}</div></div></div>`:''}${lead.onboarding_notes?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Onboarding Notes</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.onboarding_notes}</div></div></div>`:''}${lead.support_level?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Support Level</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.support_level}</div></div></div>`:''}${lead.renewal_date?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Renewal Date</h3></div><div class="detail-item full-width"><div class="detail-value">${formatDate(lead.renewal_date)}</div></div></div>`:''}${lead.cancellation_reason?`<div class="detail-section"><div class="section-header"><h3 class="section-title">Cancellation Reason</h3></div><div class="detail-item full-width"><div class="detail-value">${lead.cancellation_reason}</div></div></div>`:''}<div class="detail-section"><div class="section-header"><h3 class="section-title">Notes</h3></div><div class="notes-list">${notes.length>0?notes.map(n=>`<div class="note-item"><div class="note-header"><span class="note-author">${n.author||'Admin'}</span><span class="note-date">${formatDate(n.created_at)}</span></div><div class="note-text">${n.note_text}</div></div>`).join(''):'<div class="note-empty">No notes yet</div>'}</div><div class="form-group"><label class="form-label">Add Note</label><textarea class="form-textarea" id="newNoteText" placeholder="Enter note..."></textarea><button class="btn btn-primary" onclick="addNote()" style="margin-top:8px">Add Note</button></div></div>`;document.getElementById('detailModalFooter').innerHTML=`<button class="btn btn-danger" onclick="deleteLead(${id})">Delete ${isC?'Customer':'Lead'}</button><button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>`;document.getElementById('detailModal').classList.add('active');document.body.style.overflow='hidden'}catch(err){console.error('Error loading details:',err);showToast('Error loading details','error')}}
+function renderAnalytics(content) {
+    const monthlyLeads = getMonthlyData(state.leads);
+    const monthlyRevenue = getMonthlyRevenue();
+    
+    content.innerHTML = `
+        <div class="analytics-grid">
+            <div class="analytics-card full-width">
+                <div class="analytics-header">
+                    <h3 class="analytics-title">Monthly Lead Generation</h3>
+                    <div class="filter-group">
+                        <button class="filter-btn active">6 Months</button>
+                        <button class="filter-btn">1 Year</button>
+                        <button class="filter-btn">All Time</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    ${monthlyLeads.map((count, i) => `
+                        <div class="chart-bar" style="height: ${(count / Math.max(...monthlyLeads)) * 180}px;">
+                            <div class="chart-bar-value">${count}</div>
+                            <div class="chart-bar-label">${getMonthName(i)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <h3 class="analytics-title">Revenue Overview</h3>
+                </div>
+                <div class="metrics-list">
+                    <div class="metric-item">
+                        <span class="metric-label">Total Revenue</span>
+                        <span class="metric-value">$${monthlyRevenue.total.toLocaleString()}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Pending</span>
+                        <span class="metric-value">$${monthlyRevenue.pending.toLocaleString()}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Overdue</span>
+                        <span class="metric-value">$${monthlyRevenue.overdue.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <h3 class="analytics-title">Conversion Rate</h3>
+                </div>
+                <div style="text-align: center; padding: 40px 0;">
+                    <div style="font-size: 48px; font-weight: 800; color: var(--accent-amber); font-family: var(--font-mono);">
+                        ${calculateConversionRate()}%
+                    </div>
+                    <div style="font-size: 14px; color: var(--text-muted); margin-top: 8px;">Lead to Customer</div>
+                    <div class="progress-bar" style="margin-top: 20px;">
+                        <div class="progress-fill" style="width: ${calculateConversionRate()}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
 
-function closeDetailModal(){document.getElementById('detailModal').classList.remove('active');document.body.style.overflow='';state.currentLead=null}
+function renderLeadsTable(content, type) {
+    const data = type === 'customers' ? state.customers : state.leads;
+    const filtered = filterLeads(data);
+    
+    content.innerHTML = `
+        <div class="controls-bar">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search ${type}..." value="${state.searchQuery}" oninput="handleSearch(this.value)">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+            </div>
+            
+            ${type === 'leads' ? `
+            <div class="filter-group">
+                <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" onclick="filterLeads('all')">All</button>
+                <button class="filter-btn ${state.currentFilter === 'new' ? 'active' : ''}" onclick="filterLeads('new')">New</button>
+                <button class="filter-btn ${state.currentFilter === 'pending' ? 'active' : ''}" onclick="filterLeads('pending')">Pending</button>
+                <button class="filter-btn ${state.currentFilter === 'contacted' ? 'active' : ''}" onclick="filterLeads('contacted')">Contacted</button>
+                <button class="filter-btn ${state.currentFilter === 'closed' ? 'active' : ''}" onclick="filterLeads('closed')">Closed</button>
+            </div>
+            ` : ''}
+        </div>
+        
+        <div class="table-container">
+            ${filtered.length > 0 ? renderLeadsTableHTML(filtered) : `
+                <div class="empty-state">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <div class="empty-title">No ${type} found</div>
+                    <div class="empty-description">
+                        ${state.searchQuery ? 'Try adjusting your search' : `Get started by creating your first ${type === 'leads' ? 'lead' : 'customer'}`}
+                    </div>
+                </div>
+            `}
+        </div>
+    `;
+}
 
-// Missing functions - Create Modal
-function openCreateModal(type){const isC=type==='customer';document.getElementById('createModalTitle').textContent=`Add ${isC?'Customer':'Lead'}`;document.getElementById('createModalBody').innerHTML=`<form id="leadForm" onsubmit="saveLead(event,${isC})"><div class="form-grid"><div class="form-group"><label class="form-label">First Name <span class="required">*</span></label><input type="text" class="form-input" id="leadFirstName" required></div><div class="form-group"><label class="form-label">Last Name <span class="required">*</span></label><input type="text" class="form-input" id="leadLastName" required></div><div class="form-group"><label class="form-label">Email <span class="required">*</span></label><input type="email" class="form-input" id="leadEmail" required></div><div class="form-group"><label class="form-label">Phone</label><input type="tel" class="form-input" id="leadPhone"></div><div class="form-group"><label class="form-label">Service</label><input type="text" class="form-input" id="leadService" placeholder="e.g., Web Development"></div><div class="form-group"><label class="form-label">Budget</label><input type="text" class="form-input" id="leadBudget" placeholder="e.g., $10,000"></div>${isC?`<div class="form-group"><label class="form-label">Customer Status</label><select class="form-select" id="leadCustomerStatus"><option value="onboarding">Onboarding</option><option value="in-progress">In Progress</option><option value="review">Review</option><option value="completed">Completed</option><option value="on-hold">On Hold</option></select></div>`:`<div class="form-group"><label class="form-label">Status</label><select class="form-select" id="leadStatus"><option value="new">New</option><option value="pending">Pending</option><option value="contacted">Contacted</option></select></div>`}<div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="leadPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div><div class="form-group"><label class="form-label">Assign To</label><select class="form-select" id="leadAssignee"><option value="">Unassigned</option>${state.employees.map(e=>`<option value="${e.id}">${e.first_name} ${e.last_name}</option>`).join('')}</select></div><div class="form-group full-width"><label class="form-label">Company</label><input type="text" class="form-input" id="leadCompany"></div><div class="form-group full-width"><label class="form-label">Message</label><textarea class="form-textarea" id="leadMessage" placeholder="Enter any additional details..."></textarea></div></div><div style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px"><button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button><button type="submit" class="btn btn-primary">Add ${isC?'Customer':'Lead'}</button></div></form>`;document.getElementById('createModal').classList.add('active');document.body.style.overflow='hidden'}
+function renderLeadsTableHTML(leads) {
+    return `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Contact</th>
+                    <th>Company</th>
+                    <th>Project Type</th>
+                    <th>Budget</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${leads.map(lead => `
+                    <tr onclick="openDetailModal('lead', ${lead.id})">
+                        <td>
+                            <div class="contact-cell">
+                                <div class="contact-avatar">${getInitials(lead.name)}</div>
+                                <div class="contact-info">
+                                    <div class="contact-name">${lead.name}</div>
+                                    <div class="contact-email">${lead.email}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${lead.company || '-'}</td>
+                        <td>${lead.project_type || '-'}</td>
+                        <td>${lead.budget ? `$${parseFloat(lead.budget).toLocaleString()}` : '-'}</td>
+                        <td>
+                            <span class="status-badge status-${lead.status}">
+                                <span class="status-dot"></span>
+                                ${lead.status}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="priority-badge priority-${lead.priority || 'low'}">
+                                ${lead.priority || 'low'}
+                            </span>
+                        </td>
+                        <td onclick="event.stopPropagation()">
+                            <div class="table-actions">
+                                <button class="table-action-btn" onclick="openDetailModal('lead', ${lead.id})" title="View Details">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                                <button class="table-action-btn" onclick="openCreateModal('invoice', ${lead.id})" title="Create Invoice">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                    </svg>
+                                </button>
+                                <button class="table-action-btn danger" onclick="deleteLead(${lead.id})" title="Delete">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <div class="table-footer">
+            <div class="table-info">Showing ${leads.length} ${leads.length === 1 ? 'result' : 'results'}</div>
+        </div>
+    `;
+}
 
-async function saveLead(e,isC){e.preventDefault();const ld={firstName:document.getElementById('leadFirstName').value.trim(),lastName:document.getElementById('leadLastName').value.trim(),email:document.getElementById('leadEmail').value.trim(),phone:document.getElementById('leadPhone').value.trim(),service:document.getElementById('leadService').value.trim(),budget:document.getElementById('leadBudget').value.trim(),status:isC?null:document.getElementById('leadStatus').value,priority:document.getElementById('leadPriority').value,assignedTo:document.getElementById('leadAssignee').value||null,company:document.getElementById('leadCompany').value.trim(),message:document.getElementById('leadMessage').value.trim(),isCustomer:isC,customerStatus:isC?document.getElementById('leadCustomerStatus').value:null};try{const r=await fetch(`${API_URL}/api/leads`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`},body:JSON.stringify(ld)});const d=await r.json();if(d.success){await loadLeads();updateBadges();closeCreateModal();renderSection(state.currentSection);showToast(`${isC?'Customer':'Lead'} added successfully`,'success')}else{showToast(d.message||`Error adding ${isC?'customer':'lead'}`,'error')}}catch(err){console.error('Save lead error:',err);showToast(`Error adding ${isC?'customer':'lead'}`,'error')}}
+function renderEmployees(content) {
+    content.innerHTML = `
+        <div class="controls-bar">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search team members..." oninput="handleSearch(this.value)">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateModal('employee')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Employee
+            </button>
+        </div>
+        
+        <div class="cards-grid">
+            ${state.employees.map(emp => `
+                <div class="card employee-card">
+                    <div class="card-header">
+                        <div class="employee-avatar-lg">${getInitials(emp.name)}</div>
+                        <div class="employee-details">
+                            <div class="employee-name">${emp.name}</div>
+                            <div class="employee-role">${emp.role}</div>
+                        </div>
+                    </div>
+                    <div class="employee-meta">
+                        <div class="employee-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            ${emp.email}
+                        </div>
+                        <div class="employee-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
+                            </svg>
+                            ${emp.phone || 'N/A'}
+                        </div>
+                        <div class="employee-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            Joined ${formatDate(emp.created_at)}
+                        </div>
+                    </div>
+                    <div class="employee-stats">
+                        <div class="employee-stat">
+                            <div class="employee-stat-value">${emp.projects_assigned || 0}</div>
+                            <div class="employee-stat-label">Projects</div>
+                        </div>
+                        <div class="employee-stat">
+                            <div class="employee-stat-value">${emp.tasks_completed || 0}</div>
+                            <div class="employee-stat-label">Tasks</div>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="openDetailModal('employee', ${emp.id})">View</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteEmployee(${emp.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
 
-function closeCreateModal(){document.getElementById('createModal').classList.remove('active');document.body.style.overflow=''}
-    </script>
+function renderInvoices(content) {
+    const filtered = state.searchQuery 
+        ? state.invoices.filter(inv => 
+            inv.invoice_number.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+            (inv.customer_name && inv.customer_name.toLowerCase().includes(state.searchQuery.toLowerCase()))
+          )
+        : state.invoices;
+    
+    content.innerHTML = `
+        <div class="controls-bar">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search invoices..." value="${state.searchQuery}" oninput="handleSearch(this.value)">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+            </div>
+            <div class="filter-group">
+                <button class="filter-btn active">All</button>
+                <button class="filter-btn">Draft</button>
+                <button class="filter-btn">Sent</button>
+                <button class="filter-btn">Paid</button>
+                <button class="filter-btn">Overdue</button>
+            </div>
+        </div>
+        
+        <div class="cards-grid">
+            ${filtered.map(inv => `
+                <div class="card invoice-card" onclick="openDetailModal('invoice', ${inv.id})">
+                    <div class="invoice-card-header">
+                        <div>
+                            <div class="invoice-card-number">${inv.invoice_number}</div>
+                            <div class="invoice-card-customer">${inv.customer_name || 'Unknown'}</div>
+                        </div>
+                        <span class="status-badge status-${inv.status}">
+                            <span class="status-dot"></span>
+                            ${inv.status}
+                        </span>
+                    </div>
+                    <div class="invoice-card-amount">$${parseFloat(inv.total_amount).toLocaleString()}</div>
+                    <div class="invoice-card-meta">
+                        <div class="invoice-card-meta-item">
+                            <div class="invoice-card-meta-label">Issued</div>
+                            <div class="invoice-card-meta-value">${formatDate(inv.issue_date)}</div>
+                        </div>
+                        <div class="invoice-card-meta-item">
+                            <div class="invoice-card-meta-label">Due</div>
+                            <div class="invoice-card-meta-value">${formatDate(inv.due_date)}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderTasks(content) {
+    content.innerHTML = `
+        <div class="controls-bar">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search tasks...">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateModal('task')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Task
+            </button>
+        </div>
+        
+        <div class="tasks-container">
+            ${state.tasks.map(task => `
+                <div class="task-item ${task.completed ? 'completed' : ''}">
+                    <div class="task-checkbox ${task.completed ? 'checked' : ''}" onclick="toggleTask(${task.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div class="task-content">
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-meta">
+                            <div class="task-due ${new Date(task.dueDate) < new Date() && !task.completed ? 'overdue' : ''}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                                ${formatDate(task.dueDate)}
+                            </div>
+                            <span>${task.assignee}</span>
+                            <span class="priority-badge priority-${task.priority}">${task.priority}</span>
+                        </div>
+                    </div>
+                    <div class="table-actions">
+                        <button class="table-action-btn danger" onclick="deleteTask(${task.id})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderSettings(content) {
+    content.innerHTML = `
+        <div class="settings-layout">
+            <div class="settings-nav">
+                <div class="settings-nav-item active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/>
+                        <path d="M12 14c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z"/>
+                    </svg>
+                    Profile
+                </div>
+                <div class="settings-nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    Notifications
+                </div>
+                <div class="settings-nav-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    Security
+                </div>
+            </div>
+            
+            <div class="settings-panel">
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Notification Preferences</h3>
+                    <p class="settings-section-desc">Manage how you receive notifications</p>
+                    
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <div class="setting-label">Email Notifications</div>
+                            <div class="setting-desc">Receive notifications via email</div>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" ${state.settings.emailNotifications ? 'checked' : ''} onchange="toggleSetting('emailNotifications')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <div class="setting-label">Push Notifications</div>
+                            <div class="setting-desc">Receive push notifications in browser</div>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" ${state.settings.pushNotifications ? 'checked' : ''} onchange="toggleSetting('pushNotifications')">
+<span class="toggle-slider"></span>
+</label>
+</div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Weekly Reports</div>
+                        <div class="setting-desc">Get weekly summary via email</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.weeklyReport ? 'checked' : ''} onchange="toggleSetting('weeklyReport')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3 class="settings-section-title">Appearance</h3>
+                <p class="settings-section-desc">Customize the look and feel</p>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Dark Mode</div>
+                        <div class="setting-desc">Use dark theme across the app</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.darkMode ? 'checked' : ''} onchange="toggleSetting('darkMode')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3 class="settings-section-title">Automation</h3>
+                <p class="settings-section-desc">Configure automated workflows</p>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Auto-assign Leads</div>
+                        <div class="setting-desc">Automatically assign new leads to team members</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.autoAssign ? 'checked' : ''} onchange="toggleSetting('autoAssign')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+`;
+}
+// ========================================
+// MODAL FUNCTIONS
+// ========================================
+async function openDetailModal(type, id) {
+const modal = document.getElementById('detailModal');
+const titleEl = document.getElementById('detailModalTitle');
+const bodyEl = document.getElementById('detailModalBody');
+const footerEl = document.getElementById('detailModalFooter');
+if (type === 'lead') {
+    const lead = [...state.leads, ...state.customers].find(l => l.id === id);
+    if (!lead) return;
+    
+    state.currentLead = lead;
+    const expenses = await loadExpenses(id);
+    const notes = lead.notes ? JSON.parse(lead.notes) : [];
+    
+    titleEl.textContent = `${lead.is_customer ? 'Customer' : 'Lead'} Details`;
+    
+    bodyEl.innerHTML = `
+        <div class="detail-section">
+            <div class="section-header">
+                <h3 class="section-title">Contact Information</h3>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Name</div>
+                    <div class="detail-value">${lead.name}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Email</div>
+                    <div class="detail-value">${lead.email}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Phone</div>
+                    <div class="detail-value">${lead.phone || 'N/A'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Company</div>
+                    <div class="detail-value">${lead.company || 'N/A'}</div>
+                </div>
+                <div class="detail-item full-width">
+                    <div class="detail-label">Message</div>
+                    <div class="detail-value">${lead.message || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="detail-section">
+            <div class="section-header">
+                <h3 class="section-title">Project Details</h3>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Project Type</div>
+                    <div class="detail-value">${lead.project_type || 'N/A'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Budget</div>
+                    <div class="detail-value">${lead.budget ? `$${parseFloat(lead.budget).toLocaleString()}` : 'N/A'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Timeline</div>
+                    <div class="detail-value">${lead.timeline || 'N/A'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">
+                        <span class="status-badge status-${lead.status}">
+                            <span class="status-dot"></span>
+                            ${lead.status}
+                        </span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Priority</div>
+                    <div class="detail-value">
+                        <span class="priority-badge priority-${lead.priority || 'low'}">${lead.priority || 'low'}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Created</div>
+                    <div class="detail-value">${formatDate(lead.created_at)}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="detail-section">
+            <div class="section-header">
+                <h3 class="section-title">Expenses</h3>
+            </div>
+            <div class="expense-list">
+                ${expenses.length > 0 ? expenses.map(exp => `
+                    <div class="expense-item ${state.selectedExpenses.includes(exp.id) ? 'selected' : ''}" data-expense-id="${exp.id}">
+                        <div class="expense-checkbox ${state.selectedExpenses.includes(exp.id) ? 'checked' : ''}" onclick="toggleExpense(${exp.id})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="expense-content">
+                            <div class="expense-description">${exp.description}</div>
+                            <div class="expense-meta">
+                                <div class="expense-meta-item">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="16" y1="2" x2="16" y2="6"/>
+                                        <line x1="8" y1="2" x2="8" y2="6"/>
+                                        <line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                    ${formatDate(exp.expense_date)}
+                                </div>
+                                ${exp.category ? `<span>${exp.category}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="expense-amount">$${parseFloat(exp.amount).toLocaleString()}</div>
+                        <div class="expense-actions">
+                            <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteExpense(${exp.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('') : '<div class="expense-empty">No expenses recorded yet</div>'}
+            </div>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="openCreateModal('expense', ${id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Expense
+            </button>
+        </div>
+        
+        <div class="detail-section">
+            <div class="section-header">
+                <h3 class="section-title">Notes</h3>
+            </div>
+            <div class="notes-list">
+                ${notes.length > 0 ? notes.map(note => `
+                    <div class="note-item">
+                        <div class="note-header">
+                            <span class="note-author">${note.author || 'Admin'}</span>
+                            <span class="note-date">${formatDate(note.date)}</span>
+                        </div>
+                        <div class="note-text">${note.text}</div>
+                    </div>
+                `).join('') : '<div class="note-empty">No notes yet</div>'}
+            </div>
+            <div class="form-group full-width">
+                <textarea class="form-textarea" id="newNote" placeholder="Add a new note..."></textarea>
+                <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="addNote(${id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Note
+                </button>
+            </div>
+        </div>
+    `;
+    
+    footerEl.innerHTML = `
+        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+        ${state.selectedExpenses.length > 0 ? `
+            <button class="btn btn-success" onclick="createInvoiceFromExpenses()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Create Invoice (${state.selectedExpenses.length} selected)
+            </button>
+        ` : `
+            <button class="btn btn-primary" onclick="openCreateModal('invoice', ${id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Create Invoice
+            </button>
+        `}
+        <button class="btn btn-danger" onclick="deleteLead(${id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Delete
+        </button>
+    `;
+} else if (type === 'invoice') {
+    const invoice = state.invoices.find(i => i.id === id);
+    if (!invoice) return;
+    
+    titleEl.textContent = 'Invoice Details';
+    bodyEl.innerHTML = renderInvoicePreview(invoice);
+    footerEl.innerHTML = `
+        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+        <button class="btn btn-primary" onclick="printInvoice()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+            </svg>
+            Print Invoice
+        </button>
+    `;
+}
+
+modal.classList.add('active');
+}
+function renderInvoicePreview(invoice) {
+const items = invoice.items || [];
+const taxAmount = parseFloat(invoice.tax_amount || 0);
+const discount = parseFloat(invoice.discount_amount || 0);
+return `
+    <div class="invoice-preview">
+        <div class="invoice-preview-header">
+            <div class="invoice-company">
+                <div class="invoice-company-logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="invoice-company-name">Diamondback Coding</div>
+                    <div class="invoice-company-tagline">Premium Development Services</div>
+                </div>
+            </div>
+            <div class="invoice-info">
+                <div class="invoice-title">INVOICE</div>
+                <div class="invoice-number">#${invoice.invoice_number}</div>
+            </div>
+        </div>
+        
+        <div class="invoice-preview-body">
+            <div class="invoice-parties">
+                <div>
+                    <div class="invoice-party-label">From</div>
+                    <div class="invoice-party-name">Diamondback Coding</div>
+                    <div class="invoice-party-details">
+                        123 Tech Street<br>
+                        Austin, TX 78701<br>
+                        contact@diamondbackcoding.com
+                    </div>
+                </div>
+                <div>
+                    <div class="invoice-party-label">Bill To</div>
+                    <div class="invoice-party-name">${invoice.customer_name || 'Customer'}</div>
+                    <div class="invoice-party-details">
+                        ${invoice.customer_email || ''}<br>
+                        ${invoice.customer_company || ''}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="invoice-dates">
+                <div class="invoice-date-item">
+                    <div class="invoice-date-label">Issue Date</div>
+                    <div class="invoice-date-value">${formatDate(invoice.issue_date)}</div>
+                </div>
+                <div class="invoice-date-item">
+                    <div class="invoice-date-label">Due Date</div>
+                    <div class="invoice-date-value">${formatDate(invoice.due_date)}</div>
+                </div>
+            </div>
+            
+            <table class="invoice-items-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map(item => `
+                        <tr>
+                            <td>${item.description}</td>
+                            <td>${item.quantity || 1}</td>
+                            <td>$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
+                            <td>$${parseFloat(item.amount).toLocaleString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            
+            <div class="invoice-totals">
+                <div class="invoice-total-row">
+                    <span class="invoice-total-label">Subtotal</span>
+                    <span class="invoice-total-value">$${parseFloat(invoice.subtotal).toLocaleString()}</span>
+                </div>
+                ${taxAmount > 0 ? `
+                    <div class="invoice-total-row">
+                        <span class="invoice-total-label">Tax (${invoice.tax_rate}%)</span>
+                        <span class="invoice-total-value">$${taxAmount.toLocaleString()}</span>
+                    </div>
+                ` : ''}
+                ${discount > 0 ? `
+                    <div class="invoice-total-row">
+                        <span class="invoice-total-label">Discount</span>
+                        <span class="invoice-total-value">-$${discount.toLocaleString()}</span>
+                    </div>
+                ` : ''}
+                <div class="invoice-total-row grand">
+                    <span class="invoice-total-label">Total</span>
+                    <span class="invoice-total-value">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
+                </div>
+            </div>
+        </div>
+        
+        ${invoice.notes ? `
+            <div class="invoice-preview-footer">
+                <div class="invoice-notes-title">Notes</div>
+                <div class="invoice-notes-text">${invoice.notes}</div>
+            </div>
+        ` : ''}
+    </div>
+`;
+}
+function closeDetailModal() {
+document.getElementById('detailModal').classList.remove('active');
+state.currentLead = null;
+state.selectedExpenses = [];
+}
+function openCreateModal(type, leadId = null) {
+const modal = document.getElementById('createModal');
+const titleEl = document.getElementById('createModalTitle');
+const bodyEl = document.getElementById('createModalBody');
+if (type === 'lead') {
+    titleEl.textContent = 'Create New Lead';
+    bodyEl.innerHTML = `
+        <form id="createLeadForm" onsubmit="handleCreateLead(event)">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Name <span class="required">*</span></label>
+                    <input type="text" class="form-input" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email <span class="required">*</span></label>
+                    <input type="email" class="form-input" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" class="form-input" name="phone">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Company</label>
+                    <input type="text" class="form-input" name="company">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Project Type</label>
+                    <select class="form-select" name="project_type">
+                        <option value="">Select type...</option>
+                        <option value="Web Development">Web Development</option>
+                        <option value="Mobile App">Mobile App</option>
+                        <option value="E-commerce">E-commerce</option>
+                        <option value="Custom Software">Custom Software</option>
+                        <option value="Consulting">Consulting</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Budget</label>
+                    <input type="number" class="form-input" name="budget" step="100">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" name="status">
+                        <option value="new">New</option>
+                        <option value="pending">Pending</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="closed">Closed</option>
+                        <option value="lost">Lost</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select class="form-select" name="priority">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">Message</label>
+                    <textarea class="form-textarea" name="message"></textarea>
+                </div>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Lead</button>
+            </div>
+        </form>
+    `;
+} else if (type === 'expense') {
+    titleEl.textContent = 'Add Expense';
+    bodyEl.innerHTML = `
+        <form id="createExpenseForm" onsubmit="handleCreateExpense(event, ${leadId})">
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label class="form-label">Description <span class="required">*</span></label>
+                    <input type="text" class="form-input" name="description" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount <span class="required">*</span></label>
+                    <input type="number" class="form-input" name="amount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" class="form-input" name="quantity" value="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-input" name="expense_date" value="${new Date().toISOString().split('T')[0]}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" name="category">
+                        <option value="">Select category...</option>
+                        <option value="Development">Development</option>
+                        <option value="Design">Design</option>
+                        <option value="Hosting">Hosting</option>
+                        <option value="Consulting">Consulting</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-textarea" name="notes" rows="3"></textarea>
+                </div>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Expense</button>
+            </div>
+        </form>
+    `;
+} else if (type === 'invoice') {
+    openInvoiceModal(leadId);
+    return;
+} else if (type === 'employee') {
+    titleEl.textContent = 'Add Team Member';
+    bodyEl.innerHTML = `
+        <form id="createEmployeeForm" onsubmit="handleCreateEmployee(event)">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Name <span class="required">*</span></label>
+                    <input type="text" class="form-input" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email <span class="required">*</span></label>
+                    <input type="email" class="form-input" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" class="form-input" name="phone">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <input type="text" class="form-input" name="role" placeholder="e.g., Developer, Designer">
+                </div>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Employee</button>
+            </div>
+        </form>
+    `;
+} else if (type === 'task') {
+    titleEl.textContent = 'Create Task';
+    bodyEl.innerHTML = `
+        <form id="createTaskForm" onsubmit="handleCreateTask(event)">
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label class="form-label">Task Title <span class="required">*</span></label>
+                    <input type="text" class="form-input" name="title" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Due Date</label>
+                    <input type="date" class="form-input" name="dueDate" value="${new Date().toISOString().split('T')[0]}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select class="form-select" name="priority">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Assignee</label>
+                    <input type="text" class="form-input" name="assignee" value="Admin">
+                </div>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Task</button>
+            </div>
+        </form>
+    `;
+}
+
+modal.classList.add('active');
+}
+function closeCreateModal() {
+document.getElementById('createModal').classList.remove('active');
+}
+async function openInvoiceModal(leadId) {
+const lead = [...state.leads, ...state.customers].find(l => l.id === leadId);
+if (!lead) return;
+const expenses = await loadExpenses(leadId);
+const selectedExpenses = state.selectedExpenses.length > 0 
+    ? expenses.filter(e => state.selectedExpenses.includes(e.id))
+    : expenses;
+
+const modal = document.getElementById('invoiceModal');
+const titleEl = document.getElementById('invoiceModalTitle');
+const bodyEl = document.getElementById('invoiceModalBody');
+const footerEl = document.getElementById('invoiceModalFooter');
+
+titleEl.textContent = 'Create Invoice';
+
+const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+const today = new Date().toISOString().split('T')[0];
+const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+bodyEl.innerHTML = `
+    <div class="tabs">
+        <button class="tab active" onclick="switchInvoiceTab('details')">Details</button>
+        <button class="tab" onclick="switchInvoiceTab('items')">Items</button>
+        <button class="tab" onclick="switchInvoiceTab('preview')">Preview</button>
+    </div>
+    
+    <div id="invoiceDetailsTab">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Invoice Number</label>
+                <input type="text" class="form-input" id="invoiceNumber" value="${invoiceNumber}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="invoiceStatus">
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="paid">Paid</option>
+                </select>
+            </div>
+            <div class="form-group"><label class="form-label">Issue Date</label>
+<input type="date" class="form-input" id="invoiceIssueDate" value="${today}">
+</div>
+<div class="form-group">
+<label class="form-label">Due Date</label>
+<input type="date" class="form-input" id="invoiceDueDate" value="${dueDate}">
+</div>
+<div class="form-group">
+<label class="form-label">Tax Rate (%)</label>
+<input type="number" class="form-input" id="invoiceTaxRate" value="0" step="0.01" oninput="recalculateInvoice()">
+</div>
+<div class="form-group">
+<label class="form-label">Discount</label>
+<input type="number" class="form-input" id="invoiceDiscount" value="0" step="0.01" oninput="recalculateInvoice()">
+</div>
+<div class="form-group full-width">
+<label class="form-label">Notes</label>
+<textarea class="form-textarea" id="invoiceNotes" placeholder="Payment terms, thank you message, etc."></textarea>
+</div>
+</div>
+</div>
+    <div id="invoiceItemsTab" style="display: none;">
+        <div id="invoiceItemsList">
+            ${selectedExpenses.map((exp, idx) => `
+                <div class="expense-item selected" data-item-index="${idx}">
+                    <div class="expense-content">
+                        <div class="expense-description">${exp.description}</div>
+                        <div class="expense-meta">
+                            <div class="expense-meta-item">Qty: ${exp.quantity || 1}</div>
+                            <div class="expense-meta-item">${exp.category || 'N/A'}</div>
+                        </div>
+                    </div>
+                    <div class="expense-amount">$${parseFloat(exp.amount).toLocaleString()}</div>
+                    <div class="expense-actions">
+                        <button class="table-action-btn danger" onclick="removeInvoiceItem(${idx})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="addCustomInvoiceItem()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Custom Item
+        </button>
+    </div>
+    
+    <div id="invoicePreviewTab" style="display: none;"></div>
+`;
+
+// Store invoice data in state
+state.currentInvoice = {
+    leadId,
+    lead,
+    items: selectedExpenses.map(exp => ({
+        description: exp.description,
+        quantity: exp.quantity || 1,
+        unit_price: parseFloat(exp.amount),
+        amount: parseFloat(exp.amount) * (exp.quantity || 1),
+        expense_id: exp.id
+    }))
+};
+
+footerEl.innerHTML = `
+    <button class="btn btn-secondary" onclick="closeInvoiceModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveInvoice()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+        </svg>
+        Save Invoice
+    </button>
+`;
+
+modal.classList.add('active');
+}
+function closeInvoiceModal() {
+document.getElementById('invoiceModal').classList.remove('active');
+state.currentInvoice = null;
+}
+// ========================================
+// FORM HANDLERS
+// ========================================
+async function handleCreateLead(event) {
+event.preventDefault();
+const form = event.target;
+const formData = new FormData(form);
+const data = Object.fromEntries(formData.entries());
+try {
+    const r = await fetch(`${API_URL}/api/leads`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify(data)
+    });
+    
+    if (!r.ok) throw new Error('Failed to create lead');
+    
+    await loadLeads();
+    updateBadges();
+    closeCreateModal();
+    showToast('Lead created successfully', 'success');
+    renderSection(state.currentSection);
+} catch (e) {
+    showToast('Error creating lead', 'error');
+}
+}
+async function handleCreateExpense(event, leadId) {
+event.preventDefault();
+const form = event.target;
+const formData = new FormData(form);
+const data = Object.fromEntries(formData.entries());
+try {
+    const r = await fetch(`${API_URL}/api/leads/${leadId}/expenses`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify(data)
+    });
+    
+    if (!r.ok) throw new Error('Failed to create expense');
+    
+    closeCreateModal();
+    showToast('Expense added successfully', 'success');
+    openDetailModal('lead', leadId);
+} catch (e) {
+    showToast('Error adding expense', 'error');
+}
+}
+async function handleCreateEmployee(event) {
+event.preventDefault();
+const form = event.target;
+const formData = new FormData(form);
+const data = Object.fromEntries(formData.entries());
+try {
+    const r = await fetch(`${API_URL}/api/employees`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify(data)
+    });
+    
+    if (!r.ok) throw new Error('Failed to create employee');
+    
+    await loadEmployees();
+    closeCreateModal();
+    showToast('Employee added successfully', 'success');
+    renderSection('employees');
+} catch (e) {
+    showToast('Error adding employee', 'error');
+}
+}
+function handleCreateTask(event) {
+event.preventDefault();
+const form = event.target;
+const formData = new FormData(form);
+const data = Object.fromEntries(formData.entries());
+const newTask = {
+    id: state.tasks.length + 1,
+    title: data.title,
+    dueDate: data.dueDate,
+    assignee: data.assignee,
+    priority: data.priority,
+    completed: false
+};
+
+state.tasks.push(newTask);
+closeCreateModal();
+showToast('Task created successfully', 'success');
+renderSection('tasks');
+}
+// ========================================
+// INVOICE FUNCTIONS
+// ========================================
+function switchInvoiceTab(tab) {
+document.querySelectorAll('#invoiceModal .tab').forEach(t => t.classList.remove('active'));
+document.querySelector(`#invoiceModal .tab:nth-child(${tab === 'details' ? 1 : tab === 'items' ? 2 : 3})`).classList.add('active');
+document.getElementById('invoiceDetailsTab').style.display = tab === 'details' ? 'block' : 'none';
+document.getElementById('invoiceItemsTab').style.display = tab === 'items' ? 'block' : 'none';
+document.getElementById('invoicePreviewTab').style.display = tab === 'preview' ? 'block' : 'none';
+
+if (tab === 'preview') {
+    updateInvoicePreview();
+}
+}
+function recalculateInvoice() {
+if (state.currentInvoice) {
+const subtotal = state.currentInvoice.items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+const taxRate = parseFloat(document.getElementById('invoiceTaxRate').value) || 0;
+const discount = parseFloat(document.getElementById('invoiceDiscount').value) || 0;
+    state.currentInvoice.subtotal = subtotal;
+    state.currentInvoice.tax_amount = subtotal * (taxRate / 100);
+    state.currentInvoice.discount_amount = discount;
+    state.currentInvoice.total_amount = subtotal + state.currentInvoice.tax_amount - discount;
+}
+}
+function addCustomInvoiceItem() {
+const description = prompt('Item description:');
+if (!description) return;
+const quantity = parseInt(prompt('Quantity:', '1')) || 1;
+const unitPrice = parseFloat(prompt('Unit price:', '0')) || 0;
+
+const item = {
+    description,
+    quantity,
+    unit_price: unitPrice,
+    amount: quantity * unitPrice
+};
+
+state.currentInvoice.items.push(item);
+recalculateInvoice();
+
+const list = document.getElementById('invoiceItemsList');
+const idx = state.currentInvoice.items.length - 1;
+list.innerHTML += `
+    <div class="expense-item selected" data-item-index="${idx}">
+        <div class="expense-content">
+            <div class="expense-description">${item.description}</div>
+            <div class="expense-meta">
+                <div class="expense-meta-item">Qty: ${item.quantity}</div>
+                <div class="expense-meta-item">@ $${item.unit_price.toLocaleString()}</div>
+            </div>
+        </div>
+        <div class="expense-amount">$${item.amount.toLocaleString()}</div>
+        <div class="expense-actions">
+            <button class="table-action-btn danger" onclick="removeInvoiceItem(${idx})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+`;
+}
+function removeInvoiceItem(idx) {
+state.currentInvoice.items.splice(idx, 1);
+recalculateInvoice();
+document.querySelector(`[data-item-index="${idx}"]`).remove();
+}
+function updateInvoicePreview() {
+recalculateInvoice();
+const invoice = {
+    invoice_number: document.getElementById('invoiceNumber').value,
+    issue_date: document.getElementById('invoiceIssueDate').value,
+    due_date: document.getElementById('invoiceDueDate').value,
+    customer_name: state.currentInvoice.lead.name,
+    customer_email: state.currentInvoice.lead.email,
+    customer_company: state.currentInvoice.lead.company,
+    subtotal: state.currentInvoice.subtotal,
+    tax_rate: parseFloat(document.getElementById('invoiceTaxRate').value) || 0,
+    tax_amount: state.currentInvoice.tax_amount,
+    discount_amount: state.currentInvoice.discount_amount,
+    total_amount: state.currentInvoice.total_amount,
+    notes: document.getElementById('invoiceNotes').value,
+    items: state.currentInvoice.items
+};
+
+document.getElementById('invoicePreviewTab').innerHTML = renderInvoicePreview(invoice);
+}
+async function saveInvoice() {
+if (!state.currentInvoice || state.currentInvoice.items.length === 0) {
+showToast('Please add at least one item to the invoice', 'error');
+return;
+}
+recalculateInvoice();
+
+const invoiceData = {
+    invoice_number: document.getElementById('invoiceNumber').value,
+    lead_id: state.currentInvoice.leadId,
+    issue_date: document.getElementById('invoiceIssueDate').value,
+    due_date: document.getElementById('invoiceDueDate').value,
+    subtotal: state.currentInvoice.subtotal,
+    tax_rate: parseFloat(document.getElementById('invoiceTaxRate').value) || 0,
+    tax_amount: state.currentInvoice.tax_amount,
+    discount_amount: state.currentInvoice.discount_amount,
+    total_amount: state.currentInvoice.total_amount,
+    status: document.getElementById('invoiceStatus').value,
+    notes: document.getElementById('invoiceNotes').value,
+    items: state.currentInvoice.items
+};
+
+try {
+    const r = await fetch(`${API_URL}/api/invoices`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify(invoiceData)
+    });
+    
+    if (!r.ok) throw new Error('Failed to create invoice');
+    
+    await loadInvoices();
+    updateBadges();
+    closeInvoiceModal();
+    closeDetailModal();
+    showToast('Invoice created successfully', 'success');
+    renderSection('invoices');
+} catch (e) {
+    showToast('Error creating invoice', 'error');
+}
+}
+async function createInvoiceFromExpenses() {
+if (state.selectedExpenses.length === 0) {
+showToast('Please select expenses first', 'error');
+return;
+}
+closeDetailModal();
+await openInvoiceModal(state.currentLead.id);
+}
+// ========================================
+// UTILITY FUNCTIONS
+// ========================================
+function toggleExpense(expenseId) {
+const idx = state.selectedExpenses.indexOf(expenseId);
+if (idx > -1) {
+state.selectedExpenses.splice(idx, 1);
+} else {
+state.selectedExpenses.push(expenseId);
+}
+const checkbox = document.querySelector(`[data-expense-id="${expenseId}"] .expense-checkbox`);
+const item = document.querySelector(`[data-expense-id="${expenseId}"]`);
+
+if (state.selectedExpenses.includes(expenseId)) {
+    checkbox.classList.add('checked');
+    item.classList.add('selected');
+} else {
+    checkbox.classList.remove('checked');
+    item.classList.remove('selected');
+}
+
+openDetailModal('lead', state.currentLead.id);
+}
+async function addNote(leadId) {
+const text = document.getElementById('newNote').value.trim();
+if (!text) return;
+const lead = [...state.leads, ...state.customers].find(l => l.id === leadId);
+const notes = lead.notes ? JSON.parse(lead.notes) : [];
+
+notes.push({
+    text,
+    author: 'Admin',
+    date: new Date().toISOString()
+});
+
+try {
+    const r = await fetch(`${API_URL}/api/leads/${leadId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ notes: JSON.stringify(notes) })
+    });
+    
+    if (!r.ok) throw new Error('Failed to add note');
+    
+    await loadLeads();
+    showToast('Note added successfully', 'success');
+    openDetailModal('lead', leadId);
+} catch (e) {
+    showToast('Error adding note', 'error');
+}
+}
+async function deleteLead(id) {
+if (!confirm('Are you sure you want to delete this lead?')) return;
+try {
+    const r = await fetch(`${API_URL}/api/leads/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    
+    if (!r.ok) throw new Error('Failed to delete lead');
+    
+    await loadLeads();
+    updateBadges();
+    closeDetailModal();
+    showToast('Lead deleted successfully', 'success');
+    renderSection(state.currentSection);
+} catch (e) {
+    showToast('Error deleting lead', 'error');
+}
+}
+async function deleteExpense(id) {
+if (!confirm('Are you sure you want to delete this expense?')) return;
+try {
+    const r = await fetch(`${API_URL}/api/expenses/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    
+    if (!r.ok) throw new Error('Failed to delete expense');
+    
+    showToast('Expense deleted successfully', 'success');
+    openDetailModal('lead', state.currentLead.id);
+} catch (e) {
+    showToast('Error deleting expense', 'error');
+}
+}
+async function deleteEmployee(id) {
+if (!confirm('Are you sure you want to delete this employee?')) return;
+try {
+    const r = await fetch(`${API_URL}/api/employees/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    
+    if (!r.ok) throw new Error('Failed to delete employee');
+    
+    await loadEmployees();
+    showToast('Employee deleted successfully', 'success');
+    renderSection('employees');
+} catch (e) {
+    showToast('Error deleting employee', 'error');
+}
+}
+function deleteTask(id) {
+state.tasks = state.tasks.filter(t => t.id !== id);
+showToast('Task deleted successfully', 'success');
+renderSection('tasks');
+}
+function toggleTask(id) {
+const task = state.tasks.find(t => t.id === id);
+if (task) {
+task.completed = !task.completed;
+renderSection('tasks');
+}
+}
+function filterLeads(type) {
+state.currentFilter = type;
+renderSection(state.currentSection);
+}
+function handleSearch(query) {
+state.searchQuery = query.toLowerCase();
+renderSection(state.currentSection);
+}
+function toggleSetting(setting) {
+state.settings[setting] = !state.settings[setting];
+showToast('Setting updated', 'success');
+}
+function printInvoice() {
+window.print();
+}
+function openExportModal() {
+showToast('Export feature coming soon', 'warning');
+}
+function logout() {
+localStorage.removeItem('adminToken');
+sessionStorage.removeItem('adminToken');
+window.location.href = '/admin';
+}
+function showToast(message, type = 'success') {
+const container = document.getElementById('toastContainer');
+const icons = {
+success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+};
+const toast = document.createElement('div');
+toast.className = `toast ${type}`;
+toast.innerHTML = `
+    <div class="toast-icon">${icons[type]}</div>
+    <div class="toast-message">${message}</div>
+    <button class="toast-close" onclick="this.parentElement.remove()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+    </button>
+`;
+
+container.appendChild(toast);
+setTimeout(() => toast.remove(), 5000);
+}
+// Helper functions
+function formatDate(dateString) {
+if (!dateString) return 'N/A';
+const date = new Date(dateString);
+return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function getInitials(name) {
+return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+function getMonthlyData(leads) {
+const months = new Array(6).fill(0);
+const now = new Date();
+leads.forEach(lead => {
+    const created = new Date(lead.created_at);
+    const monthDiff = (now.getFullYear() - created.getFullYear()) * 12 + (now.getMonth() - created.getMonth());
+    if (monthDiff >= 0 && monthDiff < 6) {
+        months[5 - monthDiff]++;
+    }
+});
+
+return months;
+}
+function getMonthlyRevenue() {
+const total = state.invoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+const pending = state.invoices.filter(i => i.status === 'sent').reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+const overdue = state.invoices.filter(i => i.status === 'overdue').reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+return { total, pending, overdue };
+}
+function getMonthName(index) {
+const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const month = new Date().getMonth() - (5 - index);
+return names[month < 0 ? month + 12 : month];
+}
+function calculateConversionRate() {
+if (state.leads.length === 0) return 0;
+return Math.round((state.customers.length / (state.leads.length + state.customers.length)) * 100);
+}
+function filterLeads(data) {
+let filtered = data;
+if (state.currentFilter !== 'all') {
+    filtered = filtered.filter(l => l.status === state.currentFilter);
+}
+
+if (state.searchQuery) {
+    filtered = filtered.filter(l => 
+        l.name.toLowerCase().includes(state.searchQuery) ||
+        l.email.toLowerCase().includes(state.searchQuery) ||
+        (l.company && l.company.toLowerCase().includes(state.searchQuery))
+    );
+}
+
+return filtered;
+}
+</script>
 </body>
 </html>

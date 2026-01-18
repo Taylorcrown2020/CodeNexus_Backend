@@ -1481,6 +1481,58 @@ body {
     border-top: 1px solid var(--border-subtle);
 }
 
+/* Invoice Preview Improvements */
+.invoice-preview {
+    border-top: 4px solid var(--accent-amber);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.invoice-preview-header {
+    padding: 40px 32px;
+    background: var(--bg-tertiary);
+}
+
+.invoice-company-logo {
+    width: 64px;
+    height: 64px;
+}
+
+.invoice-company-logo svg {
+    width: 32px;
+    height: 32px;
+}
+
+.invoice-number {
+    font-size: 16px;
+    letter-spacing: 0.05em;
+}
+
+.invoice-items-table th {
+    font-size: 11px;
+    color: var(--accent-amber);
+}
+
+.invoice-items-table td {
+    font-size: 15px;
+}
+
+.invoice-items-table tbody tr:hover {
+    background: rgba(245,158,11,0.03);
+}
+
+.invoice-totals {
+    background: var(--bg-tertiary);
+    padding: 24px;
+    border-radius: var(--radius-md);
+    margin-top: 20px;
+    border-top: 2px solid var(--border-subtle);
+    padding-top: 24px;
+}
+
+.invoice-total-row.grand .invoice-total-value {
+    font-size: 32px;
+}
+
 .invoice-notes-title {
     font-size: 10px;
     font-weight: 700;

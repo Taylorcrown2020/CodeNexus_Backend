@@ -92,6 +92,71 @@ async function initializeDatabase() {
             )
         `);
 
+        // Create employees table
+await client.query(`
+    CREATE TABLE IF NOT EXISTS employees (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        phone VARCHAR(50),
+        role VARCHAR(100),
+        is_active BOOLEAN DEFAULT TRUE,
+        projects_assigned INTEGER DEFAULT 0,
+        tasks_completed INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+        // Update leads table structure
+await client.query(`
+    DO $$ 
+    BEGIN 
+        -- Add missing columns
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='leads' AND column_name='name') THEN
+            ALTER TABLE leads ADD COLUMN name VARCHAR(255);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='leads' AND column_name='company') THEN
+            ALTER TABLE leads ADD COLUMN company VARCHAR(255);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='leads' AND column_name='project_type') THEN
+            ALTER TABLE leads ADD COLUMN project_type VARCHAR(255);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='leads' AND column_name='message') THEN
+            ALTER TABLE leads ADD COLUMN message TEXT;
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='leads' AND column_name='timeline') THEN
+            ALTER TABLE leads ADD COLUMN timeline VARCHAR(100);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='leads' AND column_name='notes') THEN
+            ALTER TABLE leads ADD COLUMN notes TEXT;
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name='leads' AND column_name='assigned_to') THEN
+            ALTER TABLE leads ADD COLUMN assigned_to INTEGER REFERENCES employees(id);
+        END IF;
+    END $$;
+`);
+
+// Migrate existing data from first_name/last_name to name
+await client.query(`
+    UPDATE leads 
+    SET name = CONCAT(first_name, ' ', last_name) 
+    WHERE name IS NULL AND first_name IS NOT NULL
+`);
+
         // Add columns if they don't exist (for existing databases)
         await client.query(`
             DO $$ 
@@ -337,27 +402,35 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
 // ========================================
 
 // Get all leads
+// Get all leads
 app.get('/api/leads', authenticateToken, async (req, res) => {
     try {
         const { status, search } = req.query;
         
-        let query = 'SELECT * FROM leads WHERE 1=1';
+        let query = `
+            SELECT l.*, 
+                   e.name as employee_name,
+                   e.email as employee_email
+            FROM leads l
+            LEFT JOIN employees e ON l.assigned_to = e.id
+            WHERE 1=1
+        `;
         let params = [];
         let paramIndex = 1;
 
         if (status && status !== 'all') {
-            query += ` AND status = $${paramIndex}`;
+            query += ` AND l.status = $${paramIndex}`;
             params.push(status);
             paramIndex++;
         }
 
         if (search) {
-            query += ` AND (first_name ILIKE $${paramIndex} OR last_name ILIKE $${paramIndex} OR email ILIKE $${paramIndex})`;
+            query += ` AND (l.name ILIKE $${paramIndex} OR l.email ILIKE $${paramIndex} OR l.company ILIKE $${paramIndex})`;
             params.push(`%${search}%`);
             paramIndex++;
         }
 
-        query += ' ORDER BY created_at DESC';
+        query += ' ORDER BY l.created_at DESC';
 
         const result = await pool.query(query, params);
 
@@ -367,6 +440,65 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Get leads error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
+// Update lead (including notes)
+app.put('/api/leads/:id', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.id;
+        const updates = req.body;
+
+        // Build dynamic update query
+        const fields = [];
+        const values = [];
+        let paramIndex = 1;
+
+        Object.keys(updates).forEach(key => {
+            if (updates[key] !== undefined && key !== 'id') {
+                fields.push(`${key} = $${paramIndex}`);
+                values.push(updates[key]);
+                paramIndex++;
+            }
+        });
+
+        if (fields.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No fields to update.'
+            });
+        }
+
+        fields.push('updated_at = CURRENT_TIMESTAMP');
+        values.push(leadId);
+
+        const query = `
+            UPDATE leads 
+            SET ${fields.join(', ')} 
+            WHERE id = $${paramIndex}
+            RETURNING *
+        `;
+
+        const result = await pool.query(query, values);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Lead not found.' 
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Lead updated successfully.',
+            lead: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update lead error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Server error.' 
@@ -865,32 +997,50 @@ app.patch('/api/employees/:id', authenticateToken, async (req, res) => {
 });
 
 // Create new lead (PUBLIC - from contact form AND authenticated admin creation)
+// Create new lead (PUBLIC - from contact form AND authenticated admin creation)
 app.post('/api/leads', async (req, res) => {
     try {
-        const { firstName, lastName, email, phone, service, budget, details, priority, status, isCustomer, customerStatus, assignedTo } = req.body;
+        const { 
+            name, firstName, lastName, email, phone, 
+            company, project_type, message, budget, timeline,
+            service, details, priority, status, 
+            isCustomer, customerStatus, assignedTo 
+        } = req.body;
 
-        if (!firstName || !lastName || !email) {
+        // Handle both name formats
+        let fullName = name;
+        if (!fullName && firstName && lastName) {
+            fullName = `${firstName} ${lastName}`;
+        }
+
+        if (!fullName || !email) {
             return res.status(400).json({
                 success: false,
-                message: 'First name, last name, and email are required.'
+                message: 'Name and email are required.'
             });
         }
 
-        // Check if request is authenticated (from admin portal) or public (from contact form)
         const isAuthenticated = req.headers.authorization;
 
         const result = await pool.query(
-            `INSERT INTO leads (first_name, last_name, email, phone, service, budget, details, priority, status, is_customer, customer_status, assigned_to)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-             RETURNING *`,
+            `INSERT INTO leads (
+                name, email, phone, company, project_type, message, 
+                budget, timeline, service, details, priority, status, 
+                is_customer, customer_status, assigned_to
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            RETURNING *`,
             [
-                firstName, 
-                lastName, 
+                fullName,
                 email, 
                 phone || '', 
-                service || '', 
+                company || '',
+                project_type || service || '',
+                message || details || '',
                 budget || '', 
-                details || '', 
+                timeline || '',
+                service || '',
+                details || '',
                 priority || 'medium',
                 status || 'new',
                 isCustomer || false,
@@ -903,7 +1053,7 @@ app.post('/api/leads', async (req, res) => {
 
         res.json({
             success: true,
-            message: isAuthenticated ? 'Lead/Customer created successfully.' : 'Thank you for contacting us! We\'ll get back to you within 24 hours.',
+            message: isAuthenticated ? 'Lead created successfully.' : 'Thank you for contacting us! We\'ll get back to you within 24 hours.',
             lead: result.rows[0]
         });
     } catch (error) {
@@ -1238,79 +1388,99 @@ function generateInvoiceNumber() {
 }
 
 // Create invoice from expenses
-app.post('/api/invoices/create', authenticateToken, async (req, res) => {
+// Create invoice
+app.post('/api/invoices', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     
     try {
         await client.query('BEGIN');
 
-        const { leadId, expenseIds, dueDate, taxRate, discountAmount, paymentTerms, notes } = req.body;
+        const { 
+            invoice_number, lead_id, issue_date, due_date,
+            subtotal, tax_rate, tax_amount, discount_amount, total_amount,
+            status, notes, items 
+        } = req.body;
         const userId = req.user.id;
 
-        if (!leadId || !expenseIds || expenseIds.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Lead ID and at least one expense are required.'
-            });
-        }
-
-        // Get expenses
-        const expensesResult = await client.query(
-            'SELECT * FROM expenses WHERE id = ANY($1) AND lead_id = $2 AND is_invoiced = FALSE',
-            [expenseIds, leadId]
-        );
-
-        if (expensesResult.rows.length === 0) {
+        if (!lead_id || !items || items.length === 0) {
             await client.query('ROLLBACK');
             return res.status(400).json({
                 success: false,
-                message: 'No valid uninvoiced expenses found.'
+                message: 'Lead ID and at least one item are required.'
             });
         }
 
-        // Calculate totals
-        const subtotal = expensesResult.rows.reduce((sum, exp) => 
-            sum + (parseFloat(exp.amount) * exp.quantity), 0
+        // Get lead info
+        const leadResult = await client.query(
+            'SELECT name, email, company FROM leads WHERE id = $1',
+            [lead_id]
         );
 
-        const taxAmount = subtotal * (parseFloat(taxRate || 0) / 100);
-        const totalAmount = subtotal + taxAmount - parseFloat(discountAmount || 0);
+        if (leadResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({
+                success: false,
+                message: 'Lead not found.'
+            });
+        }
+
+        const lead = leadResult.rows[0];
 
         // Create invoice
-        const invoiceNumber = generateInvoiceNumber();
         const invoiceResult = await client.query(
             `INSERT INTO invoices 
-             (invoice_number, lead_id, due_date, subtotal, tax_rate, tax_amount, 
-              discount_amount, total_amount, payment_terms, notes, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             (invoice_number, lead_id, issue_date, due_date, subtotal, tax_rate, tax_amount, 
+              discount_amount, total_amount, status, notes, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              RETURNING *`,
-            [invoiceNumber, leadId, dueDate, subtotal, taxRate || 0, taxAmount, 
-             discountAmount || 0, totalAmount, paymentTerms, notes, userId]
+            [invoice_number, lead_id, issue_date, due_date, subtotal, tax_rate || 0, tax_amount || 0, 
+             discount_amount || 0, total_amount, status || 'draft', notes, userId]
         );
 
         const invoiceId = invoiceResult.rows[0].id;
 
-        // Mark expenses as invoiced
-        await client.query(
-            'UPDATE expenses SET is_invoiced = TRUE, invoice_id = $1 WHERE id = ANY($2)',
-            [invoiceId, expenseIds]
-        );
+        // Add items to invoice
+        for (const item of items) {
+            if (item.expense_id) {
+                // Mark expense as invoiced
+                await client.query(
+                    'UPDATE expenses SET is_invoiced = TRUE, invoice_id = $1 WHERE id = $2',
+                    [invoiceId, item.expense_id]
+                );
+            }
+            
+            // Add to invoice_items
+            await client.query(
+                `INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, amount)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [invoiceId, item.description, item.quantity, item.unit_price, item.amount]
+            );
+        }
 
         await client.query('COMMIT');
 
-        console.log('✅ Invoice created:', invoiceNumber);
+        console.log('✅ Invoice created:', invoice_number);
+
+        // Return complete invoice data
+        const fullInvoice = {
+            ...invoiceResult.rows[0],
+            customer_name: lead.name,
+            customer_email: lead.email,
+            customer_company: lead.company,
+            items: items
+        };
 
         res.json({
             success: true,
             message: 'Invoice created successfully.',
-            invoice: invoiceResult.rows[0]
+            invoice: fullInvoice
         });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Create invoice error:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Server error.' 
+            message: 'Server error creating invoice.' 
         });
     } finally {
         client.release();

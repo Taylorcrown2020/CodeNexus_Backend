@@ -1647,15 +1647,6 @@ app.delete('/api/invoices/:id', authenticateToken, async (req, res) => {
 
         const invoice = invoiceCheck.rows[0];
 
-        // Don't allow deletion of paid invoices (optional - remove if you want to allow)
-        if (invoice.status === 'paid') {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot delete paid invoices. Please contact support if you need to void this invoice.'
-            });
-        }
-
         // Unmark all expenses associated with this invoice
         await client.query(
             'UPDATE expenses SET is_invoiced = FALSE, invoice_id = NULL WHERE invoice_id = $1',

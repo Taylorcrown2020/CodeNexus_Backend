@@ -4768,7 +4768,7 @@ try {
 async function deleteInvoice(id) {
     const invoice = state.invoices.find(i => i.id === id);
     
-    if (!confirm(`Are you sure you want to delete invoice ${invoice.invoice_number}?\n\nThis will unmark all associated expenses so they can be invoiced again.`)) {
+    if (!confirm(`Are you sure you want to delete invoice ${invoice?.invoice_number || id}?`)) {
         return;
     }
     

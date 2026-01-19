@@ -2241,6 +2241,99 @@ body {
         box-shadow: none !important;
     }
 }
+/* ========================================
+   LIGHT MODE OVERRIDES
+======================================== */
+body.light-mode {
+    background: #f5f5f7;
+}
+
+body.light-mode .sidebar {
+    background: #ffffff;
+    border-right-color: rgba(0,0,0,0.08);
+}
+
+body.light-mode .sidebar::before {
+    background: linear-gradient(180deg, var(--accent-amber) 0%, transparent 50%, var(--accent-amber) 100%);
+}
+
+body.light-mode .topbar {
+    background: rgba(255,255,255,0.9);
+    border-bottom-color: rgba(0,0,0,0.08);
+}
+
+body.light-mode .logo-title {
+    background: linear-gradient(135deg, #1a1a1a 0%, var(--accent-amber) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body.light-mode .stat-value {
+    background: linear-gradient(135deg, #1a1a1a 0%, #495057 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body.light-mode .data-table thead {
+    background: #f8f9fa;
+}
+
+body.light-mode .modal {
+    background: #ffffff;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+}
+
+body.light-mode .modal-footer {
+    background: #f8f9fa;
+}
+
+body.light-mode .invoice-preview {
+    background: #ffffff;
+}
+
+body.light-mode .invoice-preview-header {
+    background: #f8f9fa;
+}
+
+body.light-mode .form-input,
+body.light-mode .form-select,
+body.light-mode .form-textarea {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.15);
+    color: #1a1a1a;
+}
+
+body.light-mode .form-input:focus,
+body.light-mode .form-select:focus,
+body.light-mode .form-textarea:focus {
+    border-color: var(--accent-amber);
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+}
+
+body.light-mode .search-input {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.12);
+}
+
+body.light-mode .filter-group {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.12);
+}
+
+body.light-mode .toast {
+    background: #ffffff;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+}
+
+body.light-mode ::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.2);
+}
+
+body.light-mode ::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-amber);
+}
     </style>
 </head>
 <body>
@@ -2585,8 +2678,15 @@ async function loadEmployees() {
         const r = await fetch(`${API_URL}/api/employees`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        if (!r.ok) return;
+        
+        if (!r.ok) {
+            console.error('Failed to load employees, status:', r.status);
+            return;
+        }
+        
         const d = await r.json();
+        console.log('Loaded employees:', d); // Debug log
+        
         if (d.success) {
             state.employees = d.employees || [];
         }
@@ -4293,6 +4393,9 @@ async function handleCreateEmployee(event) {
     const form = event.target;
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
+    
+    console.log('Creating employee with data:', data); // Debug log
+    
     try {
         const r = await fetch(`${API_URL}/api/employees`, {
             method: 'POST',
@@ -4303,13 +4406,15 @@ async function handleCreateEmployee(event) {
             body: JSON.stringify(data)
         });
         
+        const result = await r.json();
+        console.log('Server response:', result); // Debug log
+        
         if (!r.ok) {
-            const errorData = await r.json();
-            throw new Error(errorData.message || 'Failed to create employee');
+            throw new Error(result.message || 'Failed to create employee');
         }
         
-        // Force complete data reload
-        await loadAllData();
+        // Reload employees specifically
+        await loadEmployees();
         closeCreateModal();
         showToast('Employee added successfully', 'success');
         renderSection('employees');
@@ -4801,23 +4906,27 @@ function applySettings() {
         document.documentElement.style.setProperty('--text-primary', '#f4f4f5');
         document.documentElement.style.setProperty('--text-secondary', '#a1a1aa');
         document.documentElement.style.setProperty('--text-muted', '#71717a');
+        document.documentElement.style.setProperty('--text-faint', '#52525b');
         document.documentElement.style.setProperty('--border-subtle', 'rgba(255,255,255,0.04)');
         document.documentElement.style.setProperty('--border-default', 'rgba(255,255,255,0.08)');
         document.documentElement.style.setProperty('--border-strong', 'rgba(255,255,255,0.12)');
+        document.body.classList.remove('light-mode');
     } else {
         // Light mode colors
-        document.documentElement.style.setProperty('--bg-void', '#f8f9fa');
+        document.documentElement.style.setProperty('--bg-void', '#f5f5f7');
         document.documentElement.style.setProperty('--bg-primary', '#ffffff');
-        document.documentElement.style.setProperty('--bg-secondary', '#f1f3f4');
-        document.documentElement.style.setProperty('--bg-tertiary', '#e8eaed');
+        document.documentElement.style.setProperty('--bg-secondary', '#f8f9fa');
+        document.documentElement.style.setProperty('--bg-tertiary', '#f1f3f5');
         document.documentElement.style.setProperty('--bg-elevated', '#ffffff');
-        document.documentElement.style.setProperty('--bg-hover', '#f1f3f4');
-        document.documentElement.style.setProperty('--text-primary', '#202124');
-        document.documentElement.style.setProperty('--text-secondary', '#5f6368');
-        document.documentElement.style.setProperty('--text-muted', '#80868b');
+        document.documentElement.style.setProperty('--bg-hover', '#e9ecef');
+        document.documentElement.style.setProperty('--text-primary', '#1a1a1a');
+        document.documentElement.style.setProperty('--text-secondary', '#495057');
+        document.documentElement.style.setProperty('--text-muted', '#6c757d');
+        document.documentElement.style.setProperty('--text-faint', '#adb5bd');
         document.documentElement.style.setProperty('--border-subtle', 'rgba(0,0,0,0.06)');
-        document.documentElement.style.setProperty('--border-default', 'rgba(0,0,0,0.12)');
-        document.documentElement.style.setProperty('--border-strong', 'rgba(0,0,0,0.2)');
+        document.documentElement.style.setProperty('--border-default', 'rgba(0,0,0,0.1)');
+        document.documentElement.style.setProperty('--border-strong', 'rgba(0,0,0,0.15)');
+        document.body.classList.add('light-mode');
     }
 }
 

@@ -165,6 +165,38 @@ END IF;
                               WHERE table_name='leads' AND column_name='assigned_to') THEN
                     ALTER TABLE leads ADD COLUMN assigned_to INTEGER REFERENCES employees(id);
                 END IF;
+
+-- Add address columns if they don't exist
+IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+              WHERE table_name='leads' AND column_name='address_line1') THEN
+    ALTER TABLE leads ADD COLUMN address_line1 VARCHAR(255);
+END IF;
+
+IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+              WHERE table_name='leads' AND column_name='address_line2') THEN
+    ALTER TABLE leads ADD COLUMN address_line2 VARCHAR(255);
+END IF;
+
+IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+              WHERE table_name='leads' AND column_name='city') THEN
+    ALTER TABLE leads ADD COLUMN city VARCHAR(100);
+END IF;
+
+IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+              WHERE table_name='leads' AND column_name='state') THEN
+    ALTER TABLE leads ADD COLUMN state VARCHAR(100);
+END IF;
+
+IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+              WHERE table_name='leads' AND column_name='zip_code') THEN
+    ALTER TABLE leads ADD COLUMN zip_code VARCHAR(20);
+END IF;
+
+IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+              WHERE table_name='leads' AND column_name='country') THEN
+    ALTER TABLE leads ADD COLUMN country VARCHAR(100) DEFAULT 'USA';
+END IF;
+
             END $$;
         `);
 
@@ -435,8 +467,12 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
 app.get('/api/leads', authenticateToken, async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT * FROM leads 
-            ORDER BY created_at DESC
+            SELECT l.*, 
+                   e.name as employee_name,
+                   e.email as employee_email
+            FROM leads l
+            LEFT JOIN employees e ON l.assigned_to = e.id
+            ORDER BY l.created_at DESC
         `);
 
         res.json({
@@ -1326,9 +1362,10 @@ app.get('/api/invoices', authenticateToken, async (req, res) => {
     try {
         const { status, leadId } = req.query;
         
-        let query = `
-            SELECT i.*, 
-                   l.name, l.email, l.company,
+let query = `
+    SELECT i.*, 
+           l.name, l.email, l.company,
+           l.address_line1, l.address_line2, l.city, l.state, l.zip_code, l.country,
                    (SELECT json_agg(json_build_object(
                        'description', ii.description,
                        'quantity', ii.quantity,
@@ -1361,13 +1398,19 @@ app.get('/api/invoices', authenticateToken, async (req, res) => {
         const result = await pool.query(query, params);
 
         // Format the results
-        const invoices = result.rows.map(inv => ({
-            ...inv,
-            customer_name: inv.name,
-            customer_email: inv.email,
-            customer_company: inv.company,
-            items: inv.items || []
-        }));
+const invoices = result.rows.map(inv => ({
+    ...inv,
+    customer_name: inv.name,
+    customer_email: inv.email,
+    customer_company: inv.company,
+    address_line1: inv.address_line1,
+    address_line2: inv.address_line2,
+    city: inv.city,
+    state: inv.state,
+    zip_code: inv.zip_code,
+    country: inv.country,
+    items: inv.items || []
+}));
 
         res.json({
             success: true,

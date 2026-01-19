@@ -2541,8 +2541,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     await loadAllData();
-    setupNavigation();
-    renderSection('dashboard');
+loadSettings();  // ADD THIS LINE
+setupNavigation();
+renderSection('dashboard');
 });
 
 // ========================================
@@ -3684,6 +3685,14 @@ if (type === 'lead') {
     
     footerEl.innerHTML = `
     <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+
+    <button class="btn btn-secondary" onclick="changeLeadStatus(${id})">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+    </svg>
+    Change Status
+</button>
     
     ${!lead.is_customer ? `
         <button class="btn btn-success" onclick="convertToCustomer(${id})">
@@ -4769,8 +4778,59 @@ state.searchQuery = query.toLowerCase();
 renderSection(state.currentSection);
 }
 function toggleSetting(setting) {
-state.settings[setting] = !state.settings[setting];
-showToast('Setting updated', 'success');
+    state.settings[setting] = !state.settings[setting];
+    
+    // Save to localStorage
+    localStorage.setItem('adminSettings', JSON.stringify(state.settings));
+    
+    // Apply the setting
+    applySettings();
+    
+    showToast('Setting updated', 'success');
+}
+
+function applySettings() {
+    // Apply dark/light mode
+    if (state.settings.darkMode) {
+        document.documentElement.style.setProperty('--bg-void', '#050506');
+        document.documentElement.style.setProperty('--bg-primary', '#0a0a0c');
+        document.documentElement.style.setProperty('--bg-secondary', '#101014');
+        document.documentElement.style.setProperty('--bg-tertiary', '#16161b');
+        document.documentElement.style.setProperty('--bg-elevated', '#1c1c22');
+        document.documentElement.style.setProperty('--bg-hover', '#222229');
+        document.documentElement.style.setProperty('--text-primary', '#f4f4f5');
+        document.documentElement.style.setProperty('--text-secondary', '#a1a1aa');
+        document.documentElement.style.setProperty('--text-muted', '#71717a');
+        document.documentElement.style.setProperty('--border-subtle', 'rgba(255,255,255,0.04)');
+        document.documentElement.style.setProperty('--border-default', 'rgba(255,255,255,0.08)');
+        document.documentElement.style.setProperty('--border-strong', 'rgba(255,255,255,0.12)');
+    } else {
+        // Light mode colors
+        document.documentElement.style.setProperty('--bg-void', '#f8f9fa');
+        document.documentElement.style.setProperty('--bg-primary', '#ffffff');
+        document.documentElement.style.setProperty('--bg-secondary', '#f1f3f4');
+        document.documentElement.style.setProperty('--bg-tertiary', '#e8eaed');
+        document.documentElement.style.setProperty('--bg-elevated', '#ffffff');
+        document.documentElement.style.setProperty('--bg-hover', '#f1f3f4');
+        document.documentElement.style.setProperty('--text-primary', '#202124');
+        document.documentElement.style.setProperty('--text-secondary', '#5f6368');
+        document.documentElement.style.setProperty('--text-muted', '#80868b');
+        document.documentElement.style.setProperty('--border-subtle', 'rgba(0,0,0,0.06)');
+        document.documentElement.style.setProperty('--border-default', 'rgba(0,0,0,0.12)');
+        document.documentElement.style.setProperty('--border-strong', 'rgba(0,0,0,0.2)');
+    }
+}
+
+function loadSettings() {
+    const saved = localStorage.getItem('adminSettings');
+    if (saved) {
+        try {
+            state.settings = { ...state.settings, ...JSON.parse(saved) };
+        } catch (e) {
+            console.error('Error loading settings:', e);
+        }
+    }
+    applySettings();
 }
 function printInvoice() {
 window.print();
@@ -4812,7 +4872,42 @@ setTimeout(() => toast.remove(), 5000);
 // ========================================
 
 // Change lead status
-async function changeLeadStatus(leadId, newStatus) {
+// Change lead status - WITH UI MODAL
+async function changeLeadStatus(leadId) {
+    const statuses = ['new', 'pending', 'contacted', 'closed', 'lost'];
+    const currentLead = [...state.leads, ...state.customers].find(l => l.id === leadId);
+    const currentStatus = currentLead?.status || 'new';
+    
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = 'Change Status';
+    bodyEl.innerHTML = `
+        <form id="changeStatusForm" onsubmit="handleChangeStatus(event, ${leadId})">
+            <div class="form-group">
+                <label class="form-label">Select Status</label>
+                <select class="form-select" name="status" required>
+                    ${statuses.map(s => `
+                        <option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s.toUpperCase()}</option>
+                    `).join('')}
+                </select>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Status</button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+}
+
+async function handleChangeStatus(event, leadId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const status = formData.get('status');
+    
     try {
         const r = await fetch(`${API_URL}/api/leads/${leadId}/status`, {
             method: 'PATCH',
@@ -4820,12 +4915,13 @@ async function changeLeadStatus(leadId, newStatus) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify({ status })
         });
         
         if (!r.ok) throw new Error('Failed to update status');
         
         await loadAllData();
+        closeCreateModal();
         showToast('Status updated successfully', 'success');
         openDetailModal('lead', leadId);
     } catch (e) {

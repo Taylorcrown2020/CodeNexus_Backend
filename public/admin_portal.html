@@ -4942,7 +4942,339 @@ function loadSettings() {
     applySettings();
 }
 function printInvoice() {
-window.print();
+    const invoice = state.currentInvoice;
+    if (!invoice) {
+        showToast('No invoice selected', 'error');
+        return;
+    }
+    
+    const items = invoice.items || [];
+    const taxAmount = parseFloat(invoice.tax_amount || 0);
+    const discount = parseFloat(invoice.discount_amount || 0);
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Invoice ${invoice.invoice_number}</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    padding: 40px;
+                    color: #1a1a1a;
+                    line-height: 1.6;
+                }
+                .invoice-container {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    background: #fff;
+                }
+                .header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    padding-bottom: 30px;
+                    border-bottom: 3px solid #22c55e;
+                    margin-bottom: 30px;
+                }
+                .company-info h1 {
+                    font-size: 28px;
+                    font-weight: 800;
+                    color: #1a1a1a;
+                    margin-bottom: 5px;
+                }
+                .company-info p {
+                    color: #666;
+                    font-size: 14px;
+                }
+                .invoice-title {
+                    text-align: right;
+                }
+                .invoice-title h2 {
+                    font-size: 36px;
+                    font-weight: 800;
+                    color: #22c55e;
+                    letter-spacing: -1px;
+                }
+                .invoice-title .invoice-number {
+                    font-size: 16px;
+                    color: #666;
+                    font-family: monospace;
+                }
+                .parties {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 40px;
+                }
+                .party {
+                    width: 45%;
+                }
+                .party-label {
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    color: #22c55e;
+                    margin-bottom: 10px;
+                }
+                .party-name {
+                    font-size: 18px;
+                    font-weight: 600;
+                    margin-bottom: 5px;
+                }
+                .party-details {
+                    font-size: 14px;
+                    color: #555;
+                }
+                .dates {
+                    display: flex;
+                    gap: 40px;
+                    margin-bottom: 40px;
+                }
+                .date-item {
+                    background: #f8f9fa;
+                    padding: 15px 25px;
+                    border-radius: 8px;
+                    border-left: 4px solid #22c55e;
+                }
+                .date-label {
+                    font-size: 10px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    color: #888;
+                    margin-bottom: 5px;
+                }
+                .date-value {
+                    font-size: 16px;
+                    font-weight: 600;
+                    font-family: monospace;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 30px;
+                }
+                thead {
+                    background: #1a1a1a;
+                    color: #fff;
+                }
+                th {
+                    padding: 15px;
+                    text-align: left;
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                th:last-child {
+                    text-align: right;
+                }
+                td {
+                    padding: 15px;
+                    border-bottom: 1px solid #eee;
+                    font-size: 14px;
+                }
+                td:last-child {
+                    text-align: right;
+                    font-family: monospace;
+                    font-weight: 600;
+                }
+                tbody tr:hover {
+                    background: #fafafa;
+                }
+                .totals {
+                    display: flex;
+                    justify-content: flex-end;
+                }
+                .totals-table {
+                    width: 300px;
+                }
+                .total-row {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 10px 0;
+                    border-bottom: 1px solid #eee;
+                }
+                .total-row.grand {
+                    border-top: 3px solid #22c55e;
+                    border-bottom: none;
+                    margin-top: 10px;
+                    padding-top: 15px;
+                }
+                .total-label {
+                    color: #666;
+                }
+                .total-value {
+                    font-weight: 600;
+                    font-family: monospace;
+                }
+                .total-row.grand .total-label {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #1a1a1a;
+                }
+                .total-row.grand .total-value {
+                    font-size: 28px;
+                    font-weight: 800;
+                    color: #22c55e;
+                }
+                .footer {
+                    margin-top: 50px;
+                    padding-top: 30px;
+                    border-top: 1px solid #eee;
+                }
+                .footer-title {
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    color: #888;
+                    margin-bottom: 10px;
+                }
+                .footer-text {
+                    font-size: 14px;
+                    color: #555;
+                }
+                .status-badge {
+                    display: inline-block;
+                    padding: 5px 15px;
+                    border-radius: 20px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    margin-top: 10px;
+                }
+                .status-draft { background: #f1f3f5; color: #666; }
+                .status-sent { background: #e7f5ff; color: #1971c2; }
+                .status-paid { background: #d3f9d8; color: #2f9e44; }
+                .status-overdue { background: #ffe3e3; color: #e03131; }
+                @media print {
+                    body { padding: 20px; }
+                    .invoice-container { max-width: 100%; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="invoice-container">
+                <div class="header">
+                    <div class="company-info">
+                        <h1>Diamondback Coding</h1>
+                        <p>Premium Development Services</p>
+                        <p>123 Tech Street, Austin, TX 78701</p>
+                        <p>contact@diamondbackcoding.com</p>
+                    </div>
+                    <div class="invoice-title">
+                        <h2>INVOICE</h2>
+                        <div class="invoice-number">#${invoice.invoice_number}</div>
+                        <span class="status-badge status-${invoice.status}">${invoice.status}</span>
+                    </div>
+                </div>
+                
+                <div class="parties">
+                    <div class="party">
+                        <div class="party-label">From</div>
+                        <div class="party-name">Diamondback Coding</div>
+                        <div class="party-details">
+                            123 Tech Street<br>
+                            Austin, TX 78701<br>
+                            contact@diamondbackcoding.com
+                        </div>
+                    </div>
+                    <div class="party">
+                        <div class="party-label">Bill To</div>
+                        <div class="party-name">${invoice.customer_name || 'Customer'}</div>
+                        <div class="party-details">
+                            ${invoice.customer_email || ''}<br>
+                            ${invoice.customer_company || ''}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dates">
+                    <div class="date-item">
+                        <div class="date-label">Issue Date</div>
+                        <div class="date-value">${formatDate(invoice.issue_date)}</div>
+                    </div>
+                    <div class="date-item">
+                        <div class="date-label">Due Date</div>
+                        <div class="date-value">${formatDate(invoice.due_date)}</div>
+                    </div>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Qty</th>
+                            <th>Unit Price</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(item => `
+                            <tr>
+                                <td>${item.description}</td>
+                                <td>${item.quantity || 1}</td>
+                                <td>$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
+                                <td>$${parseFloat(item.amount).toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                
+                <div class="totals">
+                    <div class="totals-table">
+                        <div class="total-row">
+                            <span class="total-label">Subtotal</span>
+                            <span class="total-value">$${parseFloat(invoice.subtotal).toLocaleString()}</span>
+                        </div>
+                        ${taxAmount > 0 ? `
+                            <div class="total-row">
+                                <span class="total-label">Tax (${invoice.tax_rate}%)</span>
+                                <span class="total-value">$${taxAmount.toLocaleString()}</span>
+                            </div>
+                        ` : ''}
+                        ${discount > 0 ? `
+                            <div class="total-row">
+                                <span class="total-label">Discount</span>
+                                <span class="total-value">-$${discount.toLocaleString()}</span>
+                            </div>
+                        ` : ''}
+                        <div class="total-row grand">
+                            <span class="total-label">Total</span>
+                            <span class="total-value">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                ${invoice.notes ? `
+                    <div class="footer">
+                        <div class="footer-title">Notes</div>
+                        <div class="footer-text">${invoice.notes}</div>
+                    </div>
+                ` : ''}
+                
+                <div class="footer">
+                    <div class="footer-title">Payment Information</div>
+                    <div class="footer-text">
+                        Thank you for your business! Please remit payment by the due date.<br>
+                        For questions, contact us at contact@diamondbackcoding.com
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                window.onload = function() {
+                    window.print();
+                }
+            <\/script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 }
 function openExportModal() {
 showToast('Export feature coming soon', 'warning');

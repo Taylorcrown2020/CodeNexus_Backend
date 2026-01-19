@@ -2981,9 +2981,10 @@ function renderDashboard(content) {
     const totalLeads = state.leads.length;
     const newLeads = state.leads.filter(l => l.status === 'new').length;
     const activeCustomers = state.customers.length;
-    const pendingInvoices = state.invoices.filter(i => i.status === 'sent' || i.status === 'overdue').length;
+    const pendingInvoices = state.invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void').length;
     const totalRevenue = state.invoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
-    
+    const pendingRevenue = state.invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void').reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+
     content.innerHTML = `
         <div class="stats-grid">
             <div class="stat-card">
@@ -3037,7 +3038,7 @@ function renderDashboard(content) {
                     </div>
                 </div>
                 <div class="stat-value">${pendingInvoices}</div>
-                <div class="stat-change">Awaiting payment</div>
+                <div class="stat-change">$${pendingRevenue.toLocaleString()} awaiting payment</div>
             </div>
             
             <div class="stat-card">
@@ -5371,7 +5372,159 @@ function printInvoice() {
     printWindow.document.close();
 }
 function openExportModal() {
-showToast('Export feature coming soon', 'warning');
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = 'Export Data';
+    bodyEl.innerHTML = `
+        <div class="form-group">
+            <label class="form-label">What would you like to export?</label>
+            <select class="form-select" id="exportType">
+                <option value="leads">All Leads</option>
+                <option value="customers">All Customers</option>
+                <option value="invoices">All Invoices</option>
+                <option value="employees">All Employees</option>
+                <option value="all">Everything</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Export Format</label>
+            <select class="form-select" id="exportFormat">
+                <option value="csv">CSV (Excel compatible)</option>
+                <option value="json">JSON</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+            <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="performExport()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export
+            </button>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+function performExport() {
+    const exportType = document.getElementById('exportType').value;
+    const exportFormat = document.getElementById('exportFormat').value;
+    
+    let data = [];
+    let filename = '';
+    
+    switch (exportType) {
+        case 'leads':
+            data = state.leads;
+            filename = 'leads';
+            break;
+        case 'customers':
+            data = state.customers;
+            filename = 'customers';
+            break;
+        case 'invoices':
+            data = state.invoices;
+            filename = 'invoices';
+            break;
+        case 'employees':
+            data = state.employees;
+            filename = 'employees';
+            break;
+        case 'all':
+            data = {
+                leads: state.leads,
+                customers: state.customers,
+                invoices: state.invoices,
+                employees: state.employees
+            };
+            filename = 'all_data';
+            break;
+    }
+    
+    if (exportFormat === 'csv') {
+        if (exportType === 'all') {
+            // Export each type as separate CSV
+            downloadCSV(state.leads, 'leads');
+            downloadCSV(state.customers, 'customers');
+            downloadCSV(state.invoices, 'invoices');
+            downloadCSV(state.employees, 'employees');
+        } else {
+            downloadCSV(data, filename);
+        }
+    } else {
+        downloadJSON(data, filename);
+    }
+    
+    closeCreateModal();
+    showToast('Export completed successfully', 'success');
+}
+
+function downloadCSV(data, filename) {
+    if (!data || data.length === 0) {
+        showToast(`No ${filename} data to export`, 'warning');
+        return;
+    }
+    
+    // Get headers from first object
+    const headers = Object.keys(data[0]);
+    
+    // Build CSV content
+    let csv = headers.join(',') + '\n';
+    
+    data.forEach(row => {
+        const values = headers.map(header => {
+            let value = row[header];
+            
+            // Handle null/undefined
+            if (value === null || value === undefined) {
+                return '';
+            }
+            
+            // Handle objects/arrays (like notes or items)
+            if (typeof value === 'object') {
+                value = JSON.stringify(value);
+            }
+            
+            // Convert to string and escape quotes
+            value = String(value).replace(/"/g, '""');
+            
+            // Wrap in quotes if contains comma, newline, or quotes
+            if (value.includes(',') || value.includes('\n') || value.includes('"')) {
+                value = `"${value}"`;
+            }
+            
+            return value;
+        });
+        csv += values.join(',') + '\n';
+    });
+    
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+function downloadJSON(data, filename) {
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+        showToast(`No ${filename} data to export`, 'warning');
+        return;
+    }
+    
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
 }
 function logout() {
 localStorage.removeItem('adminToken');

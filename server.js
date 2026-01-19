@@ -860,9 +860,24 @@ app.get('/api/admin/cookie-consent/stats', authenticateToken, async (req, res) =
 // ========================================
 
 // Get all employees
-// Get all employees
 app.get('/api/employees', authenticateToken, async (req, res) => {
     try {
+        // First, ensure the table exists
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS employees (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                phone VARCHAR(50),
+                role VARCHAR(100) DEFAULT 'Team Member',
+                is_active BOOLEAN DEFAULT TRUE,
+                projects_assigned INTEGER DEFAULT 0,
+                tasks_completed INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
         const result = await pool.query(
             'SELECT * FROM employees WHERE is_active = TRUE ORDER BY name'
         );
@@ -875,7 +890,7 @@ app.get('/api/employees', authenticateToken, async (req, res) => {
         console.error('Get employees error:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Server error.' 
+            message: 'Server error: ' + error.message 
         });
     }
 });
@@ -920,7 +935,25 @@ app.get('/api/employees/:id', authenticateToken, async (req, res) => {
 // Create new employee
 app.post('/api/employees', authenticateToken, async (req, res) => {
     try {
+        // First, ensure the table exists
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS employees (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                phone VARCHAR(50),
+                role VARCHAR(100) DEFAULT 'Team Member',
+                is_active BOOLEAN DEFAULT TRUE,
+                projects_assigned INTEGER DEFAULT 0,
+                tasks_completed INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
         const { name, email, phone, role } = req.body;
+        
+        console.log('📝 Creating employee:', { name, email, phone, role });
 
         if (!name || !email) {
             return res.status(400).json({
@@ -933,10 +966,10 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
             `INSERT INTO employees (name, email, phone, role)
              VALUES ($1, $2, $3, $4)
              RETURNING *`,
-            [name, email, phone || null, role || 'Team Member']
+            [name.trim(), email.trim().toLowerCase(), phone || null, role || 'Team Member']
         );
 
-        console.log('✅ New employee created:', result.rows[0].email);
+        console.log('✅ New employee created:', result.rows[0]);
 
         res.json({
             success: true,
@@ -944,16 +977,18 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
             employee: result.rows[0]
         });
     } catch (error) {
-        if (error.code === '23505') { // Unique constraint violation
+        console.error('❌ Create employee error:', error);
+        
+        if (error.code === '23505') {
             return res.status(400).json({
                 success: false,
                 message: 'An employee with this email already exists.'
             });
         }
-        console.error('Create employee error:', error);
+        
         res.status(500).json({ 
             success: false, 
-            message: 'Server error.' 
+            message: 'Server error: ' + error.message 
         });
     }
 });
@@ -1005,7 +1040,6 @@ app.patch('/api/employees/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Create new lead (PUBLIC - from contact form AND authenticated admin creation)
 // Create new lead (PUBLIC - from contact form AND authenticated admin creation)
 app.post('/api/leads', async (req, res) => {
     try {
@@ -1080,28 +1114,13 @@ app.post('/api/leads', async (req, res) => {
     }
 });
 
-// Deactivate employee (soft delete)
+// Delete employee
 app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
     try {
         const employeeId = req.params.id;
 
-        // Check if employee has assigned leads
-        const assignedLeads = await pool.query(
-            'SELECT COUNT(*) FROM leads WHERE assigned_to = $1',
-            [employeeId]
-        );
-
-        const count = parseInt(assignedLeads.rows[0].count);
-
-        if (count > 0) {
-            return res.status(400).json({
-                success: false,
-                message: `Cannot delete employee. They have ${count} assigned lead(s)/customer(s). Please reassign them first.`
-            });
-        }
-
         const result = await pool.query(
-            'UPDATE employees SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *',
+            'UPDATE employees SET is_active = FALSE WHERE id = $1 RETURNING *',
             [employeeId]
         );
 
@@ -1112,11 +1131,9 @@ app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
             });
         }
 
-        console.log('✅ Employee deactivated:', employeeId);
-
         res.json({
             success: true,
-            message: 'Employee deactivated successfully.'
+            message: 'Employee deleted successfully.'
         });
     } catch (error) {
         console.error('Delete employee error:', error);

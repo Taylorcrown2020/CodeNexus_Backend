@@ -4394,7 +4394,12 @@ async function handleCreateEmployee(event) {
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
     
-    console.log('Creating employee with data:', data); // Debug log
+    console.log('Creating employee with data:', data);
+    
+    if (!data.name || !data.email) {
+        showToast('Name and email are required', 'error');
+        return;
+    }
     
     try {
         const r = await fetch(`${API_URL}/api/employees`, {
@@ -4403,17 +4408,21 @@ async function handleCreateEmployee(event) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                name: data.name.trim(),
+                email: data.email.trim(),
+                phone: data.phone || null,
+                role: data.role || 'Team Member'
+            })
         });
         
         const result = await r.json();
-        console.log('Server response:', result); // Debug log
+        console.log('Server response:', result);
         
-        if (!r.ok) {
+        if (!r.ok || !result.success) {
             throw new Error(result.message || 'Failed to create employee');
         }
         
-        // Reload employees specifically
         await loadEmployees();
         closeCreateModal();
         showToast('Employee added successfully', 'success');

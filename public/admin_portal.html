@@ -2885,18 +2885,18 @@ function renderSection(section) {
     
     const content = document.getElementById('contentArea');
     
-    switch (section) {
-        case 'dashboard': renderDashboard(content); break;
-        case 'analytics': renderAnalytics(content); break;
-        case 'leads':
-        case 'new':
-        case 'pending':
-        case 'contacted':
-            state.currentFilter = section === 'leads' ? 'all' : section;
-            renderLeadsTable(content, 'leads');
-            break;
-        case 'customers': renderLeadsTable(content, 'customers'); break;
-        case 'employees': renderEmployees(content); break;
+switch (section) {
+    case 'dashboard': renderDashboard(content); break;
+    case 'analytics': renderAnalytics(content); break;
+    case 'leads':
+    case 'new':
+    case 'pending':
+    case 'contacted':
+        state.currentFilter = section === 'leads' ? 'all' : section;
+        renderLeadsTable(content, 'leads');
+        break;
+    case 'customers': renderLeadsTable(content, 'customers'); break;
+    case 'employees': renderEmployees(content); break;
         case 'invoices': renderInvoices(content); break;
         case 'tasks': renderTasks(content); break;
         case 'settings': renderSettings(content); break;
@@ -3283,6 +3283,7 @@ function renderLeadsTableHTML(leads) {
 }
 
 function renderEmployees(content) {
+    console.log('renderEmployees called, employees:', state.employees);
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">

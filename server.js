@@ -2031,8 +2031,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
             unit_amount: Math.round(parseFloat(invoice.total_amount) * 100), // Convert to cents
             currency: 'usd',
             product_data: {
-                name: `Invoice ${invoice.invoice_number}`,
-                description: `Payment for ${invoice.name || 'Customer'}`,
+                name: `Invoice ${invoice.invoice_number} — ${invoice.short_description}`,
                 metadata: {
                     invoice_id: invoiceId,
                     invoice_number: invoice.invoice_number

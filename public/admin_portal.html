@@ -4204,7 +4204,7 @@ if (invoice.stripe_payment_link) {
 
 // If no payment link available, use fallback
 if (!paymentUrl) {
-    paymentUrl = `${window.location.origin}/invoice/${invoice.invoice_number}`;
+    paymentUrl = `${FRONTEND_BASE_URL}/invoice/${invoice.invoice_number}`;
 }
     
     // Generate unique QR code ID
@@ -5308,7 +5308,7 @@ function printInvoice() {
     const discount = parseFloat(invoice.discount_amount || 0);
     
     // Generate payment URL
-    const paymentUrl = invoice.stripe_payment_link || `${window.location.origin}/invoice/${invoice.invoice_number}`;
+    const paymentUrl = invoice.stripe_payment_link || `${FRONTEND_BASE_URL}/invoice/${invoice.invoice_number}`;
     
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`

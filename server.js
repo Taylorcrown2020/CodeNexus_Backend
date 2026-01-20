@@ -15,7 +15,122 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========================================
-// MIDDLEWARE
+// STRIPE WEBHOOK (MUST BE FIRST!)
+// ========================================
+app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    
+    let event;
+    
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+        console.error('⚠️  Webhook signature verification failed:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    
+    // Handle the event
+    switch (event.type) {
+        case 'checkout.session.completed':
+            const session = event.data.object;
+            const invoiceId = session.metadata.invoice_id;
+            
+            if (invoiceId) {
+                try {
+                    // Mark invoice as paid
+                    await pool.query(
+                        `UPDATE invoices 
+                         SET status = 'paid', 
+                             paid_at = CURRENT_TIMESTAMP,
+                             payment_method = 'Stripe',
+                             payment_reference = $1
+                         WHERE id = $2`,
+                        [session.id, invoiceId]
+                    );
+                    
+                    // Get invoice and customer details
+                    const invoiceResult = await pool.query(
+                        `SELECT i.*, l.id as lead_id, l.name, l.is_customer
+                         FROM invoices i
+                         LEFT JOIN leads l ON i.lead_id = l.id
+                         WHERE i.id = $1`,
+                        [invoiceId]
+                    );
+                    
+                    const invoice = invoiceResult.rows[0];
+                    
+                    if (!invoice) {
+                        console.error('Invoice not found:', invoiceId);
+                        return res.json({received: true});
+                    }
+                    
+                    // Convert to customer if not already
+                    if (!invoice.is_customer) {
+                        await pool.query(
+                            `UPDATE leads 
+                             SET is_customer = TRUE, 
+                                 customer_status = 'active',
+                                 status = 'closed',
+                                 updated_at = CURRENT_TIMESTAMP
+                             WHERE id = $1`,
+                            [invoice.lead_id]
+                        );
+                        console.log(`✅ Lead converted to customer: ${invoice.name}`);
+                    } else {
+                        // Make sure customer is active
+                        await pool.query(
+                            `UPDATE leads 
+                             SET customer_status = 'active',
+                                 updated_at = CURRENT_TIMESTAMP
+                             WHERE id = $1`,
+                            [invoice.lead_id]
+                        );
+                    }
+                    
+                    // Update lifetime value
+                    const lifetimeValue = await pool.query(
+                        `SELECT COALESCE(SUM(total_amount), 0) as total
+                         FROM invoices
+                         WHERE lead_id = $1 AND status = 'paid'`,
+                        [invoice.lead_id]
+                    );
+                    
+                    await pool.query(
+                        `UPDATE leads 
+                         SET lifetime_value = $1,
+                             last_payment_date = CURRENT_TIMESTAMP
+                         WHERE id = $2`,
+                        [lifetimeValue.rows[0].total, invoice.lead_id]
+                    );
+                    
+                    console.log(`✅ Payment processed for invoice ${invoice.invoice_number}`);
+                    console.log(`   💰 Amount: $${parseFloat(invoice.total_amount).toLocaleString()}`);
+                    console.log(`   👤 Customer: ${invoice.name}`);
+                    console.log(`   📊 Lifetime Value: $${parseFloat(lifetimeValue.rows[0].total).toLocaleString()}`);
+                } catch (error) {
+                    console.error('Error processing webhook:', error);
+                }
+            }
+            break;
+            
+        case 'payment_intent.succeeded':
+            console.log('💳 Payment intent succeeded:', event.data.object.id);
+            break;
+            
+        case 'payment_intent.payment_failed':
+            console.log('❌ Payment failed:', event.data.object.id);
+            break;
+            
+        default:
+            console.log(`Unhandled event type ${event.type}`);
+    }
+    
+    res.json({received: true});
+});
+
+// ========================================
+// MIDDLEWARE (AFTER WEBHOOK!)
 // ========================================
 app.use(cors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
@@ -1481,7 +1596,6 @@ function generateInvoiceNumber() {
     return `INV-${year}${month}-${random}`;
 }
 
-// Create invoice from expenses
 // Create invoice
 app.post('/api/invoices', authenticateToken, async (req, res) => {
     const client = await pool.connect();
@@ -1492,7 +1606,7 @@ app.post('/api/invoices', authenticateToken, async (req, res) => {
         const { 
             invoice_number, lead_id, issue_date, due_date,
             subtotal, tax_rate, tax_amount, discount_amount, total_amount,
-            status, notes, items 
+            status, notes, short_description, items  // ADD short_description here
         } = req.body;
         const userId = req.user.id;
 
@@ -1504,9 +1618,11 @@ app.post('/api/invoices', authenticateToken, async (req, res) => {
             });
         }
 
-        // Get lead info
+        // Get lead info with full address
         const leadResult = await client.query(
-            'SELECT name, email, company FROM leads WHERE id = $1',
+            `SELECT name, email, company, 
+                    address_line1, address_line2, city, state, zip_code, country
+             FROM leads WHERE id = $1`,
             [lead_id]
         );
 
@@ -1520,15 +1636,15 @@ app.post('/api/invoices', authenticateToken, async (req, res) => {
 
         const lead = leadResult.rows[0];
 
-        // Create invoice
+        // Create invoice WITH short_description
         const invoiceResult = await client.query(
             `INSERT INTO invoices 
              (invoice_number, lead_id, issue_date, due_date, subtotal, tax_rate, tax_amount, 
-              discount_amount, total_amount, status, notes, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              discount_amount, total_amount, status, notes, short_description, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
              RETURNING *`,
             [invoice_number, lead_id, issue_date, due_date, subtotal, tax_rate || 0, tax_amount || 0, 
-             discount_amount || 0, total_amount, status || 'draft', notes, userId]
+             discount_amount || 0, total_amount, status || 'draft', notes, short_description, userId]
         );
 
         const invoiceId = invoiceResult.rows[0].id;
@@ -1555,12 +1671,18 @@ app.post('/api/invoices', authenticateToken, async (req, res) => {
 
         console.log('✅ Invoice created:', invoice_number);
 
-        // Return complete invoice data
+        // Return complete invoice data with address
         const fullInvoice = {
             ...invoiceResult.rows[0],
             customer_name: lead.name,
             customer_email: lead.email,
             customer_company: lead.company,
+            address_line1: lead.address_line1,
+            address_line2: lead.address_line2,
+            city: lead.city,
+            state: lead.state,
+            zip_code: lead.zip_code,
+            country: lead.country,
             items: items
         };
 
@@ -1892,13 +2014,7 @@ async function initializeExpenseTables() {
             )
         `);
 
-        // Add this to your initializeExpenseTables function or run it separately
-await client.query(`
-    ALTER TABLE invoices 
-    ADD COLUMN IF NOT EXISTS stripe_payment_link TEXT
-`);
-
-        // Create invoices table
+        // Create invoices table with ALL required columns
         await client.query(`
             CREATE TABLE IF NOT EXISTS invoices (
                 id SERIAL PRIMARY KEY,
@@ -1914,10 +2030,46 @@ await client.query(`
                 status VARCHAR(50) DEFAULT 'draft',
                 payment_terms VARCHAR(255),
                 notes TEXT,
+                short_description VARCHAR(255),
+                stripe_payment_link TEXT,
+                payment_method VARCHAR(100),
+                payment_reference VARCHAR(255),
+                payment_notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 created_by INTEGER REFERENCES admin_users(id),
                 paid_at TIMESTAMP
             )
+        `);
+
+        // Add columns if they don't exist (for existing databases)
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='invoices' AND column_name='short_description') THEN
+                    ALTER TABLE invoices ADD COLUMN short_description VARCHAR(255);
+                END IF;
+                
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='invoices' AND column_name='stripe_payment_link') THEN
+                    ALTER TABLE invoices ADD COLUMN stripe_payment_link TEXT;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='invoices' AND column_name='payment_method') THEN
+                    ALTER TABLE invoices ADD COLUMN payment_method VARCHAR(100);
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='invoices' AND column_name='payment_reference') THEN
+                    ALTER TABLE invoices ADD COLUMN payment_reference VARCHAR(255);
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='invoices' AND column_name='payment_notes') THEN
+                    ALTER TABLE invoices ADD COLUMN payment_notes TEXT;
+                END IF;
+            END $$;
         `);
 
         // Create invoice_items table
@@ -1932,31 +2084,6 @@ await client.query(`
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
-        // Update the CREATE TABLE IF NOT EXISTS invoices section to include these new fields:
-await client.query(`
-    CREATE TABLE IF NOT EXISTS invoices (
-        id SERIAL PRIMARY KEY,
-        invoice_number VARCHAR(50) UNIQUE NOT NULL,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        issue_date DATE DEFAULT CURRENT_DATE,
-        due_date DATE,
-        subtotal DECIMAL(10, 2) NOT NULL,
-        tax_rate DECIMAL(5, 2) DEFAULT 0,
-        tax_amount DECIMAL(10, 2) DEFAULT 0,
-        discount_amount DECIMAL(10, 2) DEFAULT 0,
-        total_amount DECIMAL(10, 2) NOT NULL,
-        status VARCHAR(50) DEFAULT 'draft',
-        payment_terms VARCHAR(255),
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_by INTEGER REFERENCES admin_users(id),
-        paid_at TIMESTAMP,
-        payment_method VARCHAR(100),
-        payment_reference VARCHAR(255),
-        payment_notes TEXT
-    )
-`);
 
         // Add foreign key if not exists
         await client.query(`
@@ -1997,7 +2124,6 @@ await client.query(`
 // ========================================
 
 // Create Stripe payment link for an invoice
-// Create Stripe payment link for an invoice
 app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) => {
     try {
         const invoiceId = req.params.id;
@@ -2020,166 +2146,120 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
         
         const invoice = invoiceResult.rows[0];
         
+        // Check if payment link already exists
+        if (invoice.stripe_payment_link) {
+            console.log('ℹ️ Using existing payment link for invoice:', invoice.invoice_number);
+            return res.json({
+                success: true,
+                paymentLink: invoice.stripe_payment_link,
+                message: 'Using existing payment link'
+            });
+        }
+        
+        console.log('Creating new payment link for invoice:', {
+            invoiceId,
+            invoiceNumber: invoice.invoice_number,
+            amount: invoice.total_amount,
+            customer: invoice.name
+        });
+        
         // Get invoice items
         const itemsResult = await pool.query(
             'SELECT * FROM invoice_items WHERE invoice_id = $1',
             [invoiceId]
         );
         
-        // Create Stripe Price for this invoice
-        const price = await stripe.prices.create({
-            unit_amount: Math.round(parseFloat(invoice.total_amount) * 100), // Convert to cents
-            currency: 'usd',
-            product_data: {
-                name: `Invoice ${invoice.invoice_number} — ${invoice.short_description}`,
+        // Create description from items or use short_description
+        const description = invoice.short_description || 
+            `Invoice ${invoice.invoice_number}` || 
+            'Services Rendered';
+        
+        try {
+            // Create Stripe Price for this invoice
+            const price = await stripe.prices.create({
+                unit_amount: Math.round(parseFloat(invoice.total_amount) * 100), // Convert to cents
+                currency: 'usd',
+                product_data: {
+                    name: `Invoice ${invoice.invoice_number} — ${description}`,
+                    description: itemsResult.rows.map(item => item.description).join(', ').substring(0, 500),
+                    metadata: {
+                        invoice_id: invoiceId,
+                        invoice_number: invoice.invoice_number
+                    }
+                },
+            });
+            
+            console.log('✅ Stripe price created:', price.id);
+            
+            // Create Payment Link
+            const paymentLink = await stripe.paymentLinks.create({
+                line_items: [{
+                    price: price.id,
+                    quantity: 1,
+                }],
+                after_completion: {
+                    type: 'hosted_confirmation',
+                    hosted_confirmation: {
+                        custom_message: `Thank you for your payment! Invoice ${invoice.invoice_number} has been marked as paid. You will receive a confirmation email shortly.`
+                    }
+                },
                 metadata: {
                     invoice_id: invoiceId,
-                    invoice_number: invoice.invoice_number
-                }
-            },
-        });
-        
-        // Create Payment Link
-        const paymentLink = await stripe.paymentLinks.create({
-            line_items: [{
-                price: price.id,
-                quantity: 1,
-            }],
-            after_completion: {
-                type: 'hosted_confirmation',
-                hosted_confirmation: {
-                    custom_message: `Thank you for your payment! Invoice ${invoice.invoice_number} has been marked as paid.`
-                }
-            },
-            metadata: {
-                invoice_id: invoiceId,
-                invoice_number: invoice.invoice_number,
-                customer_email: invoice.email
-            },
-            customer_creation: 'always',
-            invoice_creation: {
-                enabled: true,
-                invoice_data: {
-                    description: `Invoice ${invoice.invoice_number}`,
-                    metadata: {
-                        invoice_id: invoiceId
+                    invoice_number: invoice.invoice_number,
+                    customer_name: invoice.name,
+                    customer_email: invoice.email
+                },
+                customer_creation: 'always',
+                invoice_creation: {
+                    enabled: true,
+                    invoice_data: {
+                        description: `Invoice ${invoice.invoice_number} - ${description}`,
+                        metadata: {
+                            invoice_id: invoiceId,
+                            invoice_number: invoice.invoice_number
+                        },
+                        footer: 'Thank you for your business!'
                     }
-                }
-            }
-        });
-        
-        // Store payment link in database
-        await pool.query(
-            'UPDATE invoices SET stripe_payment_link = $1 WHERE id = $2',
-            [paymentLink.url, invoiceId]
-        );
-        
-        console.log('✅ Payment link created for invoice:', invoice.invoice_number);
-        
-        res.json({
-            success: true,
-            paymentLink: paymentLink.url,
-            message: 'Payment link created successfully'
-        });
+                },
+                phone_number_collection: {
+                    enabled: true
+                },
+                billing_address_collection: 'auto'
+            });
+            
+            console.log('✅ Payment link created:', paymentLink.url);
+            
+            // Store payment link in database
+            await pool.query(
+                'UPDATE invoices SET stripe_payment_link = $1 WHERE id = $2',
+                [paymentLink.url, invoiceId]
+            );
+            
+            console.log('✅ Payment link saved to database for invoice:', invoice.invoice_number);
+            
+            res.json({
+                success: true,
+                paymentLink: paymentLink.url,
+                message: 'Payment link created successfully'
+            });
+            
+        } catch (stripeError) {
+            console.error('❌ Stripe API error:', stripeError.message);
+            console.error('Full error:', stripeError);
+            
+            res.status(500).json({ 
+                success: false, 
+                message: 'Stripe error: ' + stripeError.message 
+            });
+        }
         
     } catch (error) {
-        console.error('Create payment link error:', error);
+        console.error('❌ Create payment link error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Error creating payment link: ' + error.message 
         });
     }
-});
-
-// Stripe webhook endpoint to handle payment events
-app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    
-    let event;
-    
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } catch (err) {
-        console.error('⚠️  Webhook signature verification failed:', err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-    
-    // Handle the event
-    switch (event.type) {
-        case 'checkout.session.completed':
-            const session = event.data.object;
-            const invoiceId = session.metadata.invoice_id;
-            
-            if (invoiceId) {
-                // Mark invoice as paid
-                await pool.query(
-                    `UPDATE invoices 
-                     SET status = 'paid', 
-                         paid_at = CURRENT_TIMESTAMP,
-                         payment_method = 'Stripe',
-                         payment_reference = $1
-                     WHERE id = $2`,
-                    [session.id, invoiceId]
-                );
-                
-                // Get invoice and customer details
-                const invoiceResult = await pool.query(
-                    `SELECT i.*, l.id as lead_id, l.name, l.is_customer
-                     FROM invoices i
-                     LEFT JOIN leads l ON i.lead_id = l.id
-                     WHERE i.id = $1`,
-                    [invoiceId]
-                );
-                
-                const invoice = invoiceResult.rows[0];
-                
-                // Convert to customer if not already
-                if (invoice && !invoice.is_customer) {
-                    await pool.query(
-                        `UPDATE leads 
-                         SET is_customer = TRUE, 
-                             customer_status = 'active',
-                             status = 'closed',
-                             updated_at = CURRENT_TIMESTAMP
-                         WHERE id = $1`,
-                        [invoice.lead_id]
-                    );
-                }
-                
-                // Update lifetime value
-                const lifetimeValue = await pool.query(
-                    `SELECT COALESCE(SUM(total_amount), 0) as total
-                     FROM invoices
-                     WHERE lead_id = $1 AND status = 'paid'`,
-                    [invoice.lead_id]
-                );
-                
-                await pool.query(
-                    `UPDATE leads 
-                     SET lifetime_value = $1,
-                         last_payment_date = CURRENT_TIMESTAMP
-                     WHERE id = $2`,
-                    [lifetimeValue.rows[0].total, invoice.lead_id]
-                );
-                
-                console.log(`✅ Payment processed for invoice ${invoice.invoice_number}`);
-            }
-            break;
-            
-        case 'payment_intent.succeeded':
-            console.log('💳 Payment intent succeeded:', event.data.object.id);
-            break;
-            
-        case 'payment_intent.payment_failed':
-            console.log('❌ Payment failed:', event.data.object.id);
-            break;
-            
-        default:
-            console.log(`Unhandled event type ${event.type}`);
-    }
-    
-    res.json({received: true});
 });
 
 // ========================================

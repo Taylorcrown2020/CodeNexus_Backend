@@ -2615,6 +2615,14 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
         </div>
     </div>
 
+    // Add this field to the invoice details form:
+<div class="form-group full-width">
+    <label class="form-label">Invoice Description (for payment page)</label>
+    <input type="text" class="form-input" id="invoiceShortDescription" 
+           placeholder="e.g., Website Development Services" 
+           maxlength="100">
+</div>
+
     <!-- Payment Modal -->
 <div class="modal-overlay" id="paymentModal">
     <div class="modal">
@@ -2639,6 +2647,7 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
 // STATE & CONFIGURATION
 // ========================================
 const API_URL = window.location.origin;
+const FRONTEND_BASE_URL = window.location.origin; // ADD THIS LINE
 let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
 
 const state = {
@@ -4169,43 +4178,47 @@ async function renderInvoicePreview(invoice) {
     const taxAmount = parseFloat(invoice.tax_amount || 0);
     const discount = parseFloat(invoice.discount_amount || 0);
     
-    // IMPORTANT: Generate Stripe payment link if invoice isn't paid
-// REPLACE THIS SECTION:
-// Generate or use existing Stripe payment link
-let paymentUrl = null;
+    // Generate or use existing Stripe payment link
+    let paymentUrl = null;
 
-// If invoice already has a Stripe payment link, use it
-if (invoice.stripe_payment_link) {
-    paymentUrl = invoice.stripe_payment_link;
-} else if (invoice.id && invoice.status !== 'paid') {
-    // Create new payment link
-    try {
-        const response = await fetch(`${API_URL}/api/invoices/${invoice.id}/payment-link`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${authToken}`
+    // If invoice already has a Stripe payment link, use it
+    if (invoice.stripe_payment_link) {
+        paymentUrl = invoice.stripe_payment_link;
+        console.log('ℹ️ Using existing payment link:', paymentUrl);
+    } else if (invoice.id && invoice.status !== 'paid') {
+        // Create new payment link
+        try {
+            console.log('📡 Creating payment link for invoice:', invoice.id);
+            const response = await fetch(`${API_URL}/api/invoices/${invoice.id}/payment-link`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.paymentLink) {
+                    paymentUrl = data.paymentLink;
+                    invoice.stripe_payment_link = data.paymentLink;
+                    console.log('✅ Stripe payment link created:', paymentUrl);
+                } else {
+                    console.warn('⚠️ Payment link creation returned success but no link');
+                }
+            } else {
+                const errorText = await response.text();
+                console.error('❌ Failed to create payment link:', response.status, errorText);
             }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.paymentLink) {
-                paymentUrl = data.paymentLink;
-                invoice.stripe_payment_link = data.paymentLink;
-                console.log('✅ Stripe payment link created:', paymentUrl);
-            }
-        } else {
-            console.error('Failed to create payment link:', await response.text());
+        } catch (error) {
+            console.error('❌ Error generating payment link:', error);
         }
-    } catch (error) {
-        console.error('Error generating payment link:', error);
     }
-}
 
-// If no payment link available, use fallback
-if (!paymentUrl) {
-    paymentUrl = `${FRONTEND_BASE_URL}/invoice/${invoice.invoice_number}`;
-}
+    // If no payment link available, use fallback
+    if (!paymentUrl) {
+        paymentUrl = `${FRONTEND_BASE_URL}/invoice/${invoice.invoice_number}`;
+        console.log('ℹ️ Using fallback URL:', paymentUrl);
+    }
     
     // Generate unique QR code ID
     const qrCodeId = `qr-code-${invoice.id || Date.now()}`;
@@ -4311,7 +4324,7 @@ if (!paymentUrl) {
                     </div>
                 </div>
                 
-                ${invoice.status !== 'paid' ? `
+${invoice.status !== 'paid' ? `
                     <div class="qr-code-section">
                         <div class="qr-code-title">
                             <svg style="width: 20px; height: 20px; display: inline; margin-right: 6px; vertical-align: middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -4342,22 +4355,27 @@ if (!paymentUrl) {
         </div>
     `;
     
-    // Use setTimeout to ensure the DOM is ready before generating QR code
     setTimeout(() => {
         const qrElement = document.getElementById(qrCodeId);
         if (qrElement && invoice.status !== 'paid') {
             // Clear any existing QR code
             qrElement.innerHTML = '';
             
-            // Generate QR code
-            new QRCode(qrElement, {
-                text: paymentUrl,
-                width: 200,
-                height: 200,
-                colorDark: "#1a1a1a",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
+            try {
+                // Generate QR code
+                new QRCode(qrElement, {
+                    text: paymentUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#1a1a1a",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                console.log('✅ QR code generated for:', paymentUrl);
+            } catch (error) {
+                console.error('❌ QR code generation failed:', error);
+                qrElement.innerHTML = '<p style="color: var(--text-muted);">QR code generation failed</p>';
+            }
         }
     }, 100);
     
@@ -4543,6 +4561,64 @@ if (type === 'lead') {
             </div>
         </form>
     `;
+    bodyEl.innerHTML = `
+    <div class="tabs">
+        <button class="tab active" onclick="switchInvoiceTab('details')">Details</button>
+        <button class="tab" onclick="switchInvoiceTab('items')">Items</button>
+        <button class="tab" onclick="switchInvoiceTab('preview')">Preview</button>
+    </div>
+    
+    <div id="invoiceDetailsTab">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Invoice Number</label>
+                <input type="text" class="form-input" id="invoiceNumber" value="${invoiceNumber}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="invoiceStatus">
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="paid">Paid</option>
+                </select>
+            </div>
+            
+            <!-- ADD THIS NEW FIELD -->
+            <div class="form-group full-width">
+                <label class="form-label">Invoice Description (for payment page) <span class="required">*</span></label>
+                <input type="text" class="form-input" id="invoiceShortDescription" 
+                       placeholder="e.g., Website Development Services, Logo Design, Monthly Retainer" 
+                       maxlength="100" required>
+                <small style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
+                    This appears on the Stripe payment page
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Issue Date</label>
+                <input type="date" class="form-input" id="invoiceIssueDate" value="${today}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Due Date</label>
+                <input type="date" class="form-input" id="invoiceDueDate" value="${dueDate}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tax Rate (%)</label>
+                <input type="number" class="form-input" id="invoiceTaxRate" value="0" step="0.01" oninput="recalculateInvoice()">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Discount</label>
+                <input type="number" class="form-input" id="invoiceDiscount" value="0" step="0.01" oninput="recalculateInvoice()">
+            </div>
+            <div class="form-group full-width">
+                <label class="form-label">Notes</label>
+                <textarea class="form-textarea" id="invoiceNotes" placeholder="Payment terms, thank you message, etc."></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rest of your tabs... -->
+`;
 }
 
 modal.classList.add('active');
@@ -4887,48 +4963,56 @@ const invoice = {
 document.getElementById('invoicePreviewTab').innerHTML = renderInvoicePreview(invoice);
 }
 async function saveInvoice() {
-if (!state.currentInvoice || state.currentInvoice.items.length === 0) {
-showToast('Please add at least one item to the invoice', 'error');
-return;
-}
-recalculateInvoice();
-
-const invoiceData = {
-    invoice_number: document.getElementById('invoiceNumber').value,
-    lead_id: state.currentInvoice.leadId,
-    issue_date: document.getElementById('invoiceIssueDate').value,
-    due_date: document.getElementById('invoiceDueDate').value,
-    subtotal: state.currentInvoice.subtotal,
-    tax_rate: parseFloat(document.getElementById('invoiceTaxRate').value) || 0,
-    tax_amount: state.currentInvoice.tax_amount,
-    discount_amount: state.currentInvoice.discount_amount,
-    total_amount: state.currentInvoice.total_amount,
-    status: document.getElementById('invoiceStatus').value,
-    notes: document.getElementById('invoiceNotes').value,
-    items: state.currentInvoice.items
-};
-
-try {
-    const r = await fetch(`${API_URL}/api/invoices`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify(invoiceData)
-    });
+    if (!state.currentInvoice || state.currentInvoice.items.length === 0) {
+        showToast('Please add at least one item to the invoice', 'error');
+        return;
+    }
     
-    if (!r.ok) throw new Error('Failed to create invoice');
+    const shortDescription = document.getElementById('invoiceShortDescription').value.trim();
+    if (!shortDescription) {
+        showToast('Please enter an invoice description', 'error');
+        return;
+    }
     
-    await loadInvoices();
-    updateBadges();
-    closeInvoiceModal();
-    closeDetailModal();
-    showToast('Invoice created successfully', 'success');
-    renderSection('invoices');
-} catch (e) {
-    showToast('Error creating invoice', 'error');
-}
+    recalculateInvoice();
+
+    const invoiceData = {
+        invoice_number: document.getElementById('invoiceNumber').value,
+        lead_id: state.currentInvoice.leadId,
+        issue_date: document.getElementById('invoiceIssueDate').value,
+        due_date: document.getElementById('invoiceDueDate').value,
+        subtotal: state.currentInvoice.subtotal,
+        tax_rate: parseFloat(document.getElementById('invoiceTaxRate').value) || 0,
+        tax_amount: state.currentInvoice.tax_amount,
+        discount_amount: state.currentInvoice.discount_amount,
+        total_amount: state.currentInvoice.total_amount,
+        status: document.getElementById('invoiceStatus').value,
+        short_description: shortDescription, // ADD THIS LINE
+        notes: document.getElementById('invoiceNotes').value,
+        items: state.currentInvoice.items
+    };
+
+    try {
+        const r = await fetch(`${API_URL}/api/invoices`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(invoiceData)
+        });
+        
+        if (!r.ok) throw new Error('Failed to create invoice');
+        
+        await loadInvoices();
+        updateBadges();
+        closeInvoiceModal();
+        closeDetailModal();
+        showToast('Invoice created successfully', 'success');
+        renderSection('invoices');
+    } catch (e) {
+        showToast('Error creating invoice', 'error');
+    }
 }
 async function createInvoiceFromExpenses() {
 if (state.selectedExpenses.length === 0) {

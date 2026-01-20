@@ -4111,10 +4111,10 @@ const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
     const invoice = state.invoices.find(i => i.id === id);
     if (!invoice) return;
     
-    state.currentInvoice = invoice; // ADD THIS LINE - it was missing!
+    state.currentInvoice = invoice;
     
     titleEl.textContent = 'Invoice Details';
-    bodyEl.innerHTML = renderInvoicePreview(invoice);
+    bodyEl.innerHTML = await renderInvoicePreview(invoice); // ADD await here!
     
     // REPLACE THE ENTIRE footerEl.innerHTML with this:
     let footerButtons = `
@@ -4164,13 +4164,39 @@ const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
 
 modal.classList.add('active');
 }
-function renderInvoicePreview(invoice) {
+async function renderInvoicePreview(invoice) {
     const items = invoice.items || [];
     const taxAmount = parseFloat(invoice.tax_amount || 0);
     const discount = parseFloat(invoice.discount_amount || 0);
     
-    // Generate payment URL (placeholder for now - will be replaced with Stripe)
-    const paymentUrl = `https://yourwebsite.com/pay/${invoice.invoice_number}`;
+    // IMPORTANT: Generate Stripe payment link if invoice isn't paid
+    let paymentUrl = `https://yourwebsite.com/pay/${invoice.invoice_number}`;
+    
+    // If invoice has an ID and isn't paid, create/fetch Stripe payment link
+    if (invoice.id && invoice.status !== 'paid' && !invoice.stripe_payment_link) {
+        try {
+            const response = await fetch(`${API_URL}/api/invoices/${invoice.id}/payment-link`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.paymentLink) {
+                    paymentUrl = data.paymentLink;
+                    // Update the invoice object with the payment link
+                    invoice.stripe_payment_link = data.paymentLink;
+                }
+            }
+        } catch (error) {
+            console.error('Error generating payment link:', error);
+        }
+    } else if (invoice.stripe_payment_link) {
+        // Use existing payment link
+        paymentUrl = invoice.stripe_payment_link;
+    }
     
     // Generate unique QR code ID
     const qrCodeId = `qr-code-${invoice.id || Date.now()}`;
@@ -4292,7 +4318,7 @@ function renderInvoicePreview(invoice) {
                             Scan this QR code with your phone's camera to quickly access the secure payment portal. You can pay via credit card, bank transfer, or other accepted payment methods.
                         </div>
                         <div class="payment-url">
-                            Payment Link: ${paymentUrl}
+                            ${paymentUrl}
                         </div>
                     </div>
                 ` : ''}

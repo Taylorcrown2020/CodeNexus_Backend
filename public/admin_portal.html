@@ -4170,33 +4170,42 @@ async function renderInvoicePreview(invoice) {
     const discount = parseFloat(invoice.discount_amount || 0);
     
     // IMPORTANT: Generate Stripe payment link if invoice isn't paid
-    let paymentUrl = `https://yourwebsite.com/pay/${invoice.invoice_number}`;
-    
-    // If invoice has an ID and isn't paid, create/fetch Stripe payment link
-    if (invoice.id && invoice.status !== 'paid' && !invoice.stripe_payment_link) {
-        try {
-            const response = await fetch(`${API_URL}/api/invoices/${invoice.id}/payment-link`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${authToken}`
-                }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.paymentLink) {
-                    paymentUrl = data.paymentLink;
-                    // Update the invoice object with the payment link
-                    invoice.stripe_payment_link = data.paymentLink;
-                }
+// REPLACE THIS SECTION:
+// Generate or use existing Stripe payment link
+let paymentUrl = null;
+
+// If invoice already has a Stripe payment link, use it
+if (invoice.stripe_payment_link) {
+    paymentUrl = invoice.stripe_payment_link;
+} else if (invoice.id && invoice.status !== 'paid') {
+    // Create new payment link
+    try {
+        const response = await fetch(`${API_URL}/api/invoices/${invoice.id}/payment-link`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
             }
-        } catch (error) {
-            console.error('Error generating payment link:', error);
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.paymentLink) {
+                paymentUrl = data.paymentLink;
+                invoice.stripe_payment_link = data.paymentLink;
+                console.log('✅ Stripe payment link created:', paymentUrl);
+            }
+        } else {
+            console.error('Failed to create payment link:', await response.text());
         }
-    } else if (invoice.stripe_payment_link) {
-        // Use existing payment link
-        paymentUrl = invoice.stripe_payment_link;
+    } catch (error) {
+        console.error('Error generating payment link:', error);
     }
+}
+
+// If no payment link available, use fallback
+if (!paymentUrl) {
+    paymentUrl = `${window.location.origin}/invoice/${invoice.invoice_number}`;
+}
     
     // Generate unique QR code ID
     const qrCodeId = `qr-code-${invoice.id || Date.now()}`;
@@ -5299,7 +5308,7 @@ function printInvoice() {
     const discount = parseFloat(invoice.discount_amount || 0);
     
     // Generate payment URL
-    const paymentUrl = `https://yourwebsite.com/pay/${invoice.invoice_number}`;
+    const paymentUrl = invoice.stripe_payment_link || `${window.location.origin}/invoice/${invoice.invoice_number}`;
     
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`

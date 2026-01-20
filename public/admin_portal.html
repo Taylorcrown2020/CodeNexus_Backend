@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diamondback Coding | Admin Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -73,6 +74,54 @@ body {
     background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-amber); background-clip: padding-box; }
+
+/* ========================================
+   QR CODE STYLES
+======================================== */
+.qr-code-section {
+    margin-top: 30px;
+    padding: 24px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    text-align: center;
+}
+
+.qr-code-container {
+    display: inline-block;
+    padding: 20px;
+    background: white;
+    border-radius: var(--radius-md);
+    margin: 16px auto;
+}
+
+.qr-code-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-amber);
+    margin-bottom: 8px;
+}
+
+.qr-code-instructions {
+    font-size: 13px;
+    color: var(--text-secondary);
+    max-width: 400px;
+    margin: 12px auto 0;
+    line-height: 1.6;
+}
+
+.payment-url {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    margin-top: 12px;
+    word-break: break-all;
+}
 
 /* ========================================
    SIDEBAR
@@ -4116,119 +4165,168 @@ const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
 modal.classList.add('active');
 }
 function renderInvoicePreview(invoice) {
-const items = invoice.items || [];
-const taxAmount = parseFloat(invoice.tax_amount || 0);
-const discount = parseFloat(invoice.discount_amount || 0);
-return `
-    <div class="invoice-preview">
-        <div class="invoice-preview-header">
-            <div class="invoice-company">
-                <div class="invoice-company-logo">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                        <path d="M2 17l10 5 10-5"/>
-                        <path d="M2 12l10 5 10-5"/>
-                    </svg>
-                </div>
-                <div>
-                    <div class="invoice-company-name">Diamondback Coding</div>
-                    <div class="invoice-company-tagline">Premium Development Services</div>
-                </div>
-            </div>
-            <div class="invoice-info">
-                <div class="invoice-title">INVOICE</div>
-                <div class="invoice-number">#${invoice.invoice_number}</div>
-            </div>
-        </div>
-        
-        <div class="invoice-preview-body">
-            <div class="invoice-parties">
-                <div>
-                    <div class="invoice-party-label">From</div>
-                    <div class="invoice-party-name">Diamondback Coding</div>
-                    <div class="invoice-party-details">
-                        123 Tech Street<br>
-                        Austin, TX 78701<br>
-                        contact@diamondbackcoding.com
+    const items = invoice.items || [];
+    const taxAmount = parseFloat(invoice.tax_amount || 0);
+    const discount = parseFloat(invoice.discount_amount || 0);
+    
+    // Generate payment URL (placeholder for now - will be replaced with Stripe)
+    const paymentUrl = `https://yourwebsite.com/pay/${invoice.invoice_number}`;
+    
+    // Generate unique QR code ID
+    const qrCodeId = `qr-code-${invoice.id || Date.now()}`;
+    
+    const html = `
+        <div class="invoice-preview">
+            <div class="invoice-preview-header">
+                <div class="invoice-company">
+                    <div class="invoice-company-logo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="invoice-company-name">Diamondback Coding</div>
+                        <div class="invoice-company-tagline">Premium Development Services</div>
                     </div>
                 </div>
-<div>
-    <div class="invoice-party-label">Bill To</div>
-    <div class="invoice-party-name">${invoice.customer_name || 'Customer'}</div>
-    <div class="invoice-party-details">
-        ${invoice.customer_company ? invoice.customer_company + '<br>' : ''}
-        ${invoice.address_line1 ? invoice.address_line1 + '<br>' : ''}
-        ${invoice.address_line2 ? invoice.address_line2 + '<br>' : ''}
-        ${invoice.city ? invoice.city + ', ' : ''}${invoice.state || ''} ${invoice.zip_code || ''}<br>
-        ${invoice.customer_email || ''}
-    </div>
-</div>
-            </div>
-            
-            <div class="invoice-dates">
-                <div class="invoice-date-item">
-                    <div class="invoice-date-label">Issue Date</div>
-                    <div class="invoice-date-value">${formatDate(invoice.issue_date)}</div>
-                </div>
-                <div class="invoice-date-item">
-                    <div class="invoice-date-label">Due Date</div>
-                    <div class="invoice-date-value">${formatDate(invoice.due_date)}</div>
+                <div class="invoice-info">
+                    <div class="invoice-title">INVOICE</div>
+                    <div class="invoice-number">#${invoice.invoice_number}</div>
                 </div>
             </div>
             
-            <table class="invoice-items-table">
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th>Quantity</th>
-                        <th>Unit Price</th>
-                        <th>Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${items.map(item => `
+            <div class="invoice-preview-body">
+                <div class="invoice-parties">
+                    <div>
+                        <div class="invoice-party-label">From</div>
+                        <div class="invoice-party-name">Diamondback Coding</div>
+                        <div class="invoice-party-details">
+                            123 Tech Street<br>
+                            Austin, TX 78701<br>
+                            contact@diamondbackcoding.com
+                        </div>
+                    </div>
+                    <div>
+                        <div class="invoice-party-label">Bill To</div>
+                        <div class="invoice-party-name">${invoice.customer_name || 'Customer'}</div>
+                        <div class="invoice-party-details">
+                            ${invoice.customer_company ? invoice.customer_company + '<br>' : ''}
+                            ${invoice.address_line1 ? invoice.address_line1 + '<br>' : ''}
+                            ${invoice.address_line2 ? invoice.address_line2 + '<br>' : ''}
+                            ${invoice.city ? invoice.city + ', ' : ''}${invoice.state || ''} ${invoice.zip_code || ''}<br>
+                            ${invoice.customer_email || ''}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="invoice-dates">
+                    <div class="invoice-date-item">
+                        <div class="invoice-date-label">Issue Date</div>
+                        <div class="invoice-date-value">${formatDate(invoice.issue_date)}</div>
+                    </div>
+                    <div class="invoice-date-item">
+                        <div class="invoice-date-label">Due Date</div>
+                        <div class="invoice-date-value">${formatDate(invoice.due_date)}</div>
+                    </div>
+                </div>
+                
+                <table class="invoice-items-table">
+                    <thead>
                         <tr>
-                            <td>${item.description}</td>
-                            <td>${item.quantity || 1}</td>
-                            <td>$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
-                            <td>$${parseFloat(item.amount).toLocaleString()}</td>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Amount</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        ${items.map(item => `
+                            <tr>
+                                <td>${item.description}</td>
+                                <td>${item.quantity || 1}</td>
+                                <td>$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
+                                <td>$${parseFloat(item.amount).toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                
+                <div class="invoice-totals">
+                    <div class="invoice-total-row">
+                        <span class="invoice-total-label">Subtotal</span>
+                        <span class="invoice-total-value">$${parseFloat(invoice.subtotal).toLocaleString()}</span>
+                    </div>
+                    ${taxAmount > 0 ? `
+                        <div class="invoice-total-row">
+                            <span class="invoice-total-label">Tax (${invoice.tax_rate}%)</span>
+                            <span class="invoice-total-value">$${taxAmount.toLocaleString()}</span>
+                        </div>
+                    ` : ''}
+                    ${discount > 0 ? `
+                        <div class="invoice-total-row">
+                            <span class="invoice-total-label">Discount</span>
+                            <span class="invoice-total-value">-$${discount.toLocaleString()}</span>
+                        </div>
+                    ` : ''}
+                    <div class="invoice-total-row grand">
+                        <span class="invoice-total-label">Total</span>
+                        <span class="invoice-total-value">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
+                    </div>
+                </div>
+                
+                ${invoice.status !== 'paid' ? `
+                    <div class="qr-code-section">
+                        <div class="qr-code-title">
+                            <svg style="width: 20px; height: 20px; display: inline; margin-right: 6px; vertical-align: middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                            Scan to Pay
+                        </div>
+                        <div class="qr-code-container" id="${qrCodeId}"></div>
+                        <div class="qr-code-instructions">
+                            Scan this QR code with your phone's camera to quickly access the secure payment portal. You can pay via credit card, bank transfer, or other accepted payment methods.
+                        </div>
+                        <div class="payment-url">
+                            Payment Link: ${paymentUrl}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
             
-            <div class="invoice-totals">
-                <div class="invoice-total-row">
-                    <span class="invoice-total-label">Subtotal</span>
-                    <span class="invoice-total-value">$${parseFloat(invoice.subtotal).toLocaleString()}</span>
+            ${invoice.notes ? `
+                <div class="invoice-preview-footer">
+                    <div class="invoice-notes-title">Notes</div>
+                    <div class="invoice-notes-text">${invoice.notes}</div>
                 </div>
-                ${taxAmount > 0 ? `
-                    <div class="invoice-total-row">
-                        <span class="invoice-total-label">Tax (${invoice.tax_rate}%)</span>
-                        <span class="invoice-total-value">$${taxAmount.toLocaleString()}</span>
-                    </div>
-                ` : ''}
-                ${discount > 0 ? `
-                    <div class="invoice-total-row">
-                        <span class="invoice-total-label">Discount</span>
-                        <span class="invoice-total-value">-$${discount.toLocaleString()}</span>
-                    </div>
-                ` : ''}
-                <div class="invoice-total-row grand">
-                    <span class="invoice-total-label">Total</span>
-                    <span class="invoice-total-value">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
-                </div>
-            </div>
+            ` : ''}
         </div>
-        
-        ${invoice.notes ? `
-            <div class="invoice-preview-footer">
-                <div class="invoice-notes-title">Notes</div>
-                <div class="invoice-notes-text">${invoice.notes}</div>
-            </div>
-        ` : ''}
-    </div>
-`;
+    `;
+    
+    // Use setTimeout to ensure the DOM is ready before generating QR code
+    setTimeout(() => {
+        const qrElement = document.getElementById(qrCodeId);
+        if (qrElement && invoice.status !== 'paid') {
+            // Clear any existing QR code
+            qrElement.innerHTML = '';
+            
+            // Generate QR code
+            new QRCode(qrElement, {
+                text: paymentUrl,
+                width: 200,
+                height: 200,
+                colorDark: "#1a1a1a",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+    }, 100);
+    
+    return html;
 }
 function closeDetailModal() {
 document.getElementById('detailModal').classList.remove('active');
@@ -5174,6 +5272,9 @@ function printInvoice() {
     const taxAmount = parseFloat(invoice.tax_amount || 0);
     const discount = parseFloat(invoice.discount_amount || 0);
     
+    // Generate payment URL
+    const paymentUrl = `https://yourwebsite.com/pay/${invoice.invoice_number}`;
+    
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -5343,6 +5444,44 @@ function printInvoice() {
                     font-weight: 800;
                     color: #22c55e;
                 }
+                .qr-section {
+                    margin-top: 40px;
+                    padding: 30px;
+                    background: #f8f9fa;
+                    border-radius: 12px;
+                    text-align: center;
+                }
+                .qr-title {
+                    font-size: 14px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    color: #22c55e;
+                    margin-bottom: 16px;
+                }
+                .qr-container {
+                    display: inline-block;
+                    padding: 20px;
+                    background: white;
+                    border-radius: 8px;
+                    margin-bottom: 16px;
+                }
+                .qr-instructions {
+                    font-size: 13px;
+                    color: #555;
+                    max-width: 500px;
+                    margin: 0 auto 12px;
+                    line-height: 1.6;
+                }
+                .payment-url {
+                    font-family: monospace;
+                    font-size: 11px;
+                    color: #888;
+                    background: #fff;
+                    padding: 10px;
+                    border-radius: 6px;
+                    word-break: break-all;
+                }
                 .footer {
                     margin-top: 50px;
                     padding-top: 30px;
@@ -5405,17 +5544,17 @@ function printInvoice() {
                             contact@diamondbackcoding.com
                         </div>
                     </div>
-<div class="party">
-    <div class="party-label">Bill To</div>
-    <div class="party-name">${invoice.customer_name || 'Customer'}</div>
-    <div class="party-details">
-        ${invoice.customer_company ? invoice.customer_company + '<br>' : ''}
-        ${invoice.address_line1 ? invoice.address_line1 + '<br>' : ''}
-        ${invoice.address_line2 ? invoice.address_line2 + '<br>' : ''}
-        ${invoice.city ? invoice.city + ', ' : ''}${invoice.state || ''} ${invoice.zip_code || ''}<br>
-        ${invoice.customer_email || ''}
-    </div>
-</div>
+                    <div class="party">
+                        <div class="party-label">Bill To</div>
+                        <div class="party-name">${invoice.customer_name || 'Customer'}</div>
+                        <div class="party-details">
+                            ${invoice.customer_company ? invoice.customer_company + '<br>' : ''}
+                            ${invoice.address_line1 ? invoice.address_line1 + '<br>' : ''}
+                            ${invoice.address_line2 ? invoice.address_line2 + '<br>' : ''}
+                            ${invoice.city ? invoice.city + ', ' : ''}${invoice.state || ''} ${invoice.zip_code || ''}<br>
+                            ${invoice.customer_email || ''}
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="dates">
@@ -5475,6 +5614,25 @@ function printInvoice() {
                     </div>
                 </div>
                 
+                ${invoice.status !== 'paid' ? `
+                    <div class="qr-section">
+                        <div class="qr-title">
+                            <svg style="width: 24px; height: 24px; display: inline; margin-right: 8px; vertical-align: middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                            Scan to Pay
+                        </div>
+                        <div class="qr-container" id="print-qr-code"></div>
+                        <div class="qr-instructions">
+                            Scan this QR code with your phone's camera to access our secure payment portal. We accept credit cards, bank transfers, and other payment methods.
+                        </div>
+                        <div class="payment-url">${paymentUrl}</div>
+                    </div>
+                ` : ''}
+                
                 ${invoice.notes ? `
                     <div class="footer">
                         <div class="footer-title">Notes</div>
@@ -5491,9 +5649,25 @@ function printInvoice() {
                 </div>
             </div>
             
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
             <script>
                 window.onload = function() {
-                    window.print();
+                    ${invoice.status !== 'paid' ? `
+                        const qrElement = document.getElementById('print-qr-code');
+                        if (qrElement) {
+                            new QRCode(qrElement, {
+                                text: '${paymentUrl}',
+                                width: 200,
+                                height: 200,
+                                colorDark: "#1a1a1a",
+                                colorLight: "#ffffff",
+                                correctLevel: QRCode.CorrectLevel.H
+                            });
+                            setTimeout(function() {
+                                window.print();
+                            }, 500);
+                        }
+                    ` : 'window.print();'}
                 }
             <\/script>
         </body>

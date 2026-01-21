@@ -2184,15 +2184,15 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
         
         console.log('💳 Creating Stripe price...');
         
-        // Create Stripe Price
+        // Create Stripe Price (FIXED - removed description from product_data)
         const price = await stripe.prices.create({
             unit_amount: Math.round(parseFloat(invoice.total_amount) * 100), // Convert to cents
             currency: 'usd',
             product_data: {
                 name: `Invoice ${invoice.invoice_number} — ${description}`,
-                description: itemsResult.rows.map(item => item.description).join(', ').substring(0, 500),
+                // REMOVED: description - Stripe doesn't accept this parameter here
                 metadata: {
-                    invoice_id: invoiceId,
+                    invoice_id: invoiceId.toString(),
                     invoice_number: invoice.invoice_number
                 }
             },
@@ -2214,10 +2214,10 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
                 }
             },
             metadata: {
-                invoice_id: invoiceId,
+                invoice_id: invoiceId.toString(),
                 invoice_number: invoice.invoice_number,
-                customer_name: invoice.name,
-                customer_email: invoice.email
+                customer_name: invoice.name || '',
+                customer_email: invoice.email || ''
             },
             customer_creation: 'always',
             invoice_creation: {
@@ -2225,7 +2225,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
                 invoice_data: {
                     description: `Invoice ${invoice.invoice_number} - ${description}`,
                     metadata: {
-                        invoice_id: invoiceId,
+                        invoice_id: invoiceId.toString(),
                         invoice_number: invoice.invoice_number
                     },
                     footer: 'Thank you for your business!'

@@ -1703,6 +1703,94 @@ app.post('/api/invoices', authenticateToken, async (req, res) => {
     }
 });
 
+// Update invoice details (due_date, issue_date, notes, etc.)
+app.patch('/api/invoices/:id', authenticateToken, async (req, res) => {
+    try {
+        const invoiceId = req.params.id;
+        const { issue_date, due_date, notes, short_description, tax_rate, discount_amount } = req.body;
+
+        // Build dynamic update query
+        const fields = [];
+        const values = [];
+        let paramIndex = 1;
+
+        if (issue_date !== undefined) {
+            fields.push(`issue_date = $${paramIndex}`);
+            values.push(issue_date);
+            paramIndex++;
+        }
+
+        if (due_date !== undefined) {
+            fields.push(`due_date = $${paramIndex}`);
+            values.push(due_date);
+            paramIndex++;
+        }
+
+        if (notes !== undefined) {
+            fields.push(`notes = $${paramIndex}`);
+            values.push(notes);
+            paramIndex++;
+        }
+
+        if (short_description !== undefined) {
+            fields.push(`short_description = $${paramIndex}`);
+            values.push(short_description);
+            paramIndex++;
+        }
+
+        if (tax_rate !== undefined) {
+            fields.push(`tax_rate = $${paramIndex}`);
+            values.push(tax_rate);
+            paramIndex++;
+        }
+
+        if (discount_amount !== undefined) {
+            fields.push(`discount_amount = $${paramIndex}`);
+            values.push(discount_amount);
+            paramIndex++;
+        }
+
+        if (fields.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No fields to update.'
+            });
+        }
+
+        values.push(invoiceId);
+
+        const query = `
+            UPDATE invoices 
+            SET ${fields.join(', ')} 
+            WHERE id = $${paramIndex}
+            RETURNING *
+        `;
+
+        const result = await pool.query(query, values);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Invoice not found.' 
+            });
+        }
+
+        console.log(`✅ Invoice ${result.rows[0].invoice_number} updated`);
+
+        res.json({
+            success: true,
+            message: 'Invoice updated successfully.',
+            invoice: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update invoice error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error.' 
+        });
+    }
+});
+
 // Update invoice status
 app.patch('/api/invoices/:id/status', authenticateToken, async (req, res) => {
     try {

@@ -4569,52 +4569,54 @@ bodyEl.innerHTML = `
     </div>
     
     <div id="invoiceDetailsTab">
-    <div class="form-grid">
-        <div class="form-group">
-            <label class="form-label">Invoice Number</label>
-            <input type="text" class="form-input" id="invoiceNumber" value="${invoiceNumber}" readonly>
-        </div>
-        <div class="form-group">
-            <label class="form-label">Status</label>
-            <select class="form-select" id="invoiceStatus">
-                <option value="draft">Draft</option>
-                <option value="sent">Sent</option>
-                <option value="paid">Paid</option>
-            </select>
-        </div>
-        
-        <div class="form-group full-width">
-            <label class="form-label">Invoice Description (for payment page) <span class="required">*</span></label>
-            <input type="text" class="form-input" id="invoiceShortDescription" 
-                   placeholder="e.g., Website Development Services" 
-                   maxlength="100" required>
-            <small style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
-                This appears on the Stripe payment page
-            </small>
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">Issue Date</label>
-            <input type="date" class="form-input" id="invoiceIssueDate" value="${today}">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Due Date</label>
-            <input type="date" class="form-input" id="invoiceDueDate" value="${dueDate}">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Tax Rate (%)</label>
-            <input type="number" class="form-input" id="invoiceTaxRate" value="0" step="0.01" oninput="recalculateInvoice()">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Discount</label>
-            <input type="number" class="form-input" id="invoiceDiscount" value="0" step="0.01" oninput="recalculateInvoice()">
-        </div>
-        <div class="form-group full-width">
-            <label class="form-label">Notes</label>
-            <textarea class="form-textarea" id="invoiceNotes" placeholder="Payment terms, thank you message, etc."></textarea>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Invoice Number</label>
+                <input type="text" class="form-input" id="invoiceNumber" value="${invoiceNumber}" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="invoiceStatus">
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="paid">Paid</option>
+                </select>
+            </div>
+            
+            <!-- ADD THIS SECTION -->
+            <div class="form-group full-width">
+                <label class="form-label">Invoice Description (for payment page) <span class="required">*</span></label>
+                <input type="text" class="form-input" id="invoiceShortDescription" 
+                       placeholder="e.g., Website Development Services" 
+                       maxlength="100" required>
+                <small style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
+                    This appears on the Stripe payment page
+                </small>
+            </div>
+            <!-- END ADD -->
+            
+            <div class="form-group">
+                <label class="form-label">Issue Date</label>
+                <input type="date" class="form-input" id="invoiceIssueDate" value="${today}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Due Date</label>
+                <input type="date" class="form-input" id="invoiceDueDate" value="${dueDate}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tax Rate (%)</label>
+                <input type="number" class="form-input" id="invoiceTaxRate" value="0" step="0.01" oninput="recalculateInvoice()">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Discount</label>
+                <input type="number" class="form-input" id="invoiceDiscount" value="0" step="0.01" oninput="recalculateInvoice()">
+            </div>
+            <div class="form-group full-width">
+                <label class="form-label">Notes</label>
+                <textarea class="form-textarea" id="invoiceNotes" placeholder="Payment terms, thank you message, etc."></textarea>
+            </div>
         </div>
     </div>
-</div>
     
     <!-- Rest of your tabs... -->
 `;

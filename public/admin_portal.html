@@ -4658,127 +4658,141 @@ function closeCreateModal() {
 document.getElementById('createModal').classList.remove('active');
 }
 async function openInvoiceModal(leadId) {
-const lead = [...state.leads, ...state.customers].find(l => l.id === leadId);
-if (!lead) return;
-const expenses = await loadExpenses(leadId);
-const selectedExpenses = state.selectedExpenses.length > 0 
-    ? expenses.filter(e => state.selectedExpenses.includes(e.id))
-    : expenses;
-
-const modal = document.getElementById('invoiceModal');
-const titleEl = document.getElementById('invoiceModalTitle');
-const bodyEl = document.getElementById('invoiceModalBody');
-const footerEl = document.getElementById('invoiceModalFooter');
-
-titleEl.textContent = 'Create Invoice';
-
-const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-const today = new Date().toISOString().split('T')[0];
-const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-bodyEl.innerHTML = `
-    <div class="tabs">
-        <button class="tab active" onclick="switchInvoiceTab('details')">Details</button>
-        <button class="tab" onclick="switchInvoiceTab('items')">Items</button>
-        <button class="tab" onclick="switchInvoiceTab('preview')">Preview</button>
-    </div>
+    const lead = [...state.leads, ...state.customers].find(l => l.id === leadId);
+    if (!lead) return;
     
-    <div id="invoiceDetailsTab">
-        <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label">Invoice Number</label>
-                <input type="text" class="form-input" id="invoiceNumber" value="${invoiceNumber}" readonly>
+    const expenses = await loadExpenses(leadId);
+    const selectedExpenses = state.selectedExpenses.length > 0 
+        ? expenses.filter(e => state.selectedExpenses.includes(e.id))
+        : expenses;
+
+    const modal = document.getElementById('invoiceModal');
+    const titleEl = document.getElementById('invoiceModalTitle');
+    const bodyEl = document.getElementById('invoiceModalBody');
+    const footerEl = document.getElementById('invoiceModalFooter');
+
+    titleEl.textContent = 'Create Invoice';
+
+    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+    const today = new Date().toISOString().split('T')[0];
+    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    bodyEl.innerHTML = `
+        <div class="tabs">
+            <button class="tab active" onclick="switchInvoiceTab('details')">Details</button>
+            <button class="tab" onclick="switchInvoiceTab('items')">Items</button>
+            <button class="tab" onclick="switchInvoiceTab('preview')">Preview</button>
+        </div>
+        
+        <div id="invoiceDetailsTab">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Invoice Number</label>
+                    <input type="text" class="form-input" id="invoiceNumber" value="${invoiceNumber}" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="invoiceStatus">
+                        <option value="draft">Draft</option>
+                        <option value="sent">Sent</option>
+                        <option value="paid">Paid</option>
+                    </select>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label class="form-label">Invoice Description (for payment page) <span class="required">*</span></label>
+                    <input type="text" class="form-input" id="invoiceShortDescription" 
+                           placeholder="e.g., Website Development Services" 
+                           maxlength="100" required>
+                    <small style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
+                        This appears on the Stripe payment page
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Issue Date</label>
+                    <input type="date" class="form-input" id="invoiceIssueDate" value="${today}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Due Date</label>
+                    <input type="date" class="form-input" id="invoiceDueDate" value="${dueDate}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tax Rate (%)</label>
+                    <input type="number" class="form-input" id="invoiceTaxRate" value="0" step="0.01" oninput="recalculateInvoice()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Discount</label>
+                    <input type="number" class="form-input" id="invoiceDiscount" value="0" step="0.01" oninput="recalculateInvoice()">
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-textarea" id="invoiceNotes" placeholder="Payment terms, thank you message, etc."></textarea>
+                </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Status</label>
-                <select class="form-select" id="invoiceStatus">
-                    <option value="draft">Draft</option>
-                    <option value="sent">Sent</option>
-                    <option value="paid">Paid</option>
-                </select>
-            </div>
-            <div class="form-group"><label class="form-label">Issue Date</label>
-<input type="date" class="form-input" id="invoiceIssueDate" value="${today}">
-</div>
-<div class="form-group">
-<label class="form-label">Due Date</label>
-<input type="date" class="form-input" id="invoiceDueDate" value="${dueDate}">
-</div>
-<div class="form-group">
-<label class="form-label">Tax Rate (%)</label>
-<input type="number" class="form-input" id="invoiceTaxRate" value="0" step="0.01" oninput="recalculateInvoice()">
-</div>
-<div class="form-group">
-<label class="form-label">Discount</label>
-<input type="number" class="form-input" id="invoiceDiscount" value="0" step="0.01" oninput="recalculateInvoice()">
-</div>
-<div class="form-group full-width">
-<label class="form-label">Notes</label>
-<textarea class="form-textarea" id="invoiceNotes" placeholder="Payment terms, thank you message, etc."></textarea>
-</div>
-</div>
-</div>
-    <div id="invoiceItemsTab" style="display: none;">
-        <div id="invoiceItemsList">
-            ${selectedExpenses.map((exp, idx) => `
-                <div class="expense-item selected" data-item-index="${idx}">
-                    <div class="expense-content">
-                        <div class="expense-description">${exp.description}</div>
-                        <div class="expense-meta">
-                            <div class="expense-meta-item">Qty: ${exp.quantity || 1}</div>
-                            <div class="expense-meta-item">${exp.category || 'N/A'}</div>
+        </div>
+        
+        <div id="invoiceItemsTab" style="display: none;">
+            <div id="invoiceItemsList">
+                ${selectedExpenses.map((exp, idx) => `
+                    <div class="expense-item selected" data-item-index="${idx}">
+                        <div class="expense-content">
+                            <div class="expense-description">${exp.description}</div>
+                            <div class="expense-meta">
+                                <div class="expense-meta-item">Qty: ${exp.quantity || 1}</div>
+                                <div class="expense-meta-item">${exp.category || 'N/A'}</div>
+                            </div>
+                        </div>
+                        <div class="expense-amount">$${parseFloat(exp.amount).toLocaleString()}</div>
+                        <div class="expense-actions">
+                            <button class="table-action-btn danger" onclick="removeInvoiceItem(${idx})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                    <div class="expense-amount">$${parseFloat(exp.amount).toLocaleString()}</div>
-                    <div class="expense-actions">
-                        <button class="table-action-btn danger" onclick="removeInvoiceItem(${idx})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                <line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            `).join('')}
+                `).join('')}
+            </div>
+            <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="addCustomInvoiceItem()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Custom Item
+            </button>
         </div>
-        <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="addCustomInvoiceItem()">
+        
+        <div id="invoicePreviewTab" style="display: none;"></div>
+    `;
+
+    // Store invoice data in state
+    state.currentInvoice = {
+        leadId,
+        lead,
+        items: selectedExpenses.map(exp => ({
+            description: exp.description,
+            quantity: exp.quantity || 1,
+            unit_price: parseFloat(exp.amount),
+            amount: parseFloat(exp.amount) * (exp.quantity || 1),
+            expense_id: exp.id
+        }))
+    };
+
+    footerEl.innerHTML = `
+        <button class="btn btn-secondary" onclick="closeInvoiceModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveInvoice()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
             </svg>
-            Add Custom Item
+            Save Invoice
         </button>
-    </div>
-    
-    <div id="invoicePreviewTab" style="display: none;"></div>
-`;
+    `;
 
-// Store invoice data in state
-state.currentInvoice = {
-    leadId,
-    lead,
-    items: selectedExpenses.map(exp => ({
-        description: exp.description,
-        quantity: exp.quantity || 1,
-        unit_price: parseFloat(exp.amount),
-        amount: parseFloat(exp.amount) * (exp.quantity || 1),
-        expense_id: exp.id
-    }))
-};
-
-footerEl.innerHTML = `
-    <button class="btn btn-secondary" onclick="closeInvoiceModal()">Cancel</button>
-    <button class="btn btn-primary" onclick="saveInvoice()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-            <polyline points="17 21 17 13 7 13 7 21"/>
-            <polyline points="7 3 7 8 15 8"/>
-        </svg>
-        Save Invoice
-    </button>
-`;
-
-modal.classList.add('active');
+    modal.classList.add('active');
 }
 function closeInvoiceModal() {
 document.getElementById('invoiceModal').classList.remove('active');

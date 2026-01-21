@@ -2128,6 +2128,8 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
     try {
         const invoiceId = req.params.id;
         
+        console.log('🔍 Starting payment link creation for invoice:', invoiceId);
+        
         // Get invoice details with customer address
         const invoiceResult = await pool.query(`
             SELECT i.*, l.name, l.email, l.company,
@@ -2138,6 +2140,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
         `, [invoiceId]);
         
         if (invoiceResult.rows.length === 0) {
+            console.error('❌ Invoice not found:', invoiceId);
             return res.status(404).json({ 
                 success: false, 
                 message: 'Invoice not found.' 
@@ -2145,6 +2148,12 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
         }
         
         const invoice = invoiceResult.rows[0];
+        console.log('📋 Invoice details:', {
+            id: invoice.id,
+            number: invoice.invoice_number,
+            amount: invoice.total_amount,
+            customer: invoice.name
+        });
         
         // Check if payment link already exists
         if (invoice.stripe_payment_link) {
@@ -2156,108 +2165,106 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
             });
         }
         
-        console.log('Creating new payment link for invoice:', {
-            invoiceId,
-            invoiceNumber: invoice.invoice_number,
-            amount: invoice.total_amount,
-            customer: invoice.name
-        });
-        
         // Get invoice items
         const itemsResult = await pool.query(
             'SELECT * FROM invoice_items WHERE invoice_id = $1',
             [invoiceId]
         );
         
-        // Create description from items or use short_description
-        const description = invoice.short_description || 
-            `Invoice ${invoice.invoice_number}` || 
-            'Services Rendered';
-        
-        try {
-            // Create Stripe Price for this invoice
-            const price = await stripe.prices.create({
-                unit_amount: Math.round(parseFloat(invoice.total_amount) * 100), // Convert to cents
-                currency: 'usd',
-                product_data: {
-                    name: `Invoice ${invoice.invoice_number} — ${description}`,
-                    description: itemsResult.rows.map(item => item.description).join(', ').substring(0, 500),
-                    metadata: {
-                        invoice_id: invoiceId,
-                        invoice_number: invoice.invoice_number
-                    }
-                },
-            });
-            
-            console.log('✅ Stripe price created:', price.id);
-            
-            // Create Payment Link
-            const paymentLink = await stripe.paymentLinks.create({
-                line_items: [{
-                    price: price.id,
-                    quantity: 1,
-                }],
-                after_completion: {
-                    type: 'hosted_confirmation',
-                    hosted_confirmation: {
-                        custom_message: `Thank you for your payment! Invoice ${invoice.invoice_number} has been marked as paid. You will receive a confirmation email shortly.`
-                    }
-                },
-                metadata: {
-                    invoice_id: invoiceId,
-                    invoice_number: invoice.invoice_number,
-                    customer_name: invoice.name,
-                    customer_email: invoice.email
-                },
-                customer_creation: 'always',
-                invoice_creation: {
-                    enabled: true,
-                    invoice_data: {
-                        description: `Invoice ${invoice.invoice_number} - ${description}`,
-                        metadata: {
-                            invoice_id: invoiceId,
-                            invoice_number: invoice.invoice_number
-                        },
-                        footer: 'Thank you for your business!'
-                    }
-                },
-                phone_number_collection: {
-                    enabled: true
-                },
-                billing_address_collection: 'auto'
-            });
-            
-            console.log('✅ Payment link created:', paymentLink.url);
-            
-            // Store payment link in database
-            await pool.query(
-                'UPDATE invoices SET stripe_payment_link = $1 WHERE id = $2',
-                [paymentLink.url, invoiceId]
-            );
-            
-            console.log('✅ Payment link saved to database for invoice:', invoice.invoice_number);
-            
-            res.json({
-                success: true,
-                paymentLink: paymentLink.url,
-                message: 'Payment link created successfully'
-            });
-            
-        } catch (stripeError) {
-            console.error('❌ Stripe API error:', stripeError.message);
-            console.error('Full error:', stripeError);
-            
-            res.status(500).json({ 
-                success: false, 
-                message: 'Stripe error: ' + stripeError.message 
+        // Validate we have all required data
+        if (!invoice.short_description) {
+            console.error('❌ Missing short_description for invoice:', invoice.invoice_number);
+            return res.status(400).json({
+                success: false,
+                message: 'Invoice must have a description before creating payment link'
             });
         }
         
+        const description = invoice.short_description || `Invoice ${invoice.invoice_number}`;
+        
+        console.log('💳 Creating Stripe price...');
+        
+        // Create Stripe Price
+        const price = await stripe.prices.create({
+            unit_amount: Math.round(parseFloat(invoice.total_amount) * 100), // Convert to cents
+            currency: 'usd',
+            product_data: {
+                name: `Invoice ${invoice.invoice_number} — ${description}`,
+                description: itemsResult.rows.map(item => item.description).join(', ').substring(0, 500),
+                metadata: {
+                    invoice_id: invoiceId,
+                    invoice_number: invoice.invoice_number
+                }
+            },
+        });
+        
+        console.log('✅ Stripe price created:', price.id);
+        console.log('🔗 Creating payment link...');
+        
+        // Create Payment Link
+        const paymentLink = await stripe.paymentLinks.create({
+            line_items: [{
+                price: price.id,
+                quantity: 1,
+            }],
+            after_completion: {
+                type: 'hosted_confirmation',
+                hosted_confirmation: {
+                    custom_message: `Thank you for your payment! Invoice ${invoice.invoice_number} has been marked as paid. You will receive a confirmation email shortly.`
+                }
+            },
+            metadata: {
+                invoice_id: invoiceId,
+                invoice_number: invoice.invoice_number,
+                customer_name: invoice.name,
+                customer_email: invoice.email
+            },
+            customer_creation: 'always',
+            invoice_creation: {
+                enabled: true,
+                invoice_data: {
+                    description: `Invoice ${invoice.invoice_number} - ${description}`,
+                    metadata: {
+                        invoice_id: invoiceId,
+                        invoice_number: invoice.invoice_number
+                    },
+                    footer: 'Thank you for your business!'
+                }
+            },
+            phone_number_collection: {
+                enabled: true
+            },
+            billing_address_collection: 'auto'
+        });
+        
+        console.log('✅ Payment link created successfully:', paymentLink.url);
+        
+        // Store payment link in database
+        await pool.query(
+            'UPDATE invoices SET stripe_payment_link = $1 WHERE id = $2',
+            [paymentLink.url, invoiceId]
+        );
+        
+        console.log('✅ Payment link saved to database');
+        
+        res.json({
+            success: true,
+            paymentLink: paymentLink.url,
+            message: 'Payment link created successfully'
+        });
+        
     } catch (error) {
-        console.error('❌ Create payment link error:', error);
+        console.error('❌ Stripe API error details:', {
+            message: error.message,
+            type: error.type,
+            code: error.code,
+            statusCode: error.statusCode
+        });
+        
         res.status(500).json({ 
             success: false, 
-            message: 'Error creating payment link: ' + error.message 
+            message: 'Stripe error: ' + error.message,
+            details: error.type
         });
     }
 });

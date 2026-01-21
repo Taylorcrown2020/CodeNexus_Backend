@@ -4324,7 +4324,7 @@ async function renderInvoicePreview(invoice) {
                     </div>
                 </div>
                 
-${invoice.status !== 'paid' ? `
+                ${invoice.status !== 'paid' ? `
                     <div class="qr-code-section">
                         <div class="qr-code-title">
                             <svg style="width: 20px; height: 20px; display: inline; margin-right: 6px; vertical-align: middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -4355,11 +4355,19 @@ ${invoice.status !== 'paid' ? `
         </div>
     `;
     
+    // Generate QR code after a small delay to ensure DOM is ready
     setTimeout(() => {
         const qrElement = document.getElementById(qrCodeId);
         if (qrElement && invoice.status !== 'paid') {
             // Clear any existing QR code
             qrElement.innerHTML = '';
+            
+            // Check if QRCode library is loaded
+            if (typeof QRCode === 'undefined') {
+                console.error('❌ QRCode library not loaded');
+                qrElement.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">QR code library not available</p>';
+                return;
+            }
             
             try {
                 // Generate QR code
@@ -4374,7 +4382,7 @@ ${invoice.status !== 'paid' ? `
                 console.log('✅ QR code generated for:', paymentUrl);
             } catch (error) {
                 console.error('❌ QR code generation failed:', error);
-                qrElement.innerHTML = '<p style="color: var(--text-muted);">QR code generation failed</p>';
+                qrElement.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">QR code generation failed</p>';
             }
         }
     }, 100);

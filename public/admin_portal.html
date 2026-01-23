@@ -6379,6 +6379,231 @@ return filtered;
 // ========================================
 
 const servicePackages = {
+    // FREE WEBSITE PACKAGES (No free maintenance, very basic SEO)
+    'free-basic': {
+        name: 'Free Basic Website',
+        description: 'Entry-level website for startups and small businesses',
+        price: 0,
+        duration: '1-2 weeks',
+        isFree: true,
+        phases: [
+            {
+                name: 'Quick Setup & Planning',
+                duration: '1-2 days',
+                tasks: [
+                    'Brief consultation call (30 minutes)',
+                    'Basic requirements gathering',
+                    'Template selection',
+                    'Content outline approval'
+                ]
+            },
+            {
+                name: 'Development & Setup',
+                duration: '3-5 days',
+                tasks: [
+                    'Up to 5 basic pages (Home, About, Services, Contact, One custom page)',
+                    'Template-based design',
+                    'Mobile-responsive layout',
+                    'Basic contact form',
+                    'Very basic on-page SEO (title tags, meta descriptions only)'
+                ]
+            },
+            {
+                name: 'Launch',
+                duration: '1-2 days',
+                tasks: [
+                    'Basic testing',
+                    'Domain connection assistance',
+                    'Free subdomain deployment (yourname.render.app)',
+                    'Basic Google Analytics setup',
+                    'Quick 15-minute walkthrough'
+                ]
+            }
+        ],
+        features: [
+            'Up to 5 basic pages',
+            'Template-based design',
+            'Mobile responsive',
+            'Basic contact form',
+            'Very basic SEO (titles & meta only)',
+            'Free subdomain hosting',
+            'Google Analytics',
+            'NO free maintenance period',
+            'NO admin dashboard',
+            'NO CRM features',
+            'NO custom integrations'
+        ],
+        notes: 'Perfect for getting online quickly. Upgrade to paid packages for advanced features. Monthly maintenance available for additional fee.'
+    },
+    
+    'free-portfolio': {
+        name: 'Free Portfolio Website',
+        description: 'Showcase your work with a simple portfolio site',
+        price: 0,
+        duration: '1-2 weeks',
+        isFree: true,
+        phases: [
+            {
+                name: 'Portfolio Planning',
+                duration: '1-2 days',
+                tasks: [
+                    'Brief consultation (30 minutes)',
+                    'Portfolio structure planning',
+                    'Gallery/project showcase setup',
+                    'Content requirements list'
+                ]
+            },
+            {
+                name: 'Development',
+                duration: '4-6 days',
+                tasks: [
+                    'Up to 6 pages (Home, About, Portfolio/Gallery, Services, Contact, Resume/Bio)',
+                    'Portfolio/gallery template setup',
+                    'Project showcase sections',
+                    'Image optimization',
+                    'Basic contact form',
+                    'Very basic SEO'
+                ]
+            },
+            {
+                name: 'Launch',
+                duration: '1-2 days',
+                tasks: [
+                    'Testing across devices',
+                    'Free subdomain deployment',
+                    'Basic analytics setup',
+                    '15-minute training on updating portfolio'
+                ]
+            }
+        ],
+        features: [
+            'Up to 6 pages',
+            'Portfolio/gallery showcase',
+            'Project display sections',
+            'Template-based design',
+            'Mobile responsive',
+            'Image optimization',
+            'Basic contact form',
+            'Very basic SEO',
+            'Free subdomain hosting',
+            'NO free maintenance',
+            'NO custom features'
+        ],
+        notes: 'Great for freelancers, artists, photographers. Monthly maintenance available for fee.'
+    },
+    
+    'free-business-card': {
+        name: 'Free Business Card Website',
+        description: 'Simple one-page site with essential business info',
+        price: 0,
+        duration: '3-5 days',
+        isFree: true,
+        phases: [
+            {
+                name: 'Setup',
+                duration: '1 day',
+                tasks: [
+                    'Quick 20-minute consultation',
+                    'Business info collection',
+                    'Single-page layout selection'
+                ]
+            },
+            {
+                name: 'Development',
+                duration: '2-3 days',
+                tasks: [
+                    'Single-page website (all content on one page)',
+                    'Sections: Header, About, Services, Contact',
+                    'Template-based modern design',
+                    'Mobile responsive',
+                    'Click-to-call & email buttons',
+                    'Google Maps embed',
+                    'Very basic SEO'
+                ]
+            },
+            {
+                name: 'Launch',
+                duration: '1 day',
+                tasks: [
+                    'Quick testing',
+                    'Free subdomain deployment',
+                    'Basic analytics',
+                    'Quick handoff'
+                ]
+            }
+        ],
+        features: [
+            'Single-page design',
+            'Essential business sections',
+            'Click-to-call/email buttons',
+            'Google Maps integration',
+            'Template-based design',
+            'Mobile responsive',
+            'Very basic SEO',
+            'Free subdomain hosting',
+            'NO multi-page navigation',
+            'NO free maintenance',
+            'NO custom features'
+        ],
+        notes: 'Perfect for establishing basic online presence quickly. Monthly maintenance available for fee.'
+    },
+    
+    'free-landing-page': {
+        name: 'Free Landing Page',
+        description: 'Single focused landing page for campaigns or lead generation',
+        price: 0,
+        duration: '3-5 days',
+        isFree: true,
+        phases: [
+            {
+                name: 'Campaign Planning',
+                duration: '1 day',
+                tasks: [
+                    '20-minute strategy call',
+                    'Campaign goal identification',
+                    'Call-to-action planning',
+                    'Lead capture form setup'
+                ]
+            },
+            {
+                name: 'Development',
+                duration: '2-3 days',
+                tasks: [
+                    'Single focused landing page',
+                    'Conversion-focused template design',
+                    'Lead capture form',
+                    'Call-to-action buttons',
+                    'Mobile responsive',
+                    'Very basic SEO for target keyword'
+                ]
+            },
+            {
+                name: 'Launch',
+                duration: '1 day',
+                tasks: [
+                    'Form testing',
+                    'Free subdomain deployment',
+                    'Basic conversion tracking',
+                    'Quick handoff'
+                ]
+            }
+        ],
+        features: [
+            'Single landing page',
+            'Conversion-focused design',
+            'Lead capture form',
+            'Mobile responsive',
+            'Call-to-action optimization',
+            'Very basic SEO',
+            'Free subdomain hosting',
+            'Basic conversion tracking',
+            'NO multi-page site',
+            'NO free maintenance',
+            'NO advanced integrations'
+        ],
+        notes: 'Ideal for campaigns, promotions, or testing ideas. Monthly maintenance available for fee.'
+    },
+    
     'starter-website': {
         name: 'Starter Package - $1,499',
         description: 'Perfect for small businesses getting started online',
@@ -6389,572 +6614,465 @@ const servicePackages = {
                 name: 'Discovery & Planning',
                 duration: '2-3 days',
                 tasks: [
-                    'Initial consultation call to discuss goals and requirements',
-                    'Review of brand guidelines, logos, and existing materials',
-                    'Sitemap and wireframe creation',
-                    'Project timeline and milestone confirmation',
+                    'Initial consultation and requirements gathering',
+                    'Brand guidelines review',
+                    'Content strategy planning',
+                    'Wireframe approval',
                     'Contract execution and 50% deposit collection'
                 ]
             },
             {
-                name: 'Design Phase',
+                name: 'Design & Development',
+                duration: '1-2 weeks',
+                tasks: [
+                    'Up to 15 custom-designed pages',
+                    'Modern, professional UI design',
+                    'Mobile-responsive layout implementation',
+                    'Contact form integration',
+                    'Basic SEO setup',
+                    'Performance-optimized frontend'
+                ]
+            },
+            {
+                name: 'User System & Database',
                 duration: '3-4 days',
                 tasks: [
-                    'Homepage design mockup creation',
-                    'Client review and feedback session (up to 2 rounds of revisions)',
-                    'Final design approval sign-off',
-                    'Mobile responsive design adaptation'
+                    'Custom basic user login & authentication',
+                    'Secure admin dashboard access',
+                    'PostgreSQL database setup',
+                    'Admin panel for managing leads & submissions',
+                    'Role-ready structure for future expansion'
                 ]
             },
             {
-                name: 'Development Phase',
-                duration: '5-7 days',
-                tasks: [
-                    'Development environment setup',
-                    'Homepage and up to 14 additional pages development',
-                    'Contact form integration',
-                    'Mobile responsiveness implementation',
-                    'Cross-browser testing (Chrome, Firefox, Safari, Edge)'
-                ]
-            },
-            {
-                name: 'Content & SEO',
+                name: 'Lead Capture & CRM',
                 duration: '2-3 days',
                 tasks: [
-                    'Content population and formatting',
-                    'Image optimization and compression',
-                    'Basic SEO setup (meta tags, titles, descriptions)',
-                    'Google Analytics integration',
-                    'XML sitemap generation'
+                    'Contact forms with lead capture',
+                    'Leads stored securely in database',
+                    'Basic CRM setup (leads & contacts)',
+                    'Status tracking for new & contacted leads'
                 ]
             },
             {
-                name: 'Launch & Handoff',
+                name: 'Optional Integrations',
                 duration: '1-2 days',
                 tasks: [
-                    'Final quality assurance testing',
-                    'Domain and hosting configuration',
+                    'Email automation integration (if requested)',
+                    'SMS marketing automation (if requested)',
+                    'Stripe or Shopify billing integration (if requested)',
+                    'E-commerce ready with cart system (if requested)',
+                    'Form-triggered notifications'
+                ]
+            },
+            {
+                name: 'Testing & Launch',
+                duration: '2-3 days',
+                tasks: [
+                    'Cross-browser testing',
+                    'Mobile responsiveness check',
+                    'Client review and revisions',
+                    'Domain setup and deployment to Render',
                     'SSL certificate installation',
-                    'Website launch and deployment',
-                    'Client training session (30 minutes)',
+                    'Google Analytics setup',
                     'Final 50% payment collection',
+                    '90 days of free add-ons begins',
                     '90 days of free priority support begins'
                 ]
             }
-        ]
+        ],
+        features: [
+            'Up to 15 custom-designed pages',
+            'Mobile responsive design',
+            'Contact form integration',
+            'Basic SEO optimization',
+            'Custom user login & authentication',
+            'Secure admin dashboard',
+            'PostgreSQL database',
+            'Basic CRM for leads',
+            'Render deployment',
+            'Google Analytics setup',
+            '90 days of free add-ons',
+            '90 days of free priority support',
+            'Optional: Email/SMS automation',
+            'Optional: Stripe/Shopify integration',
+            'Optional: E-commerce cart system'
+        ],
+        notes: 'Some features may require third-party services or usage-based fees (SMS, email, payment processing)'
     },
-    'business-website': {
+    
+    'professional-website': {
         name: 'Professional Package - $2,999',
         description: 'Comprehensive solution for growing businesses',
         price: 2999,
         duration: '4-6 weeks',
         phases: [
             {
-                name: 'Discovery & Strategy',
-                duration: '3-5 days',
+                name: 'Strategy & Planning',
+                duration: '1 week',
                 tasks: [
-                    'In-depth discovery meeting with stakeholders',
-                    'Business goals and KPI identification',
-                    'Target audience analysis and user personas',
-                    'Competitor analysis and differentiation strategy',
-                    'Content strategy and sitemap planning (up to 25 pages)',
-                    'Technical requirements documentation',
+                    'In-depth business analysis',
+                    'Competitor research',
+                    'User persona development',
+                    'Site architecture planning (up to 25 pages)',
+                    'Content strategy development',
                     'Contract execution and 50% deposit collection'
                 ]
             },
             {
-                name: 'UX/UI Design',
-                duration: '7-10 days',
+                name: 'Design Phase',
+                duration: '1-2 weeks',
                 tasks: [
-                    'Wireframe creation for all key pages',
-                    'User flow mapping and optimization',
-                    'Visual design concepts (2 design options provided)',
-                    'Client presentation and feedback',
-                    'Design system creation (colors, typography, components)',
-                    'Desktop and mobile design finalization',
-                    'Interactive prototype creation',
-                    'Final design approval sign-off'
+                    'Custom design mockups (2-3 concepts)',
+                    'Design revision rounds',
+                    'UI/UX optimization',
+                    'Brand integration',
+                    'Design system creation',
+                    'Mobile-responsive layouts'
                 ]
             },
             {
                 name: 'Development Phase',
-                duration: '10-14 days',
+                duration: '2-3 weeks',
                 tasks: [
-                    'Development environment and repository setup',
-                    'Frontend framework implementation',
-                    'Homepage and all approved pages development',
-                    'Service/Product pages development',
-                    'About and team pages development',
-                    'Advanced contact forms with validation',
-                    'Blog/News section setup',
-                    'CMS integration for content management',
-                    'Third-party integrations (as specified in scope)',
-                    'Performance optimization'
+                    'Up to 25 custom-designed pages',
+                    'Frontend development',
+                    'Advanced CMS integration',
+                    'Custom user logins & account management',
+                    'Expanded admin dashboard functionality',
+                    'Blog/news section development',
+                    'Advanced contact forms',
+                    'Newsletter integration'
                 ]
             },
             {
-                name: 'Content & SEO',
-                duration: '4-5 days',
+                name: 'Advanced Features',
+                duration: '3-5 days',
                 tasks: [
-                    'Professional content writing/editing assistance',
-                    'Image sourcing and optimization',
-                    'Advanced on-page SEO optimization',
-                    'Schema markup implementation',
-                    'Google Search Console setup',
-                    'Google Analytics 4 configuration with goal tracking',
-                    'Social media integration',
-                    'Local SEO setup (if applicable)'
+                    'Advanced CRM setup (leads & contacts)',
+                    'Lead status pipelines & categorization',
+                    'Admin-side lead notes & tracking',
+                    'E-commerce ready (up to 10 products)',
+                    'Advanced business analytics & KPIs',
+                    'Custom data tracking for user activity'
                 ]
             },
             {
-                name: 'Testing & QA',
-                duration: '3-4 days',
-                tasks: [
-                    'Comprehensive functionality testing',
-                    'Cross-browser compatibility testing (all major browsers)',
-                    'Mobile device testing (iOS & Android)',
-                    'Performance and speed testing',
-                    'Security vulnerability assessment',
-                    'Accessibility compliance check (WCAG 2.1 Level AA)',
-                    'Form and conversion tracking verification',
-                    'Bug fixes and refinements'
-                ]
-            },
-            {
-                name: 'Launch & Support',
+                name: 'SEO & Performance',
                 duration: '2-3 days',
                 tasks: [
-                    'Pre-launch checklist completion',
-                    'Staging to production migration',
-                    'DNS configuration and propagation',
-                    'SSL certificate setup and verification',
-                    'Website launch',
-                    'Post-launch monitoring (48 hours)',
-                    'Client training session (1 hour)',
-                    'Documentation and credentials handoff',
+                    'Advanced SEO implementation',
+                    'Performance optimization',
+                    'Security hardening',
+                    'Google Analytics & Search Console setup',
+                    'Social media integration',
+                    'Live chat integration'
+                ]
+            },
+            {
+                name: 'Testing & Launch',
+                duration: '3-5 days',
+                tasks: [
+                    'Comprehensive QA testing',
+                    'Security audit',
+                    'Client training sessions',
+                    'Staged deployment to Render',
+                    'Post-launch monitoring',
                     'Final 50% payment collection',
+                    '120 days of free add-ons begins',
                     '120 days of free priority support begins'
                 ]
             }
-        ]
+        ],
+        features: [
+            'Up to 25 custom-designed pages',
+            'Custom design (unlimited revisions)',
+            'Advanced CMS integration',
+            'Blog/news section',
+            'Advanced contact forms',
+            'Newsletter integration',
+            'E-commerce ready (up to 10 products)',
+            'Advanced SEO package',
+            'Social media integration',
+            'Google Analytics & Search Console',
+            'Live chat integration',
+            'Advanced CRM with pipelines',
+            'Custom analytics & KPIs',
+            'Performance optimization',
+            'Security hardening',
+            '120 days of free add-ons',
+            '120 days of free priority support'
+        ],
+        notes: 'Some features may require third-party services or usage-based fees'
     },
-    'custom-enterprise': {
+    
+    'enterprise-website': {
         name: 'Enterprise Package - Custom Pricing',
-        description: 'Tailored solutions for unique business requirements',
-        price: 0,
-        duration: 'Custom (typically 8-16 weeks)',
+        description: 'Full-scale solution for established businesses',
+        price: 0, // Custom pricing
+        duration: '8-12 weeks',
         phases: [
             {
-                name: 'Discovery & Requirements',
-                duration: '5-10 days',
+                name: 'Discovery & Strategy',
+                duration: '2 weeks',
                 tasks: [
-                    'Comprehensive stakeholder interviews and workshops',
-                    'Business process analysis and documentation',
-                    'Functional requirements specification',
-                    'Technical requirements specification',
-                    'User role and permission mapping',
-                    'Data model and entity relationship design',
-                    'Integration requirements analysis',
-                    'Security and compliance requirements assessment',
-                    'Scalability and performance requirements',
-                    'Contract execution and initial deposit collection',
-                    'Project scope and deliverables sign-off'
+                    'Stakeholder interviews',
+                    'Comprehensive market research',
+                    'User journey mapping',
+                    'Technical requirements analysis',
+                    'Information architecture planning',
+                    'Content audit and strategy',
+                    'Conversion optimization planning',
+                    'Contract execution and initial payment'
                 ]
             },
             {
-                name: 'Architecture & Design',
-                duration: '10-15 days',
+                name: 'Design & Prototyping',
+                duration: '3-4 weeks',
                 tasks: [
-                    'System architecture design',
-                    'Database schema design and optimization',
-                    'API specification and documentation',
-                    'Security architecture planning',
-                    'User experience research',
-                    'Information architecture',
-                    'Wireframes for all user flows',
-                    'High-fidelity UI design',
-                    'Design system and component library',
+                    'Multiple design concepts',
                     'Interactive prototypes',
-                    'Technical design review and approval'
+                    'User testing and feedback',
+                    'Accessibility compliance review',
+                    'Design system development',
+                    'Brand guidelines integration'
                 ]
             },
             {
-                name: 'Agile Development Sprints',
-                duration: 'Multiple 2-week sprints',
+                name: 'Development & Integration',
+                duration: '4-6 weeks',
                 tasks: [
-                    'Sprint planning and backlog grooming',
-                    'Development environment setup',
-                    'CI/CD pipeline configuration',
-                    'Core functionality implementation',
-                    'Database implementation',
-                    'Authentication and authorization system',
-                    'User management and admin panels',
-                    'Business logic implementation',
-                    'API development and documentation',
-                    'Third-party service integrations',
-                    'Unit and integration testing',
-                    'Sprint demos and stakeholder reviews',
-                    'Progress payments per milestone'
+                    'Unlimited custom-designed pages',
+                    'Custom backend development',
+                    'API integrations',
+                    'Third-party service connections',
+                    'Database architecture',
+                    'Advanced CMS customization',
+                    'E-commerce implementation (unlimited products)',
+                    'User portal/membership system',
+                    'Multi-language support',
+                    'Security implementation'
                 ]
             },
             {
-                name: 'Testing & Quality Assurance',
-                duration: '7-14 days',
+                name: 'Advanced Systems',
+                duration: '1-2 weeks',
                 tasks: [
-                    'Comprehensive QA testing',
-                    'User acceptance testing (UAT)',
-                    'Performance and load testing',
-                    'Security audit and penetration testing',
-                    'Accessibility testing (WCAG 2.1 compliance)',
-                    'Cross-browser and cross-device testing',
-                    'Bug fixes and refinements',
-                    'Documentation completion',
-                    'Final stakeholder review and approval'
+                    'Advanced analytics and reporting',
+                    'Marketing automation integration',
+                    'CRM integration',
+                    'API development',
+                    'Advanced security features',
+                    'Custom admin dashboard',
+                    'A/B testing setup',
+                    'Conversion rate optimization'
                 ]
             },
             {
-                name: 'Deployment & Launch',
-                duration: '3-7 days',
+                name: 'Testing, Training & Launch',
+                duration: '1-2 weeks',
                 tasks: [
-                    'Production environment setup',
-                    'Data migration (if applicable)',
-                    'Deployment automation finalization',
-                    'Monitoring and alerting setup',
-                    'Backup and disaster recovery configuration',
-                    'Staged rollout to production',
-                    'Full production launch',
-                    'User and administrator training',
-                    'Technical documentation handoff',
+                    'Extensive QA testing',
+                    'Load and performance testing',
+                    'Security penetration testing',
+                    'Staff training program',
+                    'Documentation creation',
+                    'Phased rollout strategy',
+                    'Post-launch optimization',
                     'Final payment collection',
-                    '12 months of priority support and maintenance begins'
+                    '12 months of premium support begins'
                 ]
             }
-        ]
+        ],
+        features: [
+            'Unlimited custom pages',
+            'Fully custom design and development',
+            'Advanced CMS with custom modules',
+            'E-commerce platform (unlimited products)',
+            'User portal/membership system',
+            'Multi-language support',
+            'Advanced analytics and reporting',
+            'Marketing automation integration',
+            'CRM integration',
+            'API development',
+            'Third-party integrations',
+            'Advanced security features',
+            'Dedicated project manager',
+            'Custom admin dashboard',
+            'A/B testing setup',
+            'Conversion rate optimization',
+            '12 months of premium support',
+            'Priority bug fixes',
+            'Monthly performance reports'
+        ],
+        notes: 'Pricing varies based on project scope and requirements'
     },
-    'monthly-maintenance': {
-        name: 'Monthly Maintenance Retainer - $500/month',
-        description: 'Ongoing support and maintenance package',
-        price: 500,
-        duration: 'Monthly recurring',
+    
+    'seo-services': {
+        name: 'SEO Services - $199/month',
+        description: 'Comprehensive SEO optimization for Hill Country businesses',
+        price: 199,
+        duration: 'Ongoing monthly service',
         phases: [
             {
-                name: 'Continuous Monitoring & Maintenance',
+                name: 'Initial SEO Audit',
+                duration: '1 week',
+                tasks: [
+                    'Comprehensive website SEO audit',
+                    'Keyword research for Hill Country markets',
+                    'Competitor analysis',
+                    'Technical SEO assessment',
+                    'Current ranking baseline report'
+                ]
+            },
+            {
+                name: 'Monthly Optimization',
                 duration: 'Ongoing',
                 tasks: [
-                    'Software and plugin updates (weekly)',
-                    'Security patches application (as released)',
-                    'Daily automated backup verification',
-                    'Uptime monitoring (24/7 with 15-minute checks)',
-                    'Performance monitoring and optimization',
-                    'Security scanning (weekly)',
-                    'Server health checks'
+                    'On-page SEO optimization',
+                    'Content optimization for target keywords',
+                    'Local SEO improvements',
+                    'Google My Business optimization',
+                    'Local citation building',
+                    'Schema markup updates',
+                    'Performance monitoring'
                 ]
             },
             {
-                name: 'Monthly Services',
+                name: 'Monthly Reporting',
                 duration: 'Monthly',
                 tasks: [
-                    'Monthly performance report with analytics',
-                    'Analytics review and insights presentation',
-                    'SEO health check and recommendations',
-                    'Content updates (up to 5 pages or 2 hours of work)',
-                    'Image optimization as needed',
-                    'Database optimization and cleanup',
-                    'Monthly strategy call (30 minutes)'
-                ]
-            },
-            {
-                name: 'Priority Support',
-                duration: 'As needed',
-                tasks: [
-                    'Priority email support (4-hour response time)',
-                    'Bug fixes and troubleshooting',
-                    'Minor design adjustments',
-                    'Form updates and modifications',
-                    'Third-party integration support',
-                    'Emergency response (4-hour SLA for critical issues)',
-                    'Phone support during business hours'
+                    'Keyword ranking tracking',
+                    'Traffic analysis',
+                    'Conversion tracking',
+                    'Competitor ranking comparisons',
+                    'Monthly performance reports',
+                    'Strategy adjustments'
                 ]
             }
-        ]
+        ],
+        features: [
+            'Keyword research (Hill Country focus)',
+            'On-page SEO optimization',
+            'Technical SEO fixes',
+            'Local SEO optimization',
+            'Google My Business management',
+            'Schema markup implementation',
+            'Content optimization',
+            'Monthly performance reports',
+            'Keyword ranking tracking',
+            'Google Analytics monitoring',
+            'Competitor analysis',
+            'Review generation support'
+        ],
+        notes: 'Results typically visible within 3-6 months'
     },
-    'seo-package': {
-        name: 'SEO Optimization Package - $2,000',
-        description: 'Comprehensive search engine optimization',
-        price: 2000,
-        duration: '4-6 weeks',
+    
+    'digital-marketing': {
+        name: 'Digital Marketing Services - Custom Pricing',
+        description: 'Comprehensive marketing campaigns for growth',
+        price: 0, // Custom pricing
+        duration: 'Custom campaign duration',
         phases: [
             {
-                name: 'SEO Audit & Analysis',
-                duration: '3-5 days',
+                name: 'Strategy Development',
+                duration: '1-2 weeks',
                 tasks: [
-                    'Comprehensive technical SEO audit',
-                    'On-page SEO analysis',
-                    'Backlink profile review and toxic link identification',
-                    'Competitor analysis (up to 3 competitors)',
-                    'Keyword research and mapping (50+ keywords)',
-                    'Content gap analysis',
-                    'Site speed and Core Web Vitals assessment',
-                    'Mobile usability review',
-                    'Comprehensive audit report delivery and review'
+                    'Marketing goals definition',
+                    'Target audience research',
+                    'Platform selection',
+                    'Budget allocation planning',
+                    'Campaign strategy creation',
+                    'Content calendar development'
                 ]
             },
             {
-                name: 'Technical SEO Implementation',
-                duration: '5-7 days',
+                name: 'Campaign Setup',
+                duration: '1 week',
                 tasks: [
-                    'Site structure optimization',
-                    'URL structure improvements',
-                    'XML sitemap creation/optimization',
-                    'Robots.txt optimization',
-                    'Schema markup implementation (Organization, LocalBusiness, etc.)',
-                    'Core Web Vitals optimization',
-                    'Mobile optimization improvements',
-                    'SSL and HTTPS implementation verification',
-                    'Canonical tag implementation',
-                    'Crawl error resolution'
+                    'Account setup (Facebook, Google, etc.)',
+                    'Audience targeting configuration',
+                    'Ad creative development',
+                    'Landing page optimization',
+                    'Tracking pixel installation',
+                    'Conversion goals setup'
                 ]
             },
             {
-                name: 'On-Page Optimization',
-                duration: '7-10 days',
+                name: 'Campaign Management',
+                duration: 'Ongoing',
                 tasks: [
-                    'Title tag optimization for all pages',
-                    'Meta description writing for all pages',
-                    'Header tag structure optimization (H1-H6)',
-                    'Internal linking strategy implementation',
-                    'Image alt text optimization',
-                    'Content optimization for target keywords',
-                    'Featured snippet optimization',
-                    'Local SEO optimization (Google Business Profile, NAP consistency)',
-                    'Page load speed optimization'
+                    'Daily campaign monitoring',
+                    'A/B testing',
+                    'Budget optimization',
+                    'Ad creative updates',
+                    'Audience refinement',
+                    'Performance analysis',
+                    'Weekly optimization'
                 ]
             },
             {
-                name: 'Setup & Monitoring Tools',
-                duration: '3-5 days',
+                name: 'Reporting & Optimization',
+                duration: 'Ongoing',
                 tasks: [
-                    'Google Search Console setup and optimization',
-                    'Google Analytics 4 configuration',
-                    'Google Tag Manager implementation',
-                    'Rank tracking setup (50+ keywords)',
-                    'Conversion tracking implementation',
-                    'Monthly reporting dashboard setup',
-                    'Competitor monitoring setup',
-                    'Backlink monitoring setup',
-                    'Initial baseline report',
-                    'Strategy recommendations and roadmap document',
-                    '30 days of post-launch monitoring and adjustments'
+                    'Weekly performance reports',
+                    'Monthly strategy sessions',
+                    'ROI analysis',
+                    'Campaign adjustments',
+                    'Conversion rate optimization',
+                    'Competitive analysis'
                 ]
             }
-        ]
+        ],
+        features: [
+            'Social media marketing (Facebook, Instagram, LinkedIn)',
+            'Google Ads (Search, Display, LSA)',
+            'Facebook & Instagram Ads',
+            'Email marketing campaigns',
+            'Content marketing',
+            'Lead generation campaigns',
+            'Retargeting campaigns',
+            'Analytics & reporting',
+            'A/B testing',
+            'ROI tracking',
+            'Custom audience creation',
+            'Campaign optimization'
+        ],
+        notes: 'Pricing varies based on campaign complexity and ad spend budget'
     }
 };
 
-// Render Projects Page
-function renderProjects(content) {
-    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+// Preview Project Timeline
+function previewProjectTimeline() {
+    if (window.selectedPackages.length === 0) {
+        showToast('Please select at least one service package', 'error');
+        return;
+    }
     
-    content.innerHTML = `
-        <div class="controls-bar">
-            <div class="search-box">
-                <input type="text" class="search-input" placeholder="Search project timelines..." oninput="filterProjectTimelines(this.value)">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="m21 21-4.35-4.35"/>
-                </svg>
-            </div>
-        </div>
-        
-        <div class="cards-grid" id="projectTimelinesGrid">
-            ${savedTimelines.length > 0 ? savedTimelines.map((timeline, index) => `
-                <div class="card" style="cursor: pointer;" onclick="viewProjectTimeline(${index})">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                        <div>
-                            <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">${timeline.clientName}</div>
-                            <div style="font-size: 13px; color: var(--text-muted);">${timeline.clientCompany || 'No company'}</div>
-                        </div>
-                        <span class="status-badge status-${timeline.status || 'pending'}">
-                            <span class="status-dot"></span>
-                            ${timeline.status || 'Draft'}
-                        </span>
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        ${timeline.packages.map(pkg => `
-                            <span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">${servicePackages[pkg]?.name || pkg}</span>
-                        `).join('')}
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
-                        <div style="font-size: 12px; color: var(--text-muted);">
-                            Created: ${formatDate(timeline.createdAt)}
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="table-action-btn" onclick="event.stopPropagation(); exportProjectTimeline(${index})" title="Export">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="7 10 12 15 17 10"/>
-                                    <line x1="12" y1="15" x2="12" y2="3"/>
-                                </svg>
-                            </button>
-                            <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteProjectTimeline(${index})" title="Delete">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('') : `
-                <div style="grid-column: 1 / -1;">
-                    <div class="empty-state">
-                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                        </svg>
-                        <div class="empty-title">No Project Timelines Yet</div>
-                        <div class="empty-description">Create your first project timeline to generate professional order of events documents for your clients.</div>
-                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="openProjectTimelineModal()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="12" y1="5" x2="12" y2="19"/>
-                                <line x1="5" y1="12" x2="19" y2="12"/>
-                            </svg>
-                            Create Project Timeline
-                        </button>
-                    </div>
-                </div>
-            `}
-        </div>
-    `;
-}
-
-// Open Project Timeline Creation Modal
-function openProjectTimelineModal(leadId = null) {
-    const modal = document.getElementById('createModal');
-    const titleEl = document.getElementById('createModalTitle');
-    const bodyEl = document.getElementById('createModalBody');
+    const clientName = document.getElementById('timelineClientName').value;
+    if (!clientName) {
+        showToast('Please enter a client name', 'error');
+        return;
+    }
     
-    const allLeadsAndCustomers = [...state.leads, ...state.customers];
-    const selectedLead = leadId ? allLeadsAndCustomers.find(l => l.id === leadId) : null;
+    const timeline = {
+        clientId: document.getElementById('timelineClient').value || null,
+        clientName,
+        clientCompany: document.getElementById('timelineClientCompany').value,
+        clientEmail: document.getElementById('timelineClientEmail').value,
+        clientPhone: document.getElementById('timelineClientPhone').value,
+        startDate: document.getElementById('timelineStartDate').value,
+        projectName: document.getElementById('timelineProjectName').value,
+        notes: document.getElementById('timelineNotes').value,
+        packages: window.selectedPackages,
+        maintenanceIncluded: document.getElementById('maintenanceIncluded').value,
+        maintenanceFee: parseFloat(document.getElementById('maintenanceFee').value) || 59.99,
+        status: 'draft',
+        createdAt: new Date().toISOString()
+    };
     
-    titleEl.textContent = 'Create Project Timeline';
-    
-    bodyEl.innerHTML = `
-        <div style="max-height: 70vh; overflow-y: auto;">
-            <div class="detail-section">
-                <div class="section-header">
-                    <h3 class="section-title">Client Information</h3>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group full-width">
-                        <label class="form-label">Select Client / Lead</label>
-                        <select class="form-select" id="timelineClient" onchange="populateClientInfo()">
-                            <option value="">-- Select a client --</option>
-                            ${allLeadsAndCustomers.map(lead => `
-                                <option value="${lead.id}" ${selectedLead && selectedLead.id === lead.id ? 'selected' : ''}>
-                                    ${lead.name} ${lead.company ? `(${lead.company})` : ''} - ${lead.is_customer ? 'Customer' : 'Lead'}
-                                </option>
-                            `).join('')}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Client Name</label>
-                        <input type="text" class="form-input" id="timelineClientName" value="${selectedLead?.name || ''}" placeholder="Client name">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Company</label>
-                        <input type="text" class="form-input" id="timelineClientCompany" value="${selectedLead?.company || ''}" placeholder="Company name">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-input" id="timelineClientEmail" value="${selectedLead?.email || ''}" placeholder="Email address">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Phone</label>
-                        <input type="tel" class="form-input" id="timelineClientPhone" value="${selectedLead?.phone || ''}" placeholder="Phone number">
-                    </div>
-                </div>
-            </div>
-            
-            <div class="detail-section">
-                <div class="section-header">
-                    <h3 class="section-title">Select Service Packages</h3>
-                </div>
-                <div style="display: grid; gap: 12px;" id="packageSelection">
-                    ${Object.entries(servicePackages).map(([key, pkg]) => `
-                        <div class="expense-item" style="cursor: pointer;" onclick="togglePackageSelection('${key}', this)">
-                            <div class="expense-checkbox" id="pkg-check-${key}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                            </div>
-                            <div class="expense-content">
-                                <div class="expense-description">${pkg.name}</div>
-                                <div class="expense-meta">
-                                    <span>${pkg.description}</span>
-                                    <span>Duration: ${pkg.duration}</span>
-                                </div>
-                            </div>
-                            <div class="expense-amount">$${pkg.price.toLocaleString()}</div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-            
-            <div class="detail-section">
-                <div class="section-header">
-                    <h3 class="section-title">Project Details</h3>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label">Estimated Start Date</label>
-                        <input type="date" class="form-input" id="timelineStartDate" value="${new Date().toISOString().split('T')[0]}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Project Name (Optional)</label>
-                        <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Website Redesign 2026">
-                    </div>
-                    <div class="form-group full-width">
-                        <label class="form-label">Additional Notes</label>
-                        <textarea class="form-textarea" id="timelineNotes" rows="3" placeholder="Any special requirements or notes for this project..."></textarea>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="selectedPackagesSummary" style="display: none;">
-                <div class="detail-section">
-                    <div class="section-header">
-                        <h3 class="section-title">Selected Packages Summary</h3>
-                    </div>
-                    <div id="packagesSummaryContent"></div>
-                </div>
-            </div>
-        </div>
-        
-        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
-            <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
-            <button type="button" class="btn btn-secondary" onclick="previewProjectTimeline()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
-                Preview
-            </button>
-            <button type="button" class="btn btn-primary" onclick="saveProjectTimeline()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                    <polyline points="17 21 17 13 7 13 7 21"/>
-                    <polyline points="7 3 7 8 15 8"/>
-                </svg>
-                Save Timeline
-            </button>
-        </div>
-    `;
-    
-    modal.classList.add('active');
-    
-    // Initialize selected packages array
-    window.selectedPackages = [];
+    closeCreateModal();
+    openTimelinePreviewModal(timeline);
 }
 
 // Populate client info when selected from dropdown
@@ -6993,77 +7111,43 @@ function togglePackageSelection(packageKey, element) {
     updatePackagesSummary();
 }
 
-// Update packages summary
-function updatePackagesSummary() {
-    const summaryDiv = document.getElementById('selectedPackagesSummary');
-    const contentDiv = document.getElementById('packagesSummaryContent');
-    
-    if (window.selectedPackages.length === 0) {
-        summaryDiv.style.display = 'none';
-        return;
-    }
-    
-    summaryDiv.style.display = 'block';
-    
-    let totalPrice = 0;
-    let totalPhases = 0;
-    
-    window.selectedPackages.forEach(key => {
-        totalPrice += servicePackages[key].price;
-        totalPhases += servicePackages[key].phases.length;
-    });
-    
-    contentDiv.innerHTML = `
-        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-            ${window.selectedPackages.map(key => `
-                <div style="background: var(--accent-amber-dim); color: var(--accent-amber); padding: 8px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;">
-                    ${servicePackages[key].name}
-                </div>
-            `).join('')}
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; padding: 16px; background: var(--bg-tertiary); border-radius: var(--radius-md);">
-            <div style="text-align: center;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">Total Investment</div>
-                <div style="font-size: 24px; font-weight: 700; color: var(--accent-amber); font-family: var(--font-mono);">$${totalPrice.toLocaleString()}</div>
-            </div>
-            <div style="text-align: center;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">Packages</div>
-                <div style="font-size: 24px; font-weight: 700; color: var(--text-primary); font-family: var(--font-mono);">${window.selectedPackages.length}</div>
-            </div>
-            <div style="text-align: center;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">Project Phases</div>
-                <div style="font-size: 24px; font-weight: 700; color: var(--text-primary); font-family: var(--font-mono);">${totalPhases}</div>
-            </div>
-        </div>
-    `;
-}
-
-// Preview Project Timeline
-function previewProjectTimeline() {
+// Save Project Timeline
+function saveProjectTimeline() {
     if (window.selectedPackages.length === 0) {
         showToast('Please select at least one service package', 'error');
         return;
     }
     
-    const clientName = document.getElementById('timelineClientName').value || 'Client';
-    const clientCompany = document.getElementById('timelineClientCompany').value;
-    const clientEmail = document.getElementById('timelineClientEmail').value;
-    const startDate = document.getElementById('timelineStartDate').value;
-    const projectName = document.getElementById('timelineProjectName').value;
-    const notes = document.getElementById('timelineNotes').value;
+    const clientName = document.getElementById('timelineClientName').value;
+    if (!clientName) {
+        showToast('Please enter a client name', 'error');
+        return;
+    }
     
     const timeline = {
+        clientId: document.getElementById('timelineClient').value || null,
         clientName,
-        clientCompany,
-        clientEmail,
-        startDate,
-        projectName,
-        notes,
+        clientCompany: document.getElementById('timelineClientCompany').value,
+        clientEmail: document.getElementById('timelineClientEmail').value,
+        clientPhone: document.getElementById('timelineClientPhone').value,
+        startDate: document.getElementById('timelineStartDate').value,
+        projectName: document.getElementById('timelineProjectName').value,
+        notes: document.getElementById('timelineNotes').value,
         packages: window.selectedPackages,
+        maintenanceIncluded: document.getElementById('maintenanceIncluded').value,
+        maintenanceFee: parseFloat(document.getElementById('maintenanceFee').value) || 59.99,
+        status: 'draft',
         createdAt: new Date().toISOString()
     };
     
-    openTimelinePreviewModal(timeline);
+    // Save to localStorage
+    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+    savedTimelines.unshift(timeline);
+    localStorage.setItem('projectTimelines', JSON.stringify(savedTimelines));
+    
+    closeCreateModal();
+    showToast('Project timeline saved successfully', 'success');
+    renderSection('projects');
 }
 
 // Open Timeline Preview Modal
@@ -7095,7 +7179,7 @@ function openTimelinePreviewModal(timeline) {
     modal.classList.add('active');
 }
 
-// Generate Timeline HTML
+// Generate Timeline HTML (generates the SLA document)
 function generateTimelineHTML(timeline) {
     let totalPrice = 0;
     timeline.packages.forEach(key => {
@@ -7105,6 +7189,14 @@ function generateTimelineHTML(timeline) {
     let phaseNumber = 1;
     const companySignatureDate = formatDate(timeline.createdAt);
     const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
+    
+    // Get longest support period
+    let longestSupportPeriod = 0;
+    timeline.packages.forEach(key => {
+        if (key === 'starter-website') longestSupportPeriod = Math.max(longestSupportPeriod, 90);
+        if (key === 'professional-website') longestSupportPeriod = Math.max(longestSupportPeriod, 120);
+        if (key === 'enterprise-website') longestSupportPeriod = Math.max(longestSupportPeriod, 365);
+    });
     
     return `
         <div class="invoice-preview" style="border-top-color: var(--accent-amber);">
@@ -7298,821 +7390,207 @@ function generateTimelineHTML(timeline) {
                     }).join('')}
                 </div>
 
+                <!-- MAINTENANCE TERMS -->
+                ${longestSupportPeriod > 0 ? `
+                    <div style="background: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-md); margin-bottom: 32px; border-left: 4px solid ${timeline.maintenanceIncluded === 'yes' ? 'var(--status-contacted)' : 'var(--accent-amber)'};">
+                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Maintenance & Support Terms</div>
+                        ${timeline.maintenanceIncluded === 'yes' ? `
+                            <div style="font-size: 14px; font-weight: 600; color: var(--status-contacted); margin-bottom: 12px;">
+                                ✓ Maintenance Included in ${longestSupportPeriod}-Day Free Support Period
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
+                                All maintenance services (bug fixes, security updates, minor content modifications, plugin/software updates, uptime monitoring, and priority support) are included free of charge during the ${longestSupportPeriod}-day support period following project launch.
+                                <br><br>
+                                After the free support period ends, Client may choose to continue maintenance services at the prevailing market rate, which will be communicated at that time.
+                            </div>
+                        ` : `
+                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">
+                                Post-Support Maintenance: $${parseFloat(timeline.maintenanceFee || 59.99).toFixed(2)}/month
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
+                                Following the ${longestSupportPeriod}-day free support period, ongoing maintenance services will be available for $${parseFloat(timeline.maintenanceFee || 59.99).toFixed(2)} per month.
+                                <br><br>
+                                <strong>Maintenance includes:</strong> Bug fixes, security updates, minor content modifications (up to 2 hours per month), plugin/software updates, uptime monitoring, and priority email support with 24-hour response time during business hours.
+                                <br><br>
+                                Maintenance billing begins automatically on the first day following the end of the free support period unless Client provides written notice of non-renewal at least 7 days prior.
+                            </div>
+                        `}
+                    </div>
+                ` : ''}
+
                 <!-- CLIENT RESPONSIBILITIES -->
                 <div style="background: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-md); margin-bottom: 32px; border: 1px solid var(--border-subtle);">
-                    <div style="font-size: 12px; font-weight: 700; text-transform
-                    : uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Client Responsibilities</div>
-<div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
-To ensure timely project completion, Client agrees to:
-<ul style="margin: 12px 0 0 20px; padding: 0;">
-<li style="margin-bottom: 8px;">Provide all required content, images, and materials within 3 business days of request</li>
-<li style="margin-bottom: 8px;">Respond to design/development reviews within 5 business days</li>
-<li style="margin-bottom: 8px;">Designate a single point of contact for project communications</li>
-<li style="margin-bottom: 8px;">Make payments according to the agreed schedule (50% deposit, 50% on completion)</li>
-<li style="margin-bottom: 8px;">Provide access to necessary accounts, hosting, and domain credentials</li>
-<li>Notify Provider immediately of any changes to project scope or requirements</li>
-</ul>
+                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Client Responsibilities</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
+                        To ensure timely project completion, Client agrees to:
+                        <ul style="margin: 12px 0 0 20px; padding: 0;">
+                            <li style="margin-bottom: 8px;">Provide all required content, images, and materials within 3 business days of request</li>
+                            <li style="margin-bottom: 8px;">Respond to design/development reviews within 5 business days</li>
+                            <li style="margin-bottom: 8px;">Designate a single point of contact for project communications</li>
+                            <li style="margin-bottom: 8px;">Make payments according to the agreed schedule (50% deposit, 50% on completion)</li>
+                            <li style="margin-bottom: 8px;">Provide access to necessary accounts, hosting, and domain credentials</li>
+                            <li>Notify Provider immediately of any changes to project scope or requirements</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- TEXAS LAW NOTICE -->
+                <div style="background: var(--bg-hover); padding: 20px; border-radius: var(--radius-md); margin-bottom: 32px; border-left: 4px solid var(--accent-amber);">
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 8px;">Governing Law</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.7;">
+                        This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions. 
+                        Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Texas. Both parties consent to the exclusive jurisdiction and venue of such courts.
+                    </div>
+                </div>
+
+                ${timeline.notes ? `
+                    <div style="margin-top: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-amber);">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px;">Additional Notes</div>
+                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">${timeline.notes}</div>
+                    </div>
+                ` : ''}
+
+                <!-- SIGNATURE REMINDER -->
+                <div style="background: rgba(245,158,11,0.1); border: 2px solid var(--accent-amber); padding: 20px; border-radius: var(--radius-md); text-align: center; margin-top: 32px;">
+                    <div style="font-size: 14px; font-weight: 700; color: var(--accent-amber); margin-bottom: 8px;">⚠️ Client Signature Required</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                        Please sign and date this SLA above in the "Client" section before returning. This document becomes legally binding once both parties have signed. 
+                        Provider's signature was applied digitally on ${companySignatureDate}.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="invoice-preview-footer">
+                <div style="text-align: center; padding: 20px; border-top: 1px solid var(--border-subtle);">
+                    <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Questions about this SLA?</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Contact us at diamondbackcoding@gmail.com or (940) 217-8680</div>
+<div style="font-size: 11px; color: var(--text-faint); margin-top: 12px;">Document ID: ${documentId} • Generated: ${formatDate(timeline.createdAt)}</div>
 </div>
 </div>
-            <!-- TEXAS LAW NOTICE -->
-            <div style="background: var(--bg-hover); padding: 20px; border-radius: var(--radius-md); margin-bottom: 32px; border-left: 4px solid var(--accent-amber);">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 8px;">Governing Law</div>
-                <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.7;">
-                    This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions. 
-                    Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Texas. Both parties consent to the exclusive jurisdiction and venue of such courts.
-                </div>
-            </div>
-
-            ${timeline.notes ? `
-                <div style="margin-top: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-amber);">
-                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px;">Additional Notes</div>
-                    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">${timeline.notes}</div>
-                </div>
-            ` : ''}
-
-            <!-- SIGNATURE REMINDER -->
-            <div style="background: rgba(245,158,11,0.1); border: 2px solid var(--accent-amber); padding: 20px; border-radius: var(--radius-md); text-align: center; margin-top: 32px;">
-                <div style="font-size: 14px; font-weight: 700; color: var(--accent-amber); margin-bottom: 8px;">⚠️ Client Signature Required</div>
-                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                    Please sign and date this SLA above in the "Client" section before returning. This document becomes legally binding once both parties have signed. 
-                    Provider's signature was applied digitally on ${companySignatureDate}.
-                </div>
-            </div>
-        </div>
-        
-        <div class="invoice-preview-footer">
-            <div style="text-align: center; padding: 20px; border-top: 1px solid var(--border-subtle);">
-                <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Questions about this SLA?</div>
-                <div style="font-size: 12px; color: var(--text-muted);">Contact us at diamondbackcoding@gmail.com or (940) 217-8680</div>
-                <div style="font-size: 11px; color: var(--text-faint); margin-top: 12px;">Document ID: ${documentId} • Generated: ${formatDate(timeline.createdAt)}</div>
-            </div>
-        </div>
-    </div>
+</div>
 `;
 }
-
-// Save Project Timeline
-function saveProjectTimeline() {
-    if (window.selectedPackages.length === 0) {
-        showToast('Please select at least one service package', 'error');
-        return;
-    }
-    
-    const clientName = document.getElementById('timelineClientName').value;
-    if (!clientName) {
-        showToast('Please enter a client name', 'error');
-        return;
-    }
-    
-    const timeline = {
-        clientId: document.getElementById('timelineClient').value || null,
-        clientName,
-        clientCompany: document.getElementById('timelineClientCompany').value,
-        clientEmail: document.getElementById('timelineClientEmail').value,
-        clientPhone: document.getElementById('timelineClientPhone').value,
-        startDate: document.getElementById('timelineStartDate').value,
-        projectName: document.getElementById('timelineProjectName').value,
-        notes: document.getElementById('timelineNotes').value,
-        packages: window.selectedPackages,
-        status: 'draft',
-        createdAt: new Date().toISOString()
-    };
-    
-    // Save to localStorage
-    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
-    savedTimelines.unshift(timeline);
-    localStorage.setItem('projectTimelines', JSON.stringify(savedTimelines));
-    
-    closeCreateModal();
-    showToast('Project timeline saved successfully', 'success');
-    renderSection('projects');
-}
-
 // View saved project timeline
 function viewProjectTimeline(index) {
-    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
-    const timeline = savedTimelines[index];
-    
-    if (!timeline) {
-        showToast('Timeline not found', 'error');
-        return;
-    }
-    
-    window.currentTimelineIndex = index;
-    openTimelinePreviewModal(timeline);
+const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+const timeline = savedTimelines[index];
+if (!timeline) {
+    showToast('Timeline not found', 'error');
+    return;
 }
 
+window.currentTimelineIndex = index;
+openTimelinePreviewModal(timeline);
+}
 // Delete project timeline
 function deleteProjectTimeline(index) {
-    if (!confirm('Are you sure you want to delete this project timeline?')) return;
-    
-    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
-    savedTimelines.splice(index, 1);
-    localStorage.setItem('projectTimelines', JSON.stringify(savedTimelines));
-    
-    showToast('Timeline deleted successfully', 'success');
-    renderSection('projects');
-}
+if (!confirm('Are you sure you want to delete this project timeline?')) return;
+const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+savedTimelines.splice(index, 1);
+localStorage.setItem('projectTimelines', JSON.stringify(savedTimelines));
 
+showToast('Timeline deleted successfully', 'success');
+renderSection('projects');
+}
 // Export project timeline
 function exportProjectTimeline(index) {
-    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
-    const timeline = savedTimelines[index];
-    
-    if (!timeline) {
-        showToast('Timeline not found', 'error');
-        return;
-    }
-    
-    window.currentTimelinePreview = timeline;
-    exportTimelineAsPDF();
+const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+const timeline = savedTimelines[index];
+if (!timeline) {
+    showToast('Timeline not found', 'error');
+    return;
 }
 
+window.currentTimelinePreview = timeline;
+exportTimelineAsPDF();
+}
 // Export Timeline as PDF (Print)
 function exportTimelineAsPDF() {
-    const timeline = window.currentTimelinePreview;
-    if (!timeline) {
-        showToast('No timeline to export', 'error');
-        return;
-    }
-    
-    let totalPrice = 0;
-    timeline.packages.forEach(key => {
-        totalPrice += servicePackages[key].price;
-    });
-    
-    let phaseNumber = 1;
-    const companySignatureDate = formatDate(timeline.createdAt);
-    const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
-    
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Service Level Agreement - ${timeline.clientName}</title>
-            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: 'Outfit', sans-serif;
-                    color: #1a1a1a;
-                    line-height: 1.6;
-                    padding: 40px;
-                    max-width: 900px;
-                    margin: 0 auto;
-                }
-                .header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    padding-bottom: 20px;
-                    border-bottom: 4px solid #22c55e;
-                    margin-bottom: 30px;
-                }
-                .logo {
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                }
-                .logo-icon {
-                    width: 60px;
-                    height: 60px;
-                    background: linear-gradient(135deg, #22c55e, #15803d);
-                    border-radius: 12px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .logo-icon svg { width: 32px; height: 32px; color: white; }
-                .company-name { font-size: 24px; font-weight: 800; color: #1a1a1a; }
-                .company-tagline { font-size: 12px; color: #666; }
-                .doc-title { text-align: right; }
-                .doc-title h1 { font-size: 24px; font-weight: 800; color: #22c55e; margin-bottom: 4px; }
-                .doc-title p { font-size: 12px; color: #666; }
-                .doc-id { font-size: 10px; color: #999; margin-top: 4px; }
-                
-                .preamble {
-                    background: #f8f9fa;
-                    padding: 20px;
-                    border-radius: 8px;
-                    margin-bottom: 30px;
-                    border-left: 4px solid #22c55e;
-                }
-                .preamble-title {
-                    font-size: 11px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #22c55e;
-                    margin-bottom: 10px;
-                }
-                .preamble-text {
-                    font-size: 13px;
-                    color: #555;
-                    line-height: 1.7;
-                }
-                
-                .parties {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 30px;
-                    gap: 40px;
-                }
-                .party { flex: 1; }
-                .party-label {
-                    font-size: 10px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #22c55e;
-                    margin-bottom: 8px;
-                }
-                .party-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-                .party-details { font-size: 13px; color: #555; }
-                
-                .signature-box {
-                    margin-top: 16px;
-                    padding: 12px;
-                    background: #f8f9fa;
-                    border-radius: 6px;
-                }
-                .signature-box-required {
-                    border: 2px dashed #999;
-                }
-                .signature-label {
-                    font-size: 10px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #666;
-                    margin-bottom: 8px;
-                }
-                .signature-line {
-                    height: 40px;
-                    border-bottom: 1px solid #666;
-                    margin-bottom: 4px;
-                }
-                .signature-company {
-                    font-family: 'Brush Script MT', cursive;
-                    font-size: 24px;
-                    color: #22c55e;
-                    margin-bottom: 4px;
-                }
-                .signature-date {
-                    font-size: 11px;
-                    color: #666;
-                }
-                .signature-note {
-                    font-size: 10px;
-                    color: #999;
-                    margin-top: 8px;
-                }
-                
-                .project-details {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 16px;
-                    margin-bottom: 30px;
-                }
-                .detail-box {
-                    background: #f8f9fa;
-                    padding: 16px;
-                    border-radius: 6px;
-                }
-                .detail-label {
-                    font-size: 10px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #666;
-                    margin-bottom: 4px;
-                }
-                .detail-value {
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #1a1a1a;
-                }
-                .detail-value-large {
-                    font-size: 20px;
-                    font-weight: 700;
-                    color: #22c55e;
-                }
-                
-                .section-title {
-                    font-size: 12px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #22c55e;
-                    margin: 30px 0 16px;
-                }
-                
-                .service-tag {
-                    display: inline-block;
-                    background: #dcfce7;
-                    color: #166534;
-                    padding: 8px 16px;
-                    border-radius: 20px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    margin-right: 8px;
-                    margin-bottom: 8px;
-                }
-                
-                .commitments {
-                    background: #f8f9fa;
-                    padding: 20px;
-                    border-radius: 8px;
-                    margin-bottom: 30px;
-                    border: 1px solid #e5e7eb;
-                }
-                .commitment-item {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 12px;
-                    margin-bottom: 16px;
-                }
-                .commitment-item:last-child { margin-bottom: 0; }
-                .commitment-number {
-                    flex-shrink: 0;
-                    width: 24px;
-                    height: 24px;
-                    background: #22c55e;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-weight: 700;
-                    font-size: 12px;
-                }
-                .commitment-content { flex: 1; }
-                .commitment-title {
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #1a1a1a;
-                    margin-bottom: 4px;
-                }
-                .commitment-text {
-                    font-size: 13px;
-                    color: #555;
-                    line-height: 1.6;
-                }
-                
-                .package-section {
-                    margin-bottom: 30px;
-                    padding: 24px;
-                    border: 1px solid #e5e7eb;
-                    border-radius: 12px;
-                    page-break-inside: avoid;
-                }
-                .package-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding-bottom: 16px;
-                    border-bottom: 1px solid #e5e7eb;
-                    margin-bottom: 20px;
-                }
-                .package-name { font-size: 18px; font-weight: 700; }
-                .package-desc { font-size: 12px; color: #666; margin-top: 4px; }
-                .package-duration {
-                    text-align: right;
-                    font-size: 10px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    color: #666;
-                }
-                .package-duration span {
-                    display: block;
-                    font-size: 16px;
-                    font-weight: 700;
-                    color: #22c55e;
-                    margin-top: 4px;
-                }
-                
-                .phase {
-                    margin-bottom: 20px;
-                    padding-left: 20px;
-                    border-left: 3px solid #22c55e;
-                }
-                .phase-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 12px;
-                }
-                .phase-number {
-                    display: inline-block;
-                    background: #22c55e;
-                    color: white;
-                    padding: 2px 10px;
-                    border-radius: 12px;
-                    font-size: 11px;
-                    font-weight: 700;
-                    margin-right: 8px;
-                }
-                .phase-name { font-size: 15px; font-weight: 600; }
-                .phase-duration {
-                    font-size: 11px;
-                    color: #666;
-                    background: #f3f4f6;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                }
-                
-                .task-list { list-style: none; }
-                .task-item {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 10px;
-                    padding: 8px 0;
-                    font-size: 13px;
-                    color: #444;
-                    border-bottom: 1px solid #f3f4f6;
-                }
-                .task-item:last-child { border-bottom: none; }
-                .task-check {
-                    width: 16px;
-                    height: 16px;
-                    border: 2px solid #22c55e;
-                    border-radius: 4px;
-                    flex-shrink: 0;
-                    margin-top: 2px;
-                }
-                
-                .responsibilities {
-                    background: #f8f9fa;
-                    padding: 20px;
-                    border-radius: 8px;
-                    margin-bottom: 30px;
-                    border: 1px solid #e5e7eb;
-                }
-                .responsibilities ul {
-                    margin: 12px 0 0 20px;
-                    padding: 0;
-                }
-                .responsibilities li {
-                    margin-bottom: 8px;
-                    font-size: 13px;
-                    color: #555;
-                    line-height: 1.6;
-                }
-                
-                .law-notice {
-                    background: #fffbeb;
-                    border: 1px solid #fbbf24;
-                    border-left: 4px solid #f59e0b;
-                    padding: 20px;
-                    border-radius: 8px;
-                    margin-bottom: 30px;
-                }
-                .law-notice-title {
-                    font-size: 11px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #92400e;
-                    margin-bottom: 8px;
-                }
-                .law-notice-text {
-                    font-size: 12px;
-                    color: #78350f;
-                    line-height: 1.7;
-                }
-                
-                .signature-reminder {
-                    background: #fef3c7;
-                    border: 2px solid #fbbf24;
-                    padding: 20px;
-                    border-radius: 8px;
-                    text-align: center;
-                    margin-top: 30px;
-                }
-                .signature-reminder-title {
-                    font-size: 14px;
-                    font-weight: 700;
-                    color: #92400e;
-                    margin-bottom: 8px;
-                }
-                .signature-reminder-text {
-                    font-size: 13px;
-                    color: #78350f;
-                    line-height: 1.6;
-                }
-                
-                .footer {
-                    margin-top: 40px;
-                    padding-top: 20px;
-                    border-top: 1px solid #e5e7eb;
-                    text-align: center;
-                }
-                .footer p { font-size: 13px; color: #666; margin-bottom: 4px; }
-                .footer small { font-size: 11px; color: #999; }
-                
-                @media print {
-                    body { padding: 20px; }
-                    .package-section { page-break-inside: avoid; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <div class="logo">
-                    <div class="logo-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                            <path d="M2 17l10 5 10-5"/>
-                            <path d="M2 12l10 5 10-5"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <div class="company-name">Diamondback Coding</div>
-                        <div class="company-tagline">Premium Development Services</div>
-                    </div>
-                </div>
-                <div class="doc-title">
-                    <h1>SERVICE LEVEL AGREEMENT</h1>
-                    <p>Project Timeline & SLA</p>
-                    <div class="doc-id">Document ID: ${documentId}</div>
-                </div>
-            </div>
-            
-            <div class="preamble">
-                <div class="preamble-title">Agreement Overview</div>
-                <div class="preamble-text">
-                    This Service Level Agreement ("Agreement") is entered into as of <strong>${companySignatureDate}</strong> by and between 
-                    <strong>Diamondback Coding</strong> ("Provider"), a Texas-based web development company, and 
-                    <strong>${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}</strong> ("Client").
-                    This Agreement governs the provision of web development services as outlined below and is subject to the terms and conditions set forth herein.
-                </div>
-            </div>
-            
-            <div class="parties">
-                <div class="party">
-                    <div class="party-label">Service Provider (Company)</div>
-                    <div class="party-name">Diamondback Coding</div>
-                    <div class="party-details">
-                        15709 Spillman Ranch Loop<br>
-                        Austin, TX 78738<br>
-                        diamondbackcoding@gmail.com<br>
-                        (940) 217-8680
-                    </div>
-                    <div class="signature-box">
-                        <div class="signature-label">Company Signature</div>
-                        <div class="signature-company">Diamondback Coding</div>
-                        <div class="signature-date">Digitally Signed: ${companySignatureDate}</div>
-                        <div class="signature-note">Authorized Representative</div>
-                    </div>
-                </div>
-                <div class="party">
-                    <div class="party-label">Client (Customer)</div>
-                    <div class="party-name">${timeline.clientName}</div>
-                    <div class="party-details">
-                        ${timeline.clientCompany ? timeline.clientCompany + '<br>' : ''}
-                        ${timeline.clientEmail || ''}<br>
-                        ${timeline.clientPhone || ''}
-                    </div>
-                    <div class="signature-box signature-box-required">
-                        <div class="signature-label">Client Signature Required</div>
-                        <div class="signature-line"></div>
-                        <div class="signature-date">Signature Date: _______________</div>
-                        <div class="signature-note">By signing, Client agrees to all terms, timelines, and pricing outlined in this SLA.</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section-title">Project Details</div>
-            <div class="project-details">
-                <div class="detail-box">
-                    <div class="detail-label">Project Name</div>
-                    <div class="detail-value">${timeline.projectName || 'Web Development Project'}</div>
-                </div>
-                <div class="detail-box">
-                    <div class="detail-label">Estimated Start Date</div>
-                    <div class="detail-value">${formatDate(timeline.startDate)}</div>
-                </div>
-                <div class="detail-box">
-                    <div class="detail-label">Total Investment</div>
-                    <div class="detail-value detail-value-large">$${totalPrice.toLocaleString()}</div>
-                </div>
-                <div class="detail-box">
-                    <div class="detail-label">Payment Terms</div>
-                    <div class="detail-value">50% Deposit + 50% Completion</div>
-                </div>
-            </div>
-            
-            <div class="section-title">Selected Services</div>
-            <div style="margin-bottom: 30px;">
-                ${timeline.packages.map(key => `
-                    <span class="service-tag">${servicePackages[key].name}</span>
-                `).join('')}
-            </div>
-            
-            <div class="section-title">Service Level Commitments</div>
-            <div class="commitments">
-                <div class="commitment-item">
-                    <div class="commitment-number">1</div>
-                    <div class="commitment-content">
-                        <div class="commitment-title">Timeline Adherence</div>
-                        <div class="commitment-text">Provider commits to delivering all project phases within the specified timeframes, subject to timely Client feedback and approval at each milestone.</div>
-                    </div>
-                </div>
-                <div class="commitment-item">
-                    <div class="commitment-number">2</div>
-                    <div class="commitment-content">
-                        <div class="commitment-title">Communication Response Time</div>
-                        <div class="commitment-text">Provider will respond to Client inquiries within 24 business hours during regular business hours (Monday-Friday, 8 AM - 5 PM CST).</div>
-                    </div>
-                </div>
-                <div class="commitment-item">
-                    <div class="commitment-number">3</div>
-                    <div class="commitment-content">
-                        <div class="commitment-title">Quality Assurance</div>
-                        <div class="commitment-text">All deliverables will undergo comprehensive testing across major browsers and devices before client review.</div>
-                    </div>
-                </div>
-                <div class="commitment-item">
-                    <div class="commitment-number">4</div>
-                    <div class="commitment-content">
-                        <div class="commitment-title">Post-Launch Support</div>
-                        <div class="commitment-text">Free priority support period begins immediately after launch (duration specified in selected package).</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section-title">Detailed Project Timeline</div>
-            
-            ${timeline.packages.map(packageKey => {
-                const pkg = servicePackages[packageKey];
-                return `
-                    <div class="package-section">
-                        <div class="package-header">
-                            <div>
-                                <div class="package-name">${pkg.name}</div>
-                                <div class="package-desc">${pkg.description}</div>
-                            </div>
-                            <div class="package-duration">
-                                Duration
-                                <span>${pkg.duration}</span>
-                            </div>
-                        </div>
-                        
-                        ${pkg.phases.map(phase => {
-                            const currentPhase = phaseNumber++;
-                            return `
-                                <div class="phase">
-                                    <div class="phase-header">
-                                        <div>
-                                            <span class="phase-number">Phase ${currentPhase}</span>
-                                            <span class="phase-name">${phase.name}</span>
-                                        </div>
-                                        <span class="phase-duration">${phase.duration}</span>
-                                    </div>
-                                    <ul class="task-list">
-                                        ${phase.tasks.map(task => `
-                                            <li class="task-item">
-                                                <div class="task-check"></div>
-                                                ${task}
-                                            </li>
-                                        `).join('')}
-                                    </ul>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `;
-            }).join('')}
-            
-            <div class="section-title">Client Responsibilities</div>
-            <div class="responsibilities">
-                <div class="preamble-text">
-                    To ensure timely project completion, Client agrees to:
-                    <ul>
-                        <li>Provide all required content, images, and materials within 3 business days of request</li>
-                        <li>Respond to design/development reviews within 5 business days</li>
-                        <li>Designate a single point of contact for project communications</li>
-                        <li>Make payments according to the agreed schedule (50% deposit, 50% on completion)</li>
-                        <li>Provide access to necessary accounts, hosting, and domain credentials</li>
-                        <li>Notify Provider immediately of any changes to project scope or requirements</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="law-notice">
-                <div class="law-notice-title">Governing Law</div>
-                <div class="law-notice-text">
-                    This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions. 
-                    Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Texas. Both parties consent to the exclusive jurisdiction and venue of such courts.
-                </div>
-            </div>
-            
-            ${timeline.notes ? `
-                <div class="section-title">Additional Notes</div>
-                <div class="responsibilities">
-                    <div class="preamble-text">${timeline.notes}</div>
-                </div>
-            ` : ''}
-            
-            <div class="signature-reminder">
-                <div class="signature-reminder-title">⚠️ Client Signature Required</div>
-                <div class="signature-reminder-text">
-                    Please sign and date this SLA above in the "Client" section before returning. This document becomes legally binding once both parties have signed. 
-                    Provider's signature was applied digitally on ${companySignatureDate}.
-                </div>
-            </div>
-            
-            <div class="footer">
-                <p>Questions about this SLA? Contact us at diamondbackcoding@gmail.com or (940) 217-8680</p>
-                <small>Document ID: ${documentId} • Generated: ${formatDate(timeline.createdAt)}</small>
-            </div>
-            
-            <script>
-                window.onload = function() {
-                    window.print();
-                }
-            <\/script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
+const timeline = window.currentTimelinePreview;
+if (!timeline) {
+showToast('No timeline to export', 'error');
+return;
 }
-
+// For now, just trigger print dialog
+// The generateTimelineHTML already creates a print-friendly version
+window.print();
+showToast('Opening print dialog...', 'success');
+}
 // Filter project timelines
 function filterProjectTimelines(query) {
-    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
-    const filtered = query 
-        ? savedTimelines.filter(t => 
-            t.clientName.toLowerCase().includes(query.toLowerCase()) ||
-            (t.clientCompany && t.clientCompany.toLowerCase().includes(query.toLowerCase())) ||
-            (t.projectName && t.projectName.toLowerCase().includes(query.toLowerCase()))
-          )
-        : savedTimelines;
-    
-    const grid = document.getElementById('projectTimelinesGrid');
-    
-    if (filtered.length === 0) {
-        grid.innerHTML = `
-            <div style="grid-column: 1 / -1;">
-                <div class="empty-state">
-                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                    </svg>
-                    <div class="empty-title">No Results Found</div>
-                    <div class="empty-description">Try adjusting your search terms</div>
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    grid.innerHTML = filtered.map((timeline, index) => {
-        // Find original index for actions
-        const originalIndex = savedTimelines.findIndex(t => t.createdAt === timeline.createdAt);
-        return `
-            <div class="card" style="cursor: pointer;" onclick="viewProjectTimeline(${originalIndex})">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                    <div>
-                        <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">${timeline.clientName}</div>
-                        <div style="font-size: 13px; color: var(--text-muted);">${timeline.clientCompany || 'No company'}</div>
-                    </div>
-                    <span class="status-badge status-${timeline.status || 'pending'}">
-                        <span class="status-dot"></span>
-                        ${timeline.status || 'Draft'}
-                    </span>
-                </div>
-                <div style="margin-bottom: 16px;">
-                    ${timeline.packages.map(pkg => `
-                        <span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">${servicePackages[pkg]?.name || pkg}</span>
-                    `).join('')}
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
-                    <div style="font-size: 12px; color: var(--text-muted);">
-                        Created: ${formatDate(timeline.createdAt)}
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="table-action-btn" onclick="event.stopPropagation(); exportProjectTimeline(${originalIndex})" title="Export">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                        </button>
-                        <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteProjectTimeline(${originalIndex})" title="Delete">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
+const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+const filtered = query
+? savedTimelines.filter(t =>
+t.clientName.toLowerCase().includes(query.toLowerCase()) ||
+(t.clientCompany && t.clientCompany.toLowerCase().includes(query.toLowerCase())) ||
+(t.projectName && t.projectName.toLowerCase().includes(query.toLowerCase()))
+)
+: savedTimelines;
+renderProjectsList(filtered, savedTimelines);
 }
+function renderProjectsList(filtered, allTimelines) {
+const grid = document.getElementById('projectTimelinesGrid');
+if (filtered.length === 0) {
+    grid.innerHTML = `
+        <div style="grid-column: 1 / -1;">
+            <div class="empty-state">
+                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+                <div class="empty-title">No Results Found</div>
+                <div class="empty-description">Try adjusting your search terms</div>
+            </div>
+        </div>
+    `;
+    return;
+}
+
+grid.innerHTML = filtered.map((timeline) => {
+    // Find original index for actions
+    const originalIndex = allTimelines.findIndex(t => t.createdAt === timeline.createdAt);
+    return `
+        <div class="card" style="cursor: pointer;" onclick="viewProjectTimeline(${originalIndex})">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                <div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">${timeline.clientName}</div>
+                    <div style="font-size: 13px; color: var(--text-muted);">${timeline.clientCompany || 'No company'}</div>
+                </div>
+                <span class="status-badge status-${timeline.status || 'pending'}">
+                    <span class="status-dot"></span>
+                    ${timeline.status || 'Draft'}
+                </span>
+            </div>
+            <div style="margin-bottom: 16px;">
+                ${timeline.packages.map(pkg => `
+                    <span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">${servicePackages[pkg]?.name || pkg}</span>
+                `).join('')}
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+                <div style="font-size: 12px; color: var(--text-muted);">
+                    Created: ${formatDate(timeline.createdAt)}
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="table-action-btn" onclick="event.stopPropagation(); exportProjectTimeline(${originalIndex})" title="Export">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                    </button>
+                    <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteProjectTimeline(${originalIndex})" title="Delete">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}).join('');
+}
+
 </script>
 </body>
 </html>

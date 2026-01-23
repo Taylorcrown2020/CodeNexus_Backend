@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "build": "npx puppeteer browsers install chrome"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
@@ -26,3 +27,4 @@
     "node": ">=18.0.0"
   }
 }
+

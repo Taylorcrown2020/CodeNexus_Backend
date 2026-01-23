@@ -66,28 +66,55 @@ const servicePackages = {
 const puppeteer = require('puppeteer');
 
 // Helper function to generate PDF from HTML
+// Helper function to generate PDF from HTML
 async function generatePDFFromHTML(html) {
-    const browser = await puppeteer.launch({
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    
-    const pdf = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: {
-            top: '20px',
-            right: '20px',
-            bottom: '20px',
-            left: '20px'
+    let browser;
+    try {
+        // Render-compatible Puppeteer configuration
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-extensions'
+            ],
+            // Try to use system Chrome if available, otherwise use bundled
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || 
+                           process.env.CHROME_BIN || 
+                           puppeteer.executablePath()
+        });
+        
+        const page = await browser.newPage();
+        await page.setContent(html, { 
+            waitUntil: 'networkidle0',
+            timeout: 30000 
+        });
+        
+        const pdf = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: {
+                top: '20px',
+                right: '20px',
+                bottom: '20px',
+                left: '20px'
+            }
+        });
+        
+        return pdf;
+    } catch (error) {
+        console.error('PDF generation error:', error);
+        throw new Error('Failed to generate PDF: ' + error.message);
+    } finally {
+        if (browser) {
+            await browser.close();
         }
-    });
-    
-    await browser.close();
-    return pdf;
+    }
 }
 
 // Helper function to generate Timeline PDF HTML

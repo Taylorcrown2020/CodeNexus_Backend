@@ -3554,6 +3554,7 @@ function renderEmployees(content) {
     `;
 }
 
+// Find and REPLACE the renderInvoices function with this fixed version:
 function renderInvoices(content) {
     // Filter by status first
     let filtered = state.invoices;
@@ -3592,9 +3593,8 @@ function renderInvoices(content) {
         
         <div class="cards-grid">
             ${filtered.length > 0 ? filtered.map(inv => `
-// Around line 1800-1900, find this section and replace it:
-<div class="card invoice-card">
-    <div class="invoice-card-header" onclick="openDetailModal('invoice', ${inv.id})">
+                <div class="card invoice-card" style="cursor: pointer;" onclick="openInvoiceDetail(${inv.id})">
+                    <div class="invoice-card-header">
                         <div>
                             <div class="invoice-card-number">${inv.invoice_number}</div>
                             <div class="invoice-card-customer">${inv.customer_name || 'Unknown'}</div>
@@ -3605,7 +3605,7 @@ function renderInvoices(content) {
                         </span>
                     </div>
                     <div>
-    <div class="invoice-card-amount">$${parseFloat(inv.total_amount).toLocaleString()}</div>
+                        <div class="invoice-card-amount">$${parseFloat(inv.total_amount).toLocaleString()}</div>
                         <div class="invoice-card-meta">
                             <div class="invoice-card-meta-item">
                                 <div class="invoice-card-meta-label">Issued</div>
@@ -3662,6 +3662,12 @@ function renderInvoices(content) {
             `}
         </div>
     `;
+}
+
+// ADD THIS NEW FUNCTION (place it after renderInvoices):
+function openInvoiceDetail(invoiceId) {
+    console.log('Opening invoice:', invoiceId);
+    openDetailModal('invoice', invoiceId);
 }
 
 function renderTasks(content) {
@@ -4117,79 +4123,80 @@ const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
             Delete
         </button>
     `;
-} else if (type === 'invoice') {
-    const invoice = state.invoices.find(i => i.id === id);
-    if (!invoice) {
-        console.error('Invoice not found:', id);
-        showToast('Invoice not found', 'error');
-        return;
-    }
+    if (type === 'invoice') {
+        console.log('📄 Opening invoice modal for ID:', id); // Debug log
+        const invoice = state.invoices.find(i => i.id === id);
+        if (!invoice) {
+            console.error('❌ Invoice not found:', id);
+            showToast('Invoice not found', 'error');
+            return;
+        }
     
-    console.log('Opening invoice:', invoice); // Debug log
-    
-    state.currentInvoice = invoice;
-    
-    titleEl.textContent = 'Invoice Details';
-    
-    // Generate the preview HTML
-    const previewHTML = await renderInvoicePreview(invoice);
-    bodyEl.innerHTML = previewHTML;
+        console.log('✅ Invoice found:', invoice);
+        
+        state.currentInvoice = invoice;
+        
+        titleEl.textContent = 'Invoice Details';
+        
+        // Generate the preview HTML
+        const previewHTML = await renderInvoicePreview(invoice);
+        bodyEl.innerHTML = previewHTML;
     
     // Build footer buttons
-    let footerButtons = `
-        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
-    `;
+        let footerButtons = `
+            <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+        `;
     
     // Add email button
-    if (invoice.customer_email) {
-        footerButtons += `
-            <button class="btn btn-secondary" onclick="emailInvoiceToClient()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                    <polyline points="22,6 12,13 2,6"/>
-                </svg>
-                Email to Client
-            </button>
-        `;
-    }
+        if (invoice.customer_email) {
+            footerButtons += `
+                <button class="btn btn-secondary" onclick="emailInvoiceToClient()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    Email to Client
+                </button>
+            `;
+        }
     
     // Add Mark as Paid button if not already paid
-    if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
-        footerButtons += `
-            <button class="btn btn-success" onclick="openPaymentModal(${invoice.id})">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-                Mark as Paid
-            </button>
-        `;
-    }
+        if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
+            footerButtons += `
+                <button class="btn btn-success" onclick="openPaymentModal(${invoice.id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Mark as Paid
+                </button>
+            `;
+        }
     
     // Add print button
-    footerButtons += `
-        <button class="btn btn-primary" onclick="printInvoice()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 6 2 18 2 18 9"/>
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                <rect x="6" y="14" width="12" height="8"/>
-            </svg>
-            Print Invoice
-        </button>
-    `;
-    
-    // Add delete button (only for non-paid invoices)
-    if (invoice.status !== 'paid') {
         footerButtons += `
-            <button class="btn btn-danger" onclick="deleteInvoice(${invoice.id})">
+            <button class="btn btn-primary" onclick="printInvoice()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <polyline points="6 9 6 2 18 2 18 9"/>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <rect x="6" y="14" width="12" height="8"/>
                 </svg>
-                Delete Invoice
+                Print Invoice
             </button>
         `;
-    }
+    
+    // Add delete button (only for non-paid invoices)
+        if (invoice.status !== 'paid') {
+            footerButtons += `
+                <button class="btn btn-danger" onclick="deleteInvoice(${invoice.id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    Delete Invoice
+                </button>
+            `;
+        }
     
     footerEl.innerHTML = footerButtons;
     
@@ -4593,6 +4600,7 @@ if (type === 'lead') {
 }
 
 modal.classList.add('active');
+}
 }
 function closeCreateModal() {
 document.getElementById('createModal').classList.remove('active');

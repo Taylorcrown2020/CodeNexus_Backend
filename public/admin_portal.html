@@ -7251,6 +7251,64 @@ function openTimelinePreviewModal(timeline) {
 
 // Generate Timeline HTML (generates the SLA document)
 function generateTimelineHTML(timeline) {
+
+    const standardWebsitePhases = [
+        {
+            name: 'Discovery & Planning Meeting',
+            duration: '1 week',
+            tasks: [
+                'Initial meeting to discuss your preferences and expectations',
+                'Review project timeline and what will be delivered',
+                'Understand your industry, business needs, and target audience',
+                'Define the message and persona your website needs to convey',
+                'Establish clear goals for the website'
+            ]
+        },
+        {
+            name: 'Draft Development & Iteration',
+            duration: '2-4 weeks (varies by package)',
+            tasks: [
+                'Start Round 1 draft of the website design',
+                'Two (2) progress meetings per week during this phase',
+                'Review feedback and make revisions each round',
+                'Continue rounds until you approve a final draft',
+                'As many revisions as needed to get it right'
+            ]
+        },
+        {
+            name: 'Functionality & Systems Integration',
+            duration: '1-2 weeks',
+            tasks: [
+                'Turn the approved draft into a fully functional website',
+                'Integrate all systems (forms, databases, CRM, etc.)',
+                'Add all technical features included in your package',
+                'Implement SEO and analytics tracking'
+            ]
+        },
+        {
+            name: 'Soft Deployment & Testing',
+            duration: '3-5 days',
+            tasks: [
+                'Deploy website to a private testing environment',
+                'Send you a private link to review and test the site',
+                'You test everything and provide any final feedback',
+                'We fix any issues that come up'
+            ]
+        },
+        {
+            name: 'Go-Live Deployment',
+            duration: '1-2 days',
+            tasks: [
+                'Set an agreed-upon go-live date',
+                'Confirm all issues are resolved before go-live',
+                'Connect your domain and make the site live',
+                'Site goes live on the scheduled date',
+                'Monitor for 24 hours after launch',
+                'Provide training on how to manage your site'
+            ]
+        }
+    ];
+    
     let totalPrice = 0;
     timeline.packages.forEach(key => {
         totalPrice += servicePackages[key].price;
@@ -7267,64 +7325,6 @@ function generateTimelineHTML(timeline) {
         if (key === 'professional-website') longestSupportPeriod = Math.max(longestSupportPeriod, 120);
         if (key === 'enterprise-website') longestSupportPeriod = Math.max(longestSupportPeriod, 365);
     });
-    
-// Build standardized website development phases
-const standardWebsitePhases = [
-    {
-        name: 'Discovery & Planning Meeting',
-        duration: '1 week',
-        tasks: [
-            'Initial meeting to discuss your preferences and expectations',
-            'Review project timeline and what will be delivered',
-            'Understand your industry, business needs, and target audience',
-            'Define the message and persona your website needs to convey',
-            'Establish clear goals for the website'
-        ]
-    },
-    {
-        name: 'Draft Development & Iteration',
-        duration: '2-4 weeks (varies by package)',
-        tasks: [
-            'Start Round 1 draft of the website design',
-            'Two (2) progress meetings per week during this phase',
-            'Review feedback and make revisions each round',
-            'Continue rounds until you approve a final draft',
-            'As many revisions as needed to get it right'
-        ]
-    },
-    {
-        name: 'Functionality & Systems Integration',
-        duration: '1-2 weeks',
-        tasks: [
-            'Turn the approved draft into a fully functional website',
-            'Integrate all systems (forms, databases, CRM, etc.)',
-            'Add all technical features included in your package',
-            'Implement SEO and analytics tracking'
-        ]
-    },
-    {
-        name: 'Soft Deployment & Testing',
-        duration: '3-5 days',
-        tasks: [
-            'Deploy website to a private testing environment',
-            'Send you a private link to review and test the site',
-            'You test everything and provide any final feedback',
-            'We fix any issues that come up'
-        ]
-    },
-    {
-        name: 'Go-Live Deployment',
-        duration: '1-2 days',
-        tasks: [
-            'Set an agreed-upon go-live date',
-            'Confirm all issues are resolved before go-live',
-            'Connect your domain and make the site live',
-            'Site goes live on the scheduled date',
-            'Monitor for 24 hours after launch',
-            'Provide training on how to manage your site'
-        ]
-    }
-];
     
     return `
         <div class="invoice-preview" style="border-top-color: var(--accent-amber);">

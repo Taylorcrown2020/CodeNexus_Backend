@@ -6027,12 +6027,12 @@ function openProjectTimelineModal() {
     
     bodyEl.innerHTML = `
         <div class="form-grid">
-            <div class="form-group">
+            <div class="form-group full-width">
                 <label class="form-label">Select Existing Client (Optional)</label>
                 <select class="form-select" id="timelineClient" onchange="populateClientInfo()">
                     <option value="">New Client / Manual Entry</option>
                     ${allLeadsAndCustomers.map(lead => `
-                        <option value="${lead.id}">${lead.name}${lead.company ? ' - ' + lead.company : ''}</option>
+                        <option value="${lead.id}">${lead.name}${lead.company ? ' - ' + lead.company : ''} (${lead.email})</option>
                     `).join('')}
                 </select>
             </div>
@@ -6048,8 +6048,8 @@ function openProjectTimelineModal() {
             </div>
             
             <div class="form-group">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-input" id="timelineClientEmail">
+                <label class="form-label">Email <span class="required">*</span></label>
+                <input type="email" class="form-input" id="timelineClientEmail" required>
             </div>
             
             <div class="form-group">
@@ -6057,21 +6057,36 @@ function openProjectTimelineModal() {
                 <input type="tel" class="form-input" id="timelineClientPhone">
             </div>
             
+            <div class="form-group full-width">
+                <label class="form-label">Client Address</label>
+                <textarea class="form-textarea" id="timelineClientAddress" rows="2" placeholder="Street address, City, State ZIP"></textarea>
+            </div>
+            
             <div class="form-group">
                 <label class="form-label">Estimated Start Date</label>
                 <input type="date" class="form-input" id="timelineStartDate" value="${today}">
             </div>
             
+            <div class="form-group">
+                <label class="form-label">Estimated Completion Date</label>
+                <input type="date" class="form-input" id="timelineEndDate">
+            </div>
+            
             <div class="form-group full-width">
-                <label class="form-label">Project Name</label>
-                <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Company Website Redesign">
+                <label class="form-label">Project Name / Description</label>
+                <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Company Website Redesign, E-commerce Store, etc.">
             </div>
             
             <div class="form-group full-width">
                 <label class="form-label">Select Service Packages <span class="required">*</span></label>
-                <div id="packagesList" style="display: grid; gap: 12px; margin-top: 12px;">
-                    ${Object.entries(servicePackages).map(([key, pkg]) => `
-                        <div class="expense-item" style="cursor: pointer; ${pkg.isFree ? 'border: 2px solid var(--status-contacted);' : ''}" onclick="togglePackageSelection('${key}', this)">
+                <div id="packagesList" style="display: grid; gap: 12px; margin-top: 12px; max-height: 400px; overflow-y: auto; padding-right: 8px;">
+                    
+                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-contacted); margin-top: 8px; padding: 8px; background: rgba(16,185,129,0.1); border-radius: var(--radius-sm);">
+                        🎁 FREE PACKAGES - No Payment Required
+                    </div>
+                    
+                    ${Object.entries(servicePackages).filter(([key, pkg]) => pkg.isFree).map(([key, pkg]) => `
+                        <div class="expense-item" style="cursor: pointer; border: 2px solid var(--status-contacted);" onclick="togglePackageSelection('${key}', this)">
                             <div class="expense-checkbox" id="pkg-check-${key}">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                                     <polyline points="20 6 9 17 4 12"/>
@@ -6080,20 +6095,58 @@ function openProjectTimelineModal() {
                             <div class="expense-content" style="flex: 1;">
                                 <div class="expense-description">
                                     ${pkg.name}
-                                    ${pkg.isFree ? '<span style="margin-left: 8px; background: var(--status-contacted); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700;">FREE</span>' : ''}
+                                    <span style="margin-left: 8px; background: var(--status-contacted); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700;">FREE</span>
                                 </div>
                                 <div class="expense-meta">
                                     <span>${pkg.description}</span>
                                     <span>Duration: ${pkg.duration}</span>
                                 </div>
                             </div>
-                            <div class="expense-amount">${pkg.price === 0 ? 'FREE' : '$' + pkg.price.toLocaleString()}</div>
+                            <div class="expense-amount" style="color: var(--status-contacted);">FREE</div>
+                        </div>
+                    `).join('')}
+                    
+                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-top: 16px; padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
+                        💼 PAID PACKAGES - Payment Due Upon Completion
+                    </div>
+                    
+                    ${Object.entries(servicePackages).filter(([key, pkg]) => !pkg.isFree).map(([key, pkg]) => `
+                        <div class="expense-item" style="cursor: pointer;" onclick="togglePackageSelection('${key}', this)">
+                            <div class="expense-checkbox" id="pkg-check-${key}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                            <div class="expense-content" style="flex: 1;">
+                                <div class="expense-description">${pkg.name}</div>
+                                <div class="expense-meta">
+                                    <span>${pkg.description}</span>
+                                    <span>Duration: ${pkg.duration}</span>
+                                </div>
+                            </div>
+                            <div class="expense-amount">${pkg.price === 0 ? 'Custom' : '$' + pkg.price.toLocaleString()}</div>
                         </div>
                     `).join('')}
                 </div>
             </div>
             
-            <div class="form-group">
+            <div class="form-group full-width" id="paymentTermsSection" style="display: none;">
+                <label class="form-label">Payment Terms</label>
+                <select class="form-select" id="paymentTerms">
+                    <option value="completion">100% Due Upon Project Completion</option>
+                    <option value="net30">Net 30 (Payment due 30 days after completion)</option>
+                    <option value="net15">Net 15 (Payment due 15 days after completion)</option>
+                    <option value="milestone">Milestone-Based (Split across project phases)</option>
+                    <option value="custom">Custom Payment Plan</option>
+                </select>
+            </div>
+            
+            <div class="form-group full-width" id="customPaymentSection" style="display: none;">
+                <label class="form-label">Custom Payment Details</label>
+                <textarea class="form-textarea" id="customPaymentDetails" rows="2" placeholder="Describe the custom payment arrangement..."></textarea>
+            </div>
+            
+            <div class="form-group" id="maintenanceSection" style="display: none;">
                 <label class="form-label">Include Maintenance After Free Support?</label>
                 <select class="form-select" id="maintenanceIncluded">
                     <option value="no">No - Client will decide later</option>
@@ -6101,14 +6154,19 @@ function openProjectTimelineModal() {
                 </select>
             </div>
             
-            <div class="form-group">
-                <label class="form-label">Monthly Maintenance Fee (if applicable)</label>
+            <div class="form-group" id="maintenanceFeeSection" style="display: none;">
+                <label class="form-label">Monthly Maintenance Fee</label>
                 <input type="number" class="form-input" id="maintenanceFee" value="59.99" step="0.01">
             </div>
             
             <div class="form-group full-width">
-                <label class="form-label">Additional Notes</label>
-                <textarea class="form-textarea" id="timelineNotes" rows="3" placeholder="Any special requirements or notes..."></textarea>
+                <label class="form-label">Special Requirements / Scope Notes</label>
+                <textarea class="form-textarea" id="timelineScope" rows="3" placeholder="Any specific features, integrations, or requirements for this project..."></textarea>
+            </div>
+            
+            <div class="form-group full-width">
+                <label class="form-label">Additional Notes / Terms</label>
+                <textarea class="form-textarea" id="timelineNotes" rows="2" placeholder="Any other notes or special terms..."></textarea>
             </div>
         </div>
         
@@ -6119,33 +6177,134 @@ function openProjectTimelineModal() {
         
         <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
             <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
-            <button type="button" class="btn btn-secondary" onclick="previewProjectTimeline()">Preview SLA</button>
-            <button type="button" class="btn btn-primary" onclick="saveProjectTimeline()">Save Timeline</button>
+            <button type="button" class="btn btn-secondary" onclick="previewProjectTimeline()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                Preview SLA
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveProjectTimeline()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                Save Timeline
+            </button>
         </div>
     `;
     
+    // Add event listener for payment terms
+    setTimeout(function() {
+        const paymentTermsSelect = document.getElementById('paymentTerms');
+        if (paymentTermsSelect) {
+            paymentTermsSelect.addEventListener('change', function() {
+                const customSection = document.getElementById('customPaymentSection');
+                if (this.value === 'custom') {
+                    customSection.style.display = 'block';
+                } else {
+                    customSection.style.display = 'none';
+                }
+            });
+        }
+    }, 100);
+    
     modal.classList.add('active');
+}
+
+function populateClientInfo() {
+    const select = document.getElementById('timelineClient');
+    const leadId = parseInt(select.value);
+    
+    if (!leadId) {
+        // Clear fields if "New Client" selected
+        document.getElementById('timelineClientName').value = '';
+        document.getElementById('timelineClientCompany').value = '';
+        document.getElementById('timelineClientEmail').value = '';
+        document.getElementById('timelineClientPhone').value = '';
+        return;
+    }
+    
+    const allLeadsAndCustomers = [...state.leads, ...state.customers];
+    const lead = allLeadsAndCustomers.find(l => l.id === leadId);
+    
+    if (lead) {
+        document.getElementById('timelineClientName').value = lead.name || '';
+        document.getElementById('timelineClientCompany').value = lead.company || '';
+        document.getElementById('timelineClientEmail').value = lead.email || '';
+        document.getElementById('timelineClientPhone').value = lead.phone || '';
+        
+        // Also populate address if available
+        if (document.getElementById('timelineClientAddress')) {
+            const addressParts = [];
+            if (lead.address_line1) addressParts.push(lead.address_line1);
+            if (lead.address_line2) addressParts.push(lead.address_line2);
+            if (lead.city) addressParts.push(lead.city + ', ' + (lead.state || '') + ' ' + (lead.zip_code || ''));
+            document.getElementById('timelineClientAddress').value = addressParts.join('\n');
+        }
+    }
 }
 
 // Update packages summary
 function updatePackagesSummary() {
     const summaryEl = document.getElementById('packagesSummary');
+    const paymentSection = document.getElementById('paymentTermsSection');
+    const maintenanceSection = document.getElementById('maintenanceSection');
+    const maintenanceFeeSection = document.getElementById('maintenanceFeeSection');
+    
     if (window.selectedPackages.length === 0) {
-        summaryEl.textContent = 'No packages selected';
+        summaryEl.innerHTML = 'No packages selected';
+        if (paymentSection) paymentSection.style.display = 'none';
+        if (maintenanceSection) maintenanceSection.style.display = 'none';
+        if (maintenanceFeeSection) maintenanceFeeSection.style.display = 'none';
         return;
     }
     
     let total = 0;
-    const packages = window.selectedPackages.map(key => {
+    let hasPaidPackage = false;
+    let hasFreePackage = false;
+    let hasMaintenanceEligible = false;
+    
+    const packages = window.selectedPackages.map(function(key) {
         const pkg = servicePackages[key];
-        total += pkg.price;
-        return `${pkg.name} ($${pkg.price.toLocaleString()})`;
+        if (pkg.isFree) {
+            hasFreePackage = true;
+        } else {
+            hasPaidPackage = true;
+            total += pkg.price;
+        }
+        // Check if package has support period (eligible for maintenance)
+        if (key === 'starter-website' || key === 'professional-website' || key === 'enterprise-website') {
+            hasMaintenanceEligible = true;
+        }
+        return pkg.name + (pkg.isFree ? ' (FREE)' : ' ($' + pkg.price.toLocaleString() + ')');
     });
     
-    summaryEl.innerHTML = `
-        <div style="margin-bottom: 8px;">${packages.join(', ')}</div>
-        <div style="font-size: 16px; font-weight: 700; color: var(--accent-amber);">Total Investment: $${total.toLocaleString()}</div>
-    `;
+    let summaryHtml = '<div style="margin-bottom: 8px;">' + packages.join(', ') + '</div>';
+    
+    if (hasPaidPackage) {
+        summaryHtml += '<div style="font-size: 16px; font-weight: 700; color: var(--accent-amber);">Total Investment: $' + total.toLocaleString() + '</div>';
+        summaryHtml += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">💳 Payment due upon project completion</div>';
+    } else if (hasFreePackage) {
+        summaryHtml += '<div style="font-size: 16px; font-weight: 700; color: var(--status-contacted);">Total: FREE</div>';
+        summaryHtml += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">🎁 No payment required for free packages</div>';
+    }
+    
+    summaryEl.innerHTML = summaryHtml;
+    
+    // Show/hide payment terms section (only for paid packages)
+    if (paymentSection) {
+        paymentSection.style.display = hasPaidPackage ? 'block' : 'none';
+    }
+    
+    // Show/hide maintenance sections (only for packages with support periods)
+    if (maintenanceSection) {
+        maintenanceSection.style.display = hasMaintenanceEligible ? 'block' : 'none';
+    }
+    if (maintenanceFeeSection) {
+        maintenanceFeeSection.style.display = hasMaintenanceEligible ? 'block' : 'none';
+    }
 }
 
 async function handleEditAddress(event, leadId) {
@@ -6915,19 +7074,36 @@ function previewProjectTimeline() {
         return;
     }
     
+    // Check if any paid packages selected
+    let hasPaidPackage = false;
+    let totalPrice = 0;
+    window.selectedPackages.forEach(function(key) {
+        if (servicePackages[key] && !servicePackages[key].isFree) {
+            hasPaidPackage = true;
+            totalPrice += servicePackages[key].price;
+        }
+    });
+    
     const timeline = {
         clientId: document.getElementById('timelineClient').value || null,
-        clientName,
+        clientName: clientName,
         clientCompany: document.getElementById('timelineClientCompany').value,
         clientEmail: document.getElementById('timelineClientEmail').value,
         clientPhone: document.getElementById('timelineClientPhone').value,
+        clientAddress: document.getElementById('timelineClientAddress').value,
         startDate: document.getElementById('timelineStartDate').value,
+        endDate: document.getElementById('timelineEndDate').value,
         projectName: document.getElementById('timelineProjectName').value,
+        scope: document.getElementById('timelineScope').value,
         notes: document.getElementById('timelineNotes').value,
-packages: window.selectedPackages,
-maintenanceIncluded: document.getElementById('maintenanceIncluded').value,
-maintenanceFee: parseFloat(document.getElementById('maintenanceFee').value) || 59.99,
-status: 'draft',
+        packages: window.selectedPackages,
+        totalPrice: totalPrice,
+        isFreeProject: !hasPaidPackage,
+        paymentTerms: hasPaidPackage ? (document.getElementById('paymentTerms') ? document.getElementById('paymentTerms').value : 'completion') : 'none',
+        customPaymentDetails: document.getElementById('customPaymentDetails') ? document.getElementById('customPaymentDetails').value : '',
+        maintenanceIncluded: document.getElementById('maintenanceIncluded') ? document.getElementById('maintenanceIncluded').value : 'no',
+        maintenanceFee: document.getElementById('maintenanceFee') ? parseFloat(document.getElementById('maintenanceFee').value) || 59.99 : 59.99,
+        status: 'draft',
         createdAt: new Date().toISOString()
     };
     
@@ -6966,18 +7142,41 @@ function saveProjectTimeline() {
         return;
     }
     
+    const clientEmail = document.getElementById('timelineClientEmail').value;
+    if (!clientEmail) {
+        showToast('Please enter a client email', 'error');
+        return;
+    }
+    
+    // Check if any paid packages selected
+    let hasPaidPackage = false;
+    let totalPrice = 0;
+    window.selectedPackages.forEach(function(key) {
+        if (servicePackages[key] && !servicePackages[key].isFree) {
+            hasPaidPackage = true;
+            totalPrice += servicePackages[key].price;
+        }
+    });
+    
     const timeline = {
         clientId: document.getElementById('timelineClient').value || null,
-        clientName,
+        clientName: clientName,
         clientCompany: document.getElementById('timelineClientCompany').value,
-        clientEmail: document.getElementById('timelineClientEmail').value,
+        clientEmail: clientEmail,
         clientPhone: document.getElementById('timelineClientPhone').value,
+        clientAddress: document.getElementById('timelineClientAddress').value,
         startDate: document.getElementById('timelineStartDate').value,
+        endDate: document.getElementById('timelineEndDate').value,
         projectName: document.getElementById('timelineProjectName').value,
+        scope: document.getElementById('timelineScope').value,
         notes: document.getElementById('timelineNotes').value,
         packages: window.selectedPackages,
-        maintenanceIncluded: document.getElementById('maintenanceIncluded').value,
-        maintenanceFee: parseFloat(document.getElementById('maintenanceFee').value) || 59.99,
+        totalPrice: totalPrice,
+        isFreeProject: !hasPaidPackage,
+        paymentTerms: hasPaidPackage ? (document.getElementById('paymentTerms') ? document.getElementById('paymentTerms').value : 'completion') : 'none',
+        customPaymentDetails: document.getElementById('customPaymentDetails') ? document.getElementById('customPaymentDetails').value : '',
+        maintenanceIncluded: document.getElementById('maintenanceIncluded') ? document.getElementById('maintenanceIncluded').value : 'no',
+        maintenanceFee: document.getElementById('maintenanceFee') ? parseFloat(document.getElementById('maintenanceFee').value) || 59.99 : 59.99,
         status: 'draft',
         createdAt: new Date().toISOString()
     };
@@ -7324,6 +7523,28 @@ if (!timeline) {
 window.currentTimelineIndex = index;
 openTimelinePreviewModal(timeline);
 }
+
+function getPaymentTermsText(timeline) {
+    if (timeline.isFreeProject) {
+        return 'No Payment Required';
+    }
+    
+    switch (timeline.paymentTerms) {
+        case 'completion':
+            return '100% Due Upon Completion';
+        case 'net30':
+            return 'Net 30 Days After Completion';
+        case 'net15':
+            return 'Net 15 Days After Completion';
+        case 'milestone':
+            return 'Milestone-Based Payments';
+        case 'custom':
+            return 'Custom Payment Plan';
+        default:
+            return '100% Due Upon Completion';
+    }
+}
+
 // Delete project timeline
 function deleteProjectTimeline(index) {
 if (!confirm('Are you sure you want to delete this project timeline?')) return;
@@ -7539,23 +7760,23 @@ function exportTimelineAsPDF() {
                 '<div class="section">' +
                     '<div class="section-title">Project Details</div>' +
                     '<div class="project-grid">' +
-                        '<div class="project-item">' +
-                            '<div class="project-label">Project Name</div>' +
-                            '<div class="project-value">' + (timeline.projectName || 'Web Development Project') + '</div>' +
-                        '</div>' +
-                        '<div class="project-item">' +
-                            '<div class="project-label">Estimated Start Date</div>' +
-                            '<div class="project-value">' + formatDate(timeline.startDate) + '</div>' +
-                        '</div>' +
-                        '<div class="project-item">' +
-                            '<div class="project-label">Total Investment</div>' +
-                            '<div class="project-value price">$' + totalPrice.toLocaleString() + '</div>' +
-                        '</div>' +
-                        '<div class="project-item">' +
-                            '<div class="project-label">Payment Terms</div>' +
-                            '<div class="project-value">50% Deposit + 50% on Completion</div>' +
-                        '</div>' +
-                    '</div>' +
+    '<div class="project-item">' +
+        '<div class="project-label">Project Name</div>' +
+        '<div class="project-value">' + (timeline.projectName || 'Web Development Project') + '</div>' +
+    '</div>' +
+    '<div class="project-item">' +
+        '<div class="project-label">Estimated Start Date</div>' +
+        '<div class="project-value">' + formatDate(timeline.startDate) + '</div>' +
+    '</div>' +
+    '<div class="project-item">' +
+        '<div class="project-label">Total Investment</div>' +
+        '<div class="project-value price">' + (timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()) + '</div>' +
+    '</div>' +
+    '<div class="project-item">' +
+        '<div class="project-label">Payment Terms</div>' +
+        '<div class="project-value">' + getPaymentTermsText(timeline) + '</div>' +
+    '</div>' +
+'</div>' +
                 '</div>' +
                 
                 '<div class="section">' +

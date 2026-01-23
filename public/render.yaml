@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: diamondback-coding
+    env: node
+    buildCommand: |
+      npm install
+      npx puppeteer browsers install chrome
+    startCommand: node server.js
+    envVars:
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: false
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux*/chrome

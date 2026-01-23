@@ -14,6 +14,55 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Service Packages Definition (same as frontend)
+const servicePackages = {
+    'free-basic': {
+        name: 'Free Basic Website',
+        price: 0,
+        isFree: true
+    },
+    'free-portfolio': {
+        name: 'Free Portfolio Website',
+        price: 0,
+        isFree: true
+    },
+    'free-business-card': {
+        name: 'Free Business Card Website',
+        price: 0,
+        isFree: true
+    },
+    'free-landing-page': {
+        name: 'Free Landing Page',
+        price: 0,
+        isFree: true
+    },
+    'starter-website': {
+        name: 'Starter Package - $1,499',
+        price: 1499,
+        isFree: false
+    },
+    'professional-website': {
+        name: 'Professional Package - $2,999',
+        price: 2999,
+        isFree: false
+    },
+    'enterprise-website': {
+        name: 'Enterprise Package - Custom Pricing',
+        price: 0,
+        isFree: false
+    },
+    'seo-services': {
+        name: 'SEO Services - $199/month',
+        price: 199,
+        isFree: false
+    },
+    'digital-marketing': {
+        name: 'Digital Marketing Services - Custom Pricing',
+        price: 0,
+        isFree: false
+    }
+};
+
 // ========================================
 // STRIPE WEBHOOK (MUST BE FIRST!)
 // ========================================

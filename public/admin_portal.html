@@ -6082,7 +6082,7 @@ function openProjectTimelineModal() {
                 <div id="packagesList" style="display: grid; gap: 12px; margin-top: 12px; max-height: 400px; overflow-y: auto; padding-right: 8px;">
                     
                     <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-contacted); margin-top: 8px; padding: 8px; background: rgba(16,185,129,0.1); border-radius: var(--radius-sm);">
-                        🎁 FREE PACKAGES - No Payment Required
+                        FREE PACKAGES - No Payment Required
                     </div>
                     
                     ${Object.entries(servicePackages).filter(([key, pkg]) => pkg.isFree).map(([key, pkg]) => `
@@ -6107,7 +6107,7 @@ function openProjectTimelineModal() {
                     `).join('')}
                     
                     <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-top: 16px; padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
-                        💼 PAID PACKAGES - Payment Due Upon Completion
+                        PAID PACKAGES - Payment Due Upon Completion
                     </div>
                     
                     ${Object.entries(servicePackages).filter(([key, pkg]) => !pkg.isFree).map(([key, pkg]) => `
@@ -6146,17 +6146,23 @@ function openProjectTimelineModal() {
                 <textarea class="form-textarea" id="customPaymentDetails" rows="2" placeholder="Describe the custom payment arrangement..."></textarea>
             </div>
             
-            <div class="form-group" id="maintenanceSection" style="display: none;">
-                <label class="form-label">Include Maintenance After Free Support?</label>
-                <select class="form-select" id="maintenanceIncluded">
-                    <option value="no">No - Client will decide later</option>
-                    <option value="yes">Yes - Include in SLA</option>
+            <div class="form-group">
+                <label class="form-label">Include Monthly Maintenance?</label>
+                <select class="form-select" id="maintenanceIncluded" onchange="toggleMaintenanceOptions()">
+                    <option value="no">No Maintenance Included</option>
+                    <option value="free">Yes - FREE Maintenance Included</option>
+                    <option value="paid">Yes - Paid Maintenance Included</option>
                 </select>
             </div>
             
             <div class="form-group" id="maintenanceFeeSection" style="display: none;">
-                <label class="form-label">Monthly Maintenance Fee</label>
-                <input type="number" class="form-input" id="maintenanceFee" value="59.99" step="0.01">
+                <label class="form-label">Monthly Maintenance Fee ($)</label>
+                <input type="number" class="form-input" id="maintenanceFee" value="59.99" step="0.01" min="0">
+            </div>
+            
+            <div class="form-group full-width" id="maintenanceDetailsSection" style="display: none;">
+                <label class="form-label">Maintenance Details / What's Included</label>
+                <textarea class="form-textarea" id="maintenanceDetails" rows="2" placeholder="Bug fixes, security updates, content changes, etc.">Bug fixes, security updates, minor content modifications (up to 2 hours/month), plugin/software updates, uptime monitoring, priority email support.</textarea>
             </div>
             
             <div class="form-group full-width">
@@ -6211,6 +6217,23 @@ function openProjectTimelineModal() {
     }, 100);
     
     modal.classList.add('active');
+}
+
+function toggleMaintenanceOptions() {
+    const maintenanceSelect = document.getElementById('maintenanceIncluded');
+    const feeSection = document.getElementById('maintenanceFeeSection');
+    const detailsSection = document.getElementById('maintenanceDetailsSection');
+    
+    if (maintenanceSelect.value === 'no') {
+        feeSection.style.display = 'none';
+        detailsSection.style.display = 'none';
+    } else if (maintenanceSelect.value === 'free') {
+        feeSection.style.display = 'none';
+        detailsSection.style.display = 'block';
+    } else if (maintenanceSelect.value === 'paid') {
+        feeSection.style.display = 'block';
+        detailsSection.style.display = 'block';
+    }
 }
 
 function populateClientInfo() {
@@ -7084,6 +7107,8 @@ function previewProjectTimeline() {
         }
     });
     
+    const maintenanceIncluded = document.getElementById('maintenanceIncluded').value;
+    
     const timeline = {
         clientId: document.getElementById('timelineClient').value || null,
         clientName: clientName,
@@ -7101,8 +7126,9 @@ function previewProjectTimeline() {
         isFreeProject: !hasPaidPackage,
         paymentTerms: hasPaidPackage ? (document.getElementById('paymentTerms') ? document.getElementById('paymentTerms').value : 'completion') : 'none',
         customPaymentDetails: document.getElementById('customPaymentDetails') ? document.getElementById('customPaymentDetails').value : '',
-        maintenanceIncluded: document.getElementById('maintenanceIncluded') ? document.getElementById('maintenanceIncluded').value : 'no',
-        maintenanceFee: document.getElementById('maintenanceFee') ? parseFloat(document.getElementById('maintenanceFee').value) || 59.99 : 59.99,
+        maintenanceIncluded: maintenanceIncluded,
+        maintenanceFee: maintenanceIncluded === 'paid' ? (parseFloat(document.getElementById('maintenanceFee').value) || 59.99) : 0,
+        maintenanceDetails: document.getElementById('maintenanceDetails') ? document.getElementById('maintenanceDetails').value : '',
         status: 'draft',
         createdAt: new Date().toISOString()
     };
@@ -7158,6 +7184,8 @@ function saveProjectTimeline() {
         }
     });
     
+    const maintenanceIncluded = document.getElementById('maintenanceIncluded').value;
+    
     const timeline = {
         clientId: document.getElementById('timelineClient').value || null,
         clientName: clientName,
@@ -7175,8 +7203,9 @@ function saveProjectTimeline() {
         isFreeProject: !hasPaidPackage,
         paymentTerms: hasPaidPackage ? (document.getElementById('paymentTerms') ? document.getElementById('paymentTerms').value : 'completion') : 'none',
         customPaymentDetails: document.getElementById('customPaymentDetails') ? document.getElementById('customPaymentDetails').value : '',
-        maintenanceIncluded: document.getElementById('maintenanceIncluded') ? document.getElementById('maintenanceIncluded').value : 'no',
-        maintenanceFee: document.getElementById('maintenanceFee') ? parseFloat(document.getElementById('maintenanceFee').value) || 59.99 : 59.99,
+        maintenanceIncluded: maintenanceIncluded,
+        maintenanceFee: maintenanceIncluded === 'paid' ? (parseFloat(document.getElementById('maintenanceFee').value) || 59.99) : 0,
+        maintenanceDetails: document.getElementById('maintenanceDetails') ? document.getElementById('maintenanceDetails').value : '',
         status: 'draft',
         createdAt: new Date().toISOString()
     };
@@ -7539,7 +7568,7 @@ function getPaymentTermsText(timeline) {
         case 'milestone':
             return 'Milestone-Based Payments';
         case 'custom':
-            return 'Custom Payment Plan';
+            return timeline.customPaymentDetails || 'Custom Payment Plan';
         default:
             return '100% Due Upon Completion';
     }
@@ -7587,19 +7616,12 @@ function exportTimelineAsPDF() {
         const companySignatureDate = formatDate(timeline.createdAt);
         const documentId = 'SLA-' + new Date(timeline.createdAt).getFullYear() + '-' + String(Date.now()).slice(-6);
         
-        // Get longest support period
-        let longestSupportPeriod = 0;
-        timeline.packages.forEach(function(key) {
-            if (key === 'starter-website') longestSupportPeriod = Math.max(longestSupportPeriod, 90);
-            if (key === 'professional-website') longestSupportPeriod = Math.max(longestSupportPeriod, 120);
-            if (key === 'enterprise-website') longestSupportPeriod = Math.max(longestSupportPeriod, 365);
-        });
-        
         // Build packages HTML
         let packagesListHtml = '';
         timeline.packages.forEach(function(key) {
             if (servicePackages[key]) {
-                packagesListHtml += '<span style="display: inline-block; background: #f5f5f5; border: 2px solid #22c55e; color: #166534; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin: 4px;">' + servicePackages[key].name + '</span>';
+                const pkg = servicePackages[key];
+                packagesListHtml += '<span style="display: inline-block; background: #f5f5f5; border: 1px solid #333; color: #000; padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: 600; margin: 4px;">' + pkg.name + (pkg.isFree ? ' (FREE)' : '') + '</span>';
             }
         });
         
@@ -7610,25 +7632,25 @@ function exportTimelineAsPDF() {
             const pkg = servicePackages[packageKey];
             if (!pkg) return;
             
-            phasesHtml += '<div style="margin-bottom: 30px; padding: 20px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">';
-            phasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #22c55e;">';
-            phasesHtml += '<div><div style="font-size: 18px; font-weight: 700; color: #1a1a1a;">' + pkg.name + '</div>';
-            phasesHtml += '<div style="font-size: 13px; color: #666;">' + pkg.description + '</div></div>';
-            phasesHtml += '<div style="text-align: right;"><div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #666;">Duration</div>';
-            phasesHtml += '<div style="font-size: 16px; font-weight: 700; color: #22c55e;">' + pkg.duration + '</div></div></div>';
+            phasesHtml += '<div style="margin-bottom: 24px; padding: 20px; background: #fafafa; border: 1px solid #ddd; border-radius: 4px;">';
+            phasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #333;">';
+            phasesHtml += '<div><div style="font-size: 16px; font-weight: 700; color: #000;">' + pkg.name + '</div>';
+            phasesHtml += '<div style="font-size: 12px; color: #555;">' + pkg.description + '</div></div>';
+            phasesHtml += '<div style="text-align: right;"><div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666;">Duration</div>';
+            phasesHtml += '<div style="font-size: 14px; font-weight: 700; color: #000;">' + pkg.duration + '</div></div></div>';
             
             if (pkg.phases) {
                 pkg.phases.forEach(function(phase) {
-                    phasesHtml += '<div style="margin-bottom: 16px; padding-left: 16px; border-left: 3px solid #22c55e;">';
+                    phasesHtml += '<div style="margin-bottom: 16px; padding-left: 16px; border-left: 3px solid #333;">';
                     phasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">';
-                    phasesHtml += '<div><span style="display: inline-block; background: #22c55e; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; margin-right: 8px;">Phase ' + phaseNumber + '</span>';
-                    phasesHtml += '<span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">' + phase.name + '</span></div>';
-                    phasesHtml += '<span style="font-size: 12px; color: #666; background: #f3f4f6; padding: 4px 10px; border-radius: 4px;">' + phase.duration + '</span></div>';
+                    phasesHtml += '<div><span style="display: inline-block; background: #333; color: white; padding: 2px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 8px;">Phase ' + phaseNumber + '</span>';
+                    phasesHtml += '<span style="font-size: 14px; font-weight: 600; color: #000;">' + phase.name + '</span></div>';
+                    phasesHtml += '<span style="font-size: 11px; color: #555; background: #eee; padding: 4px 10px; border-radius: 4px;">' + phase.duration + '</span></div>';
                     phasesHtml += '<ul style="list-style: none; padding: 0; margin: 0;">';
                     
                     phase.tasks.forEach(function(task) {
-                        phasesHtml += '<li style="display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; font-size: 13px; color: #374151; border-bottom: 1px solid #e5e7eb;">';
-                        phasesHtml += '<span style="color: #22c55e; font-weight: bold;">✓</span> ' + task + '</li>';
+                        phasesHtml += '<li style="display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 12px; color: #333; border-bottom: 1px solid #eee;">';
+                        phasesHtml += '<span style="color: #333; font-weight: bold;">•</span> ' + task + '</li>';
                     });
                     
                     phasesHtml += '</ul></div>';
@@ -7638,11 +7660,11 @@ function exportTimelineAsPDF() {
             
             // Features list
             if (pkg.features) {
-                phasesHtml += '<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">';
-                phasesHtml += '<div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 10px;">Included Features</div>';
+                phasesHtml += '<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ddd;">';
+                phasesHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #333; margin-bottom: 10px;">Included Features</div>';
                 phasesHtml += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">';
                 pkg.features.forEach(function(feature) {
-                    phasesHtml += '<span style="background: #f0fdf4; color: #166534; padding: 4px 10px; border-radius: 4px; font-size: 11px; border: 1px solid #bbf7d0;">' + feature + '</span>';
+                    phasesHtml += '<span style="background: #f0f0f0; color: #333; padding: 3px 8px; border-radius: 3px; font-size: 10px; border: 1px solid #ddd;">' + feature + '</span>';
                 });
                 phasesHtml += '</div></div>';
             }
@@ -7652,15 +7674,30 @@ function exportTimelineAsPDF() {
         
         // Maintenance section
         let maintenanceHtml = '';
-        if (longestSupportPeriod > 0) {
-            maintenanceHtml = '<div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 24px; border-left: 4px solid #22c55e;">';
-            maintenanceHtml += '<div style="font-size: 14px; font-weight: 700; color: #166534; margin-bottom: 8px;">Maintenance & Support Terms</div>';
-            if (timeline.maintenanceIncluded === 'yes') {
-                maintenanceHtml += '<p style="font-size: 13px; color: #374151; line-height: 1.6;">All maintenance services are included FREE during the <strong>' + longestSupportPeriod + '-day support period</strong> following project launch.</p>';
-            } else {
-                maintenanceHtml += '<p style="font-size: 13px; color: #374151; line-height: 1.6;">Following the ' + longestSupportPeriod + '-day free support period, ongoing maintenance is available for <strong>$' + (timeline.maintenanceFee || 59.99).toFixed(2) + '/month</strong>.</p>';
+        if (timeline.maintenanceIncluded && timeline.maintenanceIncluded !== 'no') {
+            maintenanceHtml = '<div style="background: #f5f5f5; padding: 20px; border: 1px solid #ddd; border-left: 4px solid #333; margin-bottom: 24px;">';
+            maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 8px;">Monthly Maintenance Terms</div>';
+            
+            if (timeline.maintenanceIncluded === 'free') {
+                maintenanceHtml += '<p style="font-size: 12px; color: #333; line-height: 1.6; margin: 0;"><strong>FREE Monthly Maintenance Included</strong><br>';
+            } else if (timeline.maintenanceIncluded === 'paid') {
+                maintenanceHtml += '<p style="font-size: 12px; color: #333; line-height: 1.6; margin: 0;"><strong>Monthly Maintenance: $' + (timeline.maintenanceFee || 59.99).toFixed(2) + '/month</strong><br>';
             }
-            maintenanceHtml += '</div>';
+            
+            if (timeline.maintenanceDetails) {
+                maintenanceHtml += timeline.maintenanceDetails;
+            } else {
+                maintenanceHtml += 'Bug fixes, security updates, minor content modifications (up to 2 hours/month), plugin/software updates, uptime monitoring, priority email support.';
+            }
+            maintenanceHtml += '</p></div>';
+        }
+        
+        // Scope section
+        let scopeHtml = '';
+        if (timeline.scope) {
+            scopeHtml = '<div style="background: #f5f5f5; padding: 16px; border: 1px solid #ddd; margin-bottom: 24px;">';
+            scopeHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #333; margin-bottom: 6px;">Project Scope / Special Requirements</div>';
+            scopeHtml += '<p style="font-size: 12px; color: #333; margin: 0; line-height: 1.6;">' + timeline.scope + '</p></div>';
         }
         
         const printWindow = window.open('', '_blank', 'width=900,height=700');
@@ -7676,41 +7713,45 @@ function exportTimelineAsPDF() {
             '<title>SLA - ' + timeline.clientName + '</title>' +
             '<style>' +
                 '* { margin: 0; padding: 0; box-sizing: border-box; }' +
-                'body { font-family: "Segoe UI", Arial, sans-serif; padding: 40px; color: #1a1a1a; background: #fff; line-height: 1.6; }' +
-                '.container { max-width: 900px; margin: 0 auto; }' +
-                '.header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 24px; border-bottom: 4px solid #22c55e; margin-bottom: 30px; }' +
+                'body { font-family: "Segoe UI", Arial, sans-serif; padding: 40px; color: #000; background: #fff; line-height: 1.5; }' +
+                '.container { max-width: 850px; margin: 0 auto; }' +
+                '.header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 3px solid #000; margin-bottom: 30px; }' +
                 '.logo { display: flex; align-items: center; gap: 12px; }' +
-                '.logo-icon { width: 50px; height: 50px; background: #22c55e; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; }' +
-                '.company-name { font-size: 22px; font-weight: 800; color: #1a1a1a; }' +
-                '.company-tagline { font-size: 12px; color: #666; }' +
-                '.doc-title { font-size: 28px; font-weight: 800; color: #22c55e; text-align: right; }' +
-                '.doc-id { font-size: 11px; color: #666; text-align: right; margin-top: 4px; }' +
-                '.section { margin-bottom: 30px; }' +
-                '.section-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #22c55e; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }' +
-                '.parties { display: flex; gap: 40px; margin-bottom: 30px; }' +
+                '.logo-icon { width: 50px; height: 50px; border: 2px solid #000; border-radius: 6px; display: flex; align-items: center; justify-content: center; }' +
+                '.logo-icon svg { width: 30px; height: 30px; }' +
+                '.company-name { font-size: 20px; font-weight: 800; color: #000; }' +
+                '.company-tagline { font-size: 11px; color: #555; }' +
+                '.doc-title { font-size: 24px; font-weight: 800; color: #000; text-align: right; text-transform: uppercase; letter-spacing: 0.05em; }' +
+                '.doc-subtitle { font-size: 12px; color: #555; text-align: right; margin-top: 2px; }' +
+                '.doc-id { font-size: 10px; color: #777; text-align: right; margin-top: 4px; }' +
+                '.section { margin-bottom: 24px; }' +
+                '.section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #000; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #333; }' +
+                '.parties { display: flex; gap: 40px; margin-bottom: 24px; }' +
                 '.party { flex: 1; }' +
-                '.party-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px; }' +
-                '.party-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }' +
-                '.party-details { font-size: 13px; color: #555; }' +
-                '.signature-box { margin-top: 16px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 2px dashed #d1d5db; }' +
-                '.signature-line { height: 40px; border-bottom: 1px solid #1a1a1a; margin: 8px 0; }' +
-                '.project-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }' +
-                '.project-item { background: #f9fafb; padding: 16px; border-radius: 8px; }' +
-                '.project-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 4px; }' +
-                '.project-value { font-size: 16px; font-weight: 600; color: #1a1a1a; }' +
-                '.project-value.price { font-size: 24px; color: #22c55e; }' +
-                '.commitment-item { display: flex; gap: 12px; margin-bottom: 12px; }' +
-                '.commitment-number { width: 28px; height: 28px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }' +
-                '.commitment-text h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }' +
-                '.commitment-text p { font-size: 13px; color: #555; }' +
+                '.party-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #555; margin-bottom: 6px; }' +
+                '.party-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }' +
+                '.party-details { font-size: 11px; color: #333; line-height: 1.5; }' +
+                '.signature-box { margin-top: 16px; padding: 14px; background: #fafafa; border: 1px solid #ccc; }' +
+                '.signature-line { height: 30px; border-bottom: 1px solid #000; margin: 8px 0; }' +
+                '.project-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }' +
+                '.project-item { background: #fafafa; padding: 12px; border: 1px solid #ddd; }' +
+                '.project-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #555; margin-bottom: 3px; }' +
+                '.project-value { font-size: 14px; font-weight: 600; color: #000; }' +
+                '.commitment-item { display: flex; gap: 10px; margin-bottom: 10px; }' +
+                '.commitment-number { width: 22px; height: 22px; background: #333; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0; }' +
+                '.commitment-text h4 { font-size: 12px; font-weight: 600; margin-bottom: 2px; }' +
+                '.commitment-text p { font-size: 11px; color: #444; }' +
                 '.responsibility-list { list-style: none; }' +
-                '.responsibility-list li { padding: 8px 0; padding-left: 24px; position: relative; font-size: 13px; border-bottom: 1px solid #e5e7eb; }' +
-                '.responsibility-list li:before { content: "•"; position: absolute; left: 8px; color: #22c55e; font-weight: bold; }' +
-                '.legal-notice { background: #fffbeb; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 24px; }' +
-                '.legal-notice h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #b45309; margin-bottom: 6px; }' +
-                '.legal-notice p { font-size: 12px; color: #555; }' +
-                '.footer { text-align: center; padding-top: 24px; border-top: 2px solid #e5e7eb; margin-top: 30px; }' +
-                '.footer p { font-size: 12px; color: #666; margin-bottom: 4px; }' +
+                '.responsibility-list li { padding: 6px 0; padding-left: 20px; position: relative; font-size: 11px; border-bottom: 1px solid #eee; }' +
+                '.responsibility-list li:before { content: "-"; position: absolute; left: 6px; color: #333; font-weight: bold; }' +
+                '.legal-notice { background: #f9f9f9; padding: 14px; border: 1px solid #ddd; border-left: 3px solid #333; margin-bottom: 20px; }' +
+                '.legal-notice h4 { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #333; margin-bottom: 4px; }' +
+                '.legal-notice p { font-size: 10px; color: #444; }' +
+                '.footer { text-align: center; padding-top: 20px; border-top: 1px solid #ccc; margin-top: 30px; }' +
+                '.footer p { font-size: 10px; color: #555; margin-bottom: 3px; }' +
+                '.signature-required { background: #f5f5f5; border: 2px solid #333; padding: 14px; text-align: center; margin-top: 20px; }' +
+                '.signature-required h4 { font-size: 12px; font-weight: 700; color: #000; margin-bottom: 4px; }' +
+                '.signature-required p { font-size: 10px; color: #444; }' +
                 '@media print { body { padding: 20px; } .container { max-width: 100%; } }' +
             '</style>' +
         '</head>' +
@@ -7718,20 +7759,27 @@ function exportTimelineAsPDF() {
             '<div class="container">' +
                 '<div class="header">' +
                     '<div class="logo">' +
-                        '<div class="logo-icon">DC</div>' +
+                        '<div class="logo-icon">' +
+                            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                                '<path d="M12 2L2 7l10 5 10-5-10-5z"/>' +
+                                '<path d="M2 17l10 5 10-5"/>' +
+                                '<path d="M2 12l10 5 10-5"/>' +
+                            '</svg>' +
+                        '</div>' +
                         '<div>' +
                             '<div class="company-name">Diamondback Coding</div>' +
                             '<div class="company-tagline">Premium Development Services</div>' +
                         '</div>' +
                     '</div>' +
                     '<div>' +
-                        '<div class="doc-title">SERVICE LEVEL AGREEMENT</div>' +
+                        '<div class="doc-title">Service Level Agreement</div>' +
+                        '<div class="doc-subtitle">Project Timeline & Terms</div>' +
                         '<div class="doc-id">Document ID: ' + documentId + '</div>' +
                     '</div>' +
                 '</div>' +
                 
-                '<div class="section" style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e;">' +
-                    '<p style="font-size: 13px; color: #374151;">This Service Level Agreement ("Agreement") is entered into as of <strong>' + companySignatureDate + '</strong> by and between <strong>Diamondback Coding</strong> ("Provider") and <strong>' + timeline.clientName + (timeline.clientCompany ? ' / ' + timeline.clientCompany : '') + '</strong> ("Client").</p>' +
+                '<div class="section" style="background: #f5f5f5; padding: 16px; border-left: 3px solid #333;">' +
+                    '<p style="font-size: 11px; color: #333; margin: 0;">This Service Level Agreement ("Agreement") is entered into as of <strong>' + companySignatureDate + '</strong> by and between <strong>Diamondback Coding</strong> ("Provider") and <strong>' + timeline.clientName + (timeline.clientCompany ? ' / ' + timeline.clientCompany : '') + '</strong> ("Client").</p>' +
                 '</div>' +
                 
                 '<div class="parties">' +
@@ -7740,19 +7788,24 @@ function exportTimelineAsPDF() {
                         '<div class="party-name">Diamondback Coding</div>' +
                         '<div class="party-details">15709 Spillman Ranch Loop<br>Austin, TX 78738<br>diamondbackcoding@gmail.com<br>(940) 217-8680</div>' +
                         '<div class="signature-box">' +
-                            '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666;">Company Signature</div>' +
-                            '<div style="font-family: cursive; font-size: 24px; color: #22c55e; margin: 8px 0;">Diamondback Coding</div>' +
-                            '<div style="font-size: 11px; color: #666;">Digitally Signed: ' + companySignatureDate + '</div>' +
+                            '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: #555;">Company Signature</div>' +
+                            '<div style="font-family: cursive; font-size: 20px; color: #000; margin: 6px 0;">Diamondback Coding</div>' +
+                            '<div style="font-size: 10px; color: #555;">Digitally Signed: ' + companySignatureDate + '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="party">' +
                         '<div class="party-label">Client</div>' +
                         '<div class="party-name">' + timeline.clientName + '</div>' +
-                        '<div class="party-details">' + (timeline.clientCompany ? timeline.clientCompany + '<br>' : '') + (timeline.clientEmail || '') + '<br>' + (timeline.clientPhone || '') + '</div>' +
+                        '<div class="party-details">' + 
+                            (timeline.clientCompany ? timeline.clientCompany + '<br>' : '') + 
+                            (timeline.clientEmail || '') + 
+                            (timeline.clientPhone ? '<br>' + timeline.clientPhone : '') +
+                            (timeline.clientAddress ? '<br>' + timeline.clientAddress.replace(/\n/g, '<br>') : '') +
+                        '</div>' +
                         '<div class="signature-box">' +
-                            '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666;">Client Signature Required</div>' +
+                            '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: #555;">Client Signature Required</div>' +
                             '<div class="signature-line"></div>' +
-                            '<div style="font-size: 11px; color: #666;">Date: _________________</div>' +
+                            '<div style="font-size: 10px; color: #555;">Date: _________________</div>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -7760,29 +7813,31 @@ function exportTimelineAsPDF() {
                 '<div class="section">' +
                     '<div class="section-title">Project Details</div>' +
                     '<div class="project-grid">' +
-    '<div class="project-item">' +
-        '<div class="project-label">Project Name</div>' +
-        '<div class="project-value">' + (timeline.projectName || 'Web Development Project') + '</div>' +
-    '</div>' +
-    '<div class="project-item">' +
-        '<div class="project-label">Estimated Start Date</div>' +
-        '<div class="project-value">' + formatDate(timeline.startDate) + '</div>' +
-    '</div>' +
-    '<div class="project-item">' +
-        '<div class="project-label">Total Investment</div>' +
-        '<div class="project-value price">' + (timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()) + '</div>' +
-    '</div>' +
-    '<div class="project-item">' +
-        '<div class="project-label">Payment Terms</div>' +
-        '<div class="project-value">' + getPaymentTermsText(timeline) + '</div>' +
-    '</div>' +
-'</div>' +
+                        '<div class="project-item">' +
+                            '<div class="project-label">Project Name</div>' +
+                            '<div class="project-value">' + (timeline.projectName || 'Web Development Project') + '</div>' +
+                        '</div>' +
+                        '<div class="project-item">' +
+                            '<div class="project-label">Estimated Start Date</div>' +
+                            '<div class="project-value">' + formatDate(timeline.startDate) + '</div>' +
+                        '</div>' +
+                        '<div class="project-item">' +
+                            '<div class="project-label">Total Investment</div>' +
+                            '<div class="project-value">' + (timeline.isFreeProject ? 'FREE - No Payment Required' : '$' + totalPrice.toLocaleString()) + '</div>' +
+                        '</div>' +
+                        '<div class="project-item">' +
+                            '<div class="project-label">Payment Terms</div>' +
+                            '<div class="project-value">' + getPaymentTermsText(timeline) + '</div>' +
+                        '</div>' +
+                    '</div>' +
                 '</div>' +
                 
                 '<div class="section">' +
                     '<div class="section-title">Selected Services</div>' +
-                    '<div style="margin-bottom: 20px;">' + packagesListHtml + '</div>' +
+                    '<div style="margin-bottom: 16px;">' + packagesListHtml + '</div>' +
                 '</div>' +
+                
+                scopeHtml +
                 
                 '<div class="section">' +
                     '<div class="section-title">Service Level Commitments</div>' +
@@ -7800,7 +7855,7 @@ function exportTimelineAsPDF() {
                     '</div>' +
                     '<div class="commitment-item">' +
                         '<div class="commitment-number">4</div>' +
-                        '<div class="commitment-text"><h4>Post-Launch Support</h4><p>Free priority support period begins immediately after launch as specified in selected package.</p></div>' +
+                        '<div class="commitment-text"><h4>Revisions</h4><p>Reasonable revisions are included within each project phase as outlined in the timeline.</p></div>' +
                     '</div>' +
                 '</div>' +
                 
@@ -7817,7 +7872,7 @@ function exportTimelineAsPDF() {
                         '<li>Provide all required content, images, and materials within 3 business days of request</li>' +
                         '<li>Respond to design/development reviews within 5 business days</li>' +
                         '<li>Designate a single point of contact for project communications</li>' +
-                        '<li>Make payments according to the agreed schedule (50% deposit, 50% on completion)</li>' +
+                        '<li>Make payments according to the agreed schedule</li>' +
                         '<li>Provide access to necessary accounts, hosting, and domain credentials</li>' +
                         '<li>Notify Provider immediately of any changes to project scope or requirements</li>' +
                     '</ul>' +
@@ -7828,16 +7883,16 @@ function exportTimelineAsPDF() {
                     '<p>This Agreement shall be governed by the laws of the State of Texas. Any disputes shall be resolved in Texas state or federal courts.</p>' +
                 '</div>' +
                 
-                (timeline.notes ? '<div class="section" style="background: #f9fafb; padding: 16px; border-radius: 8px; border-left: 3px solid #22c55e;"><div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px;">Additional Notes</div><p style="font-size: 13px; color: #374151;">' + timeline.notes + '</p></div>' : '') +
+                (timeline.notes ? '<div class="section" style="background: #fafafa; padding: 14px; border: 1px solid #ddd;"><div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #555; margin-bottom: 4px;">Additional Notes</div><p style="font-size: 11px; color: #333; margin: 0;">' + timeline.notes + '</p></div>' : '') +
                 
-                '<div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 16px; border-radius: 8px; text-align: center; margin-top: 24px;">' +
-                    '<div style="font-size: 14px; font-weight: 700; color: #b45309;">⚠️ Client Signature Required</div>' +
-                    '<p style="font-size: 12px; color: #555; margin-top: 6px;">Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</p>' +
+                '<div class="signature-required">' +
+                    '<h4>Client Signature Required</h4>' +
+                    '<p>Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</p>' +
                 '</div>' +
                 
                 '<div class="footer">' +
                     '<p>Questions? Contact us at diamondbackcoding@gmail.com or (940) 217-8680</p>' +
-                    '<p style="font-size: 10px; color: #999;">Document ID: ' + documentId + ' • Generated: ' + companySignatureDate + '</p>' +
+                    '<p style="font-size: 9px; color: #777;">Document ID: ' + documentId + ' | Generated: ' + companySignatureDate + '</p>' +
                 '</div>' +
             '</div>' +
             '<script>window.onload=function(){setTimeout(function(){window.print()},500)}<\/script>' +

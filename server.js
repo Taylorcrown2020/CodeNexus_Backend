@@ -2357,6 +2357,120 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
     }
 });
 
+// Add this with your other imports at the top
+const nodemailer = require('nodemailer');
+
+// Email configuration (you'll need to set up your email service)
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // or 'outlook', 'yahoo', etc.
+    auth: {
+        user: process.env.EMAIL_USER, // your email
+        pass: process.env.EMAIL_PASSWORD // your email password or app-specific password
+    }
+});
+
+// Add this route with your other API routes
+app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
+    try {
+        const { timeline, clientEmail, clientName } = req.body;
+        
+        if (!clientEmail) {
+            return res.status(400).json({ success: false, message: 'Client email is required' });
+        }
+        
+        // Calculate total price
+        let totalPrice = 0;
+        timeline.packages.forEach(key => {
+            if (servicePackages[key] && !servicePackages[key].isFree) {
+                totalPrice += servicePackages[key].price;
+            }
+        });
+        
+        const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
+        
+        // Create email HTML (simplified version - you can make this match your PDF)
+        const emailHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
+                    .content { padding: 30px; max-width: 800px; margin: 0 auto; }
+                    .button { display: inline-block; background: #22c55e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+                    .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1 style="margin: 0; font-size: 32px;">DIAMONDBACK CODING</h1>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9;">Premium Development Services</p>
+                </div>
+                
+                <div class="content">
+                    <h2>Hello ${clientName},</h2>
+                    
+                    <p>Thank you for choosing Diamondback Coding! Your Service Level Agreement (SLA) is ready for review.</p>
+                    
+                    <p><strong>Project Details:</strong></p>
+                    <ul>
+                        <li><strong>Project:</strong> ${timeline.projectName || 'Web Development Project'}</li>
+                        <li><strong>Start Date:</strong> ${new Date(timeline.startDate).toLocaleDateString()}</li>
+                        <li><strong>Total Investment:</strong> ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</li>
+                        <li><strong>Document ID:</strong> ${documentId}</li>
+                    </ul>
+                    
+                    <p><strong>Selected Services:</strong></p>
+                    <ul>
+                        ${timeline.packages.map(key => `<li>${servicePackages[key]?.name || key}</li>`).join('')}
+                    </ul>
+                    
+                    <p>Please review the attached SLA document carefully. If you have any questions or need clarification on any terms, please don't hesitate to reach out.</p>
+                    
+                    <p><strong>Next Steps:</strong></p>
+                    <ol>
+                        <li>Review the attached SLA document</li>
+                        <li>Sign and date the client signature section</li>
+                        <li>Return the signed document to us</li>
+                        <li>We'll schedule your discovery & planning meeting!</li>
+                    </ol>
+                    
+                    <p>We're excited to work with you and bring your vision to life!</p>
+                    
+                    <p>Best regards,<br>
+                    <strong>Diamondback Coding Team</strong></p>
+                </div>
+                
+                <div class="footer">
+                    <p>Diamondback Coding<br>
+                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                    diamondbackcoding@gmail.com | (940) 217-8680</p>
+                    <p style="font-size: 11px; color: #999; margin-top: 10px;">This is an automated message. Please do not reply directly to this email.</p>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // Email options
+        const mailOptions = {
+            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+            to: clientEmail,
+            subject: `Your Service Level Agreement - ${timeline.projectName || 'Web Development Project'}`,
+            html: emailHTML
+            // Note: For PDF attachment, you'd need to generate it server-side or use a PDF generation library
+        };
+        
+        // Send email
+        await transporter.sendMail(mailOptions);
+        
+        res.json({ success: true, message: 'Email sent successfully' });
+        
+    } catch (error) {
+        console.error('Email error:', error);
+        res.status(500).json({ success: false, message: 'Failed to send email', error: error.message });
+    }
+});
+
 // ========================================
 // HEALTH CHECK
 // ========================================

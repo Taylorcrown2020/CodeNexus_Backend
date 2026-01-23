@@ -7316,11 +7316,23 @@ function openTimelinePreviewModal(timeline) {
     `;
 
     footerEl.innerHTML = `
-        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
-        <button class="btn btn-primary" onclick="exportTimelineAsPDF()">
-            Export as PDF
-        </button>
-    `;
+    <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+    <button class="btn btn-secondary" onclick="emailTimelineToClient()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        Email to Client
+    </button>
+    <button class="btn btn-primary" onclick="exportTimelineAsPDF()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export as PDF
+    </button>
+`;
 
     modal.classList.add('active');
 
@@ -7359,6 +7371,52 @@ function openTimelinePreviewModal(timeline) {
 
     // Show overview by default
     document.querySelector('#detailModal .tab[data-tab="overview"]').click();
+}
+
+async function emailTimelineToClient() {
+    const timeline = window.currentTimelinePreview;
+    if (!timeline) {
+        showToast('No timeline to email', 'error');
+        return;
+    }
+    
+    if (!timeline.clientEmail) {
+        showToast('No client email address found', 'error');
+        return;
+    }
+    
+    // Show loading toast
+    showToast('Sending email...', 'warning');
+    
+    try {
+        const response = await fetch(`${API_URL}/api/email/send-timeline`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+                timeline: timeline,
+                clientEmail: timeline.clientEmail,
+                clientName: timeline.clientName
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to send email');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(`✓ SLA emailed successfully to ${timeline.clientEmail}`, 'success');
+        } else {
+            throw new Error(result.message || 'Failed to send email');
+        }
+    } catch (error) {
+        console.error('Email error:', error);
+        showToast('Failed to send email. Please try again.', 'error');
+    }
 }
 
 // Generate Timeline HTML (generates the SLA document)

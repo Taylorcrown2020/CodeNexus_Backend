@@ -7226,27 +7226,81 @@ function openTimelinePreviewModal(timeline) {
     const titleEl = document.getElementById('detailModalTitle');
     const bodyEl = document.getElementById('detailModalBody');
     const footerEl = document.getElementById('detailModalFooter');
-    
-    titleEl.textContent = 'Project Timeline Preview';
-    
-    bodyEl.innerHTML = generateTimelineHTML(timeline);
-    
+
+    titleEl.textContent = 'Project Timeline & SLA Preview';
+
+    // Important: first set basic structure with tabs
+    bodyEl.innerHTML = `
+        <div class="tabs">
+            <button class="tab active" data-tab="overview">Overview</button>
+            <button class="tab" data-tab="timeline">Timeline</button>
+            <button class="tab" data-tab="preview">Full SLA Preview</button>
+        </div>
+
+        <div id="tab-overview" class="tab-content" style="padding: 24px;">
+            <h3 style="margin-bottom: 16px;">Quick Summary</h3>
+            <div style="background: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-md);">
+                <strong>Client:</strong> ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}<br>
+                <strong>Project:</strong> ${timeline.projectName || 'Web Development Project'}<br>
+                <strong>Packages:</strong> ${timeline.packages.map(k => servicePackages[k]?.name || k).join(', ')}<br>
+                <strong>Total:</strong> ${timeline.isFreeProject ? 'FREE' : '$' + timeline.totalPrice.toLocaleString()}<br>
+                <strong>Start:</strong> ${formatDate(timeline.startDate)} → <strong>End:</strong> ${formatDate(timeline.endDate || 'TBD')}
+            </div>
+        </div>
+
+        <div id="tab-timeline" class="tab-content" style="display:none; padding: 24px;">
+            <!-- You can put simplified timeline here if you want -->
+            <h3>Phases Overview</h3>
+            <p>(Detailed timeline appears in Full SLA Preview tab)</p>
+        </div>
+
+        <div id="tab-preview" class="tab-content" style="display:none;"></div>
+    `;
+
     footerEl.innerHTML = `
         <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
         <button class="btn btn-primary" onclick="exportTimelineAsPDF()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
             Export as PDF
         </button>
     `;
-    
+
+    modal.classList.add('active');
+
     // Store for export
     window.currentTimelinePreview = timeline;
-    
-    modal.classList.add('active');
+
+    // ------------------ IMPORTANT PART ------------------
+    // Activate click handlers for tabs
+    document.querySelectorAll('#detailModal .tab').forEach(tab => {
+        tab.addEventListener('click', function () {
+            // Remove active from all tabs
+            document.querySelectorAll('#detailModal .tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            // Hide all contents
+            document.querySelectorAll('#detailModal .tab-content').forEach(c => c.style.display = 'none');
+
+            // Show selected
+            const tabId = 'tab-' + this.dataset.tab;
+            const content = document.getElementById(tabId);
+            if (content) {
+                content.style.display = 'block';
+
+                // Special case: when user clicks "Full SLA Preview" tab → generate content
+                if (this.dataset.tab === 'preview') {
+                    content.innerHTML = generateTimelineHTML(timeline);
+
+                    // Optional: re-generate QR codes or other dynamic elements if needed
+                    setTimeout(() => {
+                        // If you have QR code logic here, re-run it
+                    }, 100);
+                }
+            }
+        });
+    });
+
+    // Show overview by default
+    document.querySelector('#detailModal .tab[data-tab="overview"]').click();
 }
 
 // Generate Timeline HTML (generates the SLA document)

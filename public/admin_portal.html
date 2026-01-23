@@ -7268,6 +7268,64 @@ function generateTimelineHTML(timeline) {
         if (key === 'enterprise-website') longestSupportPeriod = Math.max(longestSupportPeriod, 365);
     });
     
+// Build standardized website development phases
+const standardWebsitePhases = [
+    {
+        name: 'Discovery & Planning Meeting',
+        duration: '1 week',
+        tasks: [
+            'Initial meeting to discuss your preferences and expectations',
+            'Review project timeline and what will be delivered',
+            'Understand your industry, business needs, and target audience',
+            'Define the message and persona your website needs to convey',
+            'Establish clear goals for the website'
+        ]
+    },
+    {
+        name: 'Draft Development & Iteration',
+        duration: '2-4 weeks (varies by package)',
+        tasks: [
+            'Start Round 1 draft of the website design',
+            'Two (2) progress meetings per week during this phase',
+            'Review feedback and make revisions each round',
+            'Continue rounds until you approve a final draft',
+            'As many revisions as needed to get it right'
+        ]
+    },
+    {
+        name: 'Functionality & Systems Integration',
+        duration: '1-2 weeks',
+        tasks: [
+            'Turn the approved draft into a fully functional website',
+            'Integrate all systems (forms, databases, CRM, etc.)',
+            'Add all technical features included in your package',
+            'Implement SEO and analytics tracking'
+        ]
+    },
+    {
+        name: 'Soft Deployment & Testing',
+        duration: '3-5 days',
+        tasks: [
+            'Deploy website to a private testing environment',
+            'Send you a private link to review and test the site',
+            'You test everything and provide any final feedback',
+            'We fix any issues that come up'
+        ]
+    },
+    {
+        name: 'Go-Live Deployment',
+        duration: '1-2 days',
+        tasks: [
+            'Set an agreed-upon go-live date',
+            'Confirm all issues are resolved before go-live',
+            'Connect your domain and make the site live',
+            'Site goes live on the scheduled date',
+            'Monitor for 24 hours after launch',
+            'Provide training on how to manage your site'
+        ]
+    }
+];
+    
     return `
         <div class="invoice-preview" style="border-top-color: var(--accent-amber);">
             <!-- HEADER -->
@@ -7376,6 +7434,57 @@ function generateTimelineHTML(timeline) {
                     </div>
                 </div>
 
+                <!-- STANDARDIZED WEBSITE DEVELOPMENT TIMELINE -->
+<div style="margin-bottom: 32px;">
+    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Website Development Process</div>
+    
+    <div style="margin-bottom: 32px; padding: 24px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle);">
+        ${standardWebsitePhases.map((phase, index) => `
+            <div style="margin-bottom: 20px; padding-left: 20px; border-left: 3px solid var(--accent-amber);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <div>
+                        <span style="display: inline-block; background: var(--accent-amber); color: var(--bg-void); padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; margin-right: 8px;">Phase ${index + 1}</span>
+                        <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${phase.name}</span>
+                    </div>
+                    <span style="font-size: 12px; color: var(--text-muted); background: var(--bg-hover); padding: 4px 10px; border-radius: var(--radius-sm);">${phase.duration}</span>
+                </div>
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    ${phase.tasks.map(task => `
+                        <li style="display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle);">
+                            <svg style="width: 16px; height: 16px; color: var(--accent-amber); flex-shrink: 0; margin-top: 2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 11 12 14 22 4"/>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                            </svg>
+                            ${task}
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+        `).join('')}
+    </div>
+</div>
+
+<!-- PACKAGE-SPECIFIC FEATURES -->
+<div style="margin-bottom: 32px;">
+    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Package Features & Deliverables</div>
+    
+    ${timeline.packages.map(packageKey => {
+        const pkg = servicePackages[packageKey];
+        return `
+            <div style="margin-bottom: 20px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">${pkg.name}</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    ${pkg.features.map(feature => `
+                        <span style="background: var(--bg-hover); color: var(--text-secondary); padding: 4px 10px; border-radius: 12px; font-size: 11px; border: 1px solid var(--border-subtle);">
+                            ${feature}
+                        </span>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }).join('')}
+</div>
+
                 <!-- SERVICE LEVEL COMMITMENTS -->
                 <div style="background: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-md); margin-bottom: 32px; border: 1px solid var(--border-subtle);">
                     <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Service Level Commitments</div>
@@ -7410,79 +7519,35 @@ function generateTimelineHTML(timeline) {
                         </div>
                     </div>
                 </div>
-                
-                <!-- PROJECT PHASES -->
-                <div style="margin-bottom: 32px;">
-                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Detailed Project Timeline</div>
-                    
-                    ${timeline.packages.map(packageKey => {
-                        const pkg = servicePackages[packageKey];
-                        return `
-                            <div style="margin-bottom: 32px; padding: 24px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);">
-                                    <div>
-                                        <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);">${pkg.name}</div>
-                                        <div style="font-size: 13px; color: var(--text-muted);">${pkg.description}</div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted);">Duration</div>
-                                        <div style="font-size: 16px; font-weight: 700; color: var(--accent-amber);">${pkg.duration}</div>
-                                    </div>
-                                </div>
-                                
-                                ${pkg.phases.map(phase => {
-                                    const currentPhase = phaseNumber++;
-                                    return `
-                                        <div style="margin-bottom: 20px; padding-left: 20px; border-left: 3px solid var(--accent-amber);">
-                                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                                                <div>
-                                                    <span style="display: inline-block; background: var(--accent-amber); color: var(--bg-void); padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; margin-right: 8px;">Phase ${currentPhase}</span>
-                                                    <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${phase.name}</span>
-                                                </div>
-                                                <span style="font-size: 12px; color: var(--text-muted); background: var(--bg-hover); padding: 4px 10px; border-radius: var(--radius-sm);">${phase.duration}</span>
-                                            </div>
-                                            <ul style="list-style: none; padding: 0; margin: 0;">
-                                                ${phase.tasks.map(task => `
-                                                    <li style="display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle);">
-                                                        <svg style="width: 16px; height: 16px; color: var(--accent-amber); flex-shrink: 0; margin-top: 2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                            <polyline points="9 11 12 14 22 4"/>
-                                                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                                                        </svg>
-                                                        ${task}
-                                                    </li>
-                                                `).join('')}
-                                            </ul>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
 
                 <!-- MAINTENANCE TERMS -->
                 ${longestSupportPeriod > 0 ? `
-                    <div style="background: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-md); margin-bottom: 32px; border-left: 4px solid ${timeline.maintenanceIncluded === 'yes' ? 'var(--status-contacted)' : 'var(--accent-amber)'};">
+                    <div style="background: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-md); margin-bottom: 32px; border-left: 4px solid ${timeline.maintenanceIncluded === 'free' ? 'var(--status-contacted)' : 'var(--accent-amber)'};">
                         <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Maintenance & Support Terms</div>
-                        ${timeline.maintenanceIncluded === 'yes' ? `
+                        ${timeline.maintenanceIncluded === 'free' ? `
                             <div style="font-size: 14px; font-weight: 600; color: var(--status-contacted); margin-bottom: 12px;">
-                                ✓ Maintenance Included in ${longestSupportPeriod}-Day Free Support Period
+                                ✓ FREE Maintenance During ${longestSupportPeriod}-Day Support Period
                             </div>
                             <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
                                 All maintenance services (bug fixes, security updates, minor content modifications, plugin/software updates, uptime monitoring, and priority support) are included free of charge during the ${longestSupportPeriod}-day support period following project launch.
                                 <br><br>
-                                After the free support period ends, Client may choose to continue maintenance services at the prevailing market rate, which will be communicated at that time.
+                                After the free support period ends, Client may choose to continue maintenance services at the prevailing market rate.
                             </div>
-                        ` : `
+                        ` : timeline.maintenanceIncluded === 'paid' ? `
                             <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">
                                 Post-Support Maintenance: $${parseFloat(timeline.maintenanceFee || 59.99).toFixed(2)}/month
                             </div>
                             <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
                                 Following the ${longestSupportPeriod}-day free support period, ongoing maintenance services will be available for $${parseFloat(timeline.maintenanceFee || 59.99).toFixed(2)} per month.
                                 <br><br>
-                                <strong>Maintenance includes:</strong> Bug fixes, security updates, minor content modifications (up to 2 hours per month), plugin/software updates, uptime monitoring, and priority email support with 24-hour response time during business hours.
-                                <br><br>
-                                Maintenance billing begins automatically on the first day following the end of the free support period unless Client provides written notice of non-renewal at least 7 days prior.
+                                <strong>Maintenance includes:</strong> ${timeline.maintenanceDetails || 'Bug fixes, security updates, minor content modifications (up to 2 hours per month), plugin/software updates, uptime monitoring, and priority email support.'}
+                            </div>
+                        ` : `
+                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">
+                                ${longestSupportPeriod} Days of FREE Priority Support Included
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
+                                Following project launch, you will receive ${longestSupportPeriod} days of free priority support including bug fixes, technical assistance, and minor adjustments.
                             </div>
                         `}
                     </div>
@@ -7496,6 +7561,7 @@ function generateTimelineHTML(timeline) {
                         <ul style="margin: 12px 0 0 20px; padding: 0;">
                             <li style="margin-bottom: 8px;">Provide all required content, images, and materials within 3 business days of request</li>
                             <li style="margin-bottom: 8px;">Respond to design/development reviews within 5 business days</li>
+                            <li style="margin-bottom: 8px;">Attend scheduled bi-weekly progress meetings during draft phase</li>
                             <li style="margin-bottom: 8px;">Designate a single point of contact for project communications</li>
                             <li style="margin-bottom: 8px;">Make payments according to the agreed schedule (50% deposit, 50% on completion)</li>
                             <li style="margin-bottom: 8px;">Provide access to necessary accounts, hosting, and domain credentials</li>
@@ -7509,7 +7575,7 @@ function generateTimelineHTML(timeline) {
                     <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 8px;">Governing Law</div>
                     <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.7;">
                         This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions. 
-                        Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Texas. Both parties consent to the exclusive jurisdiction and venue of such courts.
+                        Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Texas.
                     </div>
                 </div>
 
@@ -7524,8 +7590,7 @@ function generateTimelineHTML(timeline) {
                 <div style="background: rgba(245,158,11,0.1); border: 2px solid var(--accent-amber); padding: 20px; border-radius: var(--radius-md); text-align: center; margin-top: 32px;">
                     <div style="font-size: 14px; font-weight: 700; color: var(--accent-amber); margin-bottom: 8px;">⚠️ Client Signature Required</div>
                     <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                        Please sign and date this SLA above in the "Client" section before returning. This document becomes legally binding once both parties have signed. 
-                        Provider's signature was applied digitally on ${companySignatureDate}.
+                        Please sign and date this SLA above in the "Client" section before returning. This document becomes legally binding once both parties have signed.
                     </div>
                 </div>
             </div>
@@ -7534,8 +7599,8 @@ function generateTimelineHTML(timeline) {
                 <div style="text-align: center; padding: 20px; border-top: 1px solid var(--border-subtle);">
                     <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Questions about this SLA?</div>
                     <div style="font-size: 12px; color: var(--text-muted);">Contact us at diamondbackcoding@gmail.com or (940) 217-8680</div>
-<div style="font-size: 11px; color: var(--text-faint); margin-top: 12px;">Document ID: ${documentId} • Generated: ${formatDate(timeline.createdAt)}</div>
-</div>
+                    <div style="font-size: 11px; color: var(--text-faint); margin-top: 12px;">Document ID: ${documentId} • Generated: ${formatDate(timeline.createdAt)}</div>
+                </div>
             </div>
         </div>
     `;

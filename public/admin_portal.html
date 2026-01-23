@@ -7304,70 +7304,17 @@ function openTimelinePreviewModal(timeline) {
 
 // Generate Timeline HTML (generates the SLA document)
 function generateTimelineHTML(timeline) {
-
-const standardWebsitePhases = [
-  {
-    name: 'Discovery & Planning Meeting',
-    duration: '1 week',
-    tasks: [
-      'Initial meeting to discuss your preferences and expectations',
-      'Review project timeline and what will be delivered',
-      'Understand your industry, business needs, and target audience',
-      'Define the message and persona your website needs to convey',
-      'Establish clear goals for the website'
-    ]
-  },
-  {
-    name: 'Draft Development & Iteration',
-    duration: '2-4 weeks (varies by package)',
-    tasks: [
-      'Start Round 1 draft of the website design',
-      'Two (2) progress meetings per week during this phase',
-      'Review feedback and make revisions each round',
-      'Continue rounds until you approve a final draft',
-      'As many revisions as needed to get it right'
-    ]
-  },
-  {
-    name: 'Functionality & Systems Integration',
-    duration: '1-2 weeks',
-    tasks: [
-      'Turn the approved draft into a fully functional website',
-      'Integrate all systems (forms, databases, CRM, etc.)',
-      'Add all technical features included in your package',
-      'Implement SEO and analytics tracking'
-    ]
-  },
-  {
-    name: 'Soft Deployment & Testing',
-    duration: '3-5 days',
-    tasks: [
-      'Deploy website to a private testing environment',
-      'Send you a private link to review and test the site',
-      'You test everything and provide any final feedback',
-      'We fix any issues that come up'
-    ]
-  },
-  {
-    name: 'Go-Live Deployment',
-    duration: '1-2 days',
-    tasks: [
-      'Set an agreed-upon go-live date',
-      'Confirm all issues are resolved before go-live',
-      'Connect your domain and make the site live',
-      'Site goes live on the scheduled date',
-      'Monitor for 24 hours after launch',
-      'Provide training on how to manage your site'
-    ]
-  }
-];
-    
+    // Use the SAME HTML generation logic as PDF export
     let totalPrice = 0;
-    timeline.packages.forEach(key => {
-        totalPrice += servicePackages[key].price;
+    let hasPaidPackage = false;
+    
+    timeline.packages.forEach(function(key) {
+        if (servicePackages[key] && !servicePackages[key].isFree) {
+            hasPaidPackage = true;
+            totalPrice += servicePackages[key].price;
+        }
     });
     
-    let phaseNumber = 1;
     const companySignatureDate = formatDate(timeline.createdAt);
     const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
     
@@ -7379,316 +7326,259 @@ const standardWebsitePhases = [
         if (key === 'enterprise-website') longestSupportPeriod = Math.max(longestSupportPeriod, 365);
     });
     
-    return `
-        <div class="invoice-preview" style="border-top-color: var(--accent-amber);">
-            <!-- HEADER -->
-            <div class="invoice-preview-header">
-                <div class="invoice-company">
-                    <div class="invoice-company-logo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                            <path d="M2 17l10 5 10-5"/>
-                            <path d="M2 12l10 5 10-5"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <div class="invoice-company-name">Diamondback Coding</div>
-                        <div class="invoice-company-tagline">Premium Development Services</div>
-                    </div>
-                </div>
-                <div class="invoice-info">
-                    <div class="invoice-title" style="font-size: 20px;">SERVICE LEVEL AGREEMENT</div>
-                    <div class="invoice-number">Project Timeline & SLA</div>
-                    <div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 4px;">Document ID: ${documentId}</div>
-                </div>
-            </div>
-            
-            <div class="invoice-preview-body">
-                <!-- SLA PREAMBLE -->
-                <div style="background: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-md); margin-bottom: 32px; border-left: 4px solid var(--accent-amber);">
-                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 12px;">Agreement Overview</div>
-                    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
-                        This Service Level Agreement ("Agreement") is entered into as of <strong>${companySignatureDate}</strong> by and between 
-                        <strong>Diamondback Coding</strong> ("Provider"), a Texas-based web development company, and 
-                        <strong>${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}</strong> ("Client").
-                        This Agreement governs the provision of web development services as outlined below and is subject to the terms and conditions set forth herein.
-                    </div>
-                </div>
-
-                <!-- PARTIES -->
-                <div class="invoice-parties">
-                    <div>
-                        <div class="invoice-party-label">Service Provider (Company)</div>
-                        <div class="invoice-party-name">Diamondback Coding</div>
-                        <div class="invoice-party-details">
-                            15709 Spillman Ranch Loop<br>
-                            Austin, TX 78738<br>
-                            diamondbackcoding@gmail.com<br>
-                            (940) 217-8680
-                        </div>
-                        <div style="margin-top: 16px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-sm);">
-                            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px;">Company Signature</div>
-                            <div style="font-family: 'Brush Script MT', cursive; font-size: 24px; color: var(--accent-amber); margin-bottom: 4px;">Diamondback Coding</div>
-                            <div style="font-size: 11px; color: var(--text-muted);">Digitally Signed: ${companySignatureDate}</div>
-                            <div style="font-size: 10px; color: var(--text-faint); margin-top: 4px;">Authorized Representative</div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="invoice-party-label">Client (Customer)</div>
-                        <div class="invoice-party-name">${timeline.clientName}</div>
-<div class="invoice-party-details">
-    ${timeline.clientCompany ? timeline.clientCompany + '<br>' : ''}
-    ${timeline.clientEmail || ''}${timeline.clientPhone || timeline.clientAddress ? '<br>' : ''}
-    ${timeline.clientPhone || ''}${timeline.clientAddress ? '<br>' : ''}
-    ${timeline.clientAddress ? timeline.clientAddress.replace(/\n/g, '<br>') : ''}
-</div>
-                        <div style="margin-top: 16px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-sm); border: 2px dashed var(--border-strong);">
-                            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px;">Client Signature Required</div>
-                            <div style="height: 40px; border-bottom: 1px solid var(--text-muted); margin-bottom: 4px;"></div>
-                            <div style="font-size: 11px; color: var(--text-muted);">Signature Date: _______________</div>
-                            <div style="font-size: 10px; color: var(--text-faint); margin-top: 8px;">
-                                By signing, Client agrees to all terms, timelines, and pricing outlined in this SLA.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- PROJECT DETAILS -->
-                <div style="margin-bottom: 32px;">
-                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Project Details</div>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-                        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
-                            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 4px;">Project Name</div>
-                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">${timeline.projectName || 'Web Development Project'}</div>
-                        </div>
-                        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
-                            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 4px;">Estimated Start Date</div>
-                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono);">${formatDate(timeline.startDate)}</div>
-                        </div>
-                        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
-                            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 4px;">Total Investment</div>
-                            <div style="font-size: 20px; font-weight: 700; color: var(--accent-amber); font-family: var(--font-mono);">$${totalPrice.toLocaleString()}</div>
-                        </div>
-                        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
-                            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 4px;">Payment Terms</div>
-                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">50% Deposit + 50% on Completion</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- SELECTED SERVICES -->
-                <div style="margin-bottom: 32px;">
-                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Selected Services</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        ${timeline.packages.map(key => `
-                            <span style="background: var(--accent-amber-dim); color: var(--accent-amber); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;">
-                                ${servicePackages[key].name}
-                            </span>
-                        `).join('')}
-                    </div>
-                </div>
-
-                <!-- STANDARDIZED WEBSITE DEVELOPMENT TIMELINE -->
-<div style="margin-bottom: 32px;">
-    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Website Development Process</div>
+    // Build packages HTML
+    let packagesListHtml = '';
+    timeline.packages.forEach(function(key) {
+        if (servicePackages[key]) {
+            const pkg = servicePackages[key];
+            packagesListHtml += '<span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin: 4px;">' + pkg.name + (pkg.isFree ? ' (FREE)' : '') + '</span>';
+        }
+    });
     
-    <div style="margin-bottom: 32px; padding: 24px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle);">
-        ${standardWebsitePhases.map((phase, index) => `
-            <div style="margin-bottom: 20px; padding-left: 20px; border-left: 3px solid var(--accent-amber);">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                    <div>
-                        <span style="display: inline-block; background: var(--accent-amber); color: var(--bg-void); padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; margin-right: 8px;">Phase ${index + 1}</span>
-                        <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${phase.name}</span>
-                    </div>
-                    <span style="font-size: 12px; color: var(--text-muted); background: var(--bg-hover); padding: 4px 10px; border-radius: var(--radius-sm);">${phase.duration}</span>
-                </div>
-                <ul style="list-style: none; padding: 0; margin: 0;">
-                    ${phase.tasks.map(task => `
-                        <li style="display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle);">
-                            <svg style="width: 16px; height: 16px; color: var(--accent-amber); flex-shrink: 0; margin-top: 2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="9 11 12 14 22 4"/>
-                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                            </svg>
-                            ${task}
-                        </li>
-                    `).join('')}
-                </ul>
-            </div>
-        `).join('')}
-    </div>
-</div>
-
-<!-- DETAILED PROJECT TIMELINE -->
-<div style="margin-bottom: 32px;">
-    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Detailed Project Timeline</div>
-    ${timeline.packages.map(packageKey => {
+    // Build phases HTML
+    let phasesHtml = '';
+    let phaseNumber = 1;
+    timeline.packages.forEach(function(packageKey) {
         const pkg = servicePackages[packageKey];
-        let html = `<div style="margin-bottom: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                <div>
-                    <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${pkg.name}</span>
-                    <br>
-                    <span style="font-size: 13px; color: var(--text-secondary);">${pkg.description}</span>
-                </div>
-                <span style="font-size: 12px; color: var(--text-muted); background: var(--bg-hover); padding: 4px 10px; border-radius: var(--radius-sm);">${pkg.duration}</span>
-            </div>
-        `;
+        if (!pkg) return;
+        
+        phasesHtml += '<div style="margin-bottom: 24px; padding: 20px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">';
+        phasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--accent-amber);">';
+        phasesHtml += '<div><div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">' + pkg.name + '</div>';
+        phasesHtml += '<div style="font-size: 12px; color: var(--text-secondary);">' + pkg.description + '</div></div>';
+        phasesHtml += '<div style="text-align: right;"><div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Duration</div>';
+        phasesHtml += '<div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">' + pkg.duration + '</div></div></div>';
+        
         if (pkg.phases) {
-            pkg.phases.forEach((phase, index) => {
-                html += `
-                    <div style="margin-bottom: 16px; padding-left: 20px; border-left: 3px solid var(--accent-amber);">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                            <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Phase ${index + 1} ${phase.name}</span>
-                            <span style="font-size: 11px; color: var(--text-muted);">${phase.duration}</span>
-                        </div>
-                        <ul style="list-style: none; padding: 0; margin: 0;">
-                            ${phase.tasks.map(task => `
-                                <li style="display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle);">
-                                    <svg style="width: 14px; height: 14px; color: var(--accent-amber); flex-shrink: 0; margin-top: 3px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polyline points="9 11 12 14 22 4"/>
-                                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                                    </svg>
-                                    ${task}
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                `;
+            pkg.phases.forEach(function(phase) {
+                phasesHtml += '<div style="margin-bottom: 16px; padding-left: 16px; border-left: 3px solid var(--accent-amber);">';
+                phasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">';
+                phasesHtml += '<div><span style="display: inline-block; background: var(--accent-amber); color: var(--bg-void); padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; margin-right: 8px;">Phase ' + phaseNumber + '</span>';
+                phasesHtml += '<span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">' + phase.name + '</span></div>';
+                phasesHtml += '<span style="font-size: 11px; color: var(--text-muted); background: var(--bg-hover); padding: 4px 10px; border-radius: var(--radius-sm);">' + phase.duration + '</span></div>';
+                phasesHtml += '<ul style="list-style: none; padding: 0; margin: 0;">';
+                
+                phase.tasks.forEach(function(task) {
+                    phasesHtml += '<li style="display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle);">';
+                    phasesHtml += '<svg style="width: 14px; height: 14px; color: var(--accent-amber); flex-shrink: 0; margin-top: 3px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>';
+                    phasesHtml += task + '</li>';
+                });
+                
+                phasesHtml += '</ul></div>';
+                phaseNumber++;
             });
         }
-        html += '</div>';
-        return html;
-    }).join('')}
-</div>
+        
+        // Features list
+        if (pkg.features) {
+            phasesHtml += '<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">';
+            phasesHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;">Included Features</div>';
+            phasesHtml += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">';
+            pkg.features.forEach(function(feature) {
+                phasesHtml += '<span style="background: var(--bg-hover); color: var(--text-secondary); padding: 3px 8px; border-radius: 12px; font-size: 10px; border: 1px solid var(--border-subtle);">' + feature + '</span>';
+            });
+            phasesHtml += '</div></div>';
+        }
+        
+        phasesHtml += '</div>';
+    });
+    
+    // Payment terms
+    let paymentTermsHtml = '';
+    if (timeline.isFreeProject || !hasPaidPackage) {
+        paymentTermsHtml = 'No Payment Required';
+    } else {
+        switch (timeline.paymentTerms) {
+            case 'completion':
+                paymentTermsHtml = '50% Deposit + 50% on Completion';
+                break;
+            case 'net30':
+                paymentTermsHtml = 'Net 30 (Payment due 30 days after completion)';
+                break;
+            case 'net15':
+                paymentTermsHtml = 'Net 15 (Payment due 15 days after completion)';
+                break;
+            case 'milestone':
+                paymentTermsHtml = 'Milestone-Based (Split across project phases)';
+                break;
+            case 'custom':
+                paymentTermsHtml = timeline.customPaymentDetails || 'Custom Payment Plan';
+                break;
+            default:
+                paymentTermsHtml = '50% Deposit + 50% on Completion';
+        }
+    }
+    
+    // Maintenance section
+    let maintenanceHtml = '';
+    if (timeline.maintenanceIncluded && timeline.maintenanceIncluded !== 'no') {
+        maintenanceHtml = '<div style="background: var(--bg-tertiary); padding: 20px; border: 1px solid var(--border-subtle); border-left: 4px solid ' + (timeline.maintenanceIncluded === 'free' ? 'var(--status-contacted)' : 'var(--accent-amber)') + '; border-radius: var(--radius-md); margin-bottom: 24px;">';
+        maintenanceHtml += '<div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 12px;">Maintenance & Support Terms</div>';
+        
+        if (timeline.maintenanceIncluded === 'free') {
+            maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: var(--status-contacted); margin-bottom: 12px;">✓ FREE Maintenance';
+            if (longestSupportPeriod > 0) {
+                maintenanceHtml += ' During ' + longestSupportPeriod + '-Day Support Period';
+            }
+            maintenanceHtml += '</div>';
+        } else if (timeline.maintenanceIncluded === 'paid') {
+            maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">Post-Support Maintenance: $' + parseFloat(timeline.maintenanceFee || 59.99).toFixed(2) + '/month';
+            if (longestSupportPeriod > 0) {
+                maintenanceHtml += ' (After ' + longestSupportPeriod + '-Day Free Support Period)';
+            }
+            maintenanceHtml += '</div>';
+        }
+        
+        maintenanceHtml += '<div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">';
+        if (timeline.maintenanceDetails) {
+            maintenanceHtml += timeline.maintenanceDetails;
+        } else {
+            maintenanceHtml += 'Bug fixes, security updates, minor content modifications (up to 2 hours/month), plugin/software updates, uptime monitoring, priority email support.';
+        }
+        maintenanceHtml += '</div></div>';
+    } else if (longestSupportPeriod > 0) {
+        maintenanceHtml = '<div style="background: var(--bg-tertiary); padding: 20px; border: 1px solid var(--border-subtle); border-left: 4px solid var(--accent-amber); border-radius: var(--radius-md); margin-bottom: 24px;">';
+        maintenanceHtml += '<div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 12px;">Post-Launch Support</div>';
+        maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">' + longestSupportPeriod + ' Days of FREE Priority Support Included</div>';
+        maintenanceHtml += '<div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">Following project launch, you will receive ' + longestSupportPeriod + ' days of free priority support including bug fixes, technical assistance, and minor adjustments.</div></div>';
+    }
+    
+    // Scope section
+    let scopeHtml = '';
+    if (timeline.scope) {
+        scopeHtml = '<div style="background: var(--bg-tertiary); padding: 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 24px;">';
+        scopeHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Project Scope / Special Requirements</div>';
+        scopeHtml += '<p style="font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.7;">' + timeline.scope + '</p></div>';
+    }
+    
+    // Return the SAME structure as PDF
+    return `
+        <div style="padding: 24px;">
+            <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-bottom: 32px; border-left: 4px solid var(--accent-amber);">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 12px;">Agreement Overview</div>
+                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
+                    This Service Level Agreement is entered into as of <strong>${companySignatureDate}</strong> by and between 
+                    <strong>Diamondback Coding</strong> and <strong>${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}</strong>.
+                </div>
+            </div>
 
-<!-- INCLUDED FEATURES -->
-<div style="margin-bottom: 32px;">
-    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Included Features</div>
-    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-        ${timeline.packages.flatMap(packageKey => servicePackages[packageKey]?.features || []).map(feature => `
-            <span style="background: var(--bg-hover); color: var(--text-secondary); padding: 4px 10px; border-radius: 12px; font-size: 11px; border: 1px solid var(--border-subtle);">
-                ${feature}
-            </span>
-        `).join('')}
-    </div>
-</div>
-
-                <!-- SERVICE LEVEL COMMITMENTS -->
-                <div style="background: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-md); margin-bottom: 32px; border: 1px solid var(--border-subtle);">
-                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Service Level Commitments</div>
-                    <div style="display: grid; gap: 12px;">
-                        <div style="display: flex; align-items: flex-start; gap: 12px;">
-                            <div style="flex-shrink: 0; width: 24px; height: 24px; background: var(--accent-amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg-void); font-weight: 700; font-size: 12px;">1</div>
-                            <div style="flex: 1;">
-                                <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Timeline Adherence</div>
-                                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">Provider commits to delivering all project phases within the specified timeframes, subject to timely Client feedback and approval at each milestone.</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: flex-start; gap: 12px;">
-                            <div style="flex-shrink: 0; width: 24px; height: 24px; background: var(--accent-amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg-void); font-weight: 700; font-size: 12px;">2</div>
-                            <div style="flex: 1;">
-                                <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Communication Response Time</div>
-                                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">Provider will respond to Client inquiries within 24 business hours during regular business hours (Monday-Friday, 8 AM - 5 PM CST).</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: flex-start; gap: 12px;">
-                            <div style="flex-shrink: 0; width: 24px; height: 24px; background: var(--accent-amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg-void); font-weight: 700; font-size: 12px;">3</div>
-                            <div style="flex: 1;">
-                                <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Quality Assurance</div>
-                                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">All deliverables will undergo comprehensive testing across major browsers and devices before client review.</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: flex-start; gap: 12px;">
-                            <div style="flex-shrink: 0; width: 24px; height: 24px; background: var(--accent-amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg-void); font-weight: 700; font-size: 12px;">4</div>
-                            <div style="flex: 1;">
-                                <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Post-Launch Support</div>
-                                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">Free priority support period begins immediately after launch (duration specified in selected package).</div>
-                            </div>
-                        </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 32px;">
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px;">Service Provider</div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Diamondback Coding</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.5;">
+                        15709 Spillman Ranch Loop<br>
+                        Austin, TX 78738<br>
+                        diamondbackcoding@gmail.com<br>
+                        (940) 217-8680
+                    </div>
+                    <div style="margin-top: 16px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-sm);">
+                        <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Company Signature</div>
+                        <div style="font-family: cursive; font-size: 20px; color: var(--accent-amber); margin-bottom: 4px;">Diamondback Coding</div>
+                        <div style="font-size: 10px; color: var(--text-muted);">Digitally Signed: ${companySignatureDate}</div>
                     </div>
                 </div>
-
-                <!-- MAINTENANCE TERMS -->
-                ${longestSupportPeriod > 0 ? `
-                    <div style="background: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-md); margin-bottom: 32px; border-left: 4px solid ${timeline.maintenanceIncluded === 'free' ? 'var(--status-contacted)' : 'var(--accent-amber)'};">
-                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Maintenance & Support Terms</div>
-                        ${timeline.maintenanceIncluded === 'free' ? `
-                            <div style="font-size: 14px; font-weight: 600; color: var(--status-contacted); margin-bottom: 12px;">
-                                ✓ FREE Maintenance During ${longestSupportPeriod}-Day Support Period
-                            </div>
-                            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
-                                All maintenance services (bug fixes, security updates, minor content modifications, plugin/software updates, uptime monitoring, and priority support) are included free of charge during the ${longestSupportPeriod}-day support period following project launch.
-                                <br><br>
-                                After the free support period ends, Client may choose to continue maintenance services at the prevailing market rate.
-                            </div>
-                        ` : timeline.maintenanceIncluded === 'paid' ? `
-                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">
-                                Post-Support Maintenance: $${parseFloat(timeline.maintenanceFee || 59.99).toFixed(2)}/month
-                            </div>
-                            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
-                                Following the ${longestSupportPeriod}-day free support period, ongoing maintenance services will be available for $${parseFloat(timeline.maintenanceFee || 59.99).toFixed(2)} per month.
-                                <br><br>
-                                <strong>Maintenance includes:</strong> ${timeline.maintenanceDetails || 'Bug fixes, security updates, minor content modifications (up to 2 hours per month), plugin/software updates, uptime monitoring, and priority email support.'}
-                            </div>
-                        ` : `
-                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">
-                                ${longestSupportPeriod} Days of FREE Priority Support Included
-                            </div>
-                            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
-                                Following project launch, you will receive ${longestSupportPeriod} days of free priority support including bug fixes, technical assistance, and minor adjustments.
-                            </div>
-                        `}
+                <div>
+                    <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px;">Client</div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">${timeline.clientName}</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.5;">
+                        ${timeline.clientCompany ? timeline.clientCompany + '<br>' : ''}
+                        ${timeline.clientEmail || ''}${timeline.clientPhone || timeline.clientAddress ? '<br>' : ''}
+                        ${timeline.clientPhone || ''}${timeline.clientAddress ? '<br>' : ''}
+                        ${timeline.clientAddress ? timeline.clientAddress.replace(/\n/g, '<br>') : ''}
                     </div>
-                ` : ''}
-
-                <!-- CLIENT RESPONSIBILITIES -->
-                <div style="background: var(--bg-tertiary); padding: 24px; border-radius: var(--radius-md); margin-bottom: 32px; border: 1px solid var(--border-subtle);">
-                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Client Responsibilities</div>
-                    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
-                        To ensure timely project completion, Client agrees to:
-                        <ul style="margin: 12px 0 0 20px; padding: 0;">
-                            <li style="margin-bottom: 8px;">Provide all required content, images, and materials within 3 business days of request</li>
-                            <li style="margin-bottom: 8px;">Respond to design/development reviews within 5 business days</li>
-                            <li style="margin-bottom: 8px;">Attend scheduled bi-weekly progress meetings during draft phase</li>
-                            <li style="margin-bottom: 8px;">Designate a single point of contact for project communications</li>
-                            <li style="margin-bottom: 8px;">Make payments according to the agreed schedule (50% deposit, 50% on completion)</li>
-                            <li style="margin-bottom: 8px;">Provide access to necessary accounts, hosting, and domain credentials</li>
-                            <li>Notify Provider immediately of any changes to project scope or requirements</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <!-- TEXAS LAW NOTICE -->
-                <div style="background: var(--bg-hover); padding: 20px; border-radius: var(--radius-md); margin-bottom: 32px; border-left: 4px solid var(--accent-amber);">
-                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 8px;">Governing Law</div>
-                    <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.7;">
-                        This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions. 
-                        Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Texas.
-                    </div>
-                </div>
-
-                ${timeline.notes ? `
-                    <div style="margin-top: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-amber);">
-                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 8px;">Additional Notes</div>
-                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">${timeline.notes}</div>
-                    </div>
-                ` : ''}
-
-                <!-- SIGNATURE REMINDER -->
-                <div style="background: rgba(245,158,11,0.1); border: 2px solid var(--accent-amber); padding: 20px; border-radius: var(--radius-md); text-align: center; margin-top: 32px;">
-                    <div style="font-size: 14px; font-weight: 700; color: var(--accent-amber); margin-bottom: 8px;">⚠️ Client Signature Required</div>
-                    <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                        Please sign and date this SLA above in the "Client" section before returning. This document becomes legally binding once both parties have signed.
+                    <div style="margin-top: 16px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-sm); border: 2px dashed var(--border-strong);">
+                        <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Client Signature Required</div>
+                        <div style="height: 40px; border-bottom: 1px solid var(--text-muted); margin-bottom: 4px;"></div>
+                        <div style="font-size: 10px; color: var(--text-muted);">Date: _______________</div>
                     </div>
                 </div>
             </div>
             
-            <div class="invoice-preview-footer">
-                <div style="text-align: center; padding: 20px; border-top: 1px solid var(--border-subtle);">
-                    <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Questions about this SLA?</div>
-                    <div style="font-size: 12px; color: var(--text-muted);">Contact us at diamondbackcoding@gmail.com or (940) 217-8680</div>
-                    <div style="font-size: 11px; color: var(--text-faint); margin-top: 12px;">Document ID: ${documentId} • Generated: ${formatDate(timeline.createdAt)}</div>
+            <div style="margin-bottom: 32px;">
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Project Details</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Project Name</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">${timeline.projectName || 'Web Development Project'}</div>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Estimated Start Date</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">${formatDate(timeline.startDate)}</div>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Total Investment</div>
+                        <div style="font-size: 20px; font-weight: 700; color: var(--accent-amber);">${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</div>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md);">
+                        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Payment Terms</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">${paymentTermsHtml}</div>
+                    </div>
                 </div>
+            </div>
+            
+            <div style="margin-bottom: 32px;">
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Selected Services</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${packagesListHtml}
+                </div>
+            </div>
+            
+            ${scopeHtml}
+            
+            <div style="margin-bottom: 32px;">
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Service Level Commitments</div>
+                <div style="display: grid; gap: 12px;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="flex-shrink: 0; width: 24px; height: 24px; background: var(--accent-amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg-void); font-weight: 700; font-size: 12px;">1</div>
+                        <div><div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Timeline Adherence</div><div style="font-size: 13px; color: var(--text-secondary);">Provider commits to delivering all project phases within specified timeframes.</div></div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="flex-shrink: 0; width: 24px; height: 24px; background: var(--accent-amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg-void); font-weight: 700; font-size: 12px;">2</div>
+                        <div><div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Communication Response Time</div><div style="font-size: 13px; color: var(--text-secondary);">Provider will respond within 24 business hours (Mon-Fri, 8 AM - 5 PM CST).</div></div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="flex-shrink: 0; width: 24px; height: 24px; background: var(--accent-amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg-void); font-weight: 700; font-size: 12px;">3</div>
+                        <div><div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Quality Assurance</div><div style="font-size: 13px; color: var(--text-secondary);">All deliverables undergo comprehensive testing across major browsers and devices.</div></div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="flex-shrink: 0; width: 24px; height: 24px; background: var(--accent-amber); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg-void); font-weight: 700; font-size: 12px;">4</div>
+                        <div><div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Post-Launch Support</div><div style="font-size: 13px; color: var(--text-secondary);">Free priority support period begins immediately after launch.</div></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 32px;">
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Detailed Project Timeline</div>
+                ${phasesHtml}
+            </div>
+            
+            ${maintenanceHtml}
+            
+            <div style="background: var(--bg-tertiary); padding: 20px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 24px;">
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 12px;">Client Responsibilities</div>
+                <ul style="margin: 12px 0 0 20px; padding: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
+                    <li style="margin-bottom: 8px;">Provide all required content within 3 business days of request</li>
+                    <li style="margin-bottom: 8px;">Respond to design/development reviews within 5 business days</li>
+                    <li style="margin-bottom: 8px;">Attend scheduled bi-weekly progress meetings during draft phase</li>
+                    <li style="margin-bottom: 8px;">Designate a single point of contact for project communications</li>
+                    <li style="margin-bottom: 8px;">Make payments according to agreed schedule</li>
+                    <li style="margin-bottom: 8px;">Provide access to necessary accounts, hosting, and domain credentials</li>
+                </ul>
+            </div>
+            
+            <div style="background: var(--bg-hover); padding: 20px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); border-left: 4px solid var(--accent-amber); margin-bottom: 24px;">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 8px;">Governing Law</div>
+                <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.7;">
+                    This Agreement shall be governed by the laws of the State of Texas. Any disputes shall be resolved in Texas state or federal courts.
+                </div>
+            </div>
+            
+            ${timeline.notes ? '<div style="margin-top: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-amber);"><div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Additional Notes</div><div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">' + timeline.notes + '</div></div>' : ''}
+            
+            <div style="background: rgba(245,158,11,0.1); border: 2px solid var(--accent-amber); padding: 20px; border-radius: var(--radius-md); text-align: center; margin-top: 32px;">
+                <div style="font-size: 14px; font-weight: 700; color: var(--accent-amber); margin-bottom: 8px;">⚠️ Client Signature Required</div>
+                <div style="font-size: 13px; color: var(--text-secondary);">Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</div>
             </div>
         </div>
     `;

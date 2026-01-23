@@ -63,6 +63,282 @@ const servicePackages = {
     }
 };
 
+const puppeteer = require('puppeteer');
+
+// Helper function to generate PDF from HTML
+async function generatePDFFromHTML(html) {
+    const browser = await puppeteer.launch({
+        headless: 'new',
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    const pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+            top: '20px',
+            right: '20px',
+            bottom: '20px',
+            left: '20px'
+        }
+    });
+    
+    await browser.close();
+    return pdf;
+}
+
+// Helper function to generate Timeline PDF HTML
+function generateTimelinePDFHTML(timeline) {
+    let totalPrice = 0;
+    timeline.packages.forEach(key => {
+        if (servicePackages[key] && !servicePackages[key].isFree) {
+            totalPrice += servicePackages[key].price;
+        }
+    });
+    
+    const companySignatureDate = new Date(timeline.createdAt).toLocaleDateString();
+    const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
+    
+    let longestSupportPeriod = 0;
+    timeline.packages.forEach(key => {
+        if (key === 'starter-website') longestSupportPeriod = Math.max(longestSupportPeriod, 90);
+        if (key === 'professional-website') longestSupportPeriod = Math.max(longestSupportPeriod, 120);
+        if (key === 'enterprise-website') longestSupportPeriod = Math.max(longestSupportPeriod, 365);
+    });
+    
+    let packagesListHtml = timeline.packages.map(key => {
+        const pkg = servicePackages[key];
+        return pkg ? `<div style="display: inline-block; background: #f8f9fa; border: 1px solid #22c55e; color: #000; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; margin: 0 8px 8px 0;">${pkg.name}${pkg.isFree ? ' <span style="color: #22c55e;">(FREE)</span>' : ''}</div>` : '';
+    }).join('');
+    
+    let paymentTermsHtml = '';
+    if (timeline.isFreeProject) {
+        paymentTermsHtml = 'No Payment Required';
+    } else {
+        switch (timeline.paymentTerms) {
+            case 'completion': paymentTermsHtml = '50% Deposit + 50% on Completion'; break;
+            case 'net30': paymentTermsHtml = '50% Deposit + 50% Net 30'; break;
+            case 'net15': paymentTermsHtml = '50% Deposit + 50% Net 15'; break;
+            case 'milestone': paymentTermsHtml = 'Milestone-Based Payments'; break;
+            case 'custom': paymentTermsHtml = timeline.customPaymentDetails || 'Custom Payment Plan'; break;
+            default: paymentTermsHtml = '50% Deposit + 50% on Completion';
+        }
+    }
+    
+    return `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Segoe UI", Arial, sans-serif; background: #ffffff; color: #000; line-height: 1.5; }
+        .container { max-width: 900px; margin: 0 auto; padding: 40px; }
+        .header { background: #22c55e; color: white; padding: 30px 40px; margin: -40px -40px 40px -40px; }
+        .header h1 { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+        .header p { font-size: 12px; opacity: 0.95; letter-spacing: 1px; }
+        .title { text-align: center; margin-bottom: 40px; }
+        .title h2 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+        .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
+        .party { background: white; border: 2px solid #e0e0e0; border-radius: 4px; padding: 24px; }
+        .project-details { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 40px; }
+        .project-box { background: #f8f9fa; padding: 18px; border-radius: 4px; border: 1px solid #e0e0e0; }
+        @media print { body { margin: 0; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>DIAMONDBACK CODING</h1>
+            <p>PREMIUM DEVELOPMENT SERVICES</p>
+        </div>
+        
+        <div class="title">
+            <h2>SERVICE LEVEL AGREEMENT</h2>
+            <p style="font-size: 13px; color: #666;">Project Timeline & Terms of Service</p>
+            <p style="font-size: 11px; color: #999; margin-top: 4px;">Document ID: ${documentId}</p>
+        </div>
+        
+        <div class="parties">
+            <div class="party">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 12px;">Service Provider</div>
+                <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">Diamondback Coding</div>
+                <div style="font-size: 11px; color: #666; line-height: 1.6;">
+                    15709 Spillman Ranch Loop<br>
+                    Austin, TX 78738<br>
+                    diamondbackcoding@gmail.com<br>
+                    (940) 217-8680
+                </div>
+            </div>
+            
+            <div class="party">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 12px;">Client</div>
+                <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">${timeline.clientName}</div>
+                <div style="font-size: 11px; color: #666; line-height: 1.6;">
+                    ${timeline.clientCompany ? timeline.clientCompany + '<br>' : ''}
+                    ${timeline.clientEmail || ''}<br>
+                    ${timeline.clientPhone || ''}
+                </div>
+            </div>
+        </div>
+        
+        <div class="project-details">
+            <div class="project-box">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px;">Project Name</div>
+                <div style="font-size: 15px; font-weight: 700;">${timeline.projectName || 'Web Development Project'}</div>
+            </div>
+            <div class="project-box">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px;">Start Date</div>
+                <div style="font-size: 15px; font-weight: 700;">${new Date(timeline.startDate).toLocaleDateString()}</div>
+            </div>
+            <div class="project-box" style="background: #22c55e; color: white;">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; opacity: 0.9; margin-bottom: 6px;">Total Investment</div>
+                <div style="font-size: 22px; font-weight: 800;">${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</div>
+            </div>
+            <div class="project-box" style="background: #000; color: white;">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; opacity: 0.7; margin-bottom: 6px;">Payment Terms</div>
+                <div style="font-size: 13px; font-weight: 700;">${paymentTermsHtml}</div>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 40px;">
+            <div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">SELECTED SERVICES</div>
+            ${packagesListHtml}
+        </div>
+        
+        <div style="text-align: center; padding: 30px; background: #f8f9fa; border-radius: 4px; margin-top: 40px;">
+            <p style="font-size: 12px; color: #666;">Full SLA details available in the admin portal</p>
+            <p style="font-size: 11px; color: #999; margin-top: 8px;">Contact: diamondbackcoding@gmail.com | (940) 217-8680</p>
+        </div>
+    </div>
+</body>
+</html>`;
+}
+
+// Helper function to generate Invoice PDF HTML
+function generateInvoicePDFHTML(invoice) {
+    const items = invoice.items || [];
+    const taxAmount = parseFloat(invoice.tax_amount || 0);
+    const discount = parseFloat(invoice.discount_amount || 0);
+    
+    return `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Segoe UI", Arial, sans-serif; background: #ffffff; color: #000; line-height: 1.5; }
+        .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+        .header { background: #22c55e; color: white; padding: 30px 40px; margin: -40px -40px 40px -40px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 28px; font-weight: 800; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #22c55e; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .totals { text-align: right; margin-top: 20px; }
+        .total-row { display: flex; justify-content: flex-end; padding: 8px 0; }
+        .total-label { width: 150px; }
+        .total-value { width: 100px; font-weight: 600; }
+        .grand-total { font-size: 24px; color: #22c55e; border-top: 2px solid #22c55e; padding-top: 12px; margin-top: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>DIAMONDBACK CODING</h1>
+                <p style="opacity: 0.9; font-size: 12px;">Premium Development Services</p>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 24px; font-weight: 800;">INVOICE</div>
+                <div style="font-size: 13px; opacity: 0.9;">#${invoice.invoice_number}</div>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+            <div>
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px;">From</div>
+                <div style="font-weight: 600;">Diamondback Coding</div>
+                <div style="font-size: 11px; color: #666;">
+                    15709 Spillman Ranch Loop<br>
+                    Austin, TX 78738<br>
+                    diamondbackcoding@gmail.com
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px;">Bill To</div>
+                <div style="font-weight: 600;">${invoice.customer_name || 'Customer'}</div>
+                <div style="font-size: 11px; color: #666;">
+                    ${invoice.customer_company ? invoice.customer_company + '<br>' : ''}
+                    ${invoice.customer_email || ''}
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+            <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 4px; flex: 1;">
+                <div style="font-size: 10px; text-transform: uppercase; color: #666;">Issue Date</div>
+                <div style="font-weight: 600;">${new Date(invoice.issue_date).toLocaleDateString()}</div>
+            </div>
+            <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 4px; flex: 1;">
+                <div style="font-size: 10px; text-transform: uppercase; color: #666;">Due Date</div>
+                <div style="font-weight: 600;">${new Date(invoice.due_date).toLocaleDateString()}</div>
+            </div>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${items.map(item => `
+                    <tr>
+                        <td>${item.description}</td>
+                        <td>${item.quantity || 1}</td>
+                        <td>$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
+                        <td style="text-align: right;">$${parseFloat(item.amount).toLocaleString()}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        
+        <div class="totals">
+            <div class="total-row">
+                <span class="total-label">Subtotal</span>
+                <span class="total-value">$${parseFloat(invoice.subtotal).toLocaleString()}</span>
+            </div>
+            ${taxAmount > 0 ? `
+                <div class="total-row">
+                    <span class="total-label">Tax (${invoice.tax_rate}%)</span>
+                    <span class="total-value">$${taxAmount.toLocaleString()}</span>
+                </div>
+            ` : ''}
+            ${discount > 0 ? `
+                <div class="total-row">
+                    <span class="total-label">Discount</span>
+                    <span class="total-value">-$${discount.toLocaleString()}</span>
+                </div>
+            ` : ''}
+            <div class="total-row grand-total">
+                <span class="total-label">Total</span>
+                <span class="total-value">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
+            </div>
+        </div>
+        
+        ${invoice.notes ? `
+            <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 4px;">
+                <strong>Notes:</strong> ${invoice.notes}
+            </div>
+        ` : ''}
+    </div>
+</body>
+</html>`;
+}
+
 // ========================================
 // STRIPE WEBHOOK (MUST BE FIRST!)
 // ========================================
@@ -2430,14 +2706,19 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
         // Calculate total price
         let totalPrice = 0;
         timeline.packages.forEach(key => {
-            if (servicePackages[key] && !servicePackages[key].isFree) {
-                totalPrice += servicePackages[key].price;
+            const pkg = servicePackages[key];
+            if (pkg && !pkg.isFree) {
+                totalPrice += pkg.price;
             }
         });
         
         const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
         
-        // Create email HTML (simplified version - you can make this match your PDF)
+        // Generate PDF
+        const pdfHTML = generateTimelinePDFHTML(timeline);
+        const pdfBuffer = await generatePDFFromHTML(pdfHTML);
+        
+        // Create email HTML
         const emailHTML = `
             <!DOCTYPE html>
             <html>
@@ -2446,7 +2727,6 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
                     .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
                     .content { padding: 30px; max-width: 800px; margin: 0 auto; }
-                    .button { display: inline-block; background: #22c55e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
                     .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
                 </style>
             </head>
@@ -2459,7 +2739,7 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                 <div class="content">
                     <h2>Hello ${clientName},</h2>
                     
-                    <p>Thank you for choosing Diamondback Coding! Your Service Level Agreement (SLA) is ready for review.</p>
+                    <p>Thank you for choosing Diamondback Coding! Your Service Level Agreement (SLA) is attached to this email.</p>
                     
                     <p><strong>Project Details:</strong></p>
                     <ul>
@@ -2471,7 +2751,10 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                     
                     <p><strong>Selected Services:</strong></p>
                     <ul>
-                        ${timeline.packages.map(key => `<li>${servicePackages[key]?.name || key}</li>`).join('')}
+                        ${timeline.packages.map(key => {
+                            const pkg = servicePackages[key];
+                            return pkg ? `<li>${pkg.name}</li>` : '';
+                        }).join('')}
                     </ul>
                     
                     <p>Please review the attached SLA document carefully. If you have any questions or need clarification on any terms, please don't hesitate to reach out.</p>
@@ -2494,7 +2777,94 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                     <p>Diamondback Coding<br>
                     15709 Spillman Ranch Loop, Austin, TX 78738<br>
                     diamondbackcoding@gmail.com | (940) 217-8680</p>
-                    <p style="font-size: 11px; color: #999; margin-top: 10px;">This is an automated message. Please do not reply directly to this email.</p>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // Email options with PDF attachment
+        const mailOptions = {
+            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+            to: clientEmail,
+            subject: `Your Service Level Agreement - ${timeline.projectName || 'Web Development Project'}`,
+            html: emailHTML,
+            attachments: [
+                {
+                    filename: `SLA-${timeline.clientName.replace(/\s+/g, '-')}-${documentId}.pdf`,
+                    content: pdfBuffer,
+                    contentType: 'application/pdf'
+                }
+            ]
+        };
+        
+        // Send email
+        await transporter.sendMail(mailOptions);
+        
+        res.json({ success: true, message: 'Email sent successfully with PDF attachment' });
+        
+    } catch (error) {
+        console.error('Email error:', error);
+        res.status(500).json({ success: false, message: 'Failed to send email', error: error.message });
+    }
+});
+
+app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
+    try {
+        const { invoice, clientEmail, clientName } = req.body;
+        
+        if (!clientEmail) {
+            return res.status(400).json({ success: false, message: 'Client email is required' });
+        }
+        
+        // Generate PDF
+        const pdfHTML = generateInvoicePDFHTML(invoice);
+        const pdfBuffer = await generatePDFFromHTML(pdfHTML);
+        
+        // Create email HTML
+        const emailHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
+                    .content { padding: 30px; max-width: 800px; margin: 0 auto; }
+                    .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1 style="margin: 0; font-size: 32px;">DIAMONDBACK CODING</h1>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9;">Premium Development Services</p>
+                </div>
+                
+                <div class="content">
+                    <h2>Hello ${clientName},</h2>
+                    
+                    <p>Your invoice is attached to this email.</p>
+                    
+                    <p><strong>Invoice Details:</strong></p>
+                    <ul>
+                        <li><strong>Invoice Number:</strong> ${invoice.invoice_number}</li>
+                        <li><strong>Issue Date:</strong> ${new Date(invoice.issue_date).toLocaleDateString()}</li>
+                        <li><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</li>
+                        <li><strong>Amount Due:</strong> $${parseFloat(invoice.total_amount).toLocaleString()}</li>
+                    </ul>
+                    
+                    ${invoice.stripe_payment_link ? `
+                        <p><strong>Pay Online:</strong> <a href="${invoice.stripe_payment_link}" style="color: #22c55e; font-weight: 600;">Click here to pay securely</a></p>
+                    ` : ''}
+                    
+                    <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
+                    
+                    <p>Best regards,<br>
+                    <strong>Diamondback Coding Team</strong></p>
+                </div>
+                
+                <div class="footer">
+                    <p>Diamondback Coding<br>
+                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                    diamondbackcoding@gmail.com | (940) 217-8680</p>
                 </div>
             </body>
             </html>
@@ -2504,19 +2874,25 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
         const mailOptions = {
             from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
             to: clientEmail,
-            subject: `Your Service Level Agreement - ${timeline.projectName || 'Web Development Project'}`,
-            html: emailHTML
-            // Note: For PDF attachment, you'd need to generate it server-side or use a PDF generation library
+            subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
+            html: emailHTML,
+            attachments: [
+                {
+                    filename: `Invoice-${invoice.invoice_number}.pdf`,
+                    content: pdfBuffer,
+                    contentType: 'application/pdf'
+                }
+            ]
         };
         
         // Send email
         await transporter.sendMail(mailOptions);
         
-        res.json({ success: true, message: 'Email sent successfully' });
+        res.json({ success: true, message: 'Invoice email sent successfully' });
         
     } catch (error) {
         console.error('Email error:', error);
-        res.status(500).json({ success: false, message: 'Failed to send email', error: error.message });
+        res.status(500).json({ success: false, message: 'Failed to send invoice email', error: error.message });
     }
 });
 

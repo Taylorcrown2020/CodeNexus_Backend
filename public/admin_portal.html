@@ -3593,7 +3593,7 @@ function renderInvoices(content) {
         <div class="cards-grid">
             ${filtered.length > 0 ? filtered.map(inv => `
                 <div class="card invoice-card">
-                    <div class="invoice-card-header" onclick="openDetailModal('invoice', ${inv.id})">
+    <div class="invoice-card-header" onclick="openDetailModal('invoice', ${inv.id})">
                         <div>
                             <div class="invoice-card-number">${inv.invoice_number}</div>
                             <div class="invoice-card-customer">${inv.customer_name || 'Unknown'}</div>
@@ -4118,17 +4118,39 @@ const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
     `;
 } else if (type === 'invoice') {
     const invoice = state.invoices.find(i => i.id === id);
-    if (!invoice) return;
+    if (!invoice) {
+        console.error('Invoice not found:', id);
+        showToast('Invoice not found', 'error');
+        return;
+    }
+    
+    console.log('Opening invoice:', invoice);
     
     state.currentInvoice = invoice;
     
     titleEl.textContent = 'Invoice Details';
-    bodyEl.innerHTML = await renderInvoicePreview(invoice); // ADD await here!
     
-    // REPLACE THE ENTIRE footerEl.innerHTML with this:
+    // Generate the preview HTML (await since renderInvoicePreview is async)
+    const previewHTML = await renderInvoicePreview(invoice);
+    bodyEl.innerHTML = previewHTML;
+    
+    // Build footer buttons
     let footerButtons = `
         <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
     `;
+    
+    // Add email button
+    if (invoice.customer_email) {
+        footerButtons += `
+            <button class="btn btn-secondary" onclick="emailInvoiceToClient()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                Email to Client
+            </button>
+        `;
+    }
     
     // Add Mark as Paid button if not already paid
     if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
@@ -4169,9 +4191,9 @@ const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
     }
     
     footerEl.innerHTML = footerButtons;
+    
+    modal.classList.add('active');
 }
-
-modal.classList.add('active');
 }
 async function renderInvoicePreview(invoice) {
     const items = invoice.items || [];
@@ -5727,6 +5749,51 @@ async function handleChangeStatus(event, leadId) {
         openDetailModal('lead', leadId);
     } catch (e) {
         showToast('Error updating status', 'error');
+    }
+}
+
+async function emailInvoiceToClient() {
+    const invoice = state.currentInvoice;
+    if (!invoice) {
+        showToast('No invoice to email', 'error');
+        return;
+    }
+    
+    if (!invoice.customer_email) {
+        showToast('No customer email address found', 'error');
+        return;
+    }
+    
+    showToast('Sending invoice email...', 'warning');
+    
+    try {
+        const response = await fetch(`${API_URL}/api/email/send-invoice`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+                invoice: invoice,
+                clientEmail: invoice.customer_email,
+                clientName: invoice.customer_name
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to send email');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(`✓ Invoice emailed to ${invoice.customer_email}`, 'success');
+        } else {
+            throw new Error(result.message || 'Failed to send email');
+        }
+    } catch (error) {
+        console.error('Email error:', error);
+        showToast('Failed to send email. Please try again.', 'error');
     }
 }
 

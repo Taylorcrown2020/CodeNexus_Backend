@@ -6288,6 +6288,228 @@ function editAddress(leadId) {
     modal.classList.add('active');
 }
 
+// ========================================
+// RENDER PROJECTS
+// ========================================
+function renderProjects(content) {
+    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+    
+    content.innerHTML = `
+        <div class="controls-bar">
+            <div class="search-box">
+                <input type="text" class="search-input" id="projectSearch" placeholder="Search projects by client name, company, or project..." onkeyup="handleProjectSearch(event)">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+            </div>
+            <button class="btn btn-primary" onclick="openProjectTimelineModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                Create Project Timeline
+            </button>
+        </div>
+        
+        <div class="cards-grid" id="projectTimelinesGrid">
+            ${savedTimelines.length > 0 ? savedTimelines.map((timeline, index) => `
+                <div class="card" style="cursor: pointer;" onclick="viewProjectTimeline(${index})">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">${timeline.clientName}</div>
+                            <div style="font-size: 13px; color: var(--text-muted);">${timeline.clientCompany || 'No company'}</div>
+                        </div>
+                        <span class="status-badge status-${timeline.status || 'pending'}">
+                            <span class="status-dot"></span>
+                            ${timeline.status || 'Draft'}
+                        </span>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        ${timeline.packages.map(pkg => `
+                            <span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">${servicePackages[pkg]?.name || pkg}</span>
+                        `).join('')}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+                        <div style="font-size: 12px; color: var(--text-muted);">
+                            Created: ${formatDate(timeline.createdAt)}
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="table-action-btn" onclick="event.stopPropagation(); exportProjectTimeline(${index})" title="Export">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                            </button>
+                            <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteProjectTimeline(${index})" title="Delete">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('') : `
+                <div style="grid-column: 1 / -1;">
+                    <div class="empty-state">
+                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                        </svg>
+                        <div class="empty-title">No Project Timelines Yet</div>
+                        <div class="empty-description">Create your first project timeline to get started</div>
+                    </div>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+// Handle project search
+function handleProjectSearch(event) {
+    const query = event.target.value.toLowerCase();
+    filterProjectTimelines(query);
+}
+
+// Open Project Timeline Modal
+function openProjectTimelineModal() {
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = 'Create Project Timeline & SLA';
+    
+    // Initialize package selection
+    window.selectedPackages = [];
+    
+    const allLeadsAndCustomers = [...state.leads, ...state.customers];
+    const today = new Date().toISOString().split('T')[0];
+    
+    bodyEl.innerHTML = `
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Select Existing Client (Optional)</label>
+                <select class="form-select" id="timelineClient" onchange="populateClientInfo()">
+                    <option value="">New Client / Manual Entry</option>
+                    ${allLeadsAndCustomers.map(lead => `
+                        <option value="${lead.id}">${lead.name}${lead.company ? ' - ' + lead.company : ''}</option>
+                    `).join('')}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Client Name <span class="required">*</span></label>
+                <input type="text" class="form-input" id="timelineClientName" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Company</label>
+                <input type="text" class="form-input" id="timelineClientCompany">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" id="timelineClientEmail">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-input" id="timelineClientPhone">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Estimated Start Date</label>
+                <input type="date" class="form-input" id="timelineStartDate" value="${today}">
+            </div>
+            
+            <div class="form-group full-width">
+                <label class="form-label">Project Name</label>
+                <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Company Website Redesign">
+            </div>
+            
+            <div class="form-group full-width">
+                <label class="form-label">Select Service Packages <span class="required">*</span></label>
+                <div id="packagesList" style="display: grid; gap: 12px; margin-top: 12px;">
+                    ${Object.entries(servicePackages).map(([key, pkg]) => `
+                        <div class="expense-item" style="cursor: pointer; ${pkg.isFree ? 'border: 2px solid var(--status-contacted);' : ''}" onclick="togglePackageSelection('${key}', this)">
+                            <div class="expense-checkbox" id="pkg-check-${key}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                            <div class="expense-content" style="flex: 1;">
+                                <div class="expense-description">
+                                    ${pkg.name}
+                                    ${pkg.isFree ? '<span style="margin-left: 8px; background: var(--status-contacted); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700;">FREE</span>' : ''}
+                                </div>
+                                <div class="expense-meta">
+                                    <span>${pkg.description}</span>
+                                    <span>Duration: ${pkg.duration}</span>
+                                </div>
+                            </div>
+                            <div class="expense-amount">${pkg.price === 0 ? 'FREE' : '$' + pkg.price.toLocaleString()}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Include Maintenance After Free Support?</label>
+                <select class="form-select" id="maintenanceIncluded">
+                    <option value="no">No - Client will decide later</option>
+                    <option value="yes">Yes - Include in SLA</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Monthly Maintenance Fee (if applicable)</label>
+                <input type="number" class="form-input" id="maintenanceFee" value="59.99" step="0.01">
+            </div>
+            
+            <div class="form-group full-width">
+                <label class="form-label">Additional Notes</label>
+                <textarea class="form-textarea" id="timelineNotes" rows="3" placeholder="Any special requirements or notes..."></textarea>
+            </div>
+        </div>
+        
+        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-top: 20px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 8px;">Selected Packages Summary</div>
+            <div id="packagesSummary" style="font-size: 13px; color: var(--text-muted);">No packages selected</div>
+        </div>
+        
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+            <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+            <button type="button" class="btn btn-secondary" onclick="previewProjectTimeline()">Preview SLA</button>
+            <button type="button" class="btn btn-primary" onclick="saveProjectTimeline()">Save Timeline</button>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// Update packages summary
+function updatePackagesSummary() {
+    const summaryEl = document.getElementById('packagesSummary');
+    if (window.selectedPackages.length === 0) {
+        summaryEl.textContent = 'No packages selected';
+        return;
+    }
+    
+    let total = 0;
+    const packages = window.selectedPackages.map(key => {
+        const pkg = servicePackages[key];
+        total += pkg.price;
+        return `${pkg.name} ($${pkg.price.toLocaleString()})`;
+    });
+    
+    summaryEl.innerHTML = `
+        <div style="margin-bottom: 8px;">${packages.join(', ')}</div>
+        <div style="font-size: 16px; font-weight: 700; color: var(--accent-amber);">Total Investment: $${total.toLocaleString()}</div>
+    `;
+}
+
 async function handleEditAddress(event, leadId) {
     event.preventDefault();
     const formData = new FormData(event.target);

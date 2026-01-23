@@ -4259,13 +4259,12 @@ async function renderInvoicePreview(invoice) {
                     <div>
                         <div class="invoice-party-label">Bill To</div>
                         <div class="invoice-party-name">${invoice.customer_name || 'Customer'}</div>
-                        <div class="invoice-party-details">
-                            ${invoice.customer_company ? invoice.customer_company + '<br>' : ''}
-                            ${invoice.address_line1 ? invoice.address_line1 + '<br>' : ''}
-                            ${invoice.address_line2 ? invoice.address_line2 + '<br>' : ''}
-                            ${invoice.city ? invoice.city + ', ' : ''}${invoice.state || ''} ${invoice.zip_code || ''}<br>
-                            ${invoice.customer_email || ''}
-                        </div>
+<div class="invoice-party-details">
+    ${timeline.clientCompany ? timeline.clientCompany + '<br>' : ''}
+    ${timeline.clientEmail || ''}${timeline.clientPhone || timeline.clientAddress ? '<br>' : ''}
+    ${timeline.clientPhone || ''}${timeline.clientAddress ? '<br>' : ''}
+    ${timeline.clientAddress ? timeline.clientAddress.replace(/\n/g, '<br>') : ''}
+</div>
                     </div>
                 </div>
                 
@@ -7306,62 +7305,62 @@ function openTimelinePreviewModal(timeline) {
 // Generate Timeline HTML (generates the SLA document)
 function generateTimelineHTML(timeline) {
 
-    const standardWebsitePhases = [
-        {
-            name: 'Discovery & Planning Meeting',
-            duration: '1 week',
-            tasks: [
-                'Initial meeting to discuss your preferences and expectations',
-                'Review project timeline and what will be delivered',
-                'Understand your industry, business needs, and target audience',
-                'Define the message and persona your website needs to convey',
-                'Establish clear goals for the website'
-            ]
-        },
-        {
-            name: 'Draft Development & Iteration',
-            duration: '2-4 weeks (varies by package)',
-            tasks: [
-                'Start Round 1 draft of the website design',
-                'Two (2) progress meetings per week during this phase',
-                'Review feedback and make revisions each round',
-                'Continue rounds until you approve a final draft',
-                'As many revisions as needed to get it right'
-            ]
-        },
-        {
-            name: 'Functionality & Systems Integration',
-            duration: '1-2 weeks',
-            tasks: [
-                'Turn the approved draft into a fully functional website',
-                'Integrate all systems (forms, databases, CRM, etc.)',
-                'Add all technical features included in your package',
-                'Implement SEO and analytics tracking'
-            ]
-        },
-        {
-            name: 'Soft Deployment & Testing',
-            duration: '3-5 days',
-            tasks: [
-                'Deploy website to a private testing environment',
-                'Send you a private link to review and test the site',
-                'You test everything and provide any final feedback',
-                'We fix any issues that come up'
-            ]
-        },
-        {
-            name: 'Go-Live Deployment',
-            duration: '1-2 days',
-            tasks: [
-                'Set an agreed-upon go-live date',
-                'Confirm all issues are resolved before go-live',
-                'Connect your domain and make the site live',
-                'Site goes live on the scheduled date',
-                'Monitor for 24 hours after launch',
-                'Provide training on how to manage your site'
-            ]
-        }
-    ];
+const standardWebsitePhases = [
+  {
+    name: 'Discovery & Planning Meeting',
+    duration: '1 week',
+    tasks: [
+      'Initial meeting to discuss your preferences and expectations',
+      'Review project timeline and what will be delivered',
+      'Understand your industry, business needs, and target audience',
+      'Define the message and persona your website needs to convey',
+      'Establish clear goals for the website'
+    ]
+  },
+  {
+    name: 'Draft Development & Iteration',
+    duration: '2-4 weeks (varies by package)',
+    tasks: [
+      'Start Round 1 draft of the website design',
+      'Two (2) progress meetings per week during this phase',
+      'Review feedback and make revisions each round',
+      'Continue rounds until you approve a final draft',
+      'As many revisions as needed to get it right'
+    ]
+  },
+  {
+    name: 'Functionality & Systems Integration',
+    duration: '1-2 weeks',
+    tasks: [
+      'Turn the approved draft into a fully functional website',
+      'Integrate all systems (forms, databases, CRM, etc.)',
+      'Add all technical features included in your package',
+      'Implement SEO and analytics tracking'
+    ]
+  },
+  {
+    name: 'Soft Deployment & Testing',
+    duration: '3-5 days',
+    tasks: [
+      'Deploy website to a private testing environment',
+      'Send you a private link to review and test the site',
+      'You test everything and provide any final feedback',
+      'We fix any issues that come up'
+    ]
+  },
+  {
+    name: 'Go-Live Deployment',
+    duration: '1-2 days',
+    tasks: [
+      'Set an agreed-upon go-live date',
+      'Confirm all issues are resolved before go-live',
+      'Connect your domain and make the site live',
+      'Site goes live on the scheduled date',
+      'Monitor for 24 hours after launch',
+      'Provide training on how to manage your site'
+    ]
+  }
+];
     
     let totalPrice = 0;
     timeline.packages.forEach(key => {
@@ -7437,11 +7436,12 @@ function generateTimelineHTML(timeline) {
                     <div>
                         <div class="invoice-party-label">Client (Customer)</div>
                         <div class="invoice-party-name">${timeline.clientName}</div>
-                        <div class="invoice-party-details">
-                            ${timeline.clientCompany ? timeline.clientCompany + '<br>' : ''}
-                            ${timeline.clientEmail || ''}<br>
-                            ${timeline.clientPhone || ''}
-                        </div>
+<div class="invoice-party-details">
+    ${timeline.clientCompany ? timeline.clientCompany + '<br>' : ''}
+    ${timeline.clientEmail || ''}${timeline.clientPhone || timeline.clientAddress ? '<br>' : ''}
+    ${timeline.clientPhone || ''}${timeline.clientAddress ? '<br>' : ''}
+    ${timeline.clientAddress ? timeline.clientAddress.replace(/\n/g, '<br>') : ''}
+</div>
                         <div style="margin-top: 16px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-sm); border: 2px dashed var(--border-strong);">
                             <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px;">Client Signature Required</div>
                             <div style="height: 40px; border-bottom: 1px solid var(--text-muted); margin-bottom: 4px;"></div>
@@ -7518,25 +7518,59 @@ function generateTimelineHTML(timeline) {
     </div>
 </div>
 
-<!-- PACKAGE-SPECIFIC FEATURES -->
+<!-- DETAILED PROJECT TIMELINE -->
 <div style="margin-bottom: 32px;">
-    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Package Features & Deliverables</div>
-    
+    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Detailed Project Timeline</div>
     ${timeline.packages.map(packageKey => {
         const pkg = servicePackages[packageKey];
-        return `
-            <div style="margin-bottom: 20px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">${pkg.name}</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                    ${pkg.features.map(feature => `
-                        <span style="background: var(--bg-hover); color: var(--text-secondary); padding: 4px 10px; border-radius: 12px; font-size: 11px; border: 1px solid var(--border-subtle);">
-                            ${feature}
-                        </span>
-                    `).join('')}
+        let html = `<div style="margin-bottom: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div>
+                    <span style="font-size: 16px; font-weight: 600; color: var(--text-primary);">${pkg.name}</span>
+                    <br>
+                    <span style="font-size: 13px; color: var(--text-secondary);">${pkg.description}</span>
                 </div>
+                <span style="font-size: 12px; color: var(--text-muted); background: var(--bg-hover); padding: 4px 10px; border-radius: var(--radius-sm);">${pkg.duration}</span>
             </div>
         `;
+        if (pkg.phases) {
+            pkg.phases.forEach((phase, index) => {
+                html += `
+                    <div style="margin-bottom: 16px; padding-left: 20px; border-left: 3px solid var(--accent-amber);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">Phase ${index + 1} ${phase.name}</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">${phase.duration}</span>
+                        </div>
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            ${phase.tasks.map(task => `
+                                <li style="display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle);">
+                                    <svg style="width: 14px; height: 14px; color: var(--accent-amber); flex-shrink: 0; margin-top: 3px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 11 12 14 22 4"/>
+                                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                                    </svg>
+                                    ${task}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            });
+        }
+        html += '</div>';
+        return html;
     }).join('')}
+</div>
+
+<!-- INCLUDED FEATURES -->
+<div style="margin-bottom: 32px;">
+    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 16px;">Included Features</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        ${timeline.packages.flatMap(packageKey => servicePackages[packageKey]?.features || []).map(feature => `
+            <span style="background: var(--bg-hover); color: var(--text-secondary); padding: 4px 10px; border-radius: 12px; font-size: 11px; border: 1px solid var(--border-subtle);">
+                ${feature}
+            </span>
+        `).join('')}
+    </div>
 </div>
 
                 <!-- SERVICE LEVEL COMMITMENTS -->

@@ -5452,7 +5452,7 @@ function printInvoice() {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Invoice ${invoice.invoice_number}</title>
+            <title>Project Timeline & SLA - ${timeline.clientName}</title>
             <style>
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body {
@@ -5460,18 +5460,18 @@ function printInvoice() {
                     padding: 40px;
                     color: #1a1a1a;
                     line-height: 1.6;
-                }
-                .invoice-container {
-                    max-width: 800px;
-                    margin: 0 auto;
                     background: #fff;
+                }
+                .container {
+                    max-width: 900px;
+                    margin: 0 auto;
                 }
                 .header {
                     display: flex;
                     justify-content: space-between;
                     align-items: flex-start;
                     padding-bottom: 30px;
-                    border-bottom: 3px solid #22c55e;
+                    border-bottom: 4px solid #22c55e;
                     margin-bottom: 30px;
                 }
                 .company-info h1 {
@@ -5483,28 +5483,54 @@ function printInvoice() {
                 .company-info p {
                     color: #666;
                     font-size: 14px;
+                    margin: 2px 0;
                 }
-                .invoice-title {
+                .doc-info {
                     text-align: right;
                 }
-                .invoice-title h2 {
-                    font-size: 36px;
+                .doc-title {
+                    font-size: 24px;
                     font-weight: 800;
                     color: #22c55e;
-                    letter-spacing: -1px;
+                    margin-bottom: 5px;
                 }
-                .invoice-title .invoice-number {
-                    font-size: 16px;
+                .doc-subtitle {
+                    font-size: 14px;
                     color: #666;
-                    font-family: monospace;
+                }
+                .doc-id {
+                    font-size: 11px;
+                    color: #999;
+                    margin-top: 5px;
+                }
+                .preamble {
+                    background: #f8f9fa;
+                    padding: 24px;
+                    border-radius: 8px;
+                    margin-bottom: 32px;
+                    border-left: 4px solid #22c55e;
+                }
+                .preamble-title {
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    color: #22c55e;
+                    margin-bottom: 12px;
+                }
+                .preamble-text {
+                    font-size: 13px;
+                    color: #555;
+                    line-height: 1.7;
                 }
                 .parties {
                     display: flex;
                     justify-content: space-between;
+                    gap: 40px;
                     margin-bottom: 40px;
                 }
                 .party {
-                    width: 45%;
+                    flex: 1;
                 }
                 .party-label {
                     font-size: 11px;
@@ -5517,333 +5543,552 @@ function printInvoice() {
                 .party-name {
                     font-size: 18px;
                     font-weight: 600;
-                    margin-bottom: 5px;
+                    margin-bottom: 8px;
                 }
                 .party-details {
                     font-size: 14px;
                     color: #555;
+                    line-height: 1.6;
                 }
-                .dates {
-                    display: flex;
-                    gap: 40px;
-                    margin-bottom: 40px;
-                }
-                .date-item {
+                .signature-box {
+                    margin-top: 16px;
+                    padding: 16px;
                     background: #f8f9fa;
-                    padding: 15px 25px;
-                    border-radius: 8px;
-                    border-left: 4px solid #22c55e;
+                    border-radius: 6px;
                 }
-                .date-label {
+                .signature-box.client {
+                    border: 2px dashed #22c55e;
+                }
+                .signature-label {
                     font-size: 10px;
                     font-weight: 700;
                     text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #888;
-                    margin-bottom: 5px;
+                    color: #666;
+                    margin-bottom: 6px;
                 }
-                .date-value {
-                    font-size: 16px;
-                    font-weight: 600;
-                    font-family: monospace;
+                .signature-company {
+                    font-family: 'Brush Script MT', cursive;
+                    font-size: 24px;
+                    color: #22c55e;
+                    margin-bottom: 4px;
                 }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-bottom: 30px;
-                }
-                thead {
-                    background: #1a1a1a;
-                    color: #fff;
-                }
-                th {
-                    padding: 15px;
-                    text-align: left;
+                .signature-date {
                     font-size: 11px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                th:last-child {
-                    text-align: right;
-                }
-                td {
-                    padding: 15px;
-                    border-bottom: 1px solid #eee;
-                    font-size: 14px;
-                }
-                td:last-child {
-                    text-align: right;
-                    font-family: monospace;
-                    font-weight: 600;
-                }
-                tbody tr:hover {
-                    background: #fafafa;
-                }
-                .totals {
-                    display: flex;
-                    justify-content: flex-end;
-                }
-                .totals-table {
-                    width: 300px;
-                }
-                .total-row {
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 10px 0;
-                    border-bottom: 1px solid #eee;
-                }
-                .total-row.grand {
-                    border-top: 3px solid #22c55e;
-                    border-bottom: none;
-                    margin-top: 10px;
-                    padding-top: 15px;
-                }
-                .total-label {
                     color: #666;
                 }
-                .total-value {
-                    font-weight: 600;
-                    font-family: monospace;
+                .signature-line {
+                    height: 40px;
+                    border-bottom: 2px solid #666;
+                    margin-bottom: 8px;
                 }
-                .total-row.grand .total-label {
-                    font-size: 18px;
-                    font-weight: 700;
-                    color: #1a1a1a;
+                .section {
+                    margin-bottom: 32px;
                 }
-                .total-row.grand .total-value {
-                    font-size: 28px;
-                    font-weight: 800;
-                    color: #22c55e;
-                }
-                .qr-section {
-                    margin-top: 40px;
-                    padding: 30px;
-                    background: #f8f9fa;
-                    border-radius: 12px;
-                    text-align: center;
-                }
-                .qr-title {
-                    font-size: 14px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #22c55e;
-                    margin-bottom: 16px;
-                }
-                .qr-container {
-                    display: inline-block;
-                    padding: 20px;
-                    background: white;
-                    border-radius: 8px;
-                    margin-bottom: 16px;
-                }
-                .qr-instructions {
-                    font-size: 13px;
-                    color: #555;
-                    max-width: 500px;
-                    margin: 0 auto 12px;
-                    line-height: 1.6;
-                }
-                .payment-url {
-                    font-family: monospace;
-                    font-size: 11px;
-                    color: #888;
-                    background: #fff;
-                    padding: 10px;
-                    border-radius: 6px;
-                    word-break: break-all;
-                }
-                .footer {
-                    margin-top: 50px;
-                    padding-top: 30px;
-                    border-top: 1px solid #eee;
-                }
-                .footer-title {
-                    font-size: 11px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #888;
-                    margin-bottom: 10px;
-                }
-                .footer-text {
-                    font-size: 14px;
-                    color: #555;
-                }
-                .status-badge {
-                    display: inline-block;
-                    padding: 5px 15px;
-                    border-radius: 20px;
+                .section-title {
                     font-size: 12px;
                     font-weight: 700;
                     text-transform: uppercase;
-                    margin-top: 10px;
+                    letter-spacing: 1px;
+                    color: #22c55e;
+                    margin-bottom: 16px;
                 }
-                .status-draft { background: #f1f3f5; color: #666; }
-                .status-sent { background: #e7f5ff; color: #1971c2; }
-                .status-paid { background: #d3f9d8; color: #2f9e44; }
-                .status-overdue { background: #ffe3e3; color: #e03131; }
+                .info-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 16px;
+                    margin-bottom: 24px;
+                }
+                .info-item {
+                    background: #f8f9fa;
+                    padding: 16px;
+                    border-radius: 6px;
+                }
+                .info-label {
+                    font-size: 10px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #666;
+                    margin-bottom: 4px;
+                }
+                .info-value {
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #1a1a1a;
+                }
+                .info-value.price {
+                    font-size: 20px;
+                    color: #22c55e;
+                }
+                .packages {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    margin-bottom: 24px;
+                }
+                .package-badge {
+                    background: #e8f5e9;
+                    color: #22c55e;
+                    padding: 6px 12px;
+                    border-radius: 16px;
+                    font-size: 12px;
+                    font-weight: 600;
+                }
+                .commitments {
+                    background: #f8f9fa;
+                    padding: 24px;
+                    border-radius: 8px;
+                    margin-bottom: 32px;
+                }
+                .commitment {
+                    display: flex;
+                    gap: 12px;
+                    margin-bottom: 16px;
+                }
+                .commitment:last-child {
+                    margin-bottom: 0;
+                }
+                .commitment-number {
+                    flex-shrink: 0;
+                    width: 24px;
+                    height: 24px;
+                    background: #22c55e;
+                    color: white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: 700;
+                    font-size: 12px;
+                }
+                .commitment-content h4 {
+                    font-size: 14px;
+                    margin-bottom: 4px;
+                }
+                .commitment-content p {
+                    font-size: 13px;
+                    color: #555;
+                    line-height: 1.6;
+                }
+                .package-detail {
+                    margin-bottom: 32px;
+                    padding: 24px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    border: 1px solid #e0e0e0;
+                }
+                .package-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 20px;
+                    padding-bottom: 16px;
+                    border-bottom: 2px solid #e0e0e0;
+                }
+                .package-name {
+                    font-size: 18px;
+                    font-weight: 700;
+                }
+                .package-desc {
+                    font-size: 13px;
+                    color: #666;
+                }
+                .package-duration {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #22c55e;
+                }
+                .phase {
+                    margin-bottom: 20px;
+                    padding-left: 20px;
+                    border-left: 3px solid #22c55e;
+                }
+                .phase-header {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 12px;
+                }
+                .phase-badge {
+                    background: #22c55e;
+                    color: white;
+                    padding: 2px 10px;
+                    border-radius: 12px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    margin-right: 8px;
+                }
+                .phase-name {
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+                .phase-duration {
+                    font-size: 12px;
+                    color: #666;
+                    background: #fff;
+                    padding: 4px 10px;
+                    border-radius: 4px;
+                }
+                .tasks {
+                    list-style: none;
+                }
+                .task {
+                    display: flex;
+                    gap: 10px;
+                    padding: 8px 0;
+                    font-size: 13px;
+                    color: #555;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                .task:last-child {
+                    border-bottom: none;
+                }
+                .task::before {
+                    content: "✓";
+                    color: #22c55e;
+                    font-weight: 700;
+                }
+                .maintenance-box {
+                    background: #f8f9fa;
+                    padding: 24px;
+                    border-radius: 8px;
+                    margin-bottom: 32px;
+                    border-left: 4px solid #22c55e;
+                }
+                .responsibilities {
+                    background: #f8f9fa;
+                    padding: 24px;
+                    border-radius: 8px;
+                    margin-bottom: 32px;
+                }
+                .responsibilities ul {
+                    margin: 12px 0 0 20px;
+                }
+                .responsibilities li {
+                    margin-bottom: 8px;
+                    font-size: 13px;
+                    color: #555;
+                }
+                .legal-box {
+                    background: #fff8e1;
+                    padding: 20px;
+                    border-radius: 8px;
+                    border-left: 4px solid #22c55e;
+                    margin-bottom: 32px;
+                }
+                .legal-title {
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: #22c55e;
+                    margin-bottom: 8px;
+                }
+                .legal-text {
+                    font-size: 12px;
+                    color: #555;
+                    line-height: 1.7;
+                }
+                .signature-reminder {
+                    background: #fff3cd;
+                    border: 2px solid #22c55e;
+                    padding: 20px;
+                    border-radius: 8px;
+                    text-align: center;
+                    margin-top: 32px;
+                }
+                .signature-reminder-title {
+                    font-size: 14px;
+                    font-weight: 700;
+                    color: #22c55e;
+                    margin-bottom: 8px;
+                }
+                .signature-reminder-text {
+                    font-size: 13px;
+                    color: #555;
+                    line-height: 1.6;
+                }
+                .footer {
+                    text-align: center;
+                    padding: 20px;
+                    border-top: 1px solid #e0e0e0;
+                    margin-top: 40px;
+                }
+                .footer-title {
+                    font-size: 14px;
+                    color: #555;
+                    margin-bottom: 8px;
+                }
+                .footer-contact {
+                    font-size: 12px;
+                    color: #999;
+                }
+                .footer-doc-id {
+                    font-size: 11px;
+                    color: #ccc;
+                    margin-top: 12px;
+                }
                 @media print {
                     body { padding: 20px; }
-                    .invoice-container { max-width: 100%; }
+                    .page-break { page-break-before: always; }
                 }
             </style>
         </head>
         <body>
-            <div class="invoice-container">
+            <div class="container">
+                <!-- HEADER -->
                 <div class="header">
                     <div class="company-info">
                         <h1>Diamondback Coding</h1>
                         <p>Premium Development Services</p>
                         <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
-                        <p>diamondbackcoding@gmail.com</p>
+                        <p>diamondbackcoding@gmail.com | (940) 217-8680</p>
                     </div>
-                    <div class="invoice-title">
-                        <h2>INVOICE</h2>
-                        <div class="invoice-number">#${invoice.invoice_number}</div>
-                        <span class="status-badge status-${invoice.status}">${invoice.status}</span>
+                    <div class="doc-info">
+                        <div class="doc-title">SERVICE LEVEL AGREEMENT</div>
+                        <div class="doc-subtitle">Project Timeline & SLA</div>
+                        <div class="doc-id">Document ID: ${documentId}</div>
                     </div>
                 </div>
                 
+                <!-- PREAMBLE -->
+                <div class="preamble">
+                    <div class="preamble-title">Agreement Overview</div>
+                    <div class="preamble-text">
+                        This Service Level Agreement ("Agreement") is entered into as of <strong>${companySignatureDate}</strong> by and between 
+                        <strong>Diamondback Coding</strong> ("Provider"), a Texas-based web development company, and 
+                        <strong>${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}</strong> ("Client").
+                        This Agreement governs the provision of web development services as outlined below and is subject to the terms and conditions set forth herein.
+                    </div>
+                </div>
+
+                <!-- PARTIES -->
                 <div class="parties">
                     <div class="party">
-                        <div class="party-label">From</div>
+                        <div class="party-label">Service Provider (Company)</div>
                         <div class="party-name">Diamondback Coding</div>
                         <div class="party-details">
                             15709 Spillman Ranch Loop<br>
                             Austin, TX 78738<br>
-                            diamondbackcoding@gmail.com
+                            diamondbackcoding@gmail.com<br>
+                            (940) 217-8680
+                        </div>
+                        <div class="signature-box">
+                            <div class="signature-label">Company Signature</div>
+                            <div class="signature-company">Diamondback Coding</div>
+                            <div class="signature-date">Digitally Signed: ${companySignatureDate}</div>
+                            <div class="signature-date" style="margin-top: 4px; font-size: 10px; color: #999;">Authorized Representative</div>
                         </div>
                     </div>
                     <div class="party">
-                        <div class="party-label">Bill To</div>
-                        <div class="party-name">${invoice.customer_name || 'Customer'}</div>
+                        <div class="party-label">Client (Customer)</div>
+                        <div class="party-name">${timeline.clientName}</div>
                         <div class="party-details">
-                            ${invoice.customer_company ? invoice.customer_company + '<br>' : ''}
-                            ${invoice.address_line1 ? invoice.address_line1 + '<br>' : ''}
-                            ${invoice.address_line2 ? invoice.address_line2 + '<br>' : ''}
-                            ${invoice.city ? invoice.city + ', ' : ''}${invoice.state || ''} ${invoice.zip_code || ''}<br>
-                            ${invoice.customer_email || ''}
+                            ${timeline.clientCompany ? timeline.clientCompany + '<br>' : ''}
+                            ${timeline.clientEmail || ''}<br>
+                            ${timeline.clientPhone || ''}
+                        </div>
+                        <div class="signature-box client">
+                            <div class="signature-label">Client Signature Required</div>
+                            <div class="signature-line"></div>
+                            <div class="signature-date">Signature Date: _______________</div>
+                            <div class="signature-date" style="margin-top: 8px; font-size: 10px; color: #666;">
+                                By signing, Client agrees to all terms, timelines, and pricing outlined in this SLA.
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="dates">
-                    <div class="date-item">
-                        <div class="date-label">Issue Date</div>
-                        <div class="date-value">${formatDate(invoice.issue_date)}</div>
-                    </div>
-                    <div class="date-item">
-                        <div class="date-label">Due Date</div>
-                        <div class="date-value">${formatDate(invoice.due_date)}</div>
+                <!-- PROJECT DETAILS -->
+                <div class="section">
+                    <div class="section-title">Project Details</div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Project Name</div>
+                            <div class="info-value">${timeline.projectName || 'Web Development Project'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Estimated Start Date</div>
+                            <div class="info-value">${formatDate(timeline.startDate)}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Total Investment</div>
+                            <div class="info-value price">$${totalPrice.toLocaleString()}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Payment Terms</div>
+                            <div class="info-value">50% Deposit + 50% on Completion</div>
+                        </div>
                     </div>
                 </div>
                 
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th>Qty</th>
-                            <th>Unit Price</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${items.map(item => `
-                            <tr>
-                                <td>${item.description}</td>
-                                <td>${item.quantity || 1}</td>
-                                <td>$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
-                                <td>$${parseFloat(item.amount).toLocaleString()}</td>
-                            </tr>
+                <!-- SELECTED SERVICES -->
+                <div class="section">
+                    <div class="section-title">Selected Services</div>
+                    <div class="packages">
+                        ${timeline.packages.map(key => `
+                            <span class="package-badge">${servicePackages[key].name}</span>
                         `).join('')}
-                    </tbody>
-                </table>
-                
-                <div class="totals">
-                    <div class="totals-table">
-                        <div class="total-row">
-                            <span class="total-label">Subtotal</span>
-                            <span class="total-value">$${parseFloat(invoice.subtotal).toLocaleString()}</span>
+                    </div>
+                </div>
+
+                <!-- SERVICE LEVEL COMMITMENTS -->
+                <div class="commitments">
+                    <div class="section-title">Service Level Commitments</div>
+                    <div class="commitment">
+                        <div class="commitment-number">1</div>
+                        <div class="commitment-content">
+                            <h4>Timeline Adherence</h4>
+                            <p>Provider commits to delivering all project phases within the specified timeframes, subject to timely Client feedback and approval at each milestone.</p>
                         </div>
-                        ${taxAmount > 0 ? `
-                            <div class="total-row">
-                                <span class="total-label">Tax (${invoice.tax_rate}%)</span>
-                                <span class="total-value">$${taxAmount.toLocaleString()}</span>
-                            </div>
-                        ` : ''}
-                        ${discount > 0 ? `
-                            <div class="total-row">
-                                <span class="total-label">Discount</span>
-                                <span class="total-value">-$${discount.toLocaleString()}</span>
-                            </div>
-                        ` : ''}
-                        <div class="total-row grand">
-                            <span class="total-label">Total</span>
-                            <span class="total-value">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
+                    </div>
+                    <div class="commitment">
+                        <div class="commitment-number">2</div>
+                        <div class="commitment-content">
+                            <h4>Communication Response Time</h4>
+                            <p>Provider will respond to Client inquiries within 24 business hours during regular business hours (Monday-Friday, 8 AM - 5 PM CST).</p>
+                        </div>
+                    </div>
+                    <div class="commitment">
+                        <div class="commitment-number">3</div>
+                        <div class="commitment-content">
+                            <h4>Quality Assurance</h4>
+                            <p>All deliverables will undergo comprehensive testing across major browsers and devices before client review.</p>
+                        </div>
+                    </div>
+                    <div class="commitment">
+                        <div class="commitment-number">4</div>
+                        <div class="commitment-content">
+                            <h4>Post-Launch Support</h4>
+                            <p>Free priority support period begins immediately after launch (duration specified in selected package).</p>
                         </div>
                     </div>
                 </div>
                 
-                ${invoice.status !== 'paid' ? `
-                    <div class="qr-section">
-                        <div class="qr-title">
-                            <svg style="width: 24px; height: 24px; display: inline; margin-right: 8px; vertical-align: middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="7" height="7"/>
-                                <rect x="14" y="3" width="7" height="7"/>
-                                <rect x="14" y="14" width="7" height="7"/>
-                                <rect x="3" y="14" width="7" height="7"/>
-                            </svg>
-                            Scan to Pay
-                        </div>
-                        <div class="qr-container" id="print-qr-code"></div>
-                        <div class="qr-instructions">
-                            Scan this QR code with your phone's camera to access our secure payment portal. We accept credit cards, bank transfers, and other payment methods.
-                        </div>
-                        <div class="payment-url">${paymentUrl}</div>
+                <div class="page-break"></div>
+                
+                <!-- PROJECT PHASES -->
+                <div class="section">
+                    <div class="section-title">Detailed Project Timeline</div>
+                    
+                    ${timeline.packages.map(packageKey => {
+                        const pkg = servicePackages[packageKey];
+                        return `
+                            <div class="package-detail">
+                                <div class="package-header">
+                                    <div>
+                                        <div class="package-name">${pkg.name}</div>
+                                        <div class="package-desc">${pkg.description}</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 11px; color: #666; margin-bottom: 4px;">Duration</div>
+                                        <div class="package-duration">${pkg.duration}</div>
+                                    </div>
+                                </div>
+                                
+                                ${pkg.phases.map(phase => {
+                                    const currentPhase = phaseNumber++;
+                                    return `
+                                        <div class="phase">
+                                            <div class="phase-header">
+                                                <div>
+                                                    <span class="phase-badge">Phase ${currentPhase}</span>
+                                                    <span class="phase-name">${phase.name}</span>
+                                                </div>
+                                                <span class="phase-duration">${phase.duration}</span>
+                                            </div>
+                                            <ul class="tasks">
+                                                ${phase.tasks.map(task => `
+                                                    <li class="task">${task}</li>
+                                                `).join('')}
+                                            </ul>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                ${longestSupportPeriod > 0 ? `
+                    <div class="maintenance-box">
+                        <div class="section-title">Maintenance & Support Terms</div>
+                        ${timeline.maintenanceIncluded === 'yes' ? `
+                            <div style="font-size: 14px; font-weight: 600; color: #22c55e; margin-bottom: 12px;">
+                                ✓ Maintenance Included in ${longestSupportPeriod}-Day Free Support Period
+                            </div>
+                            <div style="font-size: 13px; color: #555; line-height: 1.7;">
+                                All maintenance services (bug fixes, security updates, minor content modifications, plugin/software updates, uptime monitoring, and priority support) are included free of charge during the ${longestSupportPeriod}-day support period following project launch.
+                                <br><br>
+                                After the free support period ends, Client may choose to continue maintenance services at the prevailing market rate, which will be communicated at that time.
+                            </div>
+                        ` : `
+                            <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">
+                                Post-Support Maintenance: $${parseFloat(timeline.maintenanceFee || 59.99).toFixed(2)}/month
+                            </div>
+                            <div style="font-size: 13px; color: #555; line-height: 1.7;">
+                                Following the ${longestSupportPeriod}-day free support period, ongoing maintenance services will be available for $${parseFloat(timeline.maintenanceFee || 59.99).toFixed(2)} per month.
+                                <br><br>
+                                <strong>Maintenance includes:</strong> Bug fixes, security updates, minor content modifications (up to 2 hours per month), plugin/software updates, uptime monitoring, and priority email support with 24-hour response time during business hours.
+                                <br><br>
+                                Maintenance billing begins automatically on the first day following the end of the free support period unless Client provides written notice of non-renewal at least 7 days prior.
+                            </div>
+                        `}
                     </div>
                 ` : ''}
+
+                <!-- CLIENT RESPONSIBILITIES -->
+                <div class="responsibilities">
+                    <div class="section-title">Client Responsibilities</div>
+                    <div style="font-size: 13px; color: #555; line-height: 1.7;">
+                        To ensure timely project completion, Client agrees to:
+                        <ul>
+                            <li>Provide all required content, images, and materials within 3 business days of request</li>
+                            <li>Respond to design/development reviews within 5 business days</li>
+                            <li>Designate a single point of contact for project communications</li>
+                            <li>Make payments according to the agreed schedule (50% deposit, 50% on completion)</li>
+                            <li>Provide access to necessary accounts, hosting, and domain credentials</li>
+                            <li>Notify Provider immediately of any changes to project scope or requirements</li>
+                        </ul>
+                    </div>
+                </div>
                 
-                ${invoice.notes ? `
-                    <div class="footer">
-                        <div class="footer-title">Notes</div>
-                        <div class="footer-text">${invoice.notes}</div>
+                <!-- TEXAS LAW -->
+                <div class="legal-box">
+                    <div class="legal-title">Governing Law</div>
+                    <div class="legal-text">
+                        This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions. 
+                        Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Texas. Both parties consent to the exclusive jurisdiction and venue of such courts.
+                    </div>
+                </div>
+
+                ${timeline.notes ? `
+                    <div style="margin-top: 24px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #22c55e;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 8px;">Additional Notes</div>
+                        <div style="font-size: 13px; color: #555; line-height: 1.7;">${timeline.notes}</div>
                     </div>
                 ` : ''}
+
+                <!-- SIGNATURE REMINDER -->
+                <div class="signature-reminder">
+                    <div class="signature-reminder-title">⚠️ Client Signature Required</div>
+                    <div class="signature-reminder-text">
+                        Please sign and date this SLA in the "Client" section above before returning. This document becomes legally binding once both parties have signed. 
+                        Provider's signature was applied digitally on ${companySignatureDate}.
+                    </div>
+                </div>
                 
+                <!-- FOOTER -->
                 <div class="footer">
-                    <div class="footer-title">Payment Information</div>
-                    <div class="footer-text">
-                        Thank you for your business! Please remit payment by the due date.<br>
-                        For questions, contact us at diamondbackcoding@gmail.com
-                    </div>
+                    <div class="footer-title">Questions about this SLA?</div>
+                    <div class="footer-contact">Contact us at diamondbackcoding@gmail.com or (940) 217-8680</div>
+                    <div class="footer-doc-id">Document ID: ${documentId} • Generated: ${formatDate(timeline.createdAt)}</div>
                 </div>
             </div>
             
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
             <script>
                 window.onload = function() {
-                    ${invoice.status !== 'paid' ? `
-                        const qrElement = document.getElementById('print-qr-code');
-                        if (qrElement) {
-                            new QRCode(qrElement, {
-                                text: '${paymentUrl}',
-                                width: 200,
-                                height: 200,
-                                colorDark: "#1a1a1a",
-                                colorLight: "#ffffff",
-                                correctLevel: QRCode.CorrectLevel.H
-                            });
-                            setTimeout(function() {
-                                window.print();
-                            }, 500);
-                        }
-                    ` : 'window.print();'}
+                    setTimeout(function() {
+                        window.print();
+                    }, 500);
                 }
-            <\/script>
-        </body>
-        </html>
     `);
     printWindow.document.close();
 }
@@ -7728,11 +7973,11 @@ exportTimelineAsPDF();
 }
 // Export Timeline as PDF (Print)
 function exportTimelineAsPDF() {
-const timeline = window.currentTimelinePreview;
-if (!timeline) {
-showToast('No timeline to export', 'error');
-return;
-}
+    const timeline = window.currentTimelinePreview;
+    if (!timeline) {
+        showToast('No timeline to export', 'error');
+        return;
+    }
 // For now, just trigger print dialog
 // The generateTimelineHTML already creates a print-friendly version
 window.print();

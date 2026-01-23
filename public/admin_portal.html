@@ -7744,16 +7744,11 @@ function exportTimelineAsPDF() {
     setTimeout(function() {
         let totalPrice = 0;
         let hasPaidPackage = false;
-        let hasFreePackage = false;
         
         timeline.packages.forEach(function(key) {
-            if (servicePackages[key]) {
-                if (servicePackages[key].isFree) {
-                    hasFreePackage = true;
-                } else {
-                    hasPaidPackage = true;
-                    totalPrice += servicePackages[key].price;
-                }
+            if (servicePackages[key] && !servicePackages[key].isFree) {
+                hasPaidPackage = true;
+                totalPrice += servicePackages[key].price;
             }
         });
         
@@ -7773,36 +7768,63 @@ function exportTimelineAsPDF() {
         timeline.packages.forEach(function(key) {
             if (servicePackages[key]) {
                 const pkg = servicePackages[key];
-                packagesListHtml += '<span style="display: inline-block; background: #f5f5f5; border: 1px solid #333; color: #000; padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: 600; margin: 4px;">' + pkg.name + (pkg.isFree ? ' (FREE)' : '') + '</span>';
+                packagesListHtml += '<div style="display: inline-block; background: #f8f9fa; border: 1px solid #22c55e; color: #000; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; margin: 0 8px 8px 0;">' + pkg.name + (pkg.isFree ? ' <span style="color: #22c55e;">(FREE)</span>' : '') + '</div>';
             }
         });
         
-        // Build phases HTML
+        // Build standardized phases
+        let standardPhasesHtml = '<div style="margin-bottom: 40px;">' +
+            '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">WEBSITE DEVELOPMENT PROCESS</div>';
+
+        standardWebsitePhases.forEach(function(phase, index) {
+            standardPhasesHtml += '<div style="margin-bottom: 24px; background: #f8f9fa; padding: 20px; border-left: 4px solid #22c55e; border-radius: 4px;">';
+            standardPhasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">';
+            standardPhasesHtml += '<div style="display: flex; align-items: center; gap: 10px;">';
+            standardPhasesHtml += '<span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; font-size: 13px; font-weight: 700;">' + (index + 1) + '</span>';
+            standardPhasesHtml += '<span style="font-size: 15px; font-weight: 700; color: #000;">' + phase.name + '</span></div>';
+            standardPhasesHtml += '<span style="font-size: 12px; color: #666; background: white; padding: 6px 12px; border-radius: 4px; border: 1px solid #ddd;">' + phase.duration + '</span></div>';
+            standardPhasesHtml += '<ul style="list-style: none; padding: 0; margin: 12px 0 0 0;">';
+            
+            phase.tasks.forEach(function(task) {
+                standardPhasesHtml += '<li style="padding: 8px 0; padding-left: 28px; position: relative; font-size: 12px; color: #333; line-height: 1.6;">';
+                standardPhasesHtml += '<span style="position: absolute; left: 8px; top: 8px; color: #22c55e; font-weight: bold;">✓</span>';
+                standardPhasesHtml += task + '</li>';
+            });
+            
+            standardPhasesHtml += '</ul></div>';
+        });
+
+        standardPhasesHtml += '</div>';
+        
+        // Build detailed phases HTML
         let phasesHtml = '';
         let phaseNumber = 1;
         timeline.packages.forEach(function(packageKey) {
             const pkg = servicePackages[packageKey];
             if (!pkg) return;
             
-            phasesHtml += '<div style="margin-bottom: 24px; padding: 20px; background: #fafafa; border: 1px solid #ddd; border-radius: 4px;">';
-            phasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #333;">';
-            phasesHtml += '<div><div style="font-size: 16px; font-weight: 700; color: #000;">' + pkg.name + '</div>';
-            phasesHtml += '<div style="font-size: 12px; color: #555;">' + pkg.description + '</div></div>';
-            phasesHtml += '<div style="text-align: right;"><div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666;">Duration</div>';
-            phasesHtml += '<div style="font-size: 14px; font-weight: 700; color: #000;">' + pkg.duration + '</div></div></div>';
+            phasesHtml += '<div style="margin-bottom: 30px; background: white; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden;">';
+            phasesHtml += '<div style="background: #22c55e; color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">';
+            phasesHtml += '<div><div style="font-size: 16px; font-weight: 700;">' + pkg.name + '</div>';
+            phasesHtml += '<div style="font-size: 12px; opacity: 0.95; margin-top: 2px;">' + pkg.description + '</div></div>';
+            phasesHtml += '<div style="text-align: right;"><div style="font-size: 10px; text-transform: uppercase; opacity: 0.9;">Duration</div>';
+            phasesHtml += '<div style="font-size: 14px; font-weight: 700;">' + pkg.duration + '</div></div></div>';
+            
+            phasesHtml += '<div style="padding: 20px;">';
             
             if (pkg.phases) {
                 pkg.phases.forEach(function(phase) {
-                    phasesHtml += '<div style="margin-bottom: 16px; padding-left: 16px; border-left: 3px solid #333;">';
-                    phasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">';
-                    phasesHtml += '<div><span style="display: inline-block; background: #333; color: white; padding: 2px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 8px;">Phase ' + phaseNumber + '</span>';
+                    phasesHtml += '<div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0;">';
+                    phasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">';
+                    phasesHtml += '<div><span style="display: inline-block; background: #000; color: white; padding: 4px 10px; border-radius: 3px; font-size: 10px; font-weight: 700; margin-right: 8px;">PHASE ' + phaseNumber + '</span>';
                     phasesHtml += '<span style="font-size: 14px; font-weight: 600; color: #000;">' + phase.name + '</span></div>';
-                    phasesHtml += '<span style="font-size: 11px; color: #555; background: #eee; padding: 4px 10px; border-radius: 4px;">' + phase.duration + '</span></div>';
+                    phasesHtml += '<span style="font-size: 11px; color: #666; background: #f8f9fa; padding: 4px 10px; border-radius: 3px;">' + phase.duration + '</span></div>';
                     phasesHtml += '<ul style="list-style: none; padding: 0; margin: 0;">';
                     
                     phase.tasks.forEach(function(task) {
-                        phasesHtml += '<li style="display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 12px; color: #333; border-bottom: 1px solid #eee;">';
-                        phasesHtml += '<span style="color: #333; font-weight: bold;">•</span> ' + task + '</li>';
+                        phasesHtml += '<li style="padding: 6px 0; padding-left: 24px; position: relative; font-size: 12px; color: #444; line-height: 1.5;">';
+                        phasesHtml += '<span style="position: absolute; left: 4px; top: 6px; color: #22c55e; font-weight: bold;">•</span>';
+                        phasesHtml += task + '</li>';
                     });
                     
                     phasesHtml += '</ul></div>';
@@ -7812,106 +7834,84 @@ function exportTimelineAsPDF() {
             
             // Features list
             if (pkg.features) {
-                phasesHtml += '<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #ddd;">';
-                phasesHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #333; margin-bottom: 10px;">Included Features</div>';
+                phasesHtml += '<div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #f0f0f0;">';
+                phasesHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 12px;">INCLUDED FEATURES</div>';
                 phasesHtml += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">';
                 pkg.features.forEach(function(feature) {
-                    phasesHtml += '<span style="background: #f0f0f0; color: #333; padding: 3px 8px; border-radius: 3px; font-size: 10px; border: 1px solid #ddd;">' + feature + '</span>';
+                    phasesHtml += '<span style="background: #f8f9fa; color: #333; padding: 4px 10px; border-radius: 3px; font-size: 10px; border: 1px solid #e0e0e0;">' + feature + '</span>';
                 });
                 phasesHtml += '</div></div>';
             }
             
-            phasesHtml += '</div>';
+            phasesHtml += '</div></div>';
         });
         
-        // CORRECTED: Dynamic payment terms based on timeline data
+        // Payment terms
         let paymentTermsHtml = '';
         if (timeline.isFreeProject || !hasPaidPackage) {
-            paymentTermsHtml = 'No Payment Required (Free Project)';
+            paymentTermsHtml = 'No Payment Required';
         } else {
             switch (timeline.paymentTerms) {
                 case 'completion':
-                    paymentTermsHtml = '50% Deposit + 50% Upon Completion';
+                    paymentTermsHtml = '50% Deposit + 50% on Completion';
                     break;
                 case 'net30':
-                    paymentTermsHtml = '50% Deposit + 50% Net 30 Days After Completion';
+                    paymentTermsHtml = '50% Deposit + 50% Net 30';
                     break;
                 case 'net15':
-                    paymentTermsHtml = '50% Deposit + 50% Net 15 Days After Completion';
+                    paymentTermsHtml = '50% Deposit + 50% Net 15';
                     break;
                 case 'milestone':
-                    paymentTermsHtml = 'Milestone-Based Payment Schedule';
+                    paymentTermsHtml = 'Milestone-Based Payments';
                     break;
                 case 'custom':
                     paymentTermsHtml = timeline.customPaymentDetails || 'Custom Payment Plan';
                     break;
                 default:
-                    paymentTermsHtml = '50% Deposit + 50% Upon Completion';
+                    paymentTermsHtml = '50% Deposit + 50% on Completion';
             }
         }
         
-        // CORRECTED: Maintenance section based on actual timeline data
+        // Maintenance section
         let maintenanceHtml = '';
         if (timeline.maintenanceIncluded && timeline.maintenanceIncluded !== 'no') {
-            maintenanceHtml = '<div style="background: #f5f5f5; padding: 20px; border: 1px solid #ddd; border-left: 4px solid #333; margin-bottom: 24px;">';
-            maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 12px;">Monthly Maintenance Terms</div>';
+            maintenanceHtml = '<div style="background: #f8f9fa; padding: 20px; border: 1px solid #e0e0e0; border-left: 4px solid #22c55e; border-radius: 4px; margin-bottom: 30px;">';
+            maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 12px; text-transform: uppercase;">Maintenance & Support Terms</div>';
             
             if (timeline.maintenanceIncluded === 'free') {
-                maintenanceHtml += '<p style="font-size: 12px; color: #333; line-height: 1.6; margin: 0;"><strong>FREE Monthly Maintenance Included';
+                maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: #000; margin-bottom: 10px;">✓ FREE Maintenance';
                 if (longestSupportPeriod > 0) {
-                    maintenanceHtml += ' (During ' + longestSupportPeriod + '-Day Support Period)';
+                    maintenanceHtml += ' During ' + longestSupportPeriod + '-Day Support Period';
                 }
-                maintenanceHtml += '</strong><br><br>';
+                maintenanceHtml += '</div>';
             } else if (timeline.maintenanceIncluded === 'paid') {
-                maintenanceHtml += '<p style="font-size: 12px; color: #333; line-height: 1.6; margin: 0;"><strong>Monthly Maintenance: $' + parseFloat(timeline.maintenanceFee || 59.99).toFixed(2) + '/month';
+                maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: #000; margin-bottom: 10px;">Monthly Maintenance: $' + parseFloat(timeline.maintenanceFee || 59.99).toFixed(2) + '/month';
                 if (longestSupportPeriod > 0) {
-                    maintenanceHtml += ' (After ' + longestSupportPeriod + '-Day Free Support Period)';
+                    maintenanceHtml += ' (After ' + longestSupportPeriod + '-Day Free Period)';
                 }
-                maintenanceHtml += '</strong><br><br>';
+                maintenanceHtml += '</div>';
             }
             
+            maintenanceHtml += '<div style="font-size: 12px; color: #444; line-height: 1.6;">';
             if (timeline.maintenanceDetails) {
                 maintenanceHtml += timeline.maintenanceDetails;
             } else {
-                maintenanceHtml += 'Bug fixes, security updates, minor content modifications (up to 2 hours/month), plugin/software updates, uptime monitoring, priority email support.';
+                maintenanceHtml += 'Includes: Bug fixes, security updates, minor content modifications (up to 2 hours/month), plugin updates, uptime monitoring, and priority support.';
             }
-            maintenanceHtml += '</p></div>';
+            maintenanceHtml += '</div></div>';
         } else if (longestSupportPeriod > 0) {
-            // Even if no ongoing maintenance selected, show free support period info
-            maintenanceHtml = '<div style="background: #f5f5f5; padding: 20px; border: 1px solid #ddd; border-left: 4px solid #333; margin-bottom: 24px;">';
-            maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 12px;">Post-Launch Support</div>';
-            maintenanceHtml += '<p style="font-size: 12px; color: #333; line-height: 1.6; margin: 0;"><strong>' + longestSupportPeriod + ' Days of FREE Priority Support Included</strong><br><br>';
-            maintenanceHtml += 'Following project launch, you will receive ' + longestSupportPeriod + ' days of free priority support including bug fixes, technical assistance, and minor adjustments. No monthly maintenance commitment has been selected at this time.</p></div>';
+            maintenanceHtml = '<div style="background: #f8f9fa; padding: 20px; border: 1px solid #e0e0e0; border-left: 4px solid #22c55e; border-radius: 4px; margin-bottom: 30px;">';
+            maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 12px; text-transform: uppercase;">Post-Launch Support</div>';
+            maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: #000; margin-bottom: 10px;">' + longestSupportPeriod + ' Days of FREE Priority Support Included</div>';
+            maintenanceHtml += '<div style="font-size: 12px; color: #444; line-height: 1.6;">Following project launch, you will receive ' + longestSupportPeriod + ' days of free priority support including bug fixes, technical assistance, and minor adjustments.</div></div>';
         }
         
         // Scope section
         let scopeHtml = '';
-        // STANDARDIZED WEBSITE DEVELOPMENT TIMELINE
-let standardPhasesHtml = '<div style="margin-bottom: 32px;">' +
-    '<div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #000; margin-bottom: 16px; padding-bottom: 6px; border-bottom: 2px solid #333;">Website Development Process</div>';
-
-standardWebsitePhases.forEach(function(phase, index) {
-    standardPhasesHtml += '<div style="margin-bottom: 20px; padding-left: 16px; border-left: 3px solid #333;">';
-    standardPhasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">';
-    standardPhasesHtml += '<div><span style="display: inline-block; background: #333; color: white; padding: 2px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 8px;">Phase ' + (index + 1) + '</span>';
-    standardPhasesHtml += '<span style="font-size: 14px; font-weight: 600; color: #000;">' + phase.name + '</span></div>';
-    standardPhasesHtml += '<span style="font-size: 11px; color: #555; background: #f0f0f0; padding: 4px 10px; border-radius: 4px;">' + phase.duration + '</span></div>';
-    standardPhasesHtml += '<ul style="list-style: none; padding: 0; margin: 0;">';
-    
-    phase.tasks.forEach(function(task) {
-        standardPhasesHtml += '<li style="padding: 5px 0; padding-left: 20px; position: relative; font-size: 12px; color: #333; border-bottom: 1px solid #eee;">';
-        standardPhasesHtml += '<span style="position: absolute; left: 0; color: #333; font-weight: bold;">•</span>';
-        standardPhasesHtml += task + '</li>';
-    });
-    
-    standardPhasesHtml += '</ul></div>';
-});
-
-standardPhasesHtml += '</div>';
         if (timeline.scope) {
-            scopeHtml = '<div style="background: #f5f5f5; padding: 16px; border: 1px solid #ddd; margin-bottom: 24px;">';
-            scopeHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #333; margin-bottom: 6px;">Project Scope / Special Requirements</div>';
-            scopeHtml += '<p style="font-size: 12px; color: #333; margin: 0; line-height: 1.6;">' + timeline.scope + '</p></div>';
+            scopeHtml = '<div style="background: #f8f9fa; padding: 18px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 30px;">';
+            scopeHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px;">Project Scope / Special Requirements</div>';
+            scopeHtml += '<p style="font-size: 12px; color: #444; margin: 0; line-height: 1.6;">' + timeline.scope + '</p></div>';
         }
         
         const printWindow = window.open('', '_blank', 'width=900,height=700');
@@ -7927,186 +7927,180 @@ standardPhasesHtml += '</div>';
             '<title>SLA - ' + timeline.clientName + '</title>' +
             '<style>' +
                 '* { margin: 0; padding: 0; box-sizing: border-box; }' +
-                'body { font-family: "Segoe UI", Arial, sans-serif; padding: 40px; color: #000; background: #fff; line-height: 1.5; }' +
-                '.container { max-width: 850px; margin: 0 auto; }' +
-                '.header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 3px solid #000; margin-bottom: 30px; }' +
-                '.logo { display: flex; align-items: center; gap: 12px; }' +
-                '.logo-icon { width: 50px; height: 50px; border: 2px solid #000; border-radius: 6px; display: flex; align-items: center; justify-content: center; }' +
-                '.logo-icon svg { width: 30px; height: 30px; }' +
-                '.company-name { font-size: 20px; font-weight: 800; color: #000; }' +
-                '.company-tagline { font-size: 11px; color: #555; }' +
-                '.doc-title { font-size: 24px; font-weight: 800; color: #000; text-align: right; text-transform: uppercase; letter-spacing: 0.05em; }' +
-                '.doc-subtitle { font-size: 12px; color: #555; text-align: right; margin-top: 2px; }' +
-                '.doc-id { font-size: 10px; color: #777; text-align: right; margin-top: 4px; }' +
-                '.section { margin-bottom: 24px; }' +
-                '.section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #000; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #333; }' +
-                '.parties { display: flex; gap: 40px; margin-bottom: 24px; }' +
-                '.party { flex: 1; }' +
-                '.party-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #555; margin-bottom: 6px; }' +
-                '.party-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }' +
-                '.party-details { font-size: 11px; color: #333; line-height: 1.5; }' +
-                '.signature-box { margin-top: 16px; padding: 14px; background: #fafafa; border: 1px solid #ccc; }' +
-                '.signature-line { height: 30px; border-bottom: 1px solid #000; margin: 8px 0; }' +
-                '.project-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }' +
-                '.project-item { background: #fafafa; padding: 12px; border: 1px solid #ddd; }' +
-                '.project-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #555; margin-bottom: 3px; }' +
-                '.project-value { font-size: 14px; font-weight: 600; color: #000; }' +
-                '.commitment-item { display: flex; gap: 10px; margin-bottom: 10px; }' +
-                '.commitment-number { width: 22px; height: 22px; background: #333; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0; }' +
-                '.commitment-text h4 { font-size: 12px; font-weight: 600; margin-bottom: 2px; }' +
-                '.commitment-text p { font-size: 11px; color: #444; }' +
-                '.responsibility-list { list-style: none; }' +
-                '.responsibility-list li { padding: 6px 0; padding-left: 20px; position: relative; font-size: 11px; border-bottom: 1px solid #eee; }' +
-                '.responsibility-list li:before { content: "-"; position: absolute; left: 6px; color: #333; font-weight: bold; }' +
-                '.legal-notice { background: #f9f9f9; padding: 14px; border: 1px solid #ddd; border-left: 3px solid #333; margin-bottom: 20px; }' +
-                '.legal-notice h4 { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #333; margin-bottom: 4px; }' +
-                '.legal-notice p { font-size: 10px; color: #444; }' +
-                '.footer { text-align: center; padding-top: 20px; border-top: 1px solid #ccc; margin-top: 30px; }' +
-                '.footer p { font-size: 10px; color: #555; margin-bottom: 3px; }' +
-                '.signature-required { background: #f5f5f5; border: 2px solid #333; padding: 14px; text-align: center; margin-top: 20px; }' +
-                '.signature-required h4 { font-size: 12px; font-weight: 700; color: #000; margin-bottom: 4px; }' +
-                '.signature-required p { font-size: 10px; color: #444; }' +
-                '@media print { body { padding: 20px; } .container { max-width: 100%; } }' +
+                'body { font-family: "Segoe UI", Arial, sans-serif; background: #ffffff; color: #000; line-height: 1.5; }' +
+                '.container { max-width: 900px; margin: 0 auto; }' +
+                '.page { background: white; padding: 50px; }' +
+                '@media print { body { margin: 0; } .page { padding: 40px; page-break-inside: avoid; } }' +
             '</style>' +
         '</head>' +
         '<body>' +
             '<div class="container">' +
-                '<div class="header">' +
-                    '<div class="logo">' +
-                        '<div class="logo-icon">' +
-                            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-                                '<path d="M12 2L2 7l10 5 10-5-10-5z"/>' +
-                                '<path d="M2 17l10 5 10-5"/>' +
-                                '<path d="M2 12l10 5 10-5"/>' +
-                            '</svg>' +
-                        '</div>' +
-                        '<div>' +
-                            '<div class="company-name">Diamondback Coding</div>' +
-                            '<div class="company-tagline">Premium Development Services</div>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div>' +
-                        '<div class="doc-title">Service Level Agreement</div>' +
-                        '<div class="doc-subtitle">Project Timeline & Terms</div>' +
-                        '<div class="doc-id">Document ID: ' + documentId + '</div>' +
-                    '</div>' +
-                '</div>' +
-                
-                '<div class="section" style="background: #f5f5f5; padding: 16px; border-left: 3px solid #333;">' +
-                    '<p style="font-size: 11px; color: #333; margin: 0;">This Service Level Agreement ("Agreement") is entered into as of <strong>' + companySignatureDate + '</strong> by and between <strong>Diamondback Coding</strong> ("Provider") and <strong>' + timeline.clientName + (timeline.clientCompany ? ' / ' + timeline.clientCompany : '') + '</strong> ("Client").</p>' +
-                '</div>' +
-                
-                '<div class="parties">' +
-                    '<div class="party">' +
-                        '<div class="party-label">Service Provider</div>' +
-                        '<div class="party-name">Diamondback Coding</div>' +
-                        '<div class="party-details">15709 Spillman Ranch Loop<br>Austin, TX 78738<br>diamondbackcoding@gmail.com<br>(940) 217-8680</div>' +
-                        '<div class="signature-box">' +
-                            '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: #555;">Company Signature</div>' +
-                            '<div style="font-family: cursive; font-size: 20px; color: #000; margin: 6px 0;">Diamondback Coding</div>' +
-                            '<div style="font-size: 10px; color: #555;">Digitally Signed: ' + companySignatureDate + '</div>' +
+                '<div class="page">' +
+                    // HEADER WITH GREEN BAR
+                    '<div style="background: #22c55e; padding: 30px 40px; margin: -50px -50px 40px -50px; border-radius: 0;">' +
+                        '<div style="display: flex; justify-content: space-between; align-items: center;">' +
+                            '<div>' +
+                                '<div style="font-size: 32px; font-weight: 800; color: white; letter-spacing: -0.5px; margin-bottom: 4px;">DIAMONDBACK CODING</div>' +
+                                '<div style="font-size: 12px; color: rgba(255,255,255,0.95); font-weight: 500; letter-spacing: 1px;">PREMIUM DEVELOPMENT SERVICES</div>' +
+                            '</div>' +
+                            '<div style="text-align: right;">' +
+                                '<div style="font-size: 11px; color: rgba(255,255,255,0.9); font-weight: 600; margin-bottom: 4px;">DOCUMENT ID</div>' +
+                                '<div style="font-size: 13px; color: white; font-weight: 700; font-family: monospace;">' + documentId + '</div>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="party">' +
-                        '<div class="party-label">Client</div>' +
-                        '<div class="party-name">' + timeline.clientName + '</div>' +
-                        '<div class="party-details">' + 
-                            (timeline.clientCompany ? timeline.clientCompany + '<br>' : '') + 
-                            (timeline.clientEmail || '') + 
-                            (timeline.clientPhone ? '<br>' + timeline.clientPhone : '') +
-                            (timeline.clientAddress ? '<br>' + timeline.clientAddress.replace(/\n/g, '<br>') : '') +
+                    
+                    // TITLE
+                    '<div style="text-align: center; margin-bottom: 40px;">' +
+                        '<div style="font-size: 28px; font-weight: 800; color: #000; margin-bottom: 8px; letter-spacing: -0.5px;">SERVICE LEVEL AGREEMENT</div>' +
+                        '<div style="font-size: 13px; color: #666; font-weight: 500;">Project Timeline & Terms of Service</div>' +
+                    '</div>' +
+                    
+                    // AGREEMENT OVERVIEW
+                    '<div style="background: #f8f9fa; padding: 24px; border-left: 4px solid #22c55e; border-radius: 4px; margin-bottom: 40px;">' +
+                        '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #22c55e; margin-bottom: 12px;">Agreement Overview</div>' +
+                        '<div style="font-size: 12px; color: #444; line-height: 1.7;">This Service Level Agreement ("Agreement") is entered into as of <strong>' + companySignatureDate + '</strong> by and between <strong>Diamondback Coding</strong> ("Provider"), a Texas-based web development company, and <strong>' + timeline.clientName + (timeline.clientCompany ? ' / ' + timeline.clientCompany : '') + '</strong> ("Client").</div>' +
+                    '</div>' +
+                    
+                    // PARTIES (TWO COLUMNS)
+                    '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">' +
+                        // PROVIDER
+                        '<div style="background: white; border: 2px solid #e0e0e0; border-radius: 4px; padding: 24px;">' +
+                            '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #22c55e; margin-bottom: 12px;">Service Provider</div>' +
+                            '<div style="font-size: 16px; font-weight: 700; color: #000; margin-bottom: 8px;">Diamondback Coding</div>' +
+                            '<div style="font-size: 11px; color: #666; line-height: 1.6; margin-bottom: 16px;">' +
+                                '15709 Spillman Ranch Loop<br>' +
+                                'Austin, TX 78738<br>' +
+                                'diamondbackcoding@gmail.com<br>' +
+                                '(940) 217-8680' +
+                            '</div>' +
+                            '<div style="background: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e0e0e0;">' +
+                                '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 8px;">Authorized Signature</div>' +
+                                '<div style="font-family: Brush Script MT, cursive; font-size: 28px; color: #22c55e; margin-bottom: 4px; line-height: 1;">Diamondback Coding</div>' +
+                                '<div style="height: 1px; background: #22c55e; margin: 8px 0;"></div>' +
+                                '<div style="font-size: 10px; color: #666;">Date: ' + companySignatureDate + '</div>' +
+                                '<div style="font-size: 9px; color: #999; margin-top: 4px;">Digitally Authorized Representative</div>' +
+                            '</div>' +
                         '</div>' +
-                        '<div class="signature-box">' +
-                            '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: #555;">Client Signature Required</div>' +
-                            '<div class="signature-line"></div>' +
-                            '<div style="font-size: 10px; color: #555;">Date: _________________</div>' +
+                        
+                        // CLIENT
+                        '<div style="background: white; border: 2px solid #e0e0e0; border-radius: 4px; padding: 24px;">' +
+                            '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #22c55e; margin-bottom: 12px;">Client</div>' +
+                            '<div style="font-size: 16px; font-weight: 700; color: #000; margin-bottom: 8px;">' + timeline.clientName + '</div>' +
+                            '<div style="font-size: 11px; color: #666; line-height: 1.6; margin-bottom: 16px;">' +
+                                (timeline.clientCompany ? timeline.clientCompany + '<br>' : '') +
+                                (timeline.clientEmail || '') + (timeline.clientPhone || timeline.clientAddress ? '<br>' : '') +
+                                (timeline.clientPhone || '') + (timeline.clientAddress ? '<br>' : '') +
+                                (timeline.clientAddress ? timeline.clientAddress.replace(/\n/g, '<br>') : '') +
+                            '</div>' +
+                            '<div style="background: white; padding: 16px; border-radius: 4px; border: 2px dashed #22c55e;">' +
+                                '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 8px;">Client Signature Required</div>' +
+                                '<div style="height: 50px; border-bottom: 2px solid #000; margin-bottom: 8px;"></div>' +
+                                '<div style="font-size: 10px; color: #666;">Date: _______________</div>' +
+                                '<div style="font-size: 9px; color: #999; margin-top: 8px; line-height: 1.4;">By signing, Client agrees to all terms, timelines, and pricing outlined in this SLA.</div>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
-                '</div>' +
-                
-                '<div class="section">' +
-                    '<div class="section-title">Project Details</div>' +
-                    '<div class="project-grid">' +
-                        '<div class="project-item">' +
-                            '<div class="project-label">Project Name</div>' +
-                            '<div class="project-value">' + (timeline.projectName || 'Web Development Project') + '</div>' +
+                    
+                    // PROJECT DETAILS (4 BOXES)
+                    '<div style="margin-bottom: 40px;">' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">PROJECT DETAILS</div>' +
+                        '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">' +
+                            '<div style="background: #f8f9fa; padding: 18px; border-radius: 4px; border: 1px solid #e0e0e0;">' +
+                                '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px;">Project Name</div>' +
+                                '<div style="font-size: 15px; font-weight: 700; color: #000;">' + (timeline.projectName || 'Web Development Project') + '</div>' +
+                            '</div>' +
+                            '<div style="background: #f8f9fa; padding: 18px; border-radius: 4px; border: 1px solid #e0e0e0;">' +
+                                '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px;">Start Date</div>' +
+                                '<div style="font-size: 15px; font-weight: 700; color: #000; font-family: monospace;">' + formatDate(timeline.startDate) + '</div>' +
+                            '</div>' +
+                            '<div style="background: #22c55e; padding: 18px; border-radius: 4px;">' +
+                                '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,0.9); margin-bottom: 6px;">Total Investment</div>' +
+                                '<div style="font-size: 22px; font-weight: 800; color: white; font-family: monospace;">' + (timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()) + '</div>' +
+                            '</div>' +
+                            '<div style="background: #000; padding: 18px; border-radius: 4px;">' +
+                                '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 6px;">Payment Terms</div>' +
+                                '<div style="font-size: 13px; font-weight: 700; color: white; line-height: 1.3;">' + paymentTermsHtml + '</div>' +
+                            '</div>' +
                         '</div>' +
-                        '<div class="project-item">' +
-                            '<div class="project-label">Estimated Start Date</div>' +
-                            '<div class="project-value">' + formatDate(timeline.startDate) + '</div>' +
+                    '</div>' +
+                    
+                    // SELECTED SERVICES
+                    '<div style="margin-bottom: 40px;">' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">SELECTED SERVICES</div>' +
+                        '<div>' + packagesListHtml + '</div>' +
+                    '</div>' +
+                    
+                    scopeHtml +
+                    
+                    // STANDARDIZED PHASES
+                    standardPhasesHtml +
+                    
+                    // SERVICE LEVEL COMMITMENTS
+                    '<div style="margin-bottom: 40px;">' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">SERVICE LEVEL COMMITMENTS</div>' +
+                        '<div style="display: grid; gap: 16px;">' +
+                            '<div style="display: flex; gap: 12px; align-items: start;">' +
+                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">1</div>' +
+                                '<div><div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 4px;">Timeline Adherence</div><div style="font-size: 12px; color: #666; line-height: 1.5;">Provider commits to delivering all project phases within specified timeframes, subject to timely Client feedback and approval.</div></div>' +
+                            '</div>' +
+                            '<div style="display: flex; gap: 12px; align-items: start;">' +
+                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">2</div>' +
+                                '<div><div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 4px;">Communication Response Time</div><div style="font-size: 12px; color: #666; line-height: 1.5;">Provider will respond to Client inquiries within 24 business hours during regular business hours (Mon-Fri, 8 AM - 5 PM CST).</div></div>' +
+                            '</div>' +
+                            '<div style="display: flex; gap: 12px; align-items: start;">' +
+                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">3</div>' +
+                                '<div><div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 4px;">Quality Assurance</div><div style="font-size: 12px; color: #666; line-height: 1.5;">All deliverables undergo comprehensive testing across major browsers and devices before client review.</div></div>' +
+                            '</div>' +
+                            '<div style="display: flex; gap: 12px; align-items: start;">' +
+                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">4</div>' +
+                                '<div><div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 4px;">Post-Launch Support</div><div style="font-size: 12px; color: #666; line-height: 1.5;">Free priority support period begins immediately after launch (duration specified in selected package).</div></div>' +
+                            '</div>' +
                         '</div>' +
-                        '<div class="project-item">' +
-                            '<div class="project-label">Total Investment</div>' +
-                            '<div class="project-value">' + (timeline.isFreeProject ? 'FREE - No Payment Required' : '$' + totalPrice.toLocaleString()) + '</div>' +
-                        '</div>' +
-                        '<div class="project-item">' +
-                            '<div class="project-label">Payment Terms</div>' +
-                            '<div class="project-value">' + paymentTermsHtml + '</div>' +
-                        '</div>' +
                     '</div>' +
-                '</div>' +
-                
-                '<div class="section">' +
-                    '<div class="section-title">Selected Services</div>' +
-                    '<div style="margin-bottom: 16px;">' + packagesListHtml + '</div>' +
-                '</div>' +
-                
-                scopeHtml +
-                
-                '<div class="section">' +
-                    '<div class="section-title">Service Level Commitments</div>' +
-                    '<div class="commitment-item">' +
-                        '<div class="commitment-number">1</div>' +
-                        '<div class="commitment-text"><h4>Timeline Adherence</h4><p>Provider commits to delivering all project phases within the specified timeframes, subject to timely Client feedback.</p></div>' +
+                    
+                    // DETAILED TIMELINE
+                    '<div style="margin-bottom: 40px;">' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">DETAILED PROJECT TIMELINE</div>' +
+                        phasesHtml +
                     '</div>' +
-                    '<div class="commitment-item">' +
-                        '<div class="commitment-number">2</div>' +
-                        '<div class="commitment-text"><h4>Communication Response Time</h4><p>Provider will respond to Client inquiries within 24 business hours (Monday-Friday, 8 AM - 5 PM CST).</p></div>' +
+                    
+                    maintenanceHtml +
+                    
+                    // CLIENT RESPONSIBILITIES
+                    '<div style="background: #f8f9fa; padding: 24px; border: 1px solid #e0e0e0; border-left: 4px solid #000; border-radius: 4px; margin-bottom: 30px;">' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 16px; text-transform: uppercase;">Client Responsibilities</div>' +
+                        '<ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #444; line-height: 1.8;">' +
+                            '<li style="margin-bottom: 8px;">Provide all required content, images, and materials within 3 business days of request</li>' +
+                            '<li style="margin-bottom: 8px;">Respond to design/development reviews within 5 business days</li>' +
+                            '<li style="margin-bottom: 8px;">Attend scheduled bi-weekly progress meetings during draft phase</li>' +
+                            '<li style="margin-bottom: 8px;">Designate a single point of contact for project communications</li>' +
+                            '<li style="margin-bottom: 8px;">Make payments according to the agreed schedule</li>' +
+                            '<li style="margin-bottom: 8px;">Provide access to necessary accounts, hosting, and domain credentials</li>' +
+                            '<li>Notify Provider immediately of any changes to project scope or requirements</li>' +
+                        '</ul>' +
                     '</div>' +
-                    '<div class="commitment-item">' +
-                        '<div class="commitment-number">3</div>' +
-                        '<div class="commitment-text"><h4>Quality Assurance</h4><p>All deliverables will undergo comprehensive testing across major browsers and devices.</p></div>' +
+                    
+                    // GOVERNING LAW
+                    '<div style="background: #fff; padding: 20px; border: 2px solid #e0e0e0; border-radius: 4px; margin-bottom: 30px;">' +
+                        '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #22c55e; margin-bottom: 8px;">Governing Law</div>' +
+                        '<div style="font-size: 11px; color: #666; line-height: 1.6;">This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions. Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Texas.</div>' +
                     '</div>' +
-                    '<div class="commitment-item">' +
-                        '<div class="commitment-number">4</div>' +
-                        '<div class="commitment-text"><h4>Revisions</h4><p>Reasonable revisions are included within each project phase as outlined in the timeline.</p></div>' +
+                    
+                    (timeline.notes ? '<div style="background: #f8f9fa; padding: 20px; border: 1px solid #e0e0e0; border-left: 4px solid #22c55e; border-radius: 4px; margin-bottom: 30px;"><div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px;">Additional Notes</div><div style="font-size: 12px; color: #444; line-height: 1.6;">' + timeline.notes + '</div></div>' : '') +
+                    
+                    // SIGNATURE REMINDER
+                    '<div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 24px; border-radius: 4px; text-align: center; margin-bottom: 40px;">' +
+                        '<div style="font-size: 15px; font-weight: 700; margin-bottom: 8px;">⚠️ CLIENT SIGNATURE REQUIRED</div>' +
+                        '<div style="font-size: 12px; opacity: 0.95; line-height: 1.5;">Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</div>' +
                     '</div>' +
-                '</div>' +
-                
-                '<div class="section">' +
-                    '<div class="section-title">Detailed Project Timeline</div>' +
-                    phasesHtml +
-                '</div>' +
-                
-                maintenanceHtml +
-                
-                '<div class="section">' +
-                    '<div class="section-title">Client Responsibilities</div>' +
-                    '<ul class="responsibility-list">' +
-                        '<li>Provide all required content, images, and materials within 3 business days of request</li>' +
-                        '<li>Respond to design/development reviews within 5 business days</li>' +
-                        '<li>Designate a single point of contact for project communications</li>' +
-                        '<li>Make payments according to the agreed schedule</li>' +
-                        '<li>Provide access to necessary accounts, hosting, and domain credentials</li>' +
-                        '<li>Notify Provider immediately of any changes to project scope or requirements</li>' +
-                    '</ul>' +
-                '</div>' +
-                
-                '<div class="legal-notice">' +
-                    '<h4>Governing Law</h4>' +
-                    '<p>This Agreement shall be governed by the laws of the State of Texas. Any disputes shall be resolved in Texas state or federal courts.</p>' +
-                '</div>' +
-                
-                (timeline.notes ? '<div class="section" style="background: #fafafa; padding: 14px; border: 1px solid #ddd;"><div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #555; margin-bottom: 4px;">Additional Notes</div><p style="font-size: 11px; color: #333; margin: 0;">' + timeline.notes + '</p></div>' : '') +
-                
-                '<div class="signature-required">' +
-                    '<h4>Client Signature Required</h4>' +
-                    '<p>Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</p>' +
-                '</div>' +
-                
-                '<div class="footer">' +
-                    '<p>Questions? Contact us at diamondbackcoding@gmail.com or (940) 217-8680</p>' +
-                    '<p style="font-size: 9px; color: #777;">Document ID: ' + documentId + ' | Generated: ' + companySignatureDate + '</p>' +
+                    
+                    // FOOTER
+                    '<div style="text-align: center; padding-top: 30px; border-top: 2px solid #e0e0e0;">' +
+                        '<div style="font-size: 12px; color: #666; margin-bottom: 6px;">Questions about this SLA?</div>' +
+                        '<div style="font-size: 11px; color: #999; margin-bottom: 12px;">Contact us at diamondbackcoding@gmail.com or (940) 217-8680</div>' +
+                        '<div style="font-size: 10px; color: #bbb;">Document ID: ' + documentId + ' • Generated: ' + companySignatureDate + '</div>' +
+                    '</div>' +
                 '</div>' +
             '</div>' +
             '<script>window.onload=function(){setTimeout(function(){window.print()},500)}<\/script>' +

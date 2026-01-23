@@ -2808,6 +2808,186 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
     }
 });
 
+// Add this endpoint to your server.js
+// Replace your current /api/email/send-invoice endpoint with this:
+app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
+    try {
+        console.log('📧 Starting email send process...');
+        const { invoice, clientEmail, clientName } = req.body;
+        
+        if (!clientEmail) {
+            console.error('❌ No client email provided');
+            return res.status(400).json({ success: false, message: 'Client email is required' });
+        }
+        
+        console.log('📝 Generating invoice PDF...');
+        const pdfHTML = generateInvoicePDFHTML(invoice);
+        const pdfBuffer = await generatePDFFromHTML(pdfHTML);
+        console.log('✅ PDF generated successfully');
+        
+        console.log('📧 Creating email HTML...');
+        const emailHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
+                    .content { padding: 30px; max-width: 800px; margin: 0 auto; }
+                    .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+                    .btn { background: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1 style="margin: 0; font-size: 32px;">DIAMONDBACK CODING</h1>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9;">Premium Development Services</p>
+                </div>
+                
+                <div class="content">
+                    <h2>Hello ${clientName || 'Valued Customer'},</h2>
+                    
+                    <p>Your invoice is attached to this email.</p>
+                    
+                    <p><strong>Invoice Details:</strong></p>
+                    <ul>
+                        <li><strong>Invoice Number:</strong> ${invoice.invoice_number}</li>
+                        <li><strong>Issue Date:</strong> ${new Date(invoice.issue_date).toLocaleDateString()}</li>
+                        <li><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</li>
+                        <li><strong>Amount Due:</strong> <span style="font-size: 24px; font-weight: bold; color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</span></li>
+                    </ul>
+                    
+                    ${invoice.stripe_payment_link ? `
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${invoice.stripe_payment_link}" class="btn">
+                                Pay Invoice Online
+                            </a>
+                        </div>
+                    ` : ''}
+                    
+                    <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
+                    
+                    <p>Best regards,<br>
+                    <strong>Diamondback Coding Team</strong></p>
+                </div>
+                
+                <div class="footer">
+                    <p>Diamondback Coding<br>
+                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                    diamondbackcoding@gmail.com | (940) 217-8680</p>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        console.log('📧 Preparing email options...');
+        const mailOptions = {
+            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+            to: clientEmail,
+            subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
+            html: emailHTML,
+            attachments: [
+                {
+                    filename: `Invoice-${invoice.invoice_number}.pdf`,
+                    content: pdfBuffer,
+                    contentType: 'application/pdf'
+                }
+            ]
+        };
+        
+        console.log('📤 Sending email to:', clientEmail);
+        console.log('📤 From:', process.env.EMAIL_USER);
+        
+        await transporter.sendMail(mailOptions);
+        
+        console.log('✅ Email sent successfully to:', clientEmail);
+        res.json({ success: true, message: 'Invoice email sent successfully' });
+        
+    } catch (error) {
+        console.error('❌ Email send error:', error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            command: error.command,
+            response: error.response
+        });
+        
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to send invoice email', 
+            error: error.message 
+        });
+    }
+});
+
+// Add this test endpoint
+app.post('/api/email/test', authenticateToken, async (req, res) => {
+    try {
+        console.log('🧪 Testing email configuration...');
+        console.log('Email user:', process.env.EMAIL_USER);
+        console.log('Email password set:', !!process.env.EMAIL_PASSWORD);
+        
+        await transporter.sendMail({
+            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+            to: process.env.EMAIL_USER, // Send to yourself
+            subject: 'Test Email from Diamondback Coding',
+            html: '<h1>Email is working!</h1><p>If you received this, your email configuration is correct.</p>'
+        });
+        
+        console.log('✅ Test email sent successfully');
+        res.json({ success: true, message: 'Test email sent!' });
+    } catch (error) {
+        console.error('❌ Test email failed:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+});
+
+// Helper function to generate email HTML
+function generateInvoiceEmailHTML(invoice) {
+    // Use similar HTML structure as your PDF export
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
+                .invoice-details { padding: 20px; background: #f8f9fa; }
+                .total { font-size: 24px; font-weight: bold; color: #22c55e; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Diamondback Coding</h1>
+                    <p>Invoice ${invoice.invoice_number}</p>
+                </div>
+                <div class="invoice-details">
+                    <p><strong>To:</strong> ${invoice.customer_name}</p>
+                    <p><strong>Amount Due:</strong> <span class="total">$${parseFloat(invoice.total_amount).toLocaleString()}</span></p>
+                    <p><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</p>
+                    ${invoice.stripe_payment_link ? `
+                        <p style="margin-top: 30px;">
+                            <a href="${invoice.stripe_payment_link}" 
+                               style="background: #22c55e; color: white; padding: 15px 30px; 
+                                      text-decoration: none; border-radius: 5px; display: inline-block;">
+                                Pay Invoice
+                            </a>
+                        </p>
+                    ` : ''}
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+const nodemailer = require('nodemailer');
+
 app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
     try {
         const { invoice, clientEmail, clientName } = req.body;

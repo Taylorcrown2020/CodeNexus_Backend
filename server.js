@@ -3016,8 +3016,6 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
     }
 });
 
-const puppeteer = require('puppeteer');
-
 // ========================================
 // PDF GENERATION FUNCTIONS
 // ========================================

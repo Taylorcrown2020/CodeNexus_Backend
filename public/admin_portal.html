@@ -3593,7 +3593,7 @@ function renderInvoices(content) {
         
         <div class="cards-grid">
             ${filtered.length > 0 ? filtered.map(inv => `
-                <div class="card invoice-card" style="cursor: pointer;" onclick="console.log('Clicked invoice:', ${inv.id}); openInvoiceDetail(${inv.id})">
+                <div class="card invoice-card" style="cursor: pointer;" onclick="openInvoiceDetail(${inv.id})">
                     <div class="invoice-card-header">
                         <div>
                             <div class="invoice-card-number">${inv.invoice_number}</div>
@@ -3617,33 +3617,40 @@ function renderInvoices(content) {
                             </div>
                         </div>
                     </div>
-                    ${inv.status !== 'paid' ? `
-                        <div style="display: flex; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
-                            <button class="btn btn-sm btn-success" style="flex: 1;" onclick="event.stopPropagation(); openPaymentModal(${inv.id})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                    <polyline points="22 4 12 14.01 9 11.01"/>
-                                </svg>
-                                Mark Paid
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteInvoice(${inv.id})" title="Delete Invoice">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                </svg>
-                            </button>
-                        </div>
-                    ` : `
-                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle); text-align: center;">
-                            <span style="color: var(--status-contacted); font-size: 13px; font-weight: 600;">
-                                <svg style="width: 14px; height: 14px; display: inline; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                    <polyline points="22 4 12 14.01 9 11.01"/>
-                                </svg>
-                                Paid ${inv.paid_at ? formatDate(inv.paid_at) : ''}
-                            </span>
-                        </div>
-                    `}
+${inv.status !== 'paid' ? `
+    <div style="display: flex; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openInvoiceDetail(${inv.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            View
+        </button>
+        <button class="btn btn-sm btn-success" style="flex: 1;" onclick="event.stopPropagation(); openPaymentModal(${inv.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            Mark Paid
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteInvoice(${inv.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+        </button>
+    </div>
+` : `
+    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+        <button class="btn btn-sm btn-secondary" style="width: 100%;" onclick="event.stopPropagation(); openInvoiceDetail(${inv.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            View Invoice
+        </button>
+    </div>
+`}
                 </div>
             `).join('') : `
                 <div style="grid-column: 1 / -1;">

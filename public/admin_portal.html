@@ -6876,6 +6876,8 @@ function editAddress(leadId) {
 // ========================================
 // RENDER PROJECTS
 // ========================================
+// In renderProjects function, replace the stats icons section:
+
 function renderProjects(content) {
     const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
     
@@ -9185,7 +9187,14 @@ function renderDocuments(content) {
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Total Documents</span>
-                        <div class="stat-icon blue">📄</div>
+                        <div class="stat-icon blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
                     </div>
                     <div class="stat-value">${statsData.stats.total_documents || 0}</div>
                 </div>
@@ -9193,7 +9202,13 @@ function renderDocuments(content) {
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Storage Used</span>
-                        <div class="stat-icon green">💾</div>
+                        <div class="stat-icon green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                            </svg>
+                        </div>
                     </div>
                     <div class="stat-value">${formatFileSize(statsData.stats.total_size || 0)}</div>
                 </div>
@@ -9201,7 +9216,15 @@ function renderDocuments(content) {
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Contracts</span>
-                        <div class="stat-icon amber">📝</div>
+                        <div class="stat-icon amber">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                        </div>
                     </div>
                     <div class="stat-value">${statsData.stats.contracts || 0}</div>
                 </div>
@@ -9209,7 +9232,11 @@ function renderDocuments(content) {
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Proposals</span>
-                        <div class="stat-icon purple">📋</div>
+                        <div class="stat-icon purple">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                        </div>
                     </div>
                     <div class="stat-value">${statsData.stats.proposals || 0}</div>
                 </div>
@@ -9246,8 +9273,8 @@ function renderDocuments(content) {
                             <tr data-doc-type="${doc.document_type || 'general'}">
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <div style="width: 32px; height: 32px; border-radius: 6px; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 16px;">
-                                            ${getFileIcon(doc.mime_type)}
+                                        <div style="width: 32px; height: 32px; border-radius: 6px; background: var(--bg-hover); display: flex; align-items: center; justify-content: center;">
+                                            ${getFileIconSVG(doc.mime_type)}
                                         </div>
                                         <div>
                                             <div style="font-weight: 600;">${doc.original_filename}</div>
@@ -9330,14 +9357,55 @@ function formatFileSize(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-function getFileIcon(mimeType) {
-    if (!mimeType) return '📄';
-    if (mimeType.includes('pdf')) return '📕';
-    if (mimeType.includes('word')) return '📘';
-    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📊';
-    if (mimeType.includes('image')) return '🖼️';
-    if (mimeType.includes('text')) return '📝';
-    return '📄';
+function getFileIconSVG(mimeType) {
+    if (!mimeType) {
+        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+        </svg>`;
+    }
+    if (mimeType.includes('pdf')) {
+        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>`;
+    }
+    if (mimeType.includes('word')) {
+        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+        </svg>`;
+    }
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) {
+        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3v18h18V3H3z"/>
+            <path d="M3 9h18M3 15h18M9 3v18"/>
+        </svg>`;
+    }
+    if (mimeType.includes('image')) {
+        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+        </svg>`;
+    }
+    if (mimeType.includes('text')) {
+        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>`;
+    }
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+    </svg>`;
 }
 
 function filterDocuments(type) {
@@ -9762,44 +9830,66 @@ function renderPipeline(content) {
             </div>
             
             <!-- Pipeline Stats -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Total Deals</span>
-                        <div class="stat-icon blue">💼</div>
-                    </div>
-                    <div class="stat-value">${statsData.stats.total_deals || 0}</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Pipeline Value</span>
-                        <div class="stat-icon green">💰</div>
-                    </div>
-                    <div class="stat-value">$${parseFloat(statsData.stats.total_value || 0).toLocaleString()}</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Weighted Value</span>
-                        <div class="stat-icon amber">⚖️</div>
-                    </div>
-                    <div class="stat-value">$${parseFloat(statsData.stats.weighted_value || 0).toLocaleString()}</div>
-                    <div class="stat-change">Based on probability</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Win Rate</span>
-                        <div class="stat-icon purple">🎯</div>
-                    </div>
-                    <div class="stat-value">
-                        ${statsData.stats.won_deals && statsData.stats.total_deals ? 
-                            ((statsData.stats.won_deals / statsData.stats.total_deals) * 100).toFixed(1) : 0}%
-                    </div>
-                    <div class="stat-change">${statsData.stats.won_deals || 0} won / ${statsData.stats.lost_deals || 0} lost</div>
-                </div>
+// In renderPipeline function, replace the stats section with:
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Total Deals</span>
+            <div class="stat-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                </svg>
             </div>
+        </div>
+        <div class="stat-value">${statsData.stats.total_deals || 0}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Pipeline Value</span>
+            <div class="stat-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"/>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-value">$${parseFloat(statsData.stats.total_value || 0).toLocaleString()}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Weighted Value</span>
+            <div class="stat-icon amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-value">$${parseFloat(statsData.stats.weighted_value || 0).toLocaleString()}</div>
+        <div class="stat-change">Based on probability</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Win Rate</span>
+            <div class="stat-icon purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="8" r="7"/>
+                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-value">
+            ${statsData.stats.won_deals && statsData.stats.total_deals ? 
+                ((statsData.stats.won_deals / statsData.stats.total_deals) * 100).toFixed(1) : 0}%
+        </div>
+        <div class="stat-change">${statsData.stats.won_deals || 0} won / ${statsData.stats.lost_deals || 0} lost</div>
+    </div>
+</div>
             
             <!-- Kanban Board -->
             <div class="kanban-board" style="margin-top: 24px;">
@@ -9855,14 +9945,22 @@ function renderPipeline(content) {
                                             </div>
                                             ${deal.expected_close_date ? `
                                                 <div style="font-size: 11px; color: var(--text-muted);">
-                                                    📅 ${new Date(deal.expected_close_date).toLocaleDateString()}
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+</svg> ${new Date(deal.expected_close_date).toLocaleDateString()}
                                                 </div>
                                             ` : ''}
                                         </div>
                                         
                                         ${deal.assigned_to_name ? `
                                             <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-muted);">
-                                                👤 ${deal.assigned_to_name}
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+</svg> ${deal.assigned_to_name}
                                             </div>
                                         ` : ''}
                                     </div>
@@ -10475,47 +10573,69 @@ function renderLeadScoring(content) {
             </div>
             
             <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Total Leads Scored</span>
-                        <div class="stat-icon blue">📊</div>
-                    </div>
-                    <div class="stat-value">${statsData.stats.total_leads || 0}</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Average Score</span>
-                        <div class="stat-icon green">📈</div>
-                    </div>
-                    <div class="stat-value">${statsData.stats.avg_score || 0}</div>
-                    <div class="stat-change">Out of ${statsData.stats.max_score || 0} max</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">A-Grade Leads</span>
-                        <div class="stat-icon amber">⭐</div>
-                    </div>
-                    <div class="stat-value">${statsData.stats.grade_a_count || 0}</div>
-                    <div class="stat-change">${((statsData.stats.grade_a_count / statsData.stats.total_leads) * 100 || 0).toFixed(1)}% of total</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Grade Distribution</span>
-                        <div class="stat-icon purple">📉</div>
-                    </div>
-                    <div style="font-size: 12px; margin-top: 8px;">
-                        A: ${statsData.stats.grade_a_count || 0} | 
-                        B: ${statsData.stats.grade_b_count || 0} | 
-                        C: ${statsData.stats.grade_c_count || 0} | 
-                        D: ${statsData.stats.grade_d_count || 0} | 
-                        F: ${statsData.stats.grade_f_count || 0}
-                    </div>
-                </div>
+            // In renderLeadScoring function stats section:
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Total Leads Scored</span>
+            <div class="stat-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18"/>
+                    <path d="M18 17V9"/>
+                    <path d="M13 17V5"/>
+                    <path d="M8 17v-3"/>
+                </svg>
             </div>
+        </div>
+        <div class="stat-value">${statsData.stats.total_leads || 0}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Average Score</span>
+            <div class="stat-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-value">${statsData.stats.avg_score || 0}</div>
+        <div class="stat-change">Out of ${statsData.stats.max_score || 0} max</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">A-Grade Leads</span>
+            <div class="stat-icon amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-value">${statsData.stats.grade_a_count || 0}</div>
+        <div class="stat-change">${((statsData.stats.grade_a_count / statsData.stats.total_leads) * 100 || 0).toFixed(1)}% of total</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Grade Distribution</span>
+            <div class="stat-icon purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="20" x2="12" y2="10"/>
+                    <line x1="18" y1="20" x2="18" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="16"/>
+                </svg>
+            </div>
+        </div>
+        <div style="font-size: 12px; margin-top: 8px;">
+            A: ${statsData.stats.grade_a_count || 0} | 
+            B: ${statsData.stats.grade_b_count || 0} | 
+            C: ${statsData.stats.grade_c_count || 0} | 
+            D: ${statsData.stats.grade_d_count || 0} | 
+            F: ${statsData.stats.grade_f_count || 0}
+        </div>
+    </div>
+</div>
             
             <!-- Leaderboard -->
             <div class="table-container" style="margin-top: 24px;">

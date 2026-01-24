@@ -2851,8 +2851,6 @@ function generateInvoiceEmailHTML(invoice) {
     `;
 }
 
-const nodemailer = require('nodemailer');
-
 app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
     try {
         console.log('📧 Starting invoice email send...');

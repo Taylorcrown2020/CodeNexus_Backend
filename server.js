@@ -3743,7 +3743,6 @@ module.exports = { calculateLeadScore };
 // Install with: npm install multer
 
 const multer = require('multer');
-const path = require('path');
 const fs = require('fs').promises;
 
 // Configure multer for file uploads

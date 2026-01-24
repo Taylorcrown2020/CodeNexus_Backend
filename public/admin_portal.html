@@ -3593,7 +3593,7 @@ function renderInvoices(content) {
         
         <div class="cards-grid">
             ${filtered.length > 0 ? filtered.map(inv => `
-                <div class="card invoice-card" style="cursor: pointer;" onclick="openInvoiceDetail(${inv.id})">
+                <div class="card invoice-card" style="cursor: pointer;" onclick="console.log('Clicked invoice:', ${inv.id}); openInvoiceDetail(${inv.id})">
                     <div class="invoice-card-header">
                         <div>
                             <div class="invoice-card-number">${inv.invoice_number}</div>
@@ -3666,7 +3666,20 @@ function renderInvoices(content) {
 
 // ADD THIS NEW FUNCTION (place it after renderInvoices):
 function openInvoiceDetail(invoiceId) {
-    console.log('Opening invoice:', invoiceId);
+    console.log('🔍 openInvoiceDetail called with ID:', invoiceId);
+    console.log('📊 Current invoices in state:', state.invoices);
+    console.log('🎯 Looking for invoice with ID:', invoiceId);
+    
+    const invoice = state.invoices.find(i => i.id === invoiceId);
+    console.log('✅ Found invoice:', invoice);
+    
+    if (!invoice) {
+        console.error('❌ Invoice not found in state.invoices');
+        showToast('Invoice not found', 'error');
+        return;
+    }
+    
+    console.log('📞 Calling openDetailModal...');
     openDetailModal('invoice', invoiceId);
 }
 

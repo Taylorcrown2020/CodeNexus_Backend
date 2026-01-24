@@ -65,6 +65,8 @@ const servicePackages = {
 
 const puppeteer = require('puppeteer');
 
+const { transporter, verifyEmailConfig } = require('./email-config');
+
 // Helper function to generate PDF from HTML
 // Helper function to generate PDF from HTML
 async function generatePDFFromHTML(html) {
@@ -2709,25 +2711,26 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
     }
 });
 
-// Add this with your other imports at the top
-const nodemailer = require('nodemailer');
-
-// Email configuration (you'll need to set up your email service)
-const transporter = nodemailer.createTransport({
-    service: 'gmail', // or 'outlook', 'yahoo', etc.
-    auth: {
-        user: process.env.EMAIL_USER, // your email
-        pass: process.env.EMAIL_PASSWORD // your email password or app-specific password
-    }
-});
-
 // Add this route with your other API routes
 app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
     try {
+        console.log('📧 Starting timeline email send...');
         const { timeline, clientEmail, clientName } = req.body;
         
         if (!clientEmail) {
-            return res.status(400).json({ success: false, message: 'Client email is required' });
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Client email is required' 
+            });
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(clientEmail)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email address format'
+            });
         }
         
         // Calculate total price
@@ -2741,20 +2744,26 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
         
         const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
         
-        // Generate PDF
+        console.log('📝 Generating SLA PDF...');
         const pdfHTML = generateTimelinePDFHTML(timeline);
         const pdfBuffer = await generatePDFFromHTML(pdfHTML);
+        console.log('✅ PDF generated successfully');
         
-        // Create email HTML
         const emailHTML = `
             <!DOCTYPE html>
             <html>
             <head>
                 <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
                     .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
-                    .content { padding: 30px; max-width: 800px; margin: 0 auto; }
+                    .content { padding: 30px; max-width: 800px; margin: 0 auto; background: white; }
                     .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+                    .highlight-box {
+                        background: #f8f9fa;
+                        border-left: 4px solid #22c55e;
+                        padding: 20px;
+                        margin: 20px 0;
+                    }
                 </style>
             </head>
             <body>
@@ -2768,13 +2777,15 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                     
                     <p>Thank you for choosing Diamondback Coding! Your Service Level Agreement (SLA) is attached to this email.</p>
                     
-                    <p><strong>Project Details:</strong></p>
-                    <ul>
-                        <li><strong>Project:</strong> ${timeline.projectName || 'Web Development Project'}</li>
-                        <li><strong>Start Date:</strong> ${new Date(timeline.startDate).toLocaleDateString()}</li>
-                        <li><strong>Total Investment:</strong> ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</li>
-                        <li><strong>Document ID:</strong> ${documentId}</li>
-                    </ul>
+                    <div class="highlight-box">
+                        <p style="margin: 0 0 10px 0;"><strong>Project Details:</strong></p>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li><strong>Project:</strong> ${timeline.projectName || 'Web Development Project'}</li>
+                            <li><strong>Start Date:</strong> ${new Date(timeline.startDate).toLocaleDateString()}</li>
+                            <li><strong>Total Investment:</strong> ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</li>
+                            <li><strong>Document ID:</strong> ${documentId}</li>
+                        </ul>
+                    </div>
                     
                     <p><strong>Selected Services:</strong></p>
                     <ul>
@@ -2801,16 +2812,16 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                 </div>
                 
                 <div class="footer">
-                    <p>Diamondback Coding<br>
+                    <p><strong>Diamondback Coding</strong><br>
                     15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    diamondbackcoding@gmail.com | (940) 217-8680</p>
+                    <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
                 </div>
             </body>
             </html>
         `;
         
-        // Email options with PDF attachment
-        const mailOptions = {
+        console.log('📤 Sending SLA email...');
+        const info = await transporter.sendMail({
             from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
             to: clientEmail,
             subject: `Your Service Level Agreement - ${timeline.projectName || 'Web Development Project'}`,
@@ -2822,16 +2833,26 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                     contentType: 'application/pdf'
                 }
             ]
-        };
+        });
         
-        // Send email
-        await transporter.sendMail(mailOptions);
+        console.log('✅ SLA email sent successfully');
+        console.log('📨 Message ID:', info.messageId);
         
-        res.json({ success: true, message: 'Email sent successfully with PDF attachment' });
+        res.json({ 
+            success: true, 
+            message: `SLA email sent successfully to ${clientEmail}`,
+            details: {
+                messageId: info.messageId,
+                to: clientEmail
+            }
+        });
         
     } catch (error) {
-        console.error('Email error:', error);
-        res.status(500).json({ success: false, message: 'Failed to send email', error: error.message });
+        console.error('❌ SLA email error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to send SLA email: ' + error.message 
+        });
     }
 });
 
@@ -2951,23 +2972,70 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
 app.post('/api/email/test', authenticateToken, async (req, res) => {
     try {
         console.log('🧪 Testing email configuration...');
-        console.log('Email user:', process.env.EMAIL_USER);
-        console.log('Email password set:', !!process.env.EMAIL_PASSWORD);
+        console.log('📧 From:', process.env.EMAIL_USER);
+        console.log('📧 To:', process.env.EMAIL_USER);
         
-        await transporter.sendMail({
-            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+        const info = await transporter.sendMail({
+            from: `"Diamondback Coding Test" <${process.env.EMAIL_USER}>`,
             to: process.env.EMAIL_USER, // Send to yourself
-            subject: 'Test Email from Diamondback Coding',
-            html: '<h1>Email is working!</h1><p>If you received this, your email configuration is correct.</p>'
+            subject: '✅ Email Test - Diamondback Coding',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: #22c55e; color: white; padding: 30px; text-align: center;">
+                        <h1 style="margin: 0;">Email is Working!</h1>
+                    </div>
+                    <div style="padding: 30px; background: #f8f9fa;">
+                        <h2>Test Successful ✅</h2>
+                        <p>If you're reading this, your email configuration is working correctly!</p>
+                        <p><strong>Configuration Details:</strong></p>
+                        <ul>
+                            <li>Email User: ${process.env.EMAIL_USER}</li>
+                            <li>Service: Gmail</li>
+                            <li>Time: ${new Date().toISOString()}</li>
+                        </ul>
+                        <p>You can now send invoices and SLAs to your clients.</p>
+                    </div>
+                    <div style="padding: 20px; text-align: center; background: #333; color: white; font-size: 12px;">
+                        <p>Diamondback Coding Email System</p>
+                    </div>
+                </div>
+            `
         });
         
         console.log('✅ Test email sent successfully');
-        res.json({ success: true, message: 'Test email sent!' });
+        console.log('📨 Message ID:', info.messageId);
+        console.log('📬 Response:', info.response);
+        
+        res.json({ 
+            success: true, 
+            message: 'Test email sent successfully! Check your inbox.',
+            details: {
+                messageId: info.messageId,
+                response: info.response,
+                from: process.env.EMAIL_USER,
+                to: process.env.EMAIL_USER
+            }
+        });
     } catch (error) {
         console.error('❌ Test email failed:', error);
+        
+        // Provide helpful error messages
+        let helpMessage = '';
+        if (error.code === 'EAUTH') {
+            helpMessage = 'Authentication failed. Please check your EMAIL_PASSWORD is a valid Google App Password.';
+        } else if (error.code === 'ESOCKET') {
+            helpMessage = 'Connection failed. Check your internet connection.';
+        } else if (error.code === 'EENVELOPE') {
+            helpMessage = 'Invalid email address. Check your EMAIL_USER in .env file.';
+        }
+        
         res.status(500).json({ 
             success: false, 
-            message: error.message 
+            message: helpMessage || error.message,
+            error: {
+                code: error.code,
+                command: error.command
+            }
         });
     }
 });
@@ -3017,26 +3085,56 @@ const nodemailer = require('nodemailer');
 
 app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
     try {
+        console.log('📧 Starting invoice email send...');
         const { invoice, clientEmail, clientName } = req.body;
         
         if (!clientEmail) {
-            return res.status(400).json({ success: false, message: 'Client email is required' });
+            console.error('❌ No client email provided');
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Client email is required' 
+            });
         }
         
-        // Generate PDF
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(clientEmail)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email address format'
+            });
+        }
+        
+        console.log('📝 Generating invoice PDF...');
         const pdfHTML = generateInvoicePDFHTML(invoice);
         const pdfBuffer = await generatePDFFromHTML(pdfHTML);
+        console.log('✅ PDF generated successfully');
         
-        // Create email HTML
+        console.log('📧 Creating email HTML...');
         const emailHTML = `
             <!DOCTYPE html>
             <html>
             <head>
                 <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
                     .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
-                    .content { padding: 30px; max-width: 800px; margin: 0 auto; }
+                    .content { padding: 30px; max-width: 800px; margin: 0 auto; background: white; }
                     .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+                    .btn { 
+                        background: #22c55e; 
+                        color: white; 
+                        padding: 15px 30px; 
+                        text-decoration: none; 
+                        border-radius: 5px; 
+                        display: inline-block;
+                        font-weight: bold;
+                    }
+                    .invoice-amount {
+                        font-size: 32px;
+                        font-weight: bold;
+                        color: #22c55e;
+                        margin: 20px 0;
+                    }
                 </style>
             </head>
             <body>
@@ -3046,20 +3144,31 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                 </div>
                 
                 <div class="content">
-                    <h2>Hello ${clientName},</h2>
+                    <h2>Hello ${clientName || 'Valued Customer'},</h2>
                     
                     <p>Your invoice is attached to this email.</p>
                     
                     <p><strong>Invoice Details:</strong></p>
-                    <ul>
+                    <ul style="line-height: 2;">
                         <li><strong>Invoice Number:</strong> ${invoice.invoice_number}</li>
                         <li><strong>Issue Date:</strong> ${new Date(invoice.issue_date).toLocaleDateString()}</li>
                         <li><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</li>
-                        <li><strong>Amount Due:</strong> $${parseFloat(invoice.total_amount).toLocaleString()}</li>
                     </ul>
                     
+                    <div style="text-align: center; background: #f8f9fa; padding: 30px; border-radius: 10px; margin: 30px 0;">
+                        <div style="font-size: 14px; color: #666; margin-bottom: 10px;">Amount Due</div>
+                        <div class="invoice-amount">$${parseFloat(invoice.total_amount).toLocaleString()}</div>
+                    </div>
+                    
                     ${invoice.stripe_payment_link ? `
-                        <p><strong>Pay Online:</strong> <a href="${invoice.stripe_payment_link}" style="color: #22c55e; font-weight: 600;">Click here to pay securely</a></p>
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${invoice.stripe_payment_link}" class="btn">
+                                Pay Invoice Online
+                            </a>
+                            <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                                Secure payment powered by Stripe
+                            </p>
+                        </div>
                     ` : ''}
                     
                     <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
@@ -3069,16 +3178,22 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                 </div>
                 
                 <div class="footer">
-                    <p>Diamondback Coding<br>
+                    <p><strong>Diamondback Coding</strong><br>
                     15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    diamondbackcoding@gmail.com | (940) 217-8680</p>
+                    <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                    <p style="margin-top: 15px; color: #999; font-size: 11px;">
+                        This is an automated message. Please do not reply directly to this email.
+                    </p>
                 </div>
             </body>
             </html>
         `;
         
-        // Email options
-        const mailOptions = {
+        console.log('📤 Preparing to send email...');
+        console.log('📧 From:', process.env.EMAIL_USER);
+        console.log('📧 To:', clientEmail);
+        
+        const info = await transporter.sendMail({
             from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
             to: clientEmail,
             subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
@@ -3090,16 +3205,44 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                     contentType: 'application/pdf'
                 }
             ]
-        };
+        });
         
-        // Send email
-        await transporter.sendMail(mailOptions);
+        console.log('✅ Invoice email sent successfully');
+        console.log('📨 Message ID:', info.messageId);
+        console.log('📬 To:', clientEmail);
         
-        res.json({ success: true, message: 'Invoice email sent successfully' });
+        res.json({ 
+            success: true, 
+            message: `Invoice email sent successfully to ${clientEmail}`,
+            details: {
+                messageId: info.messageId,
+                to: clientEmail
+            }
+        });
         
     } catch (error) {
-        console.error('Email error:', error);
-        res.status(500).json({ success: false, message: 'Failed to send invoice email', error: error.message });
+        console.error('❌ Invoice email error:', error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            command: error.command,
+            response: error.response
+        });
+        
+        let userMessage = 'Failed to send invoice email. ';
+        if (error.code === 'EAUTH') {
+            userMessage += 'Email authentication failed. Please check your email configuration.';
+        } else if (error.code === 'EENVELOPE') {
+            userMessage += 'Invalid recipient email address.';
+        } else {
+            userMessage += error.message;
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            message: userMessage,
+            error: error.code
+        });
     }
 });
 
@@ -3148,21 +3291,23 @@ app.use((err, req, res, next) => {
 async function startServer() {
     try {
         await initializeDatabase();
-        await initializeExpenseTables(); // THIS IS THE NEW LINE ADDED
+        await initializeExpenseTables();
+        
+        // ✅ THIS LINE MUST BE HERE
+        const emailConfigured = await verifyEmailConfig();
+        if (!emailConfigured) {
+            console.warn('⚠️  Email functionality may not work properly');
+        }
         
         app.listen(PORT, () => {
             console.log('');
             console.log('========================================');
-            console.log('🚀 CraftedCode Co. Server Running');
+            console.log('🚀 Diamondback Coding Server Running');
             console.log('========================================');
             console.log(`📡 Port: ${PORT}`);
             console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
             console.log(`🔗 Local: http://localhost:${PORT}`);
-            console.log(`📄 Main Site: http://localhost:${PORT}`);
-            console.log(`📧 Contact Form: http://localhost:${PORT}/contact`);
-            console.log(`🔐 Admin Login: http://localhost:${PORT}/admin`);
-            console.log(`📊 Admin Portal: http://localhost:${PORT}/admin/portal`);
-            console.log(`💚 Health Check: http://localhost:${PORT}/api/health`);
+            console.log(`📧 Email: ${emailConfigured ? 'Configured ✅' : 'Not configured ⚠️'}`);
             console.log('========================================');
             console.log('');
         });

@@ -2428,7 +2428,7 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
 
 console.log('📄 Generating full SLA PDF for email...');
 const pdfHTML = generateTimelinePDFHTML(timeline);
-const pdfBuffer = await generatePDFFromHTML(pdfHTML);
+const pdfBuffer = await generateTimelinePDFWithPDFKit(timeline);
 console.log('✅ Full SLA PDF generated');
 
         // Generate packages text for email
@@ -2582,207 +2582,91 @@ function getPaymentTermsText(timeline) {
 }
 
 // REPLACE THIS ENTIRE ENDPOINT
-app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
-    try {
-        console.log('📧 Starting invoice email send...');
-        const { invoice, clientEmail, clientName } = req.body;
-        
-        if (!clientEmail) {
-            console.error('❌ No client email provided');
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Client email is required' 
-            });
+function generateInvoicePDFWithPDFKit(invoice) {
+    const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+    const chunks = [];
+    doc.on('data', chunks.push.bind(chunks));
+    
+    const items = invoice.items || [];
+    const taxAmount = parseFloat(invoice.tax_amount || 0);
+    const discount = parseFloat(invoice.discount_amount || 0);
+    
+    // GREEN HEADER
+    doc.rect(0, 0, doc.page.width, 100).fill('#22c55e');
+    doc.fillColor('white').fontSize(32).font('Helvetica-Bold').text('INVOICE', 50, 35);
+    doc.fontSize(16).text(`#${invoice.invoice_number}`, 50, 70);
+    
+    doc.y = 120;
+    doc.fillColor('black');
+    
+    // BILL TO
+    doc.fontSize(14).font('Helvetica-Bold').text('Bill To:', 50);
+    doc.fontSize(11).font('Helvetica').text(invoice.customer_name || 'Customer', 50);
+    doc.text(invoice.customer_email || '', 50);
+    
+    doc.moveDown(1);
+    doc.text(`Issue Date: ${new Date(invoice.issue_date).toLocaleDateString()}`, 50);
+    doc.text(`Due Date: ${new Date(invoice.due_date).toLocaleDateString()}`, 50);
+    
+    doc.moveDown(2);
+    
+    // ITEMS TABLE
+    const tableTop = doc.y;
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text('Description', 50, tableTop);
+    doc.text('Qty', 300, tableTop);
+    doc.text('Price', 400, tableTop);
+    doc.text('Amount', 500, tableTop, { align: 'right' });
+    
+    doc.moveTo(50, tableTop + 15).lineTo(562, tableTop + 15).stroke();
+    
+    let y = tableTop + 25;
+    doc.font('Helvetica');
+    
+    items.forEach(item => {
+        if (y > 700) {
+            doc.addPage();
+            y = 50;
         }
-        
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(clientEmail)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid email address format'
-            });
-        }
-        
-        console.log('📄 Generating full invoice PDF...');
-        const pdfHTML = generateInvoicePDFHTML(invoice);
-        const pdfBuffer = await generatePDFFromHTML(pdfHTML);
-        console.log('✅ Full invoice PDF generated');
-        
-        // Build invoice items table
-        const items = invoice.items || [];
-        const itemsHTML = items.map(item => `
-            <tr>
-                <td style="padding: 12px; border-bottom: 1px solid #eee;">${item.description}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity || 1}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">$${parseFloat(item.amount).toLocaleString()}</td>
-            </tr>
-        `).join('');
-        
-        const taxAmount = parseFloat(invoice.tax_amount || 0);
-        const discount = parseFloat(invoice.discount_amount || 0);
-        
-        const emailHTML = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                    .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
-                    .content { padding: 30px; max-width: 800px; margin: 0 auto; background: white; }
-                    .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-                    .btn { background: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; }
-                    .invoice-amount { font-size: 32px; font-weight: bold; color: #22c55e; margin: 20px 0; }
-                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                    th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; border-bottom: 2px solid #22c55e; }
-                    .attachment-note { background: #fff3cd; border: 1px solid #ffc107; padding: 16px; border-radius: 6px; margin: 20px 0; font-size: 13px; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1 style="margin: 0; font-size: 32px;">INVOICE</h1>
-                    <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 18px;">#${invoice.invoice_number}</p>
-                </div>
-                
-                <div class="content">
-                    <h2>Hello ${clientName || 'Valued Customer'},</h2>
-                    
-                    <p>Thank you for your business! Your invoice is attached to this email as a PDF.</p>
-                    
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div>
-                                <p style="margin: 5px 0; font-size: 12px; color: #666;">INVOICE NUMBER</p>
-                                <p style="margin: 5px 0; font-weight: bold;">${invoice.invoice_number}</p>
-                            </div>
-                            <div>
-                                <p style="margin: 5px 0; font-size: 12px; color: #666;">ISSUE DATE</p>
-                                <p style="margin: 5px 0; font-weight: bold;">${new Date(invoice.issue_date).toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                                <p style="margin: 5px 0; font-size: 12px; color: #666;">DUE DATE</p>
-                                <p style="margin: 5px 0; font-weight: bold;">${new Date(invoice.due_date).toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                                <p style="margin: 5px 0; font-size: 12px; color: #666;">AMOUNT DUE</p>
-                                <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="attachment-note">
-                        <strong>📎 PDF Attached:</strong> Your complete invoice is attached to this email for your records.
-                    </div>
-                    
-                    <h3>Invoice Details</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th style="text-align: center;">Qty</th>
-                                <th style="text-align: right;">Unit Price</th>
-                                <th style="text-align: right;">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemsHTML}
-                        </tbody>
-                    </table>
-                    
-                    <div style="text-align: right; margin-top: 20px;">
-                        <p style="margin: 5px 0;"><strong>Subtotal:</strong> $${parseFloat(invoice.subtotal).toLocaleString()}</p>
-                        ${taxAmount > 0 ? `<p style="margin: 5px 0;"><strong>Tax (${invoice.tax_rate}%):</strong> $${taxAmount.toLocaleString()}</p>` : ''}
-                        ${discount > 0 ? `<p style="margin: 5px 0;"><strong>Discount:</strong> -$${discount.toLocaleString()}</p>` : ''}
-                        <p style="margin: 15px 0 0 0; font-size: 20px;"><strong>Total:</strong> <span style="color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</span></p>
-                    </div>
-                    
-                    ${invoice.stripe_payment_link ? `
-                        <div style="text-align: center; margin: 40px 0; padding: 30px; background: #f8f9fa; border-radius: 10px;">
-                            <p style="margin: 0 0 20px 0; font-size: 16px; font-weight: bold;">Pay Online Securely</p>
-                            <a href="${invoice.stripe_payment_link}" class="btn">
-                                💳 Pay Invoice Now
-                            </a>
-                            <p style="font-size: 12px; color: #666; margin: 15px 0 0 0;">
-                                Secure payment powered by Stripe
-                            </p>
-                        </div>
-                    ` : ''}
-                    
-                    ${invoice.notes ? `
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                            <p style="margin: 0 0 10px 0; font-weight: bold;">Notes:</p>
-                            <p style="margin: 0;">${invoice.notes}</p>
-                        </div>
-                    ` : ''}
-                    
-                    <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
-                    
-                    <p>Best regards,<br>
-                    <strong>Diamondback Coding Team</strong></p>
-                </div>
-                
-                <div class="footer">
-                    <p><strong>Diamondback Coding</strong><br>
-                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
-                    <p style="margin-top: 15px; color: #999; font-size: 11px;">
-                        This is an automated message. Please do not reply directly to this email.
-                    </p>
-                </div>
-            </body>
-            </html>
-        `;
-        
-        console.log('📤 Preparing to send email...');
-        console.log('📧 From:', process.env.EMAIL_USER);
-        console.log('📧 To:', clientEmail);
-        
-        const info = await transporter.sendMail({
-            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
-            to: clientEmail,
-            subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
-            html: emailHTML,
-            attachments: [
-                {
-                    filename: `Invoice-${invoice.invoice_number}.pdf`,
-                    content: pdfBuffer,
-                    contentType: 'application/pdf'
-                }
-            ]
-        });
-        
-        console.log('✅ Invoice email sent successfully');
-        console.log('📨 Message ID:', info.messageId);
-        
-        res.json({ 
-            success: true, 
-            message: `Invoice email sent successfully to ${clientEmail}`,
-            details: {
-                messageId: info.messageId,
-                to: clientEmail
-            }
-        });
-        
-    } catch (error) {
-        console.error('❌ Invoice email error:', error);
-        
-        let userMessage = 'Failed to send invoice email. ';
-        if (error.code === 'EAUTH') {
-            userMessage += 'Email authentication failed.';
-        } else if (error.code === 'EENVELOPE') {
-            userMessage += 'Invalid recipient email address.';
-        } else {
-            userMessage += error.message;
-        }
-        
-        res.status(500).json({ 
-            success: false, 
-            message: userMessage,
-            error: error.code
-        });
+        doc.text(item.description, 50, y, { width: 240 });
+        doc.text(item.quantity || 1, 300, y);
+        doc.text(`$${parseFloat(item.unit_price || item.amount).toFixed(2)}`, 400, y);
+        doc.text(`$${parseFloat(item.amount).toFixed(2)}`, 500, y, { align: 'right' });
+        y += 30;
+    });
+    
+    doc.moveDown(2);
+    y = doc.y;
+    
+    // TOTALS
+    doc.fontSize(11);
+    doc.text('Subtotal:', 400, y);
+    doc.text(`$${parseFloat(invoice.subtotal).toFixed(2)}`, 500, y, { align: 'right' });
+    y += 20;
+    
+    if (taxAmount > 0) {
+        doc.text(`Tax (${invoice.tax_rate}%):`, 400, y);
+        doc.text(`$${taxAmount.toFixed(2)}`, 500, y, { align: 'right' });
+        y += 20;
     }
-});
+    
+    if (discount > 0) {
+        doc.text('Discount:', 400, y);
+        doc.text(`-$${discount.toFixed(2)}`, 500, y, { align: 'right' });
+        y += 20;
+    }
+    
+    doc.fontSize(14).font('Helvetica-Bold');
+    doc.text('Total:', 400, y);
+    doc.text(`$${parseFloat(invoice.total_amount).toFixed(2)}`, 500, y, { align: 'right' });
+    
+    doc.end();
+    
+    return new Promise((resolve, reject) => {
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+    });
+}
 
 // Add this test endpoint
 app.post('/api/email/test', authenticateToken, async (req, res) => {
@@ -2921,7 +2805,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
         
         console.log('📝 Generating invoice PDF...');
         const pdfHTML = generateInvoicePDFHTML(invoice);
-        const pdfBuffer = await generatePDFFromHTML(pdfHTML);
+        const pdfBuffer = await generateInvoicePDFWithPDFKit(invoice);
         console.log('✅ PDF generated successfully');
         
         console.log('📧 Creating email HTML...');
@@ -3071,55 +2955,11 @@ const puppeteer = require('puppeteer');
 // ========================================
 
 async function generatePDFFromHTML(html) {
-    let browser;
-    try {
-        console.log('🚀 Launching browser...');
-        
-        const launchOptions = {
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process',
-                '--disable-extensions'
-            ]
-        };
-
-        browser = await puppeteer.launch(launchOptions);
-        console.log('✅ Browser launched successfully');
-        
-        const page = await browser.newPage();
-        await page.setContent(html, { 
-            waitUntil: 'networkidle0',
-            timeout: 30000 
-        });
-        
-        const pdf = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: {
-                top: '20px',
-                right: '20px',
-                bottom: '20px',
-                left: '20px'
-            }
-        });
-        
-        console.log('✅ PDF generated successfully');
-        return pdf;
-        
-    } catch (error) {
-        console.error('❌ PDF generation error:', error);
-        throw new Error('Failed to generate PDF: ' + error.message);
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
+    // We'll use PDFKit instead of Puppeteer
+    // This is a workaround - we'll generate the PDF directly
+    
+    // For now, return a simple error message
+    throw new Error('PDF generation temporarily disabled. Please use the download feature in the admin panel.');
 }
 
 function generateTimelinePDFHTML(timeline) {
@@ -3266,6 +3106,217 @@ function generateInvoicePDFHTML(invoice) {
         </body>
         </html>
     `;
+}
+
+function generateTimelinePDFWithPDFKit(timeline) {
+    const doc = new PDFDocument({ 
+        margin: 50, 
+        size: 'LETTER',
+        info: {
+            Title: `SLA - ${timeline.clientName}`,
+            Author: 'Diamondback Coding'
+        }
+    });
+    
+    const chunks = [];
+    doc.on('data', chunks.push.bind(chunks));
+    
+    // Calculate total price
+    let totalPrice = 0;
+    timeline.packages.forEach(key => {
+        if (servicePackages[key] && !servicePackages[key].isFree) {
+            totalPrice += servicePackages[key].price;
+        }
+    });
+    
+    const companySignatureDate = new Date(timeline.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    
+    // GREEN HEADER
+    doc.rect(0, 0, doc.page.width, 100).fill('#22c55e');
+    
+    doc.fillColor('white')
+       .fontSize(28)
+       .font('Helvetica-Bold')
+       .text('DIAMONDBACK CODING', 50, 30);
+    
+    doc.fontSize(10)
+       .font('Helvetica')
+       .text('PREMIUM DEVELOPMENT SERVICES', 50, 62);
+    
+    doc.y = 120;
+    doc.fillColor('black');
+    
+    // TITLE
+    doc.fontSize(24)
+       .font('Helvetica-Bold')
+       .text('SERVICE LEVEL AGREEMENT', 50, doc.y, { align: 'center' });
+    
+    doc.moveDown(0.3);
+    doc.fontSize(11)
+       .font('Helvetica')
+       .fillColor('#666666')
+       .text('Project Timeline & Terms of Service', 50, doc.y, { align: 'center' });
+    
+    doc.moveDown(2);
+    doc.fillColor('black');
+    
+    // AGREEMENT OVERVIEW
+    const overviewY = doc.y;
+    doc.rect(50, overviewY, doc.page.width - 100, 60)
+       .fillAndStroke('#f8f9fa', '#22c55e');
+    
+    doc.fontSize(9)
+       .font('Helvetica-Bold')
+       .fillColor('#22c55e')
+       .text('AGREEMENT OVERVIEW', 60, overviewY + 15);
+    
+    doc.fontSize(10)
+       .font('Helvetica')
+       .fillColor('#444444')
+       .text(
+           `This Service Level Agreement is entered into as of ${companySignatureDate} by and between Diamondback Coding and ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}.`,
+           60,
+           overviewY + 32,
+           { width: doc.page.width - 120, align: 'left' }
+       );
+    
+    doc.y = overviewY + 75;
+    doc.fillColor('black');
+    
+    // PROJECT DETAILS
+    doc.moveDown(1);
+    doc.fontSize(12)
+       .font('Helvetica-Bold')
+       .fillColor('#22c55e')
+       .text('PROJECT DETAILS', 50, doc.y);
+    
+    doc.moveDown(0.5);
+    doc.fontSize(11)
+       .font('Helvetica')
+       .fillColor('black')
+       .text(`Project: ${timeline.projectName || 'Web Development Project'}`, 60)
+       .text(`Start Date: ${new Date(timeline.startDate).toLocaleDateString()}`, 60)
+       .text(`Investment: ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}`, 60);
+    
+    doc.moveDown(1);
+    
+    // SELECTED SERVICES
+    doc.fontSize(12)
+       .font('Helvetica-Bold')
+       .fillColor('#22c55e')
+       .text('SELECTED SERVICES', 50, doc.y);
+    
+    doc.moveDown(0.5);
+    doc.fontSize(10)
+       .font('Helvetica')
+       .fillColor('black');
+    
+    timeline.packages.forEach(key => {
+        const pkg = servicePackages[key];
+        if (pkg) {
+            doc.text(`• ${pkg.name}${pkg.isFree ? ' (FREE)' : ''}`, 60, doc.y);
+            doc.moveDown(0.5);
+        }
+    });
+    
+    // Add new page for detailed timeline
+    doc.addPage();
+    
+    doc.fontSize(14)
+       .font('Helvetica-Bold')
+       .fillColor('#22c55e')
+       .text('DETAILED PROJECT TIMELINE', 50, 50);
+    
+    doc.moveDown(1);
+    
+    let phaseNumber = 1;
+    timeline.packages.forEach(packageKey => {
+        const pkg = servicePackages[packageKey];
+        if (!pkg || !pkg.phases) return;
+        
+        doc.fontSize(12)
+           .font('Helvetica-Bold')
+           .fillColor('black')
+           .text(pkg.name, 50);
+        
+        doc.fontSize(10)
+           .font('Helvetica')
+           .fillColor('#666')
+           .text(pkg.description, 50);
+        
+        doc.moveDown(0.5);
+        
+        pkg.phases.forEach(phase => {
+            if (doc.y > 700) doc.addPage();
+            
+            doc.fontSize(11)
+               .font('Helvetica-Bold')
+               .fillColor('black')
+               .text(`Phase ${phaseNumber}: ${phase.name} (${phase.duration})`, 50);
+            
+            phase.tasks.forEach(task => {
+                doc.fontSize(10)
+                   .font('Helvetica')
+                   .fillColor('#333')
+                   .text(`  • ${task}`, 70);
+            });
+            
+            doc.moveDown(0.5);
+            phaseNumber++;
+        });
+        
+        doc.moveDown(1);
+    });
+    
+    // CLIENT RESPONSIBILITIES
+    if (doc.y > 600) doc.addPage();
+    
+    doc.fontSize(12)
+       .font('Helvetica-Bold')
+       .fillColor('#22c55e')
+       .text('CLIENT RESPONSIBILITIES', 50);
+    
+    doc.moveDown(0.5);
+    
+    const responsibilities = [
+        'Provide all required content within 3 business days',
+        'Respond to reviews within 5 business days',
+        'Attend bi-weekly progress meetings',
+        'Designate a single point of contact',
+        'Make payments according to schedule',
+        'Provide necessary account access'
+    ];
+    
+    responsibilities.forEach(resp => {
+        doc.fontSize(10)
+           .font('Helvetica')
+           .fillColor('black')
+           .text(`• ${resp}`, 60);
+    });
+    
+    doc.moveDown(2);
+    
+    // SIGNATURE
+    doc.fontSize(11)
+       .font('Helvetica-Bold')
+       .text('CLIENT SIGNATURE REQUIRED:', 50);
+    
+    doc.moveDown(1);
+    doc.moveTo(50, doc.y).lineTo(300, doc.y).stroke();
+    doc.moveDown(0.3);
+    doc.fontSize(9).font('Helvetica').fillColor('#666').text('Client Signature', 50);
+    
+    doc.moveDown(2);
+    doc.moveTo(50, doc.y).lineTo(300, doc.y).stroke();
+    doc.moveDown(0.3);
+    doc.text('Date', 50);
+    
+    doc.end();
+    
+    return new Promise((resolve, reject) => {
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+    });
 }
 
 // Add this after your existing /api/email/send-timeline endpoint

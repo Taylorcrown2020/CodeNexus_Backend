@@ -7458,7 +7458,7 @@ function openTimelinePreviewModal(timeline) {
 
     titleEl.textContent = 'Project Timeline & SLA Preview';
 
-    // Important: first set basic structure with tabs
+    // Set up the modal body with tabs
     bodyEl.innerHTML = `
         <div class="tabs">
             <button class="tab active" data-tab="overview">Overview</button>
@@ -7478,7 +7478,6 @@ function openTimelinePreviewModal(timeline) {
         </div>
 
         <div id="tab-timeline" class="tab-content" style="display:none; padding: 24px;">
-            <!-- You can put simplified timeline here if you want -->
             <h3>Phases Overview</h3>
             <p>(Detailed timeline appears in Full SLA Preview tab)</p>
         </div>
@@ -7486,62 +7485,55 @@ function openTimelinePreviewModal(timeline) {
         <div id="tab-preview" class="tab-content" style="display:none;"></div>
     `;
 
+    // Set up footer with close button FIRST
     footerEl.innerHTML = `
-    <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
-    <button class="btn btn-secondary" onclick="emailTimelineToClient()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-            <polyline points="22,6 12,13 2,6"/>
-        </svg>
-        Email to Client
-    </button>
-    <button class="btn btn-primary" onclick="exportTimelineAsPDF()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Export as PDF
-    </button>
-`;
+        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+        <button class="btn btn-secondary" onclick="emailTimelineToClient()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Email to Client
+        </button>
+        <button class="btn btn-primary" onclick="exportTimelineAsPDF()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export as PDF
+        </button>
+    `;
 
-    modal.classList.add('active');
-
-    // Store for export
+    // Store timeline for export
     window.currentTimelinePreview = timeline;
 
-    // ------------------ IMPORTANT PART ------------------
-    // Activate click handlers for tabs
+    // Set up tab click handlers
     document.querySelectorAll('#detailModal .tab').forEach(tab => {
         tab.addEventListener('click', function () {
             // Remove active from all tabs
             document.querySelectorAll('#detailModal .tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
 
-            // Hide all contents
+            // Hide all tab contents
             document.querySelectorAll('#detailModal .tab-content').forEach(c => c.style.display = 'none');
 
-            // Show selected
+            // Show selected tab
             const tabId = 'tab-' + this.dataset.tab;
             const content = document.getElementById(tabId);
             if (content) {
                 content.style.display = 'block';
 
-                // Special case: when user clicks "Full SLA Preview" tab → generate content
+                // Generate SLA preview HTML when preview tab is clicked
                 if (this.dataset.tab === 'preview') {
                     content.innerHTML = generateTimelineHTML(timeline);
-
-                    // Optional: re-generate QR codes or other dynamic elements if needed
-                    setTimeout(() => {
-                        // If you have QR code logic here, re-run it
-                    }, 100);
                 }
             }
         });
     });
 
-    // Show overview by default
-    document.querySelector('#detailModal .tab[data-tab="overview"]').click();
+    // Show the modal
+    modal.classList.add('active');
 }
 
 async function emailTimelineToClient() {

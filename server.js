@@ -3734,8 +3734,7 @@ app.get('/api/scoring/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// Export the calculateLeadScore function for use in other endpoints
-export { calculateLeadScore };
+
 
 // ==================== PHASE 5: DOCUMENT MANAGEMENT ====================
 // Add this to your server.js file

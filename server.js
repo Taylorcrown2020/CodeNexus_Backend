@@ -2604,6 +2604,11 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             });
         }
         
+        console.log('📄 Generating full invoice PDF...');
+        const pdfHTML = generateInvoicePDFHTML(invoice);
+        const pdfBuffer = await generatePDFFromHTML(pdfHTML);
+        console.log('✅ Full invoice PDF generated');
+        
         // Build invoice items table
         const items = invoice.items || [];
         const itemsHTML = items.map(item => `
@@ -2631,6 +2636,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                     .invoice-amount { font-size: 32px; font-weight: bold; color: #22c55e; margin: 20px 0; }
                     table { width: 100%; border-collapse: collapse; margin: 20px 0; }
                     th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; border-bottom: 2px solid #22c55e; }
+                    .attachment-note { background: #fff3cd; border: 1px solid #ffc107; padding: 16px; border-radius: 6px; margin: 20px 0; font-size: 13px; }
                 </style>
             </head>
             <body>
@@ -2642,7 +2648,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                 <div class="content">
                     <h2>Hello ${clientName || 'Valued Customer'},</h2>
                     
-                    <p>Thank you for your business! Here's your invoice.</p>
+                    <p>Thank you for your business! Your invoice is attached to this email as a PDF.</p>
                     
                     <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -2663,6 +2669,10 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                                 <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</p>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="attachment-note">
+                        <strong>📎 PDF Attached:</strong> Your complete invoice is attached to this email for your records.
                     </div>
                     
                     <h3>Invoice Details</h3>
@@ -2732,7 +2742,14 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
             to: clientEmail,
             subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
-            html: emailHTML
+            html: emailHTML,
+            attachments: [
+                {
+                    filename: `Invoice-${invoice.invoice_number}.pdf`,
+                    content: pdfBuffer,
+                    contentType: 'application/pdf'
+                }
+            ]
         });
         
         console.log('✅ Invoice email sent successfully');

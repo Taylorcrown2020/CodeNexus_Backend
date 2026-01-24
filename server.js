@@ -3016,6 +3016,216 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
     }
 });
 
+const puppeteer = require('puppeteer');
+
+// ========================================
+// PDF GENERATION FUNCTIONS
+// ========================================
+
+const puppeteer = require('puppeteer');
+
+// ========================================
+// PDF GENERATION FUNCTIONS
+// ========================================
+
+async function generatePDFFromHTML(html) {
+    let browser;
+    try {
+        console.log('🚀 Launching browser...');
+        
+        const launchOptions = {
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-extensions'
+            ]
+        };
+
+        browser = await puppeteer.launch(launchOptions);
+        console.log('✅ Browser launched successfully');
+        
+        const page = await browser.newPage();
+        await page.setContent(html, { 
+            waitUntil: 'networkidle0',
+            timeout: 30000 
+        });
+        
+        const pdf = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: {
+                top: '20px',
+                right: '20px',
+                bottom: '20px',
+                left: '20px'
+            }
+        });
+        
+        console.log('✅ PDF generated successfully');
+        return pdf;
+        
+    } catch (error) {
+        console.error('❌ PDF generation error:', error);
+        throw new Error('Failed to generate PDF: ' + error.message);
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+}
+
+function generateTimelinePDFHTML(timeline) {
+    let totalPrice = 0;
+    let hasPaidPackage = false;
+    
+    timeline.packages.forEach(function(key) {
+        if (servicePackages[key] && !servicePackages[key].isFree) {
+            hasPaidPackage = true;
+            totalPrice += servicePackages[key].price;
+        }
+    });
+    
+    const companySignatureDate = new Date(timeline.createdAt).toLocaleDateString();
+    const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
+    
+    let packagesListHtml = '';
+    timeline.packages.forEach(function(key) {
+        if (servicePackages[key]) {
+            const pkg = servicePackages[key];
+            packagesListHtml += `<div style="display: inline-block; background: #f8f9fa; border: 1px solid #22c55e; color: #000; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; margin: 0 8px 8px 0;">${pkg.name}${pkg.isFree ? ' <span style="color: #22c55e;">(FREE)</span>' : ''}</div>`;
+        }
+    });
+    
+    let paymentTermsHtml = '';
+    if (timeline.isFreeProject || !hasPaidPackage) {
+        paymentTermsHtml = 'No Payment Required';
+    } else {
+        switch (timeline.paymentTerms) {
+            case 'completion':
+                paymentTermsHtml = '50% Deposit + 50% on Completion';
+                break;
+            case 'net30':
+                paymentTermsHtml = '50% Deposit + 50% Net 30';
+                break;
+            default:
+                paymentTermsHtml = '50% Deposit + 50% on Completion';
+        }
+    }
+    
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>SLA - ${timeline.clientName}</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { font-family: "Segoe UI", Arial, sans-serif; background: #fff; color: #000; padding: 40px; }
+                h1 { color: #22c55e; font-size: 32px; margin-bottom: 20px; }
+                .section { margin-bottom: 30px; }
+                .label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px; }
+                .value { font-size: 14px; color: #000; font-weight: 600; }
+            </style>
+        </head>
+        <body>
+            <h1>SERVICE LEVEL AGREEMENT</h1>
+            <div class="section">
+                <div class="label">Client</div>
+                <div class="value">${timeline.clientName}</div>
+            </div>
+            <div class="section">
+                <div class="label">Project</div>
+                <div class="value">${timeline.projectName || 'Web Development Project'}</div>
+            </div>
+            <div class="section">
+                <div class="label">Total Investment</div>
+                <div class="value">${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</div>
+            </div>
+            <div class="section">
+                <div class="label">Payment Terms</div>
+                <div class="value">${paymentTermsHtml}</div>
+            </div>
+            <div class="section">
+                <div class="label">Selected Services</div>
+                <div>${packagesListHtml}</div>
+            </div>
+            <div class="section">
+                <div class="label">Document ID</div>
+                <div class="value">${documentId}</div>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+function generateInvoicePDFHTML(invoice) {
+    const items = invoice.items || [];
+    const taxAmount = parseFloat(invoice.tax_amount || 0);
+    const discount = parseFloat(invoice.discount_amount || 0);
+    
+    const itemsHTML = items.map(item => `
+        <tr>
+            <td>${item.description}</td>
+            <td style="text-align: center;">${item.quantity || 1}</td>
+            <td style="text-align: right;">$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
+            <td style="text-align: right; font-weight: bold;">$${parseFloat(item.amount).toLocaleString()}</td>
+        </tr>
+    `).join('');
+    
+    return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Invoice ${invoice.invoice_number}</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { font-family: "Segoe UI", Arial, sans-serif; padding: 40px; }
+                .header { background: #22c55e; color: white; padding: 30px; margin-bottom: 30px; }
+                h1 { font-size: 32px; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th { background: #f5f5f5; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; }
+                td { padding: 12px; border-bottom: 1px solid #eee; }
+                .total { font-size: 24px; font-weight: bold; color: #22c55e; text-align: right; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>INVOICE</h1>
+                <p>#${invoice.invoice_number}</p>
+            </div>
+            <p><strong>Bill To:</strong> ${invoice.customer_name || 'Customer'}</p>
+            <p><strong>Email:</strong> ${invoice.customer_email || ''}</p>
+            <p><strong>Issue Date:</strong> ${new Date(invoice.issue_date).toLocaleDateString()}</p>
+            <p><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th style="text-align: center;">Qty</th>
+                        <th style="text-align: right;">Unit Price</th>
+                        <th style="text-align: right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHTML}
+                </tbody>
+            </table>
+            <div style="text-align: right;">
+                <p><strong>Subtotal:</strong> $${parseFloat(invoice.subtotal).toLocaleString()}</p>
+                ${taxAmount > 0 ? `<p><strong>Tax (${invoice.tax_rate}%):</strong> $${taxAmount.toLocaleString()}</p>` : ''}
+                ${discount > 0 ? `<p><strong>Discount:</strong> -$${discount.toLocaleString()}</p>` : ''}
+                <p class="total">Total: $${parseFloat(invoice.total_amount).toLocaleString()}</p>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
 // ========================================
 // HEALTH CHECK
 // ========================================

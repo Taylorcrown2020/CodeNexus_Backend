@@ -64,7 +64,7 @@ const servicePackages = {
     }
 };
 
-const { transporter, verifyEmailConfig } = require('./email-config');
+import { transporter, verifyEmailConfig } from './email-config.js';
 
 // ========================================
 // STRIPE WEBHOOK (MUST BE FIRST!)
@@ -3735,7 +3735,7 @@ app.get('/api/scoring/stats', authenticateToken, async (req, res) => {
 });
 
 // Export the calculateLeadScore function for use in other endpoints
-module.exports = { calculateLeadScore };
+export { calculateLeadScore };
 
 // ==================== PHASE 5: DOCUMENT MANAGEMENT ====================
 // Add this to your server.js file

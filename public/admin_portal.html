@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diamondback Coding | Admin Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.js"></script>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -8773,6 +8773,1912 @@ function exportTimelineAsPDF() {
         printWindow.document.close();
     }, 300);
 }
+
+// ==================== PHASE 5: DOCUMENT MANAGEMENT - FRONTEND ====================
+// Add these functions to your admin_portal.html <script> section
+
+// Render Documents page
+function renderDocuments(content) {
+    content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading documents...</div>';
+    
+    Promise.all([
+        fetch(`${API_URL}/api/documents`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.json()),
+        fetch(`${API_URL}/api/documents/stats`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.json())
+    ])
+    .then(([documentsData, statsData]) => {
+        content.innerHTML = `
+            <div class="page-header">
+                <div>
+                    <h2>Document Management</h2>
+                    <p class="page-description">Upload, organize, and share documents with leads</p>
+                </div>
+                <button class="btn btn-primary" onclick="openUploadDocumentModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Upload Document
+                </button>
+            </div>
+            
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Documents</span>
+                        <div class="stat-icon blue">📄</div>
+                    </div>
+                    <div class="stat-value">${statsData.stats.total_documents || 0}</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Storage Used</span>
+                        <div class="stat-icon green">💾</div>
+                    </div>
+                    <div class="stat-value">${formatFileSize(statsData.stats.total_size || 0)}</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Contracts</span>
+                        <div class="stat-icon amber">📝</div>
+                    </div>
+                    <div class="stat-value">${statsData.stats.contracts || 0}</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Proposals</span>
+                        <div class="stat-icon purple">📋</div>
+                    </div>
+                    <div class="stat-value">${statsData.stats.proposals || 0}</div>
+                </div>
+            </div>
+            
+            <!-- Documents Table -->
+            <div class="table-container" style="margin-top: 24px;">
+                <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="font-size: 15px; font-weight: 700;">All Documents</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="docTypeFilter" onchange="filterDocuments(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                            <option value="">All Types</option>
+                            <option value="contract">Contracts</option>
+                            <option value="proposal">Proposals</option>
+                            <option value="invoice">Invoices</option>
+                            <option value="general">General</option>
+                        </select>
+                    </div>
+                </div>
+                <table class="data-table" id="documentsTable">
+                    <thead>
+                        <tr>
+                            <th>Document</th>
+                            <th>Type</th>
+                            <th>Lead</th>
+                            <th>Size</th>
+                            <th>Uploaded By</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${documentsData.documents && documentsData.documents.length > 0 ? documentsData.documents.map(doc => `
+                            <tr data-doc-type="${doc.document_type || 'general'}">
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="width: 32px; height: 32px; border-radius: 6px; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                                            ${getFileIcon(doc.mime_type)}
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 600;">${doc.original_filename}</div>
+                                            ${doc.description ? `<div style="font-size: 11px; color: var(--text-muted);">${doc.description}</div>` : ''}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-${doc.document_type || 'general'}">
+                                        ${doc.document_type || 'General'}
+                                    </span>
+                                </td>
+                                <td>${doc.lead_name || '-'}</td>
+                                <td>${formatFileSize(doc.file_size)}</td>
+                                <td>${doc.uploaded_by_name || 'Unknown'}</td>
+                                <td>${new Date(doc.created_at).toLocaleDateString()}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" onclick="downloadDocument(${doc.id}, '${doc.original_filename}')" title="Download">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                                <polyline points="7 10 12 15 17 10"/>
+                                                <line x1="12" y1="15" x2="12" y2="3"/>
+                                            </svg>
+                                        </button>
+                                        <button class="btn-icon" onclick="shareDocument(${doc.id})" title="Share">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="18" cy="5" r="3"/>
+                                                <circle cx="6" cy="12" r="3"/>
+                                                <circle cx="18" cy="19" r="3"/>
+                                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                                            </svg>
+                                        </button>
+                                        <button class="btn-icon" onclick="viewDocumentVersions(${doc.id})" title="Versions">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <polyline points="12 6 12 12 16 14"/>
+                                            </svg>
+                                        </button>
+                                        <button class="btn-icon" onclick="editDocument(${doc.id})" title="Edit">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                        </button>
+                                        <button class="btn-icon danger" onclick="deleteDocument(${doc.id})" title="Delete">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="3 6 5 6 21 6"/>
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('') : `
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                    No documents yet. Upload your first document to get started.
+                                </td>
+                            </tr>
+                        `}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    })
+    .catch(error => {
+        console.error('Error loading documents:', error);
+        content.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Error loading documents</div>';
+    });
+}
+
+// Helper functions
+function formatFileSize(bytes) {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function getFileIcon(mimeType) {
+    if (!mimeType) return '📄';
+    if (mimeType.includes('pdf')) return '📕';
+    if (mimeType.includes('word')) return '📘';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📊';
+    if (mimeType.includes('image')) return '🖼️';
+    if (mimeType.includes('text')) return '📝';
+    return '📄';
+}
+
+function filterDocuments(type) {
+    const rows = document.querySelectorAll('#documentsTable tbody tr');
+    rows.forEach(row => {
+        const docType = row.getAttribute('data-doc-type');
+        if (!type || docType === type) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Open upload document modal
+async function openUploadDocumentModal() {
+    // Load leads for dropdown
+    const leadsRes = await fetch(`${API_URL}/api/leads`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const leadsData = await leadsRes.json();
+    
+    const modalContent = `
+        <h3>Upload Document</h3>
+        <form id="uploadDocumentForm" onsubmit="uploadDocument(event)">
+            <div class="form-group">
+                <label>Select File *</label>
+                <input type="file" name="file" id="fileInput" required 
+                       accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt">
+                <small>Max file size: 50MB. Allowed: PDF, DOC, DOCX, XLS, XLSX, images, TXT</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Document Type *</label>
+                <select name="document_type" required>
+                    <option value="general">General</option>
+                    <option value="contract">Contract</option>
+                    <option value="proposal">Proposal</option>
+                    <option value="invoice">Invoice</option>
+                    <option value="presentation">Presentation</option>
+                    <option value="report">Report</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Associated Lead</label>
+                <select name="lead_id">
+                    <option value="">No lead (general document)</option>
+                    ${leadsData.leads.map(lead => `
+                        <option value="${lead.id}">${lead.name} - ${lead.company || 'No company'}</option>
+                    `).join('')}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" rows="3" placeholder="Optional description of this document"></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Upload Document</button>
+            </div>
+        </form>
+    `;
+    
+    showModal(modalContent);
+}
+
+// Upload document
+async function uploadDocument(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    
+    try {
+        showToast('Uploading document...', 'info');
+        
+        const response = await fetch(`${API_URL}/api/documents/upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Document uploaded successfully!', 'success');
+            closeModal();
+            navigateTo('documents');
+        } else {
+            showToast(data.message || 'Error uploading document', 'error');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showToast('Error uploading document', 'error');
+    }
+}
+
+// Download document
+async function downloadDocument(documentId, filename) {
+    try {
+        const response = await fetch(`${API_URL}/api/documents/${documentId}/download`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Download failed');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showToast('Document downloaded', 'success');
+    } catch (error) {
+        console.error('Download error:', error);
+        showToast('Error downloading document', 'error');
+    }
+}
+
+// Share document
+async function shareDocument(documentId) {
+    const modalContent = `
+        <h3>Share Document</h3>
+        <form id="shareDocumentForm" onsubmit="createShareLink(event, ${documentId})">
+            <div class="form-group">
+                <label>Share with Email (optional)</label>
+                <input type="email" name="email" placeholder="recipient@example.com">
+            </div>
+            
+            <div class="form-group">
+                <label>Link expires in</label>
+                <select name="expires_in_days">
+                    <option value="1">1 day</option>
+                    <option value="7" selected>7 days</option>
+                    <option value="30">30 days</option>
+                    <option value="365">1 year</option>
+                </select>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Share Link</button>
+            </div>
+        </form>
+    `;
+    
+    showModal(modalContent);
+}
+
+// Create share link
+async function createShareLink(event, documentId) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        email: formData.get('email') || null,
+        expires_in_days: parseInt(formData.get('expires_in_days'))
+    };
+    
+    try {
+        const response = await fetch(`${API_URL}/api/documents/${documentId}/share`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            closeModal();
+            
+            // Show share link modal
+            const linkModalContent = `
+                <h3>Share Link Created</h3>
+                <div style="margin: 20px 0;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Share URL:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="shareUrlInput" value="${result.share_url}" 
+                               readonly style="flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-family: monospace; font-size: 12px;">
+                        <button class="btn btn-primary" onclick="copyShareUrl()">Copy</button>
+                    </div>
+                    <small style="color: var(--text-muted); display: block; margin-top: 8px;">
+                        This link will expire on ${new Date(result.share.expires_at).toLocaleDateString()}
+                    </small>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                </div>
+            `;
+            
+            showModal(linkModalContent);
+        } else {
+            showToast(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Create share link error:', error);
+        showToast('Error creating share link', 'error');
+    }
+}
+
+// Copy share URL to clipboard
+function copyShareUrl() {
+    const input = document.getElementById('shareUrlInput');
+    input.select();
+    document.execCommand('copy');
+    showToast('Link copied to clipboard!', 'success');
+}
+
+// View document versions
+async function viewDocumentVersions(documentId) {
+    try {
+        const response = await fetch(`${API_URL}/api/documents/${documentId}/versions`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const modalContent = `
+                <h3>Document Versions</h3>
+                <div style="margin: 20px 0;">
+                    ${data.versions && data.versions.length > 0 ? data.versions.map(version => `
+                        <div style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 600;">Version ${version.version_number}</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">
+                                    ${new Date(version.created_at).toLocaleString()} by ${version.uploaded_by_name}
+                                </div>
+                            </div>
+                            <div>
+                                <span style="font-size: 12px; color: var(--text-muted);">${formatFileSize(version.file_size)}</span>
+                            </div>
+                        </div>
+                    `).join('') : '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No previous versions</div>'}
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                    <button class="btn btn-primary" onclick="uploadNewVersion(${documentId})">Upload New Version</button>
+                </div>
+            `;
+            
+            showModal(modalContent);
+        }
+    } catch (error) {
+        console.error('View versions error:', error);
+        showToast('Error loading versions', 'error');
+    }
+}
+
+// Edit document metadata
+async function editDocument(documentId) {
+    // Load document details first
+    const response = await fetch(`${API_URL}/api/documents`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+    const doc = data.documents.find(d => d.id === documentId);
+    
+    if (!doc) return;
+    
+    const modalContent = `
+        <h3>Edit Document</h3>
+        <form id="editDocumentForm" onsubmit="saveDocumentEdit(event, ${documentId})">
+            <div class="form-group">
+                <label>Document Type</label>
+                <select name="document_type">
+                    <option value="general" ${doc.document_type === 'general' ? 'selected' : ''}>General</option>
+                    <option value="contract" ${doc.document_type === 'contract' ? 'selected' : ''}>Contract</option>
+                    <option value="proposal" ${doc.document_type === 'proposal' ? 'selected' : ''}>Proposal</option>
+                    <option value="invoice" ${doc.document_type === 'invoice' ? 'selected' : ''}>Invoice</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" rows="3">${doc.description || ''}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" name="is_shared" ${doc.is_shared ? 'checked' : ''}>
+                    <span>Mark as shared with client</span>
+                </label>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    `;
+    
+    showModal(modalContent);
+}
+
+// Save document edit
+async function saveDocumentEdit(event, documentId) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        document_type: formData.get('document_type'),
+        description: formData.get('description'),
+        is_shared: formData.get('is_shared') === 'on'
+    };
+    
+    try {
+        const response = await fetch(`${API_URL}/api/documents/${documentId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Document updated successfully', 'success');
+            closeModal();
+            navigateTo('documents');
+        } else {
+            showToast(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Update document error:', error);
+        showToast('Error updating document', 'error');
+    }
+}
+
+// Delete document
+async function deleteDocument(documentId) {
+    if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/documents/${documentId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Document deleted successfully', 'success');
+            navigateTo('documents');
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Delete document error:', error);
+        showToast('Error deleting document', 'error');
+    }
+}
+
+// Add this navigation item to your sidebar:
+/*
+<a href="#documents" class="nav-link" onclick="navigateTo('documents')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+    </svg>
+    <span>Documents</span>
+</a>
+*/
+
+// Add this case to your navigateTo function:
+/*
+case 'documents':
+    renderDocuments(content);
+    break;
+*/
+
+// ==================== PHASE 6: SALES PIPELINE / KANBAN BOARD - FRONTEND ====================
+// Add these functions to your admin_portal.html <script> section
+
+// Render Sales Pipeline page
+function renderPipeline(content) {
+    content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading pipeline...</div>';
+    
+    Promise.all([
+        fetch(`${API_URL}/api/pipeline/stages`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.json()),
+        fetch(`${API_URL}/api/pipeline/deals`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.json()),
+        fetch(`${API_URL}/api/pipeline/stats`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.json())
+    ])
+    .then(([stagesData, dealsData, statsData]) => {
+        content.innerHTML = `
+            <div class="page-header">
+                <div>
+                    <h2>Sales Pipeline</h2>
+                    <p class="page-description">Visual kanban board for managing your sales pipeline</p>
+                </div>
+                <button class="btn btn-primary" onclick="openCreateDealModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    New Deal
+                </button>
+            </div>
+            
+            <!-- Pipeline Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Deals</span>
+                        <div class="stat-icon blue">💼</div>
+                    </div>
+                    <div class="stat-value">${statsData.stats.total_deals || 0}</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Pipeline Value</span>
+                        <div class="stat-icon green">💰</div>
+                    </div>
+                    <div class="stat-value">$${parseFloat(statsData.stats.total_value || 0).toLocaleString()}</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Weighted Value</span>
+                        <div class="stat-icon amber">⚖️</div>
+                    </div>
+                    <div class="stat-value">$${parseFloat(statsData.stats.weighted_value || 0).toLocaleString()}</div>
+                    <div class="stat-change">Based on probability</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Win Rate</span>
+                        <div class="stat-icon purple">🎯</div>
+                    </div>
+                    <div class="stat-value">
+                        ${statsData.stats.won_deals && statsData.stats.total_deals ? 
+                            ((statsData.stats.won_deals / statsData.stats.total_deals) * 100).toFixed(1) : 0}%
+                    </div>
+                    <div class="stat-change">${statsData.stats.won_deals || 0} won / ${statsData.stats.lost_deals || 0} lost</div>
+                </div>
+            </div>
+            
+            <!-- Kanban Board -->
+            <div class="kanban-board" style="margin-top: 24px;">
+                ${stagesData.stages.map(stage => {
+                    const stageDeals = dealsData.deals.filter(d => d.stage_id === stage.id);
+                    const stageTotalValue = stageDeals.reduce((sum, d) => sum + parseFloat(d.value || 0), 0);
+                    
+                    return `
+                        <div class="kanban-column" data-stage-id="${stage.id}">
+                            <div class="kanban-column-header" style="border-bottom: 3px solid ${stage.color}">
+                                <div>
+                                    <h3 style="font-size: 14px; font-weight: 700; margin: 0;">${stage.name}</h3>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                                        ${stageDeals.length} deals • $${stageTotalValue.toLocaleString()}
+                                    </div>
+                                </div>
+                                <div style="font-size: 11px; color: var(--text-muted);">
+                                    ${stage.probability}% prob
+                                </div>
+                            </div>
+                            
+                            <div class="kanban-cards" 
+                                 ondragover="handleDragOver(event)" 
+                                 ondrop="handleDrop(event, ${stage.id})"
+                                 data-stage-id="${stage.id}">
+                                ${stageDeals.length > 0 ? stageDeals.map(deal => `
+                                    <div class="kanban-card" 
+                                         draggable="true" 
+                                         ondragstart="handleDragStart(event, ${deal.id})"
+                                         ondragend="handleDragEnd(event)"
+                                         data-deal-id="${deal.id}">
+                                        <div class="kanban-card-header">
+                                            <div style="font-weight: 600; font-size: 13px;">${deal.title}</div>
+                                            <button class="card-menu-btn" onclick="openDealMenu(event, ${deal.id})">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <circle cx="12" cy="12" r="1"/>
+                                                    <circle cx="12" cy="5" r="1"/>
+                                                    <circle cx="12" cy="19" r="1"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        
+                                        <div style="margin: 8px 0;">
+                                            <div style="font-size: 11px; color: var(--text-muted);">
+                                                ${deal.lead_name || 'No lead'}
+                                                ${deal.lead_company ? ` • ${deal.lead_company}` : ''}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="kanban-card-footer">
+                                            <div style="font-weight: 700; color: var(--status-contacted); font-family: var(--font-mono);">
+                                                $${parseFloat(deal.value || 0).toLocaleString()}
+                                            </div>
+                                            ${deal.expected_close_date ? `
+                                                <div style="font-size: 11px; color: var(--text-muted);">
+                                                    📅 ${new Date(deal.expected_close_date).toLocaleDateString()}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        
+                                        ${deal.assigned_to_name ? `
+                                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); font-size: 11px; color: var(--text-muted);">
+                                                👤 ${deal.assigned_to_name}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('') : `
+                                    <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 12px;">
+                                        No deals in this stage
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+        
+        // Add kanban board styles if not already present
+        if (!document.getElementById('kanban-styles')) {
+            const style = document.createElement('style');
+            style.id = 'kanban-styles';
+            style.textContent = `
+                .kanban-board {
+                    display: flex;
+                    gap: 16px;
+                    overflow-x: auto;
+                    padding: 16px;
+                    background: var(--bg-secondary);
+                    border-radius: 12px;
+                }
+                
+                .kanban-column {
+                    flex: 0 0 300px;
+                    background: var(--bg);
+                    border-radius: 12px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                
+                .kanban-column-header {
+                    padding: 16px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                }
+                
+                .kanban-cards {
+                    padding: 8px;
+                    min-height: 200px;
+                }
+                
+                .kanban-card {
+                    background: var(--bg);
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin-bottom: 8px;
+                    cursor: move;
+                    transition: all 0.2s;
+                }
+                
+                .kanban-card:hover {
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    transform: translateY(-2px);
+                }
+                
+                .kanban-card.dragging {
+                    opacity: 0.5;
+                }
+                
+                .kanban-card-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                }
+                
+                .card-menu-btn {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    padding: 4px;
+                    border-radius: 4px;
+                    color: var(--text-muted);
+                }
+                
+                .card-menu-btn:hover {
+                    background: var(--bg-hover);
+                }
+                
+                .kanban-card-footer {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-top: 8px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading pipeline:', error);
+        content.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Error loading pipeline</div>';
+    });
+}
+
+// Drag and drop handlers
+let draggedDealId = null;
+
+function handleDragStart(event, dealId) {
+    draggedDealId = dealId;
+    event.target.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragEnd(event) {
+    event.target.classList.remove('dragging');
+}
+
+function handleDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+}
+
+async function handleDrop(event, stageId) {
+    event.preventDefault();
+    
+    if (!draggedDealId) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/pipeline/deals/${draggedDealId}/move`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ stage_id: stageId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Deal moved successfully', 'success');
+            navigateTo('pipeline');
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Move deal error:', error);
+        showToast('Error moving deal', 'error');
+    }
+    
+    draggedDealId = null;
+}
+
+// Open create deal modal
+async function openCreateDealModal() {
+    const [stagesRes, leadsRes, usersRes] = await Promise.all([
+        fetch(`${API_URL}/api/pipeline/stages`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }),
+        fetch(`${API_URL}/api/leads`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }),
+        fetch(`${API_URL}/api/employees`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        })
+    ]);
+    
+    const stagesData = await stagesRes.json();
+    const leadsData = await leadsRes.json();
+    const usersData = await usersRes.json();
+    
+    const modalContent = `
+        <h3>Create New Deal</h3>
+        <form id="createDealForm" onsubmit="saveDeal(event)">
+            <div class="form-group">
+                <label>Deal Title *</label>
+                <input type="text" name="title" required placeholder="e.g., Acme Corp - Enterprise License">
+            </div>
+            
+            <div class="form-group">
+                <label>Associated Lead *</label>
+                <select name="lead_id" required>
+                    <option value="">Select a lead...</option>
+                    ${leadsData.leads.map(lead => `
+                        <option value="${lead.id}">${lead.name} - ${lead.company || 'No company'}</option>
+                    `).join('')}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Pipeline Stage *</label>
+                <select name="stage_id" required>
+                    ${stagesData.stages.map(stage => `
+                        <option value="${stage.id}">${stage.name}</option>
+                    `).join('')}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Deal Value *</label>
+                <input type="number" name="value" required min="0" step="0.01" placeholder="0.00">
+            </div>
+            
+            <div class="form-group">
+                <label>Expected Close Date</label>
+                <input type="date" name="expected_close_date">
+            </div>
+            
+            <div class="form-group">
+                <label>Probability (%)</label>
+                <input type="number" name="probability" min="0" max="100" value="50">
+            </div>
+            
+            <div class="form-group">
+                <label>Assign To</label>
+                <select name="assigned_to">
+                    <option value="">Unassigned</option>
+                    ${usersData.employees ? usersData.employees.map(user => `
+                        <option value="${user.id}">${user.name}</option>
+                    `).join('') : ''}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea name="notes" rows="3" placeholder="Additional notes about this deal..."></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Deal</button>
+            </div>
+        </form>
+    `;
+    
+    showModal(modalContent);
+}
+
+// Save deal
+async function saveDeal(event, dealId = null) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        lead_id: parseInt(formData.get('lead_id')),
+        stage_id: parseInt(formData.get('stage_id')),
+        title: formData.get('title'),
+        value: parseFloat(formData.get('value')),
+        expected_close_date: formData.get('expected_close_date') || null,
+        probability: parseInt(formData.get('probability')) || 50,
+        notes: formData.get('notes') || null,
+        assigned_to: formData.get('assigned_to') ? parseInt(formData.get('assigned_to')) : null
+    };
+    
+    try {
+        const response = await fetch(`${API_URL}/api/pipeline/deals${dealId ? '/' + dealId : ''}`, {
+            method: dealId ? 'PUT' : 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(result.message, 'success');
+            closeModal();
+            navigateTo('pipeline');
+        } else {
+            showToast(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Save deal error:', error);
+        showToast('Error saving deal', 'error');
+    }
+}
+
+// Open deal menu
+function openDealMenu(event, dealId) {
+    event.stopPropagation();
+    
+    const menuContent = `
+        <div style="padding: 8px;">
+            <button class="menu-item" onclick="viewDealDetails(${dealId})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                View Details
+            </button>
+            <button class="menu-item" onclick="editDeal(${dealId})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit Deal
+            </button>
+            <button class="menu-item" onclick="addDealNote(${dealId})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Add Note
+            </button>
+            <button class="menu-item danger" onclick="deleteDeal(${dealId})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                Delete Deal
+            </button>
+        </div>
+    `;
+    
+    // Create and position popup menu (simplified - you can enhance this)
+    const existingMenu = document.getElementById('deal-menu');
+    if (existingMenu) existingMenu.remove();
+    
+    const menu = document.createElement('div');
+    menu.id = 'deal-menu';
+    menu.innerHTML = menuContent;
+    menu.style.cssText = `
+        position: fixed;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+    `;
+    
+    const rect = event.target.getBoundingClientRect();
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    
+    document.body.appendChild(menu);
+    
+    // Close menu when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenu() {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+        });
+    }, 100);
+}
+
+// View deal details
+async function viewDealDetails(dealId) {
+    try {
+        const [dealRes, activitiesRes] = await Promise.all([
+            fetch(`${API_URL}/api/pipeline/deals`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }),
+            fetch(`${API_URL}/api/pipeline/deals/${dealId}/activities`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            })
+        ]);
+        
+        const dealsData = await dealRes.json();
+        const activitiesData = await activitiesRes.json();
+        const deal = dealsData.deals.find(d => d.id === dealId);
+        
+        if (!deal) {
+            showToast('Deal not found', 'error');
+            return;
+        }
+        
+        const modalContent = `
+            <h3>${deal.title}</h3>
+            
+            <div style="margin: 20px 0;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">LEAD</label>
+                        <div style="font-weight: 600;">${deal.lead_name}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">${deal.lead_company || ''}</div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">VALUE</label>
+                        <div style="font-weight: 700; font-size: 18px; color: var(--status-contacted);">
+                            $${parseFloat(deal.value).toLocaleString()}
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">STAGE</label>
+                        <span class="badge" style="background: ${deal.stage_color}; color: white;">
+                            ${deal.stage_name}
+                        </span>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">CLOSE DATE</label>
+                        <div>${deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : 'Not set'}</div>
+                    </div>
+                </div>
+                
+                ${deal.notes ? `
+                    <div style="margin-bottom: 20px;">
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">NOTES</label>
+                        <div style="padding: 12px; background: var(--bg-hover); border-radius: 8px; font-size: 13px;">
+                            ${deal.notes}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div>
+                    <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 8px;">ACTIVITY TIMELINE</label>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        ${activitiesData.activities && activitiesData.activities.length > 0 ? activitiesData.activities.map(activity => `
+                            <div style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;">
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 600;">${activity.activity_type}</div>
+                                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                                        ${activity.description}
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                                        by ${activity.created_by_name} • ${new Date(activity.created_at).toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') : '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No activity yet</div>'}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                <button class="btn btn-primary" onclick="closeModal(); editDeal(${dealId})">Edit Deal</button>
+            </div>
+        `;
+        
+        showModal(modalContent);
+    } catch (error) {
+        console.error('View deal details error:', error);
+        showToast('Error loading deal details', 'error');
+    }
+}
+
+// Edit deal
+async function editDeal(dealId) {
+    // Load deal data and show edit modal (similar to create but with data pre-filled)
+    // Implementation similar to openCreateDealModal but with existing data
+    showToast('Edit functionality - implement similar to create modal with pre-filled data', 'info');
+}
+
+// Add note to deal
+async function addDealNote(dealId) {
+    const modalContent = `
+        <h3>Add Note</h3>
+        <form id="addNoteForm" onsubmit="saveNote(event, ${dealId})">
+            <div class="form-group">
+                <label>Note</label>
+                <textarea name="note" rows="5" required placeholder="Enter your note..."></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Note</button>
+            </div>
+        </form>
+    `;
+    
+    showModal(modalContent);
+}
+
+// Save note
+async function saveNote(event, dealId) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    
+    try {
+        const response = await fetch(`${API_URL}/api/pipeline/deals/${dealId}/note`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ note: formData.get('note') })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Note added successfully', 'success');
+            closeModal();
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Add note error:', error);
+        showToast('Error adding note', 'error');
+    }
+}
+
+// Delete deal
+async function deleteDeal(dealId) {
+    if (!confirm('Are you sure you want to delete this deal?')) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/pipeline/deals/${dealId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Deal deleted successfully', 'success');
+            navigateTo('pipeline');
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Delete deal error:', error);
+        showToast('Error deleting deal', 'error');
+    }
+}
+
+// Add this navigation item to your sidebar:
+/*
+<a href="#pipeline" class="nav-link" onclick="navigateTo('pipeline')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/>
+        <rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+    </svg>
+    <span>Sales Pipeline</span>
+</a>
+*/
+
+// Add this case to your navigateTo function:
+/*
+case 'pipeline':
+    renderPipeline(content);
+    break;
+*/
+
+// Add menu item styles:
+/*
+<style>
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 6px;
+}
+
+.menu-item:hover {
+    background: var(--bg-hover);
+}
+
+.menu-item.danger {
+    color: var(--status-lost);
+}
+
+.menu-item.danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+</style>
+*/
+
+// ==================== PHASE 4: LEAD SCORING SYSTEM - FRONTEND ====================
+// Add these functions to your admin_portal.html <script> section
+
+// Render Lead Scoring page
+function renderLeadScoring(content) {
+    content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading lead scores...</div>';
+    
+    Promise.all([
+        fetch(`${API_URL}/api/scoring/leaderboard?limit=100`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.json()),
+        fetch(`${API_URL}/api/scoring/stats`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.json())
+    ])
+    .then(([leaderboardData, statsData]) => {
+        content.innerHTML = `
+            <div class="page-header">
+                <div>
+                    <h2>Lead Scoring</h2>
+                    <p class="page-description">Track and manage lead engagement scores</p>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-secondary" onclick="navigateTo('scoring-rules')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m5.196-15.804l-4.243 4.242m-6.364 6.364l-4.243 4.242m15.804 0l-4.242-4.242m-6.364-6.364l-4.242-4.242"/>
+                        </svg>
+                        Manage Rules
+                    </button>
+                    <button class="btn btn-primary" onclick="recalculateAllScores()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <polyline points="1 20 1 14 7 14"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        Recalculate All
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Leads Scored</span>
+                        <div class="stat-icon blue">📊</div>
+                    </div>
+                    <div class="stat-value">${statsData.stats.total_leads || 0}</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Average Score</span>
+                        <div class="stat-icon green">📈</div>
+                    </div>
+                    <div class="stat-value">${statsData.stats.avg_score || 0}</div>
+                    <div class="stat-change">Out of ${statsData.stats.max_score || 0} max</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">A-Grade Leads</span>
+                        <div class="stat-icon amber">⭐</div>
+                    </div>
+                    <div class="stat-value">${statsData.stats.grade_a_count || 0}</div>
+                    <div class="stat-change">${((statsData.stats.grade_a_count / statsData.stats.total_leads) * 100 || 0).toFixed(1)}% of total</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Grade Distribution</span>
+                        <div class="stat-icon purple">📉</div>
+                    </div>
+                    <div style="font-size: 12px; margin-top: 8px;">
+                        A: ${statsData.stats.grade_a_count || 0} | 
+                        B: ${statsData.stats.grade_b_count || 0} | 
+                        C: ${statsData.stats.grade_c_count || 0} | 
+                        D: ${statsData.stats.grade_d_count || 0} | 
+                        F: ${statsData.stats.grade_f_count || 0}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Leaderboard -->
+            <div class="table-container" style="margin-top: 24px;">
+                <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle);">
+                    <h3 style="font-size: 15px; font-weight: 700;">Lead Score Leaderboard</h3>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Lead</th>
+                            <th>Company</th>
+                            <th>Grade</th>
+                            <th>Total Score</th>
+                            <th>Engagement</th>
+                            <th>Demographic</th>
+                            <th>Behavioral</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${leaderboardData.leaderboard && leaderboardData.leaderboard.length > 0 ? leaderboardData.leaderboard.map(lead => `
+                            <tr>
+                                <td>
+                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: ${
+                                        lead.rank === 1 ? '#fbbf24' :
+                                        lead.rank === 2 ? '#d1d5db' :
+                                        lead.rank === 3 ? '#f97316' : 'var(--bg-hover)'
+                                    }; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                                        ${lead.rank}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="contact-cell">
+                                        <div class="contact-avatar">${getInitials(lead.name)}</div>
+                                        <div>
+                                            <div class="contact-name">${lead.name}</div>
+                                            <div class="contact-email">${lead.email}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${lead.company || '-'}</td>
+                                <td>
+                                    <span class="grade-badge grade-${lead.grade}">
+                                        ${lead.grade}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong style="font-family: var(--font-mono); font-size: 16px;">
+                                        ${lead.total_score}
+                                    </strong>
+                                </td>
+                                <td>${lead.engagement_score}</td>
+                                <td>${lead.demographic_score}</td>
+                                <td>${lead.behavioral_score}</td>
+                                <td>
+                                    <span class="status-badge status-${lead.status}">
+                                        ${lead.status}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" onclick="viewScoreHistory(${lead.lead_id})" title="View History">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <polyline points="12 6 12 12 16 14"/>
+                                            </svg>
+                                        </button>
+                                        <button class="btn-icon" onclick="recalculateScore(${lead.lead_id})" title="Recalculate">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="23 4 23 10 17 10"/>
+                                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('') : `
+                            <tr>
+                                <td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                    No scored leads yet. Click "Recalculate All" to score your leads.
+                                </td>
+                            </tr>
+                        `}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        // Add grade badge styles if not already present
+        if (!document.getElementById('grade-badge-styles')) {
+            const style = document.createElement('style');
+            style.id = 'grade-badge-styles';
+            style.textContent = `
+                .grade-badge {
+                    display: inline-block;
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    text-align: center;
+                    line-height: 32px;
+                    font-weight: 700;
+                    font-size: 16px;
+                }
+                .grade-A { background: #10b981; color: white; }
+                .grade-B { background: #3b82f6; color: white; }
+                .grade-C { background: #f59e0b; color: white; }
+                .grade-D { background: #ef4444; color: white; }
+                .grade-F { background: #6b7280; color: white; }
+            `;
+            document.head.appendChild(style);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading lead scoring:', error);
+        content.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Error loading lead scoring</div>';
+    });
+}
+
+// Render Scoring Rules page
+function renderScoringRules(content) {
+    content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading scoring rules...</div>';
+    
+    fetch(`${API_URL}/api/scoring/rules`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+    })
+    .then(r => r.json())
+    .then(data => {
+        content.innerHTML = `
+            <div class="page-header">
+                <div>
+                    <h2>Scoring Rules</h2>
+                    <p class="page-description">Define how leads are scored based on their attributes and behaviors</p>
+                </div>
+                <button class="btn btn-primary" onclick="openScoringRuleModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    New Rule
+                </button>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rule Name</th>
+                            <th>Type</th>
+                            <th>Condition</th>
+                            <th>Points</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.rules && data.rules.length > 0 ? data.rules.map(rule => `
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600;">${rule.name}</div>
+                                    ${rule.description ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${rule.description}</div>` : ''}
+                                </td>
+                                <td>
+                                    <span class="badge badge-${rule.rule_type}">
+                                        ${rule.rule_type.charAt(0).toUpperCase() + rule.rule_type.slice(1)}
+                                    </span>
+                                </td>
+                                <td>
+                                    <code style="font-size: 11px; background: var(--bg-hover); padding: 4px 8px; border-radius: 4px;">
+                                        ${rule.field_name} ${rule.operator} ${rule.value || ''}
+                                    </code>
+                                </td>
+                                <td>
+                                    <strong style="color: var(--status-contacted); font-family: var(--font-mono);">
+                                        +${rule.points}
+                                    </strong>
+                                </td>
+                                <td>
+                                    <span class="status-badge ${rule.is_active ? 'status-contacted' : 'status-lost'}">
+                                        ${rule.is_active ? 'Active' : 'Inactive'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon" onclick="editScoringRule(${rule.id})" title="Edit">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                        </button>
+                                        <button class="btn-icon danger" onclick="deleteScoringRule(${rule.id})" title="Delete">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="3 6 5 6 21 6"/>
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('') : `
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                    No scoring rules yet. Create your first rule to start scoring leads.
+                                </td>
+                            </tr>
+                        `}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    })
+    .catch(error => {
+        console.error('Error loading scoring rules:', error);
+        content.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Error loading scoring rules</div>';
+    });
+}
+
+// Open scoring rule modal
+function openScoringRuleModal(ruleId = null) {
+    // For simplicity, this will be a basic form - you can enhance it
+    const modalContent = `
+        <h3>${ruleId ? 'Edit Scoring Rule' : 'Create Scoring Rule'}</h3>
+        <form id="scoringRuleForm" onsubmit="saveScoringRule(event, ${ruleId})">
+            <div class="form-group">
+                <label>Rule Name *</label>
+                <input type="text" name="name" required placeholder="e.g., Email Opened">
+            </div>
+            
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" rows="2" placeholder="Brief description of this rule"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Rule Type *</label>
+                <select name="rule_type" required>
+                    <option value="engagement">Engagement</option>
+                    <option value="demographic">Demographic</option>
+                    <option value="behavioral">Behavioral</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Field Name *</label>
+                <input type="text" name="field_name" required placeholder="e.g., email_opened, lifetime_value">
+            </div>
+            
+            <div class="form-group">
+                <label>Operator *</label>
+                <select name="operator" required>
+                    <option value="equals">Equals</option>
+                    <option value="not_equals">Not Equals</option>
+                    <option value="greater_than">Greater Than</option>
+                    <option value="less_than">Less Than</option>
+                    <option value="contains">Contains</option>
+                    <option value="is_not_null">Is Not Null</option>
+                    <option value="is_null">Is Null</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Value</label>
+                <input type="text" name="value" placeholder="Comparison value (leave blank for null checks)">
+            </div>
+            
+            <div class="form-group">
+                <label>Points *</label>
+                <input type="number" name="points" required min="0" placeholder="e.g., 10">
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    ${ruleId ? 'Update Rule' : 'Create Rule'}
+                </button>
+            </div>
+        </form>
+    `;
+    
+    showModal(modalContent);
+}
+
+// Save scoring rule
+async function saveScoringRule(event, ruleId) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        rule_type: formData.get('rule_type'),
+        field_name: formData.get('field_name'),
+        operator: formData.get('operator'),
+        value: formData.get('value'),
+        points: parseInt(formData.get('points'))
+    };
+    
+    try {
+        const response = await fetch(`${API_URL}/api/scoring/rules${ruleId ? '/' + ruleId : ''}`, {
+            method: ruleId ? 'PUT' : 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(result.message, 'success');
+            closeModal();
+            navigateTo('scoring-rules');
+        } else {
+            showToast(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Save scoring rule error:', error);
+        showToast('Error saving scoring rule', 'error');
+    }
+}
+
+// Delete scoring rule
+async function deleteScoringRule(ruleId) {
+    if (!confirm('Are you sure you want to delete this scoring rule?')) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/scoring/rules/${ruleId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Scoring rule deleted successfully', 'success');
+            navigateTo('scoring-rules');
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Delete scoring rule error:', error);
+        showToast('Error deleting scoring rule', 'error');
+    }
+}
+
+// Recalculate single lead score
+async function recalculateScore(leadId) {
+    try {
+        showToast('Calculating score...', 'info');
+        
+        const response = await fetch(`${API_URL}/api/scoring/calculate/${leadId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Score calculated: ${data.score.totalScore} (Grade ${data.score.grade})`, 'success');
+            navigateTo('lead-scoring');
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Recalculate score error:', error);
+        showToast('Error calculating score', 'error');
+    }
+}
+
+// Recalculate all lead scores
+async function recalculateAllScores() {
+    if (!confirm('This will recalculate scores for all leads. This may take a while. Continue?')) return;
+    
+    try {
+        showToast('Recalculating all scores...', 'info');
+        
+        const response = await fetch(`${API_URL}/api/scoring/recalculate-all`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            navigateTo('lead-scoring');
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Recalculate all scores error:', error);
+        showToast('Error recalculating scores', 'error');
+    }
+}
+
+// View score history
+async function viewScoreHistory(leadId) {
+    try {
+        const response = await fetch(`${API_URL}/api/scoring/history/${leadId}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const modalContent = `
+                <h3>Score History</h3>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    ${data.history && data.history.length > 0 ? data.history.map(item => `
+                        <div style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 600;">${item.rule_name || item.reason}</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">
+                                    ${new Date(item.created_at).toLocaleString()}
+                                </div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--status-contacted); font-family: var(--font-mono);">
+                                +${item.points_added}
+                            </div>
+                        </div>
+                    `).join('') : '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No score history</div>'}
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                </div>
+            `;
+            
+            showModal(modalContent);
+        }
+    } catch (error) {
+        console.error('View score history error:', error);
+        showToast('Error loading score history', 'error');
+    }
+}
+
+function renderLeadsTable(content, type) {
+    const data = type === 'customers' ? state.customers : state.leads;
+    const filtered = filterLeads(data);
+    
+    content.innerHTML = `
+        <div class="controls-bar">
+            <!-- search and filters -->
+        </div>
+        <div class="table-container">
+            ${renderLeadsTableHTML(filtered)}
+        </div>
+    `;
+}
+
+function renderEmployees(content) {
+    content.innerHTML = `
+        <div class="cards-grid">
+            ${state.employees.map(emp => `
+                <div class="employee-card card">
+                    <!-- employee card HTML -->
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Missing renderLeadsTable
+function renderLeadsTable(content, type) {
+    const data = type === 'customers' ? state.customers : state.leads;
+    const filtered = filterLeads(data);
+    
+    content.innerHTML = `
+        <div class="controls-bar">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search..." 
+                       onkeyup="handleSearch(this.value)">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                </svg>
+            </div>
+            <div class="filter-group">
+                <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" 
+                        onclick="filterLeads('all')">All</button>
+                <button class="filter-btn ${state.currentFilter === 'new' ? 'active' : ''}" 
+                        onclick="filterLeads('new')">New</button>
+                <button class="filter-btn ${state.currentFilter === 'pending' ? 'active' : ''}" 
+                        onclick="filterLeads('pending')">Pending</button>
+                <button class="filter-btn ${state.currentFilter === 'contacted' ? 'active' : ''}" 
+                        onclick="filterLeads('contacted')">Contacted</button>
+            </div>
+        </div>
+        <div class="table-container">
+            ${renderLeadsTableHTML(filtered)}
+        </div>
+    `;
+}
+
+// Missing renderEmployees
+function renderEmployees(content) {
+    content.innerHTML = `
+        <div class="cards-grid">
+            ${state.employees.map(emp => `
+                <div class="card employee-card">
+                    <div class="card-header">
+                        <div class="employee-avatar-lg">${getInitials(emp.name)}</div>
+                        <div class="employee-details">
+                            <div class="employee-name">${emp.name}</div>
+                            <div class="employee-role">${emp.role || 'Team Member'}</div>
+                        </div>
+                    </div>
+                    <div class="employee-meta">
+                        <div class="employee-meta-item">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            ${emp.email}
+                        </div>
+                        ${emp.phone ? `
+                            <div class="employee-meta-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
+                                </svg>
+                                ${emp.phone}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-secondary" 
+                                onclick="openDetailModal('employee', ${emp.id})">View</button>
+                        <button class="btn btn-sm btn-danger" 
+                                onclick="deleteEmployee(${emp.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
 // Filter project timelines
 function filterProjectTimelines(query) {
     const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');

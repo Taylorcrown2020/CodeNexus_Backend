@@ -231,6 +231,123 @@ async function initializeDatabase() {
     try {
         await client.query('BEGIN');
 
+        await client.query(`
+    CREATE TABLE IF NOT EXISTS documents (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        filename VARCHAR(500) NOT NULL,
+        original_filename VARCHAR(500) NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size BIGINT,
+        mime_type VARCHAR(100),
+        document_type VARCHAR(100),
+        description TEXT,
+        uploaded_by INTEGER REFERENCES admin_users(id),
+        is_shared BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS document_versions (
+        id SERIAL PRIMARY KEY,
+        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+        version_number INTEGER NOT NULL,
+        filename VARCHAR(500) NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size BIGINT,
+        uploaded_by INTEGER REFERENCES admin_users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS document_shares (
+        id SERIAL PRIMARY KEY,
+        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+        shared_with_email VARCHAR(255),
+        share_token VARCHAR(255) UNIQUE,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_documents_lead 
+    ON documents(lead_id, created_at DESC);
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_document_shares_token 
+    ON document_shares(share_token);
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS pipeline_stages (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        description TEXT,
+        color VARCHAR(50),
+        position INTEGER NOT NULL,
+        probability INTEGER DEFAULT 50,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS pipeline_deals (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        stage_id INTEGER REFERENCES pipeline_stages(id),
+        title VARCHAR(500) NOT NULL,
+        value DECIMAL(10, 2),
+        expected_close_date DATE,
+        probability INTEGER DEFAULT 50,
+        position INTEGER DEFAULT 0,
+        notes TEXT,
+        assigned_to INTEGER REFERENCES admin_users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS deal_activities (
+        id SERIAL PRIMARY KEY,
+        deal_id INTEGER REFERENCES pipeline_deals(id) ON DELETE CASCADE,
+        activity_type VARCHAR(100) NOT NULL,
+        description TEXT,
+        metadata JSONB,
+        created_by INTEGER REFERENCES admin_users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_pipeline_deals_stage 
+    ON pipeline_deals(stage_id, position);
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_deal_activities_deal 
+    ON deal_activities(deal_id, created_at DESC);
+`);
+
+// Insert default pipeline stages
+await client.query(`
+    INSERT INTO pipeline_stages (name, description, color, position, probability)
+    VALUES 
+        ('New Lead', 'Initial contact', '#3b82f6', 1, 10),
+        ('Qualified', 'Lead has been qualified', '#10b981', 2, 25),
+        ('Proposal Sent', 'Proposal has been sent to client', '#f59e0b', 3, 50),
+        ('Negotiation', 'Negotiating terms', '#8b5cf6', 4, 75),
+        ('Closed Won', 'Deal won', '#22c55e', 5, 100),
+        ('Closed Lost', 'Deal lost', '#ef4444', 6, 0)
+    ON CONFLICT DO NOTHING;
+`);
+
         // Create admin_users table
         await client.query(`
             CREATE TABLE IF NOT EXISTS admin_users (
@@ -4120,123 +4237,6 @@ app.get('/api/documents/stats', authenticateToken, async (req, res) => {
 
 // ==================== DATABASE SCHEMA ====================
 // Add to initializeDatabase() function:
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS documents (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        filename VARCHAR(500) NOT NULL,
-        original_filename VARCHAR(500) NOT NULL,
-        file_path TEXT NOT NULL,
-        file_size BIGINT,
-        mime_type VARCHAR(100),
-        document_type VARCHAR(100),
-        description TEXT,
-        uploaded_by INTEGER REFERENCES admin_users(id),
-        is_shared BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS document_versions (
-        id SERIAL PRIMARY KEY,
-        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
-        version_number INTEGER NOT NULL,
-        filename VARCHAR(500) NOT NULL,
-        file_path TEXT NOT NULL,
-        file_size BIGINT,
-        uploaded_by INTEGER REFERENCES admin_users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS document_shares (
-        id SERIAL PRIMARY KEY,
-        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
-        shared_with_email VARCHAR(255),
-        share_token VARCHAR(255) UNIQUE,
-        expires_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_documents_lead 
-    ON documents(lead_id, created_at DESC);
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_document_shares_token 
-    ON document_shares(share_token);
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS pipeline_stages (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(200) NOT NULL,
-        description TEXT,
-        color VARCHAR(50),
-        position INTEGER NOT NULL,
-        probability INTEGER DEFAULT 50,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS pipeline_deals (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        stage_id INTEGER REFERENCES pipeline_stages(id),
-        title VARCHAR(500) NOT NULL,
-        value DECIMAL(10, 2),
-        expected_close_date DATE,
-        probability INTEGER DEFAULT 50,
-        position INTEGER DEFAULT 0,
-        notes TEXT,
-        assigned_to INTEGER REFERENCES admin_users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS deal_activities (
-        id SERIAL PRIMARY KEY,
-        deal_id INTEGER REFERENCES pipeline_deals(id) ON DELETE CASCADE,
-        activity_type VARCHAR(100) NOT NULL,
-        description TEXT,
-        metadata JSONB,
-        created_by INTEGER REFERENCES admin_users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_pipeline_deals_stage 
-    ON pipeline_deals(stage_id, position);
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_deal_activities_deal 
-    ON deal_activities(deal_id, created_at DESC);
-`);
-
-// Insert default pipeline stages
-await client.query(`
-    INSERT INTO pipeline_stages (name, description, color, position, probability)
-    VALUES 
-        ('New Lead', 'Initial contact', '#3b82f6', 1, 10),
-        ('Qualified', 'Lead has been qualified', '#10b981', 2, 25),
-        ('Proposal Sent', 'Proposal has been sent to client', '#f59e0b', 3, 50),
-        ('Negotiation', 'Negotiating terms', '#8b5cf6', 4, 75),
-        ('Closed Won', 'Deal won', '#22c55e', 5, 100),
-        ('Closed Lost', 'Deal lost', '#ef4444', 6, 0)
-    ON CONFLICT DO NOTHING;
-`);
 
 // ==================== API ENDPOINTS ====================
 

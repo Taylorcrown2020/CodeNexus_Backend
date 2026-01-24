@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "type": "commonjs", 
     "dev": "nodemon server.js",
     "build": "npx puppeteer browsers install chrome"
   },

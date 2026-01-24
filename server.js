@@ -3785,57 +3785,7 @@ const upload = multer({
 // ==================== DATABASE SCHEMA ====================
 // Add to initializeDatabase() function:
 
-await client.query(`
-    CREATE TABLE IF NOT EXISTS documents (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        filename VARCHAR(500) NOT NULL,
-        original_filename VARCHAR(500) NOT NULL,
-        file_path TEXT NOT NULL,
-        file_size BIGINT,
-        mime_type VARCHAR(100),
-        document_type VARCHAR(100),
-        description TEXT,
-        uploaded_by INTEGER REFERENCES admin_users(id),
-        is_shared BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
 
-await client.query(`
-    CREATE TABLE IF NOT EXISTS document_versions (
-        id SERIAL PRIMARY KEY,
-        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
-        version_number INTEGER NOT NULL,
-        filename VARCHAR(500) NOT NULL,
-        file_path TEXT NOT NULL,
-        file_size BIGINT,
-        uploaded_by INTEGER REFERENCES admin_users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS document_shares (
-        id SERIAL PRIMARY KEY,
-        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
-        shared_with_email VARCHAR(255),
-        share_token VARCHAR(255) UNIQUE,
-        expires_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_documents_lead 
-    ON documents(lead_id, created_at DESC);
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_document_shares_token 
-    ON document_shares(share_token);
-`);
 
 // ==================== API ENDPOINTS ====================
 
@@ -4170,6 +4120,58 @@ app.get('/api/documents/stats', authenticateToken, async (req, res) => {
 
 // ==================== DATABASE SCHEMA ====================
 // Add to initializeDatabase() function:
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS documents (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        filename VARCHAR(500) NOT NULL,
+        original_filename VARCHAR(500) NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size BIGINT,
+        mime_type VARCHAR(100),
+        document_type VARCHAR(100),
+        description TEXT,
+        uploaded_by INTEGER REFERENCES admin_users(id),
+        is_shared BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS document_versions (
+        id SERIAL PRIMARY KEY,
+        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+        version_number INTEGER NOT NULL,
+        filename VARCHAR(500) NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size BIGINT,
+        uploaded_by INTEGER REFERENCES admin_users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS document_shares (
+        id SERIAL PRIMARY KEY,
+        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+        shared_with_email VARCHAR(255),
+        share_token VARCHAR(255) UNIQUE,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_documents_lead 
+    ON documents(lead_id, created_at DESC);
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_document_shares_token 
+    ON document_shares(share_token);
+`);
 
 await client.query(`
     CREATE TABLE IF NOT EXISTS pipeline_stages (

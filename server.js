@@ -64,7 +64,7 @@ const servicePackages = {
     }
 };
 
-import { transporter, verifyEmailConfig } from './email-config.js';
+const { transporter, verifyEmailConfig } = require('./email-config.js');
 
 // ========================================
 // STRIPE WEBHOOK (MUST BE FIRST!)
@@ -5417,19 +5417,6 @@ app.use((err, req, res, next) => {
         message: 'Internal server error' 
     });
 });
-
-async function verifyEmailConfig() {
-    try {
-        await transporter.verify();
-        console.log('✅ Email configuration verified');
-        return true;
-    } catch (error) {
-        console.error('❌ Email configuration failed:', error);
-        return false;
-    }
-}
-
-module.exports = { transporter, verifyEmailConfig };
 
 // ========================================
 // SERVER STARTUP

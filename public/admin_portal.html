@@ -3851,378 +3851,413 @@ function renderSettings(content) {
 // MODAL FUNCTIONS
 // ========================================
 async function openDetailModal(type, id) {
-const modal = document.getElementById('detailModal');
-const titleEl = document.getElementById('detailModalTitle');
-const bodyEl = document.getElementById('detailModalBody');
-const footerEl = document.getElementById('detailModalFooter');
-if (type === 'lead') {
-    const lead = [...state.leads, ...state.customers].find(l => l.id === id);
-    if (!lead) return;
+    const modal = document.getElementById('detailModal');
+    const titleEl = document.getElementById('detailModalTitle');
+    const bodyEl = document.getElementById('detailModalBody');
+    const footerEl = document.getElementById('detailModalFooter');
     
-state.currentLead = lead;
-const expenses = await loadExpenses(id);
-const notes = lead.notes ? JSON.parse(lead.notes) : [];
-const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
-    
-    titleEl.textContent = `${lead.is_customer ? 'Customer' : 'Lead'} Details`;
-    
-    bodyEl.innerHTML = `
-        <div class="detail-section">
-            <div class="section-header">
-                <h3 class="section-title">Contact Information</h3>
-            </div>
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <div class="detail-label">Name</div>
-                    <div class="detail-value">${lead.name}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Email</div>
-                    <div class="detail-value">${lead.email}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Phone</div>
-                    <div class="detail-value">${lead.phone || 'N/A'}</div>
-                </div>
-<div class="detail-item">
-    <div class="detail-label">Company</div>
-    <div class="detail-value">${lead.company || 'N/A'}</div>
-</div>
-<div class="detail-item full-width">
-    <div class="detail-label">Billing Address</div>
-    <div class="detail-value">
-        ${lead.address_line1 || lead.address_line2 || lead.city ? `
-            ${lead.address_line1 ? lead.address_line1 + '<br>' : ''}
-            ${lead.address_line2 ? lead.address_line2 + '<br>' : ''}
-            ${lead.city ? lead.city + ', ' : ''}${lead.state || ''} ${lead.zip_code || ''}
-            ${lead.country && lead.country !== 'USA' ? '<br>' + lead.country : ''}
-        ` : '<span style="color: var(--text-muted);">No address on file</span>'}
-        <button class="btn btn-sm btn-secondary" style="margin-top: 8px;" onclick="editAddress(${lead.id})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            Edit Address
-        </button>
-    </div>
-</div>
-                <div class="detail-item full-width">
-                    <div class="detail-label">Message</div>
-                    <div class="detail-value">${lead.message || 'N/A'}</div>
-                </div>
-            </div>
-        </div>
+    if (type === 'lead') {
+        const lead = [...state.leads, ...state.customers].find(l => l.id === id);
+        if (!lead) return;
         
-        <div class="detail-section">
-            <div class="section-header">
-                <h3 class="section-title">Project Details</h3>
-            </div>
-            <div class="detail-grid">
-                <div class="detail-item">
-                    <div class="detail-label">Project Type</div>
-                    <div class="detail-value">${lead.project_type || 'N/A'}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Budget</div>
-                    <div class="detail-value">${lead.budget ? `$${parseFloat(lead.budget).toLocaleString()}` : 'N/A'}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Timeline</div>
-                    <div class="detail-value">${lead.timeline || 'N/A'}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Status</div>
-                    <div class="detail-value">
-                        <span class="status-badge status-${lead.status}">
-                            <span class="status-dot"></span>
-                            ${lead.status}
-                        </span>
-                    </div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Priority</div>
-                    <div class="detail-value">
-                        <span class="priority-badge priority-${lead.priority || 'low'}">${lead.priority || 'low'}</span>
-                    </div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Created</div>
-                    <div class="detail-value">${formatDate(lead.created_at)}</div>
-                </div>
-            </div>
-        </div>
+        state.currentLead = lead;
+        const expenses = await loadExpenses(id);
+        const notes = lead.notes ? JSON.parse(lead.notes) : [];
+        const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
         
-        <div class="detail-section">
-            <div class="section-header">
-                <h3 class="section-title">Expenses</h3>
-            </div>
-            <div class="expense-list">
-                ${expenses.length > 0 ? expenses.map(exp => `
-                    <div class="expense-item ${state.selectedExpenses.includes(exp.id) ? 'selected' : ''}" data-expense-id="${exp.id}">
-                        <div class="expense-checkbox ${state.selectedExpenses.includes(exp.id) ? 'checked' : ''}" onclick="toggleExpense(${exp.id})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </div>
-                        <div class="expense-content">
-                            <div class="expense-description">${exp.description}</div>
-                            <div class="expense-meta">
-                                <div class="expense-meta-item">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                        <line x1="16" y1="2" x2="16" y2="6"/>
-                                        <line x1="8" y1="2" x2="8" y2="6"/>
-                                        <line x1="3" y1="10" x2="21" y2="10"/>
-                                    </svg>
-                                    ${formatDate(exp.expense_date)}
-                                </div>
-                                ${exp.category ? `<span>${exp.category}</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="expense-amount">$${parseFloat(exp.amount).toLocaleString()}</div>
-                        <div class="expense-actions">
-                            <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteExpense(${exp.id})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        titleEl.textContent = `${lead.is_customer ? 'Customer' : 'Lead'} Details`;
+        
+        bodyEl.innerHTML = `
+            <div class="detail-section">
+                <div class="section-header">
+                    <h3 class="section-title">Contact Information</h3>
+                </div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Name</div>
+                        <div class="detail-value">${lead.name}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Email</div>
+                        <div class="detail-value">${lead.email}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Phone</div>
+                        <div class="detail-value">${lead.phone || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Company</div>
+                        <div class="detail-value">${lead.company || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item full-width">
+                        <div class="detail-label">Billing Address</div>
+                        <div class="detail-value">
+                            ${lead.address_line1 || lead.address_line2 || lead.city ? `
+                                ${lead.address_line1 ? lead.address_line1 + '<br>' : ''}
+                                ${lead.address_line2 ? lead.address_line2 + '<br>' : ''}
+                                ${lead.city ? lead.city + ', ' : ''}${lead.state || ''} ${lead.zip_code || ''}
+                                ${lead.country && lead.country !== 'USA' ? '<br>' + lead.country : ''}
+                            ` : '<span style="color: var(--text-muted);">No address on file</span>'}
+                            <button class="btn btn-sm btn-secondary" style="margin-top: 8px;" onclick="editAddress(${lead.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                 </svg>
+                                Edit Address
                             </button>
                         </div>
                     </div>
-                `).join('') : '<div class="expense-empty">No expenses recorded yet</div>'}
-            </div>
-            <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="openCreateModal('expense', ${id})">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Add Expense
-            </button>
-        </div>
-        
-        <div class="detail-section">
-            <div class="section-header">
-                <h3 class="section-title">Invoices</h3>
-            </div>
-            <div class="expense-list">
-                ${leadInvoices.length > 0 ? leadInvoices.map(inv => `
-                    <div class="expense-item" style="cursor: pointer;" onclick="closeDetailModal(); setTimeout(() => openDetailModal('invoice', ${inv.id}), 100);">
-                        <div class="expense-content">
-                            <div class="expense-description" style="font-family: var(--font-mono); font-weight: 600;">${inv.invoice_number}</div>
-                            <div class="expense-meta">
-                                <div class="expense-meta-item">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                        <line x1="16" y1="2" x2="16" y2="6"/>
-                                        <line x1="8" y1="2" x2="8" y2="6"/>
-                                        <line x1="3" y1="10" x2="21" y2="10"/>
-                                    </svg>
-                                    ${formatDate(inv.issue_date)}
-                                </div>
-                                <span>Due: ${formatDate(inv.due_date)}</span>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span class="status-badge status-${inv.status}">
-                                <span class="status-dot"></span>
-                                ${inv.status}
-                            </span>
-                            <div class="expense-amount">$${parseFloat(inv.total_amount).toLocaleString()}</div>
-                        </div>
-                    </div>
-                `).join('') : '<div class="expense-empty">No invoices yet</div>'}
-            </div>
-            ${leadInvoices.length > 0 ? `
-                <div style="display: flex; gap: 16px; margin-top: 16px; padding: 16px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-                    <div style="flex: 1; text-align: center;">
-                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">Total Invoiced</div>
-                        <div style="font-size: 20px; font-weight: 700; color: var(--text-primary); font-family: var(--font-mono);">$${leadInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0).toLocaleString()}</div>
-                    </div>
-                    <div style="flex: 1; text-align: center;">
-                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">Paid</div>
-                        <div style="font-size: 20px; font-weight: 700; color: var(--status-contacted); font-family: var(--font-mono);">$${leadInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0).toLocaleString()}</div>
-                    </div>
-                    <div style="flex: 1; text-align: center;">
-                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">Outstanding</div>
-                        <div style="font-size: 20px; font-weight: 700; color: var(--status-pending); font-family: var(--font-mono);">$${leadInvoices.filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled').reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0).toLocaleString()}</div>
+                    <div class="detail-item full-width">
+                        <div class="detail-label">Message</div>
+                        <div class="detail-value">${lead.message || 'N/A'}</div>
                     </div>
                 </div>
-            ` : ''}
-        </div>
-        
-        <div class="detail-section">
-            <div class="section-header">
-                <h3 class="section-title">Notes</h3>
             </div>
-            <div class="notes-list">
-                ${notes.length > 0 ? notes.map(note => `
-                    <div class="note-item">
-                        <div class="note-header">
-                            <span class="note-author">${note.author || 'Admin'}</span>
-                            <span class="note-date">${formatDate(note.date)}</span>
-                        </div>
-                        <div class="note-text">${note.text}</div>
+            
+            <div class="detail-section">
+                <div class="section-header">
+                    <h3 class="section-title">Project Details</h3>
+                </div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Project Type</div>
+                        <div class="detail-value">${lead.project_type || 'N/A'}</div>
                     </div>
-                `).join('') : '<div class="note-empty">No notes yet</div>'}
+                    <div class="detail-item">
+                        <div class="detail-label">Budget</div>
+                        <div class="detail-value">${lead.budget ? `$${parseFloat(lead.budget).toLocaleString()}` : 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Timeline</div>
+                        <div class="detail-value">${lead.timeline || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge status-${lead.status}">
+                                <span class="status-dot"></span>
+                                ${lead.status}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Priority</div>
+                        <div class="detail-value">
+                            <span class="priority-badge priority-${lead.priority || 'low'}">${lead.priority || 'low'}</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Created</div>
+                        <div class="detail-value">${formatDate(lead.created_at)}</div>
+                    </div>
+                </div>
             </div>
-            <div class="form-group full-width">
-                <textarea class="form-textarea" id="newNote" placeholder="Add a new note..."></textarea>
-                <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="addNote(${id})">
+            
+            <div class="detail-section">
+                <div class="section-header">
+                    <h3 class="section-title">Expenses</h3>
+                </div>
+                <div class="expense-list">
+                    ${expenses.length > 0 ? expenses.map(exp => `
+                        <div class="expense-item ${state.selectedExpenses.includes(exp.id) ? 'selected' : ''}" data-expense-id="${exp.id}">
+                            <div class="expense-checkbox ${state.selectedExpenses.includes(exp.id) ? 'checked' : ''}" onclick="toggleExpense(${exp.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                            <div class="expense-content">
+                                <div class="expense-description">${exp.description}</div>
+                                <div class="expense-meta">
+                                    <div class="expense-meta-item">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                            <line x1="16" y1="2" x2="16" y2="6"/>
+                                            <line x1="8" y1="2" x2="8" y2="6"/>
+                                            <line x1="3" y1="10" x2="21" y2="10"/>
+                                        </svg>
+                                        ${formatDate(exp.expense_date)}
+                                    </div>
+                                    ${exp.category ? `<span>${exp.category}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="expense-amount">$${parseFloat(exp.amount).toLocaleString()}</div>
+                            <div class="expense-actions">
+                                <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteExpense(${exp.id})">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('') : '<div class="expense-empty">No expenses recorded yet</div>'}
+                </div>
+                <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="openCreateModal('expense', ${id})">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"/>
                         <line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
-                    Add Note
+                    Add Expense
                 </button>
             </div>
-        </div>
-    `;
-    
-    footerEl.innerHTML = `
-    <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
-
-    <button class="btn btn-secondary" onclick="changeLeadStatus(${id})">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <polyline points="12 6 12 12 16 14"/>
-    </svg>
-    Change Status
-</button>
-    
-    ${!lead.is_customer ? `
-        <button class="btn btn-success" onclick="convertToCustomer(${id})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="8.5" cy="7" r="4"/>
-                <polyline points="17 11 19 13 23 9"/>
-            </svg>
-            Convert to Customer
-        </button>
-    ` : ''}
-    
-    <button class="btn btn-secondary" onclick="assignEmployee(${id})">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="8.5" cy="7" r="4"/>
-            <line x1="20" y1="8" x2="20" y2="14"/>
-            <line x1="23" y1="11" x2="17" y2="11"/>
-        </svg>
-        Assign Employee
-    </button>
-    
-    <button class="btn btn-secondary" onclick="changePriority(${id})">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        Change Priority
-    </button>
-        ${state.selectedExpenses.length > 0 ? `
-            <button class="btn btn-success" onclick="createInvoiceFromExpenses()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                Create Invoice (${state.selectedExpenses.length} selected)
-            </button>
-        ` : `
-            <button class="btn btn-primary" onclick="openCreateModal('invoice', ${id})">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                Create Invoice
-            </button>
-        `}
-        <button class="btn btn-danger" onclick="deleteLead(${id})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-            Delete
-        </button>
-    `;
-    if (type === 'invoice') {
-    console.log('📄 Opening invoice modal for ID:', id);
-    const invoice = state.invoices.find(i => i.id === id);
-    if (!invoice) {
-        console.error('❌ Invoice not found:', id);
-        showToast('Invoice not found', 'error');
-        return;
-    }
-
-    console.log('✅ Invoice found:', invoice);
-    
-    state.currentInvoice = invoice;
-    
-    titleEl.textContent = 'Invoice Details';
-    
-    // Generate the preview HTML
-    const previewHTML = await renderInvoicePreview(invoice);
-    bodyEl.innerHTML = previewHTML;
-
-    // ✅ BUILD FOOTER BUTTONS HERE (AFTER await completes)
-    let footerButtons = `
-        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
-    `;
-
-    // Add email button
-    if (invoice.customer_email) {
-        footerButtons += `
-            <button class="btn btn-secondary" onclick="emailInvoiceToClient()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                    <polyline points="22,6 12,13 2,6"/>
-                </svg>
-                Email to Client
-            </button>
+            
+            <div class="detail-section">
+                <div class="section-header">
+                    <h3 class="section-title">Invoices</h3>
+                </div>
+                <div class="expense-list">
+                    ${leadInvoices.length > 0 ? leadInvoices.map(inv => `
+                        <div class="expense-item" style="cursor: pointer;" onclick="closeDetailModal(); setTimeout(() => openDetailModal('invoice', ${inv.id}), 100);">
+                            <div class="expense-content">
+                                <div class="expense-description" style="font-family: var(--font-mono); font-weight: 600;">${inv.invoice_number}</div>
+                                <div class="expense-meta">
+                                    <div class="expense-meta-item">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                            <line x1="16" y1="2" x2="16" y2="6"/>
+                                            <line x1="8" y1="2" x2="8" y2="6"/>
+                                            <line x1="3" y1="10" x2="21" y2="10"/>
+                                        </svg>
+                                        ${formatDate(inv.issue_date)}
+                                    </div>
+                                    <span>Due: ${formatDate(inv.due_date)}</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span class="status-badge status-${inv.status}">
+                                    <span class="status-dot"></span>
+                                    ${inv.status}
+                                </span>
+                                <div class="expense-amount">$${parseFloat(inv.total_amount).toLocaleString()}</div>
+                            </div>
+                        </div>
+                    `).join('') : '<div class="expense-empty">No invoices yet</div>'}
+                </div>
+                ${leadInvoices.length > 0 ? `
+                    <div style="display: flex; gap: 16px; margin-top: 16px; padding: 16px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">Total Invoiced</div>
+                            <div style="font-size: 20px; font-weight: 700; color: var(--text-primary); font-family: var(--font-mono);">$${leadInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0).toLocaleString()}</div>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">Paid</div>
+                            <div style="font-size: 20px; font-weight: 700; color: var(--status-contacted); font-family: var(--font-mono);">$${leadInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0).toLocaleString()}</div>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;">Outstanding</div>
+                            <div style="font-size: 20px; font-weight: 700; color: var(--status-pending); font-family: var(--font-mono);">$${leadInvoices.filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled').reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0).toLocaleString()}</div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="detail-section">
+                <div class="section-header">
+                    <h3 class="section-title">Notes</h3>
+                </div>
+                <div class="notes-list">
+                    ${notes.length > 0 ? notes.map(note => `
+                        <div class="note-item">
+                            <div class="note-header">
+                                <span class="note-author">${note.author || 'Admin'}</span>
+                                <span class="note-date">${formatDate(note.date)}</span>
+                            </div>
+                            <div class="note-text">${note.text}</div>
+                        </div>
+                    `).join('') : '<div class="note-empty">No notes yet</div>'}
+                </div>
+                <div class="form-group full-width">
+                    <textarea class="form-textarea" id="newNote" placeholder="Add a new note..."></textarea>
+                    <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="addNote(${id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add Note
+                    </button>
+                </div>
+            </div>
         `;
-    }
-
-    // Add Mark as Paid button if not already paid
-    if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
-        footerButtons += `
-            <button class="btn btn-success" onclick="openPaymentModal(${invoice.id})">
+        
+        footerEl.innerHTML = `
+            <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+            <button class="btn btn-secondary" onclick="changeLeadStatus(${id})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
                 </svg>
-                Mark as Paid
+                Change Status
             </button>
-        `;
-    }
-
-    // Add print button
-    footerButtons += `
-        <button class="btn btn-primary" onclick="printInvoice()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 6 2 18 2 18 9"/>
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                <rect x="6" y="14" width="12" height="8"/>
-            </svg>
-            Print Invoice
-        </button>
-    `;
-
-    // Add delete button (only for non-paid invoices)
-    if (invoice.status !== 'paid') {
-        footerButtons += `
-            <button class="btn btn-danger" onclick="deleteInvoice(${invoice.id})">
+            ${!lead.is_customer ? `
+                <button class="btn btn-success" onclick="convertToCustomer(${id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="8.5" cy="7" r="4"/>
+                        <polyline points="17 11 19 13 23 9"/>
+                    </svg>
+                    Convert to Customer
+                </button>
+            ` : ''}
+            <button class="btn btn-secondary" onclick="assignEmployee(${id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/>
+                    <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+                Assign Employee
+            </button>
+            <button class="btn btn-secondary" onclick="changePriority(${id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Change Priority
+            </button>
+            ${state.selectedExpenses.length > 0 ? `
+                <button class="btn btn-success" onclick="createInvoiceFromExpenses()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    Create Invoice (${state.selectedExpenses.length} selected)
+                </button>
+            ` : `
+                <button class="btn btn-primary" onclick="openCreateModal('invoice', ${id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    Create Invoice
+                </button>
+            `}
+            <button class="btn btn-danger" onclick="deleteLead(${id})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6"/>
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                 </svg>
-                Delete Invoice
+                Delete
             </button>
         `;
-    }
+        
+        modal.classList.add('active');
+        
+    } else if (type === 'invoice') {
+        console.log('📄 Opening invoice modal for ID:', id);
+        const invoice = state.invoices.find(i => i.id === id);
+        if (!invoice) {
+            console.error('❌ Invoice not found:', id);
+            showToast('Invoice not found', 'error');
+            return;
+        }
 
-    footerEl.innerHTML = footerButtons;
-    
-    modal.classList.add('active');
-    return; // ✅ ADD THIS RETURN TO EXIT HERE
-}
+        console.log('✅ Invoice found:', invoice);
+        
+        state.currentInvoice = invoice;
+        
+        titleEl.textContent = 'Invoice Details';
+        
+        // Generate the preview HTML
+        const previewHTML = await renderInvoicePreview(invoice);
+        bodyEl.innerHTML = previewHTML;
+
+        // Build footer buttons
+        let footerButtons = `
+            <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+        `;
+
+        // Add email button
+        if (invoice.customer_email) {
+            footerButtons += `
+                <button class="btn btn-secondary" onclick="emailInvoiceToClient()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    Email to Client
+                </button>
+            `;
+        }
+
+        // Add Mark as Paid button if not already paid
+        if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
+            footerButtons += `
+                <button class="btn btn-success" onclick="openPaymentModal(${invoice.id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Mark as Paid
+                </button>
+            `;
+        }
+
+        // Add print button
+        footerButtons += `
+            <button class="btn btn-primary" onclick="printInvoice()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 6 2 18 2 18 9"/>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                Print Invoice
+            </button>
+        `;
+
+        // Add delete button (only for non-paid invoices)
+        if (invoice.status !== 'paid') {
+            footerButtons += `
+                <button class="btn btn-danger" onclick="deleteInvoice(${invoice.id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    Delete Invoice
+                </button>
+            `;
+        }
+
+        footerEl.innerHTML = footerButtons;
+        
+        modal.classList.add('active');
+        
+    } else if (type === 'employee') {
+        const employee = state.employees.find(e => e.id === id);
+        if (!employee) return;
+        
+        titleEl.textContent = 'Employee Details';
+        bodyEl.innerHTML = `
+            <div class="detail-section">
+                <h3>Employee Information</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Name</div>
+                        <div class="detail-value">${employee.name}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Email</div>
+                        <div class="detail-value">${employee.email}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Phone</div>
+                        <div class="detail-value">${employee.phone || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Role</div>
+                        <div class="detail-value">${employee.role || 'N/A'}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        footerEl.innerHTML = `
+            <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+            <button class="btn btn-danger" onclick="deleteEmployee(${employee.id})">Delete</button>
+        `;
+        
+        modal.classList.add('active');
+    }
 }
 async function renderInvoicePreview(invoice) {
     const items = invoice.items || [];
@@ -4621,7 +4656,6 @@ if (type === 'lead') {
 }
 
 modal.classList.add('active');
-}
 }
 function closeCreateModal() {
 document.getElementById('createModal').classList.remove('active');

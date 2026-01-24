@@ -2426,17 +2426,264 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
             }
         });
 
-console.log('📄 Generating full SLA PDF for email...');
-const pdfHTML = generateTimelinePDFHTML(timeline);
-const pdfBuffer = await generateTimelinePDFWithPDFKit(timeline);
-console.log('✅ Full SLA PDF generated');
+        // Generate PDF using PDFKit
+        const doc = new PDFDocument({ 
+            margin: 50, 
+            size: 'LETTER',
+            info: {
+                Title: `SLA - ${timeline.clientName}`,
+                Author: 'Diamondback Coding'
+            }
+        });
+        
+        const pdfBuffers = [];
+        doc.on('data', pdfBuffers.push.bind(pdfBuffers));
 
-        // Generate packages text for email
+        // === PDF CONTENT ===
+        
+        // Header (Green bar)
+        doc.rect(0, 0, doc.page.width, 100).fill('#22c55e');
+        doc.fillColor('#ffffff')
+           .fontSize(28)
+           .font('Helvetica-Bold')
+           .text('DIAMONDBACK CODING', 50, 30);
+        doc.fontSize(10).text('PREMIUM DEVELOPMENT SERVICES', 50, 65);
+
+        // Reset to black text
+        doc.fillColor('#000000');
+        doc.y = 150;
+
+        // Title
+        doc.fontSize(24)
+           .font('Helvetica-Bold')
+           .text('SERVICE LEVEL AGREEMENT', { align: 'center' });
+        doc.moveDown(0.5);
+        doc.fontSize(12)
+           .font('Helvetica')
+           .fillColor('#666666')
+           .text('Project Timeline & Terms of Service', { align: 'center' });
+        doc.fillColor('#000000');
+        doc.moveDown(2);
+
+        // Agreement Overview
+        doc.fontSize(10)
+           .font('Helvetica-Bold')
+           .fillColor('#22c55e')
+           .text('AGREEMENT OVERVIEW');
+        doc.moveDown(0.5);
+        doc.fontSize(11)
+           .font('Helvetica')
+           .fillColor('#000000')
+           .text(`This Service Level Agreement is entered into as of ${new Date(timeline.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} by and between Diamondback Coding and ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}.`);
+        doc.moveDown(2);
+
+        // Two columns for parties
+        const leftCol = 50;
+        const rightCol = 320;
+        const colTop = doc.y;
+
+        // Service Provider (left column)
+        doc.fontSize(9)
+           .font('Helvetica-Bold')
+           .fillColor('#22c55e')
+           .text('SERVICE PROVIDER', leftCol, colTop);
+        doc.fillColor('#000000')
+           .fontSize(12)
+           .text('Diamondback Coding', leftCol, colTop + 15);
+        doc.fontSize(10)
+           .font('Helvetica')
+           .fillColor('#666666')
+           .text('15709 Spillman Ranch Loop', leftCol, colTop + 32)
+           .text('Austin, TX 78738', leftCol, colTop + 46)
+           .text('diamondbackcoding@gmail.com', leftCol, colTop + 60)
+           .text('(940) 217-8680', leftCol, colTop + 74);
+
+        // Client (right column)
+        doc.fontSize(9)
+           .font('Helvetica-Bold')
+           .fillColor('#22c55e')
+           .text('CLIENT', rightCol, colTop);
+        doc.fillColor('#000000')
+           .fontSize(12)
+           .text(timeline.clientName, rightCol, colTop + 15);
+        doc.fontSize(10)
+           .font('Helvetica')
+           .fillColor('#666666');
+        let clientY = colTop + 32;
+        if (timeline.clientCompany) {
+            doc.text(timeline.clientCompany, rightCol, clientY);
+            clientY += 14;
+        }
+        if (timeline.clientEmail) {
+            doc.text(timeline.clientEmail, rightCol, clientY);
+            clientY += 14;
+        }
+        if (timeline.clientPhone) {
+            doc.text(timeline.clientPhone, rightCol, clientY);
+        }
+
+        doc.y = colTop + 120;
+        doc.moveDown(2);
+
+        // Project Details
+        doc.fontSize(10)
+           .font('Helvetica-Bold')
+           .fillColor('#22c55e')
+           .text('PROJECT DETAILS');
+        doc.moveDown(0.5);
+        
+        doc.fontSize(11)
+           .font('Helvetica')
+           .fillColor('#000000')
+           .text(`Project Name: ${timeline.projectName || 'Web Development Project'}`)
+           .text(`Start Date: ${new Date(timeline.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`)
+           .text(`Total Investment: ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}`)
+           .text(`Payment Terms: ${getPaymentTermsText(timeline)}`);
+        doc.moveDown(2);
+
+        // Selected Services
+        doc.fontSize(10)
+           .font('Helvetica-Bold')
+           .fillColor('#22c55e')
+           .text('SELECTED SERVICES');
+        doc.moveDown(0.5);
+        
+        timeline.packages.forEach(key => {
+            const pkg = servicePackages[key];
+            if (pkg) {
+                doc.fontSize(11)
+                   .font('Helvetica')
+                   .fillColor('#000000')
+                   .text(`✓ ${pkg.name}${pkg.isFree ? ' (FREE)' : ''}`);
+            }
+        });
+        doc.moveDown(2);
+
+        // Scope if exists
+        if (timeline.scope) {
+            doc.fontSize(10)
+               .font('Helvetica-Bold')
+               .fillColor('#22c55e')
+               .text('PROJECT SCOPE');
+            doc.moveDown(0.5);
+            doc.fontSize(11)
+               .font('Helvetica')
+               .fillColor('#000000')
+               .text(timeline.scope, { width: 500 });
+            doc.moveDown(2);
+        }
+
+        // Add new page for timeline
+        doc.addPage();
+
+        // Detailed Timeline
+        doc.fontSize(14)
+           .font('Helvetica-Bold')
+           .fillColor('#22c55e')
+           .text('DETAILED PROJECT TIMELINE');
+        doc.moveDown(1);
+
+        let phaseNumber = 1;
+        timeline.packages.forEach(packageKey => {
+            const pkg = servicePackages[packageKey];
+            if (!pkg || !pkg.phases) return;
+
+            // Package name
+            doc.fontSize(12)
+               .font('Helvetica-Bold')
+               .fillColor('#000000')
+               .text(pkg.name);
+            doc.fontSize(10)
+               .font('Helvetica')
+               .fillColor('#666666')
+               .text(pkg.description);
+            doc.moveDown(0.5);
+
+            pkg.phases.forEach(phase => {
+                doc.fontSize(11)
+                   .font('Helvetica-Bold')
+                   .fillColor('#000000')
+                   .text(`Phase ${phaseNumber}: ${phase.name} (${phase.duration})`);
+                
+                phase.tasks.forEach(task => {
+                    doc.fontSize(10)
+                       .font('Helvetica')
+                       .fillColor('#333333')
+                       .text(`  • ${task}`, { indent: 20 });
+                });
+                
+                doc.moveDown(0.5);
+                phaseNumber++;
+            });
+
+            doc.moveDown(1);
+        });
+
+        // Client Responsibilities
+        if (doc.y > 600) doc.addPage();
+        
+        doc.fontSize(12)
+           .font('Helvetica-Bold')
+           .fillColor('#22c55e')
+           .text('CLIENT RESPONSIBILITIES');
+        doc.moveDown(0.5);
+        
+        const responsibilities = [
+            'Provide all required content within 3 business days of request',
+            'Respond to design/development reviews within 5 business days',
+            'Attend scheduled bi-weekly progress meetings',
+            'Designate a single point of contact for communications',
+            'Make payments according to agreed schedule',
+            'Provide access to necessary accounts and credentials'
+        ];
+        
+        responsibilities.forEach(resp => {
+            doc.fontSize(10)
+               .font('Helvetica')
+               .fillColor('#000000')
+               .text(`• ${resp}`, { indent: 10 });
+        });
+        doc.moveDown(2);
+
+        // Signature area
+        doc.fontSize(11)
+           .font('Helvetica-Bold')
+           .fillColor('#000000')
+           .text('CLIENT SIGNATURE REQUIRED:');
+        doc.moveDown(1);
+        
+        doc.moveTo(50, doc.y)
+           .lineTo(300, doc.y)
+           .stroke();
+        doc.moveDown(0.3);
+        doc.fontSize(9)
+           .font('Helvetica')
+           .fillColor('#666666')
+           .text('Client Signature');
+        doc.moveDown(2);
+        
+        doc.moveTo(50, doc.y)
+           .lineTo(300, doc.y)
+           .stroke();
+        doc.moveDown(0.3);
+        doc.text('Date');
+
+        // End PDF
+        doc.end();
+
+        // Wait for PDF to finish
+        await new Promise((resolve) => {
+            doc.on('end', resolve);
+        });
+
+        const pdfBuffer = Buffer.concat(pdfBuffers);
+
+        // Email HTML content
         const packagesText = timeline.packages.map(k => 
             servicePackages[k]?.name || k
         ).join(', ');
 
-const emailHtml = `
+        const emailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -2582,91 +2829,190 @@ function getPaymentTermsText(timeline) {
 }
 
 // REPLACE THIS ENTIRE ENDPOINT
-function generateInvoicePDFWithPDFKit(invoice) {
-    const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
-    const chunks = [];
-    doc.on('data', chunks.push.bind(chunks));
-    
-    const items = invoice.items || [];
-    const taxAmount = parseFloat(invoice.tax_amount || 0);
-    const discount = parseFloat(invoice.discount_amount || 0);
-    
-    // GREEN HEADER
-    doc.rect(0, 0, doc.page.width, 100).fill('#22c55e');
-    doc.fillColor('white').fontSize(32).font('Helvetica-Bold').text('INVOICE', 50, 35);
-    doc.fontSize(16).text(`#${invoice.invoice_number}`, 50, 70);
-    
-    doc.y = 120;
-    doc.fillColor('black');
-    
-    // BILL TO
-    doc.fontSize(14).font('Helvetica-Bold').text('Bill To:', 50);
-    doc.fontSize(11).font('Helvetica').text(invoice.customer_name || 'Customer', 50);
-    doc.text(invoice.customer_email || '', 50);
-    
-    doc.moveDown(1);
-    doc.text(`Issue Date: ${new Date(invoice.issue_date).toLocaleDateString()}`, 50);
-    doc.text(`Due Date: ${new Date(invoice.due_date).toLocaleDateString()}`, 50);
-    
-    doc.moveDown(2);
-    
-    // ITEMS TABLE
-    const tableTop = doc.y;
-    doc.fontSize(10).font('Helvetica-Bold');
-    doc.text('Description', 50, tableTop);
-    doc.text('Qty', 300, tableTop);
-    doc.text('Price', 400, tableTop);
-    doc.text('Amount', 500, tableTop, { align: 'right' });
-    
-    doc.moveTo(50, tableTop + 15).lineTo(562, tableTop + 15).stroke();
-    
-    let y = tableTop + 25;
-    doc.font('Helvetica');
-    
-    items.forEach(item => {
-        if (y > 700) {
-            doc.addPage();
-            y = 50;
+app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
+    try {
+        console.log('📧 Starting invoice email send...');
+        const { invoice, clientEmail, clientName } = req.body;
+        
+        if (!clientEmail) {
+            console.error('❌ No client email provided');
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Client email is required' 
+            });
         }
-        doc.text(item.description, 50, y, { width: 240 });
-        doc.text(item.quantity || 1, 300, y);
-        doc.text(`$${parseFloat(item.unit_price || item.amount).toFixed(2)}`, 400, y);
-        doc.text(`$${parseFloat(item.amount).toFixed(2)}`, 500, y, { align: 'right' });
-        y += 30;
-    });
-    
-    doc.moveDown(2);
-    y = doc.y;
-    
-    // TOTALS
-    doc.fontSize(11);
-    doc.text('Subtotal:', 400, y);
-    doc.text(`$${parseFloat(invoice.subtotal).toFixed(2)}`, 500, y, { align: 'right' });
-    y += 20;
-    
-    if (taxAmount > 0) {
-        doc.text(`Tax (${invoice.tax_rate}%):`, 400, y);
-        doc.text(`$${taxAmount.toFixed(2)}`, 500, y, { align: 'right' });
-        y += 20;
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(clientEmail)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email address format'
+            });
+        }
+        
+        // Build invoice items table
+        const items = invoice.items || [];
+        const itemsHTML = items.map(item => `
+            <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #eee;">${item.description}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity || 1}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">$${parseFloat(item.amount).toLocaleString()}</td>
+            </tr>
+        `).join('');
+        
+        const taxAmount = parseFloat(invoice.tax_amount || 0);
+        const discount = parseFloat(invoice.discount_amount || 0);
+        
+        const emailHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                    .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
+                    .content { padding: 30px; max-width: 800px; margin: 0 auto; background: white; }
+                    .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+                    .btn { background: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; }
+                    .invoice-amount { font-size: 32px; font-weight: bold; color: #22c55e; margin: 20px 0; }
+                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                    th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; border-bottom: 2px solid #22c55e; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1 style="margin: 0; font-size: 32px;">INVOICE</h1>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 18px;">#${invoice.invoice_number}</p>
+                </div>
+                
+                <div class="content">
+                    <h2>Hello ${clientName || 'Valued Customer'},</h2>
+                    
+                    <p>Thank you for your business! Here's your invoice.</p>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <p style="margin: 5px 0; font-size: 12px; color: #666;">INVOICE NUMBER</p>
+                                <p style="margin: 5px 0; font-weight: bold;">${invoice.invoice_number}</p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; font-size: 12px; color: #666;">ISSUE DATE</p>
+                                <p style="margin: 5px 0; font-weight: bold;">${new Date(invoice.issue_date).toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; font-size: 12px; color: #666;">DUE DATE</p>
+                                <p style="margin: 5px 0; font-weight: bold;">${new Date(invoice.due_date).toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; font-size: 12px; color: #666;">AMOUNT DUE</p>
+                                <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3>Invoice Details</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th style="text-align: center;">Qty</th>
+                                <th style="text-align: right;">Unit Price</th>
+                                <th style="text-align: right;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHTML}
+                        </tbody>
+                    </table>
+                    
+                    <div style="text-align: right; margin-top: 20px;">
+                        <p style="margin: 5px 0;"><strong>Subtotal:</strong> $${parseFloat(invoice.subtotal).toLocaleString()}</p>
+                        ${taxAmount > 0 ? `<p style="margin: 5px 0;"><strong>Tax (${invoice.tax_rate}%):</strong> $${taxAmount.toLocaleString()}</p>` : ''}
+                        ${discount > 0 ? `<p style="margin: 5px 0;"><strong>Discount:</strong> -$${discount.toLocaleString()}</p>` : ''}
+                        <p style="margin: 15px 0 0 0; font-size: 20px;"><strong>Total:</strong> <span style="color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</span></p>
+                    </div>
+                    
+                    ${invoice.stripe_payment_link ? `
+                        <div style="text-align: center; margin: 40px 0; padding: 30px; background: #f8f9fa; border-radius: 10px;">
+                            <p style="margin: 0 0 20px 0; font-size: 16px; font-weight: bold;">Pay Online Securely</p>
+                            <a href="${invoice.stripe_payment_link}" class="btn">
+                                💳 Pay Invoice Now
+                            </a>
+                            <p style="font-size: 12px; color: #666; margin: 15px 0 0 0;">
+                                Secure payment powered by Stripe
+                            </p>
+                        </div>
+                    ` : ''}
+                    
+                    ${invoice.notes ? `
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 0 0 10px 0; font-weight: bold;">Notes:</p>
+                            <p style="margin: 0;">${invoice.notes}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
+                    
+                    <p>Best regards,<br>
+                    <strong>Diamondback Coding Team</strong></p>
+                </div>
+                
+                <div class="footer">
+                    <p><strong>Diamondback Coding</strong><br>
+                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                    <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                    <p style="margin-top: 15px; color: #999; font-size: 11px;">
+                        This is an automated message. Please do not reply directly to this email.
+                    </p>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        console.log('📤 Preparing to send email...');
+        console.log('📧 From:', process.env.EMAIL_USER);
+        console.log('📧 To:', clientEmail);
+        
+        const info = await transporter.sendMail({
+            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+            to: clientEmail,
+            subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
+            html: emailHTML
+        });
+        
+        console.log('✅ Invoice email sent successfully');
+        console.log('📨 Message ID:', info.messageId);
+        
+        res.json({ 
+            success: true, 
+            message: `Invoice email sent successfully to ${clientEmail}`,
+            details: {
+                messageId: info.messageId,
+                to: clientEmail
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Invoice email error:', error);
+        
+        let userMessage = 'Failed to send invoice email. ';
+        if (error.code === 'EAUTH') {
+            userMessage += 'Email authentication failed.';
+        } else if (error.code === 'EENVELOPE') {
+            userMessage += 'Invalid recipient email address.';
+        } else {
+            userMessage += error.message;
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            message: userMessage,
+            error: error.code
+        });
     }
-    
-    if (discount > 0) {
-        doc.text('Discount:', 400, y);
-        doc.text(`-$${discount.toFixed(2)}`, 500, y, { align: 'right' });
-        y += 20;
-    }
-    
-    doc.fontSize(14).font('Helvetica-Bold');
-    doc.text('Total:', 400, y);
-    doc.text(`$${parseFloat(invoice.total_amount).toFixed(2)}`, 500, y, { align: 'right' });
-    
-    doc.end();
-    
-    return new Promise((resolve, reject) => {
-        doc.on('end', () => resolve(Buffer.concat(chunks)));
-        doc.on('error', reject);
-    });
-}
+});
 
 // Add this test endpoint
 app.post('/api/email/test', authenticateToken, async (req, res) => {
@@ -2805,7 +3151,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
         
         console.log('📝 Generating invoice PDF...');
         const pdfHTML = generateInvoicePDFHTML(invoice);
-        const pdfBuffer = await generateInvoicePDFWithPDFKit(invoice);
+        const pdfBuffer = await generatePDFFromHTML(pdfHTML);
         console.log('✅ PDF generated successfully');
         
         console.log('📧 Creating email HTML...');
@@ -2955,11 +3301,55 @@ const puppeteer = require('puppeteer');
 // ========================================
 
 async function generatePDFFromHTML(html) {
-    // We'll use PDFKit instead of Puppeteer
-    // This is a workaround - we'll generate the PDF directly
-    
-    // For now, return a simple error message
-    throw new Error('PDF generation temporarily disabled. Please use the download feature in the admin panel.');
+    let browser;
+    try {
+        console.log('🚀 Launching browser...');
+        
+        const launchOptions = {
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-extensions'
+            ]
+        };
+
+        browser = await puppeteer.launch(launchOptions);
+        console.log('✅ Browser launched successfully');
+        
+        const page = await browser.newPage();
+        await page.setContent(html, { 
+            waitUntil: 'networkidle0',
+            timeout: 30000 
+        });
+        
+        const pdf = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: {
+                top: '20px',
+                right: '20px',
+                bottom: '20px',
+                left: '20px'
+            }
+        });
+        
+        console.log('✅ PDF generated successfully');
+        return pdf;
+        
+    } catch (error) {
+        console.error('❌ PDF generation error:', error);
+        throw new Error('Failed to generate PDF: ' + error.message);
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
 }
 
 function generateTimelinePDFHTML(timeline) {
@@ -3107,251 +3497,6 @@ function generateInvoicePDFHTML(invoice) {
         </html>
     `;
 }
-
-function generateTimelinePDFWithPDFKit(timeline) {
-    const doc = new PDFDocument({ 
-        margin: 50, 
-        size: 'LETTER',
-        info: {
-            Title: `SLA - ${timeline.clientName}`,
-            Author: 'Diamondback Coding'
-        }
-    });
-    
-    const chunks = [];
-    doc.on('data', chunks.push.bind(chunks));
-    
-    // Calculate total price
-    let totalPrice = 0;
-    timeline.packages.forEach(key => {
-        if (servicePackages[key] && !servicePackages[key].isFree) {
-            totalPrice += servicePackages[key].price;
-        }
-    });
-    
-    const companySignatureDate = new Date(timeline.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    
-    // GREEN HEADER
-    doc.rect(0, 0, doc.page.width, 100).fill('#22c55e');
-    
-    doc.fillColor('white')
-       .fontSize(28)
-       .font('Helvetica-Bold')
-       .text('DIAMONDBACK CODING', 50, 30);
-    
-    doc.fontSize(10)
-       .font('Helvetica')
-       .text('PREMIUM DEVELOPMENT SERVICES', 50, 62);
-    
-    doc.y = 120;
-    doc.fillColor('black');
-    
-    // TITLE
-    doc.fontSize(24)
-       .font('Helvetica-Bold')
-       .text('SERVICE LEVEL AGREEMENT', 50, doc.y, { align: 'center' });
-    
-    doc.moveDown(0.3);
-    doc.fontSize(11)
-       .font('Helvetica')
-       .fillColor('#666666')
-       .text('Project Timeline & Terms of Service', 50, doc.y, { align: 'center' });
-    
-    doc.moveDown(2);
-    doc.fillColor('black');
-    
-    // AGREEMENT OVERVIEW
-    const overviewY = doc.y;
-    doc.rect(50, overviewY, doc.page.width - 100, 60)
-       .fillAndStroke('#f8f9fa', '#22c55e');
-    
-    doc.fontSize(9)
-       .font('Helvetica-Bold')
-       .fillColor('#22c55e')
-       .text('AGREEMENT OVERVIEW', 60, overviewY + 15);
-    
-    doc.fontSize(10)
-       .font('Helvetica')
-       .fillColor('#444444')
-       .text(
-           `This Service Level Agreement is entered into as of ${companySignatureDate} by and between Diamondback Coding and ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}.`,
-           60,
-           overviewY + 32,
-           { width: doc.page.width - 120, align: 'left' }
-       );
-    
-    doc.y = overviewY + 75;
-    doc.fillColor('black');
-    
-    // PROJECT DETAILS
-    doc.moveDown(1);
-    doc.fontSize(12)
-       .font('Helvetica-Bold')
-       .fillColor('#22c55e')
-       .text('PROJECT DETAILS', 50, doc.y);
-    
-    doc.moveDown(0.5);
-    doc.fontSize(11)
-       .font('Helvetica')
-       .fillColor('black')
-       .text(`Project: ${timeline.projectName || 'Web Development Project'}`, 60)
-       .text(`Start Date: ${new Date(timeline.startDate).toLocaleDateString()}`, 60)
-       .text(`Investment: ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}`, 60);
-    
-    doc.moveDown(1);
-    
-    // SELECTED SERVICES
-    doc.fontSize(12)
-       .font('Helvetica-Bold')
-       .fillColor('#22c55e')
-       .text('SELECTED SERVICES', 50, doc.y);
-    
-    doc.moveDown(0.5);
-    doc.fontSize(10)
-       .font('Helvetica')
-       .fillColor('black');
-    
-    timeline.packages.forEach(key => {
-        const pkg = servicePackages[key];
-        if (pkg) {
-            doc.text(`• ${pkg.name}${pkg.isFree ? ' (FREE)' : ''}`, 60, doc.y);
-            doc.moveDown(0.5);
-        }
-    });
-    
-    // Add new page for detailed timeline
-    doc.addPage();
-    
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .fillColor('#22c55e')
-       .text('DETAILED PROJECT TIMELINE', 50, 50);
-    
-    doc.moveDown(1);
-    
-    let phaseNumber = 1;
-    timeline.packages.forEach(packageKey => {
-        const pkg = servicePackages[packageKey];
-        if (!pkg || !pkg.phases) return;
-        
-        doc.fontSize(12)
-           .font('Helvetica-Bold')
-           .fillColor('black')
-           .text(pkg.name, 50);
-        
-        doc.fontSize(10)
-           .font('Helvetica')
-           .fillColor('#666')
-           .text(pkg.description, 50);
-        
-        doc.moveDown(0.5);
-        
-        pkg.phases.forEach(phase => {
-            if (doc.y > 700) doc.addPage();
-            
-            doc.fontSize(11)
-               .font('Helvetica-Bold')
-               .fillColor('black')
-               .text(`Phase ${phaseNumber}: ${phase.name} (${phase.duration})`, 50);
-            
-            phase.tasks.forEach(task => {
-                doc.fontSize(10)
-                   .font('Helvetica')
-                   .fillColor('#333')
-                   .text(`  • ${task}`, 70);
-            });
-            
-            doc.moveDown(0.5);
-            phaseNumber++;
-        });
-        
-        doc.moveDown(1);
-    });
-    
-    // CLIENT RESPONSIBILITIES
-    if (doc.y > 600) doc.addPage();
-    
-    doc.fontSize(12)
-       .font('Helvetica-Bold')
-       .fillColor('#22c55e')
-       .text('CLIENT RESPONSIBILITIES', 50);
-    
-    doc.moveDown(0.5);
-    
-    const responsibilities = [
-        'Provide all required content within 3 business days',
-        'Respond to reviews within 5 business days',
-        'Attend bi-weekly progress meetings',
-        'Designate a single point of contact',
-        'Make payments according to schedule',
-        'Provide necessary account access'
-    ];
-    
-    responsibilities.forEach(resp => {
-        doc.fontSize(10)
-           .font('Helvetica')
-           .fillColor('black')
-           .text(`• ${resp}`, 60);
-    });
-    
-    doc.moveDown(2);
-    
-    // SIGNATURE
-    doc.fontSize(11)
-       .font('Helvetica-Bold')
-       .text('CLIENT SIGNATURE REQUIRED:', 50);
-    
-    doc.moveDown(1);
-    doc.moveTo(50, doc.y).lineTo(300, doc.y).stroke();
-    doc.moveDown(0.3);
-    doc.fontSize(9).font('Helvetica').fillColor('#666').text('Client Signature', 50);
-    
-    doc.moveDown(2);
-    doc.moveTo(50, doc.y).lineTo(300, doc.y).stroke();
-    doc.moveDown(0.3);
-    doc.text('Date', 50);
-    
-    doc.end();
-    
-    return new Promise((resolve, reject) => {
-        doc.on('end', () => resolve(Buffer.concat(chunks)));
-        doc.on('error', reject);
-    });
-}
-
-// Add this after your existing /api/email/send-timeline endpoint
-
-app.post('/api/timeline/generate-pdf', authenticateToken, async (req, res) => {
-    try {
-        const { timeline } = req.body;
-        
-        if (!timeline) {
-            return res.status(400).json({ success: false, message: 'No timeline data provided' });
-        }
-        
-        console.log('📄 Generating SLA PDF for:', timeline.clientName);
-        
-        // Use your existing generateTimelinePDFHTML function
-        const html = generateTimelinePDFHTML(timeline);
-        
-        // Use your existing generatePDFFromHTML function (Puppeteer)
-        const pdfBuffer = await generatePDFFromHTML(html);
-        
-        // Send PDF as download
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=SLA_${timeline.clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
-        res.send(pdfBuffer);
-        
-        console.log('✅ PDF generated and sent successfully');
-        
-    } catch (error) {
-        console.error('❌ PDF generation error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to generate PDF: ' + error.message 
-        });
-    }
-});
 
 // ========================================
 // HEALTH CHECK

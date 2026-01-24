@@ -63,310 +63,7 @@ const servicePackages = {
     }
 };
 
-const puppeteer = require('puppeteer');
-
 const { transporter, verifyEmailConfig } = require('./email-config');
-
-// Helper function to generate PDF from HTML
-// Helper function to generate PDF from HTML
-async function generatePDFFromHTML(html) {
-    let browser;
-    try {
-        // Render-compatible Puppeteer configuration
-        browser = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process',
-                '--disable-extensions'
-            ],
-            // Try to use system Chrome if available, otherwise use bundled
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || 
-                           process.env.CHROME_BIN || 
-                           puppeteer.executablePath()
-        });
-        
-        const page = await browser.newPage();
-        await page.setContent(html, { 
-            waitUntil: 'networkidle0',
-            timeout: 30000 
-        });
-        
-        const pdf = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: {
-                top: '20px',
-                right: '20px',
-                bottom: '20px',
-                left: '20px'
-            }
-        });
-        
-        return pdf;
-    } catch (error) {
-        console.error('PDF generation error:', error);
-        throw new Error('Failed to generate PDF: ' + error.message);
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
-}
-
-// Helper function to generate Timeline PDF HTML
-function generateTimelinePDFHTML(timeline) {
-    let totalPrice = 0;
-    timeline.packages.forEach(key => {
-        if (servicePackages[key] && !servicePackages[key].isFree) {
-            totalPrice += servicePackages[key].price;
-        }
-    });
-    
-    const companySignatureDate = new Date(timeline.createdAt).toLocaleDateString();
-    const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
-    
-    let longestSupportPeriod = 0;
-    timeline.packages.forEach(key => {
-        if (key === 'starter-website') longestSupportPeriod = Math.max(longestSupportPeriod, 90);
-        if (key === 'professional-website') longestSupportPeriod = Math.max(longestSupportPeriod, 120);
-        if (key === 'enterprise-website') longestSupportPeriod = Math.max(longestSupportPeriod, 365);
-    });
-    
-    let packagesListHtml = timeline.packages.map(key => {
-        const pkg = servicePackages[key];
-        return pkg ? `<div style="display: inline-block; background: #f8f9fa; border: 1px solid #22c55e; color: #000; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; margin: 0 8px 8px 0;">${pkg.name}${pkg.isFree ? ' <span style="color: #22c55e;">(FREE)</span>' : ''}</div>` : '';
-    }).join('');
-    
-    let paymentTermsHtml = '';
-    if (timeline.isFreeProject) {
-        paymentTermsHtml = 'No Payment Required';
-    } else {
-        switch (timeline.paymentTerms) {
-            case 'completion': paymentTermsHtml = '50% Deposit + 50% on Completion'; break;
-            case 'net30': paymentTermsHtml = '50% Deposit + 50% Net 30'; break;
-            case 'net15': paymentTermsHtml = '50% Deposit + 50% Net 15'; break;
-            case 'milestone': paymentTermsHtml = 'Milestone-Based Payments'; break;
-            case 'custom': paymentTermsHtml = timeline.customPaymentDetails || 'Custom Payment Plan'; break;
-            default: paymentTermsHtml = '50% Deposit + 50% on Completion';
-        }
-    }
-    
-    return `<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: "Segoe UI", Arial, sans-serif; background: #ffffff; color: #000; line-height: 1.5; }
-        .container { max-width: 900px; margin: 0 auto; padding: 40px; }
-        .header { background: #22c55e; color: white; padding: 30px 40px; margin: -40px -40px 40px -40px; }
-        .header h1 { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
-        .header p { font-size: 12px; opacity: 0.95; letter-spacing: 1px; }
-        .title { text-align: center; margin-bottom: 40px; }
-        .title h2 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
-        .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
-        .party { background: white; border: 2px solid #e0e0e0; border-radius: 4px; padding: 24px; }
-        .project-details { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 40px; }
-        .project-box { background: #f8f9fa; padding: 18px; border-radius: 4px; border: 1px solid #e0e0e0; }
-        @media print { body { margin: 0; } }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>DIAMONDBACK CODING</h1>
-            <p>PREMIUM DEVELOPMENT SERVICES</p>
-        </div>
-        
-        <div class="title">
-            <h2>SERVICE LEVEL AGREEMENT</h2>
-            <p style="font-size: 13px; color: #666;">Project Timeline & Terms of Service</p>
-            <p style="font-size: 11px; color: #999; margin-top: 4px;">Document ID: ${documentId}</p>
-        </div>
-        
-        <div class="parties">
-            <div class="party">
-                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 12px;">Service Provider</div>
-                <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">Diamondback Coding</div>
-                <div style="font-size: 11px; color: #666; line-height: 1.6;">
-                    15709 Spillman Ranch Loop<br>
-                    Austin, TX 78738<br>
-                    diamondbackcoding@gmail.com<br>
-                    (940) 217-8680
-                </div>
-            </div>
-            
-            <div class="party">
-                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 12px;">Client</div>
-                <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">${timeline.clientName}</div>
-                <div style="font-size: 11px; color: #666; line-height: 1.6;">
-                    ${timeline.clientCompany ? timeline.clientCompany + '<br>' : ''}
-                    ${timeline.clientEmail || ''}<br>
-                    ${timeline.clientPhone || ''}
-                </div>
-            </div>
-        </div>
-        
-        <div class="project-details">
-            <div class="project-box">
-                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px;">Project Name</div>
-                <div style="font-size: 15px; font-weight: 700;">${timeline.projectName || 'Web Development Project'}</div>
-            </div>
-            <div class="project-box">
-                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px;">Start Date</div>
-                <div style="font-size: 15px; font-weight: 700;">${new Date(timeline.startDate).toLocaleDateString()}</div>
-            </div>
-            <div class="project-box" style="background: #22c55e; color: white;">
-                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; opacity: 0.9; margin-bottom: 6px;">Total Investment</div>
-                <div style="font-size: 22px; font-weight: 800;">${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</div>
-            </div>
-            <div class="project-box" style="background: #000; color: white;">
-                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; opacity: 0.7; margin-bottom: 6px;">Payment Terms</div>
-                <div style="font-size: 13px; font-weight: 700;">${paymentTermsHtml}</div>
-            </div>
-        </div>
-        
-        <div style="margin-bottom: 40px;">
-            <div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">SELECTED SERVICES</div>
-            ${packagesListHtml}
-        </div>
-        
-        <div style="text-align: center; padding: 30px; background: #f8f9fa; border-radius: 4px; margin-top: 40px;">
-            <p style="font-size: 12px; color: #666;">Full SLA details available in the admin portal</p>
-            <p style="font-size: 11px; color: #999; margin-top: 8px;">Contact: diamondbackcoding@gmail.com | (940) 217-8680</p>
-        </div>
-    </div>
-</body>
-</html>`;
-}
-
-// Helper function to generate Invoice PDF HTML
-function generateInvoicePDFHTML(invoice) {
-    const items = invoice.items || [];
-    const taxAmount = parseFloat(invoice.tax_amount || 0);
-    const discount = parseFloat(invoice.discount_amount || 0);
-    
-    return `<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: "Segoe UI", Arial, sans-serif; background: #ffffff; color: #000; line-height: 1.5; }
-        .container { max-width: 800px; margin: 0 auto; padding: 40px; }
-        .header { background: #22c55e; color: white; padding: 30px 40px; margin: -40px -40px 40px -40px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 28px; font-weight: 800; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #22c55e; }
-        td { padding: 12px; border-bottom: 1px solid #eee; }
-        .totals { text-align: right; margin-top: 20px; }
-        .total-row { display: flex; justify-content: flex-end; padding: 8px 0; }
-        .total-label { width: 150px; }
-        .total-value { width: 100px; font-weight: 600; }
-        .grand-total { font-size: 24px; color: #22c55e; border-top: 2px solid #22c55e; padding-top: 12px; margin-top: 12px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1>DIAMONDBACK CODING</h1>
-                <p style="opacity: 0.9; font-size: 12px;">Premium Development Services</p>
-            </div>
-            <div style="text-align: right;">
-                <div style="font-size: 24px; font-weight: 800;">INVOICE</div>
-                <div style="font-size: 13px; opacity: 0.9;">#${invoice.invoice_number}</div>
-            </div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
-            <div>
-                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px;">From</div>
-                <div style="font-weight: 600;">Diamondback Coding</div>
-                <div style="font-size: 11px; color: #666;">
-                    15709 Spillman Ranch Loop<br>
-                    Austin, TX 78738<br>
-                    diamondbackcoding@gmail.com
-                </div>
-            </div>
-            <div>
-                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px;">Bill To</div>
-                <div style="font-weight: 600;">${invoice.customer_name || 'Customer'}</div>
-                <div style="font-size: 11px; color: #666;">
-                    ${invoice.customer_company ? invoice.customer_company + '<br>' : ''}
-                    ${invoice.customer_email || ''}
-                </div>
-            </div>
-        </div>
-        
-        <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-            <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 4px; flex: 1;">
-                <div style="font-size: 10px; text-transform: uppercase; color: #666;">Issue Date</div>
-                <div style="font-weight: 600;">${new Date(invoice.issue_date).toLocaleDateString()}</div>
-            </div>
-            <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 4px; flex: 1;">
-                <div style="font-size: 10px; text-transform: uppercase; color: #666;">Due Date</div>
-                <div style="font-weight: 600;">${new Date(invoice.due_date).toLocaleDateString()}</div>
-            </div>
-        </div>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th>Qty</th>
-                    <th>Unit Price</th>
-                    <th style="text-align: right;">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${items.map(item => `
-                    <tr>
-                        <td>${item.description}</td>
-                        <td>${item.quantity || 1}</td>
-                        <td>$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
-                        <td style="text-align: right;">$${parseFloat(item.amount).toLocaleString()}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        
-        <div class="totals">
-            <div class="total-row">
-                <span class="total-label">Subtotal</span>
-                <span class="total-value">$${parseFloat(invoice.subtotal).toLocaleString()}</span>
-            </div>
-            ${taxAmount > 0 ? `
-                <div class="total-row">
-                    <span class="total-label">Tax (${invoice.tax_rate}%)</span>
-                    <span class="total-value">$${taxAmount.toLocaleString()}</span>
-                </div>
-            ` : ''}
-            ${discount > 0 ? `
-                <div class="total-row">
-                    <span class="total-label">Discount</span>
-                    <span class="total-value">-$${discount.toLocaleString()}</span>
-                </div>
-            ` : ''}
-            <div class="total-row grand-total">
-                <span class="total-label">Total</span>
-                <span class="total-value">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
-            </div>
-        </div>
-        
-        ${invoice.notes ? `
-            <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 4px;">
-                <strong>Notes:</strong> ${invoice.notes}
-            </div>
-        ` : ''}
-    </div>
-</body>
-</html>`;
-}
 
 // ========================================
 // STRIPE WEBHOOK (MUST BE FIRST!)
@@ -2712,6 +2409,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
 });
 
 // Add this route with your other API routes
+// REPLACE THIS ENTIRE ENDPOINT
 app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
     try {
         console.log('📧 Starting timeline email send...');
@@ -2744,11 +2442,13 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
         
         const documentId = `SLA-${new Date(timeline.createdAt).getFullYear()}-${String(Date.now()).slice(-6)}`;
         
-        console.log('📝 Generating SLA PDF...');
-        const pdfHTML = generateTimelinePDFHTML(timeline);
-        const pdfBuffer = await generatePDFFromHTML(pdfHTML);
-        console.log('✅ PDF generated successfully');
+        // Build packages list
+        const packagesList = timeline.packages.map(key => {
+            const pkg = servicePackages[key];
+            return pkg ? `<li>${pkg.name}${pkg.isFree ? ' <span style="color: #22c55e;">(FREE)</span>' : ''}</li>` : '';
+        }).join('');
         
+        // Create detailed email HTML (NO PDF)
         const emailHTML = `
             <!DOCTYPE html>
             <html>
@@ -2758,12 +2458,8 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                     .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
                     .content { padding: 30px; max-width: 800px; margin: 0 auto; background: white; }
                     .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-                    .highlight-box {
-                        background: #f8f9fa;
-                        border-left: 4px solid #22c55e;
-                        padding: 20px;
-                        margin: 20px 0;
-                    }
+                    .highlight-box { background: #f8f9fa; border-left: 4px solid #22c55e; padding: 20px; margin: 20px 0; }
+                    .detail-box { background: #f8f9fa; padding: 16px; border-radius: 8px; margin: 10px 0; }
                 </style>
             </head>
             <body>
@@ -2775,37 +2471,44 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                 <div class="content">
                     <h2>Hello ${clientName},</h2>
                     
-                    <p>Thank you for choosing Diamondback Coding! Your Service Level Agreement (SLA) is attached to this email.</p>
+                    <p>Thank you for choosing Diamondback Coding! Here are the details of your Service Level Agreement.</p>
                     
                     <div class="highlight-box">
-                        <p style="margin: 0 0 10px 0;"><strong>Project Details:</strong></p>
-                        <ul style="margin: 0; padding-left: 20px;">
-                            <li><strong>Project:</strong> ${timeline.projectName || 'Web Development Project'}</li>
-                            <li><strong>Start Date:</strong> ${new Date(timeline.startDate).toLocaleDateString()}</li>
-                            <li><strong>Total Investment:</strong> ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</li>
-                            <li><strong>Document ID:</strong> ${documentId}</li>
-                        </ul>
+                        <p style="margin: 0 0 10px 0;"><strong>Project Summary:</strong></p>
+                        <div class="detail-box">
+                            <p style="margin: 5px 0;"><strong>Project:</strong> ${timeline.projectName || 'Web Development Project'}</p>
+                            <p style="margin: 5px 0;"><strong>Start Date:</strong> ${new Date(timeline.startDate).toLocaleDateString()}</p>
+                            <p style="margin: 5px 0;"><strong>Total Investment:</strong> <span style="font-size: 24px; color: #22c55e; font-weight: bold;">${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</span></p>
+                            <p style="margin: 5px 0;"><strong>Document ID:</strong> ${documentId}</p>
+                        </div>
                     </div>
                     
-                    <p><strong>Selected Services:</strong></p>
-                    <ul>
-                        ${timeline.packages.map(key => {
-                            const pkg = servicePackages[key];
-                            return pkg ? `<li>${pkg.name}</li>` : '';
-                        }).join('')}
-                    </ul>
+                    <h3>Selected Services:</h3>
+                    <ul>${packagesList}</ul>
                     
-                    <p>Please review the attached SLA document carefully. If you have any questions or need clarification on any terms, please don't hesitate to reach out.</p>
+                    ${timeline.scope ? `
+                        <h3>Project Scope:</h3>
+                        <p>${timeline.scope}</p>
+                    ` : ''}
                     
-                    <p><strong>Next Steps:</strong></p>
-                    <ol>
-                        <li>Review the attached SLA document</li>
-                        <li>Sign and date the client signature section</li>
-                        <li>Return the signed document to us</li>
-                        <li>We'll schedule your discovery & planning meeting!</li>
-                    </ol>
+                    ${timeline.notes ? `
+                        <h3>Additional Notes:</h3>
+                        <p>${timeline.notes}</p>
+                    ` : ''}
                     
-                    <p>We're excited to work with you and bring your vision to life!</p>
+                    <div class="highlight-box" style="border-left-color: #f59e0b;">
+                        <p style="margin: 0 0 10px 0;"><strong>🎯 Next Steps:</strong></p>
+                        <ol style="margin: 10px 0; padding-left: 20px;">
+                            <li>Review the project details above</li>
+                            <li>Reply to this email to confirm or discuss any changes</li>
+                            <li>We'll schedule your discovery & planning meeting</li>
+                            <li>Let's bring your vision to life!</li>
+                        </ol>
+                    </div>
+                    
+                    <p>If you have any questions or need clarification, please don't hesitate to reach out.</p>
+                    
+                    <p>We're excited to work with you!</p>
                     
                     <p>Best regards,<br>
                     <strong>Diamondback Coding Team</strong></p>
@@ -2824,15 +2527,8 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
         const info = await transporter.sendMail({
             from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
             to: clientEmail,
-            subject: `Your Service Level Agreement - ${timeline.projectName || 'Web Development Project'}`,
-            html: emailHTML,
-            attachments: [
-                {
-                    filename: `SLA-${timeline.clientName.replace(/\s+/g, '-')}-${documentId}.pdf`,
-                    content: pdfBuffer,
-                    contentType: 'application/pdf'
-                }
-            ]
+            subject: `Your Project Agreement - ${timeline.projectName || 'Web Development Project'}`,
+            html: emailHTML
         });
         
         console.log('✅ SLA email sent successfully');
@@ -2856,60 +2552,128 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
     }
 });
 
-// Add this endpoint to your server.js
-// Replace your current /api/email/send-invoice endpoint with this:
+// REPLACE THIS ENTIRE ENDPOINT
 app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
     try {
-        console.log('📧 Starting email send process...');
+        console.log('📧 Starting invoice email send...');
         const { invoice, clientEmail, clientName } = req.body;
         
         if (!clientEmail) {
             console.error('❌ No client email provided');
-            return res.status(400).json({ success: false, message: 'Client email is required' });
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Client email is required' 
+            });
         }
         
-        console.log('📝 Generating invoice PDF...');
-        const pdfHTML = generateInvoicePDFHTML(invoice);
-        const pdfBuffer = await generatePDFFromHTML(pdfHTML);
-        console.log('✅ PDF generated successfully');
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(clientEmail)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email address format'
+            });
+        }
         
-        console.log('📧 Creating email HTML...');
+        // Build invoice items table
+        const items = invoice.items || [];
+        const itemsHTML = items.map(item => `
+            <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #eee;">${item.description}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity || 1}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">$${parseFloat(item.amount).toLocaleString()}</td>
+            </tr>
+        `).join('');
+        
+        const taxAmount = parseFloat(invoice.tax_amount || 0);
+        const discount = parseFloat(invoice.discount_amount || 0);
+        
         const emailHTML = `
             <!DOCTYPE html>
             <html>
             <head>
                 <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
                     .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
-                    .content { padding: 30px; max-width: 800px; margin: 0 auto; }
+                    .content { padding: 30px; max-width: 800px; margin: 0 auto; background: white; }
                     .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-                    .btn { background: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; }
+                    .btn { background: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; }
+                    .invoice-amount { font-size: 32px; font-weight: bold; color: #22c55e; margin: 20px 0; }
+                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                    th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; border-bottom: 2px solid #22c55e; }
                 </style>
             </head>
             <body>
                 <div class="header">
-                    <h1 style="margin: 0; font-size: 32px;">DIAMONDBACK CODING</h1>
-                    <p style="margin: 5px 0 0 0; opacity: 0.9;">Premium Development Services</p>
+                    <h1 style="margin: 0; font-size: 32px;">INVOICE</h1>
+                    <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 18px;">#${invoice.invoice_number}</p>
                 </div>
                 
                 <div class="content">
                     <h2>Hello ${clientName || 'Valued Customer'},</h2>
                     
-                    <p>Your invoice is attached to this email.</p>
+                    <p>Thank you for your business! Here's your invoice.</p>
                     
-                    <p><strong>Invoice Details:</strong></p>
-                    <ul>
-                        <li><strong>Invoice Number:</strong> ${invoice.invoice_number}</li>
-                        <li><strong>Issue Date:</strong> ${new Date(invoice.issue_date).toLocaleDateString()}</li>
-                        <li><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</li>
-                        <li><strong>Amount Due:</strong> <span style="font-size: 24px; font-weight: bold; color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</span></li>
-                    </ul>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <p style="margin: 5px 0; font-size: 12px; color: #666;">INVOICE NUMBER</p>
+                                <p style="margin: 5px 0; font-weight: bold;">${invoice.invoice_number}</p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; font-size: 12px; color: #666;">ISSUE DATE</p>
+                                <p style="margin: 5px 0; font-weight: bold;">${new Date(invoice.issue_date).toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; font-size: 12px; color: #666;">DUE DATE</p>
+                                <p style="margin: 5px 0; font-weight: bold;">${new Date(invoice.due_date).toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                                <p style="margin: 5px 0; font-size: 12px; color: #666;">AMOUNT DUE</p>
+                                <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3>Invoice Details</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th style="text-align: center;">Qty</th>
+                                <th style="text-align: right;">Unit Price</th>
+                                <th style="text-align: right;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHTML}
+                        </tbody>
+                    </table>
+                    
+                    <div style="text-align: right; margin-top: 20px;">
+                        <p style="margin: 5px 0;"><strong>Subtotal:</strong> $${parseFloat(invoice.subtotal).toLocaleString()}</p>
+                        ${taxAmount > 0 ? `<p style="margin: 5px 0;"><strong>Tax (${invoice.tax_rate}%):</strong> $${taxAmount.toLocaleString()}</p>` : ''}
+                        ${discount > 0 ? `<p style="margin: 5px 0;"><strong>Discount:</strong> -$${discount.toLocaleString()}</p>` : ''}
+                        <p style="margin: 15px 0 0 0; font-size: 20px;"><strong>Total:</strong> <span style="color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</span></p>
+                    </div>
                     
                     ${invoice.stripe_payment_link ? `
-                        <div style="text-align: center; margin: 30px 0;">
+                        <div style="text-align: center; margin: 40px 0; padding: 30px; background: #f8f9fa; border-radius: 10px;">
+                            <p style="margin: 0 0 20px 0; font-size: 16px; font-weight: bold;">Pay Online Securely</p>
                             <a href="${invoice.stripe_payment_link}" class="btn">
-                                Pay Invoice Online
+                                💳 Pay Invoice Now
                             </a>
+                            <p style="font-size: 12px; color: #666; margin: 15px 0 0 0;">
+                                Secure payment powered by Stripe
+                            </p>
+                        </div>
+                    ` : ''}
+                    
+                    ${invoice.notes ? `
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 0 0 10px 0; font-weight: bold;">Notes:</p>
+                            <p style="margin: 0;">${invoice.notes}</p>
                         </div>
                     ` : ''}
                     
@@ -2920,50 +2684,56 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                 </div>
                 
                 <div class="footer">
-                    <p>Diamondback Coding<br>
+                    <p><strong>Diamondback Coding</strong><br>
                     15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    diamondbackcoding@gmail.com | (940) 217-8680</p>
+                    <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                    <p style="margin-top: 15px; color: #999; font-size: 11px;">
+                        This is an automated message. Please do not reply directly to this email.
+                    </p>
                 </div>
             </body>
             </html>
         `;
         
-        console.log('📧 Preparing email options...');
-        const mailOptions = {
+        console.log('📤 Preparing to send email...');
+        console.log('📧 From:', process.env.EMAIL_USER);
+        console.log('📧 To:', clientEmail);
+        
+        const info = await transporter.sendMail({
             from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
             to: clientEmail,
             subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
-            html: emailHTML,
-            attachments: [
-                {
-                    filename: `Invoice-${invoice.invoice_number}.pdf`,
-                    content: pdfBuffer,
-                    contentType: 'application/pdf'
-                }
-            ]
-        };
+            html: emailHTML
+        });
         
-        console.log('📤 Sending email to:', clientEmail);
-        console.log('📤 From:', process.env.EMAIL_USER);
+        console.log('✅ Invoice email sent successfully');
+        console.log('📨 Message ID:', info.messageId);
         
-        await transporter.sendMail(mailOptions);
-        
-        console.log('✅ Email sent successfully to:', clientEmail);
-        res.json({ success: true, message: 'Invoice email sent successfully' });
+        res.json({ 
+            success: true, 
+            message: `Invoice email sent successfully to ${clientEmail}`,
+            details: {
+                messageId: info.messageId,
+                to: clientEmail
+            }
+        });
         
     } catch (error) {
-        console.error('❌ Email send error:', error);
-        console.error('Error details:', {
-            message: error.message,
-            code: error.code,
-            command: error.command,
-            response: error.response
-        });
+        console.error('❌ Invoice email error:', error);
+        
+        let userMessage = 'Failed to send invoice email. ';
+        if (error.code === 'EAUTH') {
+            userMessage += 'Email authentication failed.';
+        } else if (error.code === 'EENVELOPE') {
+            userMessage += 'Invalid recipient email address.';
+        } else {
+            userMessage += error.message;
+        }
         
         res.status(500).json({ 
             success: false, 
-            message: 'Failed to send invoice email', 
-            error: error.message 
+            message: userMessage,
+            error: error.code
         });
     }
 });

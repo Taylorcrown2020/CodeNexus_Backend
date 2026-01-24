@@ -2426,264 +2426,17 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
             }
         });
 
-        // Generate PDF using PDFKit
-        const doc = new PDFDocument({ 
-            margin: 50, 
-            size: 'LETTER',
-            info: {
-                Title: `SLA - ${timeline.clientName}`,
-                Author: 'Diamondback Coding'
-            }
-        });
-        
-        const pdfBuffers = [];
-        doc.on('data', pdfBuffers.push.bind(pdfBuffers));
+console.log('📄 Generating full SLA PDF for email...');
+const pdfHTML = generateTimelinePDFHTML(timeline);
+const pdfBuffer = await generatePDFFromHTML(pdfHTML);
+console.log('✅ Full SLA PDF generated');
 
-        // === PDF CONTENT ===
-        
-        // Header (Green bar)
-        doc.rect(0, 0, doc.page.width, 100).fill('#22c55e');
-        doc.fillColor('#ffffff')
-           .fontSize(28)
-           .font('Helvetica-Bold')
-           .text('DIAMONDBACK CODING', 50, 30);
-        doc.fontSize(10).text('PREMIUM DEVELOPMENT SERVICES', 50, 65);
-
-        // Reset to black text
-        doc.fillColor('#000000');
-        doc.y = 150;
-
-        // Title
-        doc.fontSize(24)
-           .font('Helvetica-Bold')
-           .text('SERVICE LEVEL AGREEMENT', { align: 'center' });
-        doc.moveDown(0.5);
-        doc.fontSize(12)
-           .font('Helvetica')
-           .fillColor('#666666')
-           .text('Project Timeline & Terms of Service', { align: 'center' });
-        doc.fillColor('#000000');
-        doc.moveDown(2);
-
-        // Agreement Overview
-        doc.fontSize(10)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('AGREEMENT OVERVIEW');
-        doc.moveDown(0.5);
-        doc.fontSize(11)
-           .font('Helvetica')
-           .fillColor('#000000')
-           .text(`This Service Level Agreement is entered into as of ${new Date(timeline.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} by and between Diamondback Coding and ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}.`);
-        doc.moveDown(2);
-
-        // Two columns for parties
-        const leftCol = 50;
-        const rightCol = 320;
-        const colTop = doc.y;
-
-        // Service Provider (left column)
-        doc.fontSize(9)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('SERVICE PROVIDER', leftCol, colTop);
-        doc.fillColor('#000000')
-           .fontSize(12)
-           .text('Diamondback Coding', leftCol, colTop + 15);
-        doc.fontSize(10)
-           .font('Helvetica')
-           .fillColor('#666666')
-           .text('15709 Spillman Ranch Loop', leftCol, colTop + 32)
-           .text('Austin, TX 78738', leftCol, colTop + 46)
-           .text('diamondbackcoding@gmail.com', leftCol, colTop + 60)
-           .text('(940) 217-8680', leftCol, colTop + 74);
-
-        // Client (right column)
-        doc.fontSize(9)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('CLIENT', rightCol, colTop);
-        doc.fillColor('#000000')
-           .fontSize(12)
-           .text(timeline.clientName, rightCol, colTop + 15);
-        doc.fontSize(10)
-           .font('Helvetica')
-           .fillColor('#666666');
-        let clientY = colTop + 32;
-        if (timeline.clientCompany) {
-            doc.text(timeline.clientCompany, rightCol, clientY);
-            clientY += 14;
-        }
-        if (timeline.clientEmail) {
-            doc.text(timeline.clientEmail, rightCol, clientY);
-            clientY += 14;
-        }
-        if (timeline.clientPhone) {
-            doc.text(timeline.clientPhone, rightCol, clientY);
-        }
-
-        doc.y = colTop + 120;
-        doc.moveDown(2);
-
-        // Project Details
-        doc.fontSize(10)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('PROJECT DETAILS');
-        doc.moveDown(0.5);
-        
-        doc.fontSize(11)
-           .font('Helvetica')
-           .fillColor('#000000')
-           .text(`Project Name: ${timeline.projectName || 'Web Development Project'}`)
-           .text(`Start Date: ${new Date(timeline.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`)
-           .text(`Total Investment: ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}`)
-           .text(`Payment Terms: ${getPaymentTermsText(timeline)}`);
-        doc.moveDown(2);
-
-        // Selected Services
-        doc.fontSize(10)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('SELECTED SERVICES');
-        doc.moveDown(0.5);
-        
-        timeline.packages.forEach(key => {
-            const pkg = servicePackages[key];
-            if (pkg) {
-                doc.fontSize(11)
-                   .font('Helvetica')
-                   .fillColor('#000000')
-                   .text(`✓ ${pkg.name}${pkg.isFree ? ' (FREE)' : ''}`);
-            }
-        });
-        doc.moveDown(2);
-
-        // Scope if exists
-        if (timeline.scope) {
-            doc.fontSize(10)
-               .font('Helvetica-Bold')
-               .fillColor('#22c55e')
-               .text('PROJECT SCOPE');
-            doc.moveDown(0.5);
-            doc.fontSize(11)
-               .font('Helvetica')
-               .fillColor('#000000')
-               .text(timeline.scope, { width: 500 });
-            doc.moveDown(2);
-        }
-
-        // Add new page for timeline
-        doc.addPage();
-
-        // Detailed Timeline
-        doc.fontSize(14)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('DETAILED PROJECT TIMELINE');
-        doc.moveDown(1);
-
-        let phaseNumber = 1;
-        timeline.packages.forEach(packageKey => {
-            const pkg = servicePackages[packageKey];
-            if (!pkg || !pkg.phases) return;
-
-            // Package name
-            doc.fontSize(12)
-               .font('Helvetica-Bold')
-               .fillColor('#000000')
-               .text(pkg.name);
-            doc.fontSize(10)
-               .font('Helvetica')
-               .fillColor('#666666')
-               .text(pkg.description);
-            doc.moveDown(0.5);
-
-            pkg.phases.forEach(phase => {
-                doc.fontSize(11)
-                   .font('Helvetica-Bold')
-                   .fillColor('#000000')
-                   .text(`Phase ${phaseNumber}: ${phase.name} (${phase.duration})`);
-                
-                phase.tasks.forEach(task => {
-                    doc.fontSize(10)
-                       .font('Helvetica')
-                       .fillColor('#333333')
-                       .text(`  • ${task}`, { indent: 20 });
-                });
-                
-                doc.moveDown(0.5);
-                phaseNumber++;
-            });
-
-            doc.moveDown(1);
-        });
-
-        // Client Responsibilities
-        if (doc.y > 600) doc.addPage();
-        
-        doc.fontSize(12)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('CLIENT RESPONSIBILITIES');
-        doc.moveDown(0.5);
-        
-        const responsibilities = [
-            'Provide all required content within 3 business days of request',
-            'Respond to design/development reviews within 5 business days',
-            'Attend scheduled bi-weekly progress meetings',
-            'Designate a single point of contact for communications',
-            'Make payments according to agreed schedule',
-            'Provide access to necessary accounts and credentials'
-        ];
-        
-        responsibilities.forEach(resp => {
-            doc.fontSize(10)
-               .font('Helvetica')
-               .fillColor('#000000')
-               .text(`• ${resp}`, { indent: 10 });
-        });
-        doc.moveDown(2);
-
-        // Signature area
-        doc.fontSize(11)
-           .font('Helvetica-Bold')
-           .fillColor('#000000')
-           .text('CLIENT SIGNATURE REQUIRED:');
-        doc.moveDown(1);
-        
-        doc.moveTo(50, doc.y)
-           .lineTo(300, doc.y)
-           .stroke();
-        doc.moveDown(0.3);
-        doc.fontSize(9)
-           .font('Helvetica')
-           .fillColor('#666666')
-           .text('Client Signature');
-        doc.moveDown(2);
-        
-        doc.moveTo(50, doc.y)
-           .lineTo(300, doc.y)
-           .stroke();
-        doc.moveDown(0.3);
-        doc.text('Date');
-
-        // End PDF
-        doc.end();
-
-        // Wait for PDF to finish
-        await new Promise((resolve) => {
-            doc.on('end', resolve);
-        });
-
-        const pdfBuffer = Buffer.concat(pdfBuffers);
-
-        // Email HTML content
+        // Generate packages text for email
         const packagesText = timeline.packages.map(k => 
             servicePackages[k]?.name || k
         ).join(', ');
 
-        const emailHtml = `
+const emailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -3497,6 +3250,40 @@ function generateInvoicePDFHTML(invoice) {
         </html>
     `;
 }
+
+// Add this after your existing /api/email/send-timeline endpoint
+
+app.post('/api/timeline/generate-pdf', authenticateToken, async (req, res) => {
+    try {
+        const { timeline } = req.body;
+        
+        if (!timeline) {
+            return res.status(400).json({ success: false, message: 'No timeline data provided' });
+        }
+        
+        console.log('📄 Generating SLA PDF for:', timeline.clientName);
+        
+        // Use your existing generateTimelinePDFHTML function
+        const html = generateTimelinePDFHTML(timeline);
+        
+        // Use your existing generatePDFFromHTML function (Puppeteer)
+        const pdfBuffer = await generatePDFFromHTML(html);
+        
+        // Send PDF as download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=SLA_${timeline.clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+        res.send(pdfBuffer);
+        
+        console.log('✅ PDF generated and sent successfully');
+        
+    } catch (error) {
+        console.error('❌ PDF generation error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to generate PDF: ' + error.message 
+        });
+    }
+});
 
 // ========================================
 // HEALTH CHECK

@@ -282,9 +282,48 @@
     {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://diamondbackcoding.com"}]}
     </script>
 
-    <script type="application/ld+json">
-    {"@context": "https://schema.org", "@type": "Organization", "name": "Diamondback Coding", "aggregateRating": {"@type": "AggregateRating", "ratingValue": "4.9", "reviewCount": "27", "bestRating": "5", "worstRating": "1"}}
-    </script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Diamondback Coding",
+  "review": [
+    {
+      "@type": "Review",
+      "reviewRating": {
+        "@type": "Rating",
+        "ratingValue": "5",
+        "bestRating": "5"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Dallas Business Owner"
+      },
+      "reviewBody": "Exceptional web development service. Built our e-commerce site ahead of schedule."
+    },
+    {
+      "@type": "Review",
+      "reviewRating": {
+        "@type": "Rating",
+        "ratingValue": "5",
+        "bestRating": "5"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Austin Tech Startup"
+      },
+      "reviewBody": "Professional team that delivered exactly what we needed for our SaaS platform."
+    }
+  ],
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "reviewCount": "27",
+    "bestRating": "5",
+    "worstRating": "1"
+  }
+}
+</script>
 
     <script type="application/ld+json">
     {

@@ -8212,6 +8212,7 @@ function saveProjectTimeline() {
 }
 
 // Open Timeline Preview Modal
+// Open Timeline Preview Modal
 function openTimelinePreviewModal(timeline) {
     const modal = document.getElementById('detailModal');
     const titleEl = document.getElementById('detailModalTitle');
@@ -8220,7 +8221,57 @@ function openTimelinePreviewModal(timeline) {
 
     titleEl.textContent = 'Project Timeline & SLA Preview';
 
-    // First set basic structure with tabs
+    // Calculate totals
+    let totalPrice = 0;
+    let hasPaidPackage = false;
+    timeline.packages.forEach(function(key) {
+        if (servicePackages[key] && !servicePackages[key].isFree) {
+            hasPaidPackage = true;
+            totalPrice += servicePackages[key].price;
+        }
+    });
+
+    // Generate overview content
+    const overviewContent = `
+        <h3 style="margin-bottom: 16px;">Quick Summary</h3>
+        <div style="background: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-md);">
+            <div style="margin-bottom: 12px;"><strong>Client:</strong> ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}</div>
+            <div style="margin-bottom: 12px;"><strong>Email:</strong> ${timeline.clientEmail}</div>
+            <div style="margin-bottom: 12px;"><strong>Project:</strong> ${timeline.projectName || 'Web Development Project'}</div>
+            <div style="margin-bottom: 12px;"><strong>Packages:</strong> ${timeline.packages.map(k => servicePackages[k]?.name || k).join(', ')}</div>
+            <div style="margin-bottom: 12px;"><strong>Total:</strong> ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</div>
+            <div style="margin-bottom: 12px;"><strong>Start:</strong> ${formatDate(timeline.startDate)}</div>
+            <div><strong>End:</strong> ${formatDate(timeline.endDate || 'TBD')}</div>
+        </div>
+    `;
+
+    // Generate timeline phases content
+    const timelineContent = `
+        <h3 style="margin-bottom: 16px;">Project Phases</h3>
+        <div style="max-height: 500px; overflow-y: auto;">
+            ${standardWebsitePhases.map((phase, index) => `
+                <div style="margin-bottom: 20px; padding: 16px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-amber);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div>
+                            <span style="display: inline-block; background: var(--accent-amber); color: var(--bg-void); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; margin-right: 8px;">Phase ${index + 1}</span>
+                            <span style="font-size: 15px; font-weight: 600;">${phase.name}</span>
+                        </div>
+                        <span style="font-size: 12px; color: var(--text-muted);">${phase.duration}</span>
+                    </div>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        ${phase.tasks.map(task => `
+                            <li style="padding: 6px 0; padding-left: 20px; position: relative; font-size: 13px; color: var(--text-secondary);">
+                                <span style="position: absolute; left: 0; top: 6px; color: var(--accent-amber);">✓</span>
+                                ${task}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    // Set up the modal structure with tabs
     bodyEl.innerHTML = `
         <div class="tabs">
             <button class="tab active" data-tab="overview">Overview</button>
@@ -8229,22 +8280,16 @@ function openTimelinePreviewModal(timeline) {
         </div>
 
         <div id="tab-overview" class="tab-content" style="padding: 24px;">
-            <h3 style="margin-bottom: 16px;">Quick Summary</h3>
-            <div style="background: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-md);">
-                <strong>Client:</strong> ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}<br>
-                <strong>Project:</strong> ${timeline.projectName || 'Web Development Project'}<br>
-                <strong>Packages:</strong> ${timeline.packages.map(k => servicePackages[k]?.name || k).join(', ')}<br>
-                <strong>Total:</strong> ${timeline.isFreeProject ? 'FREE' : '$' + timeline.totalPrice.toLocaleString()}<br>
-                <strong>Start:</strong> ${formatDate(timeline.startDate)} → <strong>End:</strong> ${formatDate(timeline.endDate || 'TBD')}
-            </div>
+            ${overviewContent}
         </div>
 
-        <div id="tab-timeline" class="tab-content" style="display:none; padding: 24px;">
-            <h3>Phases Overview</h3>
-            <p>(Detailed timeline appears in Full SLA Preview tab)</p>
+        <div id="tab-timeline" class="tab-content" style="display: none; padding: 24px;">
+            ${timelineContent}
         </div>
 
-        <div id="tab-preview" class="tab-content" style="display:none;"></div>
+        <div id="tab-preview" class="tab-content" style="display: none; padding: 24px;">
+            <!-- Will be populated when tab is clicked -->
+        </div>
     `;
 
     footerEl.innerHTML = `
@@ -8266,12 +8311,12 @@ function openTimelinePreviewModal(timeline) {
         </button>
     `;
 
+    // Store for export
+    window.currentTimelinePreview = timeline;
+
     modal.classList.add('active');
 
-    // Store for export
-window.currentTimelinePreview = timeline;
-
-    // IMPORTANT: Set up tab click handlers AFTER modal is visible
+    // Set up tab click handlers AFTER modal is visible
     setTimeout(() => {
         document.querySelectorAll('#detailModal .tab').forEach(tab => {
             tab.addEventListener('click', function () {
@@ -8288,19 +8333,13 @@ window.currentTimelinePreview = timeline;
                 if (content) {
                     content.style.display = 'block';
 
-                // Special case: when user clicks "Full SLA Preview" tab → generate content
+                    // Special case: when user clicks "Full SLA Preview" tab → generate content
                     if (this.dataset.tab === 'preview') {
                         content.innerHTML = generateTimelineHTML(timeline);
                     }
                 }
             });
         });
-
-        // Show overview by default (already visible, but ensures handlers are set)
-        const firstTab = document.querySelector('#detailModal .tab[data-tab="overview"]');
-        if (firstTab) {
-            // Don't click it, it's already active
-        }
     }, 100);
 }
 

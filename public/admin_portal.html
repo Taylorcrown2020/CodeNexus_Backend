@@ -4137,83 +4137,84 @@ const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
         </button>
     `;
     if (type === 'invoice') {
-        console.log('📄 Opening invoice modal for ID:', id); // Debug log
-        const invoice = state.invoices.find(i => i.id === id);
-        if (!invoice) {
-            console.error('❌ Invoice not found:', id);
-            showToast('Invoice not found', 'error');
-            return;
-        }
+    console.log('📄 Opening invoice modal for ID:', id);
+    const invoice = state.invoices.find(i => i.id === id);
+    if (!invoice) {
+        console.error('❌ Invoice not found:', id);
+        showToast('Invoice not found', 'error');
+        return;
+    }
+
+    console.log('✅ Invoice found:', invoice);
     
-        console.log('✅ Invoice found:', invoice);
-        
-        state.currentInvoice = invoice;
-        
-        titleEl.textContent = 'Invoice Details';
-        
-        // Generate the preview HTML
-        const previewHTML = await renderInvoicePreview(invoice);
-        bodyEl.innerHTML = previewHTML;
+    state.currentInvoice = invoice;
     
-    // Build footer buttons
-        let footerButtons = `
-            <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
-        `;
+    titleEl.textContent = 'Invoice Details';
     
+    // Generate the preview HTML
+    const previewHTML = await renderInvoicePreview(invoice);
+    bodyEl.innerHTML = previewHTML;
+
+    // ✅ BUILD FOOTER BUTTONS HERE (AFTER await completes)
+    let footerButtons = `
+        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+    `;
+
     // Add email button
-        if (invoice.customer_email) {
-            footerButtons += `
-                <button class="btn btn-secondary" onclick="emailInvoiceToClient()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                        <polyline points="22,6 12,13 2,6"/>
-                    </svg>
-                    Email to Client
-                </button>
-            `;
-        }
-    
-    // Add Mark as Paid button if not already paid
-        if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
-            footerButtons += `
-                <button class="btn btn-success" onclick="openPaymentModal(${invoice.id})">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    Mark as Paid
-                </button>
-            `;
-        }
-    
-    // Add print button
+    if (invoice.customer_email) {
         footerButtons += `
-            <button class="btn btn-primary" onclick="printInvoice()">
+            <button class="btn btn-secondary" onclick="emailInvoiceToClient()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="6 9 6 2 18 2 18 9"/>
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                    <rect x="6" y="14" width="12" height="8"/>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
                 </svg>
-                Print Invoice
+                Email to Client
             </button>
         `;
-    
+    }
+
+    // Add Mark as Paid button if not already paid
+    if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
+        footerButtons += `
+            <button class="btn btn-success" onclick="openPaymentModal(${invoice.id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Mark as Paid
+            </button>
+        `;
+    }
+
+    // Add print button
+    footerButtons += `
+        <button class="btn btn-primary" onclick="printInvoice()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+            </svg>
+            Print Invoice
+        </button>
+    `;
+
     // Add delete button (only for non-paid invoices)
-        if (invoice.status !== 'paid') {
-            footerButtons += `
-                <button class="btn btn-danger" onclick="deleteInvoice(${invoice.id})">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                    Delete Invoice
-                </button>
-            `;
-        }
-    
+    if (invoice.status !== 'paid') {
+        footerButtons += `
+            <button class="btn btn-danger" onclick="deleteInvoice(${invoice.id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                Delete Invoice
+            </button>
+        `;
+    }
+
     footerEl.innerHTML = footerButtons;
     
     modal.classList.add('active');
+    return; // ✅ ADD THIS RETURN TO EXIT HERE
 }
 }
 async function renderInvoicePreview(invoice) {

@@ -72,6 +72,9 @@ const { transporter, verifyEmailConfig } = require('./email-config');
 app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+if (!webhookSecret) {
+    console.error('⚠️ STRIPE_WEBHOOK_SECRET not set - webhooks will fail!');
+}
     
     let event;
     
@@ -465,6 +468,71 @@ await client.query(`
         clicked_at TIMESTAMP,
         status VARCHAR(50) DEFAULT 'sent'
     )
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS scoring_rules (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        description TEXT,
+        rule_type VARCHAR(50) NOT NULL,
+        field_name VARCHAR(100),
+        operator VARCHAR(20),
+        value TEXT,
+        points INTEGER NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS lead_scores (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE UNIQUE,
+        total_score INTEGER DEFAULT 0,
+        engagement_score INTEGER DEFAULT 0,
+        demographic_score INTEGER DEFAULT 0,
+        behavioral_score INTEGER DEFAULT 0,
+        grade VARCHAR(1),
+        last_calculated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT unique_lead_score UNIQUE (lead_id)
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS score_history (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        rule_id INTEGER REFERENCES scoring_rules(id),
+        points_added INTEGER,
+        reason TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_lead_scores_total 
+    ON lead_scores(total_score DESC);
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_score_history_lead 
+    ON score_history(lead_id, created_at DESC);
+`);
+
+// Insert default scoring rules
+await client.query(`
+    INSERT INTO scoring_rules (name, description, rule_type, field_name, operator, value, points)
+    VALUES 
+        ('Email Opened', 'Lead opened an email', 'behavioral', 'email_opened', 'equals', 'true', 5),
+        ('Email Clicked', 'Lead clicked link in email', 'behavioral', 'email_clicked', 'equals', 'true', 10),
+        ('Form Submitted', 'Lead submitted contact form', 'behavioral', 'form_submitted', 'equals', 'true', 15),
+        ('High Lifetime Value', 'Potential lifetime value > $10,000', 'demographic', 'lifetime_value', 'greater_than', '10000', 20),
+        ('Has Phone Number', 'Lead provided phone number', 'demographic', 'phone', 'is_not_null', '', 5),
+        ('Company Size Large', 'Company has 100+ employees', 'demographic', 'company_size', 'greater_than', '100', 15),
+        ('Multiple Page Views', 'Viewed 5+ pages', 'behavioral', 'page_views', 'greater_than', '5', 10),
+        ('Repeat Visitor', 'Visited site 3+ times', 'behavioral', 'visit_count', 'greater_than', '3', 8)
+    ON CONFLICT DO NOTHING;
 `);
 
         await client.query('COMMIT');
@@ -3328,6 +3396,1243 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
     }
 });
 
+// Get all scoring rules
+app.get('/api/scoring/rules', authenticateToken, async (req, res) => {
+    try {
+        const rules = await pool.query(`
+            SELECT * FROM scoring_rules 
+            WHERE is_active = TRUE
+            ORDER BY points DESC, name ASC
+        `);
+        
+        res.json({
+            success: true,
+            rules: rules.rows
+        });
+    } catch (error) {
+        console.error('Get scoring rules error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Create scoring rule
+app.post('/api/scoring/rules', authenticateToken, async (req, res) => {
+    try {
+        const { name, description, rule_type, field_name, operator, value, points } = req.body;
+        
+        const result = await pool.query(
+            `INSERT INTO scoring_rules 
+             (name, description, rule_type, field_name, operator, value, points)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING *`,
+            [name, description, rule_type, field_name, operator, value, points]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Scoring rule created successfully.',
+            rule: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create scoring rule error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Update scoring rule
+app.put('/api/scoring/rules/:id', authenticateToken, async (req, res) => {
+    try {
+        const ruleId = req.params.id;
+        const { name, description, rule_type, field_name, operator, value, points, is_active } = req.body;
+        
+        const result = await pool.query(
+            `UPDATE scoring_rules 
+             SET name = $1, description = $2, rule_type = $3, field_name = $4, 
+                 operator = $5, value = $6, points = $7, is_active = $8
+             WHERE id = $9
+             RETURNING *`,
+            [name, description, rule_type, field_name, operator, value, points, is_active, ruleId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Scoring rule updated successfully.',
+            rule: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update scoring rule error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Delete scoring rule
+app.delete('/api/scoring/rules/:id', authenticateToken, async (req, res) => {
+    try {
+        const ruleId = req.params.id;
+        
+        await pool.query(
+            `UPDATE scoring_rules SET is_active = FALSE WHERE id = $1`,
+            [ruleId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Scoring rule deleted successfully.'
+        });
+    } catch (error) {
+        console.error('Delete scoring rule error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Calculate lead score
+async function calculateLeadScore(leadId) {
+    const client = await pool.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        // Get lead data
+        const leadData = await client.query(
+            `SELECT * FROM leads WHERE id = $1`,
+            [leadId]
+        );
+        
+        if (leadData.rows.length === 0) {
+            throw new Error('Lead not found');
+        }
+        
+        const lead = leadData.rows[0];
+        
+        // Get all active scoring rules
+        const rules = await client.query(
+            `SELECT * FROM scoring_rules WHERE is_active = TRUE`
+        );
+        
+        let totalScore = 0;
+        let engagementScore = 0;
+        let demographicScore = 0;
+        let behavioralScore = 0;
+        
+        // Apply each rule
+        for (const rule of rules.rows) {
+            let ruleMatches = false;
+            
+            // Evaluate rule based on operator
+            const fieldValue = lead[rule.field_name];
+            
+            switch (rule.operator) {
+                case 'equals':
+                    ruleMatches = String(fieldValue) === String(rule.value);
+                    break;
+                case 'not_equals':
+                    ruleMatches = String(fieldValue) !== String(rule.value);
+                    break;
+                case 'greater_than':
+                    ruleMatches = parseFloat(fieldValue) > parseFloat(rule.value);
+                    break;
+                case 'less_than':
+                    ruleMatches = parseFloat(fieldValue) < parseFloat(rule.value);
+                    break;
+                case 'contains':
+                    ruleMatches = String(fieldValue).toLowerCase().includes(String(rule.value).toLowerCase());
+                    break;
+                case 'is_not_null':
+                    ruleMatches = fieldValue != null && fieldValue !== '';
+                    break;
+                case 'is_null':
+                    ruleMatches = fieldValue == null || fieldValue === '';
+                    break;
+            }
+            
+            if (ruleMatches) {
+                totalScore += rule.points;
+                
+                // Categorize score
+                switch (rule.rule_type) {
+                    case 'engagement':
+                        engagementScore += rule.points;
+                        break;
+                    case 'demographic':
+                        demographicScore += rule.points;
+                        break;
+                    case 'behavioral':
+                        behavioralScore += rule.points;
+                        break;
+                }
+                
+                // Log score change
+                await client.query(
+                    `INSERT INTO score_history (lead_id, rule_id, points_added, reason)
+                     VALUES ($1, $2, $3, $4)`,
+                    [leadId, rule.id, rule.points, rule.name]
+                );
+            }
+        }
+        
+        // Calculate grade (A-F based on score)
+        let grade;
+        if (totalScore >= 80) grade = 'A';
+        else if (totalScore >= 60) grade = 'B';
+        else if (totalScore >= 40) grade = 'C';
+        else if (totalScore >= 20) grade = 'D';
+        else grade = 'F';
+        
+        // Upsert lead score
+        await client.query(
+            `INSERT INTO lead_scores 
+             (lead_id, total_score, engagement_score, demographic_score, behavioral_score, grade, last_calculated)
+             VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+             ON CONFLICT (lead_id) 
+             DO UPDATE SET 
+                total_score = $2,
+                engagement_score = $3,
+                demographic_score = $4,
+                behavioral_score = $5,
+                grade = $6,
+                last_calculated = CURRENT_TIMESTAMP`,
+            [leadId, totalScore, engagementScore, demographicScore, behavioralScore, grade]
+        );
+        
+        await client.query('COMMIT');
+        
+        return { totalScore, grade, engagementScore, demographicScore, behavioralScore };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+// Calculate score for a lead
+app.post('/api/scoring/calculate/:leadId', authenticateToken, async (req, res) => {
+    try {
+        const leadId = parseInt(req.params.leadId);
+        const result = await calculateLeadScore(leadId);
+        
+        res.json({
+            success: true,
+            message: 'Lead score calculated successfully.',
+            score: result
+        });
+    } catch (error) {
+        console.error('Calculate score error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Recalculate all lead scores
+app.post('/api/scoring/recalculate-all', authenticateToken, async (req, res) => {
+    try {
+        const leads = await pool.query(`SELECT id FROM leads`);
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const lead of leads.rows) {
+            try {
+                await calculateLeadScore(lead.id);
+                successCount++;
+            } catch (error) {
+                console.error(`Error calculating score for lead ${lead.id}:`, error);
+                errorCount++;
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: `Recalculated scores for ${successCount} leads. ${errorCount} errors.`,
+            successCount,
+            errorCount
+        });
+    } catch (error) {
+        console.error('Recalculate all scores error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get lead scores with rankings
+app.get('/api/scoring/leaderboard', authenticateToken, async (req, res) => {
+    try {
+        const { limit = 50 } = req.query;
+        
+        const leaderboard = await pool.query(`
+            SELECT 
+                ls.*,
+                l.name,
+                l.email,
+                l.company,
+                l.status,
+                RANK() OVER (ORDER BY ls.total_score DESC) as rank
+            FROM lead_scores ls
+            JOIN leads l ON ls.lead_id = l.id
+            ORDER BY ls.total_score DESC
+            LIMIT $1
+        `, [parseInt(limit)]);
+        
+        res.json({
+            success: true,
+            leaderboard: leaderboard.rows
+        });
+    } catch (error) {
+        console.error('Get leaderboard error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get score history for a lead
+app.get('/api/scoring/history/:leadId', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.leadId;
+        
+        const history = await pool.query(`
+            SELECT 
+                sh.*,
+                sr.name as rule_name
+            FROM score_history sh
+            LEFT JOIN scoring_rules sr ON sh.rule_id = sr.id
+            WHERE sh.lead_id = $1
+            ORDER BY sh.created_at DESC
+            LIMIT 50
+        `, [leadId]);
+        
+        res.json({
+            success: true,
+            history: history.rows
+        });
+    } catch (error) {
+        console.error('Get score history error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get scoring statistics
+app.get('/api/scoring/stats', authenticateToken, async (req, res) => {
+    try {
+        const stats = await pool.query(`
+            SELECT 
+                COUNT(*) as total_leads,
+                ROUND(AVG(total_score), 2) as avg_score,
+                MAX(total_score) as max_score,
+                MIN(total_score) as min_score,
+                COUNT(*) FILTER (WHERE grade = 'A') as grade_a_count,
+                COUNT(*) FILTER (WHERE grade = 'B') as grade_b_count,
+                COUNT(*) FILTER (WHERE grade = 'C') as grade_c_count,
+                COUNT(*) FILTER (WHERE grade = 'D') as grade_d_count,
+                COUNT(*) FILTER (WHERE grade = 'F') as grade_f_count
+            FROM lead_scores
+        `);
+        
+        res.json({
+            success: true,
+            stats: stats.rows[0]
+        });
+    } catch (error) {
+        console.error('Get scoring stats error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Export the calculateLeadScore function for use in other endpoints
+module.exports = { calculateLeadScore };
+
+// ==================== PHASE 5: DOCUMENT MANAGEMENT ====================
+// Add this to your server.js file
+// NOTE: This implementation uses file uploads - you'll need multer package
+// Install with: npm install multer
+
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs').promises;
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: async (req, file, cb) => {
+        const uploadDir = path.join(__dirname, 'uploads', 'documents');
+        await fs.mkdir(uploadDir, { recursive: true });
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + '-' + file.originalname);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+    fileFilter: (req, file, cb) => {
+        // Allow common document types
+        const allowedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'text/plain'
+        ];
+        
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Allowed: PDF, DOC, DOCX, XLS, XLSX, images, TXT'));
+        }
+    }
+});
+
+// ==================== DATABASE SCHEMA ====================
+// Add to initializeDatabase() function:
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS documents (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        filename VARCHAR(500) NOT NULL,
+        original_filename VARCHAR(500) NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size BIGINT,
+        mime_type VARCHAR(100),
+        document_type VARCHAR(100),
+        description TEXT,
+        uploaded_by INTEGER REFERENCES admin_users(id),
+        is_shared BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS document_versions (
+        id SERIAL PRIMARY KEY,
+        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+        version_number INTEGER NOT NULL,
+        filename VARCHAR(500) NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size BIGINT,
+        uploaded_by INTEGER REFERENCES admin_users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS document_shares (
+        id SERIAL PRIMARY KEY,
+        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+        shared_with_email VARCHAR(255),
+        share_token VARCHAR(255) UNIQUE,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_documents_lead 
+    ON documents(lead_id, created_at DESC);
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_document_shares_token 
+    ON document_shares(share_token);
+`);
+
+// ==================== API ENDPOINTS ====================
+
+// Get all documents (with optional lead filter)
+app.get('/api/documents', authenticateToken, async (req, res) => {
+    try {
+        const { lead_id } = req.query;
+        
+        let query = `
+            SELECT 
+                d.*,
+                au.username as uploaded_by_name,
+                l.name as lead_name
+            FROM documents d
+            LEFT JOIN admin_users au ON d.uploaded_by = au.id
+            LEFT JOIN leads l ON d.lead_id = l.id
+        `;
+        
+        const params = [];
+        if (lead_id) {
+            query += ' WHERE d.lead_id = $1';
+            params.push(lead_id);
+        }
+        
+        query += ' ORDER BY d.created_at DESC';
+        
+        const documents = await pool.query(query, params);
+        
+        res.json({
+            success: true,
+            documents: documents.rows
+        });
+    } catch (error) {
+        console.error('Get documents error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Upload document
+app.post('/api/documents/upload', authenticateToken, upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file uploaded.' });
+        }
+        
+        const { lead_id, document_type, description } = req.body;
+        const userId = req.user.id;
+        
+        const result = await pool.query(
+            `INSERT INTO documents 
+             (lead_id, filename, original_filename, file_path, file_size, mime_type, 
+              document_type, description, uploaded_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING *`,
+            [
+                lead_id || null,
+                req.file.filename,
+                req.file.originalname,
+                req.file.path,
+                req.file.size,
+                req.file.mimetype,
+                document_type || 'general',
+                description || null,
+                userId
+            ]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Document uploaded successfully.',
+            document: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Upload document error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Download document
+app.get('/api/documents/:id/download', authenticateToken, async (req, res) => {
+    try {
+        const documentId = req.params.id;
+        
+        const document = await pool.query(
+            `SELECT * FROM documents WHERE id = $1`,
+            [documentId]
+        );
+        
+        if (document.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Document not found.' });
+        }
+        
+        const doc = document.rows[0];
+        
+        res.download(doc.file_path, doc.original_filename);
+    } catch (error) {
+        console.error('Download document error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Update document metadata
+app.put('/api/documents/:id', authenticateToken, async (req, res) => {
+    try {
+        const documentId = req.params.id;
+        const { document_type, description, is_shared } = req.body;
+        
+        const result = await pool.query(
+            `UPDATE documents 
+             SET document_type = $1, description = $2, is_shared = $3, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $4
+             RETURNING *`,
+            [document_type, description, is_shared, documentId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Document updated successfully.',
+            document: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update document error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Delete document
+app.delete('/api/documents/:id', authenticateToken, async (req, res) => {
+    try {
+        const documentId = req.params.id;
+        
+        // Get document info to delete file
+        const document = await pool.query(
+            `SELECT * FROM documents WHERE id = $1`,
+            [documentId]
+        );
+        
+        if (document.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Document not found.' });
+        }
+        
+        const doc = document.rows[0];
+        
+        // Delete from database
+        await pool.query(`DELETE FROM documents WHERE id = $1`, [documentId]);
+        
+        // Delete file from disk
+        try {
+            await fs.unlink(doc.file_path);
+        } catch (err) {
+            console.error('Error deleting file:', err);
+        }
+        
+        res.json({
+            success: true,
+            message: 'Document deleted successfully.'
+        });
+    } catch (error) {
+        console.error('Delete document error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Upload new version of document
+app.post('/api/documents/:id/version', authenticateToken, upload.single('file'), async (req, res) => {
+    try {
+        const documentId = req.params.id;
+        
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file uploaded.' });
+        }
+        
+        const userId = req.user.id;
+        
+        // Get current version number
+        const versions = await pool.query(
+            `SELECT COALESCE(MAX(version_number), 0) as max_version 
+             FROM document_versions WHERE document_id = $1`,
+            [documentId]
+        );
+        
+        const newVersion = versions.rows[0].max_version + 1;
+        
+        // Save old version
+        const currentDoc = await pool.query(
+            `SELECT * FROM documents WHERE id = $1`,
+            [documentId]
+        );
+        
+        if (currentDoc.rows.length > 0) {
+            const doc = currentDoc.rows[0];
+            await pool.query(
+                `INSERT INTO document_versions 
+                 (document_id, version_number, filename, file_path, file_size, uploaded_by)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [documentId, newVersion - 1, doc.filename, doc.file_path, doc.file_size, doc.uploaded_by]
+            );
+        }
+        
+        // Update document with new file
+        const result = await pool.query(
+            `UPDATE documents 
+             SET filename = $1, file_path = $2, file_size = $3, 
+                 mime_type = $4, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $5
+             RETURNING *`,
+            [req.file.filename, req.file.path, req.file.size, req.file.mimetype, documentId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'New version uploaded successfully.',
+            document: result.rows[0],
+            version: newVersion
+        });
+    } catch (error) {
+        console.error('Upload version error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get document versions
+app.get('/api/documents/:id/versions', authenticateToken, async (req, res) => {
+    try {
+        const documentId = req.params.id;
+        
+        const versions = await pool.query(`
+            SELECT 
+                dv.*,
+                au.username as uploaded_by_name
+            FROM document_versions dv
+            LEFT JOIN admin_users au ON dv.uploaded_by = au.id
+            WHERE dv.document_id = $1
+            ORDER BY dv.version_number DESC
+        `, [documentId]);
+        
+        res.json({
+            success: true,
+            versions: versions.rows
+        });
+    } catch (error) {
+        console.error('Get versions error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Create shareable link
+app.post('/api/documents/:id/share', authenticateToken, async (req, res) => {
+    try {
+        const documentId = req.params.id;
+        const { email, expires_in_days = 7 } = req.body;
+        
+        const crypto = require('crypto');
+        const shareToken = crypto.randomBytes(32).toString('hex');
+        
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + parseInt(expires_in_days));
+        
+        const result = await pool.query(
+            `INSERT INTO document_shares 
+             (document_id, shared_with_email, share_token, expires_at)
+             VALUES ($1, $2, $3, $4)
+             RETURNING *`,
+            [documentId, email, shareToken, expiresAt]
+        );
+        
+        const shareUrl = `${req.protocol}://${req.get('host')}/api/documents/shared/${shareToken}`;
+        
+        res.json({
+            success: true,
+            message: 'Share link created successfully.',
+            share: result.rows[0],
+            share_url: shareUrl
+        });
+    } catch (error) {
+        console.error('Create share link error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Access shared document (no auth required)
+app.get('/api/documents/shared/:token', async (req, res) => {
+    try {
+        const token = req.params.token;
+        
+        const share = await pool.query(`
+            SELECT ds.*, d.file_path, d.original_filename, d.mime_type
+            FROM document_shares ds
+            JOIN documents d ON ds.document_id = d.id
+            WHERE ds.share_token = $1 
+                AND ds.expires_at > CURRENT_TIMESTAMP
+        `, [token]);
+        
+        if (share.rows.length === 0) {
+            return res.status(404).send('Link expired or invalid.');
+        }
+        
+        const doc = share.rows[0];
+        res.download(doc.file_path, doc.original_filename);
+    } catch (error) {
+        console.error('Shared document error:', error);
+        res.status(500).send('Server error.');
+    }
+});
+
+// Get storage statistics
+app.get('/api/documents/stats', authenticateToken, async (req, res) => {
+    try {
+        const stats = await pool.query(`
+            SELECT 
+                COUNT(*) as total_documents,
+                SUM(file_size) as total_size,
+                COUNT(DISTINCT lead_id) as leads_with_docs,
+                COUNT(*) FILTER (WHERE document_type = 'contract') as contracts,
+                COUNT(*) FILTER (WHERE document_type = 'proposal') as proposals,
+                COUNT(*) FILTER (WHERE document_type = 'invoice') as invoices
+            FROM documents
+        `);
+        
+        res.json({
+            success: true,
+            stats: stats.rows[0]
+        });
+    } catch (error) {
+        console.error('Get stats error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// ==================== PHASE 6: SALES PIPELINE / KANBAN BOARD ====================
+// Add this to your server.js file
+
+// ==================== DATABASE SCHEMA ====================
+// Add to initializeDatabase() function:
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS pipeline_stages (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        description TEXT,
+        color VARCHAR(50),
+        position INTEGER NOT NULL,
+        probability INTEGER DEFAULT 50,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS pipeline_deals (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        stage_id INTEGER REFERENCES pipeline_stages(id),
+        title VARCHAR(500) NOT NULL,
+        value DECIMAL(10, 2),
+        expected_close_date DATE,
+        probability INTEGER DEFAULT 50,
+        position INTEGER DEFAULT 0,
+        notes TEXT,
+        assigned_to INTEGER REFERENCES admin_users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE TABLE IF NOT EXISTS deal_activities (
+        id SERIAL PRIMARY KEY,
+        deal_id INTEGER REFERENCES pipeline_deals(id) ON DELETE CASCADE,
+        activity_type VARCHAR(100) NOT NULL,
+        description TEXT,
+        metadata JSONB,
+        created_by INTEGER REFERENCES admin_users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_pipeline_deals_stage 
+    ON pipeline_deals(stage_id, position);
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_deal_activities_deal 
+    ON deal_activities(deal_id, created_at DESC);
+`);
+
+// Insert default pipeline stages
+await client.query(`
+    INSERT INTO pipeline_stages (name, description, color, position, probability)
+    VALUES 
+        ('New Lead', 'Initial contact', '#3b82f6', 1, 10),
+        ('Qualified', 'Lead has been qualified', '#10b981', 2, 25),
+        ('Proposal Sent', 'Proposal has been sent to client', '#f59e0b', 3, 50),
+        ('Negotiation', 'Negotiating terms', '#8b5cf6', 4, 75),
+        ('Closed Won', 'Deal won', '#22c55e', 5, 100),
+        ('Closed Lost', 'Deal lost', '#ef4444', 6, 0)
+    ON CONFLICT DO NOTHING;
+`);
+
+// ==================== API ENDPOINTS ====================
+
+// Get all pipeline stages
+app.get('/api/pipeline/stages', authenticateToken, async (req, res) => {
+    try {
+        const stages = await pool.query(`
+            SELECT * FROM pipeline_stages 
+            WHERE is_active = TRUE
+            ORDER BY position ASC
+        `);
+        
+        res.json({
+            success: true,
+            stages: stages.rows
+        });
+    } catch (error) {
+        console.error('Get pipeline stages error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Create pipeline stage
+app.post('/api/pipeline/stages', authenticateToken, async (req, res) => {
+    try {
+        const { name, description, color, probability } = req.body;
+        
+        // Get max position
+        const maxPos = await pool.query(
+            `SELECT COALESCE(MAX(position), 0) as max_position FROM pipeline_stages`
+        );
+        
+        const position = maxPos.rows[0].max_position + 1;
+        
+        const result = await pool.query(
+            `INSERT INTO pipeline_stages (name, description, color, position, probability)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+            [name, description, color, position, probability]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Pipeline stage created successfully.',
+            stage: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create pipeline stage error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Update pipeline stage
+app.put('/api/pipeline/stages/:id', authenticateToken, async (req, res) => {
+    try {
+        const stageId = req.params.id;
+        const { name, description, color, probability, position } = req.body;
+        
+        const result = await pool.query(
+            `UPDATE pipeline_stages 
+             SET name = $1, description = $2, color = $3, probability = $4, position = $5
+             WHERE id = $6
+             RETURNING *`,
+            [name, description, color, probability, position, stageId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Pipeline stage updated successfully.',
+            stage: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update pipeline stage error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get all deals with stage info
+app.get('/api/pipeline/deals', authenticateToken, async (req, res) => {
+    try {
+        const deals = await pool.query(`
+            SELECT 
+                pd.*,
+                ps.name as stage_name,
+                ps.color as stage_color,
+                l.name as lead_name,
+                l.email as lead_email,
+                l.company as lead_company,
+                au.username as assigned_to_name
+            FROM pipeline_deals pd
+            LEFT JOIN pipeline_stages ps ON pd.stage_id = ps.id
+            LEFT JOIN leads l ON pd.lead_id = l.id
+            LEFT JOIN admin_users au ON pd.assigned_to = au.id
+            ORDER BY ps.position ASC, pd.position ASC
+        `);
+        
+        res.json({
+            success: true,
+            deals: deals.rows
+        });
+    } catch (error) {
+        console.error('Get pipeline deals error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Create deal
+app.post('/api/pipeline/deals', authenticateToken, async (req, res) => {
+    try {
+        const { lead_id, stage_id, title, value, expected_close_date, probability, notes } = req.body;
+        const userId = req.user.id;
+        
+        // Get max position in this stage
+        const maxPos = await pool.query(
+            `SELECT COALESCE(MAX(position), 0) as max_position 
+             FROM pipeline_deals WHERE stage_id = $1`,
+            [stage_id]
+        );
+        
+        const position = maxPos.rows[0].max_position + 1;
+        
+        const result = await pool.query(
+            `INSERT INTO pipeline_deals 
+             (lead_id, stage_id, title, value, expected_close_date, probability, position, notes, assigned_to)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING *`,
+            [lead_id, stage_id, title, value, expected_close_date, probability, position, notes, userId]
+        );
+        
+        // Log activity
+        await pool.query(
+            `INSERT INTO deal_activities (deal_id, activity_type, description, created_by)
+             VALUES ($1, 'created', 'Deal created', $2)`,
+            [result.rows[0].id, userId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Deal created successfully.',
+            deal: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create deal error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Update deal
+app.put('/api/pipeline/deals/:id', authenticateToken, async (req, res) => {
+    try {
+        const dealId = req.params.id;
+        const { title, value, expected_close_date, probability, notes, assigned_to } = req.body;
+        const userId = req.user.id;
+        
+        const result = await pool.query(
+            `UPDATE pipeline_deals 
+             SET title = $1, value = $2, expected_close_date = $3, 
+                 probability = $4, notes = $5, assigned_to = $6, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $7
+             RETURNING *`,
+            [title, value, expected_close_date, probability, notes, assigned_to, dealId]
+        );
+        
+        // Log activity
+        await pool.query(
+            `INSERT INTO deal_activities (deal_id, activity_type, description, created_by)
+             VALUES ($1, 'updated', 'Deal updated', $2)`,
+            [dealId, userId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Deal updated successfully.',
+            deal: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update deal error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Move deal to different stage
+app.patch('/api/pipeline/deals/:id/move', authenticateToken, async (req, res) => {
+    try {
+        const dealId = req.params.id;
+        const { stage_id, position } = req.body;
+        const userId = req.user.id;
+        
+        // Get current deal info
+        const currentDeal = await pool.query(
+            `SELECT * FROM pipeline_deals WHERE id = $1`,
+            [dealId]
+        );
+        
+        if (currentDeal.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Deal not found.' });
+        }
+        
+        const oldStageId = currentDeal.rows[0].stage_id;
+        
+        // If moving to different stage
+        if (oldStageId !== stage_id) {
+            // Get max position in new stage
+            const maxPos = await pool.query(
+                `SELECT COALESCE(MAX(position), 0) as max_position 
+                 FROM pipeline_deals WHERE stage_id = $1`,
+                [stage_id]
+            );
+            
+            const newPosition = position !== undefined ? position : maxPos.rows[0].max_position + 1;
+            
+            // Update deal
+            const result = await pool.query(
+                `UPDATE pipeline_deals 
+                 SET stage_id = $1, position = $2, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $3
+                 RETURNING *`,
+                [stage_id, newPosition, dealId]
+            );
+            
+            // Get stage names for activity log
+            const stages = await pool.query(
+                `SELECT id, name FROM pipeline_stages WHERE id IN ($1, $2)`,
+                [oldStageId, stage_id]
+            );
+            
+            const oldStageName = stages.rows.find(s => s.id === oldStageId)?.name;
+            const newStageName = stages.rows.find(s => s.id === stage_id)?.name;
+            
+            // Log activity
+            await pool.query(
+                `INSERT INTO deal_activities (deal_id, activity_type, description, created_by)
+                 VALUES ($1, 'stage_changed', $2, $3)`,
+                [dealId, `Moved from "${oldStageName}" to "${newStageName}"`, userId]
+            );
+            
+            res.json({
+                success: true,
+                message: 'Deal moved successfully.',
+                deal: result.rows[0]
+            });
+        } else {
+            // Just reposition within same stage
+            await pool.query(
+                `UPDATE pipeline_deals SET position = $1 WHERE id = $2`,
+                [position, dealId]
+            );
+            
+            res.json({
+                success: true,
+                message: 'Deal repositioned successfully.'
+            });
+        }
+    } catch (error) {
+        console.error('Move deal error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Delete deal
+app.delete('/api/pipeline/deals/:id', authenticateToken, async (req, res) => {
+    try {
+        const dealId = req.params.id;
+        
+        await pool.query(`DELETE FROM pipeline_deals WHERE id = $1`, [dealId]);
+        
+        res.json({
+            success: true,
+            message: 'Deal deleted successfully.'
+        });
+    } catch (error) {
+        console.error('Delete deal error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get deal activities
+app.get('/api/pipeline/deals/:id/activities', authenticateToken, async (req, res) => {
+    try {
+        const dealId = req.params.id;
+        
+        const activities = await pool.query(`
+            SELECT 
+                da.*,
+                au.username as created_by_name
+            FROM deal_activities da
+            LEFT JOIN admin_users au ON da.created_by = au.id
+            WHERE da.deal_id = $1
+            ORDER BY da.created_at DESC
+            LIMIT 50
+        `, [dealId]);
+        
+        res.json({
+            success: true,
+            activities: activities.rows
+        });
+    } catch (error) {
+        console.error('Get deal activities error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Add note to deal
+app.post('/api/pipeline/deals/:id/note', authenticateToken, async (req, res) => {
+    try {
+        const dealId = req.params.id;
+        const { note } = req.body;
+        const userId = req.user.id;
+        
+        await pool.query(
+            `INSERT INTO deal_activities (deal_id, activity_type, description, created_by)
+             VALUES ($1, 'note', $2, $3)`,
+            [dealId, note, userId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Note added successfully.'
+        });
+    } catch (error) {
+        console.error('Add note error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get pipeline statistics
+app.get('/api/pipeline/stats', authenticateToken, async (req, res) => {
+    try {
+        const stats = await pool.query(`
+            SELECT 
+                COUNT(*) as total_deals,
+                SUM(value) as total_value,
+                SUM(value * (probability / 100.0)) as weighted_value,
+                AVG(value) as avg_deal_size,
+                COUNT(*) FILTER (WHERE stage_id IN (
+                    SELECT id FROM pipeline_stages WHERE name LIKE '%Won%'
+                )) as won_deals,
+                COUNT(*) FILTER (WHERE stage_id IN (
+                    SELECT id FROM pipeline_stages WHERE name LIKE '%Lost%'
+                )) as lost_deals
+            FROM pipeline_deals
+        `);
+        
+        const stageBreakdown = await pool.query(`
+            SELECT 
+                ps.name as stage_name,
+                ps.color as stage_color,
+                COUNT(pd.id) as deal_count,
+                COALESCE(SUM(pd.value), 0) as total_value
+            FROM pipeline_stages ps
+            LEFT JOIN pipeline_deals pd ON ps.id = pd.stage_id
+            WHERE ps.is_active = TRUE
+            GROUP BY ps.id, ps.name, ps.color, ps.position
+            ORDER BY ps.position ASC
+        `);
+        
+        res.json({
+            success: true,
+            stats: stats.rows[0],
+            stage_breakdown: stageBreakdown.rows
+        });
+    } catch (error) {
+        console.error('Get pipeline stats error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get pipeline forecast
+app.get('/api/pipeline/forecast', authenticateToken, async (req, res) => {
+    try {
+        const { months = 3 } = req.query;
+        
+        const forecast = await pool.query(`
+            SELECT 
+                DATE_TRUNC('month', expected_close_date) as month,
+                COUNT(*) as deal_count,
+                SUM(value) as total_value,
+                SUM(value * (probability / 100.0)) as weighted_value
+            FROM pipeline_deals
+            WHERE expected_close_date IS NOT NULL
+                AND expected_close_date >= CURRENT_DATE
+                AND expected_close_date <= CURRENT_DATE + INTERVAL '${parseInt(months)} months'
+            GROUP BY DATE_TRUNC('month', expected_close_date)
+            ORDER BY month ASC
+        `);
+        
+        res.json({
+            success: true,
+            forecast: forecast.rows
+        });
+    } catch (error) {
+        console.error('Get forecast error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
 // ========================================
 // PDF GENERATION FUNCTIONS
 // ========================================
@@ -4113,6 +5418,19 @@ app.use((err, req, res, next) => {
         message: 'Internal server error' 
     });
 });
+
+async function verifyEmailConfig() {
+    try {
+        await transporter.verify();
+        console.log('✅ Email configuration verified');
+        return true;
+    } catch (error) {
+        console.error('❌ Email configuration failed:', error);
+        return false;
+    }
+}
+
+module.exports = { transporter, verifyEmailConfig };
 
 // ========================================
 // SERVER STARTUP

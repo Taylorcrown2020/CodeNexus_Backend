@@ -5375,9 +5375,6 @@ app.get('/api/analytics/revenue', authenticateToken, async (req, res) => {
     }
 });
 
-// Call this in your startServer function
-// await addLeadSourceTracking();
-
 // ========================================
 // HEALTH CHECK
 // ========================================
@@ -5424,6 +5421,7 @@ async function startServer() {
     try {
         await initializeDatabase();
         await initializeExpenseTables();
+        await addLeadSourceTracking();
         
         // ✅ THIS LINE MUST BE HERE
         const emailConfigured = await verifyEmailConfig();

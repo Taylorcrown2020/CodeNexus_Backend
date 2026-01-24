@@ -429,6 +429,44 @@ END IF;
             )
         `);
 
+        // Lead source tracking
+await client.query(`
+    ALTER TABLE leads ADD COLUMN IF NOT EXISTS source VARCHAR(100);
+    ALTER TABLE leads ADD COLUMN IF NOT EXISTS source_details TEXT;
+    ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_contact_date TIMESTAMP;
+    ALTER TABLE leads ADD COLUMN IF NOT EXISTS win_loss_reason TEXT;
+    ALTER TABLE leads ADD COLUMN IF NOT EXISTS deal_value DECIMAL(10, 2);
+    ALTER TABLE leads ADD COLUMN IF NOT EXISTS probability INTEGER DEFAULT 50;
+    ALTER TABLE leads ADD COLUMN IF NOT EXISTS expected_close_date DATE;
+`);
+
+// Activity log table
+await client.query(`
+    CREATE TABLE IF NOT EXISTS activity_log (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES admin_users(id),
+        activity_type VARCHAR(100) NOT NULL,
+        description TEXT,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+// Email tracking
+await client.query(`
+    CREATE TABLE IF NOT EXISTS email_log (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        template_id INTEGER,
+        subject VARCHAR(500),
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        opened_at TIMESTAMP,
+        clicked_at TIMESTAMP,
+        status VARCHAR(50) DEFAULT 'sent'
+    )
+`);
+
         await client.query('COMMIT');
         console.log('✅ Database tables initialized');
 
@@ -3497,6 +3535,545 @@ function generateInvoicePDFHTML(invoice) {
         </html>
     `;
 }
+
+// Revenue Analytics
+app.get('/api/analytics/revenue', authenticateToken, async (req, res) => {
+    try {
+        const { period = '30' } = req.query; // days
+        
+        const revenueData = await pool.query(`
+            SELECT 
+                DATE_TRUNC('day', paid_at) as date,
+                SUM(total_amount) as revenue,
+                COUNT(*) as invoice_count
+            FROM invoices
+            WHERE status = 'paid' 
+                AND paid_at >= NOW() - INTERVAL '${parseInt(period)} days'
+            GROUP BY DATE_TRUNC('day', paid_at)
+            ORDER BY date DESC
+        `);
+        
+        const projectedRevenue = await pool.query(`
+            SELECT 
+                SUM(total_amount * (probability / 100.0)) as projected
+            FROM invoices i
+            JOIN leads l ON i.lead_id = l.id
+            WHERE i.status IN ('draft', 'sent')
+                AND l.expected_close_date >= CURRENT_DATE
+                AND l.expected_close_date <= CURRENT_DATE + INTERVAL '90 days'
+        `);
+        
+        res.json({
+            success: true,
+            revenue: revenueData.rows,
+            projected: projectedRevenue.rows[0].projected || 0
+        });
+    } catch (error) {
+        console.error('Revenue analytics error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Conversion Funnel
+app.get('/api/analytics/funnel', authenticateToken, async (req, res) => {
+    try {
+        const funnel = await pool.query(`
+            SELECT 
+                COUNT(*) FILTER (WHERE status = 'new') as new_leads,
+                COUNT(*) FILTER (WHERE status = 'contacted') as contacted,
+                COUNT(*) FILTER (WHERE status = 'pending') as pending,
+                COUNT(*) FILTER (WHERE is_customer = true) as converted,
+                ROUND(
+                    COUNT(*) FILTER (WHERE is_customer = true)::numeric / 
+                    NULLIF(COUNT(*), 0) * 100, 
+                    2
+                ) as conversion_rate
+            FROM leads
+            WHERE created_at >= NOW() - INTERVAL '90 days'
+        `);
+        
+        res.json({
+            success: true,
+            funnel: funnel.rows[0]
+        });
+    } catch (error) {
+        console.error('Funnel analytics error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Employee Performance
+app.get('/api/analytics/employee-performance', authenticateToken, async (req, res) => {
+    try {
+        const performance = await pool.query(`
+            SELECT 
+                e.id,
+                e.name,
+                COUNT(DISTINCT l.id) as total_leads,
+                COUNT(DISTINCT l.id) FILTER (WHERE l.is_customer = true) as converted,
+                COALESCE(SUM(l.lifetime_value), 0) as total_revenue,
+                ROUND(
+                    COUNT(DISTINCT l.id) FILTER (WHERE l.is_customer = true)::numeric / 
+                    NULLIF(COUNT(DISTINCT l.id), 0) * 100,
+                    2
+                ) as conversion_rate
+            FROM employees e
+            LEFT JOIN leads l ON l.assigned_to = e.id
+            WHERE e.is_active = true
+            GROUP BY e.id, e.name
+            ORDER BY total_revenue DESC
+        `);
+        
+        res.json({
+            success: true,
+            performance: performance.rows
+        });
+    } catch (error) {
+        console.error('Performance analytics error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Lead Sources
+app.get('/api/analytics/sources', authenticateToken, async (req, res) => {
+    try {
+        const sources = await pool.query(`
+            SELECT 
+                COALESCE(source, 'Unknown') as source,
+                COUNT(*) as count,
+                COUNT(*) FILTER (WHERE is_customer = true) as converted,
+                ROUND(
+                    COUNT(*) FILTER (WHERE is_customer = true)::numeric / 
+                    NULLIF(COUNT(*), 0) * 100,
+                    2
+                ) as conversion_rate
+            FROM leads
+            WHERE created_at >= NOW() - INTERVAL '90 days'
+            GROUP BY source
+            ORDER BY count DESC
+        `);
+        
+        res.json({
+            success: true,
+            sources: sources.rows
+        });
+    } catch (error) {
+        console.error('Sources analytics error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get upcoming reminders
+app.get('/api/reminders', authenticateToken, async (req, res) => {
+    try {
+        const reminders = await pool.query(`
+            SELECT r.*, l.name as lead_name, l.email
+            FROM reminders r
+            LEFT JOIN leads l ON r.lead_id = l.id
+            WHERE r.is_completed = FALSE
+                AND r.reminder_date <= NOW() + INTERVAL '7 days'
+            ORDER BY r.reminder_date ASC
+        `);
+        
+        res.json({
+            success: true,
+            reminders: reminders.rows
+        });
+    } catch (error) {
+        console.error('Get reminders error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Create reminder
+app.post('/api/reminders', authenticateToken, async (req, res) => {
+    try {
+        const { lead_id, reminder_type, reminder_date, message } = req.body;
+        const userId = req.user.id;
+        
+        const result = await pool.query(
+            `INSERT INTO reminders (lead_id, user_id, reminder_type, reminder_date, message)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+            [lead_id, userId, reminder_type, reminder_date, message]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Reminder created successfully.',
+            reminder: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create reminder error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Complete reminder
+app.patch('/api/reminders/:id/complete', authenticateToken, async (req, res) => {
+    try {
+        const reminderId = req.params.id;
+        
+        await pool.query(
+            `UPDATE reminders 
+             SET is_completed = TRUE, completed_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
+            [reminderId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Reminder marked as complete.'
+        });
+    } catch (error) {
+        console.error('Complete reminder error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Auto-generate follow-up reminders (run daily via cron)
+app.post('/api/automation/generate-followup-reminders', authenticateToken, async (req, res) => {
+    try {
+        // Find leads that haven't been contacted in 7+ days
+        const staleLeads = await pool.query(`
+            SELECT l.* 
+            FROM leads l
+            LEFT JOIN reminders r ON r.lead_id = l.id AND r.is_completed = FALSE
+            WHERE l.status IN ('new', 'contacted', 'pending')
+                AND l.is_customer = FALSE
+                AND (l.last_contact_date IS NULL OR l.last_contact_date < NOW() - INTERVAL '7 days')
+                AND r.id IS NULL
+        `);
+        
+        for (const lead of staleLeads.rows) {
+            await pool.query(
+                `INSERT INTO reminders (lead_id, user_id, reminder_type, reminder_date, message)
+                 VALUES ($1, $2, 'follow-up', NOW() + INTERVAL '1 day', $3)`,
+                [
+                    lead.id,
+                    lead.assigned_to || 1,
+                    `Follow up with ${lead.name} - no contact in 7+ days`
+                ]
+            );
+        }
+        
+        res.json({
+            success: true,
+            message: `Generated ${staleLeads.rows.length} follow-up reminders.`
+        });
+    } catch (error) {
+        console.error('Generate reminders error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// ========================================
+// ADD THESE ROUTES TO YOUR server.js
+// Place them with your other email routes
+// ========================================
+
+// Send custom email
+app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
+    try {
+        const { to, toName, subject, body, leadId } = req.body;
+        
+        if (!to || !subject || !body) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields'
+            });
+        }
+        
+        // Convert plain text to HTML with line breaks
+        const htmlBody = body.replace(/\n/g, '<br>');
+        
+        const emailHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #22c55e; color: white; padding: 30px; text-align: center; margin-bottom: 30px; }
+                    .content { padding: 20px; background: white; }
+                    .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1 style="margin: 0; font-size: 24px;">Diamondback Coding</h1>
+                    </div>
+                    <div class="content">
+                        ${htmlBody}
+                    </div>
+                    <div class="footer">
+                        <p><strong>Diamondback Coding</strong><br>
+                        15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                        <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        const info = await transporter.sendMail({
+            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+            to: to,
+            subject: subject,
+            html: emailHTML
+        });
+        
+        console.log(`✅ Custom email sent to ${to}: "${subject}"`);
+        
+        // Log to lead activity if leadId provided
+        if (leadId) {
+            try {
+                const leadResult = await pool.query('SELECT notes FROM leads WHERE id = $1', [leadId]);
+                if (leadResult.rows.length > 0) {
+                    let notes = [];
+                    try {
+                        notes = JSON.parse(leadResult.rows[0].notes) || [];
+                    } catch (e) {
+                        notes = [];
+                    }
+                    
+                    notes.push({
+                        text: `📧 Email sent: "${subject}"`,
+                        author: 'System',
+                        date: new Date().toISOString()
+                    });
+                    
+                    await pool.query(
+                        'UPDATE leads SET notes = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+                        [JSON.stringify(notes), leadId]
+                    );
+                }
+            } catch (noteError) {
+                console.error('Error logging email to lead notes:', noteError);
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: 'Email sent successfully',
+            messageId: info.messageId
+        });
+    } catch (error) {
+        console.error('Send custom email error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send email: ' + error.message
+        });
+    }
+});
+
+// ========================================
+// LEAD SOURCE TRACKING
+// Add these columns to leads table
+// ========================================
+
+async function addLeadSourceTracking() {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        
+        // Add source tracking columns
+        await client.query(`
+            DO $$ 
+            BEGIN 
+                -- Lead source
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='source') THEN
+                    ALTER TABLE leads ADD COLUMN source VARCHAR(100);
+                END IF;
+                
+                -- Lead source details
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='source_details') THEN
+                    ALTER TABLE leads ADD COLUMN source_details TEXT;
+                END IF;
+                
+                -- Referring URL
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='referrer_url') THEN
+                    ALTER TABLE leads ADD COLUMN referrer_url TEXT;
+                END IF;
+                
+                -- UTM parameters
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='utm_source') THEN
+                    ALTER TABLE leads ADD COLUMN utm_source VARCHAR(255);
+                END IF;
+                
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='utm_medium') THEN
+                    ALTER TABLE leads ADD COLUMN utm_medium VARCHAR(255);
+                END IF;
+                
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='utm_campaign') THEN
+                    ALTER TABLE leads ADD COLUMN utm_campaign VARCHAR(255);
+                END IF;
+                
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='utm_content') THEN
+                    ALTER TABLE leads ADD COLUMN utm_content VARCHAR(255);
+                END IF;
+                
+                -- First contact date
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='first_contact_date') THEN
+                    ALTER TABLE leads ADD COLUMN first_contact_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                END IF;
+                
+                -- Last contact date
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='last_contact_date') THEN
+                    ALTER TABLE leads ADD COLUMN last_contact_date TIMESTAMP;
+                END IF;
+            END $$;
+        `);
+        
+        await client.query('COMMIT');
+        console.log('✅ Lead source tracking columns added');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error adding lead source tracking:', error);
+    } finally {
+        client.release();
+    }
+}
+
+// Get lead source analytics
+app.get('/api/analytics/lead-sources', authenticateToken, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        
+        let query = `
+            SELECT 
+                source,
+                COUNT(*) as count,
+                COUNT(CASE WHEN is_customer = TRUE THEN 1 END) as converted,
+                ROUND(
+                    (COUNT(CASE WHEN is_customer = TRUE THEN 1 END)::numeric / COUNT(*)::numeric) * 100,
+                    2
+                ) as conversion_rate
+            FROM leads
+            WHERE 1=1
+        `;
+        
+        const params = [];
+        let paramIndex = 1;
+        
+        if (startDate) {
+            query += ` AND created_at >= $${paramIndex}`;
+            params.push(startDate);
+            paramIndex++;
+        }
+        
+        if (endDate) {
+            query += ` AND created_at <= $${paramIndex}`;
+            params.push(endDate);
+            paramIndex++;
+        }
+        
+        query += ` GROUP BY source ORDER BY count DESC`;
+        
+        const result = await pool.query(query, params);
+        
+        res.json({
+            success: true,
+            sources: result.rows
+        });
+    } catch (error) {
+        console.error('Get lead sources error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+// Get conversion funnel data
+app.get('/api/analytics/funnel', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                COUNT(*) FILTER (WHERE is_customer = FALSE) as total_leads,
+                COUNT(*) FILTER (WHERE status = 'contacted' AND is_customer = FALSE) as contacted,
+                COUNT(*) FILTER (WHERE status = 'closed' OR is_customer = TRUE) as closed,
+                COUNT(*) FILTER (WHERE is_customer = TRUE) as customers,
+                ROUND(AVG(
+                    EXTRACT(EPOCH FROM (
+                        CASE 
+                            WHEN is_customer THEN 
+                                COALESCE(last_payment_date, updated_at) - created_at
+                            ELSE NULL
+                        END
+                    )) / 86400
+                ), 1) as avg_days_to_convert
+            FROM leads
+        `);
+        
+        res.json({
+            success: true,
+            funnel: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Get funnel error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+// Get revenue analytics
+app.get('/api/analytics/revenue', authenticateToken, async (req, res) => {
+    try {
+        const { period = 'month' } = req.query; // month, quarter, year
+        
+        let dateFormat;
+        switch (period) {
+            case 'quarter':
+                dateFormat = 'YYYY-Q';
+                break;
+            case 'year':
+                dateFormat = 'YYYY';
+                break;
+            default:
+                dateFormat = 'YYYY-MM';
+        }
+        
+        const result = await pool.query(`
+            SELECT 
+                TO_CHAR(issue_date, $1) as period,
+                COUNT(*) as invoice_count,
+                SUM(total_amount) FILTER (WHERE status = 'paid') as revenue,
+                SUM(total_amount) FILTER (WHERE status != 'paid' AND status != 'cancelled' AND status != 'void') as pending,
+                AVG(total_amount) FILTER (WHERE status = 'paid') as avg_deal_size
+            FROM invoices
+            WHERE issue_date >= CURRENT_DATE - INTERVAL '12 months'
+            GROUP BY TO_CHAR(issue_date, $1)
+            ORDER BY period DESC
+        `, [dateFormat]);
+        
+        res.json({
+            success: true,
+            revenue: result.rows
+        });
+    } catch (error) {
+        console.error('Get revenue analytics error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+// Call this in your startServer function
+// await addLeadSourceTracking();
 
 // ========================================
 // HEALTH CHECK

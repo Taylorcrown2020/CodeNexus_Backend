@@ -785,6 +785,8 @@ await client.query(`
             ON CONFLICT DO NOTHING;
         `);
 
+        console.log('✅ Client portal tables initialized');
+
         await client.query('COMMIT');
         console.log('✅ Database tables initialized');
 

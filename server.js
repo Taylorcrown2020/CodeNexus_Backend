@@ -208,9 +208,7 @@ app.use((req, res, next) => {
 // DATABASE CONNECTION
 // ========================================
 
-const db = pool;  // Makes pool available as 'db'
-
-const pool = new Pool({
+const pool = new Pool({  // Create pool FIRST
     connectionString: process.env.DATABASE_URL,
     ssl: {
         rejectUnauthorized: false

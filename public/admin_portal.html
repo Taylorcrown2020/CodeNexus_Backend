@@ -13396,10 +13396,7 @@ async function handleUpdateMilestone(event, milestoneId, projectId, projectName,
 }
 // ==================== COMPREHENSIVE FIXES FOR ALL 9 ISSUES ====================
 
-// FIX 1 & 5 & 8: Milestones are already implemented - just making sure they're visible
-// The "Projects & Milestones" section already exists in the lead detail modal
-
-// FIX 2: View Timeline Function
+// View saved project timeline
 function viewProjectTimeline(index) {
     const timelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
     const timeline = timelines[index];
@@ -13409,8 +13406,8 @@ function viewProjectTimeline(index) {
         return;
     }
     
-    const packages = timeline.packages || [];
-    const packagesHtml = packages.map(pkg => {
+    // Build packages HTML
+    const packagesHtml = (timeline.packages || []).map(pkg => {
         const packageInfo = servicePackages[pkg];
         if (!packageInfo) return '';
         return `
@@ -13422,7 +13419,8 @@ function viewProjectTimeline(index) {
         `;
     }).join('');
     
-    showModal(`Project Timeline - ${timeline.clientName}`, `
+    // Build the modal content
+    const modalContent = `
         <div style="max-height: 70vh; overflow-y: auto;">
             <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
                 <h3 style="margin: 0 0 12px 0;">${timeline.clientName}</h3>
@@ -13430,15 +13428,15 @@ function viewProjectTimeline(index) {
                 <p style="margin: 4px 0;"><strong>Email:</strong> ${timeline.clientEmail}</p>
                 <p style="margin: 4px 0;"><strong>Phone:</strong> ${timeline.clientPhone || 'N/A'}</p>
                 <p style="margin: 4px 0;"><strong>Project:</strong> ${timeline.projectName || 'N/A'}</p>
-                <p style="margin: 4px 0;"><strong>Start Date:</strong> ${timeline.startDate || 'N/A'}</p>
-                <p style="margin: 4px 0;"><strong>End Date:</strong> ${timeline.endDate || 'N/A'}</p>
+                <p style="margin: 4px 0;"><strong>Start Date:</strong> ${formatDate(timeline.startDate)}</p>
+                ${timeline.endDate ? `<p style="margin: 4px 0;"><strong>End Date:</strong> ${formatDate(timeline.endDate)}</p>` : ''}
                 <p style="margin: 4px 0;"><strong>Status:</strong> <span class="status-badge status-${timeline.status || 'pending'}">${timeline.status || 'pending'}</span></p>
             </div>
             
             <h4 style="margin: 16px 0 8px 0;">Selected Packages</h4>
             ${packagesHtml || '<p style="color: var(--text-muted);">No packages selected</p>'}
             
-            ${timeline.maintenanceIncluded !== 'no' ? `
+            ${timeline.maintenanceIncluded && timeline.maintenanceIncluded !== 'no' ? `
                 <div style="background: var(--accent-amber-dim); padding: 12px; border-radius: 8px; margin-top: 12px;">
                     <strong>Maintenance Included</strong>
                     <br>
@@ -13453,6 +13451,13 @@ function viewProjectTimeline(index) {
                     <p>${timeline.scope}</p>
                 </div>
             ` : ''}
+            
+            ${timeline.notes ? `
+                <div style="margin-top: 12px;">
+                    <h4>Additional Notes</h4>
+                    <p>${timeline.notes}</p>
+                </div>
+            ` : ''}
         </div>
         
         <div class="modal-actions" style="margin-top: 20px;">
@@ -13465,9 +13470,12 @@ function viewProjectTimeline(index) {
                 </svg>
                 Export PDF
             </button>
-            <button class="btn btn-secondary" onclick="deleteProjectTimeline(${index})">Delete</button>
+            <button class="btn btn-danger" onclick="deleteProjectTimeline(${index})">Delete</button>
         </div>
-    `);
+    `;
+    
+    // Use your existing showModal function
+    showModal(`Project Timeline - ${timeline.clientName}`, modalContent);
 }
 
 // FIX 3: Export Timeline Function

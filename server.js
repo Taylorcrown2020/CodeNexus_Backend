@@ -5522,51 +5522,6 @@ app.get('/api/analytics/revenue', authenticateToken, async (req, res) => {
     }
 });
 
-// ==================== CLIENT PORTAL ROUTES ====================
-
-// Client Authentication
-app.post('/api/client/login', async (req, res) => {
-    const { email, password } = req.body;
-    
-    try {
-const result = await pool.query(
-    'SELECT * FROM leads WHERE email = $1 AND is_customer = TRUE',
-    [email]
-);
-const lead = result.rows[0];
-        
-        if (!lead) {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
-        
-        // Verify password (if you've stored hashed passwords)
-        // For now, using a simple password field
-        if (!lead.client_password || lead.client_password !== password) {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
-        
-        const token = jwt.sign(
-            { id: lead.id, email: lead.email, type: 'client' },
-            JWT_SECRET,
-            { expiresIn: '7d' }
-        );
-        
-        res.json({
-            success: true,
-            token,
-            client: {
-                id: lead.id,
-                name: lead.name,
-                email: lead.email,
-                company: lead.company
-            }
-        });
-    } catch (error) {
-        console.error('Client login error:', error);
-        res.status(500).json({ success: false, message: 'Login failed' });
-    }
-});
-
 // Client Dashboard Data
 app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
     try {
@@ -6058,54 +6013,41 @@ app.post('/api/admin/files/share', authenticateToken, async (req, res) => {
 // ==================== CLIENT ROUTES ====================
 
 // Client Login (with bcrypt verification)
-app.post('/api/client/login', async (req, res) => {
-    const { email, password } = req.body;
+// Client authentication middleware (FIXED)
+function authenticateClient(req, res, next) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+        console.log('❌ No token provided');
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Access denied. Please log in.' 
+        });
+    }
     
     try {
-const result = await pool.query(
-    'SELECT * FROM leads WHERE email = $1 AND is_customer = TRUE',
-    [email]
-);
-const lead = result.rows[0];
+        const decoded = jwt.verify(token, JWT_SECRET);
         
-        if (!lead || !lead.client_password) {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        if (decoded.type !== 'client') {
+            console.log('❌ Invalid token type:', decoded.type);
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Invalid access token.' 
+            });
         }
         
-        // Verify password with bcrypt
-        const passwordMatch = await bcrypt.compare(password, lead.client_password);
-        
-        if (!passwordMatch) {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
-        
-        // Update last login
-        await db.run(
-            'UPDATE leads SET client_last_login = datetime("now") WHERE id = ?',
-            [lead.id]
-        );
-        
-        const token = jwt.sign(
-            { id: lead.id, email: lead.email, type: 'client' },
-            JWT_SECRET,
-            { expiresIn: '7d' }
-        );
-        
-        res.json({
-            success: true,
-            token,
-            client: {
-                id: lead.id,
-                name: lead.name,
-                email: lead.email,
-                company: lead.company
-            }
-        });
+        req.user = decoded;
+        console.log('✅ Client authenticated:', decoded.email);
+        next();
     } catch (error) {
-        console.error('Client login error:', error);
-        res.status(500).json({ success: false, message: 'Login failed' });
+        console.error('❌ Token verification failed:', error.message);
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Session expired. Please log in again.' 
+        });
     }
-});
+}
 
 // Client Dashboard
 app.get('/api/client/dashboard', authenticateClient, async (req, res) => {

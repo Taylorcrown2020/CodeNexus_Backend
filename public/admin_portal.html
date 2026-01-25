@@ -3092,7 +3092,7 @@ async function loadTickets() {
     }
 }
 
-function renderSection(section) {
+async function renderSection(section) {  // ✅ Now it's async
     console.log('🔍 renderSection called with:', section);
     state.currentSection = section;
     
@@ -3237,8 +3237,7 @@ switch (section) {
             renderProjects(content); 
             break;
 case 'support':
-    // Load tickets then render
-    renderloadTickets();
+    await loadTickets();
     renderTickets();
     break;
         case 'settings': 
@@ -10323,26 +10322,32 @@ function exportTimelineAsPDF() {
     }, 300);
 }
 
-function renderTickets() {
+async function renderTickets() {
     const content = document.getElementById('contentArea');
-    const filter = state.currentFilter || 'all';
     
+    // Show loading state
+    content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading tickets...</div>';
+    
+    // Load tickets
+    await loadTickets();
+    
+    const filter = state.currentFilter || 'all';
     const filteredTickets = filter === 'all' 
         ? (state.tickets || [])
         : (state.tickets || []).filter(t => t.status === filter);
     
     const statusColors = {
-        'open': 'var(--status-danger)',
-        'in-progress': 'var(--status-contacted)',
-        'resolved': 'var(--status-success)',
-        'closed': 'var(--text-muted)'
+        'open': '#ef4444',
+        'in-progress': '#10b981',
+        'resolved': '#8b5cf6',
+        'closed': '#6b7280'
     };
 
     const priorityColors = {
-        'low': 'var(--text-muted)',
-        'normal': 'var(--status-contacted)',
-        'high': 'var(--status-warning)',
-        'urgent': 'var(--status-danger)'
+        'low': '#6b7280',
+        'normal': '#10b981',
+        'high': '#f59e0b',
+        'urgent': '#ef4444'
     };
 
     content.innerHTML = `
@@ -10364,10 +10369,10 @@ function renderTickets() {
                         <div style="flex: 1;">
                             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
                                 <h3 style="margin: 0; font-size: 16px; font-weight: 600;">${ticket.subject}</h3>
-                                <span class="status-badge" style="background: ${statusColors[ticket.status]}; font-size: 11px;">
+                                <span class="status-badge" style="background: ${statusColors[ticket.status]}; color: white; font-size: 11px; padding: 4px 8px; border-radius: 12px;">
                                     ${ticket.status}
                                 </span>
-                                <span class="status-badge" style="background: ${priorityColors[ticket.priority]}; font-size: 11px;">
+                                <span class="status-badge" style="background: ${priorityColors[ticket.priority]}; color: white; font-size: 11px; padding: 4px 8px; border-radius: 12px;">
                                     ${ticket.priority}
                                 </span>
                             </div>

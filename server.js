@@ -418,6 +418,9 @@ await client.query(`
                 email VARCHAR(255) UNIQUE NOT NULL,
                 phone VARCHAR(50),
                 role VARCHAR(100),
+                start_date DATE,
+                end_date DATE,
+                notes TEXT,
                 is_active BOOLEAN DEFAULT TRUE,
                 projects_assigned INTEGER DEFAULT 0,
                 tasks_completed INTEGER DEFAULT 0,
@@ -1565,7 +1568,7 @@ app.get('/api/employees/:id', authenticateToken, async (req, res) => {
 // Create new employee
 app.post('/api/employees', authenticateToken, async (req, res) => {
     try {
-        // First, ensure the table exists
+        // First, ensure the table exists with all fields
         await pool.query(`
             CREATE TABLE IF NOT EXISTS employees (
                 id SERIAL PRIMARY KEY,
@@ -1573,6 +1576,9 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
                 email VARCHAR(255) UNIQUE NOT NULL,
                 phone VARCHAR(50),
                 role VARCHAR(100) DEFAULT 'Team Member',
+                start_date DATE,
+                end_date DATE,
+                notes TEXT,
                 is_active BOOLEAN DEFAULT TRUE,
                 projects_assigned INTEGER DEFAULT 0,
                 tasks_completed INTEGER DEFAULT 0,
@@ -1581,9 +1587,9 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
             )
         `);
         
-        const { name, email, phone, role } = req.body;
+        const { name, email, phone, role, start_date, end_date, notes } = req.body;
         
-        console.log('📝 Creating employee:', { name, email, phone, role });
+        console.log('📝 Creating employee:', { name, email, phone, role, start_date, end_date });
 
         if (!name || !email) {
             return res.status(400).json({
@@ -1593,10 +1599,18 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
         }
 
         const result = await pool.query(
-            `INSERT INTO employees (name, email, phone, role)
-             VALUES ($1, $2, $3, $4)
+            `INSERT INTO employees (name, email, phone, role, start_date, end_date, notes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING *`,
-            [name.trim(), email.trim().toLowerCase(), phone || null, role || 'Team Member']
+            [
+                name.trim(), 
+                email.trim().toLowerCase(), 
+                phone || null, 
+                role || 'Team Member',
+                start_date || null,
+                end_date || null,
+                notes || null
+            ]
         );
 
         console.log('✅ New employee created:', result.rows[0]);

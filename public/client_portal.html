@@ -2452,12 +2452,14 @@ function navigateTo(section) {
                     }
                 }
 
-                // Reset upload area
-                uploadArea.innerHTML = originalContent;
+                // Show success message without resetting upload area
                 alert(`Successfully uploaded ${files.length} file(s)!`);
                 
                 // Reload files list
                 await loadFiles();
+                
+                // Reset the upload area AFTER showing success
+                uploadArea.innerHTML = originalContent;
             } catch (error) {
                 console.error('Upload error:', error);
                 uploadArea.innerHTML = originalContent;

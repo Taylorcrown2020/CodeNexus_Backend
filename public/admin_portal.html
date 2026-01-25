@@ -443,23 +443,31 @@ body {
 
 .btn svg { width: 16px; height: 16px; }
 
+/* Primary Button - Amber/Gold gradient with dark text */
 .btn-primary {
-    background: linear-gradient(135deg, var(--accent-amber) 0%, var(--accent-copper) 100%);
-    color: var(--bg-void);
-    box-shadow: 0 4px 16px rgba(245,158,11,0.3);
+    background: linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(251,191,36,0.15) 100%);
+    color: var(--accent-amber);
+    border: 1.5px solid rgba(245,158,11,0.3);
+    font-weight: 700;
 }
 
 .btn-primary:hover {
+    background: linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(251,191,36,0.25) 100%);
+    border-color: rgba(245,158,11,0.5);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(245,158,11,0.4);
+    box-shadow: 0 4px 12px rgba(245,158,11,0.2);
 }
 
-.btn-primary:active { transform: translateY(0); }
+.btn-primary:active { 
+    transform: translateY(0);
+    background: linear-gradient(135deg, rgba(245,158,11,0.3) 0%, rgba(251,191,36,0.3) 100%);
+}
 
+/* Secondary Button - Neutral with good contrast */
 .btn-secondary {
     background: var(--bg-tertiary);
     color: var(--text-primary);
-    border: 1px solid var(--border-default);
+    border: 1.5px solid var(--border-default);
 }
 
 .btn-secondary:hover {
@@ -468,28 +476,60 @@ body {
     transform: translateY(-1px);
 }
 
+/* Danger Button - Light red with dark red text */
 .btn-danger {
     background: rgba(239,68,68,0.1);
-    color: var(--status-lost);
-    border: 1px solid rgba(239,68,68,0.2);
+    color: #dc2626;
+    border: 1.5px solid rgba(239,68,68,0.25);
 }
 
 .btn-danger:hover {
-    background: var(--status-lost);
-    color: #fff;
-    border-color: var(--status-lost);
+    background: rgba(239,68,68,0.2);
+    color: #b91c1c;
+    border-color: rgba(239,68,68,0.4);
+    transform: translateY(-1px);
 }
 
+/* Success Button - Light green with dark green text */
 .btn-success {
     background: rgba(16,185,129,0.1);
-    color: var(--status-contacted);
-    border: 1px solid rgba(16,185,129,0.2);
+    color: #059669;
+    border: 1.5px solid rgba(16,185,129,0.25);
 }
 
 .btn-success:hover {
-    background: var(--status-contacted);
-    color: #fff;
-    border-color: var(--status-contacted);
+    background: rgba(16,185,129,0.2);
+    color: #047857;
+    border-color: rgba(16,185,129,0.4);
+    transform: translateY(-1px);
+}
+
+/* Info Button - Light blue with dark blue text */
+.btn-info {
+    background: rgba(59,130,246,0.1);
+    color: #2563eb;
+    border: 1.5px solid rgba(59,130,246,0.25);
+}
+
+.btn-info:hover {
+    background: rgba(59,130,246,0.2);
+    color: #1d4ed8;
+    border-color: rgba(59,130,246,0.4);
+    transform: translateY(-1px);
+}
+
+/* Warning Button - Light amber/orange with dark text */
+.btn-warning {
+    background: rgba(245,158,11,0.1);
+    color: #d97706;
+    border: 1.5px solid rgba(245,158,11,0.25);
+}
+
+.btn-warning:hover {
+    background: rgba(245,158,11,0.2);
+    color: #b45309;
+    border-color: rgba(245,158,11,0.4);
+    transform: translateY(-1px);
 }
 
 .btn-sm {
@@ -6278,6 +6318,23 @@ if (type === 'lead') {
                     <label class="form-label">Role</label>
                     <input type="text" class="form-input" name="role" placeholder="e.g., Developer, Designer">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-input" name="start_date">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date (if applicable)</label>
+                    <input type="date" class="form-input" name="end_date">
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">Employee Documents</label>
+                    <input type="file" class="form-input" id="employeeDocuments" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+                    <small style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">Upload W-4, I-9, contracts, certifications, etc.</small>
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-textarea" name="notes" rows="2" placeholder="Any additional information..."></textarea>
+                </div>
             </div>
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
                 <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
@@ -6618,6 +6675,7 @@ async function handleCreateEmployee(event) {
     }
     
     try {
+        // First, create the employee
         const r = await fetch(`${API_URL}/api/employees`, {
             method: 'POST',
             headers: {
@@ -6628,7 +6686,10 @@ async function handleCreateEmployee(event) {
                 name: data.name.trim(),
                 email: data.email.trim(),
                 phone: data.phone || null,
-                role: data.role || 'Team Member'
+                role: data.role || 'Team Member',
+                start_date: data.start_date || null,
+                end_date: data.end_date || null,
+                notes: data.notes || null
             })
         });
         
@@ -6637,6 +6698,31 @@ async function handleCreateEmployee(event) {
         
         if (!r.ok || !result.success) {
             throw new Error(result.message || 'Failed to create employee');
+        }
+        
+        // If files were uploaded, handle them
+        const employeeId = result.employee?.id;
+        const filesInput = document.getElementById('employeeDocuments');
+        if (filesInput && filesInput.files.length > 0 && employeeId) {
+            const uploadFormData = new FormData();
+            for (let file of filesInput.files) {
+                uploadFormData.append('documents', file);
+            }
+            uploadFormData.append('employee_id', employeeId);
+            
+            try {
+                await fetch(`${API_URL}/api/employees/${employeeId}/documents`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: uploadFormData
+                });
+            } catch (uploadError) {
+                console.error('Error uploading employee documents:', uploadError);
+                // Don't fail the whole operation, just warn
+                showToast('Employee added but document upload failed', 'warning');
+            }
         }
         
         await loadEmployees();
@@ -10780,6 +10866,14 @@ async function openTicketDetail(ticketId) {
                                 Close Ticket
                             </button>
                         ` : ''}
+                        
+                        <button class="btn btn-danger" onclick="deleteTicket(${ticketId})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                            Delete Ticket
+                        </button>
                     </div>
                 </div>
             </div>
@@ -13308,7 +13402,229 @@ async function handleUpdateMilestone(event, milestoneId, projectId, projectName,
         showToast('Failed to update milestone', 'error');
     }
 }
+// ==================== COMPREHENSIVE FIXES FOR ALL 9 ISSUES ====================
 
+// FIX 1 & 5 & 8: Milestones are already implemented - just making sure they're visible
+// The "Projects & Milestones" section already exists in the lead detail modal
+
+// FIX 2: View Timeline Function
+function viewProjectTimeline(index) {
+    const timelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+    const timeline = timelines[index];
+    
+    if (!timeline) {
+        showToast('Timeline not found', 'error');
+        return;
+    }
+    
+    const packages = timeline.packages || [];
+    const packagesHtml = packages.map(pkg => {
+        const packageInfo = servicePackages[pkg];
+        if (!packageInfo) return '';
+        return `
+            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+                <strong>${packageInfo.name}</strong>
+                <br>
+                <span style="font-size: 12px; color: var(--text-muted);">${packageInfo.description}</span>
+            </div>
+        `;
+    }).join('');
+    
+    showModal(`Project Timeline - ${timeline.clientName}`, `
+        <div style="max-height: 70vh; overflow-y: auto;">
+            <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                <h3 style="margin: 0 0 12px 0;">${timeline.clientName}</h3>
+                <p style="margin: 4px 0;"><strong>Company:</strong> ${timeline.clientCompany || 'N/A'}</p>
+                <p style="margin: 4px 0;"><strong>Email:</strong> ${timeline.clientEmail}</p>
+                <p style="margin: 4px 0;"><strong>Phone:</strong> ${timeline.clientPhone || 'N/A'}</p>
+                <p style="margin: 4px 0;"><strong>Project:</strong> ${timeline.projectName || 'N/A'}</p>
+                <p style="margin: 4px 0;"><strong>Start Date:</strong> ${timeline.startDate || 'N/A'}</p>
+                <p style="margin: 4px 0;"><strong>End Date:</strong> ${timeline.endDate || 'N/A'}</p>
+                <p style="margin: 4px 0;"><strong>Status:</strong> <span class="status-badge status-${timeline.status || 'pending'}">${timeline.status || 'pending'}</span></p>
+            </div>
+            
+            <h4 style="margin: 16px 0 8px 0;">Selected Packages</h4>
+            ${packagesHtml || '<p style="color: var(--text-muted);">No packages selected</p>'}
+            
+            ${timeline.maintenanceIncluded !== 'no' ? `
+                <div style="background: var(--accent-amber-dim); padding: 12px; border-radius: 8px; margin-top: 12px;">
+                    <strong>Maintenance Included</strong>
+                    <br>
+                    ${timeline.maintenanceIncluded === 'paid' ? `Fee: $${timeline.maintenanceFee}/month<br>` : 'FREE Maintenance<br>'}
+                    ${timeline.maintenanceDetails || ''}
+                </div>
+            ` : ''}
+            
+            ${timeline.scope ? `
+                <div style="margin-top: 12px;">
+                    <h4>Scope & Requirements</h4>
+                    <p>${timeline.scope}</p>
+                </div>
+            ` : ''}
+        </div>
+        
+        <div class="modal-actions" style="margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button class="btn btn-primary" onclick="exportProjectTimeline(${index})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export PDF
+            </button>
+            <button class="btn btn-secondary" onclick="deleteProjectTimeline(${index})">Delete</button>
+        </div>
+    `);
+}
+
+// FIX 3: Export Timeline Function
+function exportProjectTimeline(index) {
+    const timelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+    const timeline = timelines[index];
+    
+    if (!timeline) {
+        showToast('Timeline not found', 'error');
+        return;
+    }
+    
+    // Create print-friendly version
+    const printWindow = window.open('', '', 'height=800,width=1000');
+    const packages = (timeline.packages || []).map(pkg => {
+        const packageInfo = servicePackages[pkg];
+        return packageInfo ? packageInfo.name : pkg;
+    }).join(', ');
+    
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Project Timeline - ${timeline.clientName}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
+                h1 { color: #22c55e; border-bottom: 3px solid #22c55e; padding-bottom: 10px; }
+                h2 { color: #333; margin-top: 30px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+                .info-row { margin: 10px 0; }
+                .info-row strong { display: inline-block; width: 150px; }
+                .package { background: #f0f9ff; padding: 10px; margin: 5px 0; border-left: 4px solid #22c55e; }
+                @media print { body { padding: 20px; } }
+            </style>
+        </head>
+        <body>
+            <h1>Project Timeline & SLA</h1>
+            
+            <h2>Client Information</h2>
+            <div class="info-row"><strong>Client Name:</strong> ${timeline.clientName}</div>
+            <div class="info-row"><strong>Company:</strong> ${timeline.clientCompany || 'N/A'}</div>
+            <div class="info-row"><strong>Email:</strong> ${timeline.clientEmail}</div>
+            <div class="info-row"><strong>Phone:</strong> ${timeline.clientPhone || 'N/A'}</div>
+            <div class="info-row"><strong>Address:</strong> ${timeline.clientAddress || 'N/A'}</div>
+            
+            <h2>Project Details</h2>
+            <div class="info-row"><strong>Project Name:</strong> ${timeline.projectName || 'N/A'}</div>
+            <div class="info-row"><strong>Start Date:</strong> ${timeline.startDate || 'TBD'}</div>
+            <div class="info-row"><strong>Completion Date:</strong> ${timeline.endDate || 'TBD'}</div>
+            <div class="info-row"><strong>Status:</strong> ${timeline.status || 'pending'}</div>
+            
+            <h2>Selected Packages</h2>
+            <div>${packages || 'No packages selected'}</div>
+            
+            ${timeline.maintenanceIncluded !== 'no' ? `
+                <h2>Maintenance Plan</h2>
+                <div class="info-row"><strong>Type:</strong> ${timeline.maintenanceIncluded === 'paid' ? 'Paid Maintenance' : 'FREE Maintenance'}</div>
+                ${timeline.maintenanceIncluded === 'paid' ? `<div class="info-row"><strong>Monthly Fee:</strong> $${timeline.maintenanceFee}</div>` : ''}
+                <div class="info-row"><strong>Details:</strong> ${timeline.maintenanceDetails || 'Standard maintenance'}</div>
+            ` : ''}
+            
+            ${timeline.scope ? `
+                <h2>Scope & Requirements</h2>
+                <p>${timeline.scope}</p>
+            ` : ''}
+            
+            ${timeline.notes ? `
+                <h2>Additional Notes</h2>
+                <p>${timeline.notes}</p>
+            ` : ''}
+            
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #eee; font-size: 12px; color: #666;">
+                <p>Created: ${timeline.createdAt ? new Date(timeline.createdAt).toLocaleDateString() : new Date().toLocaleDateString()}</p>
+                <p>Generated by Diamondback Coding Admin Portal</p>
+            </div>
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    
+    setTimeout(() => {
+        printWindow.print();
+    }, 500);
+    
+    showToast('Opening print dialog...', 'success');
+}
+
+// FIX 6: Delete Ticket Function
+async function deleteTicket(ticketId) {
+    if (!confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/tickets/${ticketId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (response.ok) {
+            showToast('Ticket deleted successfully', 'success');
+            closeModal();
+            loadTickets();
+        } else {
+            const data = await response.json();
+            throw new Error(data.message || 'Failed to delete ticket');
+        }
+    } catch (error) {
+        console.error('[TICKET] Delete error:', error);
+        showToast('Failed to delete ticket: ' + error.message, 'error');
+    }
+}
+
+// FIX 9: Assign Project Button Function
+async function assignProject(clientId) {
+    try {
+        // Get client info
+        const client = state.clientAccounts.find(c => c.id === clientId);
+        if (!client) {
+            showToast('Client not found', 'error');
+            return;
+        }
+        
+        // Get the lead info for this client
+        const leadResponse = await fetch(`${API_BASE}/api/leads?email=${encodeURIComponent(client.email)}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (!leadResponse.ok) {
+            throw new Error('Failed to find lead record');
+        }
+        
+        const leadData = await leadResponse.json();
+        const lead = leadData.leads && leadData.leads.length > 0 ? leadData.leads[0] : null;
+        
+        if (!lead) {
+            showToast('No lead record found for this client', 'error');
+            return;
+        }
+        
+        // Open the create project modal pre-filled with this client's info
+        openCreateProjectModal(lead.id);
+        
+    } catch (error) {
+        console.error('[ASSIGN PROJECT] Error:', error);
+        showToast('Failed to assign project', 'error');
+    }
+}
 </script>
 </body>
 </html>

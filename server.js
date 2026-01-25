@@ -8,6 +8,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const PDFDocument = require('pdfkit');
 const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const nodemailer = require('nodemailer');
 const path = require('path');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 require('dotenv').config();
@@ -230,6 +232,100 @@ async function initializeDatabase() {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+
+        // Add these columns to leads table in initializeDatabase():
+await db.run(`
+    ALTER TABLE leads ADD COLUMN client_password TEXT
+`).catch(() => {});
+
+await db.run(`
+    ALTER TABLE leads ADD COLUMN client_account_created_at TEXT
+`).catch(() => {});
+
+await db.run(`
+    ALTER TABLE leads ADD COLUMN client_last_login TEXT
+`).catch(() => {});
+
+await db.run(`
+    ALTER TABLE leads ADD COLUMN password_reset_required INTEGER DEFAULT 0
+`).catch(() => {});
+
+// Add shared_by_admin column to client_uploads:
+await db.run(`
+    ALTER TABLE client_uploads ADD COLUMN shared_by_admin INTEGER DEFAULT 0
+`).catch(() => {});
+
+        // Client Projects table
+await db.run(`
+    CREATE TABLE IF NOT EXISTS client_projects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lead_id INTEGER NOT NULL,
+        project_name TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'in_progress',
+        start_date TEXT,
+        end_date TEXT,
+        completion_percentage INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (lead_id) REFERENCES leads(id)
+    )
+`);
+
+// Project Milestones table
+await db.run(`
+    CREATE TABLE IF NOT EXISTS project_milestones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'pending',
+        due_date TEXT,
+        completed_at TEXT,
+        approved_at TEXT,
+        client_feedback TEXT,
+        order_index INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (project_id) REFERENCES client_projects(id)
+    )
+`);
+
+// Support Tickets table
+await db.run(`
+    CREATE TABLE IF NOT EXISTS support_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lead_id INTEGER NOT NULL,
+        subject TEXT NOT NULL,
+        message TEXT NOT NULL,
+        priority TEXT DEFAULT 'medium',
+        category TEXT DEFAULT 'general',
+        status TEXT DEFAULT 'open',
+        resolved_at TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (lead_id) REFERENCES leads(id)
+    )
+`);
+
+// Client Uploads table
+await db.run(`
+    CREATE TABLE IF NOT EXISTS client_uploads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lead_id INTEGER NOT NULL,
+        project_id INTEGER,
+        filename TEXT NOT NULL,
+        filepath TEXT NOT NULL,
+        file_size INTEGER,
+        mime_type TEXT,
+        description TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (lead_id) REFERENCES leads(id),
+        FOREIGN KEY (project_id) REFERENCES client_projects(id)
+    )
+`);
+
+// Add client_password column to leads table
+await db.run(`
+    ALTER TABLE leads ADD COLUMN client_password TEXT
+`).catch(() => {}); // Ignore if column already exists
 
         await client.query(`
     CREATE TABLE IF NOT EXISTS documents (
@@ -5376,6 +5472,890 @@ app.get('/api/analytics/revenue', authenticateToken, async (req, res) => {
         });
     }
 });
+
+// ==================== CLIENT PORTAL ROUTES ====================
+
+// Client Authentication
+app.post('/api/client/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    try {
+        const lead = await db.get(
+            'SELECT * FROM leads WHERE email = ? AND is_customer = 1',
+            [email]
+        );
+        
+        if (!lead) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        // Verify password (if you've stored hashed passwords)
+        // For now, using a simple password field
+        if (!lead.client_password || lead.client_password !== password) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        const token = jwt.sign(
+            { id: lead.id, email: lead.email, type: 'client' },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        
+        res.json({
+            success: true,
+            token,
+            client: {
+                id: lead.id,
+                name: lead.name,
+                email: lead.email,
+                company: lead.company
+            }
+        });
+    } catch (error) {
+        console.error('Client login error:', error);
+        res.status(500).json({ success: false, message: 'Login failed' });
+    }
+});
+
+// Client Dashboard Data
+app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
+    try {
+        const clientId = req.user.id;
+        
+        // Get invoices
+        const invoices = await db.all(
+            'SELECT * FROM invoices WHERE lead_id = ? ORDER BY created_at DESC',
+            [clientId]
+        );
+        
+        // Get projects
+        const projects = await db.all(
+            'SELECT * FROM client_projects WHERE lead_id = ? ORDER BY created_at DESC',
+            [clientId]
+        );
+        
+        // Get support tickets
+        const tickets = await db.all(
+            'SELECT * FROM support_tickets WHERE lead_id = ? ORDER BY created_at DESC',
+            [clientId]
+        );
+        
+        // Get recent activity
+        const activity = await db.all(`
+            SELECT 'invoice' as type, id, created_at, 'Invoice created' as description
+            FROM invoices WHERE lead_id = ?
+            UNION ALL
+            SELECT 'project' as type, id, created_at, 'Project milestone updated' as description
+            FROM project_milestones WHERE project_id IN (SELECT id FROM client_projects WHERE lead_id = ?)
+            ORDER BY created_at DESC LIMIT 10
+        `, [clientId, clientId]);
+        
+        res.json({
+            success: true,
+            dashboard: {
+                invoices,
+                projects,
+                tickets,
+                activity
+            }
+        });
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load dashboard' });
+    }
+});
+
+// Client Invoices
+app.get('/api/client/invoices', authenticateClient, async (req, res) => {
+    try {
+        const invoices = await db.all(
+            'SELECT * FROM invoices WHERE lead_id = ? ORDER BY created_at DESC',
+            [req.user.id]
+        );
+        
+        res.json({ success: true, invoices });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to load invoices' });
+    }
+});
+
+// Download Invoice PDF
+app.get('/api/client/invoice/:id/download', authenticateClient, async (req, res) => {
+    try {
+        const invoice = await db.get(
+            'SELECT * FROM invoices WHERE id = ? AND lead_id = ?',
+            [req.params.id, req.user.id]
+        );
+        
+        if (!invoice) {
+            return res.status(404).json({ success: false, message: 'Invoice not found' });
+        }
+        
+        // Generate PDF (implement PDF generation)
+        res.json({ success: true, message: 'PDF generation not yet implemented' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Download failed' });
+    }
+});
+
+// Client Projects
+app.get('/api/client/projects', authenticateClient, async (req, res) => {
+    try {
+        const projects = await db.all(`
+            SELECT cp.*, 
+                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
+                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
+            FROM client_projects cp
+            WHERE cp.lead_id = ?
+            ORDER BY cp.created_at DESC
+        `, [req.user.id]);
+        
+        res.json({ success: true, projects });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to load projects' });
+    }
+});
+
+// Project Milestones
+app.get('/api/client/project/:id/milestones', authenticateClient, async (req, res) => {
+    try {
+        const project = await db.get(
+            'SELECT * FROM client_projects WHERE id = ? AND lead_id = ?',
+            [req.params.id, req.user.id]
+        );
+        
+        if (!project) {
+            return res.status(404).json({ success: false, message: 'Project not found' });
+        }
+        
+        const milestones = await db.all(
+            'SELECT * FROM project_milestones WHERE project_id = ? ORDER BY order_index ASC',
+            [req.params.id]
+        );
+        
+        res.json({ success: true, milestones });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to load milestones' });
+    }
+});
+
+// Submit Support Ticket
+app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
+    const { subject, message, priority, category } = req.body;
+    
+    try {
+        const result = await db.run(`
+            INSERT INTO support_tickets (lead_id, subject, message, priority, category, status, created_at)
+            VALUES (?, ?, ?, ?, ?, 'open', datetime('now'))
+        `, [req.user.id, subject, message, priority || 'medium', category || 'general']);
+        
+        res.json({
+            success: true,
+            message: 'Support ticket created',
+            ticketId: result.lastID
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to create ticket' });
+    }
+});
+
+// Upload File
+app.post('/api/client/upload', authenticateClient, upload.single('file'), async (req, res) => {
+    try {
+        const { projectId, description } = req.body;
+        const file = req.file;
+        
+        if (!file) {
+            return res.status(400).json({ success: false, message: 'No file uploaded' });
+        }
+        
+        const result = await db.run(`
+            INSERT INTO client_uploads (lead_id, project_id, filename, filepath, file_size, mime_type, description, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `, [
+            req.user.id,
+            projectId || null,
+            file.originalname,
+            file.path,
+            file.size,
+            file.mimetype,
+            description || null
+        ]);
+        
+        res.json({
+            success: true,
+            message: 'File uploaded successfully',
+            fileId: result.lastID
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Upload failed' });
+    }
+});
+
+// Approve Milestone
+app.post('/api/client/milestone/:id/approve', authenticateClient, async (req, res) => {
+    const { feedback } = req.body;
+    
+    try {
+        const milestone = await db.get(`
+            SELECT pm.* FROM project_milestones pm
+            JOIN client_projects cp ON pm.project_id = cp.id
+            WHERE pm.id = ? AND cp.lead_id = ?
+        `, [req.params.id, req.user.id]);
+        
+        if (!milestone) {
+            return res.status(404).json({ success: false, message: 'Milestone not found' });
+        }
+        
+        await db.run(`
+            UPDATE project_milestones 
+            SET status = 'approved', client_feedback = ?, approved_at = datetime('now')
+            WHERE id = ?
+        `, [feedback || null, req.params.id]);
+        
+        res.json({ success: true, message: 'Milestone approved' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Approval failed' });
+    }
+});
+
+// Middleware for client authentication
+function authenticateClient(req, res, next) {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'No token provided' });
+    }
+    
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.type !== 'client') {
+            return res.status(403).json({ success: false, message: 'Invalid token type' });
+        }
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+}
+
+// Get all client accounts
+app.get('/api/admin/client-accounts', authenticateToken, async (req, res) => {
+    try {
+        const clients = await db.all(`
+            SELECT 
+                l.id,
+                l.name,
+                l.email,
+                l.company,
+                l.created_at,
+                l.client_last_login as last_login,
+                CASE WHEN l.client_password IS NOT NULL THEN 1 ELSE 0 END as is_active
+            FROM leads l
+            WHERE l.is_customer = 1
+            ORDER BY l.created_at DESC
+        `);
+        
+        res.json({ success: true, clients });
+    } catch (error) {
+        console.error('Failed to load client accounts:', error);
+        res.status(500).json({ success: false, message: 'Failed to load accounts' });
+    }
+});
+
+// Create client account
+app.post('/api/admin/client-accounts', authenticateToken, async (req, res) => {
+    const { leadId, email, temporaryPassword, sendWelcomeEmail } = req.body;
+    
+    try {
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+        
+        // Update the lead with client credentials
+        await db.run(`
+            UPDATE leads 
+            SET email = ?, 
+                client_password = ?,
+                is_customer = 1,
+                client_account_created_at = datetime('now')
+            WHERE id = ?
+        `, [email, hashedPassword, leadId]);
+        
+        // Get lead details for email
+        const lead = await db.get('SELECT * FROM leads WHERE id = ?', [leadId]);
+        
+        // Send welcome email if requested
+        if (sendWelcomeEmail && lead) {
+            await sendClientWelcomeEmail(lead.email, lead.name, temporaryPassword);
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Client account created successfully',
+            credentials: {
+                email: email,
+                temporaryPassword: temporaryPassword
+            }
+        });
+    } catch (error) {
+        console.error('Failed to create client account:', error);
+        res.status(500).json({ success: false, message: 'Failed to create account' });
+    }
+});
+
+// Reset client password
+app.post('/api/admin/client-accounts/:id/reset-password', authenticateToken, async (req, res) => {
+    const { newPassword } = req.body;
+    
+    try {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
+        await db.run(`
+            UPDATE leads 
+            SET client_password = ?,
+                password_reset_required = 1
+            WHERE id = ?
+        `, [hashedPassword, req.params.id]);
+        
+        res.json({ success: true, message: 'Password reset successfully' });
+    } catch (error) {
+        console.error('Failed to reset password:', error);
+        res.status(500).json({ success: false, message: 'Failed to reset password' });
+    }
+});
+
+// Toggle client account status
+app.post('/api/admin/client-accounts/:id/toggle-status', authenticateToken, async (req, res) => {
+    const { isActive } = req.body;
+    
+    try {
+        if (isActive) {
+            // Activate account (ensure they have a password)
+            const lead = await db.get('SELECT client_password FROM leads WHERE id = ?', [req.params.id]);
+            if (!lead.client_password) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Cannot activate - no password set' 
+                });
+            }
+        } else {
+            // Deactivate by clearing password (or add an is_active flag)
+            await db.run('UPDATE leads SET client_password = NULL WHERE id = ?', [req.params.id]);
+        }
+        
+        res.json({ success: true, message: 'Status updated successfully' });
+    } catch (error) {
+        console.error('Failed to toggle status:', error);
+        res.status(500).json({ success: false, message: 'Failed to update status' });
+    }
+});
+
+// Get all client uploads (admin view)
+app.get('/api/admin/client-uploads', authenticateToken, async (req, res) => {
+    const { clientId } = req.query;
+    
+    try {
+        let query = `
+            SELECT 
+                cu.*,
+                l.name as client_name,
+                l.company as client_company
+            FROM client_uploads cu
+            JOIN leads l ON cu.lead_id = l.id
+        `;
+        
+        const params = [];
+        if (clientId) {
+            query += ' WHERE cu.lead_id = ?';
+            params.push(clientId);
+        }
+        
+        query += ' ORDER BY cu.created_at DESC';
+        
+        const uploads = await db.all(query, params);
+        
+        res.json({ success: true, uploads });
+    } catch (error) {
+        console.error('Failed to load uploads:', error);
+        res.status(500).json({ success: false, message: 'Failed to load uploads' });
+    }
+});
+
+// Download client upload
+app.get('/api/admin/client-uploads/:id/download', authenticateToken, async (req, res) => {
+    try {
+        const upload = await db.get('SELECT * FROM client_uploads WHERE id = ?', [req.params.id]);
+        
+        if (!upload) {
+            return res.status(404).json({ success: false, message: 'File not found' });
+        }
+        
+        res.download(upload.filepath, upload.filename);
+    } catch (error) {
+        console.error('Download failed:', error);
+        res.status(500).json({ success: false, message: 'Download failed' });
+    }
+});
+
+// Create project for client
+app.post('/api/admin/projects', authenticateToken, async (req, res) => {
+    const { leadId, projectName, description, startDate, endDate, status } = req.body;
+    
+    try {
+        const result = await db.run(`
+            INSERT INTO client_projects (
+                lead_id, 
+                project_name, 
+                description, 
+                start_date, 
+                end_date,
+                status,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        `, [leadId, projectName, description, startDate, endDate, status || 'in_progress']);
+        
+        res.json({ 
+            success: true, 
+            message: 'Project created successfully',
+            projectId: result.lastID
+        });
+    } catch (error) {
+        console.error('Failed to create project:', error);
+        res.status(500).json({ success: false, message: 'Failed to create project' });
+    }
+});
+
+// Get projects for a client (admin view)
+app.get('/api/admin/client/:id/projects', authenticateToken, async (req, res) => {
+    try {
+        const projects = await db.all(`
+            SELECT cp.*,
+                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
+                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
+            FROM client_projects cp
+            WHERE cp.lead_id = ?
+            ORDER BY cp.created_at DESC
+        `, [req.params.id]);
+        
+        res.json({ success: true, projects });
+    } catch (error) {
+        console.error('Failed to load projects:', error);
+        res.status(500).json({ success: false, message: 'Failed to load projects' });
+    }
+});
+
+// Add milestone to project
+app.post('/api/admin/milestones', authenticateToken, async (req, res) => {
+    const { projectId, title, description, dueDate, orderIndex, requiresApproval } = req.body;
+    
+    try {
+        const result = await db.run(`
+            INSERT INTO project_milestones (
+                project_id,
+                title,
+                description,
+                due_date,
+                order_index,
+                approval_required,
+                status,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+        `, [projectId, title, description, dueDate, orderIndex || 0, requiresApproval ? 1 : 0]);
+        
+        res.json({ 
+            success: true, 
+            message: 'Milestone created successfully',
+            milestoneId: result.lastID
+        });
+    } catch (error) {
+        console.error('Failed to create milestone:', error);
+        res.status(500).json({ success: false, message: 'Failed to create milestone' });
+    }
+});
+
+// Update milestone status
+app.patch('/api/admin/milestones/:id', authenticateToken, async (req, res) => {
+    const { status } = req.body;
+    
+    try {
+        const updateData = { status };
+        if (status === 'completed') {
+            updateData.completed_at = 'datetime("now")';
+        }
+        
+        await db.run(`
+            UPDATE project_milestones 
+            SET status = ?, 
+                completed_at = ${status === 'completed' ? 'datetime("now")' : 'completed_at'}
+            WHERE id = ?
+        `, [status, req.params.id]);
+        
+        res.json({ success: true, message: 'Milestone updated successfully' });
+    } catch (error) {
+        console.error('Failed to update milestone:', error);
+        res.status(500).json({ success: false, message: 'Failed to update milestone' });
+    }
+});
+
+// Share file with client (make admin file visible to client)
+app.post('/api/admin/files/share', authenticateToken, async (req, res) => {
+    const { fileId, clientId } = req.body;
+    
+    try {
+        // This assumes you have an admin files table
+        // You'll need to either copy the file or create a reference
+        await db.run(`
+            INSERT INTO client_uploads (
+                lead_id,
+                filename,
+                filepath,
+                file_size,
+                mime_type,
+                description,
+                shared_by_admin,
+                created_at
+            )
+            SELECT 
+                ? as lead_id,
+                filename,
+                filepath,
+                file_size,
+                mime_type,
+                'Shared by admin' as description,
+                1 as shared_by_admin,
+                datetime('now') as created_at
+            FROM admin_files
+            WHERE id = ?
+        `, [clientId, fileId]);
+        
+        res.json({ success: true, message: 'File shared with client' });
+    } catch (error) {
+        console.error('Failed to share file:', error);
+        res.status(500).json({ success: false, message: 'Failed to share file' });
+    }
+});
+
+// ==================== CLIENT ROUTES ====================
+
+// Client Login (with bcrypt verification)
+app.post('/api/client/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    try {
+        const lead = await db.get(
+            'SELECT * FROM leads WHERE email = ? AND is_customer = 1',
+            [email]
+        );
+        
+        if (!lead || !lead.client_password) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        // Verify password with bcrypt
+        const passwordMatch = await bcrypt.compare(password, lead.client_password);
+        
+        if (!passwordMatch) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        // Update last login
+        await db.run(
+            'UPDATE leads SET client_last_login = datetime("now") WHERE id = ?',
+            [lead.id]
+        );
+        
+        const token = jwt.sign(
+            { id: lead.id, email: lead.email, type: 'client' },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        
+        res.json({
+            success: true,
+            token,
+            client: {
+                id: lead.id,
+                name: lead.name,
+                email: lead.email,
+                company: lead.company
+            }
+        });
+    } catch (error) {
+        console.error('Client login error:', error);
+        res.status(500).json({ success: false, message: 'Login failed' });
+    }
+});
+
+// Client Dashboard
+app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
+    try {
+        const clientId = req.user.id;
+        
+        const invoices = await db.all(
+            'SELECT * FROM invoices WHERE lead_id = ? ORDER BY created_at DESC LIMIT 10',
+            [clientId]
+        );
+        
+        const projects = await db.all(`
+            SELECT cp.*,
+                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
+                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
+            FROM client_projects cp
+            WHERE cp.lead_id = ?
+            ORDER BY cp.created_at DESC
+        `, [clientId]);
+        
+        const tickets = await db.all(
+            'SELECT * FROM support_tickets WHERE lead_id = ? ORDER BY created_at DESC',
+            [clientId]
+        );
+        
+        const activity = await db.all(`
+            SELECT 'invoice' as type, id, created_at, 'Invoice #' || id || ' created' as description, '' as details
+            FROM invoices WHERE lead_id = ?
+            UNION ALL
+            SELECT 'milestone' as type, id, created_at, title as description, 'Milestone updated' as details
+            FROM project_milestones WHERE project_id IN (SELECT id FROM client_projects WHERE lead_id = ?)
+            UNION ALL
+            SELECT 'project' as type, id, created_at, project_name as description, 'Project created' as details
+            FROM client_projects WHERE lead_id = ?
+            ORDER BY created_at DESC LIMIT 10
+        `, [clientId, clientId, clientId]);
+        
+        res.json({
+            success: true,
+            dashboard: { invoices, projects, tickets, activity }
+        });
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load dashboard' });
+    }
+});
+
+// Client Projects
+app.get('/api/client/projects', authenticateClient, async (req, res) => {
+    try {
+        const projects = await db.all(`
+            SELECT cp.*, 
+                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
+                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
+            FROM client_projects cp
+            WHERE cp.lead_id = ?
+            ORDER BY cp.created_at DESC
+        `, [req.user.id]);
+        
+        res.json({ success: true, projects });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to load projects' });
+    }
+});
+
+// Project Milestones
+app.get('/api/client/project/:id/milestones', authenticateClient, async (req, res) => {
+    try {
+        const project = await db.get(
+            'SELECT * FROM client_projects WHERE id = ? AND lead_id = ?',
+            [req.params.id, req.user.id]
+        );
+        
+        if (!project) {
+            return res.status(404).json({ success: false, message: 'Project not found' });
+        }
+        
+        const milestones = await db.all(
+            'SELECT * FROM project_milestones WHERE project_id = ? ORDER BY order_index ASC',
+            [req.params.id]
+        );
+        
+        res.json({ success: true, milestones });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to load milestones' });
+    }
+});
+
+// Approve Milestone
+app.post('/api/client/milestone/:id/approve', authenticateClient, async (req, res) => {
+    const { feedback } = req.body;
+    
+    try {
+        const milestone = await db.get(`
+            SELECT pm.* FROM project_milestones pm
+            JOIN client_projects cp ON pm.project_id = cp.id
+            WHERE pm.id = ? AND cp.lead_id = ?
+        `, [req.params.id, req.user.id]);
+        
+        if (!milestone) {
+            return res.status(404).json({ success: false, message: 'Milestone not found' });
+        }
+        
+        await db.run(`
+            UPDATE project_milestones 
+            SET status = 'approved', 
+                client_feedback = ?, 
+                approved_at = datetime('now')
+            WHERE id = ?
+        `, [feedback || null, req.params.id]);
+        
+        res.json({ success: true, message: 'Milestone approved' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Approval failed' });
+    }
+});
+
+// Client Invoices
+app.get('/api/client/invoices', authenticateClient, async (req, res) => {
+    try {
+        const invoices = await db.all(
+            'SELECT * FROM invoices WHERE lead_id = ? ORDER BY created_at DESC',
+            [req.user.id]
+        );
+        
+        res.json({ success: true, invoices });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to load invoices' });
+    }
+});
+
+// Submit Support Ticket
+app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
+    const { subject, message, priority, category } = req.body;
+    
+    try {
+        const result = await db.run(`
+            INSERT INTO support_tickets (
+                lead_id, 
+                subject, 
+                message, 
+                priority, 
+                category, 
+                status, 
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, 'open', datetime('now'))
+        `, [req.user.id, subject, message, priority || 'medium', category || 'general']);
+        
+        res.json({
+            success: true,
+            message: 'Support ticket created',
+            ticketId: result.lastID
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to create ticket' });
+    }
+});
+
+// Upload File (requires multer setup)
+app.post('/api/client/upload', authenticateClient, upload.single('file'), async (req, res) => {
+    try {
+        const { projectId, description } = req.body;
+        const file = req.file;
+        
+        if (!file) {
+            return res.status(400).json({ success: false, message: 'No file uploaded' });
+        }
+        
+        const result = await db.run(`
+            INSERT INTO client_uploads (
+                lead_id, 
+                project_id, 
+                filename, 
+                filepath, 
+                file_size, 
+                mime_type, 
+                description, 
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `, [
+            req.user.id,
+            projectId || null,
+            file.originalname,
+            file.path,
+            file.size,
+            file.mimetype,
+            description || null
+        ]);
+        
+        res.json({
+            success: true,
+            message: 'File uploaded successfully',
+            fileId: result.lastID
+        });
+    } catch (error) {
+        console.error('Upload failed:', error);
+        res.status(500).json({ success: false, message: 'Upload failed' });
+    }
+});
+
+// ==================== AUTHENTICATION MIDDLEWARE ====================
+
+function authenticateClient(req, res, next) {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'No token provided' });
+    }
+    
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.type !== 'client') {
+            return res.status(403).json({ success: false, message: 'Invalid token type' });
+        }
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+}
+
+// ==================== EMAIL HELPER ====================
+
+async function sendClientWelcomeEmail(email, name, temporaryPassword) {
+    // Configure your email service (example with Gmail)
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASSWORD
+        }
+    });
+
+    const mailOptions = {
+        from: 'Diamondback Coding <noreply@diamondbackcoding.com>',
+        to: email,
+        subject: 'Welcome to Diamondback Coding Client Portal',
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #22c55e;">Welcome to Your Client Portal!</h2>
+                <p>Hi ${name},</p>
+                <p>Your client portal account has been created. You can now track your projects, view invoices, and communicate with our team.</p>
+                
+                <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3>Login Credentials:</h3>
+                    <p><strong>Portal URL:</strong> https://diamondbackcoding.com/client-portal.html</p>
+                    <p><strong>Email:</strong> ${email}</p>
+                    <p><strong>Temporary Password:</strong> ${temporaryPassword}</p>
+                </div>
+                
+                <p style="color: #ef4444; font-weight: bold;">Please change your password after logging in for the first time.</p>
+                
+                <p>If you have any questions, please don't hesitate to reach out.</p>
+                
+                <p>Best regards,<br>Diamondback Coding Team</p>
+            </div>
+        `
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('Welcome email sent to:', email);
+    } catch (error) {
+        console.error('Failed to send welcome email:', error);
+        // Don't throw error - account creation should succeed even if email fails
+    }
+}
 
 // ========================================
 // HEALTH CHECK

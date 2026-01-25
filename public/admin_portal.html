@@ -2291,6 +2291,49 @@ body {
     opacity: 0.7;
 }
 
+/* Client Portal Styles */
+.uploads-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    padding: 24px;
+}
+
+.file-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.file-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+.file-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.file-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+.file-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
 /* ========================================
    RESPONSIVE
 ======================================== */
@@ -2542,6 +2585,16 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
                     Invoices
                     <span class="nav-badge" id="invoicesBadge">0</span>
                 </div>
+                <div class="nav-item" data-section="clientPortal">
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    Client Portal
+    <span class="nav-badge" id="clientPortalBadge">0</span>
+</div>
                 <div class="nav-item" data-section="documents">
     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -2745,11 +2798,13 @@ const state = {
     currentSection: 'dashboard',
     searchTerm: '',
     currentFilter: 'all',
-    currentFilter: 'all',
     currentLead: null,
     currentInvoice: null,
     selectedExpenses: [],
     searchQuery: '',
+    clientAccounts: [],
+    clientUploads: [],
+    currentClient: null,
     settings: {
         emailNotifications: true,
         pushNotifications: false,
@@ -3066,6 +3121,9 @@ switch (section) {
         case 'customers': 
             renderLeadsTable(content, 'customers'); 
             break;
+                case 'clientPortal':        // ADD THIS
+        renderClientPortal();    // ADD THIS
+        break;                   // ADD THIS
         case 'employees': 
             renderEmployees(content); 
             break;
@@ -3524,6 +3582,384 @@ function renderDashboard(content) {
             </div>
         </div>
     `;
+}
+
+// ==================== CLIENT PORTAL SECTION ====================
+async function renderClientPortal() {
+    const content = document.getElementById('contentArea');
+    
+    content.innerHTML = `
+        <div class="section-header">
+            <div class="header-content">
+                <h2 class="section-title">Client Portal Management</h2>
+                <p class="section-description">Manage client accounts, projects, and uploads</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openCreateClientModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    Create Client Account
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Active Accounts</div>
+                    <div class="stat-value" id="activeClientsCount">0</div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Active Projects</div>
+                    <div class="stat-value" id="activeProjectsCount">0</div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                        <polyline points="13 2 13 9 20 9"/>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Client Uploads</div>
+                    <div class="stat-value" id="clientUploadsCount">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-card">
+            <div class="card-header">
+                <div class="header-content">
+                    <h3 class="card-title">Client Accounts</h3>
+                    <p class="card-subtitle">Manage client portal access</p>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Email</th>
+                            <th>Company</th>
+                            <th>Status</th>
+                            <th>Projects</th>
+                            <th>Last Login</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientAccountsTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-state">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="data-card">
+            <div class="card-header">
+                <div class="header-content">
+                    <h3 class="card-title">Client Uploads</h3>
+                </div>
+                <div class="card-actions">
+                    <select class="form-select" id="clientFilterSelect" onchange="filterClientUploads(this.value)">
+                        <option value="">All Clients</option>
+                    </select>
+                </div>
+            </div>
+            <div class="uploads-grid" id="clientUploadsGrid">
+                <p>Loading...</p>
+            </div>
+        </div>
+    `;
+
+    await loadClientAccounts();
+    await loadClientUploads();
+}
+
+async function loadClientAccounts() {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/client-accounts`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            state.clientAccounts = data.clients || [];
+            renderClientAccountsTable();
+            updateClientStats();
+        }
+    } catch (error) {
+        console.error('Failed to load client accounts:', error);
+        const tbody = document.getElementById('clientAccountsTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Failed to load accounts</td></tr>';
+        }
+    }
+}
+
+function renderClientAccountsTable() {
+    const tbody = document.getElementById('clientAccountsTableBody');
+    if (!tbody) return;
+    
+    if (!state.clientAccounts || state.clientAccounts.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="empty-state">
+                    <p>No client accounts yet</p>
+                    <button class="btn btn-sm btn-primary" onclick="openCreateClientModal()">Create First Account</button>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = state.clientAccounts.map(client => `
+        <tr>
+            <td>
+                <div class="user-cell">
+                    <div class="user-avatar">${getInitials(client.name)}</div>
+                    <div class="user-info">
+                        <div class="user-name">${client.name}</div>
+                    </div>
+                </div>
+            </td>
+            <td>${client.email}</td>
+            <td>${client.company || '—'}</td>
+            <td>
+                <span class="badge ${client.is_active ? 'badge-success' : 'badge-danger'}">
+                    ${client.is_active ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>${client.project_count || 0}</td>
+            <td>${client.last_login ? formatDate(client.last_login) : 'Never'}</td>
+            <td>
+                <button class="btn btn-sm btn-secondary" onclick="assignProject(${client.id})">Project</button>
+                <button class="btn btn-sm btn-secondary" onclick="resetClientPassword(${client.id})">Reset PW</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateClientStats() {
+    const activeClients = state.clientAccounts.filter(c => c.is_active).length;
+    const totalProjects = state.clientAccounts.reduce((sum, c) => sum + (c.project_count || 0), 0);
+    
+    const activeCount = document.getElementById('activeClientsCount');
+    const projectsCount = document.getElementById('activeProjectsCount');
+    const badge = document.getElementById('clientPortalBadge');
+    
+    if (activeCount) activeCount.textContent = activeClients;
+    if (projectsCount) projectsCount.textContent = totalProjects;
+    if (badge) badge.textContent = activeClients;
+}
+
+async function loadClientUploads() {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/client-uploads`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            state.clientUploads = data.uploads || [];
+            renderClientUploads();
+            const count = document.getElementById('clientUploadsCount');
+            if (count) count.textContent = state.clientUploads.length;
+        }
+    } catch (error) {
+        console.error('Failed to load uploads:', error);
+    }
+}
+
+function renderClientUploads() {
+    const grid = document.getElementById('clientUploadsGrid');
+    if (!grid) return;
+    
+    if (!state.clientUploads || state.clientUploads.length === 0) {
+        grid.innerHTML = '<p class="empty-state">No uploads yet</p>';
+        return;
+    }
+
+    grid.innerHTML = state.clientUploads.slice(0, 12).map(upload => `
+        <div class="file-card" onclick="downloadClientFile(${upload.id})">
+            <div class="file-icon">📄</div>
+            <div class="file-name">${upload.filename}</div>
+            <div class="file-meta">
+                <span>${upload.client_name}</span>
+                <span>${formatFileSize(upload.file_size)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openCreateClientModal() {
+    const modalBody = `
+        <form id="createClientForm" onsubmit="handleCreateClient(event)">
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label class="form-label">Select Lead</label>
+                    <select class="form-select" id="selectLead" required>
+                        <option value="">Choose a lead...</option>
+                        ${state.leads.map(lead => `
+                            <option value="${lead.id}" data-email="${lead.email}">
+                                ${lead.name} - ${lead.company || 'No Company'}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="clientEmail" required>
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label">Temporary Password</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" class="form-input" id="tempPassword" required style="flex: 1;">
+                        <button type="button" class="btn btn-secondary" onclick="generatePassword()">Generate</button>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="sendWelcomeEmail" checked>
+                        <span>Send welcome email</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </div>
+        </form>
+    `;
+
+    document.getElementById('createModalTitle').textContent = 'Create Client Account';
+    document.getElementById('createModalBody').innerHTML = modalBody;
+    document.getElementById('createModal').classList.add('active');
+
+    // Auto-fill email
+    setTimeout(() => {
+        document.getElementById('selectLead').addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            document.getElementById('clientEmail').value = selected.dataset.email || '';
+        });
+    }, 100);
+}
+
+function generatePassword() {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < 12; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById('tempPassword').value = password;
+}
+
+async function handleCreateClient(event) {
+    event.preventDefault();
+
+    const data = {
+        leadId: document.getElementById('selectLead').value,
+        email: document.getElementById('clientEmail').value,
+        temporaryPassword: document.getElementById('tempPassword').value,
+        sendWelcomeEmail: document.getElementById('sendWelcomeEmail').checked
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/api/admin/client-accounts`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('Client account created!', 'success');
+            closeCreateModal();
+            await loadClientAccounts();
+            alert(`Account Created!\n\nEmail: ${data.email}\nPassword: ${data.temporaryPassword}`);
+        } else {
+            showToast(result.message || 'Failed to create account', 'error');
+        }
+    } catch (error) {
+        showToast('Error creating account', 'error');
+    }
+}
+
+function assignProject(clientId) {
+    alert('Project assignment feature - coming in next step!');
+}
+
+async function resetClientPassword(clientId) {
+    const newPassword = prompt('Enter new password:');
+    if (!newPassword) return;
+
+    try {
+        const response = await fetch(`${API_URL}/api/admin/client-accounts/${clientId}/reset-password`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ newPassword })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('Password reset!', 'success');
+        }
+    } catch (error) {
+        showToast('Error resetting password', 'error');
+    }
+}
+
+function filterClientUploads(clientId) {
+    // Will implement in next version
+    console.log('Filter by client:', clientId);
+}
+
+async function downloadClientFile(fileId) {
+    window.open(`${API_URL}/api/admin/client-uploads/${fileId}/download`, '_blank');
+}
+
+function getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+}
+
+function formatFileSize(bytes) {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 // ========================================

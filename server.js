@@ -5432,10 +5432,11 @@ app.post('/api/client/login', async (req, res) => {
     const { email, password } = req.body;
     
     try {
-        const lead = await db.get(
-            'SELECT * FROM leads WHERE email = ? AND is_customer = 1',
-            [email]
-        );
+const result = await pool.query(
+    'SELECT * FROM leads WHERE email = $1 AND is_customer = TRUE',
+    [email]
+);
+const lead = result.rows[0];
         
         if (!lead) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -5517,20 +5518,6 @@ app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
     }
 });
 
-// Client Invoices
-app.get('/api/client/invoices', authenticateClient, async (req, res) => {
-    try {
-        const invoices = await db.all(
-            'SELECT * FROM invoices WHERE lead_id = ? ORDER BY created_at DESC',
-            [req.user.id]
-        );
-        
-        res.json({ success: true, invoices });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to load invoices' });
-    }
-});
-
 // Download Invoice PDF
 app.get('/api/client/invoice/:id/download', authenticateClient, async (req, res) => {
     try {
@@ -5553,41 +5540,18 @@ app.get('/api/client/invoice/:id/download', authenticateClient, async (req, res)
 // Client Projects
 app.get('/api/client/projects', authenticateClient, async (req, res) => {
     try {
-        const projects = await db.all(`
+        const result = await pool.query(`
             SELECT cp.*, 
                    (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
                    (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
             FROM client_projects cp
-            WHERE cp.lead_id = ?
+            WHERE cp.lead_id = $1
             ORDER BY cp.created_at DESC
         `, [req.user.id]);
         
-        res.json({ success: true, projects });
+        res.json({ success: true, projects: result.rows });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Failed to load projects' });
-    }
-});
-
-// Project Milestones
-app.get('/api/client/project/:id/milestones', authenticateClient, async (req, res) => {
-    try {
-        const project = await db.get(
-            'SELECT * FROM client_projects WHERE id = ? AND lead_id = ?',
-            [req.params.id, req.user.id]
-        );
-        
-        if (!project) {
-            return res.status(404).json({ success: false, message: 'Project not found' });
-        }
-        
-        const milestones = await db.all(
-            'SELECT * FROM project_milestones WHERE project_id = ? ORDER BY order_index ASC',
-            [req.params.id]
-        );
-        
-        res.json({ success: true, milestones });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to load milestones' });
     }
 });
 
@@ -5596,7 +5560,7 @@ app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
     const { subject, message, priority, category } = req.body;
     
     try {
-        const result = await db.run(`
+        const result = await pool.query(`
             INSERT INTO support_tickets (lead_id, subject, message, priority, category, status, created_at)
             VALUES (?, ?, ?, ?, ?, 'open', datetime('now'))
         `, [req.user.id, subject, message, priority || 'medium', category || 'general']);
@@ -5621,7 +5585,7 @@ app.post('/api/client/upload', authenticateClient, upload.single('file'), async 
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
         
-        const result = await db.run(`
+        const result = await pool.query(`
             INSERT INTO client_uploads (lead_id, project_id, filename, filepath, file_size, mime_type, description, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
         `, [
@@ -5694,7 +5658,7 @@ function authenticateClient(req, res, next) {
 // Get all client accounts
 app.get('/api/admin/client-accounts', authenticateToken, async (req, res) => {
     try {
-        const clients = await db.all(`
+        const clients = await pool.query(`
             SELECT 
                 l.id,
                 l.name,
@@ -5702,13 +5666,13 @@ app.get('/api/admin/client-accounts', authenticateToken, async (req, res) => {
                 l.company,
                 l.created_at,
                 l.client_last_login as last_login,
-                CASE WHEN l.client_password IS NOT NULL THEN 1 ELSE 0 END as is_active
+                CASE WHEN l.client_password IS NOT NULL THEN TRUE ELSE FALSE END as is_active
             FROM leads l
-            WHERE l.is_customer = 1
+            WHERE l.is_customer = TRUE
             ORDER BY l.created_at DESC
         `);
         
-        res.json({ success: true, clients });
+        res.json({ success: true, clients: clients.rows });
     } catch (error) {
         console.error('Failed to load client accounts:', error);
         res.status(500).json({ success: false, message: 'Failed to load accounts' });
@@ -5724,17 +5688,18 @@ app.post('/api/admin/client-accounts', authenticateToken, async (req, res) => {
         const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
         
         // Update the lead with client credentials
-        await db.run(`
+        await pool.query(`
             UPDATE leads 
-            SET email = ?, 
-                client_password = ?,
-                is_customer = 1,
-                client_account_created_at = datetime('now')
-            WHERE id = ?
+            SET email = $1, 
+                client_password = $2,
+                is_customer = TRUE,
+                client_account_created_at = CURRENT_TIMESTAMP
+            WHERE id = $3
         `, [email, hashedPassword, leadId]);
         
         // Get lead details for email
-        const lead = await db.get('SELECT * FROM leads WHERE id = ?', [leadId]);
+        const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
+        const lead = leadResult.rows[0];
         
         // Send welcome email if requested
         if (sendWelcomeEmail && lead) {
@@ -5818,15 +5783,15 @@ app.get('/api/admin/client-uploads', authenticateToken, async (req, res) => {
         
         const params = [];
         if (clientId) {
-            query += ' WHERE cu.lead_id = ?';
+            query += ' WHERE cu.lead_id = $1';
             params.push(clientId);
         }
         
         query += ' ORDER BY cu.created_at DESC';
         
-        const uploads = await db.all(query, params);
+        const result = await pool.query(query, params);
         
-        res.json({ success: true, uploads });
+        res.json({ success: true, uploads: result.rows });
     } catch (error) {
         console.error('Failed to load uploads:', error);
         res.status(500).json({ success: false, message: 'Failed to load uploads' });
@@ -5836,12 +5801,16 @@ app.get('/api/admin/client-uploads', authenticateToken, async (req, res) => {
 // Download client upload
 app.get('/api/admin/client-uploads/:id/download', authenticateToken, async (req, res) => {
     try {
-        const upload = await db.get('SELECT * FROM client_uploads WHERE id = ?', [req.params.id]);
+        const result = await pool.query(
+            'SELECT * FROM client_uploads WHERE id = $1', 
+            [req.params.id]
+        );
         
-        if (!upload) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ success: false, message: 'File not found' });
         }
         
+        const upload = result.rows[0];
         res.download(upload.filepath, upload.filename);
     } catch (error) {
         console.error('Download failed:', error);
@@ -5854,7 +5823,7 @@ app.post('/api/admin/projects', authenticateToken, async (req, res) => {
     const { leadId, projectName, description, startDate, endDate, status } = req.body;
     
     try {
-        const result = await db.run(`
+        const result = await pool.query(`
             INSERT INTO client_projects (
                 lead_id, 
                 project_name, 
@@ -5881,16 +5850,16 @@ app.post('/api/admin/projects', authenticateToken, async (req, res) => {
 // Get projects for a client (admin view)
 app.get('/api/admin/client/:id/projects', authenticateToken, async (req, res) => {
     try {
-        const projects = await db.all(`
+        const result = await pool.query(`
             SELECT cp.*,
                    (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
                    (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
             FROM client_projects cp
-            WHERE cp.lead_id = ?
+            WHERE cp.lead_id = $1
             ORDER BY cp.created_at DESC
         `, [req.params.id]);
         
-        res.json({ success: true, projects });
+        res.json({ success: true, projects: result.rows });
     } catch (error) {
         console.error('Failed to load projects:', error);
         res.status(500).json({ success: false, message: 'Failed to load projects' });
@@ -5902,7 +5871,7 @@ app.post('/api/admin/milestones', authenticateToken, async (req, res) => {
     const { projectId, title, description, dueDate, orderIndex, requiresApproval } = req.body;
     
     try {
-        const result = await db.run(`
+        const result = await pool.query(`
             INSERT INTO project_milestones (
                 project_id,
                 title,
@@ -5996,10 +5965,11 @@ app.post('/api/client/login', async (req, res) => {
     const { email, password } = req.body;
     
     try {
-        const lead = await db.get(
-            'SELECT * FROM leads WHERE email = ? AND is_customer = 1',
-            [email]
-        );
+const result = await pool.query(
+    'SELECT * FROM leads WHERE email = $1 AND is_customer = TRUE',
+    [email]
+);
+const lead = result.rows[0];
         
         if (!lead || !lead.client_password) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -6045,40 +6015,71 @@ app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
     try {
         const clientId = req.user.id;
         
-        const invoices = await db.all(
-            'SELECT * FROM invoices WHERE lead_id = ? ORDER BY created_at DESC LIMIT 10',
+        // Get invoices
+        const invoicesResult = await pool.query(
+            'SELECT * FROM invoices WHERE lead_id = $1 ORDER BY created_at DESC',
             [clientId]
         );
         
-        const projects = await db.all(`
-            SELECT cp.*,
-                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
-                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
-            FROM client_projects cp
-            WHERE cp.lead_id = ?
-            ORDER BY cp.created_at DESC
-        `, [clientId]);
+        // Get projects (if table exists)
+        let projects = [];
+        try {
+            const projectsResult = await pool.query(`
+                SELECT cp.*, 
+                       (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
+                       (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
+                FROM client_projects cp
+                WHERE cp.lead_id = $1
+                ORDER BY cp.created_at DESC
+            `, [clientId]);
+            projects = projectsResult.rows;
+        } catch (e) {
+            console.log('Client projects table may not exist yet');
+        }
         
-        const tickets = await db.all(
-            'SELECT * FROM support_tickets WHERE lead_id = ? ORDER BY created_at DESC',
-            [clientId]
-        );
+        // Get support tickets (if table exists)
+        let tickets = [];
+        try {
+            const ticketsResult = await pool.query(
+                'SELECT * FROM support_tickets WHERE lead_id = $1 ORDER BY created_at DESC',
+                [clientId]
+            );
+            tickets = ticketsResult.rows;
+        } catch (e) {
+            console.log('Support tickets table may not exist yet');
+        }
         
-        const activity = await db.all(`
-            SELECT 'invoice' as type, id, created_at, 'Invoice #' || id || ' created' as description, '' as details
-            FROM invoices WHERE lead_id = ?
-            UNION ALL
-            SELECT 'milestone' as type, id, created_at, title as description, 'Milestone updated' as details
-            FROM project_milestones WHERE project_id IN (SELECT id FROM client_projects WHERE lead_id = ?)
-            UNION ALL
-            SELECT 'project' as type, id, created_at, project_name as description, 'Project created' as details
-            FROM client_projects WHERE lead_id = ?
-            ORDER BY created_at DESC LIMIT 10
-        `, [clientId, clientId, clientId]);
+        // Get recent activity
+        let activity = [];
+        try {
+            const activityResult = await pool.query(`
+                SELECT 'invoice' as type, id, created_at, 
+                       'Invoice #' || id || ' created' as description, '' as details
+                FROM invoices WHERE lead_id = $1
+                UNION ALL
+                SELECT 'milestone' as type, id, created_at, 
+                       title as description, 'Milestone updated' as details
+                FROM project_milestones 
+                WHERE project_id IN (SELECT id FROM client_projects WHERE lead_id = $1)
+                UNION ALL
+                SELECT 'project' as type, id, created_at, 
+                       project_name as description, 'Project created' as details
+                FROM client_projects WHERE lead_id = $1
+                ORDER BY created_at DESC LIMIT 10
+            `, [clientId, clientId, clientId]);
+            activity = activityResult.rows;
+        } catch (e) {
+            console.log('Activity query failed, some tables may not exist');
+        }
         
         res.json({
             success: true,
-            dashboard: { invoices, projects, tickets, activity }
+            dashboard: {
+                invoices: invoicesResult.rows,
+                projects,
+                tickets,
+                activity
+            }
         });
     } catch (error) {
         console.error('Dashboard error:', error);
@@ -6086,42 +6087,24 @@ app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
     }
 });
 
-// Client Projects
-app.get('/api/client/projects', authenticateClient, async (req, res) => {
-    try {
-        const projects = await db.all(`
-            SELECT cp.*, 
-                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
-                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
-            FROM client_projects cp
-            WHERE cp.lead_id = ?
-            ORDER BY cp.created_at DESC
-        `, [req.user.id]);
-        
-        res.json({ success: true, projects });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to load projects' });
-    }
-});
-
 // Project Milestones
 app.get('/api/client/project/:id/milestones', authenticateClient, async (req, res) => {
     try {
-        const project = await db.get(
-            'SELECT * FROM client_projects WHERE id = ? AND lead_id = ?',
+        const projectResult = await pool.query(
+            'SELECT * FROM client_projects WHERE id = $1 AND lead_id = $2',
             [req.params.id, req.user.id]
         );
         
-        if (!project) {
+        if (projectResult.rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Project not found' });
         }
         
-        const milestones = await db.all(
-            'SELECT * FROM project_milestones WHERE project_id = ? ORDER BY order_index ASC',
+        const milestonesResult = await pool.query(
+            'SELECT * FROM project_milestones WHERE project_id = $1 ORDER BY order_index ASC',
             [req.params.id]
         );
         
-        res.json({ success: true, milestones });
+        res.json({ success: true, milestones: milestonesResult.rows });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Failed to load milestones' });
     }
@@ -6159,12 +6142,12 @@ app.post('/api/client/milestone/:id/approve', authenticateClient, async (req, re
 // Client Invoices
 app.get('/api/client/invoices', authenticateClient, async (req, res) => {
     try {
-        const invoices = await db.all(
-            'SELECT * FROM invoices WHERE lead_id = ? ORDER BY created_at DESC',
+        const result = await pool.query(
+            'SELECT * FROM invoices WHERE lead_id = $1 ORDER BY created_at DESC',
             [req.user.id]
         );
         
-        res.json({ success: true, invoices });
+        res.json({ success: true, invoices: result.rows });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Failed to load invoices' });
     }
@@ -6175,7 +6158,7 @@ app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
     const { subject, message, priority, category } = req.body;
     
     try {
-        const result = await db.run(`
+        const result = await pool.query(`
             INSERT INTO support_tickets (
                 lead_id, 
                 subject, 
@@ -6208,7 +6191,7 @@ app.post('/api/client/upload', authenticateClient, upload.single('file'), async 
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
         
-        const result = await db.run(`
+        const result = await pool.query(`
             INSERT INTO client_uploads (
                 lead_id, 
                 project_id, 

@@ -3195,6 +3195,8 @@ async function renderSection(section) {  // ✅ Now it's async
     topbarActions.innerHTML = actionButtons;
     
     const content = document.getElementById('contentArea');
+    console.log('📍 renderSection - contentArea element:', content);
+    console.log('📍 renderSection - contentArea id:', content ? content.id : 'null');
     
 switch (section) {
     case 'dashboard': 
@@ -3227,6 +3229,7 @@ switch (section) {
         break;
     case 'projects':
         console.log('✅ Projects case hit!');
+        content.innerHTML = ''; // Force clear any existing content
         renderProjects(content); 
         break;
     case 'support':
@@ -7757,77 +7760,89 @@ function editAddress(leadId) {
 // In renderProjects function, replace the stats icons section:
 
 function renderProjects(content) {
-    console.log('📋 renderProjects called');
+    console.log('📋 renderProjects called with content element:', content);
     
-    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
-    console.log('📊 Found timelines:', savedTimelines);
+    if (!content) {
+        console.error('❌ Content element is null or undefined!');
+        return;
+    }
     
-    content.innerHTML = `
-        <div class="controls-bar">
-            <div class="search-box">
-                <input type="text" class="search-input" id="projectSearch" placeholder="Search projects by client name, company, or project..." onkeyup="handleProjectSearch(event)">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="m21 21-4.35-4.35"/>
-                </svg>
-            </div>
-        </div>
+    try {
+        const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+        console.log('📊 Found timelines:', savedTimelines);
         
-        <div class="cards-grid" id="projectTimelinesGrid">
-            ${savedTimelines.length > 0 ? savedTimelines.map((timeline, index) => `
-                <div class="card" style="cursor: pointer;" onclick="viewProjectTimeline(${index})">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-                        <div>
-                            <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">${timeline.clientName}</div>
-                            <div style="font-size: 13px; color: var(--text-muted);">${timeline.clientCompany || 'No company'}</div>
-                        </div>
-                        <span class="status-badge status-${timeline.status || 'pending'}">
-                            <span class="status-dot"></span>
-                            ${timeline.status || 'Draft'}
-                        </span>
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        ${timeline.packages.map(pkg => `
-                            <span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">${servicePackages[pkg]?.name || pkg}</span>
-                        `).join('')}
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
-                        <div style="font-size: 12px; color: var(--text-muted);">
-                            Created: ${formatDate(timeline.createdAt)}
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="table-action-btn" onclick="event.stopPropagation(); exportProjectTimeline(${index})" title="Export">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="7 10 12 15 17 10"/>
-                                    <line x1="12" y1="15" x2="12" y2="3"/>
-                                </svg>
-                            </button>
-                            <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteProjectTimeline(${index})" title="Delete">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
+        const htmlContent = `
+            <div class="controls-bar">
+                <div class="search-box">
+                    <input type="text" class="search-input" id="projectSearch" placeholder="Search projects by client name, company, or project..." onkeyup="handleProjectSearch(event)">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
                 </div>
-            `).join('') : `
-                <div style="grid-column: 1 / -1;">
-                    <div class="empty-state">
-                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                        </svg>
-                        <div class="empty-title">No Project Timelines Yet</div>
-                        <div class="empty-description">Create your first project timeline to get started</div>
+            </div>
+            
+            <div class="cards-grid" id="projectTimelinesGrid">
+                ${savedTimelines.length > 0 ? savedTimelines.map((timeline, index) => `
+                    <div class="card" style="cursor: pointer;" onclick="viewProjectTimeline(${index})">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                            <div>
+                                <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">${timeline.clientName}</div>
+                                <div style="font-size: 13px; color: var(--text-muted);">${timeline.clientCompany || 'No company'}</div>
+                            </div>
+                            <span class="status-badge status-${timeline.status || 'pending'}">
+                                <span class="status-dot"></span>
+                                ${timeline.status || 'Draft'}
+                            </span>
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            ${timeline.packages.map(pkg => `
+                                <span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">${servicePackages[pkg]?.name || pkg}</span>
+                            `).join('')}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+                            <div style="font-size: 12px; color: var(--text-muted);">
+                                Created: ${formatDate(timeline.createdAt)}
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="table-action-btn" onclick="event.stopPropagation(); exportProjectTimeline(${index})" title="Export">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                </button>
+                                <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteProjectTimeline(${index})" title="Delete">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            `}
-        </div>
-    `;
-    
-    console.log('✅ renderProjects completed');
+                `).join('') : `
+                    <div style="grid-column: 1 / -1;">
+                        <div class="empty-state">
+                            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                            </svg>
+                            <div class="empty-title">No Project Timelines Yet</div>
+                            <div class="empty-description">Create your first project timeline to get started</div>
+                        </div>
+                    </div>
+                `}
+            </div>
+        `;
+        
+        console.log('📝 Setting innerHTML, content HTML length:', htmlContent.length);
+        content.innerHTML = htmlContent;
+        console.log('✅ renderProjects completed successfully');
+    } catch (error) {
+        console.error('❌ Error in renderProjects:', error);
+        content.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--status-lost);">Error loading project timelines</div>';
+    }
 }
 
 function handleProjectSearch(event) {

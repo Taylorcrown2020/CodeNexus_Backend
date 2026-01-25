@@ -6017,46 +6017,6 @@ app.get('/api/files/:fileId/view', authenticateToken, async (req, res) => {
     }
 });
 
-// Add this as a one-time migration endpoint (remove after running):
-app.post('/api/admin/fix-file-permissions', authenticateToken, async (req, res) => {
-    try {
-        const fs = require('fs');
-        
-        // Get all files
-        const result = await pool.query('SELECT * FROM files');
-        const files = result.rows;
-        
-        let fixed = 0;
-        let errors = 0;
-        
-        for (const file of files) {
-            try {
-                if (fs.existsSync(file.file_path)) {
-                    fs.chmodSync(file.file_path, 0o644);
-                    fixed++;
-                } else {
-                    console.log(`File not found: ${file.file_path}`);
-                    errors++;
-                }
-            } catch (err) {
-                console.error(`Error fixing ${file.file_path}:`, err);
-                errors++;
-            }
-        }
-        
-        res.json({
-            success: true,
-            message: `Fixed ${fixed} files, ${errors} errors`
-        });
-    } catch (error) {
-        console.error('Fix permissions error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to fix permissions' 
-        });
-    }
-});
-
 // Upload File
 app.post('/api/client/upload', authenticateClient, upload.single('file'), async (req, res) => {
     try {

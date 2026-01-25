@@ -7757,7 +7757,10 @@ function editAddress(leadId) {
 // In renderProjects function, replace the stats icons section:
 
 function renderProjects(content) {
+    console.log('📋 renderProjects called');
+    
     const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+    console.log('📊 Found timelines:', savedTimelines);
     
     content.innerHTML = `
         <div class="controls-bar">
@@ -7823,6 +7826,8 @@ function renderProjects(content) {
             `}
         </div>
     `;
+    
+    console.log('✅ renderProjects completed');
 }
 
 function handleProjectSearch(event) {

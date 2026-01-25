@@ -4791,6 +4791,15 @@ function renderInvoices(content) {
                     </div>
 ${inv.status !== 'paid' ? `
     <div style="display: flex; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+        ${inv.stripe_payment_link ? `
+            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); copyPaymentLink('${inv.stripe_payment_link}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                Copy Link
+            </button>
+        ` : ''}
         <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openInvoiceDetail(${inv.id})">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -5580,7 +5589,7 @@ async function renderInvoicePreview(invoice) {
                     </div>
                 </div>
                 
-                ${invoice.status !== 'paid' ? `
+${invoice.status !== 'paid' ? `
                     <div class="qr-code-section">
                         <div class="qr-code-title">
                             <svg style="width: 20px; height: 20px; display: inline; margin-right: 6px; vertical-align: middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -5589,17 +5598,47 @@ async function renderInvoicePreview(invoice) {
                                 <rect x="14" y="14" width="7" height="7"/>
                                 <rect x="3" y="14" width="7" height="7"/>
                             </svg>
-                            Scan to Pay
+                            Payment Link & QR Code
                         </div>
+                        
+                        ${invoice.stripe_payment_link ? `
+                            <div style="margin-bottom: 16px; display: flex; gap: 8px; align-items: center;">
+                                <input type="text" readonly value="${invoice.stripe_payment_link}" 
+                                       style="flex: 1; padding: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 11px; background: var(--bg-hover); color: var(--text-primary);">
+                                <button class="btn btn-sm btn-secondary" onclick="copyPaymentLink('${invoice.stripe_payment_link}')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+                        ` : '<div style="color: var(--text-muted); font-size: 12px; margin-bottom: 16px; text-align: center;">Payment link will be generated when you view this invoice</div>'}
+                        
                         <div class="qr-code-container" id="${qrCodeId}"></div>
                         <div class="qr-code-instructions">
-                            Scan this QR code with your phone's camera to quickly access the secure payment portal. You can pay via credit card, bank transfer, or other accepted payment methods.
+                            Share this QR code or payment link with your client for easy payment.
                         </div>
                         <div class="payment-url">
                             ${paymentUrl}
                         </div>
                     </div>
-                ` : ''}
+                ` : `
+                    <div style="background: rgba(16,185,129,0.15); padding: 20px; border-radius: var(--radius-md); border: 2px solid var(--status-contacted); text-align: center; margin-top: 20px;">
+                        <div style="font-size: 16px; font-weight: 700; color: var(--status-contacted); margin-bottom: 6px;">
+                            ✓ Invoice Paid
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">
+                            Paid on ${invoice.paid_at ? formatDate(invoice.paid_at) : 'N/A'}
+                            ${invoice.payment_method ? ` via ${invoice.payment_method}` : ''}
+                        </div>
+                        ${invoice.payment_reference ? `
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono);">
+                                Ref: ${invoice.payment_reference}
+                            </div>
+                        ` : ''}
+                    </div>
+                `}
             </div>
             
             ${invoice.notes ? `
@@ -11353,6 +11392,16 @@ function openScoringRuleModal(ruleId = null) {
     `;
     
     showModal(modalContent);
+}
+
+// Add this function near the bottom of your <script> section:
+
+function copyPaymentLink(link) {
+    navigator.clipboard.writeText(link).then(() => {
+        showToast('Payment link copied to clipboard!', 'success');
+    }).catch(() => {
+        showToast('Failed to copy link', 'error');
+    });
 }
 
 // Modal helper functions

@@ -67,20 +67,24 @@ const servicePackages = {
 
 const { transporter, verifyEmailConfig } = require('./email-config.js');
 
-// ========================================
-// STRIPE WEBHOOK (MUST BE FIRST!)
-// ========================================
+// ==================== ENHANCED WEBHOOK HANDLER ====================
+// This should REPLACE your existing webhook handler
+// Make sure this route comes BEFORE app.use(express.json())
+
 app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (req, res) => {
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-if (!webhookSecret) {
-    console.error('⚠️ STRIPE_WEBHOOK_SECRET not set - webhooks will fail!');
-}
+    
+    if (!webhookSecret) {
+        console.error('⚠️ STRIPE_WEBHOOK_SECRET not set - webhooks will fail!');
+        return res.status(500).send('Webhook secret not configured');
+    }
     
     let event;
     
     try {
         event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        console.log(`[WEBHOOK] Received event: ${event.type}`);
     } catch (err) {
         console.error('⚠️  Webhook signature verification failed:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -90,96 +94,129 @@ if (!webhookSecret) {
     switch (event.type) {
         case 'checkout.session.completed':
             const session = event.data.object;
-            const invoiceId = session.metadata.invoice_id;
             
-            if (invoiceId) {
-                try {
-                    // Mark invoice as paid
-                    await pool.query(
-                        `UPDATE invoices 
-                         SET status = 'paid', 
-                             paid_at = CURRENT_TIMESTAMP,
-                             payment_method = 'Stripe',
-                             payment_reference = $1
-                         WHERE id = $2`,
-                        [session.id, invoiceId]
-                    );
-                    
-                    // Get invoice and customer details
-                    const invoiceResult = await pool.query(
-                        `SELECT i.*, l.id as lead_id, l.name, l.is_customer
-                         FROM invoices i
-                         LEFT JOIN leads l ON i.lead_id = l.id
-                         WHERE i.id = $1`,
-                        [invoiceId]
-                    );
-                    
-                    const invoice = invoiceResult.rows[0];
-                    
-                    if (!invoice) {
-                        console.error('Invoice not found:', invoiceId);
-                        return res.json({received: true});
-                    }
-                    
-                    // Convert to customer if not already
-                    if (!invoice.is_customer) {
-                        await pool.query(
-                            `UPDATE leads 
-                             SET is_customer = TRUE, 
-                                 customer_status = 'active',
-                                 status = 'closed',
-                                 updated_at = CURRENT_TIMESTAMP
-                             WHERE id = $1`,
-                            [invoice.lead_id]
-                        );
-                        console.log(`✅ Lead converted to customer: ${invoice.name}`);
-                    } else {
-                        // Make sure customer is active
-                        await pool.query(
-                            `UPDATE leads 
-                             SET customer_status = 'active',
-                                 updated_at = CURRENT_TIMESTAMP
-                             WHERE id = $1`,
-                            [invoice.lead_id]
-                        );
-                    }
-                    
-                    // Update lifetime value
-                    const lifetimeValue = await pool.query(
-                        `SELECT COALESCE(SUM(total_amount), 0) as total
-                         FROM invoices
-                         WHERE lead_id = $1 AND status = 'paid'`,
-                        [invoice.lead_id]
-                    );
-                    
+            console.log('[WEBHOOK] Processing checkout.session.completed');
+            console.log('[WEBHOOK] Session ID:', session.id);
+            console.log('[WEBHOOK] Metadata:', session.metadata);
+            
+            // Get invoice ID from metadata
+            const invoiceId = session.metadata?.invoice_id;
+            
+            if (!invoiceId) {
+                console.log('[WEBHOOK] No invoice_id in metadata, skipping');
+                return res.json({received: true});
+            }
+            
+            try {
+                console.log(`[WEBHOOK] Processing payment for invoice ${invoiceId}`);
+                
+                // Mark invoice as paid
+                const updateResult = await pool.query(
+                    `UPDATE invoices 
+                     SET status = 'paid', 
+                         paid_at = CURRENT_TIMESTAMP,
+                         payment_method = 'Stripe',
+                         payment_reference = $1
+                     WHERE id = $2
+                     RETURNING *`,
+                    [session.id, invoiceId]
+                );
+                
+                if (updateResult.rows.length === 0) {
+                    console.error('[WEBHOOK] Invoice not found:', invoiceId);
+                    return res.json({received: true});
+                }
+                
+                console.log(`[WEBHOOK] ✅ Invoice ${invoiceId} marked as PAID`);
+                
+                // Get invoice and customer details
+                const invoiceResult = await pool.query(
+                    `SELECT i.*, l.id as lead_id, l.name, l.email, l.is_customer, l.customer_status
+                     FROM invoices i
+                     LEFT JOIN leads l ON i.lead_id = l.id
+                     WHERE i.id = $1`,
+                    [invoiceId]
+                );
+                
+                const invoice = invoiceResult.rows[0];
+                
+                if (!invoice) {
+                    console.error('[WEBHOOK] Could not retrieve invoice details:', invoiceId);
+                    return res.json({received: true});
+                }
+                
+                console.log(`[WEBHOOK] Processing for customer: ${invoice.name} (${invoice.email})`);
+                
+                // Convert to customer if not already
+                if (!invoice.is_customer) {
                     await pool.query(
                         `UPDATE leads 
-                         SET lifetime_value = $1,
-                             last_payment_date = CURRENT_TIMESTAMP
-                         WHERE id = $2`,
-                        [lifetimeValue.rows[0].total, invoice.lead_id]
+                         SET is_customer = TRUE, 
+                             customer_status = 'active',
+                             status = 'closed',
+                             updated_at = CURRENT_TIMESTAMP
+                         WHERE id = $1`,
+                        [invoice.lead_id]
                     );
-                    
-                    console.log(`✅ Payment processed for invoice ${invoice.invoice_number}`);
-                    console.log(`   💰 Amount: $${parseFloat(invoice.total_amount).toLocaleString()}`);
-                    console.log(`   👤 Customer: ${invoice.name}`);
-                    console.log(`   📊 Lifetime Value: $${parseFloat(lifetimeValue.rows[0].total).toLocaleString()}`);
-                } catch (error) {
-                    console.error('Error processing webhook:', error);
+                    console.log(`[WEBHOOK] ✅ Lead converted to ACTIVE CUSTOMER: ${invoice.name}`);
+                } else {
+                    // Make sure customer is active
+                    await pool.query(
+                        `UPDATE leads 
+                         SET customer_status = 'active',
+                             updated_at = CURRENT_TIMESTAMP
+                         WHERE id = $1`,
+                        [invoice.lead_id]
+                    );
+                    console.log(`[WEBHOOK] ✅ Customer status updated to ACTIVE: ${invoice.name}`);
                 }
+                
+                // Update lifetime value
+                const lifetimeValue = await pool.query(
+                    `SELECT COALESCE(SUM(total_amount), 0) as total
+                     FROM invoices
+                     WHERE lead_id = $1 AND status = 'paid'`,
+                    [invoice.lead_id]
+                );
+                
+                await pool.query(
+                    `UPDATE leads 
+                     SET lifetime_value = $1,
+                         last_payment_date = CURRENT_TIMESTAMP
+                     WHERE id = $2`,
+                    [lifetimeValue.rows[0].total, invoice.lead_id]
+                );
+                
+                console.log('');
+                console.log('========================================');
+                console.log('✅ PAYMENT PROCESSED SUCCESSFULLY');
+                console.log('========================================');
+                console.log(`   Invoice: ${invoice.invoice_number}`);
+                console.log(`   Amount: $${parseFloat(invoice.total_amount).toLocaleString()}`);
+                console.log(`   Customer: ${invoice.name}`);
+                console.log(`   Email: ${invoice.email}`);
+                console.log(`   Lifetime Value: $${parseFloat(lifetimeValue.rows[0].total).toLocaleString()}`);
+                console.log(`   Payment Method: Stripe`);
+                console.log(`   Session ID: ${session.id}`);
+                console.log('========================================');
+                console.log('');
+                
+            } catch (error) {
+                console.error('[WEBHOOK ERROR] Failed to process payment:', error);
+                console.error('[WEBHOOK ERROR] Stack:', error.stack);
             }
             break;
             
         case 'payment_intent.succeeded':
-            console.log('💳 Payment intent succeeded:', event.data.object.id);
+            console.log('[WEBHOOK] 💳 Payment intent succeeded:', event.data.object.id);
             break;
             
         case 'payment_intent.payment_failed':
-            console.log('❌ Payment failed:', event.data.object.id);
+            console.log('[WEBHOOK] ❌ Payment failed:', event.data.object.id);
             break;
             
         default:
-            console.log(`Unhandled event type ${event.type}`);
+            console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
     }
     
     res.json({received: true});
@@ -2673,32 +2710,16 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
             });
         }
         
-        // Get invoice items
-        const itemsResult = await pool.query(
-            'SELECT * FROM invoice_items WHERE invoice_id = $1',
-            [invoiceId]
-        );
-        
-        // Validate we have all required data
-        if (!invoice.short_description) {
-            console.error('❌ Missing short_description for invoice:', invoice.invoice_number);
-            return res.status(400).json({
-                success: false,
-                message: 'Invoice must have a description before creating payment link'
-            });
-        }
-        
         const description = invoice.short_description || `Invoice ${invoice.invoice_number}`;
         
         console.log('💳 Creating Stripe price...');
         
-        // Create Stripe Price (FIXED - removed description from product_data)
+        // Create Stripe Price
         const price = await stripe.prices.create({
-            unit_amount: Math.round(parseFloat(invoice.total_amount) * 100), // Convert to cents
+            unit_amount: Math.round(parseFloat(invoice.total_amount) * 100),
             currency: 'usd',
             product_data: {
                 name: `Invoice ${invoice.invoice_number} — ${description}`,
-                // REMOVED: description - Stripe doesn't accept this parameter here
                 metadata: {
                     invoice_id: invoiceId.toString(),
                     invoice_number: invoice.invoice_number
@@ -2725,7 +2746,8 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
                 invoice_id: invoiceId.toString(),
                 invoice_number: invoice.invoice_number,
                 customer_name: invoice.name || '',
-                customer_email: invoice.email || ''
+                customer_email: invoice.email || '',
+                source: 'admin_portal'
             },
             customer_creation: 'always',
             invoice_creation: {
@@ -6202,9 +6224,145 @@ function authenticateClient(req, res, next) {
     }
 }
 
-// ==================== EMAIL HELPER ====================
-
-// ==================== EMAIL HELPER (FIXED URL) ====================
+// Get payment link for client invoice (CLIENT AUTH)
+app.get('/api/client/invoice/:id/payment-link', authenticateClient, async (req, res) => {
+    try {
+        const invoiceId = req.params.id;
+        const clientId = req.user.id;
+        
+        console.log(`[PAYMENT] Client ${clientId} requesting payment link for invoice ${invoiceId}`);
+        
+        // Verify invoice belongs to this client
+        const invoiceResult = await pool.query(`
+            SELECT i.*, l.name, l.email, l.company,
+                   l.address_line1, l.address_line2, l.city, l.state, l.zip_code, l.country
+            FROM invoices i
+            LEFT JOIN leads l ON i.lead_id = l.id
+            WHERE i.id = $1 AND i.lead_id = $2
+        `, [invoiceId, clientId]);
+        
+        if (invoiceResult.rows.length === 0) {
+            console.log(`[PAYMENT] Invoice ${invoiceId} not found for client ${clientId}`);
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Invoice not found' 
+            });
+        }
+        
+        const invoice = invoiceResult.rows[0];
+        
+        // If already paid, return message
+        if (invoice.status === 'paid') {
+            console.log(`[PAYMENT] Invoice ${invoice.invoice_number} already paid`);
+            return res.json({
+                success: true,
+                message: 'Invoice already paid',
+                isPaid: true
+            });
+        }
+        
+        // If payment link exists, return it
+        if (invoice.stripe_payment_link) {
+            console.log(`[PAYMENT] Returning existing payment link for ${invoice.invoice_number}`);
+            return res.json({
+                success: true,
+                paymentLink: invoice.stripe_payment_link
+            });
+        }
+        
+        // Otherwise, create payment link
+        console.log(`[PAYMENT] Creating new Stripe payment link for ${invoice.invoice_number}`);
+        
+        const description = invoice.short_description || `Invoice ${invoice.invoice_number}`;
+        
+        // Create Stripe Price
+        const price = await stripe.prices.create({
+            unit_amount: Math.round(parseFloat(invoice.total_amount) * 100),
+            currency: 'usd',
+            product_data: {
+                name: `Invoice ${invoice.invoice_number} — ${description}`,
+                metadata: {
+                    invoice_id: invoiceId.toString(),
+                    invoice_number: invoice.invoice_number
+                }
+            },
+        });
+        
+        console.log(`[PAYMENT] Stripe price created: ${price.id}`);
+        
+        // Determine redirect URL (handle both dev and production)
+        const hostname = req.get('host');
+        const protocol = req.protocol;
+        let redirectUrl;
+        
+        if (hostname.includes('localhost')) {
+            redirectUrl = `${protocol}://${hostname}/client_portal.html?payment=success&invoice=${invoiceId}`;
+        } else {
+            redirectUrl = `https://${hostname}/client_portal.html?payment=success&invoice=${invoiceId}`;
+        }
+        
+        console.log(`[PAYMENT] Redirect URL: ${redirectUrl}`);
+        
+        // Create Payment Link
+        const paymentLink = await stripe.paymentLinks.create({
+            line_items: [{
+                price: price.id,
+                quantity: 1,
+            }],
+            after_completion: {
+                type: 'redirect',
+                redirect: {
+                    url: redirectUrl
+                }
+            },
+            metadata: {
+                invoice_id: invoiceId.toString(),
+                invoice_number: invoice.invoice_number,
+                customer_name: invoice.name || '',
+                customer_email: invoice.email || '',
+                source: 'client_portal'
+            },
+            customer_creation: 'always',
+            invoice_creation: {
+                enabled: true,
+                invoice_data: {
+                    description: `Invoice ${invoice.invoice_number} - ${description}`,
+                    metadata: {
+                        invoice_id: invoiceId.toString(),
+                        invoice_number: invoice.invoice_number
+                    },
+                    footer: 'Thank you for your business!'
+                }
+            },
+            phone_number_collection: {
+                enabled: true
+            },
+            billing_address_collection: 'auto'
+        });
+        
+        console.log(`[PAYMENT] Payment link created: ${paymentLink.url}`);
+        
+        // Save payment link to database
+        await pool.query(
+            'UPDATE invoices SET stripe_payment_link = $1 WHERE id = $2',
+            [paymentLink.url, invoiceId]
+        );
+        
+        console.log(`[PAYMENT] Payment link saved to database`);
+        
+        res.json({
+            success: true,
+            paymentLink: paymentLink.url
+        });
+        
+    } catch (error) {
+        console.error('[PAYMENT ERROR]', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to get payment link: ' + error.message
+        });
+    }
+});
 
 // ==================== EMAIL HELPER (NO EMOJIS) ====================
 

@@ -2054,34 +2054,180 @@ const API_BASE = (() => {
             }
         }
 
-        function renderInvoices() {
-            const tbody = document.querySelector('#invoicesTable tbody');
+// 1. REPLACE renderInvoices() function with this:
+function renderInvoices() {
+    const tbody = document.querySelector('#invoicesTable tbody');
+    
+    if (state.invoices.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No invoices yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = state.invoices.map(invoice => {
+        let actionButton = '';
+        
+        if (invoice.status === 'paid') {
+            actionButton = `
+                <span style="color: var(--status-success); font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 16px; height: 16px;">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Paid
+                </span>
+            `;
+        } else {
+            actionButton = `
+                <button class="btn-download" onclick="payInvoice(${invoice.id})" 
+                        style="background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); 
+                               color: var(--bg-void); border-color: var(--accent-primary);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                    Pay Now
+                </button>
+            `;
+        }
+        
+        return `
+            <tr>
+                <td>#${invoice.invoice_number || invoice.id}</td>
+                <td>${formatDate(invoice.issue_date || invoice.created_at)}</td>
+                <td style="font-weight: 600;">$${parseFloat(invoice.total_amount || invoice.amount || 0).toFixed(2)}</td>
+                <td><span class="invoice-status ${invoice.status}">${invoice.status}</span></td>
+                <td>${formatDate(invoice.due_date)}</td>
+                <td>${actionButton}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function payInvoice(invoiceId) {
+    try {
+        // Show loading state
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner"></span> Loading...';
+        
+        // Get the payment link for this invoice
+        const response = await fetch(`${API_BASE}/client/invoice/${invoiceId}/payment-link`, {
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
             
-            if (state.invoices.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No invoices yet</td></tr>';
+            if (data.isPaid) {
+                alert('This invoice has already been paid.');
+                loadInvoices(); // Refresh to show updated status
                 return;
             }
-
-            tbody.innerHTML = state.invoices.map(invoice => `
-                <tr>
-                    <td>#${invoice.id.toString().padStart(4, '0')}</td>
-                    <td>${formatDate(invoice.created_at)}</td>
-                    <td>$${parseFloat(invoice.amount).toFixed(2)}</td>
-                    <td><span class="invoice-status ${invoice.status}">${invoice.status}</span></td>
-                    <td>${formatDate(invoice.due_date)}</td>
-                    <td>
-                        <button class="btn-download" onclick="downloadInvoice(${invoice.id})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                            Download
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
+            
+            if (data.paymentLink) {
+                // Redirect to Stripe checkout
+                window.location.href = data.paymentLink;
+            } else {
+                alert('Payment link not available. Please contact support.');
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+            }
+        } else {
+            const error = await response.json();
+            alert(error.message || 'Failed to get payment link');
+            button.disabled = false;
+            button.innerHTML = originalHTML;
         }
+    } catch (error) {
+        console.error('Payment error:', error);
+        alert('Failed to process payment. Please try again.');
+        if (event.target.closest('button')) {
+            event.target.closest('button').disabled = false;
+            event.target.closest('button').innerHTML = originalHTML;
+        }
+    }
+}
+
+// Add this in the DOMContentLoaded section
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    setupEventListeners();
+    
+    // Check for payment success
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+        const invoiceId = urlParams.get('invoice');
+        
+        // Show success message
+        setTimeout(() => {
+            alert('Payment successful! Thank you for your payment.');
+            
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // Refresh invoices
+            if (state.token) {
+                loadInvoices();
+                loadDashboard();
+            }
+        }, 500);
+    }
+});
+
+// Auto-refresh invoices every 30 seconds when on invoices page
+let invoiceRefreshInterval;
+
+function navigateTo(section) {
+    // Clear existing interval
+    if (invoiceRefreshInterval) {
+        clearInterval(invoiceRefreshInterval);
+        invoiceRefreshInterval = null;
+    }
+    
+    // Update active nav link
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.dataset.section === section) {
+            link.classList.add('active');
+        }
+    });
+
+    // Show section
+    document.querySelectorAll('.content-section').forEach(sec => {
+        sec.classList.remove('active');
+    });
+    document.getElementById(`${section}Section`).classList.add('active');
+
+    state.currentSection = section;
+
+    // Load section data
+    switch(section) {
+        case 'dashboard':
+            loadDashboard();
+            break;
+        case 'projects':
+            loadProjects();
+            break;
+        case 'milestones':
+            loadMilestones();
+            break;
+        case 'invoices':
+            loadInvoices();
+            // Auto-refresh invoices every 30 seconds
+            invoiceRefreshInterval = setInterval(() => {
+                loadInvoices();
+            }, 30000);
+            break;
+        case 'files':
+            loadFiles();
+            break;
+        case 'support':
+            loadTickets();
+            break;
+    }
+}
 
         async function downloadInvoice(invoiceId) {
             alert('PDF download feature coming soon!');

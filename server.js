@@ -326,13 +326,29 @@ await client.query(`
     CREATE TABLE IF NOT EXISTS support_tickets (
         id SERIAL PRIMARY KEY,
         lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        client_name VARCHAR(255),
+        client_email VARCHAR(255),
         subject VARCHAR(500) NOT NULL,
         message TEXT NOT NULL,
         priority VARCHAR(50) DEFAULT 'medium',
         category VARCHAR(100) DEFAULT 'general',
         status VARCHAR(50) DEFAULT 'open',
+        assigned_to INTEGER REFERENCES admin_users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+// Ticket responses table
+await client.query(`
+    CREATE TABLE IF NOT EXISTS ticket_responses (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER REFERENCES support_tickets(id) ON DELETE CASCADE,
+        user_id INTEGER,
+        user_type VARCHAR(50) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
 `);
 
@@ -355,6 +371,11 @@ await client.query(`
 await client.query(`
     CREATE INDEX IF NOT EXISTS idx_support_tickets_lead 
     ON support_tickets(lead_id, created_at DESC)
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_ticket_responses_ticket 
+    ON ticket_responses(ticket_id, created_at ASC)
 `);
 
         // Create admin_users table
@@ -4072,6 +4093,227 @@ const upload = multer({
 
 // ==================== API ENDPOINTS ====================
 
+// ==================== LEAD/CUSTOMER DOCUMENT ENDPOINTS ====================
+
+// Get documents for a specific lead/customer
+app.get('/api/leads/:leadId/documents', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.leadId;
+        
+        console.log('[LEAD DOCS] Getting documents for lead:', leadId);
+        
+        const result = await pool.query(`
+            SELECT 
+                id,
+                filename as file_name,
+                original_filename as file_name,
+                file_path,
+                file_size,
+                mime_type,
+                document_type,
+                CASE 
+                    WHEN uploaded_by IS NULL THEN 'client'
+                    ELSE 'admin'
+                END as uploaded_by,
+                created_at as uploaded_at,
+                description
+            FROM documents
+            WHERE lead_id = $1
+            ORDER BY created_at DESC
+        `, [leadId]);
+        
+        console.log('[LEAD DOCS] Found', result.rows.length, 'documents');
+        
+        res.json({
+            success: true,
+            documents: result.rows
+        });
+    } catch (error) {
+        console.error('[LEAD DOCS] Get error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to load documents'
+        });
+    }
+});
+
+// Upload documents for a specific lead/customer
+app.post('/api/leads/:leadId/documents', authenticateToken, upload.array('documents', 10), async (req, res) => {
+    try {
+        const leadId = req.params.leadId;
+        const files = req.files;
+        const { uploaded_by, description } = req.body;
+        
+        console.log('[LEAD DOCS] Uploading', files?.length || 0, 'documents for lead:', leadId);
+        
+        if (!files || files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No files uploaded'
+            });
+        }
+        
+        const uploadedDocs = [];
+        const fs = require('fs');
+        
+        for (const file of files) {
+            // Set file permissions
+            try {
+                fs.chmodSync(file.path, 0o644);
+            } catch (permError) {
+                console.error('[LEAD DOCS] Permission error:', permError);
+            }
+            
+            // Insert into database
+            const result = await pool.query(`
+                INSERT INTO documents (
+                    lead_id,
+                    filename,
+                    original_filename,
+                    file_path,
+                    file_size,
+                    mime_type,
+                    document_type,
+                    uploaded_by,
+                    description,
+                    created_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+                RETURNING id, original_filename as file_name, file_size
+            `, [
+                leadId,
+                file.filename,
+                file.originalname,
+                file.path,
+                file.size,
+                file.mimetype,
+                uploaded_by === 'client' ? 'client_upload' : 'admin_upload',
+                uploaded_by === 'client' ? null : req.user.id,
+                description || null
+            ]);
+            
+            uploadedDocs.push(result.rows[0]);
+        }
+        
+        console.log('[LEAD DOCS] Successfully uploaded', uploadedDocs.length, 'documents');
+        
+        res.json({
+            success: true,
+            message: `${uploadedDocs.length} document(s) uploaded successfully`,
+            documents: uploadedDocs
+        });
+    } catch (error) {
+        console.error('[LEAD DOCS] Upload error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to upload documents',
+            error: error.message
+        });
+    }
+});
+
+// Download a specific document
+app.get('/api/documents/:documentId/download', authenticateToken, async (req, res) => {
+    try {
+        const documentId = req.params.documentId;
+        
+        console.log('[DOC DOWNLOAD] Request for document:', documentId);
+        
+        const result = await pool.query(
+            'SELECT * FROM documents WHERE id = $1',
+            [documentId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Document not found'
+            });
+        }
+        
+        const doc = result.rows[0];
+        const fs = require('fs');
+        
+        if (!fs.existsSync(doc.file_path)) {
+            console.error('[DOC DOWNLOAD] File not found on disk:', doc.file_path);
+            return res.status(404).json({
+                success: false,
+                message: 'File not found on disk'
+            });
+        }
+        
+        res.setHeader('Content-Type', doc.mime_type || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${doc.original_filename}"`);
+        res.setHeader('Content-Length', doc.file_size);
+        
+        const fileStream = fs.createReadStream(doc.file_path);
+        fileStream.pipe(res);
+        
+        console.log('[DOC DOWNLOAD] Streaming file:', doc.original_filename);
+    } catch (error) {
+        console.error('[DOC DOWNLOAD] Error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to download document'
+            });
+        }
+    }
+});
+
+// Delete a document
+app.delete('/api/documents/:documentId', authenticateToken, async (req, res) => {
+    try {
+        const documentId = req.params.documentId;
+        
+        console.log('[DOC DELETE] Deleting document:', documentId);
+        
+        // Get document info
+        const result = await pool.query(
+            'SELECT * FROM documents WHERE id = $1',
+            [documentId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Document not found'
+            });
+        }
+        
+        const doc = result.rows[0];
+        
+        // Delete file from disk
+        const fs = require('fs');
+        try {
+            if (fs.existsSync(doc.file_path)) {
+                fs.unlinkSync(doc.file_path);
+                console.log('[DOC DELETE] File deleted from disk');
+            }
+        } catch (fsError) {
+            console.error('[DOC DELETE] Error deleting file:', fsError);
+        }
+        
+        // Delete from database
+        await pool.query('DELETE FROM documents WHERE id = $1', [documentId]);
+        
+        console.log('[DOC DELETE] Document deleted from database');
+        
+        res.json({
+            success: true,
+            message: 'Document deleted successfully'
+        });
+    } catch (error) {
+        console.error('[DOC DELETE] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete document'
+        });
+    }
+});
+
+// ==================== GENERAL DOCUMENT ENDPOINTS ====================
+
 // Get all documents (with optional lead filter)
 app.get('/api/documents', authenticateToken, async (req, res) => {
     try {
@@ -5882,6 +6124,41 @@ app.put('/api/milestones/:id', authenticateToken, async (req, res) => {
 
 // Find your existing file upload endpoint and update it:
 
+// Get client's uploaded files
+app.get('/api/client/files', authenticateClient, async (req, res) => {
+    try {
+        const clientId = req.user.id;
+        
+        console.log('[CLIENT FILES] Getting files for client:', clientId);
+        
+        const result = await pool.query(`
+            SELECT 
+                id,
+                original_filename as filename,
+                original_filename,
+                file_size,
+                mime_type,
+                created_at
+            FROM documents
+            WHERE lead_id = $1
+            ORDER BY created_at DESC
+        `, [clientId]);
+        
+        console.log('[CLIENT FILES] Found', result.rows.length, 'files');
+        
+        res.json({
+            success: true,
+            files: result.rows
+        });
+    } catch (error) {
+        console.error('[CLIENT FILES] Get error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to load files'
+        });
+    }
+});
+
 app.post('/api/client/files/upload', authenticateClient, upload.single('file'), async (req, res) => {
     try {
         const clientId = req.user.id;
@@ -5894,17 +6171,34 @@ app.post('/api/client/files/upload', authenticateClient, upload.single('file'), 
             });
         }
         
+        console.log('[CLIENT UPLOAD] File received:', file.originalname, 'Size:', file.size);
+        
         // IMPORTANT: Set proper file permissions
         const fs = require('fs');
         const filePath = file.path;
         
-        // Make file readable by everyone (but only writable by owner)
-        fs.chmodSync(filePath, 0o644);
+        try {
+            // Make file readable by everyone (but only writable by owner)
+            fs.chmodSync(filePath, 0o644);
+            console.log('[CLIENT UPLOAD] File permissions set successfully');
+        } catch (permError) {
+            console.error('[CLIENT UPLOAD] Permission error:', permError);
+        }
         
-        // Store in database with proper access control
+        // Store in documents table with proper access control
         const result = await pool.query(`
-            INSERT INTO files (lead_id, filename, original_filename, file_path, file_size, mime_type, uploaded_by)
-            VALUES ($1, $2, $3, $4, $5, $6, 'client')
+            INSERT INTO documents (
+                lead_id, 
+                filename, 
+                original_filename, 
+                file_path, 
+                file_size, 
+                mime_type, 
+                document_type,
+                uploaded_by,
+                created_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, CURRENT_TIMESTAMP)
             RETURNING *
         `, [
             clientId,
@@ -5912,34 +6206,79 @@ app.post('/api/client/files/upload', authenticateClient, upload.single('file'), 
             file.originalname,
             file.path,
             file.size,
-            file.mimetype
+            file.mimetype,
+            'client_upload'
         ]);
+        
+        console.log('[CLIENT UPLOAD] Document saved to database, ID:', result.rows[0].id);
         
         res.json({
             success: true,
-            file: result.rows[0]
+            message: 'File uploaded successfully',
+            file: {
+                id: result.rows[0].id,
+                filename: result.rows[0].original_filename,
+                size: result.rows[0].file_size
+            }
         });
     } catch (error) {
-        console.error('File upload error:', error);
+        console.error('[CLIENT UPLOAD] Error:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Failed to upload file' 
+            message: 'Failed to upload file',
+            error: error.message
         });
     }
 });
 
-// Update the file download endpoint to allow admin access:
-app.get('/api/files/:fileId/download', authenticateToken, async (req, res) => {
+// Download file - works for both admin and client
+app.get('/api/files/:fileId/download', async (req, res) => {
     try {
         const fileId = req.params.fileId;
+        const authHeader = req.headers.authorization;
         
-        // Get file info
+        console.log('[FILE DOWNLOAD] Request for file ID:', fileId);
+        
+        if (!authHeader) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'No authorization token provided' 
+            });
+        }
+        
+        const token = authHeader.replace('Bearer ', '');
+        let userId = null;
+        let userType = null;
+        
+        // Try to decode as admin token
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            userId = decoded.id;
+            userType = 'admin';
+            console.log('[FILE DOWNLOAD] Admin user:', userId);
+        } catch (adminErr) {
+            // Try as client token
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                userId = decoded.id;
+                userType = 'client';
+                console.log('[FILE DOWNLOAD] Client user:', userId);
+            } catch (clientErr) {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Invalid token' 
+                });
+            }
+        }
+        
+        // Get file info from documents table
         const result = await pool.query(
-            'SELECT * FROM files WHERE id = $1',
+            'SELECT * FROM documents WHERE id = $1',
             [fileId]
         );
         
         if (result.rows.length === 0) {
+            console.log('[FILE DOWNLOAD] File not found in database');
             return res.status(404).json({ 
                 success: false, 
                 message: 'File not found' 
@@ -5948,9 +6287,23 @@ app.get('/api/files/:fileId/download', authenticateToken, async (req, res) => {
         
         const file = result.rows[0];
         
-        // Check if file exists
+        // Check access permissions
+        // Admin can access all files
+        // Client can only access their own files
+        if (userType === 'client' && file.lead_id !== userId) {
+            console.log('[FILE DOWNLOAD] Access denied - file belongs to different client');
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Access denied' 
+            });
+        }
+        
+        console.log('[FILE DOWNLOAD] Access granted, file path:', file.file_path);
+        
+        // Check if file exists on disk
         const fs = require('fs');
         if (!fs.existsSync(file.file_path)) {
+            console.log('[FILE DOWNLOAD] File not found on disk:', file.file_path);
             return res.status(404).json({ 
                 success: false, 
                 message: 'File not found on disk' 
@@ -5958,19 +6311,34 @@ app.get('/api/files/:fileId/download', authenticateToken, async (req, res) => {
         }
         
         // Set proper headers
-        res.setHeader('Content-Type', file.mime_type);
+        res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${file.original_filename}"`);
+        res.setHeader('Content-Length', file.file_size);
         
         // Stream the file
         const fileStream = fs.createReadStream(file.file_path);
+        fileStream.on('error', (error) => {
+            console.error('[FILE DOWNLOAD] Stream error:', error);
+            if (!res.headersSent) {
+                res.status(500).json({ 
+                    success: false, 
+                    message: 'Error streaming file' 
+                });
+            }
+        });
+        
         fileStream.pipe(res);
+        console.log('[FILE DOWNLOAD] File streaming started');
         
     } catch (error) {
-        console.error('File download error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to download file' 
-        });
+        console.error('[FILE DOWNLOAD] Error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to download file',
+                error: error.message
+            });
+        }
     }
 });
 
@@ -6437,9 +6805,19 @@ app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
     const { subject, message, priority, category } = req.body;
     
     try {
+        // Get client info for the ticket
+        const clientResult = await pool.query(
+            'SELECT name, email, company FROM leads WHERE id = $1',
+            [req.user.id]
+        );
+        
+        const client = clientResult.rows[0] || {};
+        
         const result = await pool.query(`
             INSERT INTO support_tickets (
                 lead_id, 
+                client_name,
+                client_email,
                 subject, 
                 message, 
                 priority, 
@@ -6447,17 +6825,390 @@ app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
                 status, 
                 created_at
             )
-            VALUES ($1, $2, $3, $4, $5, 'open', CURRENT_TIMESTAMP)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', CURRENT_TIMESTAMP)
             RETURNING *
-        `, [req.user.id, subject, message, priority || 'medium', category || 'general']);
+        `, [
+            req.user.id, 
+            client.name || 'Unknown',
+            client.email || '',
+            subject, 
+            message, 
+            priority || 'medium', 
+            category || 'general'
+        ]);
         
         res.json({
             success: true,
             message: 'Support ticket created',
-            ticketId: result.rows[0].id
+            ticket: result.rows[0]
         });
     } catch (error) {
+        console.error('[TICKET] Create error:', error);
         res.status(500).json({ success: false, message: 'Failed to create ticket' });
+    }
+});
+
+// ==================== ADMIN TICKET ENDPOINTS ====================
+
+// Get all tickets (admin)
+app.get('/api/tickets', authenticateToken, async (req, res) => {
+    try {
+        const { status, priority } = req.query;
+        
+        let query = `
+            SELECT 
+                st.*,
+                l.name as client_name,
+                l.email as client_email,
+                l.company,
+                (SELECT COUNT(*) FROM ticket_responses WHERE ticket_id = st.id) as response_count,
+                (SELECT MAX(created_at) FROM ticket_responses WHERE ticket_id = st.id) as last_response_at
+            FROM support_tickets st
+            LEFT JOIN leads l ON st.lead_id = l.id
+            WHERE 1=1
+        `;
+        
+        const params = [];
+        let paramCount = 1;
+        
+        if (status) {
+            query += ` AND st.status = $${paramCount}`;
+            params.push(status);
+            paramCount++;
+        }
+        
+        if (priority) {
+            query += ` AND st.priority = $${paramCount}`;
+            params.push(priority);
+            paramCount++;
+        }
+        
+        query += ' ORDER BY st.created_at DESC';
+        
+        const result = await pool.query(query, params);
+        
+        res.json({
+            success: true,
+            tickets: result.rows
+        });
+    } catch (error) {
+        console.error('[TICKETS] Get all error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load tickets' });
+    }
+});
+
+// Get single ticket with responses (admin)
+app.get('/api/tickets/:id', authenticateToken, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        
+        const ticketResult = await pool.query(`
+            SELECT 
+                st.*,
+                l.name as client_name,
+                l.email as client_email,
+                l.company
+            FROM support_tickets st
+            LEFT JOIN leads l ON st.lead_id = l.id
+            WHERE st.id = $1
+        `, [ticketId]);
+        
+        if (ticketResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+        
+        // Get responses
+        const responsesResult = await pool.query(`
+            SELECT * FROM ticket_responses 
+            WHERE ticket_id = $1 
+            ORDER BY created_at ASC
+        `, [ticketId]);
+        
+        res.json({
+            success: true,
+            ticket: ticketResult.rows[0],
+            responses: responsesResult.rows
+        });
+    } catch (error) {
+        console.error('[TICKET] Get single error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load ticket' });
+    }
+});
+
+// Get ticket responses (admin)
+app.get('/api/tickets/:id/responses', authenticateToken, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        
+        const result = await pool.query(`
+            SELECT * FROM ticket_responses 
+            WHERE ticket_id = $1 
+            ORDER BY created_at ASC
+        `, [ticketId]);
+        
+        res.json({
+            success: true,
+            responses: result.rows
+        });
+    } catch (error) {
+        console.error('[TICKET] Get responses error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load responses' });
+    }
+});
+
+// Add response to ticket (admin)
+app.post('/api/tickets/:id/responses', authenticateToken, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const { message } = req.body;
+        
+        if (!message || !message.trim()) {
+            return res.status(400).json({ success: false, message: 'Message is required' });
+        }
+        
+        const result = await pool.query(`
+            INSERT INTO ticket_responses (
+                ticket_id,
+                user_id,
+                user_type,
+                user_name,
+                message,
+                created_at
+            )
+            VALUES ($1, $2, 'admin', 'Admin', $3, CURRENT_TIMESTAMP)
+            RETURNING *
+        `, [ticketId, req.user.id, message.trim()]);
+        
+        // Update ticket's updated_at
+        await pool.query(
+            'UPDATE support_tickets SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+            [ticketId]
+        );
+        
+        res.json({
+            success: true,
+            response: result.rows[0]
+        });
+    } catch (error) {
+        console.error('[TICKET] Add response error:', error);
+        res.status(500).json({ success: false, message: 'Failed to add response' });
+    }
+});
+
+// Update ticket status (admin)
+app.put('/api/tickets/:id/status', authenticateToken, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const { status } = req.body;
+        
+        const validStatuses = ['open', 'in-progress', 'resolved', 'closed'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ success: false, message: 'Invalid status' });
+        }
+        
+        await pool.query(
+            'UPDATE support_tickets SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [status, ticketId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Ticket status updated'
+        });
+    } catch (error) {
+        console.error('[TICKET] Update status error:', error);
+        res.status(500).json({ success: false, message: 'Failed to update status' });
+    }
+});
+
+// Update ticket (admin)
+app.put('/api/tickets/:id', authenticateToken, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const { status, priority, assigned_to } = req.body;
+        
+        const updates = [];
+        const params = [];
+        let paramCount = 1;
+        
+        if (status) {
+            updates.push(`status = $${paramCount}`);
+            params.push(status);
+            paramCount++;
+        }
+        
+        if (priority) {
+            updates.push(`priority = $${paramCount}`);
+            params.push(priority);
+            paramCount++;
+        }
+        
+        if (assigned_to !== undefined) {
+            updates.push(`assigned_to = $${paramCount}`);
+            params.push(assigned_to);
+            paramCount++;
+        }
+        
+        if (updates.length === 0) {
+            return res.status(400).json({ success: false, message: 'No updates provided' });
+        }
+        
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        params.push(ticketId);
+        
+        const query = `
+            UPDATE support_tickets 
+            SET ${updates.join(', ')}
+            WHERE id = $${paramCount}
+            RETURNING *
+        `;
+        
+        const result = await pool.query(query, params);
+        
+        res.json({
+            success: true,
+            ticket: result.rows[0]
+        });
+    } catch (error) {
+        console.error('[TICKET] Update error:', error);
+        res.status(500).json({ success: false, message: 'Failed to update ticket' });
+    }
+});
+
+// Delete ticket (admin)
+app.delete('/api/tickets/:id', authenticateToken, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        
+        // Delete responses first
+        await pool.query('DELETE FROM ticket_responses WHERE ticket_id = $1', [ticketId]);
+        
+        // Delete ticket
+        await pool.query('DELETE FROM support_tickets WHERE id = $1', [ticketId]);
+        
+        res.json({
+            success: true,
+            message: 'Ticket deleted'
+        });
+    } catch (error) {
+        console.error('[TICKET] Delete error:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete ticket' });
+    }
+});
+
+// ==================== CLIENT TICKET ENDPOINTS ====================
+
+// Get client's tickets
+app.get('/api/client/tickets', authenticateClient, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                st.*,
+                (SELECT COUNT(*) FROM ticket_responses WHERE ticket_id = st.id) as response_count,
+                (SELECT MAX(created_at) FROM ticket_responses WHERE ticket_id = st.id) as last_response_at
+            FROM support_tickets st
+            WHERE st.lead_id = $1
+            ORDER BY st.created_at DESC
+        `, [req.user.id]);
+        
+        res.json({
+            success: true,
+            tickets: result.rows
+        });
+    } catch (error) {
+        console.error('[CLIENT] Get tickets error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load tickets' });
+    }
+});
+
+// Get single ticket with responses (client)
+app.get('/api/client/tickets/:id', authenticateClient, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        
+        const ticketResult = await pool.query(
+            'SELECT * FROM support_tickets WHERE id = $1 AND lead_id = $2',
+            [ticketId, req.user.id]
+        );
+        
+        if (ticketResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+        
+        // Get responses
+        const responsesResult = await pool.query(`
+            SELECT * FROM ticket_responses 
+            WHERE ticket_id = $1 
+            ORDER BY created_at ASC
+        `, [ticketId]);
+        
+        res.json({
+            success: true,
+            ticket: ticketResult.rows[0],
+            responses: responsesResult.rows
+        });
+    } catch (error) {
+        console.error('[CLIENT] Get ticket error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load ticket' });
+    }
+});
+
+// Add response to ticket (client)
+app.post('/api/client/tickets/:id/responses', authenticateClient, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const { message } = req.body;
+        
+        if (!message || !message.trim()) {
+            return res.status(400).json({ success: false, message: 'Message is required' });
+        }
+        
+        // Verify ticket belongs to client
+        const ticketCheck = await pool.query(
+            'SELECT id, lead_id FROM support_tickets WHERE id = $1 AND lead_id = $2',
+            [ticketId, req.user.id]
+        );
+        
+        if (ticketCheck.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+        
+        // Get client name
+        const clientResult = await pool.query(
+            'SELECT name FROM leads WHERE id = $1',
+            [req.user.id]
+        );
+        
+        const clientName = clientResult.rows[0]?.name || 'Client';
+        
+        const result = await pool.query(`
+            INSERT INTO ticket_responses (
+                ticket_id,
+                user_id,
+                user_type,
+                user_name,
+                message,
+                created_at
+            )
+            VALUES ($1, $2, 'client', $3, $4, CURRENT_TIMESTAMP)
+            RETURNING *
+        `, [ticketId, req.user.id, clientName, message.trim()]);
+        
+        // Update ticket's updated_at and potentially status
+        await pool.query(`
+            UPDATE support_tickets 
+            SET updated_at = CURRENT_TIMESTAMP,
+                status = CASE WHEN status = 'resolved' THEN 'open' ELSE status END
+            WHERE id = $1
+        `, [ticketId]);
+        
+        res.json({
+            success: true,
+            response: result.rows[0]
+        });
+    } catch (error) {
+        console.error('[CLIENT] Add response error:', error);
+        res.status(500).json({ success: false, message: 'Failed to add response' });
     }
 });
 

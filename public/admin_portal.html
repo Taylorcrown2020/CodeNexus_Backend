@@ -2592,23 +2592,6 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
     </svg>
     Support Tickets
 </a>
-<div id="supportSection" class="content-section">
-    <div class="section-header">
-        <h1>Support Tickets</h1>
-        <div class="filter-controls">
-            <select id="ticketStatusFilter" onchange="filterTickets()">
-                <option value="all">All Tickets</option>
-                <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-            </select>
-        </div>
-    </div>
-    
-    <div id="ticketsContainer"></div>
-</div>
-            
             <div class="nav-section">
                 <div class="nav-section-title">Pipeline</div>
                 <div class="nav-item" data-section="leads">
@@ -3696,6 +3679,23 @@ async function renderClientPortal() {
                 </button>
             </div>
         </div>
+
+        <div id="supportSection" class="content-section">
+    <div class="section-header">
+        <h1>Support Tickets</h1>
+        <div class="filter-controls">
+            <select id="ticketStatusFilter" onchange="filterTickets()">
+                <option value="all">All Tickets</option>
+                <option value="open">Open</option>
+                <option value="in-progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="ticketsContainer"></div>
+</div>
 
         <div class="stats-grid">
             <div class="stat-card">

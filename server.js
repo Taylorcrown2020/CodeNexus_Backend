@@ -785,7 +785,17 @@ await client.query(`
             ON CONFLICT DO NOTHING;
         `);
 
-        console.log('✅ Client portal tables initialized');
+await client.query(`CREATE TABLE IF NOT EXISTS client_uploads (
+    id SERIAL PRIMARY KEY,
+    lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+    filename VARCHAR(500) NOT NULL,
+    filepath TEXT NOT NULL,
+    file_size BIGINT,
+    mime_type VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`);
+
+console.log('✅ Client portal tables initialized');
 
         await client.query('COMMIT');
         console.log('✅ Database tables initialized');

@@ -5638,20 +5638,422 @@ app.get('/api/client/invoice/:id/download', authenticateClient, async (req, res)
 });
 
 // Client Projects
+// Get all projects for authenticated client
 app.get('/api/client/projects', authenticateClient, async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT cp.*, 
-                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
-                   (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
-            FROM client_projects cp
-            WHERE cp.lead_id = $1
-            ORDER BY cp.created_at DESC
-        `, [req.user.id]);
+        const clientId = req.user.id;
         
-        res.json({ success: true, projects: result.rows });
+        const result = await pool.query(`
+            SELECT p.*, 
+                   COUNT(DISTINCT pm.id) as milestone_count,
+                   COUNT(DISTINCT CASE WHEN pm.status = 'completed' THEN pm.id END) as completed_milestones
+            FROM projects p
+            LEFT JOIN project_milestones pm ON p.id = pm.project_id
+            WHERE p.lead_id = $1
+            GROUP BY p.id
+            ORDER BY p.created_at DESC
+        `, [clientId]);
+        
+        res.json({
+            success: true,
+            projects: result.rows
+        });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to load projects' });
+        console.error('Get client projects error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load projects' 
+        });
+    }
+});
+
+// Get milestones for a specific project
+app.get('/api/client/projects/:projectId/milestones', authenticateClient, async (req, res) => {
+    try {
+        const clientId = req.user.id;
+        const projectId = req.params.projectId;
+        
+        // Verify project belongs to client
+        const projectCheck = await pool.query(
+            'SELECT id FROM projects WHERE id = $1 AND lead_id = $2',
+            [projectId, clientId]
+        );
+        
+        if (projectCheck.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Project not found' 
+            });
+        }
+        
+        const result = await pool.query(`
+            SELECT * FROM project_milestones
+            WHERE project_id = $1
+            ORDER BY due_date ASC, created_at ASC
+        `, [projectId]);
+        
+        res.json({
+            success: true,
+            milestones: result.rows
+        });
+    } catch (error) {
+        console.error('Get project milestones error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load milestones' 
+        });
+    }
+});
+
+// Get all projects (admin)
+app.get('/api/projects', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT p.*, l.name as client_name, l.company,
+                   COUNT(DISTINCT pm.id) as milestone_count,
+                   COUNT(DISTINCT CASE WHEN pm.status = 'completed' THEN pm.id END) as completed_milestones
+            FROM projects p
+            LEFT JOIN leads l ON p.lead_id = l.id
+            LEFT JOIN project_milestones pm ON p.id = pm.project_id
+            GROUP BY p.id, l.name, l.company
+            ORDER BY p.created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            projects: result.rows
+        });
+    } catch (error) {
+        console.error('Get projects error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load projects' 
+        });
+    }
+});
+
+// Get projects for specific client (admin viewing client portal)
+app.get('/api/client/:clientId/projects', authenticateToken, async (req, res) => {
+    try {
+        const clientId = req.params.clientId;
+        
+        const result = await pool.query(`
+            SELECT p.*, 
+                   COUNT(DISTINCT pm.id) as milestone_count,
+                   COUNT(DISTINCT CASE WHEN pm.status = 'completed' THEN pm.id END) as completed_milestones
+            FROM projects p
+            LEFT JOIN project_milestones pm ON p.id = pm.project_id
+            WHERE p.lead_id = $1
+            GROUP BY p.id
+            ORDER BY p.created_at DESC
+        `, [clientId]);
+        
+        res.json({
+            success: true,
+            projects: result.rows
+        });
+    } catch (error) {
+        console.error('Get client projects error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load projects' 
+        });
+    }
+});
+
+// Create new project (admin)
+app.post('/api/projects', authenticateToken, async (req, res) => {
+    try {
+        const { lead_id, name, description, status, start_date, end_date, budget } = req.body;
+        
+        const result = await pool.query(`
+            INSERT INTO projects (lead_id, name, description, status, start_date, end_date, budget)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+        `, [lead_id, name, description, status || 'active', start_date, end_date, budget]);
+        
+        res.json({
+            success: true,
+            project: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create project error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to create project' 
+        });
+    }
+});
+
+// Update project (admin)
+app.put('/api/projects/:id', authenticateToken, async (req, res) => {
+    try {
+        const projectId = req.params.id;
+        const { name, description, status, start_date, end_date, budget } = req.body;
+        
+        const result = await pool.query(`
+            UPDATE projects 
+            SET name = $1, description = $2, status = $3, 
+                start_date = $4, end_date = $5, budget = $6,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $7
+            RETURNING *
+        `, [name, description, status, start_date, end_date, budget, projectId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Project not found' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            project: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update project error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update project' 
+        });
+    }
+});
+
+// Create milestone (admin)
+app.post('/api/projects/:projectId/milestones', authenticateToken, async (req, res) => {
+    try {
+        const projectId = req.params.projectId;
+        const { name, description, due_date, status, completion_percentage } = req.body;
+        
+        const result = await pool.query(`
+            INSERT INTO project_milestones (project_id, name, description, due_date, status, completion_percentage)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+        `, [projectId, name, description, due_date, status || 'pending', completion_percentage || 0]);
+        
+        res.json({
+            success: true,
+            milestone: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create milestone error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to create milestone' 
+        });
+    }
+});
+
+// Update milestone (admin)
+app.put('/api/milestones/:id', authenticateToken, async (req, res) => {
+    try {
+        const milestoneId = req.params.id;
+        const { name, description, due_date, status, completion_percentage } = req.body;
+        
+        const result = await pool.query(`
+            UPDATE project_milestones 
+            SET name = $1, description = $2, due_date = $3, 
+                status = $4, completion_percentage = $5,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $6
+            RETURNING *
+        `, [name, description, due_date, status, completion_percentage, milestoneId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Milestone not found' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            milestone: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update milestone error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update milestone' 
+        });
+    }
+});
+
+// Find your existing file upload endpoint and update it:
+
+app.post('/api/client/files/upload', authenticateClient, upload.single('file'), async (req, res) => {
+    try {
+        const clientId = req.user.id;
+        const file = req.file;
+        
+        if (!file) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No file uploaded' 
+            });
+        }
+        
+        // IMPORTANT: Set proper file permissions
+        const fs = require('fs');
+        const filePath = file.path;
+        
+        // Make file readable by everyone (but only writable by owner)
+        fs.chmodSync(filePath, 0o644);
+        
+        // Store in database with proper access control
+        const result = await pool.query(`
+            INSERT INTO files (lead_id, filename, original_filename, file_path, file_size, mime_type, uploaded_by)
+            VALUES ($1, $2, $3, $4, $5, $6, 'client')
+            RETURNING *
+        `, [
+            clientId,
+            file.filename,
+            file.originalname,
+            file.path,
+            file.size,
+            file.mimetype
+        ]);
+        
+        res.json({
+            success: true,
+            file: result.rows[0]
+        });
+    } catch (error) {
+        console.error('File upload error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to upload file' 
+        });
+    }
+});
+
+// Update the file download endpoint to allow admin access:
+app.get('/api/files/:fileId/download', authenticateToken, async (req, res) => {
+    try {
+        const fileId = req.params.fileId;
+        
+        // Get file info
+        const result = await pool.query(
+            'SELECT * FROM files WHERE id = $1',
+            [fileId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'File not found' 
+            });
+        }
+        
+        const file = result.rows[0];
+        
+        // Check if file exists
+        const fs = require('fs');
+        if (!fs.existsSync(file.file_path)) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'File not found on disk' 
+            });
+        }
+        
+        // Set proper headers
+        res.setHeader('Content-Type', file.mime_type);
+        res.setHeader('Content-Disposition', `attachment; filename="${file.original_filename}"`);
+        
+        // Stream the file
+        const fileStream = fs.createReadStream(file.file_path);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error('File download error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to download file' 
+        });
+    }
+});
+
+// Also add a file view endpoint (for viewing in browser):
+app.get('/api/files/:fileId/view', authenticateToken, async (req, res) => {
+    try {
+        const fileId = req.params.fileId;
+        
+        const result = await pool.query(
+            'SELECT * FROM files WHERE id = $1',
+            [fileId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'File not found' 
+            });
+        }
+        
+        const file = result.rows[0];
+        
+        const fs = require('fs');
+        if (!fs.existsSync(file.file_path)) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'File not found on disk' 
+            });
+        }
+        
+        // For viewing, use inline disposition
+        res.setHeader('Content-Type', file.mime_type);
+        res.setHeader('Content-Disposition', `inline; filename="${file.original_filename}"`);
+        
+        const fileStream = fs.createReadStream(file.file_path);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error('File view error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to view file' 
+        });
+    }
+});
+
+// Add this as a one-time migration endpoint (remove after running):
+app.post('/api/admin/fix-file-permissions', authenticateToken, async (req, res) => {
+    try {
+        const fs = require('fs');
+        
+        // Get all files
+        const result = await pool.query('SELECT * FROM files');
+        const files = result.rows;
+        
+        let fixed = 0;
+        let errors = 0;
+        
+        for (const file of files) {
+            try {
+                if (fs.existsSync(file.file_path)) {
+                    fs.chmodSync(file.file_path, 0o644);
+                    fixed++;
+                } else {
+                    console.log(`File not found: ${file.file_path}`);
+                    errors++;
+                }
+            } catch (err) {
+                console.error(`Error fixing ${file.file_path}:`, err);
+                errors++;
+            }
+        }
+        
+        res.json({
+            success: true,
+            message: `Fixed ${fixed} files, ${errors} errors`
+        });
+    } catch (error) {
+        console.error('Fix permissions error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fix permissions' 
+        });
     }
 });
 

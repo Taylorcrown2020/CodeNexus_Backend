@@ -2334,6 +2334,71 @@ body {
     color: var(--text-muted);
 }
 
+.form-section {
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.form-row {
+    display: grid;
+    gap: 12px;
+}
+
+.milestone-field {
+    position: relative;
+    padding: 16px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+}
+
+.milestone-field:hover {
+    background: var(--bg-elevated);
+}
+
+/* Form input styles */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+textarea::placeholder {
+    color: var(--text-muted);
+}
+
 /* ========================================
    RESPONSIVE
 ======================================== */
@@ -2520,6 +2585,29 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
                     Analytics
                 </div>
             </div>
+
+            <a href="#" class="nav-link" data-section="support" onclick="navigateTo('support')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+    Support Tickets
+</a>
+<div id="supportSection" class="content-section">
+    <div class="section-header">
+        <h1>Support Tickets</h1>
+        <div class="filter-controls">
+            <select id="ticketStatusFilter" onchange="filterTickets()">
+                <option value="all">All Tickets</option>
+                <option value="open">Open</option>
+                <option value="in-progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="ticketsContainer"></div>
+</div>
             
             <div class="nav-section">
                 <div class="nav-section-title">Pipeline</div>
@@ -3136,6 +3224,9 @@ switch (section) {
         case 'projects':
             renderProjects(content); 
             break;
+        case 'support':
+            loadTickets(content);
+        break;
         case 'settings': 
             renderSettings(content); 
             break;
@@ -3592,7 +3683,7 @@ async function renderClientPortal() {
         <div class="section-header">
             <div class="header-content">
                 <h2 class="section-title">Client Portal Management</h2>
-                <p class="section-description">Manage client accounts, projects, and uploads</p>
+                <p class="section-description"></p>
             </div>
             <div class="header-actions">
                 <button class="btn btn-primary" onclick="openCreateClientModal()">
@@ -3651,7 +3742,7 @@ async function renderClientPortal() {
             <div class="card-header">
                 <div class="header-content">
                     <h3 class="card-title">Client Accounts</h3>
-                    <p class="card-subtitle">Manage client portal access</p>
+                    <p class="card-subtitle"></p>
                 </div>
             </div>
             <div class="table-container">
@@ -3914,8 +4005,314 @@ async function handleCreateClient(event) {
     }
 }
 
-function assignProject(clientId) {
-    alert('Project assignment feature - coming in next step!');
+async function assignProject(clientId) {
+    try {
+        // Get client info
+        const client = state.clients.find(c => c.id === clientId);
+        if (!client) {
+            showToast('Client not found', 'error');
+            return;
+        }
+        
+        // Load existing projects to show available ones
+        const response = await fetch(`${API_BASE}/projects`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        let existingProjects = [];
+        if (response.ok) {
+            const data = await response.json();
+            existingProjects = data.projects || [];
+        }
+        
+        // Show modal with form to create/assign project
+        showModal('Assign Project to ' + client.name, `
+            <form id="projectForm" onsubmit="event.preventDefault(); saveProject(${clientId});">
+                <div class="form-section">
+                    <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Project Details</h3>
+                    
+                    <div class="form-group">
+                        <label for="projectName">Project Name *</label>
+                        <input type="text" id="projectName" required placeholder="e.g., Website Redesign" 
+                               style="width: 100%; padding: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 14px;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="projectDescription">Description</label>
+                        <textarea id="projectDescription" placeholder="Project details..." 
+                                  style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 14px; resize: vertical;"></textarea>
+                    </div>
+                    
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label for="projectStartDate">Start Date</label>
+                            <input type="date" id="projectStartDate" 
+                                   style="width: 100%; padding: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 14px;">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="projectEndDate">End Date</label>
+                            <input type="date" id="projectEndDate" 
+                                   style="width: 100%; padding: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 14px;">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label for="projectStatus">Status</label>
+                            <select id="projectStatus" 
+                                    style="width: 100%; padding: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 14px;">
+                                <option value="active">Active</option>
+                                <option value="on-hold">On Hold</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="projectBudget">Budget ($)</label>
+                            <input type="number" id="projectBudget" step="0.01" placeholder="0.00" 
+                                   style="width: 100%; padding: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 14px;">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-subtle);">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600;">Initial Milestones (Optional)</h3>
+                    <p style="margin: 0 0 16px 0; font-size: 13px; color: var(--text-muted);">Add milestones to track project progress</p>
+                    
+                    <div id="milestonesContainer">
+                        <!-- Milestones will be added here -->
+                    </div>
+                    
+                    <button type="button" class="btn btn-secondary" onclick="addMilestoneField()" style="margin-top: 12px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add Milestone
+                    </button>
+                </div>
+                
+                <div class="form-actions" style="display: flex; gap: 8px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-subtle);">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        Create & Assign Project
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        `);
+        
+        // Set default start date to today
+        document.getElementById('projectStartDate').valueAsDate = new Date();
+        
+    } catch (error) {
+        console.error('Assign project error:', error);
+        showToast('Failed to load project form', 'error');
+    }
+}
+
+// Add milestone field to the form
+let milestoneCounter = 0;
+function addMilestoneField() {
+    milestoneCounter++;
+    const container = document.getElementById('milestonesContainer');
+    
+    const milestoneDiv = document.createElement('div');
+    milestoneDiv.className = 'milestone-field';
+    milestoneDiv.id = `milestone-${milestoneCounter}`;
+    milestoneDiv.style.cssText = 'padding: 16px; background: var(--bg-hover); border-radius: var(--radius-sm); margin-bottom: 12px; position: relative;';
+    
+    milestoneDiv.innerHTML = `
+        <button type="button" onclick="removeMilestoneField(${milestoneCounter})" 
+                style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        
+        <div class="form-group">
+            <label>Milestone Name *</label>
+            <input type="text" class="milestone-name" required placeholder="e.g., Design Mockups" 
+                   style="width: 100%; padding: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 13px;">
+        </div>
+        
+        <div class="form-group">
+            <label>Description</label>
+            <textarea class="milestone-description" placeholder="Milestone details..." 
+                      style="width: 100%; min-height: 60px; padding: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 13px; resize: vertical;"></textarea>
+        </div>
+        
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+                <label>Due Date</label>
+                <input type="date" class="milestone-due-date" 
+                       style="width: 100%; padding: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 13px;">
+            </div>
+            
+            <div class="form-group">
+                <label>Status</label>
+                <select class="milestone-status" 
+                        style="width: 100%; padding: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 13px;">
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(milestoneDiv);
+}
+
+function removeMilestoneField(id) {
+    const field = document.getElementById(`milestone-${id}`);
+    if (field) {
+        field.remove();
+    }
+}
+
+// Save the project
+async function saveProject(clientId) {
+    try {
+        // Get form values
+        const projectData = {
+            lead_id: clientId,
+            name: document.getElementById('projectName').value.trim(),
+            description: document.getElementById('projectDescription').value.trim(),
+            start_date: document.getElementById('projectStartDate').value || null,
+            end_date: document.getElementById('projectEndDate').value || null,
+            status: document.getElementById('projectStatus').value,
+            budget: parseFloat(document.getElementById('projectBudget').value) || null
+        };
+        
+        // Validate
+        if (!projectData.name) {
+            showToast('Please enter a project name', 'error');
+            return;
+        }
+        
+        // Create project
+        const response = await fetch(`${API_BASE}/projects`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(projectData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to create project');
+        }
+        
+        const data = await response.json();
+        const newProject = data.project;
+        
+        // Collect milestones
+        const milestoneFields = document.querySelectorAll('.milestone-field');
+        const milestones = [];
+        
+        for (const field of milestoneFields) {
+            const name = field.querySelector('.milestone-name').value.trim();
+            if (name) {
+                milestones.push({
+                    name: name,
+                    description: field.querySelector('.milestone-description').value.trim(),
+                    due_date: field.querySelector('.milestone-due-date').value || null,
+                    status: field.querySelector('.milestone-status').value,
+                    completion_percentage: 0
+                });
+            }
+        }
+        
+        // Create milestones
+        for (const milestone of milestones) {
+            try {
+                await fetch(`${API_BASE}/projects/${newProject.id}/milestones`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(milestone)
+                });
+            } catch (err) {
+                console.error('Failed to create milestone:', err);
+            }
+        }
+        
+        showToast(`Project "${projectData.name}" created successfully!`, 'success');
+        closeModal();
+        
+        // Refresh the view if we're looking at this client
+        if (state.currentSection === 'clients' && state.selectedClient?.id === clientId) {
+            viewClient(clientId);
+        }
+        
+    } catch (error) {
+        console.error('Save project error:', error);
+        showToast('Failed to create project', 'error');
+    }
+}
+
+// Add this function:
+async function openClientProjects(clientId) {
+    try {
+        const response = await fetch(`${API_BASE}/client/${clientId}/projects`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Show modal with client's projects
+            showModal('Client Projects', `
+                <div style="max-height: 60vh; overflow-y: auto;">
+                    ${data.projects.length === 0 ? `
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <p>This client has no projects yet.</p>
+                            <button class="btn btn-primary" onclick="closeModal(); createProjectForClient(${clientId})">
+                                Create First Project
+                            </button>
+                        </div>
+                    ` : data.projects.map(proj => `
+                        <div style="padding: 16px; border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                <h4 style="margin: 0; font-size: 16px;">${proj.name}</h4>
+                                <span class="status-badge">${proj.status}</span>
+                            </div>
+                            <p style="margin: 8px 0; font-size: 13px; color: var(--text-secondary);">${proj.description || 'No description'}</p>
+                            <div style="display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); margin-top: 12px;">
+                                <span>Start: ${proj.start_date ? formatDate(proj.start_date) : 'N/A'}</span>
+                                <span>End: ${proj.end_date ? formatDate(proj.end_date) : 'N/A'}</span>
+                                <span>Milestones: ${proj.completed_milestones}/${proj.milestone_count}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                ${data.projects.length > 0 ? `
+                    <button class="btn btn-primary" style="margin-top: 16px;" onclick="closeModal(); createProjectForClient(${clientId})">
+                        + Add New Project
+                    </button>
+                ` : ''}
+            `);
+        }
+    } catch (error) {
+        console.error('Load client projects error:', error);
+        showToast('Failed to load projects', 'error');
+    }
 }
 
 async function resetClientPassword(clientId) {
@@ -8696,6 +9093,293 @@ function saveProjectTimeline() {
     renderSection('projects');
 }
 
+// ==================== CLIENT SUPPORT TICKET ENDPOINTS ====================
+
+// Get all tickets for authenticated client
+app.get('/api/client/tickets', authenticateClient, async (req, res) => {
+    try {
+        const clientId = req.user.id;
+        
+        const result = await pool.query(`
+            SELECT st.*,
+                   COUNT(tr.id) as response_count,
+                   MAX(tr.created_at) as last_response_at
+            FROM support_tickets st
+            LEFT JOIN ticket_responses tr ON st.id = tr.ticket_id
+            WHERE st.lead_id = $1
+            GROUP BY st.id
+            ORDER BY st.created_at DESC
+        `, [clientId]);
+        
+        res.json({
+            success: true,
+            tickets: result.rows
+        });
+    } catch (error) {
+        console.error('Get client tickets error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load tickets' 
+        });
+    }
+});
+
+// Create new ticket (client)
+app.post('/api/client/tickets', authenticateClient, async (req, res) => {
+    try {
+        const clientId = req.user.id;
+        const { subject, message, priority } = req.body;
+        
+        const result = await pool.query(`
+            INSERT INTO support_tickets (lead_id, subject, message, priority, status)
+            VALUES ($1, $2, $3, $4, 'open')
+            RETURNING *
+        `, [clientId, subject, message, priority || 'normal']);
+        
+        res.json({
+            success: true,
+            ticket: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create ticket error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to create ticket' 
+        });
+    }
+});
+
+// Get responses for a ticket (client)
+app.get('/api/client/tickets/:ticketId/responses', authenticateClient, async (req, res) => {
+    try {
+        const clientId = req.user.id;
+        const ticketId = req.params.ticketId;
+        
+        // Verify ticket belongs to client
+        const ticketCheck = await pool.query(
+            'SELECT id FROM support_tickets WHERE id = $1 AND lead_id = $2',
+            [ticketId, clientId]
+        );
+        
+        if (ticketCheck.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Ticket not found' 
+            });
+        }
+        
+        const result = await pool.query(`
+            SELECT tr.*,
+                   CASE 
+                       WHEN tr.user_type = 'client' THEN l.name
+                       WHEN tr.user_type = 'admin' THEN u.username
+                   END as user_name
+            FROM ticket_responses tr
+            LEFT JOIN leads l ON tr.user_type = 'client' AND tr.user_id = l.id
+            LEFT JOIN users u ON tr.user_type = 'admin' AND tr.user_id = u.id
+            WHERE tr.ticket_id = $1
+            ORDER BY tr.created_at ASC
+        `, [ticketId]);
+        
+        res.json({
+            success: true,
+            responses: result.rows
+        });
+    } catch (error) {
+        console.error('Get ticket responses error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load responses' 
+        });
+    }
+});
+
+// Add response to ticket (client)
+app.post('/api/client/tickets/:ticketId/responses', authenticateClient, async (req, res) => {
+    try {
+        const clientId = req.user.id;
+        const ticketId = req.params.ticketId;
+        const { message } = req.body;
+        
+        // Verify ticket belongs to client
+        const ticketCheck = await pool.query(
+            'SELECT id FROM support_tickets WHERE id = $1 AND lead_id = $2',
+            [ticketId, clientId]
+        );
+        
+        if (ticketCheck.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Ticket not found' 
+            });
+        }
+        
+        const result = await pool.query(`
+            INSERT INTO ticket_responses (ticket_id, user_type, user_id, message)
+            VALUES ($1, 'client', $2, $3)
+            RETURNING *
+        `, [ticketId, clientId, message]);
+        
+        // Update ticket status to 'in-progress' if it was 'open'
+        await pool.query(`
+            UPDATE support_tickets 
+            SET status = CASE WHEN status = 'open' THEN 'in-progress' ELSE status END,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+        `, [ticketId]);
+        
+        res.json({
+            success: true,
+            response: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Add ticket response error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to add response' 
+        });
+    }
+});
+
+// ==================== ADMIN SUPPORT TICKET ENDPOINTS ====================
+
+// Get all tickets (admin)
+app.get('/api/tickets', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT st.*, l.name as client_name, l.email as client_email,
+                   COUNT(tr.id) as response_count,
+                   MAX(tr.created_at) as last_response_at
+            FROM support_tickets st
+            LEFT JOIN leads l ON st.lead_id = l.id
+            LEFT JOIN ticket_responses tr ON st.id = tr.ticket_id
+            GROUP BY st.id, l.name, l.email
+            ORDER BY 
+                CASE st.status 
+                    WHEN 'open' THEN 1
+                    WHEN 'in-progress' THEN 2
+                    WHEN 'resolved' THEN 3
+                    WHEN 'closed' THEN 4
+                END,
+                st.created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            tickets: result.rows
+        });
+    } catch (error) {
+        console.error('Get tickets error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load tickets' 
+        });
+    }
+});
+
+// Get responses for a ticket (admin)
+app.get('/api/tickets/:ticketId/responses', authenticateToken, async (req, res) => {
+    try {
+        const ticketId = req.params.ticketId;
+        
+        const result = await pool.query(`
+            SELECT tr.*,
+                   CASE 
+                       WHEN tr.user_type = 'client' THEN l.name
+                       WHEN tr.user_type = 'admin' THEN u.username
+                   END as user_name
+            FROM ticket_responses tr
+            LEFT JOIN leads l ON tr.user_type = 'client' AND tr.user_id = l.id
+            LEFT JOIN users u ON tr.user_type = 'admin' AND tr.user_id = u.id
+            WHERE tr.ticket_id = $1
+            ORDER BY tr.created_at ASC
+        `, [ticketId]);
+        
+        res.json({
+            success: true,
+            responses: result.rows
+        });
+    } catch (error) {
+        console.error('Get ticket responses error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load responses' 
+        });
+    }
+});
+
+// Add response to ticket (admin)
+app.post('/api/tickets/:ticketId/responses', authenticateToken, async (req, res) => {
+    try {
+        const ticketId = req.params.ticketId;
+        const adminId = req.user.id;
+        const { message } = req.body;
+        
+        const result = await pool.query(`
+            INSERT INTO ticket_responses (ticket_id, user_type, user_id, message)
+            VALUES ($1, 'admin', $2, $3)
+            RETURNING *
+        `, [ticketId, adminId, message]);
+        
+        // Update ticket timestamp
+        await pool.query(`
+            UPDATE support_tickets 
+            SET updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+        `, [ticketId]);
+        
+        res.json({
+            success: true,
+            response: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Add ticket response error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to add response' 
+        });
+    }
+});
+
+// Update ticket status (admin)
+app.put('/api/tickets/:ticketId/status', authenticateToken, async (req, res) => {
+    try {
+        const ticketId = req.params.ticketId;
+        const { status } = req.body;
+        
+        const resolvedAt = status === 'resolved' || status === 'closed' 
+            ? 'CURRENT_TIMESTAMP' 
+            : 'NULL';
+        
+        const result = await pool.query(`
+            UPDATE support_tickets 
+            SET status = $1, 
+                updated_at = CURRENT_TIMESTAMP,
+                resolved_at = ${resolvedAt}
+            WHERE id = $2
+            RETURNING *
+        `, [status, ticketId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Ticket not found' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            ticket: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Update ticket status error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update ticket status' 
+        });
+    }
+});
+
 // Open Timeline Preview Modal
 // Open Timeline Preview Modal
 function openTimelinePreviewModal(timeline) {
@@ -9625,6 +10309,237 @@ function exportTimelineAsPDF() {
     }, 300);
 }
 
+// Add these functions:
+async function loadTickets() {
+    try {
+        const response = await fetch(`${API_BASE}/tickets`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            state.tickets = data.tickets || [];
+            renderTickets();
+        }
+    } catch (error) {
+        console.error('Load tickets error:', error);
+    }
+}
+
+function renderTickets() {
+    const container = document.getElementById('ticketsContainer');
+    const filter = document.getElementById('ticketStatusFilter')?.value || 'all';
+    
+    const filteredTickets = filter === 'all' 
+        ? state.tickets 
+        : state.tickets.filter(t => t.status === filter);
+    
+    if (filteredTickets.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                <p>No tickets found.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const statusColors = {
+        'open': 'var(--status-danger)',
+        'in-progress': 'var(--status-contacted)',
+        'resolved': 'var(--status-success)',
+        'closed': 'var(--text-muted)'
+    };
+
+    const priorityColors = {
+        'low': 'var(--text-muted)',
+        'normal': 'var(--status-contacted)',
+        'high': 'var(--status-warning)',
+        'urgent': 'var(--status-danger)'
+    };
+
+    container.innerHTML = `
+        <div class="tickets-grid" style="display: grid; gap: 16px;">
+            ${filteredTickets.map(ticket => `
+                <div class="ticket-card" onclick="openTicketDetail(${ticket.id})" style="cursor: pointer; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">${ticket.subject}</h3>
+                                <span class="status-badge" style="background: ${statusColors[ticket.status]}; font-size: 11px;">
+                                    ${ticket.status}
+                                </span>
+                                <span class="status-badge" style="background: ${priorityColors[ticket.priority]}; font-size: 11px;">
+                                    ${ticket.priority}
+                                </span>
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+                                <strong>${ticket.client_name}</strong> (${ticket.client_email})
+                            </div>
+                            <p style="margin: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.5;">
+                                ${ticket.message.substring(0, 150)}${ticket.message.length > 150 ? '...' : ''}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+                        <span>Created: ${formatDate(ticket.created_at)}</span>
+                        <span>Responses: ${ticket.response_count}</span>
+                        ${ticket.last_response_at ? `<span>Last reply: ${formatDate(ticket.last_response_at)}</span>` : ''}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function filterTickets() {
+    renderTickets();
+}
+
+async function openTicketDetail(ticketId) {
+    const ticket = state.tickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+    
+    try {
+        // Load responses
+        const response = await fetch(`${API_BASE}/tickets/${ticketId}/responses`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        const responses = data.responses || [];
+        
+        const statusColors = {
+            'open': 'var(--status-danger)',
+            'in-progress': 'var(--status-contacted)',
+            'resolved': 'var(--status-success)',
+            'closed': 'var(--text-muted)'
+        };
+        
+        showModal('Support Ticket', `
+            <div style="max-height: 70vh; overflow-y: auto;">
+                <div style="background: var(--bg-hover); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                        <h3 style="margin: 0; font-size: 18px;">${ticket.subject}</h3>
+                        <span class="status-badge" style="background: ${statusColors[ticket.status]};">
+                            ${ticket.status}
+                        </span>
+                    </div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                        From: <strong>${ticket.client_name}</strong> (${ticket.client_email})
+                    </div>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6;">${ticket.message}</p>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 12px;">
+                        Created: ${formatDate(ticket.created_at)}
+                    </div>
+                </div>
+                
+                ${responses.length > 0 ? `
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: var(--text-secondary);">
+                            Conversation
+                        </h4>
+                        ${responses.map(resp => `
+                            <div style="padding: 12px; background: ${resp.user_type === 'admin' ? 'var(--accent-amber-dim)' : 'var(--bg-hover)'}; border-radius: 8px; margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <strong style="font-size: 13px;">${resp.user_name}</strong>
+                                    <span style="font-size: 11px; color: var(--text-muted);">${formatDate(resp.created_at)}</span>
+                                </div>
+                                <p style="margin: 0; font-size: 13px; line-height: 1.5;">${resp.message}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                
+                <div>
+                    <textarea id="ticketResponse" placeholder="Type your response..." 
+                              style="width: 100%; min-height: 100px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; resize: vertical;"></textarea>
+                    
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button class="btn btn-primary" onclick="sendTicketResponse(${ticketId})">
+                            Send Response
+                        </button>
+                        
+                        ${ticket.status !== 'resolved' ? `
+                            <button class="btn btn-success" onclick="updateTicketStatus(${ticketId}, 'resolved')">
+                                Mark as Resolved
+                            </button>
+                        ` : ''}
+                        
+                        ${ticket.status !== 'closed' ? `
+                            <button class="btn btn-secondary" onclick="updateTicketStatus(${ticketId}, 'closed')">
+                                Close Ticket
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `);
+    } catch (error) {
+        console.error('Load ticket detail error:', error);
+        showToast('Failed to load ticket details', 'error');
+    }
+}
+
+async function sendTicketResponse(ticketId) {
+    const message = document.getElementById('ticketResponse').value.trim();
+    
+    if (!message) {
+        showToast('Please enter a response', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/tickets/${ticketId}/responses`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ message })
+        });
+        
+        if (response.ok) {
+            showToast('Response sent successfully', 'success');
+            closeModal();
+            loadTickets();
+        } else {
+            throw new Error('Failed to send response');
+        }
+    } catch (error) {
+        console.error('Send response error:', error);
+        showToast('Failed to send response', 'error');
+    }
+}
+
+async function updateTicketStatus(ticketId, status) {
+    try {
+        const response = await fetch(`${API_BASE}/tickets/${ticketId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ status })
+        });
+        
+        if (response.ok) {
+            showToast(`Ticket ${status}`, 'success');
+            closeModal();
+            loadTickets();
+        } else {
+            throw new Error('Failed to update status');
+        }
+    } catch (error) {
+        console.error('Update ticket status error:', error);
+        showToast('Failed to update ticket status', 'error');
+    }
+}
+
 // ==================== PHASE 5: DOCUMENT MANAGEMENT - FRONTEND ====================
 // Add these functions to your admin_portal.html <script> section
 
@@ -9645,7 +10560,7 @@ function renderDocuments(content) {
             <div class="page-header">
                 <div>
                     <h2>Document Management</h2>
-                    <p class="page-description">Upload, organize, and share documents with leads</p>
+                    <p class="page-description"></p>
                 </div>
                 <button class="btn btn-primary" onclick="openUploadDocumentModal()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -10249,30 +11164,6 @@ async function deleteDocument(documentId) {
     }
 }
 
-// Add this navigation item to your sidebar:
-/*
-<a href="#documents" class="nav-link" onclick="navigateTo('documents')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/>
-        <line x1="16" y1="17" x2="8" y2="17"/>
-        <polyline points="10 9 9 9 8 9"/>
-    </svg>
-    <span>Documents</span>
-</a>
-*/
-
-// Add this case to your navigateTo function:
-/*
-case 'documents':
-    renderDocuments(content);
-    break;
-*/
-
-// ==================== PHASE 6: SALES PIPELINE / KANBAN BOARD - FRONTEND ====================
-// Add these functions to your admin_portal.html <script> section
-
 // Render Sales Pipeline page
 function renderPipeline(content) {
     content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading pipeline...</div>';
@@ -10293,7 +11184,7 @@ function renderPipeline(content) {
             <div class="page-header">
                 <div>
                     <h2>Sales Pipeline</h2>
-                    <p class="page-description">Visual kanban board for managing your sales pipeline</p>
+                    <p class="page-description"></p>
                 </div>
                 <button class="btn btn-primary" onclick="openCreateDealModal()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -10305,7 +11196,6 @@ function renderPipeline(content) {
             </div>
             
             <!-- Pipeline Stats -->
-// In renderPipeline function, replace the stats section with:
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-header">
@@ -11026,7 +11916,7 @@ function renderLeadScoring(content) {
             <div class="page-header">
                 <div>
                     <h2>Lead Scoring</h2>
-                    <p class="page-description">Track and manage lead engagement scores</p>
+                    <p class="page-description"></p>
                 </div>
                 <div style="display: flex; gap: 12px;">
                     <button class="btn btn-secondary" onclick="navigateTo('scoring-rules')">
@@ -11048,7 +11938,6 @@ function renderLeadScoring(content) {
             </div>
             
             <!-- Stats Grid -->
-            // In renderLeadScoring function stats section:
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-header">
@@ -11244,7 +12133,7 @@ function renderScoringRules(content) {
             <div class="page-header">
                 <div>
                     <h2>Scoring Rules</h2>
-                    <p class="page-description">Define how leads are scored based on their attributes and behaviors</p>
+                    <p class="page-description"></p>
                 </div>
                 <button class="btn btn-primary" onclick="openScoringRuleModal()">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

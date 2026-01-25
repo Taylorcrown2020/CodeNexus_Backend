@@ -1911,58 +1911,155 @@ const API_BASE = (() => {
             }
         }
 
-        // Projects
-        async function loadProjects() {
-            try {
-                const response = await fetch(`${API_BASE}/client/projects`, {
+// Load projects for client
+async function loadProjects() {
+    try {
+        const response = await fetch(`${API_BASE}/client/projects`, {
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            state.projects = data.projects || [];
+            renderProjects();
+        } else {
+            throw new Error('Failed to load projects');
+        }
+    } catch (error) {
+        console.error('Load projects error:', error);
+        document.getElementById('projectsContainer').innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                <p>Failed to load projects. Please try again later.</p>
+            </div>
+        `;
+    }
+}
+
+function renderProjects() {
+    const container = document.getElementById('projectsContainer');
+    
+    if (state.projects.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 64px; height: 64px; margin: 0 auto 16px; opacity: 0.3;">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                    <path d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">No Projects Yet</h3>
+                <p style="margin: 0; font-size: 14px;">Your projects will appear here once they're created.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = state.projects.map(project => {
+        const progress = project.milestone_count > 0 
+            ? Math.round((project.completed_milestones / project.milestone_count) * 100) 
+            : 0;
+        
+        const statusColors = {
+            'active': 'var(--status-contacted)',
+            'completed': 'var(--status-success)',
+            'on-hold': 'var(--status-warning)',
+            'cancelled': 'var(--status-danger)'
+        };
+        
+        return `
+            <div class="project-card" onclick="viewProjectDetails(${project.id})" style="cursor: pointer;">
+                <div class="project-header">
+                    <div>
+                        <h3 class="project-title">${project.name}</h3>
+                        <p class="project-description">${project.description || 'No description'}</p>
+                    </div>
+                    <span class="status-badge" style="background: ${statusColors[project.status] || 'var(--text-muted)'};">
+                        ${project.status}
+                    </span>
+                </div>
+                
+                <div class="project-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Start Date</span>
+                        <span class="stat-value">${project.start_date ? formatDate(project.start_date) : 'Not set'}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">End Date</span>
+                        <span class="stat-value">${project.end_date ? formatDate(project.end_date) : 'Not set'}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Milestones</span>
+                        <span class="stat-value">${project.completed_milestones} / ${project.milestone_count}</span>
+                    </div>
+                </div>
+                
+                ${project.milestone_count > 0 ? `
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <span class="progress-label">Overall Progress</span>
+                            <span class="progress-percentage">${progress}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%;"></div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// Load milestones for selected project
+async function loadMilestones(projectId = null) {
+    if (!projectId && state.selectedProject) {
+        projectId = state.selectedProject;
+    }
+    
+    if (!projectId) {
+        // Show all milestones from all projects
+        try {
+            const allMilestones = [];
+            for (const project of state.projects) {
+                const response = await fetch(`${API_BASE}/client/projects/${project.id}/milestones`, {
                     headers: {
                         'Authorization': `Bearer ${state.token}`
                     }
                 });
-
+                
                 if (response.ok) {
                     const data = await response.json();
-                    state.projects = data.projects;
-                    renderProjects();
+                    allMilestones.push(...data.milestones.map(m => ({
+                        ...m,
+                        project_name: project.name
+                    })));
                 }
-            } catch (error) {
-                console.error('Failed to load projects:', error);
             }
-        }
-
-        function renderProjects() {
-            const container = document.getElementById('projectsList');
             
-            if (state.projects.length === 0) {
-                container.innerHTML = '<div class="card"><div class="card-body"><p class="text-muted text-center">No projects yet</p></div></div>';
-                return;
-            }
-
-            container.innerHTML = state.projects.map(project => {
-                const progress = project.total_milestones > 0 
-                    ? Math.round((project.completed_milestones / project.total_milestones) * 100)
-                    : 0;
-
-                return `
-                    <div class="card">
-                        <div class="card-header">
-                            <h2 class="card-title">${project.project_name}</h2>
-                            <span class="milestone-status ${project.status}">${project.status}</span>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted mb-20">${project.description || 'No description'}</p>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${progress}%">${progress}%</div>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 13px;">
-                                <span class="text-muted">Milestones: ${project.completed_milestones}/${project.total_milestones}</span>
-                                <span class="text-muted">Started: ${formatDate(project.start_date)}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            state.milestones = allMilestones;
+            renderMilestones();
+        } catch (error) {
+            console.error('Load milestones error:', error);
         }
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/client/projects/${projectId}/milestones`, {
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            state.milestones = data.milestones || [];
+            state.selectedProject = projectId;
+            renderMilestones();
+        }
+    } catch (error) {
+        console.error('Load milestones error:', error);
+    }
+}
 
         // Milestones
         async function loadMilestones() {
@@ -1990,30 +2087,70 @@ const API_BASE = (() => {
             }
         }
 
-        function renderMilestones() {
-            const container = document.getElementById('milestonesList');
-            
-            if (state.milestones.length === 0) {
-                container.innerHTML = '<div class="card"><div class="card-body"><p class="text-muted text-center">No milestones yet</p></div></div>';
-                return;
-            }
+function renderMilestones() {
+    const container = document.getElementById('milestonesContainer');
+    
+    if (state.milestones.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 64px; height: 64px; margin: 0 auto 16px; opacity: 0.3;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">No Milestones Yet</h3>
+                <p style="margin: 0; font-size: 14px;">Project milestones will appear here.</p>
+            </div>
+        `;
+        return;
+    }
 
-            container.innerHTML = state.milestones.map(milestone => `
-                <div class="milestone-card ${milestone.status}">
-                    <div class="milestone-header">
-                        <h3 class="milestone-title">${milestone.title}</h3>
-                        <span class="milestone-status ${milestone.status}">${milestone.status}</span>
-                    </div>
-                    <p class="milestone-description">${milestone.description || ''}</p>
-                    <div class="milestone-footer">
-                        <span class="milestone-due">Due: ${formatDate(milestone.due_date)}</span>
-                        ${milestone.status === 'completed' && !milestone.approved_at ? 
-                            `<button class="btn-approve" onclick="approveMilestone(${milestone.id})">Approve</button>` 
-                            : ''}
+    const statusColors = {
+        'pending': 'var(--text-muted)',
+        'in-progress': 'var(--status-contacted)',
+        'completed': 'var(--status-success)'
+    };
+
+    container.innerHTML = state.milestones.map(milestone => `
+        <div class="milestone-card">
+            <div class="milestone-header">
+                <div>
+                    <h3 class="milestone-title">${milestone.name}</h3>
+                    ${milestone.project_name ? `<p class="milestone-project">Project: ${milestone.project_name}</p>` : ''}
+                    <p class="milestone-description">${milestone.description || 'No description'}</p>
+                </div>
+                <span class="status-badge" style="background: ${statusColors[milestone.status] || 'var(--text-muted)'};">
+                    ${milestone.status}
+                </span>
+            </div>
+            
+            <div class="milestone-footer">
+                <div class="milestone-date">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    Due: ${milestone.due_date ? formatDate(milestone.due_date) : 'Not set'}
+                </div>
+                <div class="milestone-progress">
+                    <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">
+                        ${milestone.completion_percentage}% Complete
+                    </span>
+                    <div class="progress-bar" style="width: 120px; height: 6px; background: var(--bg-hover); border-radius: 3px; overflow: hidden;">
+                        <div class="progress-fill" style="width: ${milestone.completion_percentage}%; height: 100%; background: var(--status-success); transition: width 0.3s ease;"></div>
                     </div>
                 </div>
-            `).join('');
-        }
+            </div>
+        </div>
+    `).join('');
+}
+
+function viewProjectDetails(projectId) {
+    state.selectedProject = projectId;
+    navigateTo('milestones');
+    loadMilestones(projectId);
+}
 
         async function approveMilestone(milestoneId) {
             try {

@@ -2860,6 +2860,9 @@ const API_BASE = API_URL; // Add this
 const FRONTEND_BASE_URL = 'https://diamondbackcoding.com';
 let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
 
+// Service Packages will be defined later but we need placeholder
+let servicePackages = {};
+
 const state = {
     leads: [],
     customers: [],
@@ -5662,6 +5665,22 @@ async function openDetailModal(type, id) {
             
             <div class="detail-section">
                 <div class="section-header">
+                    <h3 class="section-title">Projects & Milestones</h3>
+                </div>
+                <div class="expense-list" id="projectsList${id}">
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">Loading projects...</div>
+                </div>
+                <button class="btn btn-secondary" style="width: 100%; margin-top: 12px;" onclick="openCreateProjectModal(${id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Create Project
+                </button>
+            </div>
+            
+            <div class="detail-section">
+                <div class="section-header">
                     <h3 class="section-title">Notes</h3>
                 </div>
                 <div class="notes-list">
@@ -5690,6 +5709,9 @@ async function openDetailModal(type, id) {
         
         // Load documents for this lead/customer
         loadLeadDocuments(id);
+        
+        // Load projects for this lead/customer
+        loadLeadProjects(id);
         
         footerEl.innerHTML = `
             <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
@@ -7960,6 +7982,7 @@ function renderProjects(content) {
     try {
         const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
         console.log('📊 Found timelines:', savedTimelines);
+        console.log('📦 servicePackages available:', typeof servicePackages, Object.keys(servicePackages).length);
         
         const htmlContent = `
             <div class="controls-bar">
@@ -8521,7 +8544,7 @@ return filtered;
 // PROJECT TIMELINE / ORDER OF EVENTS SYSTEM
 // ========================================
 
-const servicePackages = {
+servicePackages = {
     // FREE WEBSITE PACKAGES (No free maintenance, very basic SEO)
     'free-basic': {
         name: 'Free Basic Website',
@@ -12919,6 +12942,371 @@ function renderProjectsList(filtered, allTimelines) {
     });
     
     grid.innerHTML = html;
+}
+
+// ==================== PROJECT & MILESTONE MANAGEMENT ====================
+
+async function loadLeadProjects(leadId) {
+    try {
+        const response = await fetch(`${API_BASE}/api/client/${leadId}/projects`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        const data = await response.json();
+        const projects = data.projects || [];
+        
+        const container = document.getElementById(`projectsList${leadId}`);
+        
+        if (!container) return;
+        
+        if (projects.length === 0) {
+            container.innerHTML = '<div class="expense-empty">No projects yet</div>';
+            return;
+        }
+        
+        container.innerHTML = projects.map(project => `
+            <div class="expense-item" style="cursor: pointer;" onclick="openProjectMilestones(${project.id}, '${project.name.replace(/'/g, "\\'")}', ${leadId})">
+                <div class="expense-content">
+                    <div class="expense-description">${project.name}</div>
+                    <div class="expense-meta">
+                        <div class="expense-meta-item">
+                            ${project.description || 'No description'}
+                        </div>
+                        <span>${project.milestone_count || 0} milestones</span>
+                        <span>${project.completed_milestones || 0} completed</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="status-badge status-${project.status}">
+                        ${project.status}
+                    </span>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('[PROJECTS] Load error:', error);
+        const container = document.getElementById(`projectsList${leadId}`);
+        if (container) {
+            container.innerHTML = '<div class="expense-empty">Error loading projects</div>';
+        }
+    }
+}
+
+function openCreateProjectModal(leadId) {
+    showModal('Create New Project', `
+        <form id="createProjectForm" onsubmit="handleCreateProject(event, ${leadId})">
+            <div class="form-group">
+                <label class="form-label">Project Name *</label>
+                <input type="text" class="form-input" name="name" required placeholder="Website Redesign">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-textarea" name="description" rows="3" placeholder="Full website redesign with new branding..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-input" name="start_date">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">End Date (Optional)</label>
+                <input type="date" class="form-input" name="end_date">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="active">Active</option>
+                    <option value="on-hold">On Hold</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Project</button>
+            </div>
+        </form>
+    `);
+}
+
+async function handleCreateProject(event, leadId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    const projectData = {
+        lead_id: leadId,
+        name: formData.get('name'),
+        description: formData.get('description'),
+        start_date: formData.get('start_date'),
+        end_date: formData.get('end_date'),
+        status: formData.get('status')
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/projects`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(projectData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Project created successfully', 'success');
+            closeModal();
+            loadLeadProjects(leadId);
+        } else {
+            showToast(data.message || 'Failed to create project', 'error');
+        }
+    } catch (error) {
+        console.error('[PROJECT] Create error:', error);
+        showToast('Failed to create project', 'error');
+    }
+}
+
+async function openProjectMilestones(projectId, projectName, leadId) {
+    try {
+        const response = await fetch(`${API_BASE}/api/client/projects/${projectId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load project');
+        }
+        
+        const data = await response.json();
+        const milestones = data.milestones || [];
+        
+        showModal(`${projectName} - Milestones`, `
+            <div class="milestone-list" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+                ${milestones.length > 0 ? milestones.map(milestone => `
+                    <div class="expense-item" style="margin-bottom: 12px;">
+                        <div class="expense-content">
+                            <div class="expense-description">${milestone.name}</div>
+                            <div class="expense-meta">
+                                <span>${milestone.description || ''}</span>
+                                ${milestone.due_date ? `<span>Due: ${formatDate(milestone.due_date)}</span>` : ''}
+                                <span>${milestone.completion_percentage}% complete</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <span class="status-badge status-${milestone.status}">${milestone.status}</span>
+                            <button class="table-action-btn" onclick="editMilestone(${milestone.id}, ${projectId}, '${projectName.replace(/'/g, "\\'")}', ${leadId})" title="Edit">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('') : '<p style="text-align: center; color: var(--text-muted); padding: 20px;">No milestones yet</p>'}
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                <button class="btn btn-primary" onclick="openCreateMilestoneModal(${projectId}, '${projectName.replace(/'/g, "\\'")}', ${leadId})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Milestone
+                </button>
+            </div>
+        `);
+    } catch (error) {
+        console.error('[MILESTONES] Load error:', error);
+        showToast('Failed to load milestones', 'error');
+    }
+}
+
+function openCreateMilestoneModal(projectId, projectName, leadId) {
+    showModal(`Add Milestone to ${projectName}`, `
+        <form id="createMilestoneForm" onsubmit="handleCreateMilestone(event, ${projectId}, '${projectName.replace(/'/g, "\\'")}', ${leadId})">
+            <div class="form-group">
+                <label class="form-label">Milestone Name *</label>
+                <input type="text" class="form-input" name="name" required placeholder="Phase 1: Design Mockups">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-textarea" name="description" rows="3" placeholder="Create initial design mockups for homepage..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Due Date</label>
+                <input type="date" class="form-input" name="due_date">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="approved">Approved</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Completion %</label>
+                <input type="number" class="form-input" name="completion_percentage" min="0" max="100" value="0">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Order</label>
+                <input type="number" class="form-input" name="order_index" value="1" min="1">
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="openProjectMilestones(${projectId}, '${projectName.replace(/'/g, "\\'")}', ${leadId})">Back</button>
+                <button type="submit" class="btn btn-primary">Add Milestone</button>
+            </div>
+        </form>
+    `);
+}
+
+async function handleCreateMilestone(event, projectId, projectName, leadId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    const milestoneData = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        due_date: formData.get('due_date'),
+        status: formData.get('status'),
+        completion_percentage: parseInt(formData.get('completion_percentage')) || 0,
+        order_index: parseInt(formData.get('order_index')) || 1
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/projects/${projectId}/milestones`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(milestoneData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Milestone added successfully', 'success');
+            openProjectMilestones(projectId, projectName, leadId);
+        } else {
+            showToast(data.message || 'Failed to add milestone', 'error');
+        }
+    } catch (error) {
+        console.error('[MILESTONE] Create error:', error);
+        showToast('Failed to add milestone', 'error');
+    }
+}
+
+async function editMilestone(milestoneId, projectId, projectName, leadId) {
+    try {
+        // Load current milestone data
+        const response = await fetch(`${API_BASE}/api/client/projects/${projectId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        const data = await response.json();
+        const milestone = data.milestones.find(m => m.id === milestoneId);
+        
+        if (!milestone) {
+            showToast('Milestone not found', 'error');
+            return;
+        }
+        
+        showModal(`Edit Milestone`, `
+            <form id="editMilestoneForm" onsubmit="handleUpdateMilestone(event, ${milestoneId}, ${projectId}, '${projectName.replace(/'/g, "\\'")}', ${leadId})">
+                <div class="form-group">
+                    <label class="form-label">Milestone Name *</label>
+                    <input type="text" class="form-input" name="name" required value="${milestone.name}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-textarea" name="description" rows="3">${milestone.description || ''}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Due Date</label>
+                    <input type="date" class="form-input" name="due_date" value="${milestone.due_date || ''}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" name="status">
+                        <option value="pending" ${milestone.status === 'pending' ? 'selected' : ''}>Pending</option>
+                        <option value="in-progress" ${milestone.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="completed" ${milestone.status === 'completed' ? 'selected' : ''}>Completed</option>
+                        <option value="approved" ${milestone.status === 'approved' ? 'selected' : ''}>Approved</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Completion %</label>
+                    <input type="number" class="form-input" name="completion_percentage" min="0" max="100" value="${milestone.completion_percentage || 0}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Order</label>
+                    <input type="number" class="form-input" name="order_index" value="${milestone.order_index || 1}" min="1">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="openProjectMilestones(${projectId}, '${projectName.replace(/'/g, "\\'")}', ${leadId})">Back</button>
+                    <button type="submit" class="btn btn-primary">Update Milestone</button>
+                </div>
+            </form>
+        `);
+    } catch (error) {
+        console.error('[MILESTONE] Load for edit error:', error);
+        showToast('Failed to load milestone', 'error');
+    }
+}
+
+async function handleUpdateMilestone(event, milestoneId, projectId, projectName, leadId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    const milestoneData = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        due_date: formData.get('due_date'),
+        status: formData.get('status'),
+        completion_percentage: parseInt(formData.get('completion_percentage')) || 0,
+        order_index: parseInt(formData.get('order_index')) || 1
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/milestones/${milestoneId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(milestoneData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Milestone updated successfully', 'success');
+            openProjectMilestones(projectId, projectName, leadId);
+        } else {
+            showToast(data.message || 'Failed to update milestone', 'error');
+        }
+    } catch (error) {
+        console.error('[MILESTONE] Update error:', error);
+        showToast('Failed to update milestone', 'error');
+    }
 }
 
 </script>

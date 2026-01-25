@@ -8230,7 +8230,9 @@ function openProjectTimelineModal() {
     titleEl.textContent = 'Create Project Timeline & SLA';
     
     // Initialize package selection
-    window.selectedPackages = [];
+    // Make sure this is initialized at the top of openProjectTimelineModal()
+    window.selectedPackages = window.selectedPackages || [];
+    window.selectedPackages = []; // Initialize empty array
     
     const allLeadsAndCustomers = [...state.leads, ...state.customers];
     const today = new Date().toISOString().split('T')[0];

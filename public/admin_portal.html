@@ -3211,9 +3211,9 @@ switch (section) {
         case 'customers': 
             renderLeadsTable(content, 'customers'); 
             break;
-                case 'clientPortal':        // ADD THIS
-        renderClientPortal();    // ADD THIS
-        break;                   // ADD THIS
+        case 'clientPortal':
+            renderClientPortal();
+            break;
         case 'employees': 
             renderEmployees(content); 
             break;
@@ -3227,8 +3227,9 @@ switch (section) {
             renderProjects(content); 
             break;
         case 'support':
-            loadTickets(content);
-        break;
+            // Load tickets then render
+            loadTickets().then(() => renderTickets());
+            break;
         case 'settings': 
             renderSettings(content); 
             break;
@@ -10314,39 +10315,30 @@ function exportTimelineAsPDF() {
 // Add these functions:
 async function loadTickets() {
     try {
-        const response = await fetch(`${API_BASE}/tickets`, {
+        const response = await fetch(`${API_URL}/api/tickets`, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${authToken}`
             }
         });
 
         if (response.ok) {
             const data = await response.json();
             state.tickets = data.tickets || [];
-            renderTickets();
         }
     } catch (error) {
         console.error('Load tickets error:', error);
+        state.tickets = [];
     }
 }
 
 function renderTickets() {
-    const container = document.getElementById('ticketsContainer');
+    const content = document.getElementById('contentArea');
     const filter = document.getElementById('ticketStatusFilter')?.value || 'all';
     
     const filteredTickets = filter === 'all' 
-        ? state.tickets 
-        : state.tickets.filter(t => t.status === filter);
+        ? (state.tickets || [])
+        : (state.tickets || []).filter(t => t.status === filter);
     
-    if (filteredTickets.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
-                <p>No tickets found.</p>
-            </div>
-        `;
-        return;
-    }
-
     const statusColors = {
         'open': 'var(--status-danger)',
         'in-progress': 'var(--status-contacted)',
@@ -10361,9 +10353,22 @@ function renderTickets() {
         'urgent': 'var(--status-danger)'
     };
 
-    container.innerHTML = `
-        <div class="tickets-grid" style="display: grid; gap: 16px;">
-            ${filteredTickets.map(ticket => `
+    content.innerHTML = `
+        <div class="section-header">
+            <h1>Support Tickets</h1>
+            <div class="filter-controls">
+                <select id="ticketStatusFilter" onchange="filterTickets()">
+                    <option value="all">All Tickets</option>
+                    <option value="open">Open</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="tickets-grid" style="display: grid; gap: 16px; margin-top: 24px;">
+            ${filteredTickets.length > 0 ? filteredTickets.map(ticket => `
                 <div class="ticket-card" onclick="openTicketDetail(${ticket.id})" style="cursor: pointer; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                         <div style="flex: 1;">
@@ -10391,7 +10396,12 @@ function renderTickets() {
                         ${ticket.last_response_at ? `<span>Last reply: ${formatDate(ticket.last_response_at)}</span>` : ''}
                     </div>
                 </div>
-            `).join('')}
+            `).join('') : `
+                <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                    <h3>No tickets found</h3>
+                    <p>No support tickets match your filter criteria</p>
+                </div>
+            `}
         </div>
     `;
 }

@@ -10275,15 +10275,19 @@ function generateTimelineHTML(timeline) {
 }
 // View saved project timeline
 function viewProjectTimeline(index) {
-const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
-const timeline = savedTimelines[index];
-if (!timeline) {
-    showToast('Timeline not found', 'error');
-    return;
-}
-
-window.currentTimelineIndex = index;
-openTimelinePreviewModal(timeline);
+    const timelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+    const timeline = timelines[index];
+    
+    if (!timeline) {
+        showToast('Timeline not found', 'error');
+        return;
+    }
+    
+    // Store for later use (export, email)
+    window.currentTimelinePreview = timeline;
+    
+    // Use the SAME preview modal as when creating
+    openTimelinePreviewModal(timeline);
 }
 
 function getPaymentTermsText(timeline) {

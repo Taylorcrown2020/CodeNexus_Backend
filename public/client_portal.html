@@ -2372,11 +2372,25 @@ function navigateTo(section) {
 
         // Files
         async function loadFiles() {
-            // Mock data for now
-            state.files = [
-                { id: 1, filename: 'contract.pdf', file_size: 245000, created_at: new Date() },
-                { id: 2, filename: 'wireframes.fig', file_size: 1240000, created_at: new Date() }
-            ];
+            try {
+                const response = await fetch(`${API_BASE}/client/files`, {
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    state.files = data.files || [];
+                    console.log('Loaded files:', state.files.length);
+                } else {
+                    console.error('Failed to load files');
+                    state.files = [];
+                }
+            } catch (error) {
+                console.error('Load files error:', error);
+                state.files = [];
+            }
             renderFiles();
         }
 
@@ -2390,16 +2404,17 @@ function navigateTo(section) {
 
             container.innerHTML = state.files.map(file => {
                 const size = formatFileSize(file.file_size);
+                const filename = file.filename || file.original_filename;
 
                 return `
-                    <div class="file-card" onclick="downloadFile(${file.id})">
+                    <div class="file-card" onclick="downloadFile(${file.id}, '${filename}')">
                         <div class="file-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
                                 <polyline points="13 2 13 9 20 9"/>
                             </svg>
                         </div>
-                        <div class="file-name">${file.filename}</div>
+                        <div class="file-name">${filename}</div>
                         <div class="file-size">${size}</div>
                     </div>
                 `;
@@ -2407,32 +2422,79 @@ function navigateTo(section) {
         }
 
         async function handleFileUpload(files) {
-            const formData = new FormData();
-            
-            for (let file of files) {
-                formData.append('file', file);
+            if (!files || files.length === 0) {
+                return;
             }
 
-            try {
-                const response = await fetch(`${API_BASE}/client/upload`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${state.token}`
-                    },
-                    body: formData
-                });
+            // Show uploading message
+            const uploadArea = document.getElementById('uploadArea');
+            const originalContent = uploadArea.innerHTML;
+            uploadArea.innerHTML = '<p style="color: var(--accent-primary);">Uploading...</p>';
 
-                if (response.ok) {
-                    alert('Files uploaded successfully!');
-                    loadFiles();
+            try {
+                // Upload each file separately
+                for (let file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch(`${API_BASE}/client/files/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${state.token}`
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.message || 'Upload failed');
+                    }
                 }
+
+                // Reset upload area
+                uploadArea.innerHTML = originalContent;
+                alert(`Successfully uploaded ${files.length} file(s)!`);
+                
+                // Reload files list
+                await loadFiles();
             } catch (error) {
-                alert('Upload failed');
+                console.error('Upload error:', error);
+                uploadArea.innerHTML = originalContent;
+                alert('Upload failed: ' + error.message);
             }
         }
 
-        function downloadFile(fileId) {
-            alert('File download coming soon!');
+        function downloadFile(fileId, filename) {
+            // Create a download link with authentication
+            const downloadUrl = `${API_BASE}/files/${fileId}/download`;
+            
+            fetch(downloadUrl, {
+                headers: {
+                    'Authorization': `Bearer ${state.token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Download failed');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Create a temporary URL for the blob
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename || 'download';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                console.error('Download error:', error);
+                alert('Failed to download file. Please try again.');
+            });
         }
 
         // Support Tickets
@@ -2468,18 +2530,36 @@ async function loadTickets() {
                 return;
             }
 
-            container.innerHTML = state.tickets.map(ticket => `
-                <div class="ticket-item">
+            container.innerHTML = state.tickets.map(ticket => {
+                const statusColors = {
+                    'open': 'var(--status-error)',
+                    'in-progress': 'var(--status-warning)',
+                    'resolved': 'var(--status-success)',
+                    'closed': 'var(--text-muted)'
+                };
+                const statusColor = statusColors[ticket.status] || 'var(--text-muted)';
+                
+                return `
+                <div class="ticket-item" onclick="viewTicket(${ticket.id})" style="cursor: pointer;">
                     <div class="ticket-header">
                         <div>
                             <h3 class="ticket-subject">${ticket.subject}</h3>
-                            <p class="ticket-meta">Created ${formatDate(ticket.created_at)}</p>
+                            <p class="ticket-meta">
+                                Created ${formatDate(ticket.created_at)}
+                                ${ticket.response_count ? ` • ${ticket.response_count} ${ticket.response_count === 1 ? 'response' : 'responses'}` : ''}
+                            </p>
                         </div>
-                        <span class="ticket-priority ${ticket.priority}">${ticket.priority}</span>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                            <span class="ticket-priority ${ticket.priority}">${ticket.priority}</span>
+                            <span style="font-size: 11px; padding: 4px 8px; border-radius: 12px; background: ${statusColor}15; color: ${statusColor}; font-weight: 600; text-transform: uppercase;">
+                                ${ticket.status || 'open'}
+                            </span>
+                        </div>
                     </div>
-                    <p class="text-muted">${ticket.message}</p>
+                    <p class="text-muted">${ticket.message.substring(0, 150)}${ticket.message.length > 150 ? '...' : ''}</p>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
 async function handleTicketSubmit(e) {
@@ -2488,9 +2568,10 @@ async function handleTicketSubmit(e) {
     const subject = document.getElementById('ticketSubject').value;
     const message = document.getElementById('ticketMessage').value;
     const priority = document.getElementById('ticketPriority').value;
+    const category = document.getElementById('ticketCategory').value;
 
     try {
-        const response = await fetch(`${API_BASE}/client/tickets`, {
+        const response = await fetch(`${API_BASE}/client/support/ticket`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.token}`,
@@ -2499,14 +2580,15 @@ async function handleTicketSubmit(e) {
             body: JSON.stringify({ 
                 subject, 
                 message, 
-                priority 
+                priority,
+                category
             })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            alert('Ticket submitted successfully!');
+            alert('Support ticket submitted successfully!');
             document.getElementById('ticketForm').reset();
             await loadTickets(); // Reload tickets
         } else {
@@ -2514,7 +2596,142 @@ async function handleTicketSubmit(e) {
         }
     } catch (error) {
         console.error('Submit ticket error:', error);
-        alert('Failed to submit ticket');
+        alert('Failed to submit ticket. Please try again.');
+    }
+}
+
+// View ticket details with responses
+async function viewTicket(ticketId) {
+    try {
+        const response = await fetch(`${API_BASE}/client/tickets/${ticketId}`, {
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load ticket');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showTicketModal(data.ticket, data.responses || []);
+        }
+    } catch (error) {
+        console.error('View ticket error:', error);
+        alert('Failed to load ticket details');
+    }
+}
+
+// Show ticket modal with responses
+function showTicketModal(ticket, responses) {
+    const statusColors = {
+        'open': 'var(--status-error)',
+        'in-progress': 'var(--status-warning)',
+        'resolved': 'var(--status-success)',
+        'closed': 'var(--text-muted)'
+    };
+    const statusColor = statusColors[ticket.status] || 'var(--text-muted)';
+
+    const modalHTML = `
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;" onclick="closeTicketModal()">
+            <div style="background: var(--bg-primary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 32px;" onclick="event.stopPropagation()">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+                    <div>
+                        <h2 style="font-size: 24px; margin-bottom: 8px;">${ticket.subject}</h2>
+                        <p style="color: var(--text-muted); font-size: 14px;">
+                            Created ${formatDate(ticket.created_at)}
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <span class="ticket-priority ${ticket.priority}">${ticket.priority}</span>
+                        <span style="font-size: 11px; padding: 6px 12px; border-radius: 12px; background: ${statusColor}15; color: ${statusColor}; font-weight: 600; text-transform: uppercase;">
+                            ${ticket.status || 'open'}
+                        </span>
+                        <button onclick="closeTicketModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 24px; line-height: 1;">&times;</button>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-secondary); padding: 20px; border-radius: var(--radius-md); margin-bottom: 24px;">
+                    <p style="color: var(--text-secondary); font-weight: 600; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Original Message</p>
+                    <p style="line-height: 1.6;">${ticket.message}</p>
+                </div>
+
+                ${responses.length > 0 ? `
+                    <div style="margin-bottom: 24px;">
+                        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Conversation</h3>
+                        ${responses.map(resp => `
+                            <div style="padding: 16px; background: ${resp.user_type === 'admin' ? 'var(--accent-dim)' : 'var(--bg-secondary)'}; border-radius: var(--radius-md); margin-bottom: 12px; border-left: 3px solid ${resp.user_type === 'admin' ? 'var(--accent-primary)' : 'var(--border-default)'};">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <strong style="font-size: 14px;">${resp.user_name}</strong>
+                                    <span style="font-size: 12px; color: var(--text-muted);">${formatDate(resp.created_at)}</span>
+                                </div>
+                                <p style="line-height: 1.6; margin: 0;">${resp.message}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<p style="text-align: center; color: var(--text-muted); margin-bottom: 24px;">No responses yet</p>'}
+
+                ${ticket.status !== 'closed' ? `
+                    <div>
+                        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Add Response</h3>
+                        <textarea id="ticketResponseText" placeholder="Type your response..." style="width: 100%; min-height: 100px; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 14px; resize: vertical;"></textarea>
+                        <button onclick="submitTicketResponse(${ticket.id})" style="margin-top: 12px; padding: 12px 24px; background: var(--accent-primary); color: var(--bg-void); border: none; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; font-size: 14px;">Send Response</button>
+                    </div>
+                ` : '<p style="text-align: center; color: var(--text-muted); font-style: italic;">This ticket is closed</p>'}
+            </div>
+        </div>
+    `;
+
+    // Create modal element
+    const modalDiv = document.createElement('div');
+    modalDiv.id = 'ticketModal';
+    modalDiv.innerHTML = modalHTML;
+    document.body.appendChild(modalDiv);
+}
+
+// Close ticket modal
+function closeTicketModal() {
+    const modal = document.getElementById('ticketModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Submit ticket response
+async function submitTicketResponse(ticketId) {
+    const message = document.getElementById('ticketResponseText').value.trim();
+    
+    if (!message) {
+        alert('Please enter a response');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/client/tickets/${ticketId}/responses`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeTicketModal();
+            alert('Response sent successfully!');
+            await loadTickets();
+            // Reopen the ticket to show updated conversation
+            viewTicket(ticketId);
+        } else {
+            alert(data.message || 'Failed to send response');
+        }
+    } catch (error) {
+        console.error('Submit response error:', error);
+        alert('Failed to send response');
     }
 }
 

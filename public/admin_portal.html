@@ -3091,6 +3091,733 @@ function updateBadges() {
 }
 
 // ========================================
+// PROJECT TIMELINE / ORDER OF EVENTS SYSTEM
+// ========================================
+
+servicePackages = {
+    // FREE WEBSITE PACKAGES (No free maintenance, very basic SEO)
+    'free-basic': {
+        name: 'Free Basic Website',
+        description: 'Entry-level website for startups and small businesses',
+        price: 0,
+        duration: '1-2 weeks',
+        isFree: true,
+        phases: [
+            {
+                name: 'Quick Setup & Planning',
+                duration: '1-2 days',
+                tasks: [
+                    'Brief consultation call (30 minutes)',
+                    'Basic requirements gathering',
+                    'Template selection',
+                    'Content outline approval'
+                ]
+            },
+            {
+                name: 'Development & Setup',
+                duration: '3-5 days',
+                tasks: [
+                    'Up to 5 basic pages (Home, About, Services, Contact, One custom page)',
+                    'Template-based design',
+                    'Mobile-responsive layout',
+                    'Basic contact form',
+                    'Very basic on-page SEO (title tags, meta descriptions only)'
+                ]
+            },
+            {
+                name: 'Launch',
+                duration: '1-2 days',
+                tasks: [
+                    'Basic testing',
+                    'Domain connection assistance',
+                    'Free subdomain deployment (yourname.render.app)',
+                    'Basic Google Analytics setup',
+                    'Quick 15-minute walkthrough'
+                ]
+            }
+        ],
+        features: [
+            'Up to 5 basic pages',
+            'Template-based design',
+            'Mobile responsive',
+            'Basic contact form',
+            'Very basic SEO (titles & meta only)',
+            'Free subdomain hosting',
+            'Google Analytics',
+            'NO free maintenance period',
+            'NO admin dashboard',
+            'NO CRM features',
+            'NO custom integrations'
+        ],
+        notes: 'Perfect for getting online quickly. Upgrade to paid packages for advanced features. Monthly maintenance available for additional fee.'
+    },
+    
+    'free-portfolio': {
+        name: 'Free Portfolio Website',
+        description: 'Showcase your work with a simple portfolio site',
+        price: 0,
+        duration: '1-2 weeks',
+        isFree: true,
+        phases: [
+            {
+                name: 'Portfolio Planning',
+                duration: '1-2 days',
+                tasks: [
+                    'Brief consultation (30 minutes)',
+                    'Portfolio structure planning',
+                    'Gallery/project showcase setup',
+                    'Content requirements list'
+                ]
+            },
+            {
+                name: 'Development',
+                duration: '4-6 days',
+                tasks: [
+                    'Up to 6 pages (Home, About, Portfolio/Gallery, Services, Contact, Resume/Bio)',
+                    'Portfolio/gallery template setup',
+                    'Project showcase sections',
+                    'Image optimization',
+                    'Basic contact form',
+                    'Very basic SEO'
+                ]
+            },
+            {
+                name: 'Launch',
+                duration: '1-2 days',
+                tasks: [
+                    'Testing across devices',
+                    'Free subdomain deployment',
+                    'Basic analytics setup',
+                    '15-minute training on updating portfolio'
+                ]
+            }
+        ],
+        features: [
+            'Up to 6 pages',
+            'Portfolio/gallery showcase',
+            'Project display sections',
+            'Template-based design',
+            'Mobile responsive',
+            'Image optimization',
+            'Basic contact form',
+            'Very basic SEO',
+            'Free subdomain hosting',
+            'NO free maintenance',
+            'NO custom features'
+        ],
+        notes: 'Great for freelancers, artists, photographers. Monthly maintenance available for fee.'
+    },
+    
+    'free-business-card': {
+        name: 'Free Business Card Website',
+        description: 'Simple one-page site with essential business info',
+        price: 0,
+        duration: '3-5 days',
+        isFree: true,
+        phases: [
+            {
+                name: 'Setup',
+                duration: '1 day',
+                tasks: [
+                    'Quick 20-minute consultation',
+                    'Business info collection',
+                    'Single-page layout selection'
+                ]
+            },
+            {
+                name: 'Development',
+                duration: '2-3 days',
+                tasks: [
+                    'Single-page website (all content on one page)',
+                    'Sections: Header, About, Services, Contact',
+                    'Template-based modern design',
+                    'Mobile responsive',
+                    'Click-to-call & email buttons',
+                    'Google Maps embed',
+                    'Very basic SEO'
+                ]
+            },
+            {
+                name: 'Launch',
+                duration: '1 day',
+                tasks: [
+                    'Quick testing',
+                    'Free subdomain deployment',
+                    'Basic analytics',
+                    'Quick handoff'
+                ]
+            }
+        ],
+        features: [
+            'Single-page design',
+            'Essential business sections',
+            'Click-to-call/email buttons',
+            'Google Maps integration',
+            'Template-based design',
+            'Mobile responsive',
+            'Very basic SEO',
+            'Free subdomain hosting',
+            'NO multi-page navigation',
+            'NO free maintenance',
+            'NO custom features'
+        ],
+        notes: 'Perfect for establishing basic online presence quickly. Monthly maintenance available for fee.'
+    },
+    
+    'free-landing-page': {
+        name: 'Free Landing Page',
+        description: 'Single focused landing page for campaigns or lead generation',
+        price: 0,
+        duration: '3-5 days',
+        isFree: true,
+        phases: [
+            {
+                name: 'Campaign Planning',
+                duration: '1 day',
+                tasks: [
+                    '20-minute strategy call',
+                    'Campaign goal identification',
+                    'Call-to-action planning',
+                    'Lead capture form setup'
+                ]
+            },
+            {
+                name: 'Development',
+                duration: '2-3 days',
+                tasks: [
+                    'Single focused landing page',
+                    'Conversion-focused template design',
+                    'Lead capture form',
+                    'Call-to-action buttons',
+                    'Mobile responsive',
+                    'Very basic SEO for target keyword'
+                ]
+            },
+            {
+                name: 'Launch',
+                duration: '1 day',
+                tasks: [
+                    'Form testing',
+                    'Free subdomain deployment',
+                    'Basic conversion tracking',
+                    'Quick handoff'
+                ]
+            }
+        ],
+        features: [
+            'Single landing page',
+            'Conversion-focused design',
+            'Lead capture form',
+            'Mobile responsive',
+            'Call-to-action optimization',
+            'Very basic SEO',
+            'Free subdomain hosting',
+            'Basic conversion tracking',
+            'NO multi-page site',
+            'NO free maintenance',
+            'NO advanced integrations'
+        ],
+        notes: 'Ideal for campaigns, promotions, or testing ideas. Monthly maintenance available for fee.'
+    },
+    
+    'starter-website': {
+        name: 'Starter Package - $1,499',
+        description: 'Perfect for small businesses getting started online',
+        price: 1499,
+        duration: '2-3 weeks',
+        phases: [
+            {
+                name: 'Discovery & Planning',
+                duration: '2-3 days',
+                tasks: [
+                    'Initial consultation and requirements gathering',
+                    'Brand guidelines review',
+                    'Content strategy planning',
+                    'Wireframe approval',
+                    'Contract execution and 50% deposit collection'
+                ]
+            },
+            {
+                name: 'Design & Development',
+                duration: '1-2 weeks',
+                tasks: [
+                    'Up to 15 custom-designed pages',
+                    'Modern, professional UI design',
+                    'Mobile-responsive layout implementation',
+                    'Contact form integration',
+                    'Basic SEO setup',
+                    'Performance-optimized frontend'
+                ]
+            },
+            {
+                name: 'User System & Database',
+                duration: '3-4 days',
+                tasks: [
+                    'Custom basic user login & authentication',
+                    'Secure admin dashboard access',
+                    'PostgreSQL database setup',
+                    'Admin panel for managing leads & submissions',
+                    'Role-ready structure for future expansion'
+                ]
+            },
+            {
+                name: 'Lead Capture & CRM',
+                duration: '2-3 days',
+                tasks: [
+                    'Contact forms with lead capture',
+                    'Leads stored securely in database',
+                    'Basic CRM setup (leads & contacts)',
+                    'Status tracking for new & contacted leads'
+                ]
+            },
+            {
+                name: 'Optional Integrations',
+                duration: '1-2 days',
+                tasks: [
+                    'Email automation integration (if requested)',
+                    'SMS marketing automation (if requested)',
+                    'Stripe or Shopify billing integration (if requested)',
+                    'E-commerce ready with cart system (if requested)',
+                    'Form-triggered notifications'
+                ]
+            },
+            {
+                name: 'Testing & Launch',
+                duration: '2-3 days',
+                tasks: [
+                    'Cross-browser testing',
+                    'Mobile responsiveness check',
+                    'Client review and revisions',
+                    'Domain setup and deployment to Render',
+                    'SSL certificate installation',
+                    'Google Analytics setup',
+                    'Final 50% payment collection',
+                    '90 days of free add-ons begins',
+                    '90 days of free priority support begins'
+                ]
+            }
+        ],
+        features: [
+            'Up to 15 custom-designed pages',
+            'Mobile responsive design',
+            'Contact form integration',
+            'Basic SEO optimization',
+            'Custom user login & authentication',
+            'Secure admin dashboard',
+            'PostgreSQL database',
+            'Basic CRM for leads',
+            'Render deployment',
+            'Google Analytics setup',
+            '90 days of free add-ons',
+            '90 days of free priority support',
+            'Optional: Email/SMS automation',
+            'Optional: Stripe/Shopify integration',
+            'Optional: E-commerce cart system'
+        ],
+        notes: 'Some features may require third-party services or usage-based fees (SMS, email, payment processing)'
+    },
+    
+    'professional-website': {
+        name: 'Professional Package - $2,999',
+        description: 'Comprehensive solution for growing businesses',
+        price: 2999,
+        duration: '4-6 weeks',
+        phases: [
+            {
+                name: 'Strategy & Planning',
+                duration: '1 week',
+                tasks: [
+                    'In-depth business analysis',
+                    'Competitor research',
+                    'User persona development',
+                    'Site architecture planning (up to 25 pages)',
+                    'Content strategy development',
+                    'Contract execution and 50% deposit collection'
+                ]
+            },
+            {
+                name: 'Design Phase',
+                duration: '1-2 weeks',
+                tasks: [
+                    'Custom design mockups (2-3 concepts)',
+                    'Design revision rounds',
+                    'UI/UX optimization',
+                    'Brand integration',
+                    'Design system creation',
+                    'Mobile-responsive layouts'
+                ]
+            },
+            {
+                name: 'Development Phase',
+                duration: '2-3 weeks',
+                tasks: [
+                    'Up to 25 custom-designed pages',
+                    'Frontend development',
+                    'Advanced CMS integration',
+                    'Custom user logins & account management',
+                    'Expanded admin dashboard functionality',
+                    'Blog/news section development',
+                    'Advanced contact forms',
+                    'Newsletter integration'
+                ]
+            },
+            {
+                name: 'Advanced Features',
+                duration: '3-5 days',
+                tasks: [
+                    'Advanced CRM setup (leads & contacts)',
+                    'Lead status pipelines & categorization',
+                    'Admin-side lead notes & tracking',
+                    'E-commerce ready (up to 10 products)',
+                    'Advanced business analytics & KPIs',
+                    'Custom data tracking for user activity'
+                ]
+            },
+            {
+                name: 'SEO & Performance',
+                duration: '2-3 days',
+                tasks: [
+                    'Advanced SEO implementation',
+                    'Performance optimization',
+                    'Security hardening',
+                    'Google Analytics & Search Console setup',
+                    'Social media integration',
+                    'Live chat integration'
+                ]
+            },
+            {
+                name: 'Testing & Launch',
+                duration: '3-5 days',
+                tasks: [
+                    'Comprehensive QA testing',
+                    'Security audit',
+                    'Client training sessions',
+                    'Staged deployment to Render',
+                    'Post-launch monitoring',
+                    'Final 50% payment collection',
+                    '120 days of free add-ons begins',
+                    '120 days of free priority support begins'
+                ]
+            }
+        ],
+        features: [
+            'Up to 25 custom-designed pages',
+            'Custom design (unlimited revisions)',
+            'Advanced CMS integration',
+            'Blog/news section',
+            'Advanced contact forms',
+            'Newsletter integration',
+            'E-commerce ready (up to 10 products)',
+            'Advanced SEO package',
+            'Social media integration',
+            'Google Analytics & Search Console',
+            'Live chat integration',
+            'Advanced CRM with pipelines',
+            'Custom analytics & KPIs',
+            'Performance optimization',
+            'Security hardening',
+            '120 days of free add-ons',
+            '120 days of free priority support'
+        ],
+        notes: 'Some features may require third-party services or usage-based fees'
+    },
+    
+    'enterprise-website': {
+        name: 'Enterprise Package - Custom Pricing',
+        description: 'Full-scale solution for established businesses',
+        price: 0, // Custom pricing
+        duration: '8-12 weeks',
+        phases: [
+            {
+                name: 'Discovery & Strategy',
+                duration: '2 weeks',
+                tasks: [
+                    'Stakeholder interviews',
+                    'Comprehensive market research',
+                    'User journey mapping',
+                    'Technical requirements analysis',
+                    'Information architecture planning',
+                    'Content audit and strategy',
+                    'Conversion optimization planning',
+                    'Contract execution and initial payment'
+                ]
+            },
+            {
+                name: 'Design & Prototyping',
+                duration: '3-4 weeks',
+                tasks: [
+                    'Multiple design concepts',
+                    'Interactive prototypes',
+                    'User testing and feedback',
+                    'Accessibility compliance review',
+                    'Design system development',
+                    'Brand guidelines integration'
+                ]
+            },
+            {
+                name: 'Development & Integration',
+                duration: '4-6 weeks',
+                tasks: [
+                    'Unlimited custom-designed pages',
+                    'Custom backend development',
+                    'API integrations',
+                    'Third-party service connections',
+                    'Database architecture',
+                    'Advanced CMS customization',
+                    'E-commerce implementation (unlimited products)',
+                    'User portal/membership system',
+                    'Multi-language support',
+                    'Security implementation'
+                ]
+            },
+            {
+                name: 'Advanced Systems',
+                duration: '1-2 weeks',
+                tasks: [
+                    'Advanced analytics and reporting',
+                    'Marketing automation integration',
+                    'CRM integration',
+                    'API development',
+                    'Advanced security features',
+                    'Custom admin dashboard',
+                    'A/B testing setup',
+                    'Conversion rate optimization'
+                ]
+            },
+            {
+                name: 'Testing, Training & Launch',
+                duration: '1-2 weeks',
+                tasks: [
+                    'Extensive QA testing',
+                    'Load and performance testing',
+                    'Security penetration testing',
+                    'Staff training program',
+                    'Documentation creation',
+                    'Phased rollout strategy',
+                    'Post-launch optimization',
+                    'Final payment collection',
+                    '12 months of premium support begins'
+                ]
+            }
+        ],
+        features: [
+            'Unlimited custom pages',
+            'Fully custom design and development',
+            'Advanced CMS with custom modules',
+            'E-commerce platform (unlimited products)',
+            'User portal/membership system',
+            'Multi-language support',
+            'Advanced analytics and reporting',
+            'Marketing automation integration',
+            'CRM integration',
+            'API development',
+            'Third-party integrations',
+            'Advanced security features',
+            'Dedicated project manager',
+            'Custom admin dashboard',
+            'A/B testing setup',
+            'Conversion rate optimization',
+            '12 months of premium support',
+            'Priority bug fixes',
+            'Monthly performance reports'
+        ],
+        notes: 'Pricing varies based on project scope and requirements'
+    },
+    
+    'seo-services': {
+        name: 'SEO Services - $199/month',
+        description: 'Comprehensive SEO optimization for Hill Country businesses',
+        price: 199,
+        duration: 'Ongoing monthly service',
+        phases: [
+            {
+                name: 'Initial SEO Audit',
+                duration: '1 week',
+                tasks: [
+                    'Comprehensive website SEO audit',
+                    'Keyword research for Hill Country markets',
+                    'Competitor analysis',
+                    'Technical SEO assessment',
+                    'Current ranking baseline report'
+                ]
+            },
+            {
+                name: 'Monthly Optimization',
+                duration: 'Ongoing',
+                tasks: [
+                    'On-page SEO optimization',
+                    'Content optimization for target keywords',
+                    'Local SEO improvements',
+                    'Google My Business optimization',
+                    'Local citation building',
+                    'Schema markup updates',
+                    'Performance monitoring'
+                ]
+            },
+            {
+                name: 'Monthly Reporting',
+                duration: 'Monthly',
+                tasks: [
+                    'Keyword ranking tracking',
+                    'Traffic analysis',
+                    'Conversion tracking',
+                    'Competitor ranking comparisons',
+                    'Monthly performance reports',
+                    'Strategy adjustments'
+                ]
+            }
+        ],
+        features: [
+            'Keyword research (Hill Country focus)',
+            'On-page SEO optimization',
+            'Technical SEO fixes',
+            'Local SEO optimization',
+            'Google My Business management',
+            'Schema markup implementation',
+            'Content optimization',
+            'Monthly performance reports',
+            'Keyword ranking tracking',
+            'Google Analytics monitoring',
+            'Competitor analysis',
+            'Review generation support'
+        ],
+        notes: 'Results typically visible within 3-6 months'
+    },
+    
+    'digital-marketing': {
+        name: 'Digital Marketing Services - Custom Pricing',
+        description: 'Comprehensive marketing campaigns for growth',
+        price: 0, // Custom pricing
+        duration: 'Custom campaign duration',
+        phases: [
+            {
+                name: 'Strategy Development',
+                duration: '1-2 weeks',
+                tasks: [
+                    'Marketing goals definition',
+                    'Target audience research',
+                    'Platform selection',
+                    'Budget allocation planning',
+                    'Campaign strategy creation',
+                    'Content calendar development'
+                ]
+            },
+            {
+                name: 'Campaign Setup',
+                duration: '1 week',
+                tasks: [
+                    'Account setup (Facebook, Google, etc.)',
+                    'Audience targeting configuration',
+                    'Ad creative development',
+                    'Landing page optimization',
+                    'Tracking pixel installation',
+                    'Conversion goals setup'
+                ]
+            },
+            {
+                name: 'Campaign Management',
+                duration: 'Ongoing',
+                tasks: [
+                    'Daily campaign monitoring',
+                    'A/B testing',
+                    'Budget optimization',
+                    'Ad creative updates',
+                    'Audience refinement',
+                    'Performance analysis',
+                    'Weekly optimization'
+                ]
+            },
+            {
+                name: 'Reporting & Optimization',
+                duration: 'Ongoing',
+                tasks: [
+                    'Weekly performance reports',
+                    'Monthly strategy sessions',
+                    'ROI analysis',
+                    'Campaign adjustments',
+                    'Conversion rate optimization',
+                    'Competitive analysis'
+                ]
+            }
+        ],
+        features: [
+            'Social media marketing (Facebook, Instagram, LinkedIn)',
+            'Google Ads (Search, Display, LSA)',
+            'Facebook & Instagram Ads',
+            'Email marketing campaigns',
+            'Content marketing',
+            'Lead generation campaigns',
+            'Retargeting campaigns',
+            'Analytics & reporting',
+            'A/B testing',
+            'ROI tracking',
+            'Custom audience creation',
+            'Campaign optimization'
+        ],
+        notes: 'Pricing varies based on campaign complexity and ad spend budget'
+    }
+};
+
+// STANDARDIZED WEBSITE DEVELOPMENT PROCESS
+// This applies to ALL website projects regardless of package
+const standardWebsitePhases = [
+    {
+        name: 'Discovery & Planning Meeting',
+        duration: '1 week',
+        tasks: [
+            'Initial meeting to discuss your preferences and expectations',
+            'Review project timeline and what will be delivered',
+            'Understand your industry, business needs, and target audience',
+            'Define the message and persona your website needs to convey',
+            'Establish clear goals for the website'
+        ]
+    },
+    {
+        name: 'Draft Development & Iteration',
+        duration: '2-4 weeks (varies by package)',
+        tasks: [
+            'Start Round 1 draft of the website design',
+            'Two (2) progress meetings per week during this phase',
+            'Review feedback and make revisions each round',
+            'Continue rounds until you approve a final draft',
+            'As many revisions as needed to get it right'
+        ]
+    },
+    {
+        name: 'Functionality & Systems Integration',
+        duration: '1-2 weeks',
+        tasks: [
+            'Turn the approved draft into a fully functional website',
+            'Integrate all systems (forms, databases, CRM, etc.)',
+            'Add all technical features included in your package',
+            'Implement SEO and analytics tracking'
+        ]
+    },
+    {
+        name: 'Soft Deployment & Testing',
+        duration: '3-5 days',
+        tasks: [
+            'Deploy website to a private testing environment',
+            'Send you a private link to review and test the site',
+            'You test everything and provide any final feedback',
+            'We fix any issues that come up'
+        ]
+    },
+    {
+        name: 'Go-Live Deployment',
+        duration: '1-2 days',
+        tasks: [
+            'Set an agreed-upon go-live date',
+            'Confirm all issues are resolved before go-live',
+            'Connect your domain and make the site live',
+            'Site goes live on the scheduled date',
+            'Monitor for 24 hours after launch',
+            'Provide training on how to manage your site'
+        ]
+    }
+];
+
+// ========================================
 // NAVIGATION
 // ========================================
 function setupNavigation() {
@@ -8429,6 +9156,7 @@ function openProjectTimelineModal() {
     }, 100);
     
     modal.classList.add('active');
+    console.log('Service packages available:', Object.keys(servicePackages).length);
 }
 
 function toggleMaintenanceOptions() {
@@ -8628,732 +9356,6 @@ if (state.searchQuery) {
 
 return filtered;
 }
-// ========================================
-// PROJECT TIMELINE / ORDER OF EVENTS SYSTEM
-// ========================================
-
-servicePackages = {
-    // FREE WEBSITE PACKAGES (No free maintenance, very basic SEO)
-    'free-basic': {
-        name: 'Free Basic Website',
-        description: 'Entry-level website for startups and small businesses',
-        price: 0,
-        duration: '1-2 weeks',
-        isFree: true,
-        phases: [
-            {
-                name: 'Quick Setup & Planning',
-                duration: '1-2 days',
-                tasks: [
-                    'Brief consultation call (30 minutes)',
-                    'Basic requirements gathering',
-                    'Template selection',
-                    'Content outline approval'
-                ]
-            },
-            {
-                name: 'Development & Setup',
-                duration: '3-5 days',
-                tasks: [
-                    'Up to 5 basic pages (Home, About, Services, Contact, One custom page)',
-                    'Template-based design',
-                    'Mobile-responsive layout',
-                    'Basic contact form',
-                    'Very basic on-page SEO (title tags, meta descriptions only)'
-                ]
-            },
-            {
-                name: 'Launch',
-                duration: '1-2 days',
-                tasks: [
-                    'Basic testing',
-                    'Domain connection assistance',
-                    'Free subdomain deployment (yourname.render.app)',
-                    'Basic Google Analytics setup',
-                    'Quick 15-minute walkthrough'
-                ]
-            }
-        ],
-        features: [
-            'Up to 5 basic pages',
-            'Template-based design',
-            'Mobile responsive',
-            'Basic contact form',
-            'Very basic SEO (titles & meta only)',
-            'Free subdomain hosting',
-            'Google Analytics',
-            'NO free maintenance period',
-            'NO admin dashboard',
-            'NO CRM features',
-            'NO custom integrations'
-        ],
-        notes: 'Perfect for getting online quickly. Upgrade to paid packages for advanced features. Monthly maintenance available for additional fee.'
-    },
-    
-    'free-portfolio': {
-        name: 'Free Portfolio Website',
-        description: 'Showcase your work with a simple portfolio site',
-        price: 0,
-        duration: '1-2 weeks',
-        isFree: true,
-        phases: [
-            {
-                name: 'Portfolio Planning',
-                duration: '1-2 days',
-                tasks: [
-                    'Brief consultation (30 minutes)',
-                    'Portfolio structure planning',
-                    'Gallery/project showcase setup',
-                    'Content requirements list'
-                ]
-            },
-            {
-                name: 'Development',
-                duration: '4-6 days',
-                tasks: [
-                    'Up to 6 pages (Home, About, Portfolio/Gallery, Services, Contact, Resume/Bio)',
-                    'Portfolio/gallery template setup',
-                    'Project showcase sections',
-                    'Image optimization',
-                    'Basic contact form',
-                    'Very basic SEO'
-                ]
-            },
-            {
-                name: 'Launch',
-                duration: '1-2 days',
-                tasks: [
-                    'Testing across devices',
-                    'Free subdomain deployment',
-                    'Basic analytics setup',
-                    '15-minute training on updating portfolio'
-                ]
-            }
-        ],
-        features: [
-            'Up to 6 pages',
-            'Portfolio/gallery showcase',
-            'Project display sections',
-            'Template-based design',
-            'Mobile responsive',
-            'Image optimization',
-            'Basic contact form',
-            'Very basic SEO',
-            'Free subdomain hosting',
-            'NO free maintenance',
-            'NO custom features'
-        ],
-        notes: 'Great for freelancers, artists, photographers. Monthly maintenance available for fee.'
-    },
-    
-    'free-business-card': {
-        name: 'Free Business Card Website',
-        description: 'Simple one-page site with essential business info',
-        price: 0,
-        duration: '3-5 days',
-        isFree: true,
-        phases: [
-            {
-                name: 'Setup',
-                duration: '1 day',
-                tasks: [
-                    'Quick 20-minute consultation',
-                    'Business info collection',
-                    'Single-page layout selection'
-                ]
-            },
-            {
-                name: 'Development',
-                duration: '2-3 days',
-                tasks: [
-                    'Single-page website (all content on one page)',
-                    'Sections: Header, About, Services, Contact',
-                    'Template-based modern design',
-                    'Mobile responsive',
-                    'Click-to-call & email buttons',
-                    'Google Maps embed',
-                    'Very basic SEO'
-                ]
-            },
-            {
-                name: 'Launch',
-                duration: '1 day',
-                tasks: [
-                    'Quick testing',
-                    'Free subdomain deployment',
-                    'Basic analytics',
-                    'Quick handoff'
-                ]
-            }
-        ],
-        features: [
-            'Single-page design',
-            'Essential business sections',
-            'Click-to-call/email buttons',
-            'Google Maps integration',
-            'Template-based design',
-            'Mobile responsive',
-            'Very basic SEO',
-            'Free subdomain hosting',
-            'NO multi-page navigation',
-            'NO free maintenance',
-            'NO custom features'
-        ],
-        notes: 'Perfect for establishing basic online presence quickly. Monthly maintenance available for fee.'
-    },
-    
-    'free-landing-page': {
-        name: 'Free Landing Page',
-        description: 'Single focused landing page for campaigns or lead generation',
-        price: 0,
-        duration: '3-5 days',
-        isFree: true,
-        phases: [
-            {
-                name: 'Campaign Planning',
-                duration: '1 day',
-                tasks: [
-                    '20-minute strategy call',
-                    'Campaign goal identification',
-                    'Call-to-action planning',
-                    'Lead capture form setup'
-                ]
-            },
-            {
-                name: 'Development',
-                duration: '2-3 days',
-                tasks: [
-                    'Single focused landing page',
-                    'Conversion-focused template design',
-                    'Lead capture form',
-                    'Call-to-action buttons',
-                    'Mobile responsive',
-                    'Very basic SEO for target keyword'
-                ]
-            },
-            {
-                name: 'Launch',
-                duration: '1 day',
-                tasks: [
-                    'Form testing',
-                    'Free subdomain deployment',
-                    'Basic conversion tracking',
-                    'Quick handoff'
-                ]
-            }
-        ],
-        features: [
-            'Single landing page',
-            'Conversion-focused design',
-            'Lead capture form',
-            'Mobile responsive',
-            'Call-to-action optimization',
-            'Very basic SEO',
-            'Free subdomain hosting',
-            'Basic conversion tracking',
-            'NO multi-page site',
-            'NO free maintenance',
-            'NO advanced integrations'
-        ],
-        notes: 'Ideal for campaigns, promotions, or testing ideas. Monthly maintenance available for fee.'
-    },
-    
-    'starter-website': {
-        name: 'Starter Package - $1,499',
-        description: 'Perfect for small businesses getting started online',
-        price: 1499,
-        duration: '2-3 weeks',
-        phases: [
-            {
-                name: 'Discovery & Planning',
-                duration: '2-3 days',
-                tasks: [
-                    'Initial consultation and requirements gathering',
-                    'Brand guidelines review',
-                    'Content strategy planning',
-                    'Wireframe approval',
-                    'Contract execution and 50% deposit collection'
-                ]
-            },
-            {
-                name: 'Design & Development',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Up to 15 custom-designed pages',
-                    'Modern, professional UI design',
-                    'Mobile-responsive layout implementation',
-                    'Contact form integration',
-                    'Basic SEO setup',
-                    'Performance-optimized frontend'
-                ]
-            },
-            {
-                name: 'User System & Database',
-                duration: '3-4 days',
-                tasks: [
-                    'Custom basic user login & authentication',
-                    'Secure admin dashboard access',
-                    'PostgreSQL database setup',
-                    'Admin panel for managing leads & submissions',
-                    'Role-ready structure for future expansion'
-                ]
-            },
-            {
-                name: 'Lead Capture & CRM',
-                duration: '2-3 days',
-                tasks: [
-                    'Contact forms with lead capture',
-                    'Leads stored securely in database',
-                    'Basic CRM setup (leads & contacts)',
-                    'Status tracking for new & contacted leads'
-                ]
-            },
-            {
-                name: 'Optional Integrations',
-                duration: '1-2 days',
-                tasks: [
-                    'Email automation integration (if requested)',
-                    'SMS marketing automation (if requested)',
-                    'Stripe or Shopify billing integration (if requested)',
-                    'E-commerce ready with cart system (if requested)',
-                    'Form-triggered notifications'
-                ]
-            },
-            {
-                name: 'Testing & Launch',
-                duration: '2-3 days',
-                tasks: [
-                    'Cross-browser testing',
-                    'Mobile responsiveness check',
-                    'Client review and revisions',
-                    'Domain setup and deployment to Render',
-                    'SSL certificate installation',
-                    'Google Analytics setup',
-                    'Final 50% payment collection',
-                    '90 days of free add-ons begins',
-                    '90 days of free priority support begins'
-                ]
-            }
-        ],
-        features: [
-            'Up to 15 custom-designed pages',
-            'Mobile responsive design',
-            'Contact form integration',
-            'Basic SEO optimization',
-            'Custom user login & authentication',
-            'Secure admin dashboard',
-            'PostgreSQL database',
-            'Basic CRM for leads',
-            'Render deployment',
-            'Google Analytics setup',
-            '90 days of free add-ons',
-            '90 days of free priority support',
-            'Optional: Email/SMS automation',
-            'Optional: Stripe/Shopify integration',
-            'Optional: E-commerce cart system'
-        ],
-        notes: 'Some features may require third-party services or usage-based fees (SMS, email, payment processing)'
-    },
-    
-    'professional-website': {
-        name: 'Professional Package - $2,999',
-        description: 'Comprehensive solution for growing businesses',
-        price: 2999,
-        duration: '4-6 weeks',
-        phases: [
-            {
-                name: 'Strategy & Planning',
-                duration: '1 week',
-                tasks: [
-                    'In-depth business analysis',
-                    'Competitor research',
-                    'User persona development',
-                    'Site architecture planning (up to 25 pages)',
-                    'Content strategy development',
-                    'Contract execution and 50% deposit collection'
-                ]
-            },
-            {
-                name: 'Design Phase',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Custom design mockups (2-3 concepts)',
-                    'Design revision rounds',
-                    'UI/UX optimization',
-                    'Brand integration',
-                    'Design system creation',
-                    'Mobile-responsive layouts'
-                ]
-            },
-            {
-                name: 'Development Phase',
-                duration: '2-3 weeks',
-                tasks: [
-                    'Up to 25 custom-designed pages',
-                    'Frontend development',
-                    'Advanced CMS integration',
-                    'Custom user logins & account management',
-                    'Expanded admin dashboard functionality',
-                    'Blog/news section development',
-                    'Advanced contact forms',
-                    'Newsletter integration'
-                ]
-            },
-            {
-                name: 'Advanced Features',
-                duration: '3-5 days',
-                tasks: [
-                    'Advanced CRM setup (leads & contacts)',
-                    'Lead status pipelines & categorization',
-                    'Admin-side lead notes & tracking',
-                    'E-commerce ready (up to 10 products)',
-                    'Advanced business analytics & KPIs',
-                    'Custom data tracking for user activity'
-                ]
-            },
-            {
-                name: 'SEO & Performance',
-                duration: '2-3 days',
-                tasks: [
-                    'Advanced SEO implementation',
-                    'Performance optimization',
-                    'Security hardening',
-                    'Google Analytics & Search Console setup',
-                    'Social media integration',
-                    'Live chat integration'
-                ]
-            },
-            {
-                name: 'Testing & Launch',
-                duration: '3-5 days',
-                tasks: [
-                    'Comprehensive QA testing',
-                    'Security audit',
-                    'Client training sessions',
-                    'Staged deployment to Render',
-                    'Post-launch monitoring',
-                    'Final 50% payment collection',
-                    '120 days of free add-ons begins',
-                    '120 days of free priority support begins'
-                ]
-            }
-        ],
-        features: [
-            'Up to 25 custom-designed pages',
-            'Custom design (unlimited revisions)',
-            'Advanced CMS integration',
-            'Blog/news section',
-            'Advanced contact forms',
-            'Newsletter integration',
-            'E-commerce ready (up to 10 products)',
-            'Advanced SEO package',
-            'Social media integration',
-            'Google Analytics & Search Console',
-            'Live chat integration',
-            'Advanced CRM with pipelines',
-            'Custom analytics & KPIs',
-            'Performance optimization',
-            'Security hardening',
-            '120 days of free add-ons',
-            '120 days of free priority support'
-        ],
-        notes: 'Some features may require third-party services or usage-based fees'
-    },
-    
-    'enterprise-website': {
-        name: 'Enterprise Package - Custom Pricing',
-        description: 'Full-scale solution for established businesses',
-        price: 0, // Custom pricing
-        duration: '8-12 weeks',
-        phases: [
-            {
-                name: 'Discovery & Strategy',
-                duration: '2 weeks',
-                tasks: [
-                    'Stakeholder interviews',
-                    'Comprehensive market research',
-                    'User journey mapping',
-                    'Technical requirements analysis',
-                    'Information architecture planning',
-                    'Content audit and strategy',
-                    'Conversion optimization planning',
-                    'Contract execution and initial payment'
-                ]
-            },
-            {
-                name: 'Design & Prototyping',
-                duration: '3-4 weeks',
-                tasks: [
-                    'Multiple design concepts',
-                    'Interactive prototypes',
-                    'User testing and feedback',
-                    'Accessibility compliance review',
-                    'Design system development',
-                    'Brand guidelines integration'
-                ]
-            },
-            {
-                name: 'Development & Integration',
-                duration: '4-6 weeks',
-                tasks: [
-                    'Unlimited custom-designed pages',
-                    'Custom backend development',
-                    'API integrations',
-                    'Third-party service connections',
-                    'Database architecture',
-                    'Advanced CMS customization',
-                    'E-commerce implementation (unlimited products)',
-                    'User portal/membership system',
-                    'Multi-language support',
-                    'Security implementation'
-                ]
-            },
-            {
-                name: 'Advanced Systems',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Advanced analytics and reporting',
-                    'Marketing automation integration',
-                    'CRM integration',
-                    'API development',
-                    'Advanced security features',
-                    'Custom admin dashboard',
-                    'A/B testing setup',
-                    'Conversion rate optimization'
-                ]
-            },
-            {
-                name: 'Testing, Training & Launch',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Extensive QA testing',
-                    'Load and performance testing',
-                    'Security penetration testing',
-                    'Staff training program',
-                    'Documentation creation',
-                    'Phased rollout strategy',
-                    'Post-launch optimization',
-                    'Final payment collection',
-                    '12 months of premium support begins'
-                ]
-            }
-        ],
-        features: [
-            'Unlimited custom pages',
-            'Fully custom design and development',
-            'Advanced CMS with custom modules',
-            'E-commerce platform (unlimited products)',
-            'User portal/membership system',
-            'Multi-language support',
-            'Advanced analytics and reporting',
-            'Marketing automation integration',
-            'CRM integration',
-            'API development',
-            'Third-party integrations',
-            'Advanced security features',
-            'Dedicated project manager',
-            'Custom admin dashboard',
-            'A/B testing setup',
-            'Conversion rate optimization',
-            '12 months of premium support',
-            'Priority bug fixes',
-            'Monthly performance reports'
-        ],
-        notes: 'Pricing varies based on project scope and requirements'
-    },
-    
-    'seo-services': {
-        name: 'SEO Services - $199/month',
-        description: 'Comprehensive SEO optimization for Hill Country businesses',
-        price: 199,
-        duration: 'Ongoing monthly service',
-        phases: [
-            {
-                name: 'Initial SEO Audit',
-                duration: '1 week',
-                tasks: [
-                    'Comprehensive website SEO audit',
-                    'Keyword research for Hill Country markets',
-                    'Competitor analysis',
-                    'Technical SEO assessment',
-                    'Current ranking baseline report'
-                ]
-            },
-            {
-                name: 'Monthly Optimization',
-                duration: 'Ongoing',
-                tasks: [
-                    'On-page SEO optimization',
-                    'Content optimization for target keywords',
-                    'Local SEO improvements',
-                    'Google My Business optimization',
-                    'Local citation building',
-                    'Schema markup updates',
-                    'Performance monitoring'
-                ]
-            },
-            {
-                name: 'Monthly Reporting',
-                duration: 'Monthly',
-                tasks: [
-                    'Keyword ranking tracking',
-                    'Traffic analysis',
-                    'Conversion tracking',
-                    'Competitor ranking comparisons',
-                    'Monthly performance reports',
-                    'Strategy adjustments'
-                ]
-            }
-        ],
-        features: [
-            'Keyword research (Hill Country focus)',
-            'On-page SEO optimization',
-            'Technical SEO fixes',
-            'Local SEO optimization',
-            'Google My Business management',
-            'Schema markup implementation',
-            'Content optimization',
-            'Monthly performance reports',
-            'Keyword ranking tracking',
-            'Google Analytics monitoring',
-            'Competitor analysis',
-            'Review generation support'
-        ],
-        notes: 'Results typically visible within 3-6 months'
-    },
-    
-    'digital-marketing': {
-        name: 'Digital Marketing Services - Custom Pricing',
-        description: 'Comprehensive marketing campaigns for growth',
-        price: 0, // Custom pricing
-        duration: 'Custom campaign duration',
-        phases: [
-            {
-                name: 'Strategy Development',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Marketing goals definition',
-                    'Target audience research',
-                    'Platform selection',
-                    'Budget allocation planning',
-                    'Campaign strategy creation',
-                    'Content calendar development'
-                ]
-            },
-            {
-                name: 'Campaign Setup',
-                duration: '1 week',
-                tasks: [
-                    'Account setup (Facebook, Google, etc.)',
-                    'Audience targeting configuration',
-                    'Ad creative development',
-                    'Landing page optimization',
-                    'Tracking pixel installation',
-                    'Conversion goals setup'
-                ]
-            },
-            {
-                name: 'Campaign Management',
-                duration: 'Ongoing',
-                tasks: [
-                    'Daily campaign monitoring',
-                    'A/B testing',
-                    'Budget optimization',
-                    'Ad creative updates',
-                    'Audience refinement',
-                    'Performance analysis',
-                    'Weekly optimization'
-                ]
-            },
-            {
-                name: 'Reporting & Optimization',
-                duration: 'Ongoing',
-                tasks: [
-                    'Weekly performance reports',
-                    'Monthly strategy sessions',
-                    'ROI analysis',
-                    'Campaign adjustments',
-                    'Conversion rate optimization',
-                    'Competitive analysis'
-                ]
-            }
-        ],
-        features: [
-            'Social media marketing (Facebook, Instagram, LinkedIn)',
-            'Google Ads (Search, Display, LSA)',
-            'Facebook & Instagram Ads',
-            'Email marketing campaigns',
-            'Content marketing',
-            'Lead generation campaigns',
-            'Retargeting campaigns',
-            'Analytics & reporting',
-            'A/B testing',
-            'ROI tracking',
-            'Custom audience creation',
-            'Campaign optimization'
-        ],
-        notes: 'Pricing varies based on campaign complexity and ad spend budget'
-    }
-};
-
-// STANDARDIZED WEBSITE DEVELOPMENT PROCESS
-// This applies to ALL website projects regardless of package
-const standardWebsitePhases = [
-    {
-        name: 'Discovery & Planning Meeting',
-        duration: '1 week',
-        tasks: [
-            'Initial meeting to discuss your preferences and expectations',
-            'Review project timeline and what will be delivered',
-            'Understand your industry, business needs, and target audience',
-            'Define the message and persona your website needs to convey',
-            'Establish clear goals for the website'
-        ]
-    },
-    {
-        name: 'Draft Development & Iteration',
-        duration: '2-4 weeks (varies by package)',
-        tasks: [
-            'Start Round 1 draft of the website design',
-            'Two (2) progress meetings per week during this phase',
-            'Review feedback and make revisions each round',
-            'Continue rounds until you approve a final draft',
-            'As many revisions as needed to get it right'
-        ]
-    },
-    {
-        name: 'Functionality & Systems Integration',
-        duration: '1-2 weeks',
-        tasks: [
-            'Turn the approved draft into a fully functional website',
-            'Integrate all systems (forms, databases, CRM, etc.)',
-            'Add all technical features included in your package',
-            'Implement SEO and analytics tracking'
-        ]
-    },
-    {
-        name: 'Soft Deployment & Testing',
-        duration: '3-5 days',
-        tasks: [
-            'Deploy website to a private testing environment',
-            'Send you a private link to review and test the site',
-            'You test everything and provide any final feedback',
-            'We fix any issues that come up'
-        ]
-    },
-    {
-        name: 'Go-Live Deployment',
-        duration: '1-2 days',
-        tasks: [
-            'Set an agreed-upon go-live date',
-            'Confirm all issues are resolved before go-live',
-            'Connect your domain and make the site live',
-            'Site goes live on the scheduled date',
-            'Monitor for 24 hours after launch',
-            'Provide training on how to manage your site'
-        ]
-    }
-];
 
 // Preview Project Timeline
 function previewProjectTimeline() {

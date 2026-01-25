@@ -235,6 +235,91 @@ async function initializeDatabase(){
     try {
         await client.query('BEGIN');
 
+        // Client uploads table
+await client.query(`
+    CREATE TABLE IF NOT EXISTS client_uploads (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        project_id INTEGER,
+        filename VARCHAR(500) NOT NULL,
+        filepath TEXT NOT NULL,
+        file_size BIGINT,
+        mime_type VARCHAR(100),
+        description TEXT,
+        shared_by_admin BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+// Client projects table
+await client.query(`
+    CREATE TABLE IF NOT EXISTS client_projects (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        project_name VARCHAR(500) NOT NULL,
+        description TEXT,
+        start_date DATE,
+        end_date DATE,
+        status VARCHAR(50) DEFAULT 'in_progress',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+// Project milestones table
+await client.query(`
+    CREATE TABLE IF NOT EXISTS project_milestones (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER REFERENCES client_projects(id) ON DELETE CASCADE,
+        title VARCHAR(500) NOT NULL,
+        description TEXT,
+        due_date DATE,
+        order_index INTEGER DEFAULT 0,
+        approval_required BOOLEAN DEFAULT FALSE,
+        status VARCHAR(50) DEFAULT 'pending',
+        client_feedback TEXT,
+        completed_at TIMESTAMP,
+        approved_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+// Support tickets table
+await client.query(`
+    CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        subject VARCHAR(500) NOT NULL,
+        message TEXT NOT NULL,
+        priority VARCHAR(50) DEFAULT 'medium',
+        category VARCHAR(100) DEFAULT 'general',
+        status VARCHAR(50) DEFAULT 'open',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+// Create indexes for better performance
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_client_uploads_lead 
+    ON client_uploads(lead_id, created_at DESC)
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_client_projects_lead 
+    ON client_projects(lead_id, created_at DESC)
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_project_milestones_project 
+    ON project_milestones(project_id, order_index)
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_lead 
+    ON support_tickets(lead_id, created_at DESC)
+`);
+
         // Create admin_users table
         await client.query(`
             CREATE TABLE IF NOT EXISTS admin_users (

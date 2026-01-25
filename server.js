@@ -5526,46 +5526,73 @@ app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
     try {
         const clientId = req.user.id;
         
+        console.log('[DASHBOARD] Loading dashboard for client:', clientId);
+        
         // Get invoices
-        const invoices = await db.all(
-            'SELECT * FROM invoices WHERE lead_id = ? ORDER BY created_at DESC',
+        const invoicesResult = await pool.query(
+            'SELECT * FROM invoices WHERE lead_id = $1 ORDER BY created_at DESC',
             [clientId]
         );
         
         // Get projects
-        const projects = await db.all(
-            'SELECT * FROM client_projects WHERE lead_id = ? ORDER BY created_at DESC',
-            [clientId]
-        );
+        let projects = [];
+        try {
+            const projectsResult = await pool.query(`
+                SELECT cp.*, 
+                       (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
+                       (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
+                FROM client_projects cp
+                WHERE cp.lead_id = $1
+                ORDER BY cp.created_at DESC
+            `, [clientId]);
+            projects = projectsResult.rows;
+        } catch (e) {
+            console.log('[WARNING] Project tables may not exist yet');
+        }
         
         // Get support tickets
-        const tickets = await db.all(
-            'SELECT * FROM support_tickets WHERE lead_id = ? ORDER BY created_at DESC',
-            [clientId]
-        );
+        let tickets = [];
+        try {
+            const ticketsResult = await pool.query(
+                'SELECT * FROM support_tickets WHERE lead_id = $1 ORDER BY created_at DESC',
+                [clientId]
+            );
+            tickets = ticketsResult.rows;
+        } catch (e) {
+            console.log('[WARNING] Support ticket tables may not exist yet');
+        }
         
         // Get recent activity
-        const activity = await db.all(`
-            SELECT 'invoice' as type, id, created_at, 'Invoice created' as description
-            FROM invoices WHERE lead_id = ?
-            UNION ALL
-            SELECT 'project' as type, id, created_at, 'Project milestone updated' as description
-            FROM project_milestones WHERE project_id IN (SELECT id FROM client_projects WHERE lead_id = ?)
-            ORDER BY created_at DESC LIMIT 10
-        `, [clientId, clientId]);
+        let activity = [];
+        try {
+            const activityResult = await pool.query(`
+                SELECT 'invoice' as type, id, created_at, 
+                       'Invoice #' || invoice_number || ' created' as description, 
+                       '' as details
+                FROM invoices WHERE lead_id = $1
+                ORDER BY created_at DESC LIMIT 10
+            `, [clientId]);
+            activity = activityResult.rows;
+        } catch (e) {
+            console.log('[WARNING] Could not load activity');
+        }
         
         res.json({
             success: true,
             dashboard: {
-                invoices,
+                invoices: invoicesResult.rows,
                 projects,
                 tickets,
                 activity
             }
         });
+        
     } catch (error) {
-        console.error('Dashboard error:', error);
-        res.status(500).json({ success: false, message: 'Failed to load dashboard' });
+        console.error('[ERROR] Dashboard error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load dashboard' 
+        });
     }
 });
 
@@ -5606,26 +5633,6 @@ app.get('/api/client/projects', authenticateClient, async (req, res) => {
     }
 });
 
-// Submit Support Ticket
-app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
-    const { subject, message, priority, category } = req.body;
-    
-    try {
-        const result = await pool.query(`
-            INSERT INTO support_tickets (lead_id, subject, message, priority, category, status, created_at)
-            VALUES (?, ?, ?, ?, ?, 'open', datetime('now'))
-        `, [req.user.id, subject, message, priority || 'medium', category || 'general']);
-        
-        res.json({
-            success: true,
-            message: 'Support ticket created',
-            ticketId: result.lastID
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to create ticket' });
-    }
-});
-
 // Upload File
 app.post('/api/client/upload', authenticateClient, upload.single('file'), async (req, res) => {
     try {
@@ -5637,8 +5644,18 @@ app.post('/api/client/upload', authenticateClient, upload.single('file'), async 
         }
         
         const result = await pool.query(`
-            INSERT INTO client_uploads (lead_id, project_id, filename, filepath, file_size, mime_type, description, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            INSERT INTO client_uploads (
+                lead_id, 
+                project_id, 
+                filename, 
+                filepath, 
+                file_size, 
+                mime_type, 
+                description, 
+                created_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+            RETURNING *
         `, [
             req.user.id,
             projectId || null,
@@ -5652,59 +5669,13 @@ app.post('/api/client/upload', authenticateClient, upload.single('file'), async 
         res.json({
             success: true,
             message: 'File uploaded successfully',
-            fileId: result.lastID
+            fileId: result.rows[0].id
         });
     } catch (error) {
+        console.error('[ERROR] Upload failed:', error);
         res.status(500).json({ success: false, message: 'Upload failed' });
     }
 });
-
-// Approve Milestone
-app.post('/api/client/milestone/:id/approve', authenticateClient, async (req, res) => {
-    const { feedback } = req.body;
-    
-    try {
-        const milestone = await db.get(`
-            SELECT pm.* FROM project_milestones pm
-            JOIN client_projects cp ON pm.project_id = cp.id
-            WHERE pm.id = ? AND cp.lead_id = ?
-        `, [req.params.id, req.user.id]);
-        
-        if (!milestone) {
-            return res.status(404).json({ success: false, message: 'Milestone not found' });
-        }
-        
-        await db.run(`
-            UPDATE project_milestones 
-            SET status = 'approved', client_feedback = ?, approved_at = datetime('now')
-            WHERE id = ?
-        `, [feedback || null, req.params.id]);
-        
-        res.json({ success: true, message: 'Milestone approved' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Approval failed' });
-    }
-});
-
-// Middleware for client authentication
-function authenticateClient(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
-        return res.status(401).json({ success: false, message: 'No token provided' });
-    }
-    
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        if (decoded.type !== 'client') {
-            return res.status(403).json({ success: false, message: 'Invalid token type' });
-        }
-        req.user = decoded;
-        next();
-    } catch (error) {
-        return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
-}
 
 // Get all client accounts
 app.get('/api/admin/client-accounts', authenticateToken, async (req, res) => {
@@ -6009,122 +5980,6 @@ app.post('/api/admin/files/share', authenticateToken, async (req, res) => {
     }
 });
 
-// ==================== CLIENT ROUTES ====================
-
-// Client Login (with bcrypt verification)
-// Client authentication middleware (FIXED)
-function authenticateClient(req, res, next) {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (!token) {
-        console.log('❌ No token provided');
-        return res.status(401).json({ 
-            success: false, 
-            message: 'Access denied. Please log in.' 
-        });
-    }
-    
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        
-        if (decoded.type !== 'client') {
-            console.log('❌ Invalid token type:', decoded.type);
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Invalid access token.' 
-            });
-        }
-        
-        req.user = decoded;
-        console.log('✅ Client authenticated:', decoded.email);
-        next();
-    } catch (error) {
-        console.error('❌ Token verification failed:', error.message);
-        return res.status(401).json({ 
-            success: false, 
-            message: 'Session expired. Please log in again.' 
-        });
-    }
-}
-
-// Client Dashboard
-app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
-    try {
-        const clientId = req.user.id;
-        
-        // Get invoices
-        const invoicesResult = await pool.query(
-            'SELECT * FROM invoices WHERE lead_id = $1 ORDER BY created_at DESC',
-            [clientId]
-        );
-        
-        // Get projects (if table exists)
-        let projects = [];
-        try {
-            const projectsResult = await pool.query(`
-                SELECT cp.*, 
-                       (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id) as total_milestones,
-                       (SELECT COUNT(*) FROM project_milestones WHERE project_id = cp.id AND status = 'completed') as completed_milestones
-                FROM client_projects cp
-                WHERE cp.lead_id = $1
-                ORDER BY cp.created_at DESC
-            `, [clientId]);
-            projects = projectsResult.rows;
-        } catch (e) {
-            console.log('Client projects table may not exist yet');
-        }
-        
-        // Get support tickets (if table exists)
-        let tickets = [];
-        try {
-            const ticketsResult = await pool.query(
-                'SELECT * FROM support_tickets WHERE lead_id = $1 ORDER BY created_at DESC',
-                [clientId]
-            );
-            tickets = ticketsResult.rows;
-        } catch (e) {
-            console.log('Support tickets table may not exist yet');
-        }
-        
-        // Get recent activity
-        let activity = [];
-        try {
-            const activityResult = await pool.query(`
-                SELECT 'invoice' as type, id, created_at, 
-                       'Invoice #' || id || ' created' as description, '' as details
-                FROM invoices WHERE lead_id = $1
-                UNION ALL
-                SELECT 'milestone' as type, id, created_at, 
-                       title as description, 'Milestone updated' as details
-                FROM project_milestones 
-                WHERE project_id IN (SELECT id FROM client_projects WHERE lead_id = $1)
-                UNION ALL
-                SELECT 'project' as type, id, created_at, 
-                       project_name as description, 'Project created' as details
-                FROM client_projects WHERE lead_id = $1
-                ORDER BY created_at DESC LIMIT 10
-            `, [clientId, clientId, clientId]);
-            activity = activityResult.rows;
-        } catch (e) {
-            console.log('Activity query failed, some tables may not exist');
-        }
-        
-        res.json({
-            success: true,
-            dashboard: {
-                invoices: invoicesResult.rows,
-                projects,
-                tickets,
-                activity
-            }
-        });
-    } catch (error) {
-        console.error('Dashboard error:', error);
-        res.status(500).json({ success: false, message: 'Failed to load dashboard' });
-    }
-});
-
 // Project Milestones
 app.get('/api/client/project/:id/milestones', authenticateClient, async (req, res) => {
     try {
@@ -6153,22 +6008,22 @@ app.post('/api/client/milestone/:id/approve', authenticateClient, async (req, re
     const { feedback } = req.body;
     
     try {
-        const milestone = await db.get(`
+        const milestoneResult = await pool.query(`
             SELECT pm.* FROM project_milestones pm
             JOIN client_projects cp ON pm.project_id = cp.id
-            WHERE pm.id = ? AND cp.lead_id = ?
+            WHERE pm.id = $1 AND cp.lead_id = $2
         `, [req.params.id, req.user.id]);
         
-        if (!milestone) {
+        if (milestoneResult.rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Milestone not found' });
         }
         
-        await db.run(`
+        await pool.query(`
             UPDATE project_milestones 
             SET status = 'approved', 
-                client_feedback = ?, 
-                approved_at = datetime('now')
-            WHERE id = ?
+                client_feedback = $1, 
+                approved_at = CURRENT_TIMESTAMP
+            WHERE id = $2
         `, [feedback || null, req.params.id]);
         
         res.json({ success: true, message: 'Milestone approved' });
@@ -6176,6 +6031,8 @@ app.post('/api/client/milestone/:id/approve', authenticateClient, async (req, re
         res.status(500).json({ success: false, message: 'Approval failed' });
     }
 });
+
+console.log('[SYSTEM] Client portal routes loaded');
 
 // Client Invoices
 app.get('/api/client/invoices', authenticateClient, async (req, res) => {
@@ -6206,80 +6063,142 @@ app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
                 status, 
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, 'open', datetime('now'))
+            VALUES ($1, $2, $3, $4, $5, 'open', CURRENT_TIMESTAMP)
+            RETURNING *
         `, [req.user.id, subject, message, priority || 'medium', category || 'general']);
         
         res.json({
             success: true,
             message: 'Support ticket created',
-            ticketId: result.lastID
+            ticketId: result.rows[0].id
         });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Failed to create ticket' });
     }
 });
 
-// Upload File (requires multer setup)
-app.post('/api/client/upload', authenticateClient, upload.single('file'), async (req, res) => {
+// Client Login
+app.post('/api/client/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    console.log('[CLIENT] Login attempt:', email);
+    
     try {
-        const { projectId, description } = req.body;
-        const file = req.file;
+        // Get client from database
+        const result = await pool.query(
+            'SELECT * FROM leads WHERE email = $1 AND is_customer = TRUE',
+            [email]
+        );
         
-        if (!file) {
-            return res.status(400).json({ success: false, message: 'No file uploaded' });
+        console.log('[DATABASE] Query result:', {
+            found: result.rows.length > 0,
+            email: email
+        });
+        
+        if (result.rows.length === 0) {
+            console.log('[AUTH] No client found with email:', email);
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Invalid email or password. Contact support if you need access.' 
+            });
         }
         
-        const result = await pool.query(`
-            INSERT INTO client_uploads (
-                lead_id, 
-                project_id, 
-                filename, 
-                filepath, 
-                file_size, 
-                mime_type, 
-                description, 
-                created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-        `, [
-            req.user.id,
-            projectId || null,
-            file.originalname,
-            file.path,
-            file.size,
-            file.mimetype,
-            description || null
-        ]);
+        const lead = result.rows[0];
+        
+        // Check if client has a password set
+        if (!lead.client_password) {
+            console.log('[AUTH] Client exists but no password set for:', email);
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Your account is not activated. Please contact your project manager.' 
+            });
+        }
+        
+        // Verify password with bcrypt
+        console.log('[AUTH] Verifying password for:', email);
+        const passwordMatch = await bcrypt.compare(password, lead.client_password);
+        
+        if (!passwordMatch) {
+            console.log('[AUTH] Password mismatch for:', email);
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Invalid email or password.' 
+            });
+        }
+        
+        console.log('[AUTH] Password verified successfully for:', email);
+        
+        // Update last login timestamp
+        await pool.query(
+            'UPDATE leads SET client_last_login = CURRENT_TIMESTAMP WHERE id = $1',
+            [lead.id]
+        );
+        
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: lead.id, email: lead.email, type: 'client' },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        
+        console.log('[SUCCESS] Client login successful:', lead.name);
         
         res.json({
             success: true,
-            message: 'File uploaded successfully',
-            fileId: result.lastID
+            token,
+            client: {
+                id: lead.id,
+                name: lead.name,
+                email: lead.email,
+                company: lead.company
+            }
         });
+        
     } catch (error) {
-        console.error('Upload failed:', error);
-        res.status(500).json({ success: false, message: 'Upload failed' });
+        console.error('[ERROR] Client login error:', error);
+        console.error('[ERROR] Stack:', error.stack);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error during login. Please try again.' 
+        });
     }
 });
 
 // ==================== AUTHENTICATION MIDDLEWARE ====================
 
 function authenticateClient(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
     
     if (!token) {
-        return res.status(401).json({ success: false, message: 'No token provided' });
+        console.log('[AUTH] No token provided');
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Access denied. Please log in.' 
+        });
     }
     
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
+        
         if (decoded.type !== 'client') {
-            return res.status(403).json({ success: false, message: 'Invalid token type' });
+            console.log('[AUTH] Invalid token type:', decoded.type);
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Invalid access token.' 
+            });
         }
+        
         req.user = decoded;
+        console.log('[AUTH] Client authenticated:', decoded.email);
         next();
+        
     } catch (error) {
-        return res.status(401).json({ success: false, message: 'Invalid token' });
+        console.error('[AUTH] Token verification failed:', error.message);
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Session expired. Please log in again.' 
+        });
     }
 }
 
@@ -6299,95 +6218,115 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
             <html>
             <head>
                 <style>
-                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
                     .container { max-width: 600px; margin: 0 auto; background: white; }
                     .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 40px 30px; text-align: center; }
-                    .header h1 { margin: 0; font-size: 28px; }
+                    .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
+                    .header p { margin: 10px 0 0 0; opacity: 0.9; font-size: 14px; }
                     .content { padding: 40px 30px; }
-                    .credentials-box { background: #f8f9fa; border-left: 4px solid #22c55e; padding: 20px; margin: 30px 0; border-radius: 8px; }
-                    .credentials-box h3 { margin-top: 0; color: #22c55e; }
-                    .credential-item { margin: 12px 0; }
-                    .credential-label { font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-                    .credential-value { font-size: 16px; color: #000; font-family: 'Courier New', monospace; background: white; padding: 8px 12px; border-radius: 4px; margin-top: 4px; border: 1px solid #e0e0e0; }
-                    .warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 16px; border-radius: 8px; margin: 20px 0; }
-                    .btn { display: inline-block; background: #22c55e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
-                    .footer { background: #333; color: white; padding: 30px; text-align: center; font-size: 12px; }
+                    .content h2 { color: #1f2937; font-size: 20px; margin: 0 0 20px 0; }
+                    .content p { color: #6b7280; line-height: 1.6; margin: 0 0 16px 0; }
+                    .credentials-box { background: #f9fafb; border-left: 4px solid #22c55e; padding: 24px; margin: 30px 0; border-radius: 8px; }
+                    .credentials-box h3 { margin: 0 0 20px 0; color: #22c55e; font-size: 16px; font-weight: 600; }
+                    .credential-item { margin: 0 0 16px 0; }
+                    .credential-item:last-child { margin-bottom: 0; }
+                    .credential-label { display: block; font-weight: 600; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+                    .credential-value { display: block; font-size: 15px; color: #111827; font-family: 'Courier New', Courier, monospace; background: white; padding: 10px 14px; border-radius: 6px; border: 1px solid #e5e7eb; }
+                    .warning-box { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 16px; border-radius: 8px; margin: 24px 0; }
+                    .warning-box strong { color: #78350f; }
+                    .btn-container { text-align: center; margin: 30px 0; }
+                    .btn { display: inline-block; background: #22c55e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }
+                    .btn:hover { background: #16a34a; }
+                    .features { margin: 30px 0; }
+                    .features h3 { color: #1f2937; font-size: 18px; margin: 0 0 16px 0; }
+                    .features ul { margin: 0; padding: 0; list-style: none; }
+                    .features li { color: #6b7280; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+                    .features li:last-child { border-bottom: none; }
+                    .features li strong { color: #1f2937; }
+                    .footer { background: #1f2937; color: #9ca3af; padding: 30px; text-align: center; font-size: 13px; }
+                    .footer p { margin: 0 0 8px 0; }
                     .footer a { color: #22c55e; text-decoration: none; }
+                    .footer a:hover { text-decoration: underline; }
+                    .footer-copy { font-size: 11px; opacity: 0.7; margin-top: 20px; }
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>Welcome to Your Client Portal!</h1>
-                        <p style="margin: 10px 0 0 0; opacity: 0.9;">Diamondback Coding</p>
+                        <h1>Welcome to Your Client Portal</h1>
+                        <p>Diamondback Coding</p>
                     </div>
                     
                     <div class="content">
-                        <h2 style="color: #333;">Hi ${name},</h2>
+                        <h2>Hi ${name},</h2>
                         
-                        <p style="font-size: 16px; line-height: 1.6; color: #555;">
-                            Your client portal account has been created! You can now track your projects, 
-                            view invoices, upload files, and communicate with our team.
+                        <p>
+                            Your client portal account has been successfully created. You can now track your projects, 
+                            view invoices, upload files, and communicate with our team through a secure online portal.
                         </p>
                         
                         <div class="credentials-box">
-                            <h3>Your Login Credentials</h3>
+                            <h3>Login Credentials</h3>
                             
                             <div class="credential-item">
-                                <div class="credential-label">Portal URL</div>
-                                <div class="credential-value">https://diamondbackcoding.com/client_portal.html</div>
+                                <span class="credential-label">Portal URL</span>
+                                <span class="credential-value">https://diamondbackcoding.com/client_portal.html</span>
                             </div>
                             
                             <div class="credential-item">
-                                <div class="credential-label">Email Address</div>
-                                <div class="credential-value">${email}</div>
+                                <span class="credential-label">Email Address</span>
+                                <span class="credential-value">${email}</span>
                             </div>
                             
                             <div class="credential-item">
-                                <div class="credential-label">Temporary Password</div>
-                                <div class="credential-value">${temporaryPassword}</div>
+                                <span class="credential-label">Temporary Password</span>
+                                <span class="credential-value">${temporaryPassword}</span>
                             </div>
                         </div>
                         
-                        <div class="warning">
-                            <strong>Important Security Notice:</strong><br>
-                            Please change your password immediately after logging in for the first time.
+                        <div class="warning-box">
+                            <strong>Important Security Notice</strong><br>
+                            Please change your password immediately after logging in for the first time. 
+                            Never share your login credentials with anyone.
                         </div>
                         
-                        <div style="text-align: center;">
+                        <div class="btn-container">
                             <a href="https://diamondbackcoding.com/client_portal.html" class="btn">
                                 Access Your Portal
                             </a>
                         </div>
                         
-                        <h3 style="color: #333; margin-top: 40px;">What You Can Do:</h3>
-                        <ul style="font-size: 15px; line-height: 1.8; color: #555;">
-                            <li><strong>Track Projects</strong> - View real-time progress on your projects</li>
-                            <li><strong>Approve Milestones</strong> - Review and approve completed work</li>
-                            <li><strong>View Invoices</strong> - Access and download all your invoices</li>
-                            <li><strong>Share Files</strong> - Upload and download project files securely</li>
-                            <li><strong>Get Support</strong> - Submit support tickets directly</li>
-                        </ul>
+                        <div class="features">
+                            <h3>Portal Features</h3>
+                            <ul>
+                                <li><strong>Project Tracking</strong> — View real-time progress on your projects</li>
+                                <li><strong>Milestone Approvals</strong> — Review and approve completed work</li>
+                                <li><strong>Invoice Management</strong> — Access and download all your invoices</li>
+                                <li><strong>File Sharing</strong> — Upload and download project files securely</li>
+                                <li><strong>Support Tickets</strong> — Submit support requests directly</li>
+                            </ul>
+                        </div>
                         
-                        <p style="font-size: 16px; color: #555; margin-top: 30px;">
-                            If you have any questions or need assistance, please don't hesitate to reach out.
+                        <p style="margin-top: 30px;">
+                            If you have any questions or need assistance accessing your portal, 
+                            please don't hesitate to contact us.
                         </p>
                         
-                        <p style="font-size: 16px; color: #555;">
+                        <p style="margin-top: 24px;">
                             <strong>Best regards,</strong><br>
                             The Diamondback Coding Team
                         </p>
                     </div>
                     
                     <div class="footer">
-                        <p style="margin: 0 0 10px 0;"><strong>Diamondback Coding</strong></p>
-                        <p style="margin: 0 0 8px 0;">15709 Spillman Ranch Loop, Austin, TX 78738</p>
-                        <p style="margin: 0;">
+                        <p><strong>Diamondback Coding</strong></p>
+                        <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
+                        <p>
                             <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | 
                             <a href="tel:+19402178680">(940) 217-8680</a>
                         </p>
-                        <p style="margin: 20px 0 0 0; font-size: 11px; opacity: 0.7;">
-                            © ${new Date().getFullYear()} Diamondback Coding. All rights reserved.
+                        <p class="footer-copy">
+                            &copy; ${new Date().getFullYear()} Diamondback Coding. All rights reserved.
                         </p>
                     </div>
                 </div>
@@ -6398,9 +6337,9 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log('Welcome email sent to:', email);
+        console.log('[EMAIL] Welcome email sent to:', email);
     } catch (error) {
-        console.error('Failed to send welcome email:', error);
+        console.error('[EMAIL] Failed to send welcome email:', error);
         // Don't throw error - account creation should succeed even if email fails
     }
 }
@@ -6443,6 +6382,46 @@ app.use((err, req, res, next) => {
         message: 'Internal server error' 
     });
 });
+
+console.log('\n[ROUTES] Listing all registered API routes:');
+console.log('==========================================');
+
+let routeCount = 0;
+app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+        const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
+        console.log(`  ${methods.padEnd(8)} ${middleware.route.path}`);
+        routeCount++;
+    } else if (middleware.name === 'router') {
+        middleware.handle.stack.forEach((handler) => {
+            if (handler.route) {
+                const methods = Object.keys(handler.route.methods).join(', ').toUpperCase();
+                console.log(`  ${methods.padEnd(8)} ${handler.route.path}`);
+                routeCount++;
+            }
+        });
+    }
+});
+
+console.log('==========================================');
+console.log(`[ROUTES] Total routes registered: ${routeCount}\n`);
+
+// Check specifically for client routes
+const clientRoutes = [
+    '/api/client/login',
+    '/api/client/dashboard',
+    '/api/client/projects',
+    '/api/client/invoices'
+];
+
+console.log('[CHECK] Verifying client portal routes:');
+clientRoutes.forEach(route => {
+    const exists = app._router.stack.some(middleware => 
+        middleware.route && middleware.route.path === route
+    );
+    console.log(`  ${route.padEnd(30)} ${exists ? '[OK]' : '[MISSING]'}`);
+});
+console.log('');
 
 // ========================================
 // SERVER STARTUP

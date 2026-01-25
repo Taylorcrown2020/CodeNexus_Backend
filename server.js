@@ -207,9 +207,14 @@ app.use((req, res, next) => {
 // ========================================
 // DATABASE CONNECTION
 // ========================================
+
+const db = pool;  // Makes pool available as 'db'
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 // Test database connection
@@ -227,7 +232,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 // ========================================
 // DATABASE INITIALIZATION
 // ========================================
-async function initializeDatabase() {
+async function initializeDatabase(db){
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -6400,7 +6405,7 @@ app.use((err, req, res, next) => {
 // ========================================
 async function startServer() {
     try {
-        await initializeDatabase();
+        await initializeDatabase(pool);
         await initializeExpenseTables();
         await addLeadSourceTracking();
         

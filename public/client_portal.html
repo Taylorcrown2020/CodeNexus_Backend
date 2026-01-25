@@ -1601,8 +1601,34 @@
     </div>
 
     <script>
-        // Configuration
-        const API_BASE = 'http://localhost:3000/api';
+        // Configuration with auto-detection and debugging
+const API_BASE = (() => {
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+    
+    // Determine API base URL
+    let apiUrl;
+    
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        // Local development
+        apiUrl = 'http://localhost:3000/api';
+    } else if (hostname === 'diamondbackcoding.com' || hostname === 'www.diamondbackcoding.com') {
+        // Production
+        apiUrl = 'https://diamondbackcoding.com/api';
+    } else {
+        // Fallback
+        apiUrl = `${window.location.protocol}//${hostname}:3000/api`;
+    }
+    
+    console.log('🌐 Environment Detection:');
+    console.log('  Hostname:', hostname);
+    console.log('  Port:', port);
+    console.log('  Full URL:', window.location.href);
+    console.log('  API Base:', apiUrl);
+    console.log('  Login endpoint:', apiUrl + '/client/login');
+    
+    return apiUrl;
+})();
         
         // State
         let state = {

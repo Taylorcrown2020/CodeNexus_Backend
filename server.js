@@ -3199,11 +3199,11 @@ function getPaymentTermsText(timeline) {
 // REPLACE THIS ENTIRE ENDPOINT
 app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
     try {
-        console.log('📧 Starting invoice email send...');
+        console.log('Starting invoice email send...');
         const { invoice, clientEmail, clientName } = req.body;
         
         if (!clientEmail) {
-            console.error('❌ No client email provided');
+            console.error('No client email provided');
             return res.status(400).json({ 
                 success: false, 
                 message: 'Client email is required' 
@@ -3306,7 +3306,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                         <div style="text-align: center; margin: 40px 0; padding: 30px; background: #f8f9fa; border-radius: 10px;">
                             <p style="margin: 0 0 20px 0; font-size: 16px; font-weight: bold;">Pay Online Securely</p>
                             <a href="${invoice.stripe_payment_link}" class="btn">
-                                💳 Pay Invoice Now
+                                Pay Invoice Now
                             </a>
                             <p style="font-size: 12px; color: #666; margin: 15px 0 0 0;">
                                 Secure payment powered by Stripe
@@ -3339,9 +3339,9 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             </html>
         `;
         
-        console.log('📤 Preparing to send email...');
-        console.log('📧 From:', process.env.EMAIL_USER);
-        console.log('📧 To:', clientEmail);
+        console.log('Preparing to send email...');
+        console.log('From:', process.env.EMAIL_USER);
+        console.log('To:', clientEmail);
         
         const info = await transporter.sendMail({
             from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
@@ -3350,8 +3350,8 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             html: emailHTML
         });
         
-        console.log('✅ Invoice email sent successfully');
-        console.log('📨 Message ID:', info.messageId);
+        console.log('Invoice email sent successfully');
+        console.log('Message ID:', info.messageId);
         
         res.json({ 
             success: true, 
@@ -3363,7 +3363,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
         });
         
     } catch (error) {
-        console.error('❌ Invoice email error:', error);
+        console.error('Invoice email error:', error);
         
         let userMessage = 'Failed to send invoice email. ';
         if (error.code === 'EAUTH') {
@@ -3385,21 +3385,21 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
 // Add this test endpoint
 app.post('/api/email/test', authenticateToken, async (req, res) => {
     try {
-        console.log('🧪 Testing email configuration...');
-        console.log('📧 From:', process.env.EMAIL_USER);
-        console.log('📧 To:', process.env.EMAIL_USER);
+        console.log('Testing email configuration...');
+        console.log('From:', process.env.EMAIL_USER);
+        console.log('To:', process.env.EMAIL_USER);
         
         const info = await transporter.sendMail({
             from: `"Diamondback Coding Test" <${process.env.EMAIL_USER}>`,
-            to: process.env.EMAIL_USER, // Send to yourself
-            subject: '✅ Email Test - Diamondback Coding',
+            to: process.env.EMAIL_USER,
+            subject: 'Email Test - Diamondback Coding',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <div style="background: #22c55e; color: white; padding: 30px; text-align: center;">
                         <h1 style="margin: 0;">Email is Working!</h1>
                     </div>
                     <div style="padding: 30px; background: #f8f9fa;">
-                        <h2>Test Successful ✅</h2>
+                        <h2>Test Successful</h2>
                         <p>If you're reading this, your email configuration is working correctly!</p>
                         <p><strong>Configuration Details:</strong></p>
                         <ul>
@@ -3416,9 +3416,9 @@ app.post('/api/email/test', authenticateToken, async (req, res) => {
             `
         });
         
-        console.log('✅ Test email sent successfully');
-        console.log('📨 Message ID:', info.messageId);
-        console.log('📬 Response:', info.response);
+        console.log('Test email sent successfully');
+        console.log('Message ID:', info.messageId);
+        console.log('Response:', info.response);
         
         res.json({ 
             success: true, 
@@ -3431,9 +3431,8 @@ app.post('/api/email/test', authenticateToken, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('❌ Test email failed:', error);
+        console.error('Test email failed:', error);
         
-        // Provide helpful error messages
         let helpMessage = '';
         if (error.code === 'EAUTH') {
             helpMessage = 'Authentication failed. Please check your EMAIL_PASSWORD is a valid Google App Password.';
@@ -6286,39 +6285,114 @@ function authenticateClient(req, res, next) {
 
 // ==================== EMAIL HELPER ====================
 
-async function sendClientWelcomeEmail(email, name, temporaryPassword) {
-    // Configure your email service (example with Gmail)
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASSWORD
-        }
-    });
+// ==================== EMAIL HELPER (FIXED URL) ====================
 
+// ==================== EMAIL HELPER (NO EMOJIS) ====================
+
+async function sendClientWelcomeEmail(email, name, temporaryPassword) {
     const mailOptions = {
-        from: 'Diamondback Coding <noreply@diamondbackcoding.com>',
+        from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: 'Welcome to Diamondback Coding Client Portal',
         html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #22c55e;">Welcome to Your Client Portal!</h2>
-                <p>Hi ${name},</p>
-                <p>Your client portal account has been created. You can now track your projects, view invoices, and communicate with our team.</p>
-                
-                <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3>Login Credentials:</h3>
-                    <p><strong>Portal URL:</strong> https://diamondbackcoding.com/client-portal.html</p>
-                    <p><strong>Email:</strong> ${email}</p>
-                    <p><strong>Temporary Password:</strong> ${temporaryPassword}</p>
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; }
+                    .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 40px 30px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 28px; }
+                    .content { padding: 40px 30px; }
+                    .credentials-box { background: #f8f9fa; border-left: 4px solid #22c55e; padding: 20px; margin: 30px 0; border-radius: 8px; }
+                    .credentials-box h3 { margin-top: 0; color: #22c55e; }
+                    .credential-item { margin: 12px 0; }
+                    .credential-label { font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+                    .credential-value { font-size: 16px; color: #000; font-family: 'Courier New', monospace; background: white; padding: 8px 12px; border-radius: 4px; margin-top: 4px; border: 1px solid #e0e0e0; }
+                    .warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 16px; border-radius: 8px; margin: 20px 0; }
+                    .btn { display: inline-block; background: #22c55e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+                    .footer { background: #333; color: white; padding: 30px; text-align: center; font-size: 12px; }
+                    .footer a { color: #22c55e; text-decoration: none; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Welcome to Your Client Portal!</h1>
+                        <p style="margin: 10px 0 0 0; opacity: 0.9;">Diamondback Coding</p>
+                    </div>
+                    
+                    <div class="content">
+                        <h2 style="color: #333;">Hi ${name},</h2>
+                        
+                        <p style="font-size: 16px; line-height: 1.6; color: #555;">
+                            Your client portal account has been created! You can now track your projects, 
+                            view invoices, upload files, and communicate with our team.
+                        </p>
+                        
+                        <div class="credentials-box">
+                            <h3>Your Login Credentials</h3>
+                            
+                            <div class="credential-item">
+                                <div class="credential-label">Portal URL</div>
+                                <div class="credential-value">https://diamondbackcoding.com/client_portal.html</div>
+                            </div>
+                            
+                            <div class="credential-item">
+                                <div class="credential-label">Email Address</div>
+                                <div class="credential-value">${email}</div>
+                            </div>
+                            
+                            <div class="credential-item">
+                                <div class="credential-label">Temporary Password</div>
+                                <div class="credential-value">${temporaryPassword}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="warning">
+                            <strong>Important Security Notice:</strong><br>
+                            Please change your password immediately after logging in for the first time.
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <a href="https://diamondbackcoding.com/client_portal.html" class="btn">
+                                Access Your Portal
+                            </a>
+                        </div>
+                        
+                        <h3 style="color: #333; margin-top: 40px;">What You Can Do:</h3>
+                        <ul style="font-size: 15px; line-height: 1.8; color: #555;">
+                            <li><strong>Track Projects</strong> - View real-time progress on your projects</li>
+                            <li><strong>Approve Milestones</strong> - Review and approve completed work</li>
+                            <li><strong>View Invoices</strong> - Access and download all your invoices</li>
+                            <li><strong>Share Files</strong> - Upload and download project files securely</li>
+                            <li><strong>Get Support</strong> - Submit support tickets directly</li>
+                        </ul>
+                        
+                        <p style="font-size: 16px; color: #555; margin-top: 30px;">
+                            If you have any questions or need assistance, please don't hesitate to reach out.
+                        </p>
+                        
+                        <p style="font-size: 16px; color: #555;">
+                            <strong>Best regards,</strong><br>
+                            The Diamondback Coding Team
+                        </p>
+                    </div>
+                    
+                    <div class="footer">
+                        <p style="margin: 0 0 10px 0;"><strong>Diamondback Coding</strong></p>
+                        <p style="margin: 0 0 8px 0;">15709 Spillman Ranch Loop, Austin, TX 78738</p>
+                        <p style="margin: 0;">
+                            <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | 
+                            <a href="tel:+19402178680">(940) 217-8680</a>
+                        </p>
+                        <p style="margin: 20px 0 0 0; font-size: 11px; opacity: 0.7;">
+                            © ${new Date().getFullYear()} Diamondback Coding. All rights reserved.
+                        </p>
+                    </div>
                 </div>
-                
-                <p style="color: #ef4444; font-weight: bold;">Please change your password after logging in for the first time.</p>
-                
-                <p>If you have any questions, please don't hesitate to reach out.</p>
-                
-                <p>Best regards,<br>Diamondback Coding Team</p>
-            </div>
+            </body>
+            </html>
         `
     };
 

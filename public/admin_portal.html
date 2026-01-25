@@ -7986,9 +7986,9 @@ function renderProjects(content) {
                             </span>
                         </div>
                         <div style="margin-bottom: 16px;">
-                            ${timeline.packages.map(pkg => `
+                            ${(timeline.packages && Array.isArray(timeline.packages)) ? timeline.packages.map(pkg => `
                                 <span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">${servicePackages[pkg]?.name || pkg}</span>
-                            `).join('')}
+                            `).join('') : '<span style="color: var(--text-muted); font-size: 12px;">No packages selected</span>'}
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
                             <div style="font-size: 12px; color: var(--text-muted);">
@@ -10686,7 +10686,7 @@ async function openTicketDetail(ticketId) {
     
     try {
         // Load responses
-        const response = await fetch(`${API_BASE}/tickets/${ticketId}/responses`, {
+        const response = await fetch(`${API_BASE}/api/tickets/${ticketId}/responses`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
@@ -10776,7 +10776,7 @@ async function sendTicketResponse(ticketId) {
     }
     
     try {
-        const response = await fetch(`${API_BASE}/tickets/${ticketId}/responses`, {
+        const response = await fetch(`${API_BASE}/api/tickets/${ticketId}/responses`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -10800,7 +10800,7 @@ async function sendTicketResponse(ticketId) {
 
 async function updateTicketStatus(ticketId, status) {
     try {
-        const response = await fetch(`${API_BASE}/tickets/${ticketId}/status`, {
+        const response = await fetch(`${API_BASE}/api/tickets/${ticketId}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

@@ -9861,24 +9861,24 @@ function openTimelinePreviewModal(timeline) {
         </div>
     `;
 
-    footerEl.innerHTML = `
-        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
-        <button class="btn btn-secondary" onclick="emailTimelineToClient()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-            </svg>
-            Email to Client
-        </button>
-        <button class="btn btn-primary" onclick="exportTimelineAsPDF()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Export as PDF
-        </button>
-    `;
+footerEl.innerHTML = `
+    <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+    <button class="btn btn-secondary" onclick="emailTimelineToClient()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        Email to Client
+    </button>
+    <button class="btn btn-primary" onclick="exportTimelineAsPDF()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export as PDF
+    </button>
+`;
 
     // Store for export
     window.currentTimelinePreview = timeline;
@@ -10283,7 +10283,7 @@ function viewProjectTimeline(index) {
         return;
     }
     
-    // Store for later use (export, email)
+    // Store for export/email functions
     window.currentTimelinePreview = timeline;
     
     // Use the SAME preview modal as when creating

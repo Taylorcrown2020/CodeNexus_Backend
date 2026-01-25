@@ -7824,10 +7824,81 @@ function renderProjects(content) {
     `;
 }
 
-// Handle project search
 function handleProjectSearch(event) {
     const query = event.target.value.toLowerCase();
-    filterProjectTimelines(query);
+    const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
+    
+    if (!query) {
+        renderProjects(document.getElementById('contentArea'));
+        return;
+    }
+    
+    const filtered = savedTimelines.filter(t => 
+        t.clientName.toLowerCase().includes(query) ||
+        (t.clientCompany && t.clientCompany.toLowerCase().includes(query)) ||
+        (t.projectName && t.projectName.toLowerCase().includes(query))
+    );
+    
+    const grid = document.getElementById('projectTimelinesGrid');
+    
+    if (filtered.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1 / -1;">
+                <div class="empty-state">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <div class="empty-title">No Results Found</div>
+                    <div class="empty-description">Try adjusting your search terms</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = filtered.map((timeline, filteredIndex) => {
+        const originalIndex = savedTimelines.findIndex(t => t.createdAt === timeline.createdAt);
+        return `
+            <div class="card" style="cursor: pointer;" onclick="viewProjectTimeline(${originalIndex})">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                    <div>
+                        <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">${timeline.clientName}</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">${timeline.clientCompany || 'No company'}</div>
+                    </div>
+                    <span class="status-badge status-${timeline.status || 'pending'}">
+                        <span class="status-dot"></span>
+                        ${timeline.status || 'Draft'}
+                    </span>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    ${timeline.packages.map(pkg => `
+                        <span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">${servicePackages[pkg]?.name || pkg}</span>
+                    `).join('')}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+                    <div style="font-size: 12px; color: var(--text-muted);">
+                        Created: ${formatDate(timeline.createdAt)}
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="table-action-btn" onclick="event.stopPropagation(); exportProjectTimeline(${originalIndex})" title="Export">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                        </button>
+                        <button class="table-action-btn danger" onclick="event.stopPropagation(); deleteProjectTimeline(${originalIndex})" title="Delete">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Open Project Timeline Modal

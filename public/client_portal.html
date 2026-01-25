@@ -2436,20 +2436,29 @@ function navigateTo(section) {
         }
 
         // Support Tickets
-        async function loadTickets() {
-            // Mock data for now
-            state.tickets = [
-                {
-                    id: 1,
-                    subject: 'Login issue',
-                    message: 'Cannot access my account',
-                    priority: 'high',
-                    status: 'open',
-                    created_at: new Date()
-                }
-            ];
+async function loadTickets() {
+    try {
+        const response = await fetch(`${API_BASE}/client/tickets`, {
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            state.tickets = data.tickets || [];
+            renderTickets();
+        } else {
+            console.error('Failed to load tickets');
+            state.tickets = [];
             renderTickets();
         }
+    } catch (error) {
+        console.error('Load tickets error:', error);
+        state.tickets = [];
+        renderTickets();
+    }
+}
 
         function renderTickets() {
             const container = document.getElementById('ticketList');
@@ -2473,33 +2482,41 @@ function navigateTo(section) {
             `).join('');
         }
 
-        async function handleTicketSubmit(e) {
-            e.preventDefault();
+async function handleTicketSubmit(e) {
+    e.preventDefault();
 
-            const subject = document.getElementById('ticketSubject').value;
-            const message = document.getElementById('ticketMessage').value;
-            const priority = document.getElementById('ticketPriority').value;
-            const category = document.getElementById('ticketCategory').value;
+    const subject = document.getElementById('ticketSubject').value;
+    const message = document.getElementById('ticketMessage').value;
+    const priority = document.getElementById('ticketPriority').value;
 
-            try {
-                const response = await fetch(`${API_BASE}/client/support/ticket`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${state.token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ subject, message, priority, category })
-                });
+    try {
+        const response = await fetch(`${API_BASE}/client/tickets`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                subject, 
+                message, 
+                priority 
+            })
+        });
 
-                if (response.ok) {
-                    alert('Ticket submitted successfully!');
-                    document.getElementById('ticketForm').reset();
-                    loadTickets();
-                }
-            } catch (error) {
-                alert('Failed to submit ticket');
-            }
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Ticket submitted successfully!');
+            document.getElementById('ticketForm').reset();
+            await loadTickets(); // Reload tickets
+        } else {
+            alert(data.message || 'Failed to submit ticket');
         }
+    } catch (error) {
+        console.error('Submit ticket error:', error);
+        alert('Failed to submit ticket');
+    }
+}
 
         // Utility Functions
         function formatDate(dateString) {

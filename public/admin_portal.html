@@ -2399,6 +2399,12 @@ textarea::placeholder {
     color: var(--text-muted);
 }
 
+.ticket-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-default) !important;
+}
+
 /* ========================================
    RESPONSIVE
 ======================================== */
@@ -2826,24 +2832,6 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
         </div>
     </div>
 
-        <!-- ADD SUPPORT SECTION HERE -->
-    <div id="supportSection" class="content-section">
-        <div class="section-header">
-            <h1>Support Tickets</h1>
-            <div class="filter-controls">
-                <select id="ticketStatusFilter" onchange="filterTickets()">
-                    <option value="all">All Tickets</option>
-                    <option value="open">Open</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                </select>
-            </div>
-        </div>
-        
-        <div id="ticketsContainer"></div>
-    </div>
-
     // Add this field to the invoice details form:
 <div class="form-group full-width">
     <label class="form-label">Invoice Description (for payment page)</label>
@@ -2876,6 +2864,7 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
 // STATE & CONFIGURATION
 // ========================================
 const API_URL = window.location.origin;
+const API_BASE = API_URL; // Add this
 const FRONTEND_BASE_URL = 'https://diamondbackcoding.com';
 let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
 
@@ -3082,6 +3071,27 @@ function setupNavigation() {
     });
 }
 
+async function loadTickets() {
+    try {
+        const response = await fetch(`${API_URL}/api/tickets`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            state.tickets = data.tickets || [];
+        } else {
+            console.error('Failed to load tickets');
+            state.tickets = [];
+        }
+    } catch (error) {
+        console.error('Load tickets error:', error);
+        state.tickets = [];
+    }
+}
+
 function renderSection(section) {
     console.log('🔍 renderSection called with:', section);
     state.currentSection = section;
@@ -3226,10 +3236,11 @@ switch (section) {
         case 'projects':
             renderProjects(content); 
             break;
-        case 'support':
-            // Load tickets then render
-            loadTickets().then(() => renderTickets());
-            break;
+case 'support':
+    // Load tickets then render
+    renderloadTickets();
+    renderTickets();
+    break;
         case 'settings': 
             renderSettings(content); 
             break;
@@ -10312,28 +10323,9 @@ function exportTimelineAsPDF() {
     }, 300);
 }
 
-// Add these functions:
-async function loadTickets() {
-    try {
-        const response = await fetch(`${API_URL}/api/tickets`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            state.tickets = data.tickets || [];
-        }
-    } catch (error) {
-        console.error('Load tickets error:', error);
-        state.tickets = [];
-    }
-}
-
 function renderTickets() {
     const content = document.getElementById('contentArea');
-    const filter = document.getElementById('ticketStatusFilter')?.value || 'all';
+    const filter = state.currentFilter || 'all';
     
     const filteredTickets = filter === 'all' 
         ? (state.tickets || [])
@@ -10354,22 +10346,20 @@ function renderTickets() {
     };
 
     content.innerHTML = `
-        <div class="section-header">
-            <h1>Support Tickets</h1>
-            <div class="filter-controls">
-                <select id="ticketStatusFilter" onchange="filterTickets()">
-                    <option value="all">All Tickets</option>
-                    <option value="open">Open</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                </select>
+        <div class="controls-bar">
+            <h2 style="font-size: 18px; font-weight: 700; margin: 0;">Support Tickets</h2>
+            <div class="filter-group">
+                <button class="filter-btn ${filter === 'all' ? 'active' : ''}" onclick="filterTickets('all')">All</button>
+                <button class="filter-btn ${filter === 'open' ? 'active' : ''}" onclick="filterTickets('open')">Open</button>
+                <button class="filter-btn ${filter === 'in-progress' ? 'active' : ''}" onclick="filterTickets('in-progress')">In Progress</button>
+                <button class="filter-btn ${filter === 'resolved' ? 'active' : ''}" onclick="filterTickets('resolved')">Resolved</button>
+                <button class="filter-btn ${filter === 'closed' ? 'active' : ''}" onclick="filterTickets('closed')">Closed</button>
             </div>
         </div>
         
         <div class="tickets-grid" style="display: grid; gap: 16px; margin-top: 24px;">
             ${filteredTickets.length > 0 ? filteredTickets.map(ticket => `
-                <div class="ticket-card" onclick="openTicketDetail(${ticket.id})" style="cursor: pointer; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 20px;">
+                <div class="ticket-card" onclick="openTicketDetail(${ticket.id})" style="cursor: pointer; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 20px; background: var(--bg-primary); transition: all 0.2s ease;">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                         <div style="flex: 1;">
                             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
@@ -10382,17 +10372,17 @@ function renderTickets() {
                                 </span>
                             </div>
                             <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
-                                <strong>${ticket.client_name}</strong> (${ticket.client_email})
+                                <strong>${ticket.client_name || 'Unknown Client'}</strong> (${ticket.client_email || 'No email'})
                             </div>
                             <p style="margin: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.5;">
-                                ${ticket.message.substring(0, 150)}${ticket.message.length > 150 ? '...' : ''}
+                                ${ticket.message ? ticket.message.substring(0, 150) : 'No message'}${ticket.message && ticket.message.length > 150 ? '...' : ''}
                             </p>
                         </div>
                     </div>
                     
                     <div style="display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); padding-top: 12px; border-top: 1px solid var(--border-subtle);">
                         <span>Created: ${formatDate(ticket.created_at)}</span>
-                        <span>Responses: ${ticket.response_count}</span>
+                        <span>Responses: ${ticket.response_count || 0}</span>
                         ${ticket.last_response_at ? `<span>Last reply: ${formatDate(ticket.last_response_at)}</span>` : ''}
                     </div>
                 </div>
@@ -10406,7 +10396,8 @@ function renderTickets() {
     `;
 }
 
-function filterTickets() {
+function filterTickets(status) {
+    state.currentFilter = status;
     renderTickets();
 }
 
@@ -10584,65 +10575,59 @@ function renderDocuments(content) {
                 </button>
             </div>
             
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Total Documents</span>
-                        <div class="stat-icon blue">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="stat-value">${statsData.stats.total_documents || 0}</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Storage Used</span>
-                        <div class="stat-icon green">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="stat-value">${formatFileSize(statsData.stats.total_size || 0)}</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Contracts</span>
-                        <div class="stat-icon amber">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="stat-value">${statsData.stats.contracts || 0}</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Proposals</span>
-                        <div class="stat-icon purple">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="stat-value">${statsData.stats.proposals || 0}</div>
-                </div>
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Total Documents</span>
+            <div class="stat-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
             </div>
+        </div>
+        <div class="stat-value">${statsData.stats.total_documents || 0}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Storage Used</span>
+            <div class="stat-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-value">${formatFileSize(statsData.stats.total_size || 0)}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Contracts</span>
+            <div class="stat-icon amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-value">${statsData.stats.contracts || 0}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-label">Proposals</span>
+            <div class="stat-icon purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-value">${statsData.stats.proposals || 0}</div>
+    </div>
+</div>
             
             <!-- Documents Table -->
             <div class="table-container" style="margin-top: 24px;">

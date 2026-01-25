@@ -230,221 +230,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 // ========================================
 // DATABASE INITIALIZATION
 // ========================================
-async function initializeDatabase(db){
+async function initializeDatabase(){
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-
-        // Add these columns to leads table in initializeDatabase():
-await db.run(`
-    ALTER TABLE leads ADD COLUMN client_password TEXT
-`).catch(() => {});
-
-await db.run(`
-    ALTER TABLE leads ADD COLUMN client_account_created_at TEXT
-`).catch(() => {});
-
-await db.run(`
-    ALTER TABLE leads ADD COLUMN client_last_login TEXT
-`).catch(() => {});
-
-await db.run(`
-    ALTER TABLE leads ADD COLUMN password_reset_required INTEGER DEFAULT 0
-`).catch(() => {});
-
-// Add shared_by_admin column to client_uploads:
-await db.run(`
-    ALTER TABLE client_uploads ADD COLUMN shared_by_admin INTEGER DEFAULT 0
-`).catch(() => {});
-
-        // Client Projects table
-await db.run(`
-    CREATE TABLE IF NOT EXISTS client_projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        lead_id INTEGER NOT NULL,
-        project_name TEXT NOT NULL,
-        description TEXT,
-        status TEXT DEFAULT 'in_progress',
-        start_date TEXT,
-        end_date TEXT,
-        completion_percentage INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (lead_id) REFERENCES leads(id)
-    )
-`);
-
-// Project Milestones table
-await db.run(`
-    CREATE TABLE IF NOT EXISTS project_milestones (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT,
-        status TEXT DEFAULT 'pending',
-        due_date TEXT,
-        completed_at TEXT,
-        approved_at TEXT,
-        client_feedback TEXT,
-        order_index INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (project_id) REFERENCES client_projects(id)
-    )
-`);
-
-// Support Tickets table
-await db.run(`
-    CREATE TABLE IF NOT EXISTS support_tickets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        lead_id INTEGER NOT NULL,
-        subject TEXT NOT NULL,
-        message TEXT NOT NULL,
-        priority TEXT DEFAULT 'medium',
-        category TEXT DEFAULT 'general',
-        status TEXT DEFAULT 'open',
-        resolved_at TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (lead_id) REFERENCES leads(id)
-    )
-`);
-
-// Client Uploads table
-await db.run(`
-    CREATE TABLE IF NOT EXISTS client_uploads (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        lead_id INTEGER NOT NULL,
-        project_id INTEGER,
-        filename TEXT NOT NULL,
-        filepath TEXT NOT NULL,
-        file_size INTEGER,
-        mime_type TEXT,
-        description TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (lead_id) REFERENCES leads(id),
-        FOREIGN KEY (project_id) REFERENCES client_projects(id)
-    )
-`);
-
-// Add client_password column to leads table
-await db.run(`
-    ALTER TABLE leads ADD COLUMN client_password TEXT
-`).catch(() => {}); // Ignore if column already exists
-
-        await client.query(`
-    CREATE TABLE IF NOT EXISTS documents (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        filename VARCHAR(500) NOT NULL,
-        original_filename VARCHAR(500) NOT NULL,
-        file_path TEXT NOT NULL,
-        file_size BIGINT,
-        mime_type VARCHAR(100),
-        document_type VARCHAR(100),
-        description TEXT,
-        uploaded_by INTEGER REFERENCES admin_users(id),
-        is_shared BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS document_versions (
-        id SERIAL PRIMARY KEY,
-        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
-        version_number INTEGER NOT NULL,
-        filename VARCHAR(500) NOT NULL,
-        file_path TEXT NOT NULL,
-        file_size BIGINT,
-        uploaded_by INTEGER REFERENCES admin_users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS document_shares (
-        id SERIAL PRIMARY KEY,
-        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
-        shared_with_email VARCHAR(255),
-        share_token VARCHAR(255) UNIQUE,
-        expires_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_documents_lead 
-    ON documents(lead_id, created_at DESC);
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_document_shares_token 
-    ON document_shares(share_token);
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS pipeline_stages (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(200) NOT NULL,
-        description TEXT,
-        color VARCHAR(50),
-        position INTEGER NOT NULL,
-        probability INTEGER DEFAULT 50,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS pipeline_deals (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        stage_id INTEGER REFERENCES pipeline_stages(id),
-        title VARCHAR(500) NOT NULL,
-        value DECIMAL(10, 2),
-        expected_close_date DATE,
-        probability INTEGER DEFAULT 50,
-        position INTEGER DEFAULT 0,
-        notes TEXT,
-        assigned_to INTEGER REFERENCES admin_users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE TABLE IF NOT EXISTS deal_activities (
-        id SERIAL PRIMARY KEY,
-        deal_id INTEGER REFERENCES pipeline_deals(id) ON DELETE CASCADE,
-        activity_type VARCHAR(100) NOT NULL,
-        description TEXT,
-        metadata JSONB,
-        created_by INTEGER REFERENCES admin_users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_pipeline_deals_stage 
-    ON pipeline_deals(stage_id, position);
-`);
-
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_deal_activities_deal 
-    ON deal_activities(deal_id, created_at DESC);
-`);
-
-// Insert default pipeline stages
-await client.query(`
-    INSERT INTO pipeline_stages (name, description, color, position, probability)
-    VALUES 
-        ('New Lead', 'Initial contact', '#3b82f6', 1, 10),
-        ('Qualified', 'Lead has been qualified', '#10b981', 2, 25),
-        ('Proposal Sent', 'Proposal has been sent to client', '#f59e0b', 3, 50),
-        ('Negotiation', 'Negotiating terms', '#8b5cf6', 4, 75),
-        ('Closed Won', 'Deal won', '#22c55e', 5, 100),
-        ('Closed Lost', 'Deal lost', '#ef4444', 6, 0)
-    ON CONFLICT DO NOTHING;
-`);
 
         // Create admin_users table
         await client.query(`
@@ -516,17 +305,17 @@ await client.query(`
                     ALTER TABLE leads ADD COLUMN project_type VARCHAR(255);
                 END IF;
 
--- Add lifetime_value column if it doesn't exist
-IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-              WHERE table_name='leads' AND column_name='lifetime_value') THEN
-    ALTER TABLE leads ADD COLUMN lifetime_value DECIMAL(10, 2) DEFAULT 0;
-END IF;
+                -- Add lifetime_value column if it doesn't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='lifetime_value') THEN
+                    ALTER TABLE leads ADD COLUMN lifetime_value DECIMAL(10, 2) DEFAULT 0;
+                END IF;
 
--- Add last_payment_date column if it doesn't exist
-IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-              WHERE table_name='leads' AND column_name='last_payment_date') THEN
-    ALTER TABLE leads ADD COLUMN last_payment_date TIMESTAMP;
-END IF;
+                -- Add last_payment_date column if it doesn't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='last_payment_date') THEN
+                    ALTER TABLE leads ADD COLUMN last_payment_date TIMESTAMP;
+                END IF;
                 
                 -- Add message column if it doesn't exist
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
@@ -552,37 +341,57 @@ END IF;
                     ALTER TABLE leads ADD COLUMN assigned_to INTEGER REFERENCES employees(id);
                 END IF;
 
--- Add address columns if they don't exist
-IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-              WHERE table_name='leads' AND column_name='address_line1') THEN
-    ALTER TABLE leads ADD COLUMN address_line1 VARCHAR(255);
-END IF;
+                -- Add address columns if they don't exist
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='address_line1') THEN
+                    ALTER TABLE leads ADD COLUMN address_line1 VARCHAR(255);
+                END IF;
 
-IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-              WHERE table_name='leads' AND column_name='address_line2') THEN
-    ALTER TABLE leads ADD COLUMN address_line2 VARCHAR(255);
-END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='address_line2') THEN
+                    ALTER TABLE leads ADD COLUMN address_line2 VARCHAR(255);
+                END IF;
 
-IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-              WHERE table_name='leads' AND column_name='city') THEN
-    ALTER TABLE leads ADD COLUMN city VARCHAR(100);
-END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='city') THEN
+                    ALTER TABLE leads ADD COLUMN city VARCHAR(100);
+                END IF;
 
-IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-              WHERE table_name='leads' AND column_name='state') THEN
-    ALTER TABLE leads ADD COLUMN state VARCHAR(100);
-END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='state') THEN
+                    ALTER TABLE leads ADD COLUMN state VARCHAR(100);
+                END IF;
 
-IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-              WHERE table_name='leads' AND column_name='zip_code') THEN
-    ALTER TABLE leads ADD COLUMN zip_code VARCHAR(20);
-END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='zip_code') THEN
+                    ALTER TABLE leads ADD COLUMN zip_code VARCHAR(20);
+                END IF;
 
-IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-              WHERE table_name='leads' AND column_name='country') THEN
-    ALTER TABLE leads ADD COLUMN country VARCHAR(100) DEFAULT 'USA';
-END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='country') THEN
+                    ALTER TABLE leads ADD COLUMN country VARCHAR(100) DEFAULT 'USA';
+                END IF;
 
+                -- Add client portal columns
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='client_password') THEN
+                    ALTER TABLE leads ADD COLUMN client_password TEXT;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='client_account_created_at') THEN
+                    ALTER TABLE leads ADD COLUMN client_account_created_at TIMESTAMP;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='client_last_login') THEN
+                    ALTER TABLE leads ADD COLUMN client_last_login TIMESTAMP;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='password_reset_required') THEN
+                    ALTER TABLE leads ADD COLUMN password_reset_required BOOLEAN DEFAULT FALSE;
+                END IF;
             END $$;
         `);
 
@@ -648,107 +457,248 @@ END IF;
         `);
 
         // Lead source tracking
-await client.query(`
-    ALTER TABLE leads ADD COLUMN IF NOT EXISTS source VARCHAR(100);
-    ALTER TABLE leads ADD COLUMN IF NOT EXISTS source_details TEXT;
-    ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_contact_date TIMESTAMP;
-    ALTER TABLE leads ADD COLUMN IF NOT EXISTS win_loss_reason TEXT;
-    ALTER TABLE leads ADD COLUMN IF NOT EXISTS deal_value DECIMAL(10, 2);
-    ALTER TABLE leads ADD COLUMN IF NOT EXISTS probability INTEGER DEFAULT 50;
-    ALTER TABLE leads ADD COLUMN IF NOT EXISTS expected_close_date DATE;
-`);
+        await client.query(`
+            DO $$ 
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='source') THEN
+                    ALTER TABLE leads ADD COLUMN source VARCHAR(100);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='source_details') THEN
+                    ALTER TABLE leads ADD COLUMN source_details TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='last_contact_date') THEN
+                    ALTER TABLE leads ADD COLUMN last_contact_date TIMESTAMP;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='win_loss_reason') THEN
+                    ALTER TABLE leads ADD COLUMN win_loss_reason TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='deal_value') THEN
+                    ALTER TABLE leads ADD COLUMN deal_value DECIMAL(10, 2);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='probability') THEN
+                    ALTER TABLE leads ADD COLUMN probability INTEGER DEFAULT 50;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='expected_close_date') THEN
+                    ALTER TABLE leads ADD COLUMN expected_close_date DATE;
+                END IF;
+            END $$;
+        `);
 
-// Activity log table
-await client.query(`
-    CREATE TABLE IF NOT EXISTS activity_log (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES admin_users(id),
-        activity_type VARCHAR(100) NOT NULL,
-        description TEXT,
-        metadata JSONB,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
+        // Activity log table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                user_id INTEGER REFERENCES admin_users(id),
+                activity_type VARCHAR(100) NOT NULL,
+                description TEXT,
+                metadata JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-// Email tracking
-await client.query(`
-    CREATE TABLE IF NOT EXISTS email_log (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        template_id INTEGER,
-        subject VARCHAR(500),
-        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        opened_at TIMESTAMP,
-        clicked_at TIMESTAMP,
-        status VARCHAR(50) DEFAULT 'sent'
-    )
-`);
+        // Email tracking
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS email_log (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                template_id INTEGER,
+                subject VARCHAR(500),
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                opened_at TIMESTAMP,
+                clicked_at TIMESTAMP,
+                status VARCHAR(50) DEFAULT 'sent'
+            )
+        `);
 
-await client.query(`
-    CREATE TABLE IF NOT EXISTS scoring_rules (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(200) NOT NULL,
-        description TEXT,
-        rule_type VARCHAR(50) NOT NULL,
-        field_name VARCHAR(100),
-        operator VARCHAR(20),
-        value TEXT,
-        points INTEGER NOT NULL,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS scoring_rules (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(200) NOT NULL,
+                description TEXT,
+                rule_type VARCHAR(50) NOT NULL,
+                field_name VARCHAR(100),
+                operator VARCHAR(20),
+                value TEXT,
+                points INTEGER NOT NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
 
-await client.query(`
-    CREATE TABLE IF NOT EXISTS lead_scores (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE UNIQUE,
-        total_score INTEGER DEFAULT 0,
-        engagement_score INTEGER DEFAULT 0,
-        demographic_score INTEGER DEFAULT 0,
-        behavioral_score INTEGER DEFAULT 0,
-        grade VARCHAR(1),
-        last_calculated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT unique_lead_score UNIQUE (lead_id)
-    );
-`);
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS lead_scores (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE UNIQUE,
+                total_score INTEGER DEFAULT 0,
+                engagement_score INTEGER DEFAULT 0,
+                demographic_score INTEGER DEFAULT 0,
+                behavioral_score INTEGER DEFAULT 0,
+                grade VARCHAR(1),
+                last_calculated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT unique_lead_score UNIQUE (lead_id)
+            );
+        `);
 
-await client.query(`
-    CREATE TABLE IF NOT EXISTS score_history (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        rule_id INTEGER REFERENCES scoring_rules(id),
-        points_added INTEGER,
-        reason TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-`);
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS score_history (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                rule_id INTEGER REFERENCES scoring_rules(id),
+                points_added INTEGER,
+                reason TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
 
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_lead_scores_total 
-    ON lead_scores(total_score DESC);
-`);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_lead_scores_total 
+            ON lead_scores(total_score DESC);
+        `);
 
-await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_score_history_lead 
-    ON score_history(lead_id, created_at DESC);
-`);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_score_history_lead 
+            ON score_history(lead_id, created_at DESC);
+        `);
 
-// Insert default scoring rules
-await client.query(`
-    INSERT INTO scoring_rules (name, description, rule_type, field_name, operator, value, points)
-    VALUES 
-        ('Email Opened', 'Lead opened an email', 'behavioral', 'email_opened', 'equals', 'true', 5),
-        ('Email Clicked', 'Lead clicked link in email', 'behavioral', 'email_clicked', 'equals', 'true', 10),
-        ('Form Submitted', 'Lead submitted contact form', 'behavioral', 'form_submitted', 'equals', 'true', 15),
-        ('High Lifetime Value', 'Potential lifetime value > $10,000', 'demographic', 'lifetime_value', 'greater_than', '10000', 20),
-        ('Has Phone Number', 'Lead provided phone number', 'demographic', 'phone', 'is_not_null', '', 5),
-        ('Company Size Large', 'Company has 100+ employees', 'demographic', 'company_size', 'greater_than', '100', 15),
-        ('Multiple Page Views', 'Viewed 5+ pages', 'behavioral', 'page_views', 'greater_than', '5', 10),
-        ('Repeat Visitor', 'Visited site 3+ times', 'behavioral', 'visit_count', 'greater_than', '3', 8)
-    ON CONFLICT DO NOTHING;
-`);
+        // Insert default scoring rules
+        await client.query(`
+            INSERT INTO scoring_rules (name, description, rule_type, field_name, operator, value, points)
+            VALUES 
+                ('Email Opened', 'Lead opened an email', 'behavioral', 'email_opened', 'equals', 'true', 5),
+                ('Email Clicked', 'Lead clicked link in email', 'behavioral', 'email_clicked', 'equals', 'true', 10),
+                ('Form Submitted', 'Lead submitted contact form', 'behavioral', 'form_submitted', 'equals', 'true', 15),
+                ('High Lifetime Value', 'Potential lifetime value > $10,000', 'demographic', 'lifetime_value', 'greater_than', '10000', 20),
+                ('Has Phone Number', 'Lead provided phone number', 'demographic', 'phone', 'is_not_null', '', 5),
+                ('Company Size Large', 'Company has 100+ employees', 'demographic', 'company_size', 'greater_than', '100', 15),
+                ('Multiple Page Views', 'Viewed 5+ pages', 'behavioral', 'page_views', 'greater_than', '5', 10),
+                ('Repeat Visitor', 'Visited site 3+ times', 'behavioral', 'visit_count', 'greater_than', '3', 8)
+            ON CONFLICT DO NOTHING;
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS documents (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                filename VARCHAR(500) NOT NULL,
+                original_filename VARCHAR(500) NOT NULL,
+                file_path TEXT NOT NULL,
+                file_size BIGINT,
+                mime_type VARCHAR(100),
+                document_type VARCHAR(100),
+                description TEXT,
+                uploaded_by INTEGER REFERENCES admin_users(id),
+                is_shared BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS document_versions (
+                id SERIAL PRIMARY KEY,
+                document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+                version_number INTEGER NOT NULL,
+                filename VARCHAR(500) NOT NULL,
+                file_path TEXT NOT NULL,
+                file_size BIGINT,
+                uploaded_by INTEGER REFERENCES admin_users(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS document_shares (
+                id SERIAL PRIMARY KEY,
+                document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+                shared_with_email VARCHAR(255),
+                share_token VARCHAR(255) UNIQUE,
+                expires_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_documents_lead 
+            ON documents(lead_id, created_at DESC);
+        `);
+
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_document_shares_token 
+            ON document_shares(share_token);
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS pipeline_stages (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(200) NOT NULL,
+                description TEXT,
+                color VARCHAR(50),
+                position INTEGER NOT NULL,
+                probability INTEGER DEFAULT 50,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS pipeline_deals (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                stage_id INTEGER REFERENCES pipeline_stages(id),
+                title VARCHAR(500) NOT NULL,
+                value DECIMAL(10, 2),
+                expected_close_date DATE,
+                probability INTEGER DEFAULT 50,
+                position INTEGER DEFAULT 0,
+                notes TEXT,
+                assigned_to INTEGER REFERENCES admin_users(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS deal_activities (
+                id SERIAL PRIMARY KEY,
+                deal_id INTEGER REFERENCES pipeline_deals(id) ON DELETE CASCADE,
+                activity_type VARCHAR(100) NOT NULL,
+                description TEXT,
+                metadata JSONB,
+                created_by INTEGER REFERENCES admin_users(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_pipeline_deals_stage 
+            ON pipeline_deals(stage_id, position);
+        `);
+
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_deal_activities_deal 
+            ON deal_activities(deal_id, created_at DESC);
+        `);
+
+        // Insert default pipeline stages
+        await client.query(`
+            INSERT INTO pipeline_stages (name, description, color, position, probability)
+            VALUES 
+                ('New Lead', 'Initial contact', '#3b82f6', 1, 10),
+                ('Qualified', 'Lead has been qualified', '#10b981', 2, 25),
+                ('Proposal Sent', 'Proposal has been sent to client', '#f59e0b', 3, 50),
+                ('Negotiation', 'Negotiating terms', '#8b5cf6', 4, 75),
+                ('Closed Won', 'Deal won', '#22c55e', 5, 100),
+                ('Closed Lost', 'Deal lost', '#ef4444', 6, 0)
+            ON CONFLICT DO NOTHING;
+        `);
 
         await client.query('COMMIT');
         console.log('✅ Database tables initialized');

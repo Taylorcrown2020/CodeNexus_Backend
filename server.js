@@ -8062,6 +8062,349 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
 }
 
 // ========================================
+// ADD THIS TEST ENDPOINT TO YOUR server.js
+// Place it near your other follow-up endpoints (around line 2900)
+// ========================================
+
+// TEST ENDPOINT - Check if follow-up system is working
+app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
+    try {
+        console.log('[TEST] Follow-up system test initiated');
+        
+        // Test 1: Database connection
+        const dbTest = await pool.query('SELECT NOW() as current_time');
+        console.log('[TEST] ✅ Database connected:', dbTest.rows[0].current_time);
+        
+        // Test 2: Count leads in system
+        const leadCount = await pool.query(`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE is_customer = FALSE) as leads,
+                COUNT(*) FILTER (WHERE is_customer = TRUE) as customers
+            FROM leads
+        `);
+        console.log('[TEST] ✅ Lead counts:', leadCount.rows[0]);
+        
+        // Test 3: Check leads with follow-up data
+        const followUpData = await pool.query(`
+            SELECT 
+                id,
+                name,
+                email,
+                status,
+                last_contact_date,
+                CURRENT_DATE - last_contact_date as days_since_contact,
+                CASE 
+                    WHEN last_contact_date IS NULL THEN 'Never contacted'
+                    WHEN (CURRENT_DATE - last_contact_date) >= 15 THEN 'Critical (15+ days)'
+                    WHEN (CURRENT_DATE - last_contact_date) >= 7 THEN 'Overdue (7-14 days)'
+                    WHEN (CURRENT_DATE - last_contact_date) >= 3 THEN 'Due soon (3-6 days)'
+                    ELSE 'Recently contacted'
+                END as follow_up_status
+            FROM leads
+            WHERE status IN ('new', 'contacted', 'qualified', 'pending')
+            AND is_customer = FALSE
+            ORDER BY last_contact_date ASC NULLS FIRST
+            LIMIT 10
+        `);
+        
+        console.log('[TEST] ✅ Sample follow-up data retrieved');
+        
+        // Test 4: Stats query
+        const stats = await pool.query(`
+            SELECT 
+                COUNT(*) FILTER (
+                    WHERE last_contact_date IS NULL 
+                    OR last_contact_date <= CURRENT_DATE - INTERVAL '3 days'
+                ) as pending_followups,
+                COUNT(*) FILTER (
+                    WHERE last_contact_date IS NULL
+                ) as never_contacted,
+                COUNT(*) FILTER (
+                    WHERE last_contact_date <= CURRENT_DATE - INTERVAL '7 days'
+                    AND last_contact_date IS NOT NULL
+                ) as overdue_followups,
+                COUNT(*) FILTER (
+                    WHERE last_contact_date >= CURRENT_DATE - INTERVAL '3 days'
+                ) as recently_contacted
+            FROM leads
+            WHERE status IN ('new', 'contacted', 'qualified', 'pending')
+            AND is_customer = FALSE
+        `);
+        
+        console.log('[TEST] ✅ Stats calculated:', stats.rows[0]);
+        
+        res.json({
+            success: true,
+            message: 'Follow-up system test passed',
+            tests: {
+                database: '✅ Connected',
+                leadCounts: leadCount.rows[0],
+                stats: stats.rows[0],
+                sampleLeads: followUpData.rows
+            }
+        });
+        
+    } catch (error) {
+        console.error('[TEST] ❌ Follow-up test failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Follow-up test failed',
+            error: error.message,
+            stack: error.stack
+        });
+    }
+});
+
+// ========================================
+// MISSING ENDPOINT: Send Follow-Up Email
+// ========================================
+
+// Send follow-up email to a lead
+app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.leadId;
+        const { subject, message, template } = req.body;
+        
+        console.log(`[FOLLOW-UP] Sending email to lead ${leadId}`);
+        
+        // Get lead info
+        const leadResult = await pool.query(
+            'SELECT * FROM leads WHERE id = $1',
+            [leadId]
+        );
+        
+        if (leadResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Lead not found'
+            });
+        }
+        
+        const lead = leadResult.rows[0];
+        
+        if (!lead.email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Lead has no email address'
+            });
+        }
+        
+        // Determine email content
+        let emailSubject = subject;
+        let emailBody = message;
+        
+        // Use template if provided
+        if (template === 'initial') {
+            emailSubject = `Following up on your inquiry - ${lead.name}`;
+            emailBody = `
+                Hi ${lead.name},
+                
+                I wanted to follow up on your recent inquiry about ${lead.project_type || 'our services'}.
+                
+                We'd love to learn more about your project and discuss how we can help.
+                
+                Would you be available for a brief call this week?
+                
+                Best regards,
+                Diamondback Coding Team
+            `;
+        } else if (template === 'reminder') {
+            emailSubject = `Quick check-in - ${lead.name}`;
+            emailBody = `
+                Hi ${lead.name},
+                
+                Just checking in to see if you had any questions about ${lead.project_type || 'your project'}.
+                
+                We're here to help whenever you're ready.
+                
+                Best regards,
+                Diamondback Coding Team
+            `;
+        }
+        
+        // Send email using your existing transporter
+        const mailOptions = {
+            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+            to: lead.email,
+            subject: emailSubject,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background: #22c55e; color: white; padding: 30px; text-align: center; margin-bottom: 30px; }
+                        .content { padding: 20px; background: white; }
+                        .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1 style="margin: 0; font-size: 24px;">Diamondback Coding</h1>
+                        </div>
+                        <div class="content">
+                            ${emailBody.replace(/\n/g, '<br>')}
+                        </div>
+                        <div class="footer">
+                            <p><strong>Diamondback Coding</strong><br>
+                            15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                            <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `
+        };
+        
+        await transporter.sendMail(mailOptions);
+        
+        // Update last_contact_date
+        await pool.query(
+            `UPDATE leads 
+             SET last_contact_date = CURRENT_DATE,
+                 status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
+                 updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $1`,
+            [leadId]
+        );
+        
+        // Add note to lead
+        let notes = [];
+        try {
+            if (lead.notes) {
+                notes = JSON.parse(lead.notes);
+            }
+        } catch (e) {
+            notes = [];
+        }
+        
+        notes.push({
+            text: `Follow-up email sent: "${emailSubject}"`,
+            author: req.user.username || 'Admin',
+            date: new Date().toISOString()
+        });
+        
+        await pool.query(
+            'UPDATE leads SET notes = $1 WHERE id = $2',
+            [JSON.stringify(notes), leadId]
+        );
+        
+        console.log(`[FOLLOW-UP] ✅ Email sent to ${lead.email}`);
+        
+        res.json({
+            success: true,
+            message: 'Follow-up email sent successfully'
+        });
+        
+    } catch (error) {
+        console.error('[FOLLOW-UP] Email send error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send email',
+            error: error.message
+        });
+    }
+});
+
+// ========================================
+// BULK FOLLOW-UP EMAIL
+// ========================================
+
+// Send follow-up emails to multiple leads
+app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
+    try {
+        const { leadIds, subject, message, template } = req.body;
+        
+        if (!leadIds || leadIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No leads selected'
+            });
+        }
+        
+        console.log(`[BULK FOLLOW-UP] Sending to ${leadIds.length} leads`);
+        
+        let successCount = 0;
+        let failCount = 0;
+        const errors = [];
+        
+        for (const leadId of leadIds) {
+            try {
+                // Call the single send endpoint logic
+                const leadResult = await pool.query(
+                    'SELECT * FROM leads WHERE id = $1',
+                    [leadId]
+                );
+                
+                if (leadResult.rows.length === 0) {
+                    failCount++;
+                    errors.push({ leadId, error: 'Lead not found' });
+                    continue;
+                }
+                
+                const lead = leadResult.rows[0];
+                
+                if (!lead.email) {
+                    failCount++;
+                    errors.push({ leadId, error: 'No email address' });
+                    continue;
+                }
+                
+                // Send email (simplified - use template logic from above)
+                let emailSubject = subject || `Following up - ${lead.name}`;
+                let emailBody = message || `Hi ${lead.name}, just checking in...`;
+                
+                const mailOptions = {
+                    from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                    to: lead.email,
+                    subject: emailSubject,
+                    html: `<p>${emailBody.replace(/\n/g, '<br>')}</p>`
+                };
+                
+                await transporter.sendMail(mailOptions);
+                
+                // Update lead
+                await pool.query(
+                    `UPDATE leads 
+                     SET last_contact_date = CURRENT_DATE,
+                         updated_at = CURRENT_TIMESTAMP 
+                     WHERE id = $1`,
+                    [leadId]
+                );
+                
+                successCount++;
+                
+            } catch (error) {
+                console.error(`[BULK] Error sending to lead ${leadId}:`, error);
+                failCount++;
+                errors.push({ leadId, error: error.message });
+            }
+        }
+        
+        console.log(`[BULK FOLLOW-UP] ✅ Sent: ${successCount}, ❌ Failed: ${failCount}`);
+        
+        res.json({
+            success: true,
+            message: `Sent ${successCount} emails, ${failCount} failed`,
+            successCount,
+            failCount,
+            errors: errors.length > 0 ? errors : undefined
+        });
+        
+    } catch (error) {
+        console.error('[BULK FOLLOW-UP] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Bulk send failed',
+            error: error.message
+        });
+    }
+});
+
+// ========================================
 // HEALTH CHECK
 // ========================================
 app.get('/api/health', (req, res) => {

@@ -12982,33 +12982,15 @@ function renderLeadScoring(content) {
 async function renderFollowUps(content) {
     console.log('[FOLLOW-UPS] Starting render...');
     
-    if (!content) {
-        console.error('[FOLLOW-UPS] No content element provided!');
-        return;
-    }
-    
     try {
-        // Show loading state
-           content.innerHTML = `
-        <div style="padding: 40px; text-align: center;">
-            <div class="spinner"></div>
-            <p style="margin-top: 20px; color: var(--text-muted);">Loading follow-ups...</p>
-        </div>
-    `;
+        content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
         
-        // Load stats and categories
-        const [statsResponse, categorizedResponse] = await Promise.all([
+        const [statsResponse, categoriesResponse] = await Promise.all([
             fetch(`${API_URL}/api/follow-ups/stats`, {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Authorization': `Bearer ${state.authToken}` }
             }),
-fetch(`${API_URL}/api/follow-ups/categorized`, {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Content-Type': 'application/json'
-                }
+            fetch(`${API_URL}/api/follow-ups/categorized`, {
+                headers: { 'Authorization': `Bearer ${state.authToken}` }
             })
         ]);
         
@@ -13019,10 +13001,13 @@ fetch(`${API_URL}/api/follow-ups/categorized`, {
         const statsData = await statsResponse.json();
         const categoriesData = await categoriesResponse.json();
         
-        const stats = statsData.stats || {};
-        const categories = categoriesData.categories || [];
+        console.log('[FOLLOW-UPS] Raw data:', { statsData, categoriesData });
         
-        console.log('[FOLLOW-UPS] Loaded:', { stats, categories });
+        // Handle different response formats
+        const stats = statsData.stats || statsData || {};
+        const categories = categoriesData.categories || categoriesData || [];
+        
+        console.log('[FOLLOW-UPS] Processed:', { stats, categories });
         
         const categoryLabels = {
             'never_contacted': 'Never Contacted',
@@ -13032,17 +13017,14 @@ fetch(`${API_URL}/api/follow-ups/categorized`, {
             '14_day': '14+ Day Follow-Up'
         };
         
-        // Render the page
+        // Calculate total pending from categories
+        const totalPending = categories.reduce((sum, cat) => sum + (cat.count || 0), 0);
+        const neverContacted = categories.find(c => c.follow_up_category === 'never_contacted')?.count || 0;
+        
+        // Render page WITHOUT duplicate header
         content.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2>Follow-Up Queue</h2>
-                    <p class="page-description"></p>
-                </div>
-            </div>
-            
             <!-- Stats Cards -->
-            <div class="stats-grid">
+            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Total Pending</span>
@@ -13053,7 +13035,7 @@ fetch(`${API_URL}/api/follow-ups/categorized`, {
                             </svg>
                         </div>
                     </div>
-                    <div class="stat-value">${stats.total_pending || 0}</div>
+                    <div class="stat-value">${totalPending}</div>
                 </div>
                 
                 <div class="stat-card">
@@ -13067,7 +13049,7 @@ fetch(`${API_URL}/api/follow-ups/categorized`, {
                             </svg>
                         </div>
                     </div>
-                    <div class="stat-value">${stats.never_contacted || 0}</div>
+                    <div class="stat-value">${neverContacted}</div>
                 </div>
             </div>
             
@@ -13144,12 +13126,12 @@ fetch(`${API_URL}/api/follow-ups/categorized`, {
                 </div>
             `).join('') : `
                 <div style="text-align: center; padding: 60px; color: var(--text-muted);">
-                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px;">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                         <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
-                    <div class="empty-title">All Caught Up!</div>
-                    <div class="empty-description">No follow-ups needed right now</div>
+                    <div class="empty-title" style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">All Caught Up!</div>
+                    <div class="empty-description" style="color: var(--text-muted);">No follow-ups needed right now</div>
                 </div>
             `}
         `;

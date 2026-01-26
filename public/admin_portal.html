@@ -3894,7 +3894,18 @@ async function loadTickets() {
     }
 }
 
-async function renderSection(section) {  // ✅ Now it's async
+// Example: Send individual email (adapt to your existing single send logic)
+async function sendIndividualEmail(leadId) {
+    // Prompt for subject/message, then send via /api/follow-ups/send/:id
+    // After success, call loadCategorizedFollowUps() to refresh
+    showToast('Email sent! Refreshing...', 'success');
+    await loadCategorizedFollowUps();
+}
+
+async function renderSection(section) {
+    if (section === 'followups') {
+        loadCategorizedFollowUps();
+    }  // ✅ Now it's async
     console.log('🔍 renderSection called with:', section);
     state.currentSection = section;
     
@@ -14208,23 +14219,93 @@ async function deleteMilestone(projectId, milestoneId, projectName, leadId) {
 
 // ==================== FOLLOW-UP SYSTEM FUNCTIONS ====================
 
-// Get categorized follow-ups (grouped by days)
+// Load and render categorized follow-ups
 async function loadCategorizedFollowUps() {
     try {
-        const response = await fetch(`${API_URL}/api/follow-ups/categorized`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
+        const response = await fetch(`${API_BASE}/api/follow-ups/categorized`, {  // Use your API_BASE variable
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`  // Assuming you have getAuthToken()
+            }
         });
         
-        const data = await response.json();
-        
-        if (data.success) {
-            return data.categories; // Returns grouped data
+        if (!response.ok) {
+            throw new Error('Failed to fetch categorized follow-ups');
         }
-        return [];
+        
+        const data = await response.json();
+        if (data.success) {
+            renderFollowUps(data.categories);
+        } else {
+            showToast('Error loading follow-ups', 'error');
+        }
     } catch (error) {
-        console.error('[FOLLOW-UPS] Load categorized error:', error);
-        return [];
+        console.error('[FOLLOW-UPS] Load error:', error);
+        showToast('Failed to load follow-ups: ' + error.message, 'error');
     }
+}
+
+// Render the follow-ups section
+function renderFollowUps(categories) {
+    const content = document.getElementById('main-content');  // Assuming your main content div has this ID
+    if (!content) return;
+    
+    let html = `
+        <h2>Follow-Up Queue</h2>
+        <p>Categorized by follow-up schedule</p>
+    `;
+    
+    if (categories.length === 0) {
+        html += `
+            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; color: var(--accent-amber);">
+                    <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" fill="none"/>
+                </svg>
+                <h3>All Caught Up!</h3>
+                <p>No follow-ups needed right now</p>
+            </div>
+        `;
+    } else {
+        categories.forEach(category => {
+            const categoryTitle = {
+                'never_contacted': 'Never Contacted',
+                '1_day': '1+ Day Ago',
+                '3_day': '3+ Days Ago',
+                '7_day': '7+ Days Ago',
+                '14_day': '14+ Days Ago'
+            }[category.follow_up_category] || category.follow_up_category;
+            
+            html += `
+                <div class="category-section" style="margin-bottom: 32px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="font-size: 16px; font-weight: 600;">${categoryTitle}</h3>
+                        <span style="background: var(--accent-amber-dim); padding: 4px 12px; border-radius: 20px; font-size: 13px;">${category.count}</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="sendBulkEmailByCategory('${category.follow_up_category}')">Send Bulk Email to Category</button>
+                    <div class="leads-list" style="margin-top: 16px;">
+                        ${category.leads.map(lead => `
+                            <div class="lead-card" style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-bottom: 12px; border: 1px solid var(--border-subtle);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 600;">${lead.name} (${lead.email})</span>
+                                    <span style="color: var(--text-muted); font-size: 12px;">${lead.days_since_contact} days ago</span>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-secondary btn-sm" onclick="sendIndividualEmail('${lead.id}')">Send Email</button>
+                                </div>
+                                <div class="notes-section" style="margin-top: 12px;">
+                                    <button onclick="toggleNotes(this)" class="btn btn-secondary btn-sm">View Notes</button>
+                                    <div class="notes-content" style="display: none; margin-top: 12px;">
+                                        ${renderLeadNotes(lead.notes)}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    content.innerHTML = html;  // Or append to a specific follow-up div if you have one
 }
 
 // Send email to specific follow-up category

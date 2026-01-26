@@ -5748,7 +5748,7 @@ app.post('/api/automation/generate-followup-reminders', authenticateToken, async
 // Place them with your other email routes
 // ========================================
 
-// Get follow-ups grouped by category
+// Get follow-ups grouped by category with leads and notes
 app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
     try {
         console.log('[FOLLOW-UPS] Getting categorized follow-ups');

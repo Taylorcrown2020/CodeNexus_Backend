@@ -301,6 +301,20 @@ async function initializeDatabase(){
     try {
         await client.query('BEGIN');
 
+        await client.query(`
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='support_tickets'
+            AND column_name='client_name'
+        ) THEN
+            ALTER TABLE support_tickets
+            ADD COLUMN client_name TEXT;
+        END IF;
+    END $$;
+`);
+
 // Add follow_up_step column to leads table (PostgreSQL syntax)
 await client.query(`
     DO $$ 

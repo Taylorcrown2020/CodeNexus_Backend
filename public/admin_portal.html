@@ -2893,6 +2893,44 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
 
     <script>
 // ========================================
+// AUTHENTICATION CHECK
+// ========================================
+(function checkAuth() {
+    const token = localStorage.getItem('adminToken') || 
+                 sessionStorage.getItem('adminToken') || 
+                 localStorage.getItem('token') || 
+                 sessionStorage.getItem('token');
+    
+    if (!token) {
+        // No token found, redirect to login
+        window.location.href = '/admin-login.html';
+        return;
+    }
+    
+    // Verify token is valid
+    fetch(`${window.location.origin}/api/admin/verify`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.valid) {
+            // Token invalid, clear and redirect
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('adminToken');
+            sessionStorage.removeItem('token');
+            window.location.href = '/admin-login.html';
+        }
+    })
+    .catch(() => {
+        // Error verifying, redirect to login
+        window.location.href = '/admin-login.html';
+    });
+})();
+
+// ========================================
 // STATE & CONFIGURATION
 // ========================================
 const API_URL = window.location.origin;
@@ -13428,7 +13466,7 @@ async function openProjectMilestones(projectId, projectName, leadId) {
     try {
         const response = await fetch(`${API_BASE}/api/projects/${projectId}/milestones`, {
             headers: {
-                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             }
         });
         
@@ -13560,7 +13598,7 @@ async function saveMilestone(event, projectId, projectName, leadId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify(milestoneData)
         });
@@ -13585,7 +13623,7 @@ async function editMilestone(projectId, milestoneId, projectName, leadId) {
         // Get milestone data
         const response = await fetch(`${API_BASE}/api/projects/${projectId}/milestones`, {
             headers: {
-                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             }
         });
         
@@ -13659,7 +13697,7 @@ async function updateMilestone(event, projectId, milestoneId, projectName, leadI
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify(milestoneData)
         });
@@ -13688,7 +13726,7 @@ async function deleteMilestone(projectId, milestoneId, projectName, leadId) {
         const response = await fetch(`${API_BASE}/api/milestones/${milestoneId}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             }
         });
         
@@ -13868,7 +13906,8 @@ async function emailSavedTimelineToClient() {
             },
             body: JSON.stringify({
                 timeline: timeline,
-                recipientEmail: timeline.clientEmail
+                clientEmail: timeline.clientEmail,
+                clientName: timeline.clientName
             })
         });
         

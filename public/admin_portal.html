@@ -4042,7 +4042,7 @@ switch (section) {
         content.innerHTML = ''; // Force clear any existing content
         renderProjects(content); 
         break;
-        case 'followups':
+case 'followups':
     await renderFollowUps(content);
     break;
     case 'support':
@@ -12823,63 +12823,196 @@ function renderLeadScoring(content) {
     });
 }
 
-// ========================================
-// LOAD FOLLOW-UPS
-// ========================================
-async function loadFollowUps() {
-    const res = await fetch('/api/follow-ups');
-    const leads = await res.json();
-
-    const tbody = document.getElementById('followups-table-body');
-    tbody.innerHTML = '';
-
-    leads.forEach(lead => {
-        const stepLabel = getFollowUpLabel(lead.follow_up_step);
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>
-                <div class="contact-cell">
-                    <div class="contact-avatar">${lead.name?.charAt(0) || '?'}</div>
-                    <div class="contact-info">
-                        <div class="contact-name">${lead.name || 'Unnamed'}</div>
-                        <div class="contact-email">${lead.email}</div>
-                    </div>
+// Replace the existing renderFollowUps function with this complete implementation:
+async function renderFollowUps(content) {
+    content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
+    
+    try {
+        const response = await fetch(`${API_URL}/api/follow-ups`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load follow-ups');
+        }
+        
+        const data = await response.json();
+        const followUps = data.leads || [];
+        
+        content.innerHTML = `
+            <div class="page-header">
+                <div>
+                    <h2>Follow-Up Queue</h2>
+                    <p class="page-description">Leads requiring follow-up based on automated schedule</p>
                 </div>
-            </td>
-            <td>${lead.last_contact_date ? new Date(lead.last_contact_date).toLocaleDateString() : 'Never'}</td>
-            <td>${stepLabel}</td>
-            <td>
-                <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
-                    Mark Contacted
-                </button>
-            </td>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Pending Follow-Ups</span>
+                        <div class="stat-icon amber">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value">${followUps.length}</div>
+                </div>
+            </div>
+            
+            <div class="table-container" style="margin-top: 24px;">
+                <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle);">
+                    <h3 style="font-size: 15px; font-weight: 700;">Leads to Follow Up</h3>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Lead</th>
+                            <th>Last Contact</th>
+                            <th>Follow-Up Stage</th>
+                            <th>Days Since Contact</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="followups-table-body">
+                        ${followUps.length > 0 ? followUps.map(lead => {
+                            const stepLabel = getFollowUpLabel(lead.follow_up_step);
+                            const daysSince = lead.last_contact_date 
+                                ? Math.floor((Date.now() - new Date(lead.last_contact_date).getTime()) / (1000 * 60 * 60 * 24))
+                                : 'Never';
+                            
+                            return `
+                                <tr>
+                                    <td>
+                                        <div class="contact-cell">
+                                            <div class="contact-avatar">${getInitials(lead.name)}</div>
+                                            <div class="contact-info">
+                                                <div class="contact-name">${lead.name}</div>
+                                                <div class="contact-email">${lead.email}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never contacted'}</td>
+                                    <td>
+                                        <span class="status-badge status-pending">
+                                            ${stepLabel}
+                                        </span>
+                                    </td>
+                                    <td>${typeof daysSince === 'number' ? daysSince + ' days' : daysSince}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                                </svg>
+                                                Mark Contacted
+                                            </button>
+                                            <button class="btn btn-sm btn-secondary" onclick="openDetailModal('lead', ${lead.id})">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                    <circle cx="12" cy="12" r="3"/>
+                                                </svg>
+                                                View
+                                            </button>
+                                            <button class="btn btn-sm btn-secondary" onclick="openEmailTemplateModal(${lead.id})">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                                    <polyline points="22,6 12,13 2,6"/>
+                                                </svg>
+                                                Email
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('') : `
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                    <div class="empty-state">
+                                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                            <polyline points="22 4 12 14.01 9 11.01"/>
+                                        </svg>
+                                        <div class="empty-title">No Follow-Ups Pending</div>
+                                        <div class="empty-description">All leads are up to date!</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        `}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 4px solid var(--accent-amber);">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 700;">Follow-Up Schedule</h4>
+                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.8;">
+                    <strong>Automated follow-up timeline:</strong><br>
+                    • <strong>Day 1:</strong> Initial contact<br>
+                    • <strong>Day 3:</strong> First follow-up<br>
+                    • <strong>Day 7:</strong> Second follow-up<br>
+                    • <strong>Day 8:</strong> Third follow-up<br>
+                    • <strong>Day 10:</strong> Fourth follow-up<br>
+                    • <strong>Day 15:</strong> Fifth follow-up<br>
+                    • <strong>After Day 15:</strong> Follow up every 7 days
+                </div>
+            </div>
         `;
-        tbody.appendChild(tr);
-    });
+    } catch (error) {
+        console.error('Error loading follow-ups:', error);
+        content.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--status-lost);">
+                <h3>Error Loading Follow-Ups</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
 }
 
-// ========================================
-// FOLLOW-UP LABELS
-// ========================================
+// Update the getFollowUpLabel function
 function getFollowUpLabel(step) {
-    const labels = [
-        'Day 1',
-        'Day 3',
-        'Day 7',
-        'Day 8',
-        'Day 10',
-        'Day 15'
-    ];
-    return labels[step] || 'Every 7 Days';
+    const labels = {
+        0: 'Initial Contact (Day 1)',
+        1: 'Follow-Up 1 (Day 3)',
+        2: 'Follow-Up 2 (Day 7)',
+        3: 'Follow-Up 3 (Day 8)',
+        4: 'Follow-Up 4 (Day 10)',
+        5: 'Follow-Up 5 (Day 15)',
+        6: 'Weekly Follow-Up (Every 7 Days)'
+    };
+    return labels[step] || 'Follow-Up Required';
 }
 
-// ========================================
-// MARK CONTACTED
-// ========================================
+// Update the markFollowedUp function
 async function markFollowedUp(leadId) {
-    await fetch(`/api/leads/${leadId}/contacted`, { method: 'POST' });
-    loadFollowUps();
+    try {
+        const response = await fetch(`${API_URL}/api/leads/${leadId}/contacted`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to mark as contacted');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Lead marked as contacted successfully', 'success');
+            // Reload the follow-ups view
+            renderSection('followups');
+        } else {
+            throw new Error(data.message || 'Failed to update lead');
+        }
+    } catch (error) {
+        console.error('Mark contacted error:', error);
+        showToast('Error marking lead as contacted: ' + error.message, 'error');
+    }
 }
 
 // Render Scoring Rules page

@@ -4137,29 +4137,7 @@ switch (section) {
         renderProjects(content); 
         break;
 case 'followups':
-    console.log('📋 [FOLLOW-UPS] Starting render');
-    content.innerHTML = '<div style="text-align: center; padding: 40px;"></div>';
-    
-    loadCategorizedFollowUps()
-        .then(categories => {
-            console.log('✅ [FOLLOW-UPS] Categories loaded:', categories);
-            if (!categories || categories.length === 0) {
-                console.log('ℹ️ [FOLLOW-UPS] No categories returned');
-            }
-            renderFollowUps(content, categories);
-        })
-        .catch(error => {
-            console.error('❌ [FOLLOW-UPS] Load error:', error);
-            content.innerHTML = `
-                <div style="padding: 40px; text-align: center; color: var(--status-lost);">
-                    <h3>Error Loading Follow-Ups</h3>
-                    <p>${error.message}</p>
-                    <button class="btn btn-primary" onclick="renderSection('followups')">
-                        Try Again
-                    </button>
-                </div>
-            `;
-        });
+    renderFollowUps(content);
     break;
     case 'support':
         await loadTickets();
@@ -12952,14 +12930,34 @@ function renderLeadScoring(content) {
 }
 
 // Replace the existing renderFollowUps function with this complete implementation:
-async function renderFollowUps(content, categories) {
+async function renderFollowUps(content) {
+    console.log('[FOLLOW-UPS] Starting render...');
+    
     try {
-        // Load stats
-        const statsResponse = await fetch(`${API_URL}/api/follow-ups/stats`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
+        // Show loading state
+        content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
+        
+        // Load stats and categories
+        const [statsResponse, categoriesResponse] = await Promise.all([
+            fetch(`${API_URL}/api/follow-ups/stats`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }),
+            fetch(`${API_URL}/api/follow-ups/categorized`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            })
+        ]);
+        
+        if (!statsResponse.ok || !categoriesResponse.ok) {
+            throw new Error('Failed to load follow-ups data');
+        }
+        
         const statsData = await statsResponse.json();
+        const categoriesData = await categoriesResponse.json();
+        
         const stats = statsData.stats || {};
+        const categories = categoriesData.categories || [];
+        
+        console.log('[FOLLOW-UPS] Loaded:', { stats, categories });
         
         const categoryLabels = {
             'never_contacted': 'Never Contacted',
@@ -12969,6 +12967,7 @@ async function renderFollowUps(content, categories) {
             '14_day': '14+ Day Follow-Up'
         };
         
+        // Render the page
         content.innerHTML = `
             <div class="page-header">
                 <div>
@@ -13008,7 +13007,7 @@ async function renderFollowUps(content, categories) {
             </div>
             
             <!-- Category Sections -->
-            ${categories && categories.length > 0 ? categories.map(category => `
+            ${categories.length > 0 ? categories.map(category => `
                 <div class="table-container" style="margin-top: 24px;">
                     <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
                         <div>
@@ -13025,7 +13024,7 @@ async function renderFollowUps(content, categories) {
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                 <polyline points="22,6 12,13 2,6"/>
                             </svg>
-                            Email All in This Category
+                            Email All
                         </button>
                     </div>
                     <table class="data-table">
@@ -13033,7 +13032,7 @@ async function renderFollowUps(content, categories) {
                             <tr>
                                 <th>Lead</th>
                                 <th>Last Contact</th>
-                                <th>Days Since Contact</th>
+                                <th>Days Since</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -13050,7 +13049,11 @@ async function renderFollowUps(content, categories) {
                                         </div>
                                     </td>
                                     <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
-                                    <td>${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}</td>
+                                    <td>
+                                        <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
+                                            ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
+                                        </span>
+                                    </td>
                                     <td>
                                         <div class="action-buttons">
                                             <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
@@ -13085,12 +13088,16 @@ async function renderFollowUps(content, categories) {
                 </div>
             `}
         `;
+        
+        console.log('[FOLLOW-UPS] Render complete');
+        
     } catch (error) {
         console.error('[FOLLOW-UPS] Render error:', error);
         content.innerHTML = `
             <div style="text-align: center; padding: 40px; color: var(--status-lost);">
                 <h3>Error Loading Follow-Ups</h3>
                 <p>${error.message}</p>
+                <button class="btn btn-secondary" onclick="renderSection('followups')">Try Again</button>
             </div>
         `;
     }
@@ -13111,6 +13118,7 @@ function getFollowUpLabel(step) {
 }
 
 // Update the markFollowedUp function
+// Mark lead as contacted
 async function markFollowedUp(leadId) {
     try {
         const response = await fetch(`${API_URL}/api/leads/${leadId}/contacted`, {
@@ -13129,14 +13137,13 @@ async function markFollowedUp(leadId) {
         
         if (data.success) {
             showToast('Lead marked as contacted successfully', 'success');
-            // Reload the follow-ups view
             renderSection('followups');
         } else {
             throw new Error(data.message || 'Failed to update lead');
         }
     } catch (error) {
-        console.error('Mark contacted error:', error);
-        showToast('Error marking lead as contacted: ' + error.message, 'error');
+        console.error('[FOLLOW-UP] Mark contacted error:', error);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 

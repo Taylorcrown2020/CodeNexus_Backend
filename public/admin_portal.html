@@ -28,17 +28,19 @@
 --accent-amber-glow: rgba(34,197,94,0.25);
 --accent-copper: #16a34a;
 --accent-rust: #15803d;
-    --status-new: #3b82f6;
-    --status-pending: #f59e0b;
-    --status-contacted: #10b981;
-    --status-closed: #8b5cf6;
+    --status-new: #22c55e;
+    --status-pending: #22c55e;
+    --status-contacted: #22c55e;
+    --status-closed: #71717a;
     --status-lost: #ef4444;
     --status-draft: #71717a;
-    --status-sent: #3b82f6;
-    --status-paid: #10b981;
+    --status-sent: #22c55e;
+    --status-paid: #22c55e;
     --status-overdue: #ef4444;
+    --status-success: #22c55e;
+    --status-danger: #ef4444;
     --priority-high: #ef4444;
-    --priority-medium: #f59e0b;
+    --priority-medium: #22c55e;
     --priority-low: #71717a;
     --font-display: 'Outfit', -apple-system, sans-serif;
     --font-mono: 'Space Mono', monospace;
@@ -445,22 +447,22 @@ body {
 
 /* Primary Button - Amber/Gold gradient with dark text */
 .btn-primary {
-    background: linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(251,191,36,0.15) 100%);
-    color: var(--accent-amber);
-    border: 1.5px solid rgba(245,158,11,0.3);
+    background: linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(22,163,74,0.15) 100%);
+    color: #22c55e;
+    border: 1.5px solid rgba(34,197,94,0.3);
     font-weight: 700;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(251,191,36,0.25) 100%);
-    border-color: rgba(245,158,11,0.5);
+    background: linear-gradient(135deg, rgba(34,197,94,0.25) 0%, rgba(22,163,74,0.25) 100%);
+    border-color: rgba(34,197,94,0.5);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(245,158,11,0.2);
+    box-shadow: 0 4px 12px rgba(34,197,94,0.2);
 }
 
 .btn-primary:active { 
     transform: translateY(0);
-    background: linear-gradient(135deg, rgba(245,158,11,0.3) 0%, rgba(251,191,36,0.3) 100%);
+    background: linear-gradient(135deg, rgba(34,197,94,0.3) 0%, rgba(22,163,74,0.3) 100%);
 }
 
 /* Secondary Button - Neutral with good contrast */
@@ -504,31 +506,17 @@ body {
     transform: translateY(-1px);
 }
 
-/* Info Button - Light blue with dark blue text */
-.btn-info {
-    background: rgba(59,130,246,0.1);
-    color: #2563eb;
-    border: 1.5px solid rgba(59,130,246,0.25);
-}
-
-.btn-info:hover {
-    background: rgba(59,130,246,0.2);
-    color: #1d4ed8;
-    border-color: rgba(59,130,246,0.4);
-    transform: translateY(-1px);
-}
-
-/* Warning Button - Light amber/orange with dark text */
+/* Warning Button - Use green instead */
 .btn-warning {
-    background: rgba(245,158,11,0.1);
-    color: #d97706;
-    border: 1.5px solid rgba(245,158,11,0.25);
+    background: rgba(34,197,94,0.1);
+    color: #059669;
+    border: 1.5px solid rgba(34,197,94,0.25);
 }
 
 .btn-warning:hover {
-    background: rgba(245,158,11,0.2);
-    color: #b45309;
-    border-color: rgba(245,158,11,0.4);
+    background: rgba(34,197,94,0.2);
+    color: #047857;
+    border-color: rgba(34,197,94,0.4);
     transform: translateY(-1px);
 }
 

@@ -3904,8 +3904,8 @@ async function sendIndividualEmail(leadId) {
 
 async function renderSection(section) {
     if (section === 'followups') {
-        loadCategorizedFollowUps();
-    }  // ✅ Now it's async
+        await loadCategorizedFollowUps();
+    }
     console.log('🔍 renderSection called with:', section);
     state.currentSection = section;
     
@@ -4054,7 +4054,13 @@ switch (section) {
         renderProjects(content); 
         break;
 case 'followups':
-    await renderFollowUps(content);
+    try {
+        content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
+        const categories = await loadCategorizedFollowUps();
+        await renderFollowUps(content, categories);  // Pass categories as parameter
+    } catch (error) {
+        content.innerHTML = `<div style="text-align: center; padding: 40px; color: red;">Error: ${error.message}</div>`;
+    }
     break;
     case 'support':
         await loadTickets();
@@ -12847,9 +12853,9 @@ function renderLeadScoring(content) {
 }
 
 // Replace the existing renderFollowUps function with this complete implementation:
-async function renderFollowUps(content) {
+async function renderFollowUps(content, categories) {
     content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
-    
+
     try {
         // Load categorized data
         const categories = await loadCategorizedFollowUps();
@@ -14219,12 +14225,12 @@ async function deleteMilestone(projectId, milestoneId, projectName, leadId) {
 
 // ==================== FOLLOW-UP SYSTEM FUNCTIONS ====================
 
-// Load and render categorized follow-ups
+// REPLACE your loadCategorizedFollowUps function with this:
 async function loadCategorizedFollowUps() {
     try {
-        const response = await fetch(`${API_BASE}/api/follow-ups/categorized`, {  // Use your API_BASE variable
+        const response = await fetch(`${API_URL}/api/follow-ups/categorized`, {
             headers: {
-                'Authorization': `Bearer ${getAuthToken()}`  // Assuming you have getAuthToken()
+                'Authorization': `Bearer ${authToken}`
             }
         });
         
@@ -14233,14 +14239,15 @@ async function loadCategorizedFollowUps() {
         }
         
         const data = await response.json();
+        
         if (data.success) {
-            renderFollowUps(data.categories);
+            return data.categories;  // ✅ RETURN the categories
         } else {
-            showToast('Error loading follow-ups', 'error');
+            throw new Error(data.message || 'Failed to load follow-ups');
         }
     } catch (error) {
         console.error('[FOLLOW-UPS] Load error:', error);
-        showToast('Failed to load follow-ups: ' + error.message, 'error');
+        throw error;
     }
 }
 

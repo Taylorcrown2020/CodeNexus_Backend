@@ -893,6 +893,78 @@ console.log('✅ Client portal tables initialized');
             END $$;
         `);
         
+        // Migration 2: Add missing columns to employees table if they don't exist
+        await client.query(`
+            DO $$ 
+            BEGIN
+                -- Add start_date column if it doesn't exist
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'employees' 
+                    AND column_name = 'start_date'
+                ) THEN
+                    ALTER TABLE employees 
+                    ADD COLUMN start_date DATE;
+                    RAISE NOTICE 'Added start_date column to employees';
+                END IF;
+                
+                -- Add end_date column if it doesn't exist
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'employees' 
+                    AND column_name = 'end_date'
+                ) THEN
+                    ALTER TABLE employees 
+                    ADD COLUMN end_date DATE;
+                    RAISE NOTICE 'Added end_date column to employees';
+                END IF;
+                
+                -- Add notes column if it doesn't exist
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'employees' 
+                    AND column_name = 'notes'
+                ) THEN
+                    ALTER TABLE employees 
+                    ADD COLUMN notes TEXT;
+                    RAISE NOTICE 'Added notes column to employees';
+                END IF;
+                
+                -- Add is_active column if it doesn't exist
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'employees' 
+                    AND column_name = 'is_active'
+                ) THEN
+                    ALTER TABLE employees 
+                    ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+                    RAISE NOTICE 'Added is_active column to employees';
+                END IF;
+                
+                -- Add projects_assigned column if it doesn't exist
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'employees' 
+                    AND column_name = 'projects_assigned'
+                ) THEN
+                    ALTER TABLE employees 
+                    ADD COLUMN projects_assigned INTEGER DEFAULT 0;
+                    RAISE NOTICE 'Added projects_assigned column to employees';
+                END IF;
+                
+                -- Add tasks_completed column if it doesn't exist
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'employees' 
+                    AND column_name = 'tasks_completed'
+                ) THEN
+                    ALTER TABLE employees 
+                    ADD COLUMN tasks_completed INTEGER DEFAULT 0;
+                    RAISE NOTICE 'Added tasks_completed column to employees';
+                END IF;
+            END $$;
+        `);
+        
         console.log('✅ Database migrations completed');
 
         await client.query('COMMIT');

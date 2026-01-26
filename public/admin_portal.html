@@ -12690,10 +12690,21 @@ function copyPaymentLink(link) {
 }
 
 // Modal helper functions
-function showModal(htmlContent) {
+function showModal(titleOrContent, optionalContent) {
     const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
     const bodyEl = document.getElementById('createModalBody');
-    bodyEl.innerHTML = htmlContent;
+    
+    // Check if this is a two-parameter call (title, content) or one-parameter call (content only)
+    if (optionalContent !== undefined) {
+        // Two parameters: first is title, second is content
+        titleEl.textContent = titleOrContent;
+        bodyEl.innerHTML = optionalContent;
+    } else {
+        // One parameter: it's just content, keep default title
+        bodyEl.innerHTML = titleOrContent;
+    }
+    
     modal.classList.add('active');
 }
 

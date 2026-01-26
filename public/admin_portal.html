@@ -4210,10 +4210,17 @@ function renderEmployees(content) {
                     <p><strong>Email:</strong> ${emp.email}</p>
                     <p><strong>Role:</strong> ${emp.role || 'Team Member'}</p>
                     ${emp.phone ? `<p><strong>Phone:</strong> ${emp.phone}</p>` : ''}
-                    <div style="margin-top: 15px;">
+                    ${emp.start_date ? `<p><strong>Start Date:</strong> ${formatDate(emp.start_date)}</p>` : ''}
+                    ${emp.end_date ? `<p><strong>End Date:</strong> ${formatDate(emp.end_date)}</p>` : ''}
+                    ${emp.is_active === false ? `<p style="color: var(--status-error);"><strong>Status:</strong> Inactive</p>` : ''}
+                    <div style="margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-sm btn-primary" 
+                                onclick="editEmployee(${emp.id})">
+                            Edit
+                        </button>
                         <button class="btn btn-sm btn-secondary" 
                                 onclick="openDetailModal('employee', ${emp.id})">
-                            View Details
+                            Details
                         </button>
                         <button class="btn btn-sm btn-danger" 
                                 onclick="deleteEmployee(${emp.id})">
@@ -4262,28 +4269,280 @@ function setLeadFilter(filter) {
 
 // 6. DELETE EMPLOYEE (MISSING)
 async function deleteEmployee(employeeId) {
-    if (!confirm('Delete this employee?')) return;
+    if (!confirm('Are you sure you want to permanently delete this employee from the database? This action cannot be undone.')) return;
     
     try {
-        const response = await fetch(`/api/employees/${employeeId}`, {
+        const response = await fetch(`${API_BASE}/api/employees/${employeeId}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             }
         });
         
         const data = await response.json();
         
         if (data.success) {
-            showNotification('Employee deleted', 'success');
+            showToast('Employee permanently deleted from database', 'success');
             await loadEmployees();
             renderSection('employees');
         } else {
-            showNotification(data.message, 'error');
+            showToast(data.message || 'Failed to delete employee', 'error');
         }
     } catch (error) {
         console.error('Delete error:', error);
-        showNotification('Failed to delete', 'error');
+        showToast('Failed to delete employee', 'error');
+    }
+}
+
+// Edit employee
+async function editEmployee(employeeId) {
+    const employee = state.employees.find(e => e.id === employeeId);
+    if (!employee) {
+        showToast('Employee not found', 'error');
+        return;
+    }
+    
+    const modalContent = `
+        <form onsubmit="saveEmployeeEdit(event, ${employeeId}); return false;">
+            <div class="form-group">
+                <label>Name *</label>
+                <input type="text" id="editEmployeeName" class="form-control" value="${employee.name || ''}" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Email *</label>
+                <input type="email" id="editEmployeeEmail" class="form-control" value="${employee.email || ''}" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Phone</label>
+                <input type="tel" id="editEmployeePhone" class="form-control" value="${employee.phone || ''}" placeholder="(555) 123-4567">
+            </div>
+            
+            <div class="form-group">
+                <label>Role</label>
+                <input type="text" id="editEmployeeRole" class="form-control" value="${employee.role || 'Team Member'}">
+            </div>
+            
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" id="editEmployeeStartDate" class="form-control" value="${employee.start_date || ''}">
+            </div>
+            
+            <div class="form-group">
+                <label>End Date (if terminated)</label>
+                <input type="date" id="editEmployeeEndDate" class="form-control" value="${employee.end_date || ''}">
+            </div>
+            
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="editEmployeeNotes" class="form-control" rows="4" placeholder="Add any notes about this employee...">${employee.notes || ''}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="editEmployeeActive" ${employee.is_active !== false ? 'checked' : ''}>
+                    <span>Employee is currently active</span>
+                </label>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    `;
+    
+    showModal(`Edit Employee - ${employee.name}`, modalContent);
+}
+
+// Save employee edits
+async function saveEmployeeEdit(event, employeeId) {
+    event.preventDefault();
+    
+    const employeeData = {
+        name: document.getElementById('editEmployeeName').value,
+        email: document.getElementById('editEmployeeEmail').value,
+        phone: document.getElementById('editEmployeePhone').value,
+        role: document.getElementById('editEmployeeRole').value,
+        start_date: document.getElementById('editEmployeeStartDate').value || null,
+        end_date: document.getElementById('editEmployeeEndDate').value || null,
+        notes: document.getElementById('editEmployeeNotes').value,
+        is_active: document.getElementById('editEmployeeActive').checked
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/employees/${employeeId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAuthToken()}`
+            },
+            body: JSON.stringify(employeeData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Employee updated successfully', 'success');
+            closeModal();
+            await loadEmployees();
+            renderSection('employees');
+        } else {
+            showToast(data.message || 'Failed to update employee', 'error');
+        }
+    } catch (error) {
+        console.error('Update employee error:', error);
+        showToast('Failed to update employee', 'error');
+    }
+}
+
+// Edit customer/lead
+async function editCustomer(leadId) {
+    const customer = [...state.leads, ...state.customers].find(c => c.id === leadId);
+    if (!customer) {
+        showToast('Customer not found', 'error');
+        return;
+    }
+    
+    const modalContent = `
+        <form onsubmit="saveCustomerEdit(event, ${leadId}); return false;">
+            <div class="form-group">
+                <label>Name *</label>
+                <input type="text" id="editCustomerName" class="form-control" value="${customer.name || ''}" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Email *</label>
+                <input type="email" id="editCustomerEmail" class="form-control" value="${customer.email || ''}" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Phone</label>
+                <input type="tel" id="editCustomerPhone" class="form-control" value="${customer.phone || ''}" placeholder="(555) 123-4567">
+            </div>
+            
+            <div class="form-group">
+                <label>Company</label>
+                <input type="text" id="editCustomerCompany" class="form-control" value="${customer.company || ''}" placeholder="Company Name">
+            </div>
+            
+            <div class="form-group">
+                <label>Project Type</label>
+                <select id="editCustomerProjectType" class="form-control">
+                    <option value="">Select type...</option>
+                    <option value="website" ${customer.project_type === 'website' ? 'selected' : ''}>Website</option>
+                    <option value="ecommerce" ${customer.project_type === 'ecommerce' ? 'selected' : ''}>E-commerce</option>
+                    <option value="webapp" ${customer.project_type === 'webapp' ? 'selected' : ''}>Web App</option>
+                    <option value="mobile" ${customer.project_type === 'mobile' ? 'selected' : ''}>Mobile App</option>
+                    <option value="api" ${customer.project_type === 'api' ? 'selected' : ''}>API/Backend</option>
+                    <option value="other" ${customer.project_type === 'other' ? 'selected' : ''}>Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Budget</label>
+                <input type="number" id="editCustomerBudget" class="form-control" value="${customer.budget || ''}" placeholder="10000" step="100">
+            </div>
+            
+            <div class="form-group">
+                <label>Timeline</label>
+                <input type="text" id="editCustomerTimeline" class="form-control" value="${customer.timeline || ''}" placeholder="e.g., 3 months">
+            </div>
+            
+            <div class="form-group">
+                <label>Address Line 1</label>
+                <input type="text" id="editCustomerAddress1" class="form-control" value="${customer.address_line1 || ''}" placeholder="123 Main St">
+            </div>
+            
+            <div class="form-group">
+                <label>Address Line 2</label>
+                <input type="text" id="editCustomerAddress2" class="form-control" value="${customer.address_line2 || ''}" placeholder="Apt 4B">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" id="editCustomerCity" class="form-control" value="${customer.city || ''}" placeholder="New York">
+                </div>
+                
+                <div class="form-group">
+                    <label>State</label>
+                    <input type="text" id="editCustomerState" class="form-control" value="${customer.state || ''}" placeholder="NY" maxlength="2">
+                </div>
+                
+                <div class="form-group">
+                    <label>ZIP Code</label>
+                    <input type="text" id="editCustomerZip" class="form-control" value="${customer.zip_code || ''}" placeholder="10001">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Country</label>
+                <input type="text" id="editCustomerCountry" class="form-control" value="${customer.country || 'USA'}" placeholder="USA">
+            </div>
+            
+            <div class="form-group">
+                <label>Message/Notes</label>
+                <textarea id="editCustomerMessage" class="form-control" rows="4" placeholder="Any additional information...">${customer.message || ''}</textarea>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal(); openDetailModal('lead', ${leadId});">Cancel</button>
+            </div>
+        </form>
+    `;
+    
+    closeDetailModal();
+    showModal(`Edit ${customer.is_customer ? 'Customer' : 'Lead'} - ${customer.name}`, modalContent);
+}
+
+// Save customer edits
+async function saveCustomerEdit(event, leadId) {
+    event.preventDefault();
+    
+    const customerData = {
+        name: document.getElementById('editCustomerName').value,
+        email: document.getElementById('editCustomerEmail').value,
+        phone: document.getElementById('editCustomerPhone').value,
+        company: document.getElementById('editCustomerCompany').value,
+        project_type: document.getElementById('editCustomerProjectType').value,
+        budget: document.getElementById('editCustomerBudget').value || null,
+        timeline: document.getElementById('editCustomerTimeline').value,
+        address_line1: document.getElementById('editCustomerAddress1').value,
+        address_line2: document.getElementById('editCustomerAddress2').value,
+        city: document.getElementById('editCustomerCity').value,
+        state: document.getElementById('editCustomerState').value,
+        zip_code: document.getElementById('editCustomerZip').value,
+        country: document.getElementById('editCustomerCountry').value,
+        message: document.getElementById('editCustomerMessage').value
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/leads/${leadId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAuthToken()}`
+            },
+            body: JSON.stringify(customerData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Customer updated successfully', 'success');
+            closeModal();
+            await loadLeads();
+            await loadCustomers();
+            openDetailModal('lead', leadId);
+        } else {
+            showToast(data.message || 'Failed to update customer', 'error');
+        }
+    } catch (error) {
+        console.error('Update customer error:', error);
+        showToast('Failed to update customer', 'error');
     }
 }
 
@@ -6487,6 +6746,13 @@ async function openDetailModal(type, id) {
         
         footerEl.innerHTML = `
             <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+            <button class="btn btn-primary" onclick="editCustomer(${id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit ${lead.is_customer ? 'Customer' : 'Lead'}
+            </button>
             <button class="btn btn-secondary" onclick="changeLeadStatus(${id})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/>

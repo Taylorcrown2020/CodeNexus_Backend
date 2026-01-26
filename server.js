@@ -1872,8 +1872,9 @@ app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
     try {
         const employeeId = req.params.id;
 
+        // Actually delete from database (not just mark inactive)
         const result = await pool.query(
-            'UPDATE employees SET is_active = FALSE WHERE id = $1 RETURNING *',
+            'DELETE FROM employees WHERE id = $1 RETURNING *',
             [employeeId]
         );
 
@@ -1886,13 +1887,85 @@ app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
 
         res.json({
             success: true,
-            message: 'Employee deleted successfully.'
+            message: 'Employee permanently deleted from database.'
         });
     } catch (error) {
         console.error('Delete employee error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Server error.' 
+        });
+    }
+});
+
+// Update employee
+app.put('/api/employees/:id', authenticateToken, async (req, res) => {
+    try {
+        const employeeId = req.params.id;
+        const { name, email, phone, role, start_date, end_date, notes, is_active } = req.body;
+        
+        console.log('📝 Updating employee:', employeeId, { name, email, phone, role, start_date, end_date, is_active });
+
+        if (!name || !email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Name and email are required.'
+            });
+        }
+
+        const result = await pool.query(
+            `UPDATE employees 
+             SET name = $1, 
+                 email = $2, 
+                 phone = $3, 
+                 role = $4, 
+                 start_date = $5, 
+                 end_date = $6, 
+                 notes = $7,
+                 is_active = $8,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $9
+             RETURNING *`,
+            [
+                name.trim(), 
+                email.trim().toLowerCase(), 
+                phone || null, 
+                role || 'Team Member',
+                start_date || null,
+                end_date || null,
+                notes || null,
+                is_active !== undefined ? is_active : true,
+                employeeId
+            ]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Employee not found.'
+            });
+        }
+
+        console.log('✅ Employee updated:', result.rows[0]);
+
+        res.json({
+            success: true,
+            employee: result.rows[0],
+            message: 'Employee updated successfully.'
+        });
+    } catch (error) {
+        console.error('Update employee error:', error);
+        
+        if (error.code === '23505') {
+            return res.status(400).json({
+                success: false,
+                message: 'Email already in use by another employee.'
+            });
+        }
+        
+        res.status(500).json({
+            success: false,
+            message: 'Server error: ' + error.message
         });
     }
 });

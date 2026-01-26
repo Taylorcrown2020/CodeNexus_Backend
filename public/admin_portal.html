@@ -4138,7 +4138,7 @@ switch (section) {
         break;
 case 'followups':
     console.log('📋 [FOLLOW-UPS] Starting render');
-    content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
+    content.innerHTML = '<div style="text-align: center; padding: 40px;"></div>';
     
     loadCategorizedFollowUps()
         .then(categories => {
@@ -14511,7 +14511,7 @@ async function handleCategoryEmailSend(event, category) {
 
 async function loadFollowUps() {
     try {
-        console.log('[FOLLOW-UPS] Loading follow-ups...');
+        console.log('');
         
         const statsResponse = await fetch('/api/follow-ups/stats', {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }

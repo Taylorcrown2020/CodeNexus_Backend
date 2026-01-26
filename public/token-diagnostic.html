@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Diagnostic</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00ff00;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 10px;
+        }
+        .section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #00ff00;
+        }
+        .key {
+            color: #ffff00;
+            font-weight: bold;
+        }
+        .value {
+            color: #00ff00;
+            word-break: break-all;
+            margin-left: 20px;
+            display: block;
+        }
+        .found {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        .not-found {
+            color: #ff0000;
+        }
+        button {
+            background: #00ff00;
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        .copy-btn {
+            background: #ffff00;
+            color: #1a1a1a;
+            font-size: 12px;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 TOKEN DIAGNOSTIC TOOL</h1>
+    
+    <div class="section">
+        <h2>📋 All LocalStorage Keys:</h2>
+        <div id="localStorageKeys"></div>
+    </div>
+
+    <div class="section">
+        <h2>📋 All SessionStorage Keys:</h2>
+        <div id="sessionStorageKeys"></div>
+    </div>
+
+    <div class="section">
+        <h2>🔑 Token Check (Common Names):</h2>
+        <div id="tokenCheck"></div>
+    </div>
+
+    <div class="section">
+        <h2>✅ getAuthToken() Result:</h2>
+        <div id="getAuthTokenResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>🎯 Recommendation:</h2>
+        <div id="recommendation"></div>
+    </div>
+
+    <button onclick="refreshDiagnostic()">🔄 Refresh Diagnostic</button>
+    <button onclick="window.location.href='admin_portal.html'">Go to Admin Portal</button>
+
+    <script>
+        // Helper function to get the current auth token
+        function getAuthToken() {
+            return localStorage.getItem('adminToken') || 
+                   sessionStorage.getItem('adminToken') || 
+                   localStorage.getItem('token') || 
+                   sessionStorage.getItem('token');
+        }
+
+        function runDiagnostic() {
+            // Check all localStorage keys
+            const localStorageDiv = document.getElementById('localStorageKeys');
+            let localHTML = '';
+            if (localStorage.length === 0) {
+                localHTML = '<span class="not-found">❌ No items in localStorage</span>';
+            } else {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    const isLong = value.length > 100;
+                    const displayValue = isLong ? value.substring(0, 100) + '... (truncated)' : value;
+                    localHTML += `<div style="margin: 10px 0;">
+                        <span class="key">${key}:</span>
+                        <span class="value">${displayValue}</span>
+                        ${isLong ? '<button class="copy-btn" onclick="copyToClipboard(\'' + key + '\', \'local\')">Copy Full Value</button>' : ''}
+                    </div>`;
+                }
+            }
+            localStorageDiv.innerHTML = localHTML;
+
+            // Check all sessionStorage keys
+            const sessionStorageDiv = document.getElementById('sessionStorageKeys');
+            let sessionHTML = '';
+            if (sessionStorage.length === 0) {
+                sessionHTML = '<span class="not-found">❌ No items in sessionStorage</span>';
+            } else {
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    const value = sessionStorage.getItem(key);
+                    const isLong = value.length > 100;
+                    const displayValue = isLong ? value.substring(0, 100) + '... (truncated)' : value;
+                    sessionHTML += `<div style="margin: 10px 0;">
+                        <span class="key">${key}:</span>
+                        <span class="value">${displayValue}</span>
+                        ${isLong ? '<button class="copy-btn" onclick="copyToClipboard(\'' + key + '\', \'session\')">Copy Full Value</button>' : ''}
+                    </div>`;
+                }
+            }
+            sessionStorageDiv.innerHTML = sessionHTML;
+
+            // Check common token names
+            const tokenCheckDiv = document.getElementById('tokenCheck');
+            const commonNames = ['adminToken', 'token', 'authToken', 'jwt', 'access_token', 'auth_token'];
+            let tokenHTML = '';
+            let foundToken = null;
+            let foundLocation = null;
+
+            commonNames.forEach(name => {
+                const localValue = localStorage.getItem(name);
+                const sessionValue = sessionStorage.getItem(name);
+                
+                if (localValue) {
+                    tokenHTML += `<div><span class="found">✅ ${name} (localStorage): FOUND</span></div>`;
+                    if (!foundToken) {
+                        foundToken = localValue;
+                        foundLocation = `localStorage.getItem('${name}')`;
+                    }
+                } else if (sessionValue) {
+                    tokenHTML += `<div><span class="found">✅ ${name} (sessionStorage): FOUND</span></div>`;
+                    if (!foundToken) {
+                        foundToken = sessionValue;
+                        foundLocation = `sessionStorage.getItem('${name}')`;
+                    }
+                } else {
+                    tokenHTML += `<div><span class="not-found">❌ ${name}: not found</span></div>`;
+                }
+            });
+            tokenCheckDiv.innerHTML = tokenHTML;
+
+            // Check getAuthToken() result
+            const getAuthTokenDiv = document.getElementById('getAuthTokenResult');
+            const authToken = getAuthToken();
+            if (authToken) {
+                getAuthTokenDiv.innerHTML = `<span class="found">✅ Token Found!</span><br><span class="value">${authToken.substring(0, 50)}...</span>`;
+            } else {
+                getAuthTokenDiv.innerHTML = `<span class="not-found">❌ No token found by getAuthToken()</span>`;
+            }
+
+            // Recommendation
+            const recommendationDiv = document.getElementById('recommendation');
+            if (foundToken) {
+                recommendationDiv.innerHTML = `
+                    <span class="found">✅ SOLUTION FOUND!</span><br><br>
+                    Your token is stored at: <span class="key">${foundLocation}</span><br><br>
+                    <strong>What to do:</strong><br>
+                    1. Take a screenshot of this page<br>
+                    2. Share it with me<br>
+                    3. I'll update getAuthToken() to check this location<br>
+                    4. Milestones will work!
+                `;
+            } else {
+                recommendationDiv.innerHTML = `
+                    <span class="not-found">❌ NO TOKEN FOUND</span><br><br>
+                    <strong>This means:</strong><br>
+                    - You're not logged in, OR<br>
+                    - Your login isn't storing the token properly<br><br>
+                    <strong>What to do:</strong><br>
+                    1. Go to your admin-login.html page<br>
+                    2. Login with your credentials<br>
+                    3. Come back to this diagnostic page<br>
+                    4. The token should appear
+                `;
+            }
+        }
+
+        function copyToClipboard(key, storage) {
+            const value = storage === 'local' ? localStorage.getItem(key) : sessionStorage.getItem(key);
+            navigator.clipboard.writeText(value).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
+            });
+        }
+
+        function refreshDiagnostic() {
+            runDiagnostic();
+        }
+
+        // Run on load
+        runDiagnostic();
+    </script>
+</body>
+</html>

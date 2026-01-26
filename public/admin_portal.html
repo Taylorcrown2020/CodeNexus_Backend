@@ -14503,37 +14503,30 @@ async function loadFollowUps() {
     try {
         console.log('[FOLLOW-UPS] Loading follow-ups...');
         
-        // Load stats
         const statsResponse = await fetch('/api/follow-ups/stats', {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
         });
         
-        if (!statsResponse.ok) {
-            throw new Error('Failed to load follow-up stats');
-        }
-        
         const statsData = await statsResponse.json();
         console.log('[FOLLOW-UPS] Stats loaded:', statsData);
         
-        // Load categorized follow-ups
         const categoriesResponse = await fetch('/api/follow-ups/categorized', {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
         });
         
-        if (!categoriesResponse.ok) {
-            throw new Error('Failed to load categorized follow-ups');
-        }
-        
         const categoriesData = await categoriesResponse.json();
         console.log('[FOLLOW-UPS] Categories loaded:', categoriesData);
         
-        // Render the UI
         renderFollowUpStats(statsData.stats);
         renderFollowUpCategories(categoriesData.categories || []);
         
     } catch (error) {
         console.error('[FOLLOW-UPS] Load error:', error);
-        showNotification('Failed to load follow-ups: ' + error.message, 'error');
+        document.getElementById('followUpCategories').innerHTML = `
+            <div style="padding: 40px; text-align: center;">
+                <p style="color: #ef4444;">Error loading follow-ups: ${error.message}</p>
+            </div>
+        `;
     }
 }
 
@@ -14544,8 +14537,6 @@ function renderFollowUpStats(stats) {
     const neverContacted = parseInt(stats.never_contacted || 0);
     const oneDay = parseInt(stats.one_day || 0);
     const threeDay = parseInt(stats.three_day || 0);
-    const sevenDay = parseInt(stats.seven_day || 0);
-    const fourteenDay = parseInt(stats.fourteen_day || 0);
     
     statsContainer.innerHTML = `
         <div class="stat-card">
@@ -14588,113 +14579,6 @@ function renderFollowUpStats(stats) {
             </div>
         </div>
     `;
-}
-
-function renderFollowUpCategories(categories) {
-    const container = document.getElementById('followUpCategories');
-    
-    if (!categories || categories.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-check-circle" style="font-size: 64px; color: #22c55e;"></i>
-                <h3>All Caught Up!</h3>
-                <p>No leads currently need follow-up. Great work!</p>
-            </div>
-        `;
-        return;
-    }
-    
-    const categoryConfig = {
-        'never_contacted': {
-            title: '🚨 Never Contacted',
-            color: '#ef4444',
-            description: 'Leads that have never been contacted'
-        },
-        '14_day': {
-            title: '⏰ 14+ Days',
-            color: '#dc2626',
-            description: 'Not contacted in over 14 days - HIGH PRIORITY'
-        },
-        '7_day': {
-            title: '📅 7-14 Days',
-            color: '#f59e0b',
-            description: 'Not contacted in 7-14 days'
-        },
-        '3_day': {
-            title: '📆 3-7 Days',
-            color: '#f97316',
-            description: 'Not contacted in 3-7 days'
-        },
-        '1_day': {
-            title: '📌 1-3 Days',
-            color: '#10b981',
-            description: 'Not contacted in 1-3 days'
-        }
-    };
-    
-    let html = '';
-    
-    categories.forEach(category => {
-        const config = categoryConfig[category.follow_up_category] || {
-            title: category.follow_up_category,
-            color: '#6b7280',
-            description: 'Follow-up needed'
-        };
-        
-        const leads = category.leads || [];
-        const count = parseInt(category.count || leads.length);
-        
-        html += `
-            <div class="category-card" style="border-left: 4px solid ${config.color};">
-                <div class="category-header">
-                    <div>
-                        <h3 style="color: ${config.color};">${config.title}</h3>
-                        <p style="color: #6b7280; font-size: 14px;">${config.description}</p>
-                    </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <span class="badge" style="background: ${config.color}; color: white; font-size: 16px; padding: 8px 16px;">
-                            ${count} lead${count !== 1 ? 's' : ''}
-                        </span>
-                        <button class="btn-primary btn-sm" onclick="sendBulkFollowUp('${category.follow_up_category}')">
-                            <i class="fas fa-paper-plane"></i> Send All
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="leads-list">
-                    ${leads.map(lead => `
-                        <div class="lead-item" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 12px;">
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: #111827; margin-bottom: 4px;">
-                                    ${lead.name || 'Unnamed Lead'}
-                                </div>
-                                <div style="font-size: 14px; color: #6b7280;">
-                                    ${lead.email || 'No email'}
-                                    ${lead.company ? ` • ${lead.company}` : ''}
-                                </div>
-                                <div style="font-size: 13px; color: #9ca3af; margin-top: 4px;">
-                                    ${lead.days_since_contact === 999 ? 'Never contacted' : `Last contact: ${lead.days_since_contact} days ago`}
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="btn-secondary btn-sm" onclick="viewLead(${lead.id})">
-                                    <i class="fas fa-eye"></i> View
-                                </button>
-                                <button class="btn-primary btn-sm" onclick="sendFollowUpEmail(${lead.id}, '${lead.name}', '${lead.email}')">
-                                    <i class="fas fa-envelope"></i> Contact
-                                </button>
-                                <button class="btn-success btn-sm" onclick="markAsContacted(${lead.id})">
-                                    <i class="fas fa-check"></i> Done
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    });
-    
-    container.innerHTML = html;
 }
 
 async function sendFollowUpEmail(leadId, leadName, leadEmail) {
@@ -14790,6 +14674,16 @@ async function markAsContacted(leadId) {
 
 function refreshFollowUps() {
     loadFollowUps();
+}
+
+function viewLead(leadId) {
+    showSection('customers');
+    setTimeout(() => {
+        const leadRow = document.querySelector(`tr[data-lead-id="${leadId}"]`);
+        if (leadRow) {
+            leadRow.click();
+        }
+    }, 500);
 }
 
 // View saved project timeline

@@ -12856,13 +12856,7 @@ function renderLeadScoring(content) {
 
 // Replace the existing renderFollowUps function with this complete implementation:
 async function renderFollowUps(content, categories) {
-    // DON'T reload - we already have categories passed in
-    console.log('[FOLLOW-UPS] Rendering with categories:', categories);
-
     try {
-        // Load categorized data
-        const categories = await loadCategorizedFollowUps();
-        
         // Load stats
         const statsResponse = await fetch(`${API_URL}/api/follow-ups/stats`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
@@ -12947,7 +12941,7 @@ async function renderFollowUps(content, categories) {
                             </tr>
                         </thead>
                         <tbody>
-                            ${category.leads.map(lead => `
+                            ${category.leads && category.leads.length > 0 ? category.leads.map(lead => `
                                 <tr>
                                     <td>
                                         <div class="contact-cell">
@@ -12979,7 +12973,7 @@ async function renderFollowUps(content, categories) {
                                         </div>
                                     </td>
                                 </tr>
-                            `).join('')}
+                            `).join('') : '<tr><td colspan="4" style="text-align: center; padding: 20px;">No leads in this category</td></tr>'}
                         </tbody>
                     </table>
                 </div>

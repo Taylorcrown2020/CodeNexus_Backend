@@ -6136,6 +6136,60 @@ app.put('/api/milestones/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Delete milestone (admin)
+app.delete('/api/milestones/:id', authenticateToken, async (req, res) => {
+    try {
+        const milestoneId = req.params.id;
+        
+        const result = await pool.query(
+            'DELETE FROM project_milestones WHERE id = $1 RETURNING *',
+            [milestoneId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Milestone not found' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Milestone deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete milestone error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to delete milestone' 
+        });
+    }
+});
+
+// Get milestones for a project (admin)
+app.get('/api/projects/:projectId/milestones', authenticateToken, async (req, res) => {
+    try {
+        const projectId = req.params.projectId;
+        
+        const result = await pool.query(`
+            SELECT * FROM project_milestones
+            WHERE project_id = $1
+            ORDER BY order_index ASC, due_date ASC
+        `, [projectId]);
+        
+        res.json({
+            success: true,
+            milestones: result.rows
+        });
+    } catch (error) {
+        console.error('Get project milestones error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to load milestones' 
+        });
+    }
+});
+
 // Find your existing file upload endpoint and update it:
 
 // Get client's uploaded files

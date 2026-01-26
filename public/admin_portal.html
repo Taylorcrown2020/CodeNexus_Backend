@@ -2898,7 +2898,16 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
 const API_URL = window.location.origin;
 const API_BASE = API_URL; // Add this
 const FRONTEND_BASE_URL = 'https://diamondbackcoding.com';
-let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+
+// Helper function to get the current auth token
+function getAuthToken() {
+    return localStorage.getItem('adminToken') || 
+           sessionStorage.getItem('adminToken') || 
+           localStorage.getItem('token') || 
+           sessionStorage.getItem('token') ||
+           authToken;
+}
 
 // Service Packages will be defined later but we need placeholder
 let servicePackages = {};
@@ -3835,9 +3844,17 @@ function setupNavigation() {
 
 async function loadTickets() {
     try {
+        const token = getAuthToken();
+        if (!token) {
+            console.error('No authentication token found');
+            showToast('Please log in to view tickets', 'error');
+            state.tickets = [];
+            return;
+        }
+        
         const response = await fetch(`${API_URL}/api/tickets`, {
             headers: {
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': `Bearer ${token}`
             }
         });
 
@@ -3845,7 +3862,7 @@ async function loadTickets() {
             const data = await response.json();
             state.tickets = data.tickets || [];
         } else {
-            console.error('Failed to load tickets');
+            console.error('Failed to load tickets:', response.status);
             state.tickets = [];
         }
     } catch (error) {
@@ -10789,7 +10806,7 @@ async function openTicketDetail(ticketId) {
         // Load responses
         const response = await fetch(`${API_BASE}/api/tickets/${ticketId}/responses`, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             }
         });
         
@@ -10889,7 +10906,7 @@ async function sendTicketResponse(ticketId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify({ message })
         });
@@ -10899,11 +10916,12 @@ async function sendTicketResponse(ticketId) {
             closeModal();
             loadTickets();
         } else {
-            throw new Error('Failed to send response');
+            const data = await response.json();
+            throw new Error(data.message || 'Failed to send response');
         }
     } catch (error) {
         console.error('Send response error:', error);
-        showToast('Failed to send response', 'error');
+        showToast('Failed to send response: ' + error.message, 'error');
     }
 }
 
@@ -10913,7 +10931,7 @@ async function updateTicketStatus(ticketId, status) {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify({ status })
         });
@@ -10923,11 +10941,12 @@ async function updateTicketStatus(ticketId, status) {
             closeModal();
             loadTickets();
         } else {
-            throw new Error('Failed to update status');
+            const data = await response.json();
+            throw new Error(data.message || 'Failed to update status');
         }
     } catch (error) {
         console.error('Update ticket status error:', error);
-        showToast('Failed to update ticket status', 'error');
+        showToast('Failed to update ticket status: ' + error.message, 'error');
     }
 }
 
@@ -13405,6 +13424,292 @@ async function handleUpdateMilestone(event, milestoneId, projectId, projectName,
         showToast('Failed to update milestone', 'error');
     }
 }
+
+// ==================== MILESTONE MANAGEMENT ====================
+
+// Open milestone manager for a project
+async function openProjectMilestones(projectId, projectName, leadId) {
+    try {
+        const response = await fetch(`${API_BASE}/api/projects/${projectId}/milestones`, {
+            headers: {
+                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load milestones');
+        }
+        
+        const data = await response.json();
+        const milestones = data.milestones || [];
+        
+        const milestonesHtml = milestones.length > 0 ? milestones.map((milestone, index) => `
+            <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-bottom: 12px; border-left: 4px solid ${milestone.status === 'completed' ? 'var(--accent-amber)' : 'var(--border-strong)'};">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 4px 0; font-size: 15px;">${milestone.name}</h4>
+                        <p style="margin: 0; font-size: 13px; color: var(--text-secondary);">${milestone.description || 'No description'}</p>
+                    </div>
+                    <span class="status-badge status-${milestone.status}" style="margin-left: 12px;">
+                        ${milestone.status}
+                    </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                    <div style="font-size: 12px; color: var(--text-muted);">
+                        Due: ${milestone.due_date ? formatDate(milestone.due_date) : 'No due date'}
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-sm btn-secondary" onclick="editMilestone(${projectId}, ${milestone.id}, '${projectName}', ${leadId})">
+                            Edit
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteMilestone(${projectId}, ${milestone.id}, '${projectName}', ${leadId})">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+                ${milestone.status !== 'completed' ? `
+                    <div style="margin-top: 12px;">
+                        <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">
+                            Progress: ${milestone.completion_percentage || 0}%
+                        </label>
+                        <div style="background: var(--bg-hover); height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div style="background: var(--accent-amber); height: 100%; width: ${milestone.completion_percentage || 0}%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('') : '<p style="text-align: center; color: var(--text-muted); padding: 40px;">No milestones yet</p>';
+        
+        const modalContent = `
+            <div style="max-height: 60vh; overflow-y: auto; margin-bottom: 20px;">
+                ${milestonesHtml}
+            </div>
+            <div style="padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+                <button class="btn btn-primary" onclick="addMilestone(${projectId}, '${projectName}', ${leadId})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Milestone
+                </button>
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        `;
+        
+        showModal(`${projectName} - Milestones`, modalContent);
+    } catch (error) {
+        console.error('[MILESTONE] Load error:', error);
+        showToast('Failed to load milestones', 'error');
+    }
+}
+
+// Add new milestone
+function addMilestone(projectId, projectName, leadId) {
+    const modalContent = `
+        <form onsubmit="saveMilestone(event, ${projectId}, '${projectName}', ${leadId}); return false;">
+            <div class="form-group">
+                <label>Milestone Name *</label>
+                <input type="text" id="milestoneName" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="milestoneDescription" class="form-control" rows="3"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Due Date</label>
+                <input type="date" id="milestoneDueDate" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label>Status</label>
+                <select id="milestoneStatus" class="form-control">
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Completion Percentage</label>
+                <input type="number" id="milestonePercentage" class="form-control" min="0" max="100" value="0">
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">Save Milestone</button>
+                <button type="button" class="btn btn-secondary" onclick="openProjectMilestones(${projectId}, '${projectName}', ${leadId})">Cancel</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Add Milestone', modalContent);
+}
+
+// Save milestone
+async function saveMilestone(event, projectId, projectName, leadId) {
+    event.preventDefault();
+    
+    const milestoneData = {
+        project_id: projectId,
+        name: document.getElementById('milestoneName').value,
+        description: document.getElementById('milestoneDescription').value,
+        due_date: document.getElementById('milestoneDueDate').value || null,
+        status: document.getElementById('milestoneStatus').value,
+        completion_percentage: parseInt(document.getElementById('milestonePercentage').value) || 0
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/projects/${projectId}/milestones`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(milestoneData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Milestone created successfully', 'success');
+            openProjectMilestones(projectId, projectName, leadId);
+        } else {
+            showToast(data.message || 'Failed to create milestone', 'error');
+        }
+    } catch (error) {
+        console.error('[MILESTONE] Create error:', error);
+        showToast('Failed to create milestone', 'error');
+    }
+}
+
+// Edit milestone
+async function editMilestone(projectId, milestoneId, projectName, leadId) {
+    try {
+        // Get milestone data
+        const response = await fetch(`${API_BASE}/api/projects/${projectId}/milestones`, {
+            headers: {
+                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        const milestone = data.milestones.find(m => m.id === milestoneId);
+        
+        if (!milestone) {
+            showToast('Milestone not found', 'error');
+            return;
+        }
+        
+        const modalContent = `
+            <form onsubmit="updateMilestone(event, ${projectId}, ${milestoneId}, '${projectName}', ${leadId}); return false;">
+                <div class="form-group">
+                    <label>Milestone Name *</label>
+                    <input type="text" id="milestoneName" class="form-control" value="${milestone.name}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="milestoneDescription" class="form-control" rows="3">${milestone.description || ''}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Due Date</label>
+                    <input type="date" id="milestoneDueDate" class="form-control" value="${milestone.due_date || ''}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="milestoneStatus" class="form-control">
+                        <option value="pending" ${milestone.status === 'pending' ? 'selected' : ''}>Pending</option>
+                        <option value="in-progress" ${milestone.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="completed" ${milestone.status === 'completed' ? 'selected' : ''}>Completed</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Completion Percentage</label>
+                    <input type="number" id="milestonePercentage" class="form-control" min="0" max="100" value="${milestone.completion_percentage || 0}">
+                </div>
+                
+                <div style="display: flex; gap: 8px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary">Update Milestone</button>
+                    <button type="button" class="btn btn-secondary" onclick="openProjectMilestones(${projectId}, '${projectName}', ${leadId})">Cancel</button>
+                </div>
+            </form>
+        `;
+        
+        showModal('Edit Milestone', modalContent);
+    } catch (error) {
+        console.error('[MILESTONE] Load for edit error:', error);
+        showToast('Failed to load milestone', 'error');
+    }
+}
+
+// Update milestone
+async function updateMilestone(event, projectId, milestoneId, projectName, leadId) {
+    event.preventDefault();
+    
+    const milestoneData = {
+        name: document.getElementById('milestoneName').value,
+        description: document.getElementById('milestoneDescription').value,
+        due_date: document.getElementById('milestoneDueDate').value || null,
+        status: document.getElementById('milestoneStatus').value,
+        completion_percentage: parseInt(document.getElementById('milestonePercentage').value) || 0
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/milestones/${milestoneId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(milestoneData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Milestone updated successfully', 'success');
+            openProjectMilestones(projectId, projectName, leadId);
+        } else {
+            showToast(data.message || 'Failed to update milestone', 'error');
+        }
+    } catch (error) {
+        console.error('[MILESTONE] Update error:', error);
+        showToast('Failed to update milestone', 'error');
+    }
+}
+
+// Delete milestone
+async function deleteMilestone(projectId, milestoneId, projectName, leadId) {
+    if (!confirm('Are you sure you want to delete this milestone?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/milestones/${milestoneId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken || localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Milestone deleted successfully', 'success');
+            openProjectMilestones(projectId, projectName, leadId);
+        } else {
+            showToast(data.message || 'Failed to delete milestone', 'error');
+        }
+    } catch (error) {
+        console.error('[MILESTONE] Delete error:', error);
+        showToast('Failed to delete milestone', 'error');
+    }
+}
+
 // ==================== COMPREHENSIVE FIXES FOR ALL 9 ISSUES ====================
 
 // View saved project timeline
@@ -13417,62 +13722,89 @@ function viewProjectTimeline(index) {
         return;
     }
     
-    // Build packages HTML
-    const packagesHtml = (timeline.packages || []).map(pkg => {
-        const packageInfo = servicePackages[pkg];
-        if (!packageInfo) return '';
-        return `
-            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
-                <strong>${packageInfo.name}</strong>
-                <br>
-                <span style="font-size: 12px; color: var(--text-muted);">${packageInfo.description}</span>
-            </div>
-        `;
-    }).join('');
+    // Store for export and email functions
+    window.currentTimelinePreview = timeline;
+    window.currentTimelineIndex = index;
     
-    // Build the modal content
+    // Calculate totals
+    let totalPrice = 0;
+    let hasPaidPackage = false;
+    timeline.packages.forEach(function(key) {
+        if (servicePackages[key] && !servicePackages[key].isFree) {
+            hasPaidPackage = true;
+            totalPrice += servicePackages[key].price;
+        }
+    });
+    
+    // Generate overview content
+    const overviewContent = `
+        <h3 style="margin-bottom: 16px;">Quick Summary</h3>
+        <div style="background: var(--bg-tertiary); padding: 20px; border-radius: var(--radius-md);">
+            <div style="margin-bottom: 12px;"><strong>Client:</strong> ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}</div>
+            <div style="margin-bottom: 12px;"><strong>Email:</strong> ${timeline.clientEmail}</div>
+            <div style="margin-bottom: 12px;"><strong>Project:</strong> ${timeline.projectName || 'Web Development Project'}</div>
+            <div style="margin-bottom: 12px;"><strong>Packages:</strong> ${timeline.packages.map(k => servicePackages[k]?.name || k).join(', ')}</div>
+            <div style="margin-bottom: 12px;"><strong>Total:</strong> ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</div>
+            <div style="margin-bottom: 12px;"><strong>Start:</strong> ${formatDate(timeline.startDate)}</div>
+            <div><strong>End:</strong> ${formatDate(timeline.endDate || 'TBD')}</div>
+        </div>
+    `;
+    
+    // Generate timeline phases content
+    const timelineContent = `
+        <h3 style="margin-bottom: 16px;">Project Phases</h3>
+        <div style="max-height: 500px; overflow-y: auto;">
+            ${standardWebsitePhases.map((phase, index) => `
+                <div style="margin-bottom: 20px; padding: 16px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-amber);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div>
+                            <span style="display: inline-block; background: var(--accent-amber); color: var(--bg-void); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; margin-right: 8px;">Phase ${index + 1}</span>
+                            <span style="font-size: 15px; font-weight: 600;">${phase.name}</span>
+                        </div>
+                        <span style="font-size: 12px; color: var(--text-muted);">${phase.duration}</span>
+                    </div>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        ${phase.tasks.map(task => `
+                            <li style="padding: 6px 0; padding-left: 20px; position: relative; font-size: 13px; color: var(--text-secondary);">
+                                <span style="position: absolute; left: 0; top: 6px; color: var(--accent-amber);">✓</span>
+                                ${task}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    // Build the modal content with tabs
     const modalContent = `
-        <div style="max-height: 70vh; overflow-y: auto;">
-            <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-                <h3 style="margin: 0 0 12px 0;">${timeline.clientName}</h3>
-                <p style="margin: 4px 0;"><strong>Company:</strong> ${timeline.clientCompany || 'N/A'}</p>
-                <p style="margin: 4px 0;"><strong>Email:</strong> ${timeline.clientEmail}</p>
-                <p style="margin: 4px 0;"><strong>Phone:</strong> ${timeline.clientPhone || 'N/A'}</p>
-                <p style="margin: 4px 0;"><strong>Project:</strong> ${timeline.projectName || 'N/A'}</p>
-                <p style="margin: 4px 0;"><strong>Start Date:</strong> ${formatDate(timeline.startDate)}</p>
-                ${timeline.endDate ? `<p style="margin: 4px 0;"><strong>End Date:</strong> ${formatDate(timeline.endDate)}</p>` : ''}
-                <p style="margin: 4px 0;"><strong>Status:</strong> <span class="status-badge status-${timeline.status || 'pending'}">${timeline.status || 'pending'}</span></p>
-            </div>
-            
-            <h4 style="margin: 16px 0 8px 0;">Selected Packages</h4>
-            ${packagesHtml || '<p style="color: var(--text-muted);">No packages selected</p>'}
-            
-            ${timeline.maintenanceIncluded && timeline.maintenanceIncluded !== 'no' ? `
-                <div style="background: var(--accent-amber-dim); padding: 12px; border-radius: 8px; margin-top: 12px;">
-                    <strong>Maintenance Included</strong>
-                    <br>
-                    ${timeline.maintenanceIncluded === 'paid' ? `Fee: $${timeline.maintenanceFee}/month<br>` : 'FREE Maintenance<br>'}
-                    ${timeline.maintenanceDetails || ''}
-                </div>
-            ` : ''}
-            
-            ${timeline.scope ? `
-                <div style="margin-top: 12px;">
-                    <h4>Scope & Requirements</h4>
-                    <p>${timeline.scope}</p>
-                </div>
-            ` : ''}
-            
-            ${timeline.notes ? `
-                <div style="margin-top: 12px;">
-                    <h4>Additional Notes</h4>
-                    <p>${timeline.notes}</p>
-                </div>
-            ` : ''}
+        <div class="tabs">
+            <button class="tab active" data-tab="overview">Overview</button>
+            <button class="tab" data-tab="timeline">Timeline</button>
+            <button class="tab" data-tab="preview">Full SLA Preview</button>
+        </div>
+
+        <div id="tab-overview" class="tab-content" style="padding: 24px;">
+            ${overviewContent}
+        </div>
+
+        <div id="tab-timeline" class="tab-content" style="display: none; padding: 24px;">
+            ${timelineContent}
+        </div>
+
+        <div id="tab-preview" class="tab-content" style="display: none; padding: 24px;">
+            <!-- Will be populated when tab is clicked -->
         </div>
         
-        <div class="modal-actions" style="margin-top: 20px;">
+        <div class="modal-actions" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
             <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            <button class="btn btn-secondary" onclick="emailSavedTimelineToClient()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                Email to Client
+            </button>
             <button class="btn btn-primary" onclick="exportProjectTimeline(${index})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -13487,9 +13819,82 @@ function viewProjectTimeline(index) {
     
     // Use your existing showModal function
     showModal(`Project Timeline - ${timeline.clientName}`, modalContent);
+    
+    // Set up tab click handlers AFTER modal is visible
+    setTimeout(() => {
+        document.querySelectorAll('#createModal .tab').forEach(tab => {
+            tab.addEventListener('click', function () {
+                // Remove active from all tabs
+                document.querySelectorAll('#createModal .tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                // Hide all contents
+                document.querySelectorAll('#createModal .tab-content').forEach(c => c.style.display = 'none');
+
+                // Show selected
+                const tabId = 'tab-' + this.dataset.tab;
+                const content = document.getElementById(tabId);
+                if (content) {
+                    content.style.display = 'block';
+
+                    // Special case: when user clicks "Full SLA Preview" tab → generate content
+                    if (this.dataset.tab === 'preview') {
+                        content.innerHTML = generateTimelineHTML(timeline);
+                    }
+                }
+            });
+        });
+    }, 100);
 }
 
-// FIX 3: Export Timeline Function
+// Email saved timeline to client
+async function emailSavedTimelineToClient() {
+    const timeline = window.currentTimelinePreview;
+    if (!timeline) {
+        showToast('No timeline to email', 'error');
+        return;
+    }
+    
+    if (!timeline.clientEmail) {
+        showToast('No client email address found', 'error');
+        return;
+    }
+    
+    // Show loading toast
+    showToast('Sending email...', 'warning');
+    
+    try {
+        const response = await fetch(`${API_URL}/api/email/send-timeline`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+                timeline: timeline,
+                recipientEmail: timeline.clientEmail
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to send email');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Timeline emailed successfully to ' + timeline.clientEmail, 'success');
+            closeModal();
+        } else {
+            throw new Error(result.message || 'Failed to send email');
+        }
+    } catch (error) {
+        console.error('Email error:', error);
+        showToast('Failed to send email: ' + error.message, 'error');
+    }
+}
+
+// FIX 3: Export Timeline Function  
 function exportProjectTimeline(index) {
     const timelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
     const timeline = timelines[index];
@@ -13499,78 +13904,9 @@ function exportProjectTimeline(index) {
         return;
     }
     
-    // Create print-friendly version
-    const printWindow = window.open('', '', 'height=800,width=1000');
-    const packages = (timeline.packages || []).map(pkg => {
-        const packageInfo = servicePackages[pkg];
-        return packageInfo ? packageInfo.name : pkg;
-    }).join(', ');
-    
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>Project Timeline - ${timeline.clientName}</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
-                h1 { color: #22c55e; border-bottom: 3px solid #22c55e; padding-bottom: 10px; }
-                h2 { color: #333; margin-top: 30px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
-                .info-row { margin: 10px 0; }
-                .info-row strong { display: inline-block; width: 150px; }
-                .package { background: #f0f9ff; padding: 10px; margin: 5px 0; border-left: 4px solid #22c55e; }
-                @media print { body { padding: 20px; } }
-            </style>
-        </head>
-        <body>
-            <h1>Project Timeline & SLA</h1>
-            
-            <h2>Client Information</h2>
-            <div class="info-row"><strong>Client Name:</strong> ${timeline.clientName}</div>
-            <div class="info-row"><strong>Company:</strong> ${timeline.clientCompany || 'N/A'}</div>
-            <div class="info-row"><strong>Email:</strong> ${timeline.clientEmail}</div>
-            <div class="info-row"><strong>Phone:</strong> ${timeline.clientPhone || 'N/A'}</div>
-            <div class="info-row"><strong>Address:</strong> ${timeline.clientAddress || 'N/A'}</div>
-            
-            <h2>Project Details</h2>
-            <div class="info-row"><strong>Project Name:</strong> ${timeline.projectName || 'N/A'}</div>
-            <div class="info-row"><strong>Start Date:</strong> ${timeline.startDate || 'TBD'}</div>
-            <div class="info-row"><strong>Completion Date:</strong> ${timeline.endDate || 'TBD'}</div>
-            <div class="info-row"><strong>Status:</strong> ${timeline.status || 'pending'}</div>
-            
-            <h2>Selected Packages</h2>
-            <div>${packages || 'No packages selected'}</div>
-            
-            ${timeline.maintenanceIncluded !== 'no' ? `
-                <h2>Maintenance Plan</h2>
-                <div class="info-row"><strong>Type:</strong> ${timeline.maintenanceIncluded === 'paid' ? 'Paid Maintenance' : 'FREE Maintenance'}</div>
-                ${timeline.maintenanceIncluded === 'paid' ? `<div class="info-row"><strong>Monthly Fee:</strong> $${timeline.maintenanceFee}</div>` : ''}
-                <div class="info-row"><strong>Details:</strong> ${timeline.maintenanceDetails || 'Standard maintenance'}</div>
-            ` : ''}
-            
-            ${timeline.scope ? `
-                <h2>Scope & Requirements</h2>
-                <p>${timeline.scope}</p>
-            ` : ''}
-            
-            ${timeline.notes ? `
-                <h2>Additional Notes</h2>
-                <p>${timeline.notes}</p>
-            ` : ''}
-            
-            <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #eee; font-size: 12px; color: #666;">
-                <p>Created: ${timeline.createdAt ? new Date(timeline.createdAt).toLocaleDateString() : new Date().toLocaleDateString()}</p>
-                <p>Generated by Diamondback Coding Admin Portal</p>
-            </div>
-        </body>
-        </html>
-    `);
-    
-    printWindow.document.close();
-    
-    setTimeout(() => {
-        printWindow.print();
-    }, 500);
-    
-    showToast('Opening print dialog...', 'success');
+    // Set the timeline for export and call the comprehensive PDF export function
+    window.currentTimelinePreview = timeline;
+    exportTimelineAsPDF();
 }
 
 // FIX 6: Delete Ticket Function
@@ -13583,7 +13919,7 @@ async function deleteTicket(ticketId) {
         const response = await fetch(`${API_BASE}/api/tickets/${ticketId}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${getAuthToken()}`
             }
         });
         

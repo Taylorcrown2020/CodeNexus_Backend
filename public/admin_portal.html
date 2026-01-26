@@ -2893,44 +2893,6 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
 
     <script>
 // ========================================
-// AUTHENTICATION CHECK
-// ========================================
-(function checkAuth() {
-    const token = localStorage.getItem('adminToken') || 
-                 sessionStorage.getItem('adminToken') || 
-                 localStorage.getItem('token') || 
-                 sessionStorage.getItem('token');
-    
-    if (!token) {
-        // No token found, redirect to login
-        window.location.href = '/admin-login.html';
-        return;
-    }
-    
-    // Verify token is valid
-    fetch(`${window.location.origin}/api/admin/verify`, {
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (!data.valid) {
-            // Token invalid, clear and redirect
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('token');
-            sessionStorage.removeItem('adminToken');
-            sessionStorage.removeItem('token');
-            window.location.href = '/admin-login.html';
-        }
-    })
-    .catch(() => {
-        // Error verifying, redirect to login
-        window.location.href = '/admin-login.html';
-    });
-})();
-
-// ========================================
 // STATE & CONFIGURATION
 // ========================================
 const API_URL = window.location.origin;

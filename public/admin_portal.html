@@ -5591,49 +5591,52 @@ function formatFileSize(bytes) {
 // Add these functions to your admin_portal.html
 // ========================================
 
-// Open email template selector modal
+// ==================== EMAIL FUNCTIONS ====================
+
 function openEmailTemplateModal(leadId) {
     console.log('[EMAIL] Opening email modal for lead:', leadId);
     
-    // Find the lead data
-    const lead = state.leads?.find(l => l.id === leadId);
+    // Find the lead data from the page
+    const leadElement = event.target.closest('tr');
+    const leadName = leadElement.querySelector('.contact-name')?.textContent || 'Lead';
+    const leadEmail = leadElement.querySelector('.contact-email')?.textContent || '';
     
-    if (!lead) {
-        showToast('Lead not found', 'error');
+    if (!leadEmail) {
+        showToast('Lead email not found', 'error');
         return;
     }
     
     // Create modal HTML
     const modalHtml = `
-        <div class="modal-overlay" onclick="closeEmailModal()">
-            <div class="modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+        <div class="modal-overlay" id="emailModal" onclick="if(event.target.id==='emailModal') closeEmailModal()">
+            <div class="modal" style="max-width: 600px;">
                 <div class="modal-header">
-                    <h3>Send Email to ${lead.name}</h3>
+                    <h3>Send Email to ${leadName}</h3>
                     <button class="modal-close" onclick="closeEmailModal()">×</button>
                 </div>
                 <div class="modal-body">
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">To:</label>
-                        <input type="email" id="emailTo" value="${lead.email}" readonly 
-                               style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-secondary);">
+                        <input type="email" id="emailTo" value="${leadEmail}" readonly 
+                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary);">
                     </div>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
                         <input type="text" id="emailSubject" placeholder="Email subject" 
-                               style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
                     </div>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
-                        <textarea id="emailBody" rows="8" placeholder="Type your message here..." 
-                                  style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; resize: vertical;"></textarea>
+                        <textarea id="emailBody" rows="10" placeholder="Type your message here..." 
+                                  style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button class="btn btn-secondary" onclick="closeEmailModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="sendEmail(${leadId})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <button class="btn btn-primary" onclick="sendEmail(${leadId}, '${leadEmail}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
                             <line x1="22" y1="2" x2="11" y2="13"/>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                         </svg>
@@ -5646,22 +5649,34 @@ function openEmailTemplateModal(leadId) {
     
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Focus on subject field
+    setTimeout(() => {
+        document.getElementById('emailSubject')?.focus();
+    }, 100);
 }
 
 function closeEmailModal() {
     const modal = document.querySelector('.modal-overlay');
-    if (modal) modal.remove();
+    if (modal) {
+        modal.remove();
+    }
 }
 
-async function sendEmail(leadId) {
-    const subject = document.getElementById('emailSubject').value;
-    const body = document.getElementById('emailBody').value;
-    const to = document.getElementById('emailTo').value;
+async function sendEmail(leadId, leadEmail) {
+    const subject = document.getElementById('emailSubject')?.value;
+    const body = document.getElementById('emailBody')?.value;
     
     if (!subject || !body) {
         showToast('Please fill in subject and message', 'error');
         return;
     }
+    
+    // Show loading state
+    const sendBtn = event.target.closest('button');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px;"></div> Sending...';
     
     try {
         const response = await fetch(`${API_URL}/api/leads/${leadId}/email`, {
@@ -5671,13 +5686,16 @@ async function sendEmail(leadId) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                to: to,
+                to: leadEmail,
                 subject: subject,
                 body: body
             })
         });
         
-        if (!response.ok) throw new Error('Failed to send email');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to send email');
+        }
         
         showToast('Email sent successfully!', 'success');
         closeEmailModal();
@@ -5688,6 +5706,10 @@ async function sendEmail(leadId) {
     } catch (error) {
         console.error('[EMAIL] Send error:', error);
         showToast('Failed to send email: ' + error.message, 'error');
+        
+        // Restore button
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = originalText;
     }
 }
 
@@ -14432,33 +14454,33 @@ function openCategoryEmailModal(category, categoryLabel, count) {
     console.log('[EMAIL] Opening bulk email modal for category:', category);
     
     const modalHtml = `
-        <div class="modal-overlay" onclick="closeEmailModal()">
-            <div class="modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+        <div class="modal-overlay" id="emailModal" onclick="if(event.target.id==='emailModal') closeEmailModal()">
+            <div class="modal" style="max-width: 600px;">
                 <div class="modal-header">
                     <h3>Email All - ${categoryLabel}</h3>
                     <button class="modal-close" onclick="closeEmailModal()">×</button>
                 </div>
                 <div class="modal-body">
-                    <p style="margin-bottom: 16px; color: var(--text-muted);">
-                        This will send an email to ${count} leads in this category.
+                    <p style="margin-bottom: 20px; color: var(--text-muted); padding: 12px; background: var(--bg-secondary); border-radius: 6px;">
+                        📧 This will send an email to <strong>${count} leads</strong> in this category.
                     </p>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
                         <input type="text" id="bulkEmailSubject" placeholder="Email subject" 
-                               style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
                     </div>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
-                        <textarea id="bulkEmailBody" rows="8" placeholder="Type your message here..." 
-                                  style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; resize: vertical;"></textarea>
+                        <textarea id="bulkEmailBody" rows="10" placeholder="Type your message here..." 
+                                  style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button class="btn btn-secondary" onclick="closeEmailModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="sendBulkEmail('${category}')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <button class="btn btn-primary" onclick="sendBulkEmail('${category}', ${count})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
                             <line x1="22" y1="2" x2="11" y2="13"/>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                         </svg>
@@ -14470,16 +14492,26 @@ function openCategoryEmailModal(category, categoryLabel, count) {
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    setTimeout(() => {
+        document.getElementById('bulkEmailSubject')?.focus();
+    }, 100);
 }
 
-async function sendBulkEmail(category) {
-    const subject = document.getElementById('bulkEmailSubject').value;
-    const body = document.getElementById('bulkEmailBody').value;
+async function sendBulkEmail(category, count) {
+    const subject = document.getElementById('bulkEmailSubject')?.value;
+    const body = document.getElementById('bulkEmailBody')?.value;
     
     if (!subject || !body) {
         showToast('Please fill in subject and message', 'error');
         return;
     }
+    
+    // Show loading state
+    const sendBtn = event.target.closest('button');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px;"></div> Sending...';
     
     try {
         const response = await fetch(`${API_URL}/api/follow-ups/email-category`, {
@@ -14495,15 +14527,25 @@ async function sendBulkEmail(category) {
             })
         });
         
-        if (!response.ok) throw new Error('Failed to send bulk emails');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to send bulk emails');
+        }
         
         const result = await response.json();
-        showToast(`Successfully sent ${result.sent_count || 0} emails!`, 'success');
+        showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
         closeEmailModal();
+        
+        // Refresh the page
+        await renderSection('followups');
         
     } catch (error) {
         console.error('[EMAIL] Bulk send error:', error);
         showToast('Failed to send emails: ' + error.message, 'error');
+        
+        // Restore button
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = originalText;
     }
 }
 

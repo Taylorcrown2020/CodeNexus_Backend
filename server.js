@@ -5759,13 +5759,13 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
                     l.*,
                     CASE 
                         WHEN l.last_contact_date IS NULL THEN 'never_contacted'
-                        WHEN (CURRENT_DATE - l.last_contact_date) >= 14 THEN '14_day'
-                        WHEN (CURRENT_DATE - l.last_contact_date) >= 7 THEN '7_day'
-                        WHEN (CURRENT_DATE - l.last_contact_date) >= 3 THEN '3_day'
-                        WHEN (CURRENT_DATE - l.last_contact_date) >= 1 THEN '1_day'
+                        WHEN EXTRACT(DAY FROM CURRENT_DATE - l.last_contact_date) >= 14 THEN '14_day'
+                        WHEN EXTRACT(DAY FROM CURRENT_DATE - l.last_contact_date) >= 7 THEN '7_day'
+                        WHEN EXTRACT(DAY FROM CURRENT_DATE - l.last_contact_date) >= 3 THEN '3_day'
+                        WHEN EXTRACT(DAY FROM CURRENT_DATE - l.last_contact_date) >= 1 THEN '1_day'
                         ELSE NULL
                     END as follow_up_category,
-                    COALESCE(CURRENT_DATE - l.last_contact_date, 999) as days_since_contact
+                    COALESCE(EXTRACT(DAY FROM CURRENT_DATE - l.last_contact_date)::INTEGER, 999) as days_since_contact
                 FROM leads l
                 WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
                 AND l.is_customer = FALSE

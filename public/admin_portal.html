@@ -12840,29 +12840,37 @@ async function renderFollowUps(content) {
     content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
     
     try {
-        const response = await fetch(`${API_URL}/api/follow-ups`, {
+        // Load categorized data
+        const categories = await loadCategorizedFollowUps();
+        
+        // Load stats
+        const statsResponse = await fetch(`${API_URL}/api/follow-ups/stats`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        const statsData = await statsResponse.json();
+        const stats = statsData.stats || {};
         
-        if (!response.ok) {
-            throw new Error('Failed to load follow-ups');
-        }
-        
-        const data = await response.json();
-        const followUps = data.leads || [];
+        const categoryLabels = {
+            'never_contacted': 'Never Contacted',
+            '1_day': '1-Day Follow-Up',
+            '3_day': '3-Day Follow-Up',
+            '7_day': '7-Day Follow-Up',
+            '14_day': '14+ Day Follow-Up'
+        };
         
         content.innerHTML = `
             <div class="page-header">
                 <div>
                     <h2>Follow-Up Queue</h2>
-                    <p class="page-description">Leads requiring follow-up based on automated schedule</p>
+                    <p class="page-description">Categorized by follow-up schedule</p>
                 </div>
             </div>
             
+            <!-- Stats Cards -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-header">
-                        <span class="stat-label">Pending Follow-Ups</span>
+                        <span class="stat-label">Total Pending</span>
                         <div class="stat-icon amber">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="10"/>
@@ -12870,32 +12878,56 @@ async function renderFollowUps(content) {
                             </svg>
                         </div>
                     </div>
-                    <div class="stat-value">${followUps.length}</div>
+                    <div class="stat-value">${stats.total_pending || 0}</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Never Contacted</span>
+                        <div class="stat-icon red">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value">${stats.never_contacted || 0}</div>
                 </div>
             </div>
             
-            <div class="table-container" style="margin-top: 24px;">
-                <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle);">
-                    <h3 style="font-size: 15px; font-weight: 700;">Leads to Follow Up</h3>
-                </div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Lead</th>
-                            <th>Last Contact</th>
-                            <th>Follow-Up Stage</th>
-                            <th>Days Since Contact</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="followups-table-body">
-                        ${followUps.length > 0 ? followUps.map(lead => {
-                            const stepLabel = getFollowUpLabel(lead.follow_up_step);
-                            const daysSince = lead.last_contact_date 
-                                ? Math.floor((Date.now() - new Date(lead.last_contact_date).getTime()) / (1000 * 60 * 60 * 24))
-                                : 'Never';
-                            
-                            return `
+            <!-- Category Sections -->
+            ${categories.map(category => `
+                <div class="table-container" style="margin-top: 24px;">
+                    <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">
+                                ${categoryLabels[category.follow_up_category] || category.follow_up_category}
+                            </h3>
+                            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
+                                ${category.count} leads need follow-up
+                            </p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" 
+                                onclick="openCategoryEmailModal('${category.follow_up_category}', '${categoryLabels[category.follow_up_category]}', ${category.count})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            Email All in This Category
+                        </button>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Lead</th>
+                                <th>Last Contact</th>
+                                <th>Days Since Contact</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${category.leads.map(lead => `
                                 <tr>
                                     <td>
                                         <div class="contact-cell">
@@ -12906,13 +12938,8 @@ async function renderFollowUps(content) {
                                             </div>
                                         </div>
                                     </td>
-                                    <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never contacted'}</td>
-                                    <td>
-                                        <span class="status-badge status-pending">
-                                            ${stepLabel}
-                                        </span>
-                                    </td>
-                                    <td>${typeof daysSince === 'number' ? daysSince + ' days' : daysSince}</td>
+                                    <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
+                                    <td>${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}</td>
                                     <td>
                                         <div class="action-buttons">
                                             <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
@@ -12921,13 +12948,6 @@ async function renderFollowUps(content) {
                                                     <polyline points="22 4 12 14.01 9 11.01"/>
                                                 </svg>
                                                 Mark Contacted
-                                            </button>
-                                            <button class="btn btn-sm btn-secondary" onclick="openDetailModal('lead', ${lead.id})">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                                    <circle cx="12" cy="12" r="3"/>
-                                                </svg>
-                                                View
                                             </button>
                                             <button class="btn btn-sm btn-secondary" onclick="openEmailTemplateModal(${lead.id})">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
@@ -12939,41 +12959,25 @@ async function renderFollowUps(content) {
                                         </div>
                                     </td>
                                 </tr>
-                            `;
-                        }).join('') : `
-                            <tr>
-                                <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                                    <div class="empty-state">
-                                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                            <polyline points="22 4 12 14.01 9 11.01"/>
-                                        </svg>
-                                        <div class="empty-title">No Follow-Ups Pending</div>
-                                        <div class="empty-description">All leads are up to date!</div>
-                                    </div>
-                                </td>
-                            </tr>
-                        `}
-                    </tbody>
-                </table>
-            </div>
-            
-            <div style="margin-top: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 4px solid var(--accent-amber);">
-                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 700;">Follow-Up Schedule</h4>
-                <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.8;">
-                    <strong>Automated follow-up timeline:</strong><br>
-                    • <strong>Day 1:</strong> Initial contact<br>
-                    • <strong>Day 3:</strong> First follow-up<br>
-                    • <strong>Day 7:</strong> Second follow-up<br>
-                    • <strong>Day 8:</strong> Third follow-up<br>
-                    • <strong>Day 10:</strong> Fourth follow-up<br>
-                    • <strong>Day 15:</strong> Fifth follow-up<br>
-                    • <strong>After Day 15:</strong> Follow up every 7 days
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+            `).join('')}
+            
+            ${categories.length === 0 ? `
+                <div style="text-align: center; padding: 60px; color: var(--text-muted);">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <div class="empty-title">All Caught Up!</div>
+                    <div class="empty-description">No follow-ups needed right now</div>
+                </div>
+            ` : ''}
         `;
     } catch (error) {
-        console.error('Error loading follow-ups:', error);
+        console.error('[FOLLOW-UPS] Render error:', error);
         content.innerHTML = `
             <div style="text-align: center; padding: 40px; color: var(--status-lost);">
                 <h3>Error Loading Follow-Ups</h3>
@@ -14200,6 +14204,118 @@ async function deleteMilestone(projectId, milestoneId, projectName, leadId) {
         console.error('[MILESTONE] Delete error:', error);
         showToast('Failed to delete milestone', 'error');
     }
+}
+
+// ==================== FOLLOW-UP SYSTEM FUNCTIONS ====================
+
+// Get categorized follow-ups (grouped by days)
+async function loadCategorizedFollowUps() {
+    try {
+        const response = await fetch(`${API_URL}/api/follow-ups/categorized`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.categories; // Returns grouped data
+        }
+        return [];
+    } catch (error) {
+        console.error('[FOLLOW-UPS] Load categorized error:', error);
+        return [];
+    }
+}
+
+// Send email to specific follow-up category
+async function sendBulkEmailByCategory(category, subject, message) {
+    try {
+        const response = await fetch(`${API_URL}/api/follow-ups/send-by-category`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ category, subject, message })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Sent ${data.successCount} emails to ${category} category`, 'success');
+            renderSection('followups'); // Refresh the view
+        } else {
+            showToast(data.message || 'Failed to send emails', 'error');
+        }
+    } catch (error) {
+        console.error('[BULK EMAIL] Error:', error);
+        showToast('Failed to send bulk email', 'error');
+    }
+}
+
+// Open bulk email modal for a specific category
+function openCategoryEmailModal(category, categoryName, leadCount) {
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = `Send Email to ${categoryName} (${leadCount} leads)`;
+    
+    bodyEl.innerHTML = `
+        <form id="categoryEmailForm" onsubmit="handleCategoryEmailSend(event, '${category}')">
+            <div class="form-group">
+                <label class="form-label">Subject <span class="required">*</span></label>
+                <input type="text" class="form-input" id="emailSubject" required 
+                       placeholder="e.g., Quick follow-up">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Message <span class="required">*</span></label>
+                <textarea class="form-textarea" id="emailMessage" rows="12" required 
+                          placeholder="Hi [Name],
+
+I wanted to follow up on your inquiry...
+
+Best regards,
+Diamondback Coding Team"></textarea>
+            </div>
+            
+            <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin: 16px 0;">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">
+                    📌 This will send to ${leadCount} leads in the "${categoryName}" category
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+                    </svg>
+                    Send to ${leadCount} Leads
+                </button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// Handle category email form submission
+async function handleCategoryEmailSend(event, category) {
+    event.preventDefault();
+    
+    const subject = document.getElementById('emailSubject').value;
+    const message = document.getElementById('emailMessage').value;
+    
+    if (!subject || !message) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    closeCreateModal();
+    await sendBulkEmailByCategory(category, subject, message);
 }
 
 // ==================== COMPREHENSIVE FIXES FOR ALL 9 ISSUES ====================

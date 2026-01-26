@@ -8488,6 +8488,265 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
 });
 
 // ========================================
+// ENHANCED FOLLOW-UP SYSTEM
+// ========================================
+
+// Get follow-ups grouped by category
+app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
+    try {
+        console.log('[FOLLOW-UPS] Getting categorized follow-ups');
+        
+        const result = await pool.query(`
+            WITH follow_up_leads AS (
+                SELECT 
+                    l.*,
+                    CASE 
+                        WHEN l.last_contact_date IS NULL THEN 'never_contacted'
+                        WHEN (CURRENT_DATE - l.last_contact_date) >= 14 THEN '14_day'
+                        WHEN (CURRENT_DATE - l.last_contact_date) >= 7 THEN '7_day'
+                        WHEN (CURRENT_DATE - l.last_contact_date) >= 3 THEN '3_day'
+                        WHEN (CURRENT_DATE - l.last_contact_date) >= 1 THEN '1_day'
+                        ELSE NULL
+                    END as follow_up_category,
+                    COALESCE(CURRENT_DATE - l.last_contact_date, 999) as days_since_contact
+                FROM leads l
+                WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
+                AND l.is_customer = FALSE
+                AND (
+                    l.last_contact_date IS NULL
+                    OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
+                )
+            )
+            SELECT 
+                follow_up_category,
+                COUNT(*) as count,
+                json_agg(
+                    json_build_object(
+                        'id', id,
+                        'name', name,
+                        'email', email,
+                        'company', company,
+                        'status', status,
+                        'last_contact_date', last_contact_date,
+                        'days_since_contact', days_since_contact
+                    ) ORDER BY days_since_contact DESC
+                ) as leads
+            FROM follow_up_leads
+            WHERE follow_up_category IS NOT NULL
+            GROUP BY follow_up_category
+            ORDER BY 
+                CASE follow_up_category
+                    WHEN 'never_contacted' THEN 1
+                    WHEN '14_day' THEN 2
+                    WHEN '7_day' THEN 3
+                    WHEN '3_day' THEN 4
+                    WHEN '1_day' THEN 5
+                END
+        `);
+        
+        console.log(`[FOLLOW-UPS] ✅ Found ${result.rows.length} categories`);
+        
+        res.json({
+            success: true,
+            categories: result.rows
+        });
+    } catch (error) {
+        console.error('[FOLLOW-UPS] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching categorized follow-ups',
+            error: error.message
+        });
+    }
+});
+
+// Send bulk email to specific follow-up category
+app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res) => {
+    try {
+        const { category, subject, message } = req.body;
+        
+        console.log(`[BULK CATEGORY] Sending to category: ${category}`);
+        
+        if (!category || !subject || !message) {
+            return res.status(400).json({
+                success: false,
+                message: 'Category, subject, and message are required'
+            });
+        }
+        
+        // Valid categories
+        const validCategories = ['never_contacted', '1_day', '3_day', '7_day', '14_day'];
+        if (!validCategories.includes(category)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid category'
+            });
+        }
+        
+        // Get leads in this category
+        const leadsResult = await pool.query(`
+            SELECT 
+                l.id,
+                l.name,
+                l.email,
+                COALESCE(CURRENT_DATE - l.last_contact_date, 999) as days_since_contact
+            FROM leads l
+            WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
+            AND l.is_customer = FALSE
+            AND l.email IS NOT NULL
+            AND (
+                CASE 
+                    WHEN $1 = 'never_contacted' THEN l.last_contact_date IS NULL
+                    WHEN $1 = '14_day' THEN (CURRENT_DATE - l.last_contact_date) >= 14
+                    WHEN $1 = '7_day' THEN (CURRENT_DATE - l.last_contact_date) >= 7 AND (CURRENT_DATE - l.last_contact_date) < 14
+                    WHEN $1 = '3_day' THEN (CURRENT_DATE - l.last_contact_date) >= 3 AND (CURRENT_DATE - l.last_contact_date) < 7
+                    WHEN $1 = '1_day' THEN (CURRENT_DATE - l.last_contact_date) >= 1 AND (CURRENT_DATE - l.last_contact_date) < 3
+                END
+            )
+        `, [category]);
+        
+        const leads = leadsResult.rows;
+        
+        if (leads.length === 0) {
+            return res.json({
+                success: true,
+                message: 'No leads in this category',
+                successCount: 0,
+                failCount: 0
+            });
+        }
+        
+        console.log(`[BULK CATEGORY] Found ${leads.length} leads in ${category}`);
+        
+        let successCount = 0;
+        let failCount = 0;
+        const errors = [];
+        
+        // Send emails
+        for (const lead of leads) {
+            try {
+                const emailHTML = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>
+                            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                            .header { background: #22c55e; color: white; padding: 30px; text-align: center; margin-bottom: 30px; }
+                            .content { padding: 20px; background: white; white-space: pre-wrap; }
+                            .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="header">
+                                <h1 style="margin: 0; font-size: 24px;">Diamondback Coding</h1>
+                            </div>
+                            <div class="content">
+                                ${message.replace(/\n/g, '<br>')}
+                            </div>
+                            <div class="footer">
+                                <p><strong>Diamondback Coding</strong><br>
+                                15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                                <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `;
+                
+                const mailOptions = {
+                    from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                    to: lead.email,
+                    subject: subject,
+                    html: emailHTML
+                };
+                
+                await transporter.sendMail(mailOptions);
+                
+                // Update last_contact_date
+                await pool.query(
+                    `UPDATE leads 
+                     SET last_contact_date = CURRENT_DATE,
+                         status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
+                         updated_at = CURRENT_TIMESTAMP 
+                     WHERE id = $1`,
+                    [lead.id]
+                );
+                
+                successCount++;
+                console.log(`[BULK CATEGORY] ✅ Sent to ${lead.email}`);
+                
+            } catch (error) {
+                console.error(`[BULK CATEGORY] ❌ Error sending to ${lead.email}:`, error);
+                failCount++;
+                errors.push({ 
+                    leadId: lead.id, 
+                    email: lead.email,
+                    error: error.message 
+                });
+            }
+        }
+        
+        console.log(`[BULK CATEGORY] ✅ Complete: ${successCount} sent, ${failCount} failed`);
+        
+        res.json({
+            success: true,
+            message: `Sent ${successCount} emails to ${category} category, ${failCount} failed`,
+            successCount,
+            failCount,
+            totalLeads: leads.length,
+            errors: errors.length > 0 ? errors : undefined
+        });
+        
+    } catch (error) {
+        console.error('[BULK CATEGORY] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Bulk send failed',
+            error: error.message
+        });
+    }
+});
+
+// Get follow-up statistics with categories
+app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
+    try {
+        console.log('[FOLLOW-UP STATS] Getting statistics');
+        
+        const stats = await pool.query(`
+            SELECT 
+                COUNT(*) FILTER (WHERE last_contact_date IS NULL) as never_contacted,
+                COUNT(*) FILTER (WHERE (CURRENT_DATE - last_contact_date) >= 1 AND (CURRENT_DATE - last_contact_date) < 3) as one_day,
+                COUNT(*) FILTER (WHERE (CURRENT_DATE - last_contact_date) >= 3 AND (CURRENT_DATE - last_contact_date) < 7) as three_day,
+                COUNT(*) FILTER (WHERE (CURRENT_DATE - last_contact_date) >= 7 AND (CURRENT_DATE - last_contact_date) < 14) as seven_day,
+                COUNT(*) FILTER (WHERE (CURRENT_DATE - last_contact_date) >= 14) as fourteen_day,
+                COUNT(*) as total_pending
+            FROM leads
+            WHERE status IN ('new', 'contacted', 'qualified', 'pending')
+            AND is_customer = FALSE
+            AND (
+                last_contact_date IS NULL
+                OR last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
+            )
+        `);
+        
+        console.log('[FOLLOW-UP STATS] ✅ Stats retrieved:', stats.rows[0]);
+        
+        res.json({
+            success: true,
+            stats: stats.rows[0]
+        });
+    } catch (error) {
+        console.error('[FOLLOW-UP STATS] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching stats'
+        });
+    }
+});
+
+// ========================================
 // HEALTH CHECK
 // ========================================
 app.get('/api/health', (req, res) => {

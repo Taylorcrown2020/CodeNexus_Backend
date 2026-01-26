@@ -5593,93 +5593,102 @@ function formatFileSize(bytes) {
 
 // Open email template selector modal
 function openEmailTemplateModal(leadId) {
-    const lead = [...state.leads, ...state.customers].find(l => l.id === leadId);
-    if (!lead) return;
+    console.log('[EMAIL] Opening email modal for lead:', leadId);
     
-    const modal = document.getElementById('createModal');
-    const titleEl = document.getElementById('createModalTitle');
-    const bodyEl = document.getElementById('createModalBody');
+    // Find the lead data
+    const lead = state.leads?.find(l => l.id === leadId);
     
-    titleEl.textContent = 'Send Email to ' + lead.name;
+    if (!lead) {
+        showToast('Lead not found', 'error');
+        return;
+    }
     
-    bodyEl.innerHTML = `
-        <div class="tabs" style="margin-bottom: 20px;">
-            <button class="tab active" onclick="switchEmailTab('templates')">Templates</button>
-            <button class="tab" onclick="switchEmailTab('compose')">Compose</button>
-        </div>
-        
-        <div id="emailTemplatesTab">
-            <div class="form-group">
-                <label class="form-label">Select Template</label>
-                <div style="display: grid; gap: 12px; margin-top: 12px;">
-                    ${Object.values(emailTemplates).map(template => `
-                        <div class="expense-item" style="cursor: pointer; padding: 16px;" onclick="selectEmailTemplate('${template.id}', ${leadId})">
-                            <div class="expense-content">
-                                <div class="expense-description" style="font-weight: 600; margin-bottom: 4px;">
-                                    ${template.name}
-                                </div>
-                                <div class="expense-meta" style="font-size: 12px; color: var(--text-muted);">
-                                    ${template.subject}
-                                </div>
-                            </div>
-                            <span style="background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase;">
-                                ${template.category}
-                            </span>
-                        </div>
-                    `).join('')}
+    // Create modal HTML
+    const modalHtml = `
+        <div class="modal-overlay" onclick="closeEmailModal()">
+            <div class="modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3>Send Email to ${lead.name}</h3>
+                    <button class="modal-close" onclick="closeEmailModal()">×</button>
                 </div>
-            </div>
-        </div>
-        
-        <div id="emailComposeTab" style="display: none;">
-            <form id="composeEmailForm" onsubmit="sendCustomEmail(event, ${leadId})">
-                <div class="form-grid">
-                    <div class="form-group full-width">
-                        <label class="form-label">To</label>
-                        <input type="email" class="form-input" value="${lead.email}" readonly>
+                <div class="modal-body">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">To:</label>
+                        <input type="email" id="emailTo" value="${lead.email}" readonly 
+                               style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-secondary);">
                     </div>
-                    <div class="form-group full-width">
-                        <label class="form-label">Subject <span class="required">*</span></label>
-                        <input type="text" class="form-input" id="emailSubject" required>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
+                        <input type="text" id="emailSubject" placeholder="Email subject" 
+                               style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
                     </div>
-                    <div class="form-group full-width">
-                        <label class="form-label">Message <span class="required">*</span></label>
-                        <textarea class="form-textarea" id="emailBody" rows="12" required></textarea>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
+                        <textarea id="emailBody" rows="8" placeholder="Type your message here..." 
+                                  style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; resize: vertical;"></textarea>
                     </div>
                 </div>
-                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                    <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 2L11 13"/>
-                            <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeEmailModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="sendEmail(${leadId})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                         </svg>
                         Send Email
                     </button>
                 </div>
-            </form>
-        </div>
-        
-        <div style="margin-top: 20px; padding: 16px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">
-                Available Variables
-            </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                ${availableVariables.slice(0, 8).map(v => `
-                    <code style="background: var(--bg-hover); padding: 3px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;" 
-                          onclick="copyToClipboard('{{${v.name}}}')" 
-                          title="${v.description}">
-                        {{${v.name}}}
-                    </code>
-                `).join('')}
-            </div>
-            <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
-                Click variable to copy
             </div>
         </div>
     `;
     
-    modal.classList.add('active');
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeEmailModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) modal.remove();
+}
+
+async function sendEmail(leadId) {
+    const subject = document.getElementById('emailSubject').value;
+    const body = document.getElementById('emailBody').value;
+    const to = document.getElementById('emailTo').value;
+    
+    if (!subject || !body) {
+        showToast('Please fill in subject and message', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/leads/${leadId}/email`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: to,
+                subject: subject,
+                body: body
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to send email');
+        
+        showToast('Email sent successfully!', 'success');
+        closeEmailModal();
+        
+        // Mark as contacted
+        await markFollowedUp(leadId);
+        
+    } catch (error) {
+        console.error('[EMAIL] Send error:', error);
+        showToast('Failed to send email: ' + error.message, 'error');
+    }
 }
 
 // Switch between template and compose tabs
@@ -14437,53 +14446,83 @@ async function sendBulkEmailByCategory(category, subject, message) {
     }
 }
 
-// Open bulk email modal for a specific category
-function openCategoryEmailModal(category, categoryName, leadCount) {
-    const modal = document.getElementById('createModal');
-    const titleEl = document.getElementById('createModalTitle');
-    const bodyEl = document.getElementById('createModalBody');
+function openCategoryEmailModal(category, categoryLabel, count) {
+    console.log('[EMAIL] Opening bulk email modal for category:', category);
     
-    titleEl.textContent = `Send Email to ${categoryName} (${leadCount} leads)`;
-    
-    bodyEl.innerHTML = `
-        <form id="categoryEmailForm" onsubmit="handleCategoryEmailSend(event, '${category}')">
-            <div class="form-group">
-                <label class="form-label">Subject <span class="required">*</span></label>
-                <input type="text" class="form-input" id="emailSubject" required 
-                       placeholder="e.g., Quick follow-up">
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Message <span class="required">*</span></label>
-                <textarea class="form-textarea" id="emailMessage" rows="12" required 
-                          placeholder="Hi [Name],
-
-I wanted to follow up on your inquiry...
-
-Best regards,
-Diamondback Coding Team"></textarea>
-            </div>
-            
-            <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin: 16px 0;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">
-                    📌 This will send to ${leadCount} leads in the "${categoryName}" category
+    const modalHtml = `
+        <div class="modal-overlay" onclick="closeEmailModal()">
+            <div class="modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3>Email All - ${categoryLabel}</h3>
+                    <button class="modal-close" onclick="closeEmailModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 16px; color: var(--text-muted);">
+                        This will send an email to ${count} leads in this category.
+                    </p>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
+                        <input type="text" id="bulkEmailSubject" placeholder="Email subject" 
+                               style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                    </div>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
+                        <textarea id="bulkEmailBody" rows="8" placeholder="Type your message here..." 
+                                  style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeEmailModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="sendBulkEmail('${category}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                        Send to ${count} Leads
+                    </button>
                 </div>
             </div>
-            
-            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 2L11 13"/>
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
-                    </svg>
-                    Send to ${leadCount} Leads
-                </button>
-            </div>
-        </form>
+        </div>
     `;
     
-    modal.classList.add('active');
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function sendBulkEmail(category) {
+    const subject = document.getElementById('bulkEmailSubject').value;
+    const body = document.getElementById('bulkEmailBody').value;
+    
+    if (!subject || !body) {
+        showToast('Please fill in subject and message', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/follow-ups/email-category`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                category: category,
+                subject: subject,
+                body: body
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to send bulk emails');
+        
+        const result = await response.json();
+        showToast(`Successfully sent ${result.sent_count || 0} emails!`, 'success');
+        closeEmailModal();
+        
+    } catch (error) {
+        console.error('[EMAIL] Bulk send error:', error);
+        showToast('Failed to send emails: ' + error.message, 'error');
+    }
 }
 
 // Handle category email form submission

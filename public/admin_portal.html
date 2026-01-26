@@ -14220,6 +14220,35 @@ async function deleteMilestone(projectId, milestoneId, projectName, leadId) {
     }
 }
 
+async function loadFollowUps() {
+    const content = document.getElementById('contentArea'); // or your follow-ups div
+    content.innerHTML = '<div>Loading follow-ups...</div>'; // existing
+
+    try {
+        const response = await fetch(`${API_URL}/api/follow-ups/categorized`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Follow-ups data:', data); // ← Add this for debugging
+
+        // Your rendering code...
+        renderFollowUps(data.categorized || {});
+    } catch (error) {
+        console.error('Follow-ups load failed:', error);
+        content.innerHTML = `
+            <div style="color: red; padding: 20px; text-align: center;">
+                Failed to load follow-ups: ${error.message}<br>
+                <button onclick="loadFollowUps()">Retry</button>
+            </div>
+        `;
+    }
+}
+
 // ==================== FOLLOW-UP SYSTEM FUNCTIONS ====================
 
 // REPLACE your loadCategorizedFollowUps function with this:

@@ -12973,17 +12973,33 @@ function renderLeadScoring(content) {
 async function renderFollowUps(content) {
     console.log('[FOLLOW-UPS] Starting render...');
     
+    if (!content) {
+        console.error('[FOLLOW-UPS] No content element provided!');
+        return;
+    }
+    
     try {
         // Show loading state
-        content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
+           content.innerHTML = `
+        <div style="padding: 40px; text-align: center;">
+            <div class="spinner"></div>
+            <p style="margin-top: 20px; color: var(--text-muted);">Loading follow-ups...</p>
+        </div>
+    `;
         
         // Load stats and categories
-        const [statsResponse, categoriesResponse] = await Promise.all([
+        const [statsResponse, categorizedResponse] = await Promise.all([
             fetch(`${API_URL}/api/follow-ups/stats`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
+                headers: {
+                    'Authorization': `Bearer ${state.authToken}`,
+                    'Content-Type': 'application/json'
+                }
             }),
-            fetch(`${API_URL}/api/follow-ups/categorized`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
+fetch(`${API_URL}/api/follow-ups/categorized`, {
+                headers: {
+                    'Authorization': `Bearer ${state.authToken}`,
+                    'Content-Type': 'application/json'
+                }
             })
         ]);
         
@@ -13155,36 +13171,6 @@ function getFollowUpLabel(step) {
         6: 'Weekly Follow-Up (Every 7 Days)'
     };
     return labels[step] || 'Follow-Up Required';
-}
-
-// Update the markFollowedUp function
-// Mark lead as contacted
-async function markFollowedUp(leadId) {
-    try {
-        const response = await fetch(`${API_URL}/api/leads/${leadId}/contacted`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to mark as contacted');
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast('Lead marked as contacted successfully', 'success');
-            renderSection('followups');
-        } else {
-            throw new Error(data.message || 'Failed to update lead');
-        }
-    } catch (error) {
-        console.error('[FOLLOW-UP] Mark contacted error:', error);
-        showToast('Error: ' + error.message, 'error');
-    }
 }
 
 // Render Scoring Rules page
@@ -14361,41 +14347,6 @@ async function deleteMilestone(projectId, milestoneId, projectName, leadId) {
     }
 }
 
-// ==================== FOLLOW-UP SYSTEM FUNCTIONS ====================
-
-// REPLACE your loadCategorizedFollowUps function with this:
-async function loadCategorizedFollowUps() {
-    try {
-        console.log('[FOLLOW-UPS] Fetching from:', `${API_URL}/api/follow-ups/categorized`);
-        
-        const response = await fetch(`${API_URL}/api/follow-ups/categorized`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-        
-        console.log('[FOLLOW-UPS] Response status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[FOLLOW-UPS] Error response:', errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-        
-        const data = await response.json();
-        console.log('[FOLLOW-UPS] Data received:', data);
-        
-        if (data.success) {
-            return data.categories || [];
-        } else {
-            throw new Error(data.message || 'Failed to load follow-ups');
-        }
-    } catch (error) {
-        console.error('[FOLLOW-UPS] Catch block error:', error);
-        throw error;
-    }
-}
-
 // Render the follow-ups section
 function renderFollowUps(categories) {
     const content = document.getElementById('main-content');  // Assuming your main content div has this ID
@@ -14549,92 +14500,6 @@ async function handleCategoryEmailSend(event, category) {
     
     closeCreateModal();
     await sendBulkEmailByCategory(category, subject, message);
-}
-
-// ==================== COMPREHENSIVE FIXES FOR ALL 9 ISSUES ====================
-
-// ==================== FOLLOW UPS FUNCTIONS ====================
-
-async function loadFollowUps() {
-    try {
-        console.log('');
-        
-        const statsResponse = await fetch('/api/follow-ups/stats', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
-        });
-        
-        const statsData = await statsResponse.json();
-        console.log('[FOLLOW-UPS] Stats loaded:', statsData);
-        
-        const categoriesResponse = await fetch('/api/follow-ups/categorized', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
-        });
-        
-        const categoriesData = await categoriesResponse.json();
-        console.log('[FOLLOW-UPS] Categories loaded:', categoriesData);
-        
-        renderFollowUpStats(statsData.stats);
-        renderFollowUpCategories(categoriesData.categories || []);
-        
-    } catch (error) {
-        console.error('[FOLLOW-UPS] Load error:', error);
-        document.getElementById('followUpCategories').innerHTML = `
-            <div style="padding: 40px; text-align: center;">
-                <p style="color: #ef4444;">Error loading follow-ups: ${error.message}</p>
-            </div>
-        `;
-    }
-}
-
-function renderFollowUpStats(stats) {
-    const statsContainer = document.getElementById('followUpStats');
-    
-    const total = parseInt(stats.total_pending || 0);
-    const neverContacted = parseInt(stats.never_contacted || 0);
-    const oneDay = parseInt(stats.one_day || 0);
-    const threeDay = parseInt(stats.three_day || 0);
-    
-    statsContainer.innerHTML = `
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #f59e0b;">
-                <i class="fas fa-clock"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-label">Total Pending</div>
-                <div class="stat-value">${total}</div>
-            </div>
-        </div>
-        
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #ef4444;">
-                <i class="fas fa-user-times"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-label">Never Contacted</div>
-                <div class="stat-value">${neverContacted}</div>
-            </div>
-        </div>
-        
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #10b981;">
-                <i class="fas fa-calendar-day"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-label">1-3 Days</div>
-                <div class="stat-value">${oneDay}</div>
-            </div>
-        </div>
-        
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #f97316;">
-                <i class="fas fa-calendar-week"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-label">3-7 Days</div>
-                <div class="stat-value">${threeDay}</div>
-            </div>
-        </div>
-    `;
 }
 
 async function sendFollowUpEmail(leadId, leadName, leadEmail) {
@@ -15035,6 +14900,210 @@ function toggleNotes(button) {
     const content = button.nextElementSibling;
     content.style.display = content.style.display === 'none' ? 'block' : 'none';
     button.textContent = content.style.display === 'block' ? 'Hide Notes' : 'View Notes';
+}
+
+// ==================== FOLLOW-UPS SYSTEM ====================
+
+async function renderFollowUps(content) {
+    console.log('[FOLLOW-UPS] Starting render...');
+    
+    try {
+        // Show loading state
+        content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
+        
+        // Load stats and categories
+        const [statsResponse, categoriesResponse] = await Promise.all([
+            fetch(`${API_URL}/api/follow-ups/stats`, {
+                headers: { 'Authorization': `Bearer ${state.authToken}` }
+            }),
+            fetch(`${API_URL}/api/follow-ups/categorized`, {
+                headers: { 'Authorization': `Bearer ${state.authToken}` }
+            })
+        ]);
+        
+        if (!statsResponse.ok || !categoriesResponse.ok) {
+            throw new Error('Failed to load follow-ups data');
+        }
+        
+        const statsData = await statsResponse.json();
+        const categoriesData = await categoriesResponse.json();
+        
+        const stats = statsData.stats || {};
+        const categories = categoriesData.categories || [];
+        
+        console.log('[FOLLOW-UPS] Loaded:', { stats, categories });
+        
+        const categoryLabels = {
+            'never_contacted': 'Never Contacted',
+            '1_day': '1-Day Follow-Up',
+            '3_day': '3-Day Follow-Up',
+            '7_day': '7-Day Follow-Up',
+            '14_day': '14+ Day Follow-Up'
+        };
+        
+        // Render the page
+        content.innerHTML = `
+            <div class="page-header">
+                <div>
+                    <h2>Follow-Up Queue</h2>
+                    <p class="page-description">Categorized by follow-up schedule</p>
+                </div>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Pending</span>
+                        <div class="stat-icon amber">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value">${stats.total_pending || 0}</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Never Contacted</span>
+                        <div class="stat-icon red">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-value">${stats.never_contacted || 0}</div>
+                </div>
+            </div>
+            
+            <!-- Category Sections -->
+            ${categories.length > 0 ? categories.map(category => `
+                <div class="table-container" style="margin-top: 24px;">
+                    <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">
+                                ${categoryLabels[category.follow_up_category] || category.follow_up_category}
+                            </h3>
+                            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
+                                ${category.count} leads need follow-up
+                            </p>
+                        </div>
+                        <button class="btn btn-primary btn-sm" 
+                                onclick="openCategoryEmailModal('${category.follow_up_category}', '${categoryLabels[category.follow_up_category]}', ${category.count})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            Email All
+                        </button>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Lead</th>
+                                <th>Last Contact</th>
+                                <th>Days Since</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${category.leads && category.leads.length > 0 ? category.leads.map(lead => `
+                                <tr>
+                                    <td>
+                                        <div class="contact-cell">
+                                            <div class="contact-avatar">${getInitials(lead.name)}</div>
+                                            <div class="contact-info">
+                                                <div class="contact-name">${lead.name}</div>
+                                                <div class="contact-email">${lead.email}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
+                                    <td>
+                                        <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
+                                            ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                                </svg>
+                                                Mark Contacted
+                                            </button>
+                                            <button class="btn btn-sm btn-secondary" onclick="openEmailTemplateModal(${lead.id})">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                                    <polyline points="22,6 12,13 2,6"/>
+                                                </svg>
+                                                Email
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('') : '<tr><td colspan="4" style="text-align: center; padding: 20px;">No leads in this category</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+            `).join('') : `
+                <div style="text-align: center; padding: 60px; color: var(--text-muted);">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <div class="empty-title">All Caught Up!</div>
+                    <div class="empty-description">No follow-ups needed right now</div>
+                </div>
+            `}
+        `;
+        
+        console.log('[FOLLOW-UPS] Render complete');
+        
+    } catch (error) {
+        console.error('[FOLLOW-UPS] Render error:', error);
+        content.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--status-lost);">
+                <h3>Error Loading Follow-Ups</h3>
+                <p>${error.message}</p>
+                <button class="btn btn-secondary" onclick="renderSection('followups')">Try Again</button>
+            </div>
+        `;
+    }
+}
+
+// Mark lead as contacted
+async function markFollowedUp(leadId) {
+    try {
+        const response = await fetch(`${API_URL}/api/leads/${leadId}/contacted`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to mark as contacted');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Lead marked as contacted successfully', 'success');
+            renderSection('followups');
+        } else {
+            throw new Error(data.message || 'Failed to update lead');
+        }
+    } catch (error) {
+        console.error('[FOLLOW-UP] Mark contacted error:', error);
+        showToast('Error: ' + error.message, 'error');
+    }
 }
 
 </script>

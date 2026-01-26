@@ -12991,13 +12991,13 @@ async function renderFollowUps(content) {
         const [statsResponse, categorizedResponse] = await Promise.all([
             fetch(`${API_URL}/api/follow-ups/stats`, {
                 headers: {
-                    'Authorization': `Bearer ${state.authToken}`,
+                    'Authorization': `Bearer ${authToken}`,
                     'Content-Type': 'application/json'
                 }
             }),
 fetch(`${API_URL}/api/follow-ups/categorized`, {
                 headers: {
-                    'Authorization': `Bearer ${state.authToken}`,
+                    'Authorization': `Bearer ${authToken}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -14922,13 +14922,13 @@ async function renderFollowUps(content) {
         const [statsResponse, categoriesResponse] = await Promise.all([
             fetch(statsUrl, {
                 headers: { 
-                    'Authorization': `Bearer ${state.authToken}`,
+                    'Authorization': `Bearer ${authToken}`,
                     'Content-Type': 'application/json'
                 }
             }),
             fetch(categorizedUrl, {
                 headers: { 
-                    'Authorization': `Bearer ${state.authToken}`,
+                    'Authorization': `Bearer ${authToken}`,
                     'Content-Type': 'application/json'
                 }
             })
@@ -15102,7 +15102,7 @@ async function markFollowedUp(leadId) {
         const response = await fetch(`${API_URL}/api/leads/${leadId}/contacted`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${state.authToken}`,
+                'Authorization': `Bearer ${authToken}`,
                 'Content-Type': 'application/json'
             }
         });

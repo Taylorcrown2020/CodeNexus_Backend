@@ -12911,7 +12911,7 @@ async function renderFollowUps(content, categories) {
             </div>
             
             <!-- Category Sections -->
-            ${categories.map(category => `
+            ${categories && categories.length > 0 ? categories.map(category => `
                 <div class="table-container" style="margin-top: 24px;">
                     <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
                         <div>
@@ -12977,9 +12977,7 @@ async function renderFollowUps(content, categories) {
                         </tbody>
                     </table>
                 </div>
-            `).join('')}
-            
-            ${categories.length === 0 ? `
+            `).join('') : `
                 <div style="text-align: center; padding: 60px; color: var(--text-muted);">
                     <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -12988,7 +12986,7 @@ async function renderFollowUps(content, categories) {
                     <div class="empty-title">All Caught Up!</div>
                     <div class="empty-description">No follow-ups needed right now</div>
                 </div>
-            ` : ''}
+            `}
         `;
     } catch (error) {
         console.error('[FOLLOW-UPS] Render error:', error);

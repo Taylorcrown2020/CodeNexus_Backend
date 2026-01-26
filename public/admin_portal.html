@@ -4148,15 +4148,29 @@ switch (section) {
         renderProjects(content); 
         break;
 case 'followups':
-    try {
-        content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
-        const categories = await loadCategorizedFollowUps();
-        console.log('[FOLLOW-UPS] Categories loaded:', categories); // Debug log
-        await renderFollowUps(content, categories);
-    } catch (error) {
-        console.error('[FOLLOW-UPS] Render error:', error);
-        content.innerHTML = `<div style="text-align: center; padding: 40px; color: red;">Error: ${error.message}</div>`;
-    }
+    console.log('📋 [FOLLOW-UPS] Starting render');
+    content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
+    
+    loadCategorizedFollowUps()
+        .then(categories => {
+            console.log('✅ [FOLLOW-UPS] Categories loaded:', categories);
+            if (!categories || categories.length === 0) {
+                console.log('ℹ️ [FOLLOW-UPS] No categories returned');
+            }
+            renderFollowUps(content, categories);
+        })
+        .catch(error => {
+            console.error('❌ [FOLLOW-UPS] Load error:', error);
+            content.innerHTML = `
+                <div style="padding: 40px; text-align: center; color: var(--status-lost);">
+                    <h3>Error Loading Follow-Ups</h3>
+                    <p>${error.message}</p>
+                    <button class="btn btn-primary" onclick="renderSection('followups')">
+                        Try Again
+                    </button>
+                </div>
+            `;
+        });
     break;
     case 'support':
         await loadTickets();
@@ -14317,25 +14331,32 @@ async function deleteMilestone(projectId, milestoneId, projectName, leadId) {
 // REPLACE your loadCategorizedFollowUps function with this:
 async function loadCategorizedFollowUps() {
     try {
+        console.log('[FOLLOW-UPS] Fetching from:', `${API_URL}/api/follow-ups/categorized`);
+        
         const response = await fetch(`${API_URL}/api/follow-ups/categorized`, {
             headers: {
                 'Authorization': `Bearer ${authToken}`
             }
         });
         
+        console.log('[FOLLOW-UPS] Response status:', response.status);
+        
         if (!response.ok) {
-            throw new Error('Failed to fetch categorized follow-ups');
+            const errorText = await response.text();
+            console.error('[FOLLOW-UPS] Error response:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         
         const data = await response.json();
+        console.log('[FOLLOW-UPS] Data received:', data);
         
         if (data.success) {
-            return data.categories;  // ✅ RETURN the categories
+            return data.categories || [];
         } else {
             throw new Error(data.message || 'Failed to load follow-ups');
         }
     } catch (error) {
-        console.error('[FOLLOW-UPS] Load error:', error);
+        console.error('[FOLLOW-UPS] Catch block error:', error);
         throw error;
     }
 }

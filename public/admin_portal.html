@@ -467,58 +467,59 @@ body {
 
 /* Secondary Button - Neutral with good contrast */
 .btn-secondary {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border: 1.5px solid var(--border-default);
+    background: #6b7280;
+    color: #ffffff;
+    border: 1.5px solid #6b7280;
+    font-weight: 600;
 }
 
 .btn-secondary:hover {
-    background: var(--bg-hover);
-    border-color: var(--border-strong);
+    background: #4b5563;
+    color: #ffffff;
+    border-color: #4b5563;
     transform: translateY(-1px);
 }
 
-/* Danger Button - Light red with dark red text */
-/* Danger Button - Solid red with white text */
+/* Danger Button - Lighter, more vibrant red */
 .btn-danger {
-    background: #ef4444;
+    background: #f87171;
     color: #ffffff;
-    border: 1.5px solid #ef4444;
+    border: 1.5px solid #f87171;
     font-weight: 600;
 }
 
 .btn-danger:hover {
-    background: #dc2626;
+    background: #ef4444;
     color: #ffffff;
-    border-color: #dc2626;
+    border-color: #ef4444;
     transform: translateY(-1px);
 }
 
-/* Success Button - Solid green with white text */
+/* Success Button - Lighter, more vibrant green */
 .btn-success {
-    background: #22c55e;
+    background: #4ade80;
     color: #ffffff;
-    border: 1.5px solid #22c55e;
+    border: 1.5px solid #4ade80;
     font-weight: 600;
 }
 
 .btn-success:hover {
-    background: #16a34a;
+    background: #22c55e;
     color: #ffffff;
-    border-color: #16a34a;
+    border-color: #22c55e;
     transform: translateY(-1px);
 }
 
-/* Warning Button - Same as success (solid green) */
+/* Warning Button - Same as success (lighter green) */
 .btn-warning {
-    background: #22c55e;
+    background: #4ade80;
     color: #ffffff;
-    border: 1.5px solid #22c55e;
+    border: 1.5px solid #4ade80;
     font-weight: 600;
 }
 
 .btn-warning:hover {
-    background: #16a34a;
+    background: #22c55e;
     color: #ffffff;
     border-color: #16a34a;
     transform: translateY(-1px);
@@ -687,6 +688,8 @@ body {
     width: 18px;
     height: 18px;
     transition: color 0.2s ease;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .search-input:focus + .search-icon,
@@ -6523,13 +6526,6 @@ async function openDetailModal(type, id) {
                                 ${lead.city ? lead.city + ', ' : ''}${lead.state || ''} ${lead.zip_code || ''}
                                 ${lead.country && lead.country !== 'USA' ? '<br>' + lead.country : ''}
                             ` : '<span style="color: var(--text-muted);">No address on file</span>'}
-                            <button class="btn btn-sm btn-secondary" style="margin-top: 8px;" onclick="editAddress(${lead.id})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
-                                Edit Address
-                            </button>
                         </div>
                     </div>
                     <div class="detail-item full-width">
@@ -6929,6 +6925,13 @@ async function openDetailModal(type, id) {
         
         footerEl.innerHTML = `
             <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+            <button class="btn btn-primary" onclick="closeDetailModal(); editEmployee(${employee.id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit Employee
+            </button>
             <button class="btn btn-danger" onclick="deleteEmployee(${employee.id})">Delete</button>
         `;
         

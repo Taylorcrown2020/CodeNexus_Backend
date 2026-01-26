@@ -9949,7 +9949,7 @@ async function emailTimelineToClient() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify({
                 timeline: timeline,
@@ -9958,20 +9958,16 @@ async function emailTimelineToClient() {
             })
         });
         
-        if (!response.ok) {
-            throw new Error('Failed to send email');
-        }
-        
         const result = await response.json();
         
-        if (result.success) {
+        if (response.ok && result.success) {
             showToast(`✓ SLA emailed successfully to ${timeline.clientEmail}`, 'success');
         } else {
             throw new Error(result.message || 'Failed to send email');
         }
     } catch (error) {
         console.error('Email error:', error);
-        showToast('Failed to send email. Please try again.', 'error');
+        showToast('Failed to send email: ' + error.message, 'error');
     }
 }
 
@@ -13868,7 +13864,7 @@ async function emailSavedTimelineToClient() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify({
                 timeline: timeline,
@@ -13876,17 +13872,13 @@ async function emailSavedTimelineToClient() {
             })
         });
         
-        if (!response.ok) {
-            throw new Error('Failed to send email');
-        }
+        const data = await response.json();
         
-        const result = await response.json();
-        
-        if (result.success) {
+        if (response.ok && data.success) {
             showToast('Timeline emailed successfully to ' + timeline.clientEmail, 'success');
             closeModal();
         } else {
-            throw new Error(result.message || 'Failed to send email');
+            throw new Error(data.message || 'Failed to send email');
         }
     } catch (error) {
         console.error('Email error:', error);

@@ -858,6 +858,43 @@ await client.query(`CREATE TABLE IF NOT EXISTS client_uploads (
 
 console.log('✅ Client portal tables initialized');
 
+        // ========================================
+        // DATABASE MIGRATIONS
+        // ========================================
+        console.log('🔄 Running database migrations...');
+        
+        // Migration 1: Add user_name column to ticket_responses if it doesn't exist
+        await client.query(`
+            DO $$ 
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'ticket_responses' 
+                    AND column_name = 'user_name'
+                ) THEN
+                    ALTER TABLE ticket_responses 
+                    ADD COLUMN user_name VARCHAR(255) DEFAULT 'Unknown';
+                    
+                    -- Update existing rows to set a default user_name
+                    UPDATE ticket_responses 
+                    SET user_name = CASE 
+                        WHEN user_type = 'admin' THEN 'Admin'
+                        WHEN user_type = 'client' THEN 'Client'
+                        ELSE 'Unknown'
+                    END
+                    WHERE user_name IS NULL OR user_name = '';
+                    
+                    -- Make the column NOT NULL after setting defaults
+                    ALTER TABLE ticket_responses 
+                    ALTER COLUMN user_name SET NOT NULL;
+                    
+                    RAISE NOTICE 'Added user_name column to ticket_responses';
+                END IF;
+            END $$;
+        `);
+        
+        console.log('✅ Database migrations completed');
+
         await client.query('COMMIT');
         console.log('✅ Database tables initialized');
 

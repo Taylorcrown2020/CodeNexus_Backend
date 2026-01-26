@@ -2754,12 +2754,12 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
                 Client Portal
                 <span class="nav-badge" id="clientPortalBadge">0</span>
             </div>
-            <div class="nav-item" data-section="followups">
-    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 8v4l3 3"></path>
-        <circle cx="12" cy="12" r="9"></circle>
+<div class="nav-item" data-section="followups" onclick="renderSection('followups')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
     </svg>
-    Follow Ups
+    <span>Follow Ups</span>
 </div>
             <div class="nav-item" data-section="documents">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -3986,11 +3986,24 @@ async function sendIndividualEmail(leadId) {
 }
 
 async function renderSection(section) {
-    if (section === 'followups') {
-        await loadCategorizedFollowUps();
-    }
-    console.log('🔍 renderSection called with:', section);
+    console.log('[RENDER] Switching to section:', section);
+    
     state.currentSection = section;
+    const content = document.getElementById('contentArea');
+    
+    if (!content) {
+        console.error('[RENDER] Content area not found!');
+        return;
+    }
+    
+    // Update active nav item
+    document.querySelectorAll('.nav-item').forEach(item => {
+        if (item.dataset.section === section) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
     
     // Set appropriate filter based on section
     if (section === 'leads') {
@@ -3998,11 +4011,12 @@ async function renderSection(section) {
     } else if (section === 'new' || section === 'pending' || section === 'contacted') {
         state.currentFilter = section;
     } else if (section === 'invoices') {
-        state.currentFilter = state.currentFilter || 'all'; // Keep existing filter or set to all
+        state.currentFilter = state.currentFilter || 'all';
     } else {
         state.currentFilter = 'all';
     }
 
+    // Set page title
     const titles = {
         dashboard: 'Dashboard',
         analytics: 'Analytics',
@@ -4013,154 +4027,180 @@ async function renderSection(section) {
         customers: 'Customers',
         employees: 'Team Management',
         invoices: 'Invoices',
-    tasks: 'Tasks',
-    projects: 'Project Timelines',
-    settings: 'Settings'
+        tasks: 'Tasks',
+        projects: 'Project Timelines',
+        settings: 'Settings',
+        followups: 'Follow-Up Queue',
+        tickets: 'Support Tickets',
+        documents: 'Document Management',
+        pipeline: 'Sales Pipeline',
+        'lead-scoring': 'Lead Scoring',
+        'scoring-rules': 'Scoring Rules',
+        'client-portal': 'Client Portal'
     };
     
-    document.getElementById('pageTitle').textContent = titles[section] || 'Dashboard';
+    const pageTitleEl = document.getElementById('pageTitle');
+    if (pageTitleEl) {
+        pageTitleEl.textContent = titles[section] || 'Dashboard';
+    }
     
     // Update topbar actions based on section
     const topbarActions = document.querySelector('.topbar-actions');
-    let actionButtons = `
-        <button class="btn btn-secondary" onclick="openExportModal()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Export
-        </button>
-    `;
-    
-    // Add section-specific action button
-    if (section === 'leads' || section === 'new' || section === 'pending' || section === 'contacted') {
-        actionButtons += `
-            <button class="btn btn-primary" onclick="openCreateModal('lead')">
+    if (topbarActions) {
+        let actionButtons = `
+            <button class="btn btn-secondary" onclick="openExportModal()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                Add Lead
+                Export
             </button>
         `;
-    } else if (section === 'invoices') {
-        actionButtons += `
-            <button class="btn btn-primary" onclick="showInvoiceLeadSelector()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                Create Invoice
-            </button>
-        `;
-    } else if (section === 'employees') {
-        actionButtons += `
-            <button class="btn btn-primary" onclick="openCreateModal('employee')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Add Employee
-            </button>
-        `;
-    } else if (section === 'tasks') {
-        actionButtons += `
-            <button class="btn btn-primary" onclick="openCreateModal('task')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Add Task
-            </button>
-        `;
+        
+        // Add section-specific action buttons
+        if (section === 'leads' || section === 'new' || section === 'pending' || section === 'contacted') {
+            actionButtons += `
+                <button class="btn btn-primary" onclick="openCreateModal('lead')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Lead
+                </button>
+            `;
+        } else if (section === 'invoices') {
+            actionButtons += `
+                <button class="btn btn-primary" onclick="showInvoiceLeadSelector()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    Create Invoice
+                </button>
+            `;
+        } else if (section === 'employees') {
+            actionButtons += `
+                <button class="btn btn-primary" onclick="openCreateModal('employee')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Employee
+                </button>
+            `;
+        } else if (section === 'tasks') {
+            actionButtons += `
+                <button class="btn btn-primary" onclick="openCreateModal('task')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Task
+                </button>
+            `;
         } else if (section === 'projects') {
-    actionButtons += `
-        <button class="btn btn-primary" onclick="openProjectTimelineModal()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-            </svg>
-            Create Project Timeline
-        </button>
-    `;
-    } else if (section === 'dashboard') {
-        actionButtons += `
-            <button class="btn btn-primary" onclick="openCreateModal('lead')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Add Lead
-            </button>
-        `;
+            actionButtons += `
+                <button class="btn btn-primary" onclick="openProjectTimelineModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                    Create Project Timeline
+                </button>
+            `;
+        } else if (section === 'dashboard') {
+            actionButtons += `
+                <button class="btn btn-primary" onclick="openCreateModal('lead')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Lead
+                </button>
+            `;
+        }
+        
+        topbarActions.innerHTML = actionButtons;
     }
     
-    topbarActions.innerHTML = actionButtons;
+    console.log('📍 renderSection - about to switch to:', section);
     
-    const content = document.getElementById('contentArea');
-    console.log('📍 renderSection - contentArea element:', content);
-    console.log('📍 renderSection - contentArea id:', content ? content.id : 'null');
-    
-switch (section) {
-    case 'dashboard': 
-        renderDashboard(content); 
-        break;
-    case 'analytics': 
-        renderAnalytics(content); 
-        break;
-    case 'leads':
-    case 'new':
-    case 'pending':
-    case 'contacted':
-        state.currentFilter = section === 'leads' ? 'all' : section;
-        renderLeadsTable(content, 'leads');
-        break;
-    case 'customers': 
-        renderLeadsTable(content, 'customers'); 
-        break;
-    case 'clientPortal':
-        renderClientPortal();
-        break;
-    case 'employees': 
-        renderEmployees(content); 
-        break;
-    case 'invoices': 
-        renderInvoices(content); 
-        break;
-    case 'tasks': 
-        renderTasks(content); 
-        break;
-    case 'projects':
-        console.log('✅ Projects case hit!');
-        content.innerHTML = ''; // Force clear any existing content
-        renderProjects(content); 
-        break;
-case 'followups':
-    renderFollowUps(content);
-    break;
-    case 'support':
-        await loadTickets();
-        renderTickets();
-        break;
-    case 'settings': 
-        renderSettings(content); 
-        break;
-    case 'documents':
-        renderDocuments(content);
-        break;
-    case 'pipeline':
-        renderPipeline(content);
-        break;
-    case 'lead-scoring':
-        renderLeadScoring(content);
-        break;
-    case 'scoring-rules':
-        renderScoringRules(content);
-        break;
-    default:
-        renderDashboard(content);
-}
+    // Route to appropriate render function
+    switch(section) {
+        case 'dashboard':
+            renderDashboard(content);
+            break;
+            
+        case 'leads':
+            renderLeadsTable(content, 'leads');
+            break;
+            
+        case 'customers':
+            renderLeadsTable(content, 'customers');
+            break;
+            
+        case 'invoices':
+            renderInvoices(content);
+            break;
+            
+        case 'employees':
+            renderEmployees(content);
+            break;
+            
+        case 'tasks':
+            renderTasks(content);
+            break;
+            
+        case 'analytics':
+            renderAnalytics(content);
+            break;
+            
+        case 'settings':
+            renderSettings(content);
+            break;
+            
+        case 'projects':
+            console.log('📋 Rendering projects section');
+            renderProjects(content);
+            break;
+            
+        case 'tickets':
+            renderTickets();
+            break;
+            
+        case 'documents':
+            renderDocuments(content);
+            break;
+            
+        case 'pipeline':
+            renderPipeline(content);
+            break;
+            
+        case 'lead-scoring':
+            renderLeadScoring(content);
+            break;
+            
+        case 'scoring-rules':
+            renderScoringRules(content);
+            break;
+            
+        case 'client-portal':
+            renderClientPortal();
+            break;
+            
+        case 'followups':
+            await renderFollowUps(content);
+            break;
+            
+        default:
+            content.innerHTML = `
+                <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                    <h3>Section not found</h3>
+                    <p>The section "${section}" doesn't exist</p>
+                </div>
+            `;
+    }
 }
 
 function showInvoiceLeadSelector() {
@@ -13348,7 +13388,6 @@ function navigateTo(section) {
     state.currentSection = section;
     renderSection(section);
     
-    // Update active nav item
     document.querySelectorAll('.nav-item').forEach(item => {
         if (item.dataset.section === section) {
             item.classList.add('active');

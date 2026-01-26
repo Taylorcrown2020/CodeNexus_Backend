@@ -8882,6 +8882,24 @@ app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
     }
 });
 
+async function renderFollowUps(content, categories) {
+    console.log('[DEBUG] renderFollowUps called');
+    console.log('[DEBUG] content element:', content);
+    console.log('[DEBUG] categories:', categories);
+    console.log('[DEBUG] categories type:', typeof categories);
+    console.log('[DEBUG] categories is array?:', Array.isArray(categories));
+    
+    // Just show the raw data for now
+    content.innerHTML = `
+        <div style="padding: 40px;">
+            <h2>DEBUG INFO</h2>
+            <pre style="background: #f5f5f5; padding: 20px; border-radius: 8px; overflow: auto;">
+Categories: ${JSON.stringify(categories, null, 2)}
+            </pre>
+        </div>
+    `;
+}
+
 // ========================================
 // HEALTH CHECK
 // ========================================

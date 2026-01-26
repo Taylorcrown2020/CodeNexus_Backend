@@ -5748,6 +5748,76 @@ app.post('/api/automation/generate-followup-reminders', authenticateToken, async
 // Place them with your other email routes
 // ========================================
 
+// Get follow-ups grouped by category
+app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
+    try {
+        console.log('[FOLLOW-UPS] Getting categorized follow-ups');
+        
+        const result = await pool.query(`
+            WITH follow_up_leads AS (
+                SELECT 
+                    l.*,
+                    CASE 
+                        WHEN l.last_contact_date IS NULL THEN 'never_contacted'
+                        WHEN (CURRENT_DATE - l.last_contact_date) >= 14 THEN '14_day'
+                        WHEN (CURRENT_DATE - l.last_contact_date) >= 7 THEN '7_day'
+                        WHEN (CURRENT_DATE - l.last_contact_date) >= 3 THEN '3_day'
+                        WHEN (CURRENT_DATE - l.last_contact_date) >= 1 THEN '1_day'
+                        ELSE NULL
+                    END as follow_up_category,
+                    COALESCE(CURRENT_DATE - l.last_contact_date, 999) as days_since_contact
+                FROM leads l
+                WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
+                AND l.is_customer = FALSE
+                AND (
+                    l.last_contact_date IS NULL
+                    OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
+                )
+            )
+            SELECT 
+                follow_up_category,
+                COUNT(*) as count,
+                json_agg(
+                    json_build_object(
+                        'id', id,
+                        'name', name,
+                        'email', email,
+                        'company', company,
+                        'status', status,
+                        'last_contact_date', last_contact_date,
+                        'days_since_contact', days_since_contact,
+                        'notes', notes
+                    ) ORDER BY days_since_contact DESC
+                ) as leads
+            FROM follow_up_leads
+            WHERE follow_up_category IS NOT NULL
+            GROUP BY follow_up_category
+            ORDER BY 
+                CASE follow_up_category
+                    WHEN 'never_contacted' THEN 1
+                    WHEN '14_day' THEN 2
+                    WHEN '7_day' THEN 3
+                    WHEN '3_day' THEN 4
+                    WHEN '1_day' THEN 5
+                END
+        `);
+        
+        console.log(`[FOLLOW-UPS] ✅ Found ${result.rows.length} categories`);
+        
+        res.json({
+            success: true,
+            categories: result.rows
+        });
+    } catch (error) {
+        console.error('[FOLLOW-UPS] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching categorized follow-ups',
+            error: error.message
+        });
+    }
+});
+
 // Send custom email
 app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
     try {
@@ -8488,73 +8558,117 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
 });
 
 // ========================================
-// ENHANCED FOLLOW-UP SYSTEM
+// BULK FOLLOW-UP EMAIL
 // ========================================
 
-// Get follow-ups grouped by category
-app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
+// Send follow-up emails to multiple leads
+app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
     try {
-        console.log('[FOLLOW-UPS] Getting categorized follow-ups');
+        const { leadIds, subject, message, template } = req.body;
         
-        const result = await pool.query(`
-            WITH follow_up_leads AS (
-                SELECT 
-                    l.*,
-                    CASE 
-                        WHEN l.last_contact_date IS NULL THEN 'never_contacted'
-                        WHEN (CURRENT_DATE - l.last_contact_date) >= 14 THEN '14_day'
-                        WHEN (CURRENT_DATE - l.last_contact_date) >= 7 THEN '7_day'
-                        WHEN (CURRENT_DATE - l.last_contact_date) >= 3 THEN '3_day'
-                        WHEN (CURRENT_DATE - l.last_contact_date) >= 1 THEN '1_day'
-                        ELSE NULL
-                    END as follow_up_category,
-                    COALESCE(CURRENT_DATE - l.last_contact_date, 999) as days_since_contact
-                FROM leads l
-                WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
-                AND l.is_customer = FALSE
-                AND (
-                    l.last_contact_date IS NULL
-                    OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
-                )
-            )
-            SELECT 
-                follow_up_category,
-                COUNT(*) as count,
-                json_agg(
-                    json_build_object(
-                        'id', id,
-                        'name', name,
-                        'email', email,
-                        'company', company,
-                        'status', status,
-                        'last_contact_date', last_contact_date,
-                        'days_since_contact', days_since_contact
-                    ) ORDER BY days_since_contact DESC
-                ) as leads
-            FROM follow_up_leads
-            WHERE follow_up_category IS NOT NULL
-            GROUP BY follow_up_category
-            ORDER BY 
-                CASE follow_up_category
-                    WHEN 'never_contacted' THEN 1
-                    WHEN '14_day' THEN 2
-                    WHEN '7_day' THEN 3
-                    WHEN '3_day' THEN 4
-                    WHEN '1_day' THEN 5
-                END
-        `);
+        if (!leadIds || leadIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No leads selected'
+            });
+        }
         
-        console.log(`[FOLLOW-UPS] ✅ Found ${result.rows.length} categories`);
+        console.log(`[BULK FOLLOW-UP] Sending to ${leadIds.length} leads`);
+        
+        let successCount = 0;
+        let failCount = 0;
+        const errors = [];
+        
+        for (const leadId of leadIds) {
+            try {
+                // Call the single send endpoint logic
+                const leadResult = await pool.query(
+                    'SELECT * FROM leads WHERE id = $1',
+                    [leadId]
+                );
+                
+                if (leadResult.rows.length === 0) {
+                    failCount++;
+                    errors.push({ leadId, error: 'Lead not found' });
+                    continue;
+                }
+                
+                const lead = leadResult.rows[0];
+                
+                if (!lead.email) {
+                    failCount++;
+                    errors.push({ leadId, error: 'No email address' });
+                    continue;
+                }
+                
+                // Send email (simplified - use template logic from above)
+                let emailSubject = subject || `Following up - ${lead.name}`;
+                let emailBody = message || `Hi ${lead.name}, just checking in...`;
+                
+                const mailOptions = {
+                    from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                    to: lead.email,
+                    subject: emailSubject,
+                    html: `<p>${emailBody.replace(/\n/g, '<br>')}</p>`
+                };
+                
+                await transporter.sendMail(mailOptions);
+                
+                // Update lead
+                await pool.query(
+                    `UPDATE leads 
+                     SET last_contact_date = CURRENT_DATE,
+                         status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
+                         updated_at = CURRENT_TIMESTAMP 
+                     WHERE id = $1`,
+                    [leadId]
+                );
+                
+                // Add note to lead (NEW: Mirror single send logic)
+                let notes = [];
+                try {
+                    if (lead.notes) {
+                        notes = JSON.parse(lead.notes);
+                    }
+                } catch (e) {
+                    notes = [];
+                }
+                
+                notes.push({
+                    text: `Follow-up email sent: "${emailSubject}"`,
+                    author: req.user.username || 'Admin',
+                    date: new Date().toISOString()
+                });
+                
+                await pool.query(
+                    'UPDATE leads SET notes = $1 WHERE id = $2',
+                    [JSON.stringify(notes), leadId]
+                );
+                
+                successCount++;
+                
+            } catch (error) {
+                console.error(`[BULK] Error sending to lead ${leadId}:`, error);
+                failCount++;
+                errors.push({ leadId, error: error.message });
+            }
+        }
+        
+        console.log(`[BULK FOLLOW-UP] ✅ Sent: ${successCount}, ❌ Failed: ${failCount}`);
         
         res.json({
             success: true,
-            categories: result.rows
+            message: `Sent ${successCount} emails, ${failCount} failed`,
+            successCount,
+            failCount,
+            errors: errors.length > 0 ? errors : undefined
         });
+        
     } catch (error) {
-        console.error('[FOLLOW-UPS] Error:', error);
+        console.error('[BULK FOLLOW-UP] Error:', error);
         res.status(500).json({
             success: false,
-            message: 'Error fetching categorized follow-ups',
+            message: 'Bulk send failed',
             error: error.message
         });
     }
@@ -8589,6 +8703,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
                 l.id,
                 l.name,
                 l.email,
+                l.notes,  -- NEW: Fetch notes to update them
                 COALESCE(CURRENT_DATE - l.last_contact_date, 999) as days_since_contact
             FROM leads l
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
@@ -8672,6 +8787,27 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
                          updated_at = CURRENT_TIMESTAMP 
                      WHERE id = $1`,
                     [lead.id]
+                );
+                
+                // Add note to lead (NEW: Mirror single send logic)
+                let notes = [];
+                try {
+                    if (lead.notes) {
+                        notes = JSON.parse(lead.notes);
+                    }
+                } catch (e) {
+                    notes = [];
+                }
+                
+                notes.push({
+                    text: `Follow-up email sent: "${subject}"`,
+                    author: req.user.username || 'Admin',
+                    date: new Date().toISOString()
+                });
+                
+                await pool.query(
+                    'UPDATE leads SET notes = $1 WHERE id = $2',
+                    [JSON.stringify(notes), lead.id]
                 );
                 
                 successCount++;

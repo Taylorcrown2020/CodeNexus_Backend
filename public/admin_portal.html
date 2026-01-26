@@ -14576,7 +14576,45 @@ async function assignProject(clientId) {
         console.error('[ASSIGN PROJECT] Error:', error);
         showToast('Failed to assign project', 'error');
     }
+} 
+
+// Add this function to render notes for a lead
+function renderLeadNotes(notes) {
+    if (!notes || notes.length === 0) {
+        return '<p style="color: var(--text-muted);">No notes yet</p>';
+    }
+    try {
+        const parsedNotes = typeof notes === 'string' ? JSON.parse(notes) : notes;
+        return parsedNotes.map(note => `
+            <div style="background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 8px; border-left: 3px solid var(--accent-amber);">
+                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">${note.date} - ${note.author}</div>
+                <p>${note.text}</p>
+            </div>
+        `).join('');
+    } catch (e) {
+        return '<p style="color: var(--status-lost);">Error parsing notes</p>';
+    }
 }
+
+// In your follow-up rendering code (e.g., inside the loop that renders leads in categories), add notes display.
+// Assuming you have a function like renderCategoryLeads(category):
+// Append this to each lead's HTML:
+`
+<div class="notes-section" style="margin-top: 12px;">
+    <button onclick="toggleNotes(this)" class="btn btn-secondary btn-sm">View Notes</button>
+    <div class="notes-content" style="display: none; margin-top: 12px;">
+        ${renderLeadNotes(lead.notes)}
+    </div>
+</div>
+`
+
+// Add toggle function
+function toggleNotes(button) {
+    const content = button.nextElementSibling;
+    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+    button.textContent = content.style.display === 'block' ? 'Hide Notes' : 'View Notes';
+}
+
 </script>
 </body>
 </html>

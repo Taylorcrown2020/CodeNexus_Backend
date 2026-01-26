@@ -14906,23 +14906,42 @@ function toggleNotes(button) {
 
 async function renderFollowUps(content) {
     console.log('[FOLLOW-UPS] Starting render...');
+    console.log('[FOLLOW-UPS] Auth token:', state.authToken ? 'Present' : 'Missing');
+    console.log('[FOLLOW-UPS] API URL:', API_URL);
     
     try {
         // Show loading state
         content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
         
         // Load stats and categories
+        const statsUrl = `${API_URL}/api/follow-ups/stats`;
+        const categorizedUrl = `${API_URL}/api/follow-ups/categorized`;
+        
+        console.log('[FOLLOW-UPS] Fetching from:', statsUrl, categorizedUrl);
+        
         const [statsResponse, categoriesResponse] = await Promise.all([
-            fetch(`${API_URL}/api/follow-ups/stats`, {
-                headers: { 'Authorization': `Bearer ${state.authToken}` }
+            fetch(statsUrl, {
+                headers: { 
+                    'Authorization': `Bearer ${state.authToken}`,
+                    'Content-Type': 'application/json'
+                }
             }),
-            fetch(`${API_URL}/api/follow-ups/categorized`, {
-                headers: { 'Authorization': `Bearer ${state.authToken}` }
+            fetch(categorizedUrl, {
+                headers: { 
+                    'Authorization': `Bearer ${state.authToken}`,
+                    'Content-Type': 'application/json'
+                }
             })
         ]);
         
+        console.log('[FOLLOW-UPS] Stats response:', statsResponse.status, statsResponse.statusText);
+        console.log('[FOLLOW-UPS] Categories response:', categoriesResponse.status, categoriesResponse.statusText);
+        
         if (!statsResponse.ok || !categoriesResponse.ok) {
-            throw new Error('Failed to load follow-ups data');
+            const statsError = !statsResponse.ok ? await statsResponse.text() : 'OK';
+            const catError = !categoriesResponse.ok ? await categoriesResponse.text() : 'OK';
+            console.error('[FOLLOW-UPS] Response errors:', { statsError, catError });
+            throw new Error(`API Error: Stats ${statsResponse.status}, Categories ${categoriesResponse.status}`);
         }
         
         const statsData = await statsResponse.json();

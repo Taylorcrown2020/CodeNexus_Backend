@@ -8900,34 +8900,6 @@ Categories: ${JSON.stringify(categories, null, 2)}
     `;
 }
 
-// Simple test endpoint - NO AUTH
-app.get('/api/follow-ups/test-simple', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT COUNT(*) as total
-            FROM leads
-            WHERE status IN ('new', 'contacted', 'qualified', 'pending')
-            AND is_customer = FALSE
-        `);
-        
-        res.json({
-            success: true,
-            message: 'Follow-ups endpoint is working',
-            total_leads: result.rows[0].total
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-```
-
-Then test it in your browser:
-```
-http://localhost:3000/api/follow-ups/test-simple
-
 // ========================================
 // HEALTH CHECK
 // ========================================

@@ -16,12 +16,6 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ========================================
-// FOLLOW-UP CADENCE CONFIG
-// ========================================
-
-const FOLLOW_UP_SCHEDULE = [1, 3, 7, 8, 10, 15];
-
 // Service Packages Definition (same as frontend)
 const servicePackages = {
     'free-basic': {
@@ -278,6 +272,7 @@ async function initializeDatabase(){
     try {
         await client.query('BEGIN');
 
+// Add follow_up_step column to leads table (PostgreSQL syntax)
 await client.query(`
     DO $$ 
     BEGIN
@@ -286,9 +281,20 @@ await client.query(`
             WHERE table_name='leads' AND column_name='follow_up_step'
         ) THEN
             ALTER TABLE leads ADD COLUMN follow_up_step INTEGER DEFAULT 0;
+            RAISE NOTICE 'Added follow_up_step column to leads table';
+        END IF;
+        
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='leads' AND column_name='last_contact_date'
+        ) THEN
+            ALTER TABLE leads ADD COLUMN last_contact_date DATE;
+            RAISE NOTICE 'Added last_contact_date column to leads table';
         END IF;
     END $$;
 `);
+
+console.log('✅ Follow-up tracking columns initialized');
 
         // Client uploads table
 await client.query(`
@@ -2480,77 +2486,6 @@ app.patch('/api/invoices/:id', authenticateToken, async (req, res) => {
             success: false, 
             message: 'Server error.' 
         });
-    }
-});
-
-// ========================================
-// GET LEADS DUE FOR FOLLOW-UP
-// ========================================
-app.get('/api/follow-ups', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT
-                id,
-                name,
-                email,
-                phone,
-                status,
-                priority,
-                last_contact_date,
-                follow_up_step,
-                created_at
-            FROM leads
-            WHERE
-                is_customer = FALSE
-                AND status NOT IN ('closed', 'lost')
-                AND (
-                    last_contact_date IS NULL
-                    OR (
-                        CURRENT_DATE >= (
-                            last_contact_date::date +
-                            CASE
-                                WHEN follow_up_step = 0 THEN 1
-                                WHEN follow_up_step = 1 THEN 3
-                                WHEN follow_up_step = 2 THEN 7
-                                WHEN follow_up_step = 3 THEN 8
-                                WHEN follow_up_step = 4 THEN 10
-                                WHEN follow_up_step = 5 THEN 15
-                                ELSE 7
-                            END
-                        )
-                    )
-                )
-            ORDER BY priority DESC, created_at ASC;
-        `);
-
-        res.json(result.rows);
-    } catch (error) {
-        console.error('Error fetching follow-ups:', error);
-        res.status(500).json({ error: 'Failed to fetch follow-ups' });
-    }
-});
-
-// ========================================
-// MARK LEAD AS CONTACTED (ADVANCE FOLLOW-UP)
-// ========================================
-app.post('/api/leads/:id/contacted', async (req, res) => {
-    const { id } = req.params;
-
-    try {
-        await pool.query(`
-            UPDATE leads
-            SET
-                last_contact_date = CURRENT_TIMESTAMP,
-                follow_up_step = follow_up_step + 1,
-                status = 'contacted',
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $1
-        `, [id]);
-
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error updating follow-up status:', error);
-        res.status(500).json({ error: 'Failed to update lead' });
     }
 });
 
@@ -7675,6 +7610,178 @@ function authenticateClient(req, res, next) {
         });
     }
 }
+
+// Mark a lead as contacted (updates last_contact_date)
+app.post('/api/leads/:id/contacted', authenticateToken, async (req, res) => {
+    try {
+        const leadId = req.params.id;
+        const userId = req.user.id;
+        
+        console.log(`[FOLLOW-UP] Marking lead ${leadId} as contacted`);
+        
+        // Verify lead exists and belongs to user's organization
+        const leadCheck = await pool.query(
+            'SELECT id, name, status FROM leads WHERE id = $1',
+            [leadId]
+        );
+        
+        if (leadCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Lead not found'
+            });
+        }
+        
+        const lead = leadCheck.rows[0];
+        
+        // Update last_contact_date to today
+        const result = await pool.query(
+            `UPDATE leads 
+             SET last_contact_date = CURRENT_DATE,
+                 status = CASE 
+                     WHEN status = 'new' THEN 'contacted'
+                     ELSE status
+                 END,
+                 updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $1
+             RETURNING *`,
+            [leadId]
+        );
+        
+        // Add note to lead
+        try {
+            let notes = [];
+            if (lead.notes) {
+                try {
+                    notes = JSON.parse(lead.notes);
+                } catch (e) {
+                    notes = [];
+                }
+            }
+            
+            notes.push({
+                text: `Follow-up contact made via follow-up queue`,
+                author: req.user.username || 'Admin',
+                date: new Date().toISOString()
+            });
+            
+            await pool.query(
+                'UPDATE leads SET notes = $1 WHERE id = $2',
+                [JSON.stringify(notes), leadId]
+            );
+        } catch (noteError) {
+            console.error('[FOLLOW-UP] Error adding note:', noteError);
+            // Don't fail the request if note fails
+        }
+        
+        console.log(`[FOLLOW-UP] ✅ Lead ${leadId} marked as contacted`);
+        
+        res.json({
+            success: true,
+            message: 'Lead marked as contacted successfully',
+            lead: result.rows[0]
+        });
+    } catch (error) {
+        console.error('[FOLLOW-UP] Error marking as contacted:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating lead',
+            error: error.message
+        });
+    }
+});
+
+// GET /api/follow-ups/stats - Updated for PostgreSQL
+app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
+    try {
+        const stats = await pool.query(`
+            SELECT 
+                COUNT(*) FILTER (
+                    WHERE last_contact_date IS NULL 
+                    OR last_contact_date <= CURRENT_DATE - INTERVAL '3 days'
+                ) as pending_followups,
+                COUNT(*) FILTER (
+                    WHERE last_contact_date IS NULL
+                ) as never_contacted,
+                COUNT(*) FILTER (
+                    WHERE last_contact_date <= CURRENT_DATE - INTERVAL '7 days'
+                    AND last_contact_date IS NOT NULL
+                ) as overdue_followups,
+                COUNT(*) FILTER (
+                    WHERE last_contact_date >= CURRENT_DATE - INTERVAL '3 days'
+                ) as recently_contacted
+            FROM leads
+            WHERE status IN ('new', 'contacted', 'qualified', 'pending')
+            AND is_customer = FALSE
+        `);
+        
+        res.json({
+            success: true,
+            stats: stats.rows[0]
+        });
+    } catch (error) {
+        console.error('[FOLLOW-UP STATS] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching stats'
+        });
+    }
+});
+
+// GET /api/follow-ups - Updated for PostgreSQL
+app.get('/api/follow-ups', authenticateToken, async (req, res) => {
+    try {
+        console.log('[FOLLOW-UPS] Getting leads needing follow-up');
+        
+        const query = `
+            SELECT 
+                l.*,
+                CASE 
+                    WHEN l.last_contact_date IS NULL THEN 0
+                    WHEN (CURRENT_DATE - l.last_contact_date) >= 15 THEN 6
+                    WHEN (CURRENT_DATE - l.last_contact_date) >= 10 THEN 5
+                    WHEN (CURRENT_DATE - l.last_contact_date) >= 8 THEN 4
+                    WHEN (CURRENT_DATE - l.last_contact_date) >= 7 THEN 3
+                    WHEN (CURRENT_DATE - l.last_contact_date) >= 3 THEN 2
+                    WHEN (CURRENT_DATE - l.last_contact_date) >= 1 THEN 1
+                    ELSE 0
+                END as follow_up_step,
+                COALESCE(CURRENT_DATE - l.last_contact_date, 0) as days_since_contact
+            FROM leads l
+            WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
+            AND l.is_customer = FALSE
+            AND (
+                l.last_contact_date IS NULL
+                OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days'
+                OR (
+                    l.last_contact_date <= CURRENT_DATE - INTERVAL '15 days' 
+                    AND MOD((CURRENT_DATE - l.last_contact_date), 7) = 0
+                )
+            )
+            ORDER BY 
+                CASE 
+                    WHEN l.last_contact_date IS NULL THEN 999999
+                    ELSE (CURRENT_DATE - l.last_contact_date)
+                END DESC
+        `;
+        
+        const result = await pool.query(query);
+        
+        console.log(`[FOLLOW-UPS] Found ${result.rows.length} leads needing follow-up`);
+        
+        res.json({
+            success: true,
+            leads: result.rows
+        });
+    } catch (error) {
+        console.error('[FOLLOW-UPS] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching follow-ups',
+            error: error.message
+        });
+    }
+});
 
 // Get payment link for client invoice (CLIENT AUTH)
 app.get('/api/client/invoice/:id/payment-link', authenticateClient, async (req, res) => {

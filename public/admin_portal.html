@@ -4057,8 +4057,10 @@ case 'followups':
     try {
         content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
         const categories = await loadCategorizedFollowUps();
-        await renderFollowUps(content, categories);  // Pass categories as parameter
+        console.log('[FOLLOW-UPS] Categories loaded:', categories); // Debug log
+        await renderFollowUps(content, categories);
     } catch (error) {
+        console.error('[FOLLOW-UPS] Render error:', error);
         content.innerHTML = `<div style="text-align: center; padding: 40px; color: red;">Error: ${error.message}</div>`;
     }
     break;
@@ -12854,7 +12856,8 @@ function renderLeadScoring(content) {
 
 // Replace the existing renderFollowUps function with this complete implementation:
 async function renderFollowUps(content, categories) {
-    content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
+    // DON'T reload - we already have categories passed in
+    console.log('[FOLLOW-UPS] Rendering with categories:', categories);
 
     try {
         // Load categorized data

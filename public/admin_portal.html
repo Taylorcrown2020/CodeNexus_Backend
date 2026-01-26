@@ -2707,6 +2707,13 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
                 Client Portal
                 <span class="nav-badge" id="clientPortalBadge">0</span>
             </div>
+            <div class="nav-item" data-section="followups">
+    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 8v4l3 3"></path>
+        <circle cx="12" cy="12" r="9"></circle>
+    </svg>
+    Follow Ups
+</div>
             <div class="nav-item" data-section="documents">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -2849,6 +2856,27 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
             <div class="modal-body" id="createModalBody"></div>
         </div>
     </div>
+
+    <section id="followups-section" class="content-section" style="display:none;">
+    <div class="page-header">
+        <h1 class="page-title">Follow Ups</h1>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Lead</th>
+                    <th>Last Contacted</th>
+                    <th>Step</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="followups-table-body"></tbody>
+        </table>
+    </div>
+</section>
+
 
     <!-- Invoice Modal -->
     <div class="modal-overlay" id="invoiceModal">
@@ -4014,6 +4042,9 @@ switch (section) {
         content.innerHTML = ''; // Force clear any existing content
         renderProjects(content); 
         break;
+        case 'followups':
+    await renderFollowUps(content);
+    break;
     case 'support':
         await loadTickets();
         renderTickets();
@@ -12790,6 +12821,65 @@ function renderLeadScoring(content) {
         console.error('Error loading lead scoring:', error);
         content.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">Error loading lead scoring</div>';
     });
+}
+
+// ========================================
+// LOAD FOLLOW-UPS
+// ========================================
+async function loadFollowUps() {
+    const res = await fetch('/api/follow-ups');
+    const leads = await res.json();
+
+    const tbody = document.getElementById('followups-table-body');
+    tbody.innerHTML = '';
+
+    leads.forEach(lead => {
+        const stepLabel = getFollowUpLabel(lead.follow_up_step);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <div class="contact-cell">
+                    <div class="contact-avatar">${lead.name?.charAt(0) || '?'}</div>
+                    <div class="contact-info">
+                        <div class="contact-name">${lead.name || 'Unnamed'}</div>
+                        <div class="contact-email">${lead.email}</div>
+                    </div>
+                </div>
+            </td>
+            <td>${lead.last_contact_date ? new Date(lead.last_contact_date).toLocaleDateString() : 'Never'}</td>
+            <td>${stepLabel}</td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
+                    Mark Contacted
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ========================================
+// FOLLOW-UP LABELS
+// ========================================
+function getFollowUpLabel(step) {
+    const labels = [
+        'Day 1',
+        'Day 3',
+        'Day 7',
+        'Day 8',
+        'Day 10',
+        'Day 15'
+    ];
+    return labels[step] || 'Every 7 Days';
+}
+
+// ========================================
+// MARK CONTACTED
+// ========================================
+async function markFollowedUp(leadId) {
+    await fetch(`/api/leads/${leadId}/contacted`, { method: 'POST' });
+    loadFollowUps();
 }
 
 // Render Scoring Rules page

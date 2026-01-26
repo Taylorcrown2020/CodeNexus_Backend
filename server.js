@@ -16,6 +16,12 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ========================================
+// FOLLOW-UP CADENCE CONFIG
+// ========================================
+
+const FOLLOW_UP_SCHEDULE = [1, 3, 7, 8, 10, 15];
+
 // Service Packages Definition (same as frontend)
 const servicePackages = {
     'free-basic': {
@@ -271,6 +277,18 @@ async function initializeDatabase(){
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+
+await client.query(`
+    DO $$ 
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='leads' AND column_name='follow_up_step'
+        ) THEN
+            ALTER TABLE leads ADD COLUMN follow_up_step INTEGER DEFAULT 0;
+        END IF;
+    END $$;
+`);
 
         // Client uploads table
 await client.query(`
@@ -2462,6 +2480,77 @@ app.patch('/api/invoices/:id', authenticateToken, async (req, res) => {
             success: false, 
             message: 'Server error.' 
         });
+    }
+});
+
+// ========================================
+// GET LEADS DUE FOR FOLLOW-UP
+// ========================================
+app.get('/api/follow-ups', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                id,
+                name,
+                email,
+                phone,
+                status,
+                priority,
+                last_contact_date,
+                follow_up_step,
+                created_at
+            FROM leads
+            WHERE
+                is_customer = FALSE
+                AND status NOT IN ('closed', 'lost')
+                AND (
+                    last_contact_date IS NULL
+                    OR (
+                        CURRENT_DATE >= (
+                            last_contact_date::date +
+                            CASE
+                                WHEN follow_up_step = 0 THEN 1
+                                WHEN follow_up_step = 1 THEN 3
+                                WHEN follow_up_step = 2 THEN 7
+                                WHEN follow_up_step = 3 THEN 8
+                                WHEN follow_up_step = 4 THEN 10
+                                WHEN follow_up_step = 5 THEN 15
+                                ELSE 7
+                            END
+                        )
+                    )
+                )
+            ORDER BY priority DESC, created_at ASC;
+        `);
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching follow-ups:', error);
+        res.status(500).json({ error: 'Failed to fetch follow-ups' });
+    }
+});
+
+// ========================================
+// MARK LEAD AS CONTACTED (ADVANCE FOLLOW-UP)
+// ========================================
+app.post('/api/leads/:id/contacted', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        await pool.query(`
+            UPDATE leads
+            SET
+                last_contact_date = CURRENT_TIMESTAMP,
+                follow_up_step = follow_up_step + 1,
+                status = 'contacted',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+        `, [id]);
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating follow-up status:', error);
+        res.status(500).json({ error: 'Failed to update lead' });
     }
 });
 

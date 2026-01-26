@@ -242,6 +242,35 @@ app.use((req, res, next) => {
 });
 
 // ========================================
+// MIDDLEWARE (AFTER WEBHOOK!)
+// ========================================
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+    credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Request logging
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+});
+
+// **ADD THIS DEBUG ROUTE HERE - NO AUTH REQUIRED**
+app.get('/api/test/ping', (req, res) => {
+    console.log('[TEST] Ping received');
+    res.json({ 
+        success: true, 
+        message: 'Server is responding',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// ========================================
 // DATABASE CONNECTION
 // ========================================
 
@@ -7612,29 +7641,17 @@ function authenticateClient(req, res, next) {
 }
 
 // Mark a lead as contacted (updates last_contact_date)
+// ========================================
+// FOLLOW-UP SYSTEM ROUTES
+// ========================================
+
+// Mark a lead as contacted (updates last_contact_date)
 app.post('/api/leads/:id/contacted', authenticateToken, async (req, res) => {
     try {
         const leadId = req.params.id;
-        const userId = req.user.id;
         
         console.log(`[FOLLOW-UP] Marking lead ${leadId} as contacted`);
         
-        // Verify lead exists and belongs to user's organization
-        const leadCheck = await pool.query(
-            'SELECT id, name, status FROM leads WHERE id = $1',
-            [leadId]
-        );
-        
-        if (leadCheck.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Lead not found'
-            });
-        }
-        
-        const lead = leadCheck.rows[0];
-        
-        // Update last_contact_date to today
         const result = await pool.query(
             `UPDATE leads 
              SET last_contact_date = CURRENT_DATE,
@@ -7648,30 +7665,11 @@ app.post('/api/leads/:id/contacted', authenticateToken, async (req, res) => {
             [leadId]
         );
         
-        // Add note to lead
-        try {
-            let notes = [];
-            if (lead.notes) {
-                try {
-                    notes = JSON.parse(lead.notes);
-                } catch (e) {
-                    notes = [];
-                }
-            }
-            
-            notes.push({
-                text: `Follow-up contact made via follow-up queue`,
-                author: req.user.username || 'Admin',
-                date: new Date().toISOString()
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Lead not found'
             });
-            
-            await pool.query(
-                'UPDATE leads SET notes = $1 WHERE id = $2',
-                [JSON.stringify(notes), leadId]
-            );
-        } catch (noteError) {
-            console.error('[FOLLOW-UP] Error adding note:', noteError);
-            // Don't fail the request if note fails
         }
         
         console.log(`[FOLLOW-UP] ✅ Lead ${leadId} marked as contacted`);
@@ -7682,7 +7680,7 @@ app.post('/api/leads/:id/contacted', authenticateToken, async (req, res) => {
             lead: result.rows[0]
         });
     } catch (error) {
-        console.error('[FOLLOW-UP] Error marking as contacted:', error);
+        console.error('[FOLLOW-UP] Error:', error);
         res.status(500).json({
             success: false,
             message: 'Error updating lead',
@@ -7691,9 +7689,11 @@ app.post('/api/leads/:id/contacted', authenticateToken, async (req, res) => {
     }
 });
 
-// GET /api/follow-ups/stats - Updated for PostgreSQL
+// Get follow-up statistics
 app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
     try {
+        console.log('[FOLLOW-UP STATS] Getting statistics');
+        
         const stats = await pool.query(`
             SELECT 
                 COUNT(*) FILTER (
@@ -7715,6 +7715,8 @@ app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
             AND is_customer = FALSE
         `);
         
+        console.log('[FOLLOW-UP STATS] ✅ Stats retrieved:', stats.rows[0]);
+        
         res.json({
             success: true,
             stats: stats.rows[0]
@@ -7728,7 +7730,7 @@ app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
     }
 });
 
-// GET /api/follow-ups - Updated for PostgreSQL
+// Get leads needing follow-up
 app.get('/api/follow-ups', authenticateToken, async (req, res) => {
     try {
         console.log('[FOLLOW-UPS] Getting leads needing follow-up');
@@ -7753,10 +7755,6 @@ app.get('/api/follow-ups', authenticateToken, async (req, res) => {
             AND (
                 l.last_contact_date IS NULL
                 OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days'
-                OR (
-                    l.last_contact_date <= CURRENT_DATE - INTERVAL '15 days' 
-                    AND MOD((CURRENT_DATE - l.last_contact_date), 7) = 0
-                )
             )
             ORDER BY 
                 CASE 
@@ -7767,7 +7765,7 @@ app.get('/api/follow-ups', authenticateToken, async (req, res) => {
         
         const result = await pool.query(query);
         
-        console.log(`[FOLLOW-UPS] Found ${result.rows.length} leads needing follow-up`);
+        console.log(`[FOLLOW-UPS] ✅ Found ${result.rows.length} leads needing follow-up`);
         
         res.json({
             success: true,
@@ -7782,6 +7780,172 @@ app.get('/api/follow-ups', authenticateToken, async (req, res) => {
         });
     }
 });
+
+// TEST ENDPOINT - NO AUTH REQUIRED FOR TESTING
+app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
+    try {
+        console.log('[TEST] ============================================');
+        console.log('[TEST] Follow-up system diagnostic started');
+        console.log('[TEST] ============================================');
+        
+        const results = {
+            timestamp: new Date().toISOString(),
+            tests: {}
+        };
+        
+        // Test 1: Database connection
+        try {
+            const dbTest = await pool.query('SELECT NOW() as time, version() as pg_version');
+            results.tests.database = {
+                status: 'PASS',
+                message: 'Database connected successfully',
+                time: dbTest.rows[0].time,
+                version: dbTest.rows[0].pg_version
+            };
+            console.log('[TEST] ✅ Database connected');
+        } catch (error) {
+            results.tests.database = {
+                status: 'FAIL',
+                error: error.message
+            };
+            console.log('[TEST] ❌ Database connection failed');
+        }
+        
+        // Test 2: Check leads table schema
+        try {
+            const schemaCheck = await pool.query(`
+                SELECT column_name, data_type
+                FROM information_schema.columns
+                WHERE table_name = 'leads'
+                AND column_name IN ('last_contact_date', 'follow_up_step')
+                ORDER BY column_name
+            `);
+            
+            results.tests.schema = {
+                status: schemaCheck.rows.length >= 1 ? 'PASS' : 'FAIL',
+                columns: schemaCheck.rows,
+                message: schemaCheck.rows.length >= 1 
+                    ? 'Required columns exist' 
+                    : 'Missing required columns'
+            };
+            console.log('[TEST] ✅ Schema check complete');
+        } catch (error) {
+            results.tests.schema = {
+                status: 'FAIL',
+                error: error.message
+            };
+            console.log('[TEST] ❌ Schema check failed');
+        }
+        
+        // Test 3: Count leads
+        try {
+            const leadData = await pool.query(`
+                SELECT 
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE is_customer = FALSE) as active_leads,
+                    COUNT(*) FILTER (WHERE last_contact_date IS NOT NULL) as with_contact_date,
+                    COUNT(*) FILTER (WHERE last_contact_date IS NULL) as without_contact_date
+                FROM leads
+            `);
+            
+            results.tests.data = {
+                status: 'PASS',
+                stats: leadData.rows[0]
+            };
+            console.log('[TEST] ✅ Lead data retrieved');
+        } catch (error) {
+            results.tests.data = {
+                status: 'FAIL',
+                error: error.message
+            };
+            console.log('[TEST] ❌ Lead data failed');
+        }
+        
+        // Test 4: Test follow-up query
+        try {
+            const followUps = await pool.query(`
+                SELECT 
+                    id,
+                    name,
+                    email,
+                    status,
+                    last_contact_date,
+                    CURRENT_DATE - last_contact_date as days_since_contact
+                FROM leads
+                WHERE status IN ('new', 'contacted', 'qualified', 'pending')
+                AND is_customer = FALSE
+                AND (
+                    last_contact_date IS NULL
+                    OR last_contact_date <= CURRENT_DATE - INTERVAL '3 days'
+                )
+                LIMIT 5
+            `);
+            
+            results.tests.query = {
+                status: 'PASS',
+                message: `Found ${followUps.rows.length} leads needing follow-up`,
+                sample: followUps.rows
+            };
+            console.log('[TEST] ✅ Follow-up query successful');
+        } catch (error) {
+            results.tests.query = {
+                status: 'FAIL',
+                error: error.message
+            };
+            console.log('[TEST] ❌ Follow-up query failed');
+        }
+        
+        // Test 5: Stats query
+        try {
+            const stats = await pool.query(`
+                SELECT 
+                    COUNT(*) FILTER (
+                        WHERE last_contact_date IS NULL 
+                        OR last_contact_date <= CURRENT_DATE - INTERVAL '3 days'
+                    ) as pending_followups,
+                    COUNT(*) FILTER (
+                        WHERE last_contact_date IS NULL
+                    ) as never_contacted
+                FROM leads
+                WHERE status IN ('new', 'contacted', 'qualified', 'pending')
+                AND is_customer = FALSE
+            `);
+            
+            results.tests.stats = {
+                status: 'PASS',
+                data: stats.rows[0]
+            };
+            console.log('[TEST] ✅ Stats query successful');
+        } catch (error) {
+            results.tests.stats = {
+                status: 'FAIL',
+                error: error.message
+            };
+            console.log('[TEST] ❌ Stats query failed');
+        }
+        
+        console.log('[TEST] ============================================');
+        console.log('[TEST] Follow-up system diagnostic complete');
+        console.log('[TEST] ============================================');
+        
+        res.json({
+            success: true,
+            message: 'Follow-up system diagnostic complete',
+            results: results
+        });
+        
+    } catch (error) {
+        console.error('[TEST] ❌ Test failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Test failed',
+            error: error.message,
+            stack: error.stack
+        });
+    }
+});
+
+console.log('[SERVER] ✅ Follow-up routes registered');
 
 // Get payment link for client invoice (CLIENT AUTH)
 app.get('/api/client/invoice/:id/payment-link', authenticateClient, async (req, res) => {
@@ -8060,101 +8224,6 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
         // Don't throw error - account creation should succeed even if email fails
     }
 }
-
-// ========================================
-// ADD THIS TEST ENDPOINT TO YOUR server.js
-// Place it near your other follow-up endpoints (around line 2900)
-// ========================================
-
-// TEST ENDPOINT - Check if follow-up system is working
-app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
-    try {
-        console.log('[TEST] Follow-up system test initiated');
-        
-        // Test 1: Database connection
-        const dbTest = await pool.query('SELECT NOW() as current_time');
-        console.log('[TEST] ✅ Database connected:', dbTest.rows[0].current_time);
-        
-        // Test 2: Count leads in system
-        const leadCount = await pool.query(`
-            SELECT 
-                COUNT(*) as total,
-                COUNT(*) FILTER (WHERE is_customer = FALSE) as leads,
-                COUNT(*) FILTER (WHERE is_customer = TRUE) as customers
-            FROM leads
-        `);
-        console.log('[TEST] ✅ Lead counts:', leadCount.rows[0]);
-        
-        // Test 3: Check leads with follow-up data
-        const followUpData = await pool.query(`
-            SELECT 
-                id,
-                name,
-                email,
-                status,
-                last_contact_date,
-                CURRENT_DATE - last_contact_date as days_since_contact,
-                CASE 
-                    WHEN last_contact_date IS NULL THEN 'Never contacted'
-                    WHEN (CURRENT_DATE - last_contact_date) >= 15 THEN 'Critical (15+ days)'
-                    WHEN (CURRENT_DATE - last_contact_date) >= 7 THEN 'Overdue (7-14 days)'
-                    WHEN (CURRENT_DATE - last_contact_date) >= 3 THEN 'Due soon (3-6 days)'
-                    ELSE 'Recently contacted'
-                END as follow_up_status
-            FROM leads
-            WHERE status IN ('new', 'contacted', 'qualified', 'pending')
-            AND is_customer = FALSE
-            ORDER BY last_contact_date ASC NULLS FIRST
-            LIMIT 10
-        `);
-        
-        console.log('[TEST] ✅ Sample follow-up data retrieved');
-        
-        // Test 4: Stats query
-        const stats = await pool.query(`
-            SELECT 
-                COUNT(*) FILTER (
-                    WHERE last_contact_date IS NULL 
-                    OR last_contact_date <= CURRENT_DATE - INTERVAL '3 days'
-                ) as pending_followups,
-                COUNT(*) FILTER (
-                    WHERE last_contact_date IS NULL
-                ) as never_contacted,
-                COUNT(*) FILTER (
-                    WHERE last_contact_date <= CURRENT_DATE - INTERVAL '7 days'
-                    AND last_contact_date IS NOT NULL
-                ) as overdue_followups,
-                COUNT(*) FILTER (
-                    WHERE last_contact_date >= CURRENT_DATE - INTERVAL '3 days'
-                ) as recently_contacted
-            FROM leads
-            WHERE status IN ('new', 'contacted', 'qualified', 'pending')
-            AND is_customer = FALSE
-        `);
-        
-        console.log('[TEST] ✅ Stats calculated:', stats.rows[0]);
-        
-        res.json({
-            success: true,
-            message: 'Follow-up system test passed',
-            tests: {
-                database: '✅ Connected',
-                leadCounts: leadCount.rows[0],
-                stats: stats.rows[0],
-                sampleLeads: followUpData.rows
-            }
-        });
-        
-    } catch (error) {
-        console.error('[TEST] ❌ Follow-up test failed:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Follow-up test failed',
-            error: error.message,
-            stack: error.stack
-        });
-    }
-});
 
 // ========================================
 // MISSING ENDPOINT: Send Follow-Up Email

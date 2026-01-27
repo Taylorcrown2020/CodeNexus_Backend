@@ -5593,82 +5593,81 @@ function formatFileSize(bytes) {
 
 // ==================== EMAIL FUNCTIONS ====================
 
-function openEmailTemplateModal(leadId, event) {
-    console.log('[EMAIL] Opening email modal for lead:', leadId);
+window.showEmailModal = function(leadId, leadName, leadEmail) {
+    console.log('Email modal opening for:', leadId, leadName, leadEmail);
     
-    // Find the lead data from the page
-    let leadName = 'Lead';
-    let leadEmail = '';
-    
-    if (event) {
-        const leadElement = event.target.closest('tr');
-        leadName = leadElement.querySelector('.contact-name')?.textContent || 'Lead';
-        leadEmail = leadElement.querySelector('.contact-email')?.textContent || '';
-    }
-    
-    // Fallback: find from state if email not found from DOM
-    if (!leadEmail && state.leads) {
-        const lead = state.leads.find(l => l.id === leadId);
-        if (lead) {
-            leadName = lead.name;
-            leadEmail = lead.email;
-        }
-    }
-    
-    if (!leadEmail) {
-        showToast('Lead email not found', 'error');
-        return;
-    }
-    
-    // Create modal HTML
     const modalHtml = `
-        <div class="modal-overlay" id="emailModal" onclick="if(event.target.id==='emailModal') closeEmailModal()">
-            <div class="modal" style="max-width: 600px;">
-                <div class="modal-header">
-                    <h3>Send Email to ${leadName}</h3>
-                    <button class="modal-close" onclick="closeEmailModal()">×</button>
+        <div class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;" onclick="this.remove()">
+            <div class="modal" style="background: white; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow: auto;" onclick="event.stopPropagation()">
+                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb;">
+                    <h3 style="margin: 0;">Send Email to ${leadName}</h3>
                 </div>
-                <div class="modal-body">
+                <div style="padding: 20px;">
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">To:</label>
-                        <input type="email" id="emailTo" value="${leadEmail}" readonly 
-                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary);">
+                        <input type="email" value="${leadEmail}" readonly 
+                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f3f4f6;">
                     </div>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
-                        <input type="text" id="emailSubject" placeholder="Email subject" 
-                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
+                        <input type="text" id="emailSubject_${leadId}" placeholder="Email subject" 
+                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
                     </div>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
-                        <textarea id="emailBody" rows="10" placeholder="Type your message here..." 
-                                  style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+                        <textarea id="emailBody_${leadId}" rows="10" placeholder="Type your message here..." 
+                                  style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="closeEmailModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="sendEmail(${leadId}, '${leadEmail}')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
-                            <line x1="22" y1="2" x2="11" y2="13"/>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                        </svg>
-                        Send Email
-                    </button>
+                <div style="padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                    <button class="btn btn-primary" onclick="window.doSendEmail(${leadId}, '${leadEmail}')">Send Email</button>
                 </div>
             </div>
         </div>
     `;
     
-    // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    setTimeout(() => document.getElementById('emailSubject_' + leadId)?.focus(), 100);
+};
+
+window.doSendEmail = async function(leadId, leadEmail) {
+    const subject = document.getElementById('emailSubject_' + leadId)?.value;
+    const body = document.getElementById('emailBody_' + leadId)?.value;
     
-    // Focus on subject field
-    setTimeout(() => {
-        document.getElementById('emailSubject')?.focus();
-    }, 100);
-}
+    if (!subject || !body) {
+        alert('Please fill in subject and message');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/leads/${leadId}/email`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: leadEmail,
+                subject: subject,
+                body: body
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to send');
+        
+        alert('Email sent successfully!');
+        document.querySelector('.modal-overlay')?.remove();
+        
+        await markFollowedUp(leadId);
+        
+    } catch (error) {
+        console.error('Email error:', error);
+        alert('Failed to send email: ' + error.message);
+    }
+};
 
 function closeEmailModal() {
     const modal = document.querySelector('.modal-overlay');
@@ -13146,7 +13145,7 @@ async function renderFollowUps(content) {
                                                 </svg>
                                                 Mark Contacted
                                             </button>
-                                            <button class="btn btn-sm btn-secondary" onclick="openEmailTemplateModal(${lead.id}, event)">
+                                            <button class="btn btn-sm btn-secondary" onclick="window.showEmailModal(${lead.id}, '${lead.name.replace(/'/g, "\\'")}', '${lead.email}')">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                                     <polyline points="22,6 12,13 2,6"/>
@@ -15133,7 +15132,7 @@ async function renderFollowUps(content) {
                                                 </svg>
                                                 Mark Contacted
                                             </button>
-                                            <button class="btn btn-sm btn-secondary" onclick="openEmailTemplateModal(${lead.id}, event)">
+                                            <button class="btn btn-sm btn-secondary" onclick="window.showEmailModal(${lead.id}, '${lead.name.replace(/'/g, "\\'")}', '${lead.email}')">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                                     <polyline points="22,6 12,13 2,6"/>

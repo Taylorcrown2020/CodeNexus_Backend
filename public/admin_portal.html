@@ -4364,10 +4364,10 @@ function showClientSelectionForInvoice() {
 function selectClientForNewInvoice(leadId) {
     console.log('✅ Client selected, opening invoice modal for lead:', leadId);
     closeCreateModal();
-    // Small delay to allow modal to close smoothly
+    // Longer delay to ensure modal is fully closed
     setTimeout(() => {
         openInvoiceModal(leadId);
-    }, 100);
+    }, 300); // Increase from 100ms to 300ms
 }
 
 function filterClientList(searchTerm) {
@@ -7856,17 +7856,27 @@ document.getElementById('createModal').classList.remove('active');
 }
 async function openInvoiceModal(leadId) {
     const lead = [...state.leads, ...state.customers].find(l => l.id === leadId);
-    if (!lead) return;
+    if (!lead) {
+        console.error('❌ Lead not found for ID:', leadId);
+        showToast('Lead/Customer not found', 'error');
+        return;
+    }
     
     const expenses = await loadExpenses(leadId);
     const selectedExpenses = state.selectedExpenses.length > 0 
         ? expenses.filter(e => state.selectedExpenses.includes(e.id))
         : expenses;
 
-    const modal = document.getElementById('invoiceModal');
-    const titleEl = document.getElementById('invoiceModalTitle');
-    const bodyEl = document.getElementById('invoiceModalBody');
-    const footerEl = document.getElementById('invoiceModalFooter');
+    // ✅ USE createModal instead of invoiceModal
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+
+    if (!modal) {
+        console.error('❌ createModal element not found in DOM!');
+        showToast('Modal not found. Please refresh the page.', 'error');
+        return;
+    }
 
     titleEl.textContent = 'Create Invoice';
 
@@ -7962,6 +7972,19 @@ async function openInvoiceModal(leadId) {
         </div>
         
         <div id="invoicePreviewTab" style="display: none;"></div>
+        
+        <!-- ✅ ADD FOOTER BUTTONS DIRECTLY IN THE BODY -->
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-subtle);">
+            <button class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveInvoice()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                Save Invoice
+            </button>
+        </div>
     `;
 
     // Store invoice data in state
@@ -7977,23 +8000,11 @@ async function openInvoiceModal(leadId) {
         }))
     };
 
-    footerEl.innerHTML = `
-        <button class="btn btn-secondary" onclick="closeInvoiceModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveInvoice()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
-            </svg>
-            Save Invoice
-        </button>
-    `;
-
     modal.classList.add('active');
 }
 function closeInvoiceModal() {
-document.getElementById('invoiceModal').classList.remove('active');
-state.currentInvoice = null;
+    document.getElementById('createModal').classList.remove('active'); // ✅ Changed from invoiceModal
+    state.currentInvoice = null;
 }
 
 // Add this function for editing addresses

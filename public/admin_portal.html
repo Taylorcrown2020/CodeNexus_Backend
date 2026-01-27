@@ -14497,8 +14497,11 @@ async function sendBulkEmail(category, count) {
         showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
         closeEmailModal();
         
-        // Refresh the page
-        await renderSection('followups');
+        // Refresh the follow-ups section
+        const contentArea = document.getElementById('contentArea');
+        if (contentArea) {
+            await renderFollowUps(contentArea);
+        }
         
     } catch (error) {
         console.error('[EMAIL] Bulk send error:', error);
@@ -14930,52 +14933,37 @@ function toggleNotes(button) {
 
 async function renderFollowUps(content) {
     console.log('[FOLLOW-UPS] Starting render...');
-    console.log('[FOLLOW-UPS] Auth token:', state.authToken ? 'Present' : 'Missing');
-    console.log('[FOLLOW-UPS] API URL:', API_URL);
     
     try {
         // Show loading state
         content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
         
-        // Load stats and categories
-        const statsUrl = `${API_URL}/api/follow-ups/stats`;
-        const categorizedUrl = `${API_URL}/api/follow-ups/categorized`;
-        
-        console.log('[FOLLOW-UPS] Fetching from:', statsUrl, categorizedUrl);
-        
+        // Fetch stats and categorized data
         const [statsResponse, categoriesResponse] = await Promise.all([
-            fetch(statsUrl, {
-                headers: { 
-                    'Authorization': `Bearer ${authToken}`,
-                    'Content-Type': 'application/json'
-                }
+            fetch(`${API_URL}/api/follow-ups/stats`, {
+                headers: { 'Authorization': `Bearer ${state.authToken}` }
             }),
-            fetch(categorizedUrl, {
-                headers: { 
-                    'Authorization': `Bearer ${authToken}`,
-                    'Content-Type': 'application/json'
-                }
+            fetch(`${API_URL}/api/follow-ups/categorized`, {
+                headers: { 'Authorization': `Bearer ${state.authToken}` }
             })
         ]);
         
-        console.log('[FOLLOW-UPS] Stats response:', statsResponse.status, statsResponse.statusText);
-        console.log('[FOLLOW-UPS] Categories response:', categoriesResponse.status, categoriesResponse.statusText);
-        
         if (!statsResponse.ok || !categoriesResponse.ok) {
-            const statsError = !statsResponse.ok ? await statsResponse.text() : 'OK';
-            const catError = !categoriesResponse.ok ? await categoriesResponse.text() : 'OK';
-            console.error('[FOLLOW-UPS] Response errors:', { statsError, catError });
-            throw new Error(`API Error: Stats ${statsResponse.status}, Categories ${categoriesResponse.status}`);
+            throw new Error('Failed to load follow-ups data');
         }
         
         const statsData = await statsResponse.json();
         const categoriesData = await categoriesResponse.json();
         
-        const stats = statsData.stats || {};
-        const categories = categoriesData.categories || [];
+        console.log('[FOLLOW-UPS] Raw data:', { statsData, categoriesData });
         
-        console.log('[FOLLOW-UPS] Loaded:', { stats, categories });
+        // Handle different response formats
+        const stats = statsData.stats || statsData || {};
+        const categories = categoriesData.categories || categoriesData || [];
         
+        console.log('[FOLLOW-UPS] Processed:', { stats, categories });
+        
+        // Category label mappings
         const categoryLabels = {
             'never_contacted': 'Never Contacted',
             '1_day': '1-Day Follow-Up',
@@ -14984,17 +14972,14 @@ async function renderFollowUps(content) {
             '14_day': '14+ Day Follow-Up'
         };
         
-        // Render the page
+        // Calculate total pending from categories
+        const totalPending = categories.reduce((sum, cat) => sum + (cat.count || 0), 0);
+        const neverContacted = categories.find(c => c.follow_up_category === 'never_contacted')?.count || 0;
+        
+        // Build the HTML
         content.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2>Follow-Up Queue</h2>
-                    <p class="page-description"></p>
-                </div>
-            </div>
-            
             <!-- Stats Cards -->
-            <div class="stats-grid">
+            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Total Pending</span>
@@ -15005,7 +14990,7 @@ async function renderFollowUps(content) {
                             </svg>
                         </div>
                     </div>
-                    <div class="stat-value">${stats.total_pending || 0}</div>
+                    <div class="stat-value">${totalPending}</div>
                 </div>
                 
                 <div class="stat-card">
@@ -15019,25 +15004,29 @@ async function renderFollowUps(content) {
                             </svg>
                         </div>
                     </div>
-                    <div class="stat-value">${stats.never_contacted || 0}</div>
+                    <div class="stat-value">${neverContacted}</div>
                 </div>
             </div>
             
             <!-- Category Sections -->
-            ${categories.length > 0 ? categories.map(category => `
+            ${categories.length > 0 ? categories.map(category => {
+                // Define categoryTitle in the correct scope
+                const categoryTitle = categoryLabels[category.follow_up_category] || category.follow_up_category;
+                // Escape for HTML attributes (using HTML entity for safety)
+                const escapedTitle = categoryTitle.replace(/'/g, '&#39;');
+                
+                return `
                 <div class="table-container" style="margin-top: 24px;">
                     <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">
-                                ${categoryLabels[category.follow_up_category] || category.follow_up_category}
+                                ${categoryTitle}
                             </h3>
                             <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
                                 ${category.count} leads need follow-up
                             </p>
                         </div>
-                        <button class="btn btn-primary btn-sm" 
-                                // Update the button in renderFollowUps to open a modal instead
-<button class="btn btn-primary" onclick="openCategoryEmailModal('${category.follow_up_category}', '${categoryTitle}', ${category.count})">Send Bulk Email to Category</button>
+                        <button class="btn btn-primary btn-sm" onclick="openCategoryEmailModal('${category.follow_up_category}', '${escapedTitle}', ${category.count})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                 <polyline points="22,6 12,13 2,6"/>
@@ -15081,7 +15070,7 @@ async function renderFollowUps(content) {
                                                 </svg>
                                                 Mark Contacted
                                             </button>
-                                            <button class="btn btn-sm btn-secondary" onclick="window.showEmailModal(${lead.id}, '${lead.name.replace(/'/g, "\\'")}', '${lead.email}')">
+                                            <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${lead.name.replace(/'/g, "\\'")}', '${lead.email}')">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                                     <polyline points="22,6 12,13 2,6"/>
@@ -15095,14 +15084,15 @@ async function renderFollowUps(content) {
                         </tbody>
                     </table>
                 </div>
-            `).join('') : `
+                `;
+            }).join('') : `
                 <div style="text-align: center; padding: 60px; color: var(--text-muted);">
-                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px;">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                         <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
-                    <div class="empty-title">All Caught Up!</div>
-                    <div class="empty-description">No follow-ups needed right now</div>
+                    <div class="empty-title" style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">All Caught Up!</div>
+                    <div class="empty-description" style="color: var(--text-muted);">No follow-ups needed right now</div>
                 </div>
             `}
         `;
@@ -15126,8 +15116,7 @@ async function markFollowedUp(leadId) {
     try {
         console.log('[FOLLOW-UP] Marking lead as followed up:', leadId);
         
-        // Get auth token
-        const token = getAuthToken();
+        const token = state.authToken || localStorage.getItem('token');
         
         if (!token) {
             console.error('[FOLLOW-UP] ❌ No authentication token found');
@@ -15135,7 +15124,6 @@ async function markFollowedUp(leadId) {
             return;
         }
         
-        // Update the lead record with new last_contact_date
         const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
             method: 'PUT',
             headers: {
@@ -15158,27 +15146,30 @@ async function markFollowedUp(leadId) {
         
         showToast('✓ Marked as contacted', 'success');
         
-        // Reload data to reflect changes
-        console.log('[FOLLOW-UP] Reloading data...');
-        await loadLeads();
-        updateBadges();
-        
-        // Re-render current section
-        if (state.currentSection === 'followups') {
-            console.log('[FOLLOW-UP] Re-rendering follow-ups section');
-            await renderFollowUps(document.getElementById('contentArea'));
-        } else if (state.currentSection === 'contacted') {
-            console.log('[FOLLOW-UP] Re-rendering contacted section');
-            renderSection('contacted');
+        // Reload the follow-ups view
+        const contentArea = document.getElementById('contentArea');
+        if (contentArea) {
+            await renderFollowUps(contentArea);
         }
-        
-        console.log('[FOLLOW-UP] ✅ Process complete');
         
     } catch (error) {
         console.error('[FOLLOW-UP] ❌ Error:', error);
-        console.error('[FOLLOW-UP] Error stack:', error.stack);
         showToast('Failed to mark as contacted: ' + error.message, 'error');
     }
+}
+
+function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
 }
 
 </script>

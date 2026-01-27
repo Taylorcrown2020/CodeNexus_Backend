@@ -9,7 +9,7 @@ const replacements = [
   { from: /craftedcodeco/g, to: 'diamondbackcoding' },
   
   // Email addresses
-  { from: /contact@craftedcodeco\.com/g, to: 'diamondbackcoding@gmail.com' },
+  { from: /contact@craftedcodeco\.com/g, to: 'contact@diamondbackcoding.com' },
   
   // URLs and domains
   { from: /https:\/\/craftedcodeco\.com/g, to: 'https://diamondbackcoding.com' },

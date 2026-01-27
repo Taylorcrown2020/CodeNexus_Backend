@@ -3185,7 +3185,7 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
            .fillColor('#666666')
            .text('15709 Spillman Ranch Loop', leftCol, colTop + 32)
            .text('Austin, TX 78738', leftCol, colTop + 46)
-           .text('diamondbackcoding@gmail.com', leftCol, colTop + 60)
+           .text('contact@diamondbackcoding.com', leftCol, colTop + 60)
            .text('(940) 217-8680', leftCol, colTop + 74);
 
         // Client (right column)
@@ -3460,7 +3460,7 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
             <p style="margin: 0 0 8px 0;"><strong>Diamondback Coding</strong></p>
             <p style="margin: 0 0 4px 0;">15709 Spillman Ranch Loop, Austin, TX 78738</p>
             <p style="margin: 0 0 4px 0;">
-                <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> • 
+                <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> • 
                 <a href="tel:+19402178680">(940) 217-8680</a>
             </p>
             <p style="margin: 20px 0 0 0; font-size: 11px; opacity: 0.7;">
@@ -3652,7 +3652,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                 <div class="footer">
                     <p><strong>Diamondback Coding</strong><br>
                     15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                    <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
                     <p style="margin-top: 15px; color: #999; font-size: 11px;">
                         This is an automated message. Please do not reply directly to this email.
                     </p>
@@ -3913,7 +3913,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                 <div class="footer">
                     <p><strong>Diamondback Coding</strong><br>
                     15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                    <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
                     <p style="margin-top: 15px; color: #999; font-size: 11px;">
                         This is an automated message. Please do not reply directly to this email.
                     </p>
@@ -5909,7 +5909,7 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
                     <div class="footer">
                         <p><strong>Diamondback Coding</strong></p>
                         <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
-                        <p>diamondbackcoding@gmail.com | (940) 217-8680</p>
+                        <p>contact@diamondbackcoding.com | (940) 217-8680</p>
                     </div>
                 </div>
             </body>
@@ -8382,7 +8382,7 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
                         <p><strong>Diamondback Coding</strong></p>
                         <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
                         <p>
-                            <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | 
+                            <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | 
                             <a href="tel:+19402178680">(940) 217-8680</a>
                         </p>
                         <p class="footer-copy">
@@ -8499,7 +8499,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
                         <div class="footer">
                             <p><strong>Diamondback Coding</strong><br>
                             15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                            <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                            <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
                         </div>
                     </div>
                 </body>
@@ -8858,7 +8858,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
                             <div class="footer">
                                 <p><strong>Diamondback Coding</strong><br>
                                 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                                <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                                <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
                             </div>
                         </div>
                     </body>

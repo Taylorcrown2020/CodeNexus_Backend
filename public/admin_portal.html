@@ -4229,9 +4229,17 @@ case 'client-portal':
 }
 
 function showInvoiceLeadSelector() {
+console.log('🔍 showInvoiceLeadSelector called');
+    console.log('📊 State leads:', state.leads.length);
+    console.log('📊 State customers:', state.customers.length);
+    
     const modal = document.getElementById('createModal');
     const titleEl = document.getElementById('createModalTitle');
     const bodyEl = document.getElementById('createModalBody');
+    
+    console.log('🎯 Modal found:', !!modal);
+    console.log('🎯 Title found:', !!titleEl);
+    console.log('🎯 Body found:', !!bodyEl);
     
     // Debug: Check if modal elements exist
     if (!modal) {

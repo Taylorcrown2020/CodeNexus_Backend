@@ -16,6 +16,16 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: true, // or false depending on your setup
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+    }
+});
+
 // Service Packages Definition (same as frontend)
 const servicePackages = {
     'free-basic': {
@@ -5837,95 +5847,174 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
 // Send custom email
 app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
     try {
-        const { to, toName, subject, body, leadId } = req.body;
+        const { to, subject, body, leadId, toName } = req.body;
         
+        console.log('[EMAIL API] Sending custom email to:', to);
+        console.log('[EMAIL API] Lead ID:', leadId);
+        
+        // Validate required fields
         if (!to || !subject || !body) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields'
+                message: 'Missing required fields: to, subject, body'
             });
         }
         
-        // Convert plain text to HTML with line breaks
-        const htmlBody = body.replace(/\n/g, '<br>');
-        
+        // Create email HTML
         const emailHTML = `
             <!DOCTYPE html>
             <html>
             <head>
                 <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: #22c55e; color: white; padding: 30px; text-align: center; margin-bottom: 30px; }
-                    .content { padding: 20px; background: white; }
-                    .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        line-height: 1.6; 
+                        color: #333; 
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .container { 
+                        max-width: 600px; 
+                        margin: 0 auto; 
+                        background: #ffffff;
+                    }
+                    .header { 
+                        background: #22c55e; 
+                        color: white; 
+                        padding: 30px 20px; 
+                        text-align: center; 
+                    }
+                    .header h2 {
+                        margin: 0;
+                        font-size: 24px;
+                    }
+                    .content { 
+                        padding: 30px 20px; 
+                        background: #f9f9f9; 
+                    }
+                    .content p {
+                        margin: 0 0 15px 0;
+                    }
+                    .footer { 
+                        padding: 20px; 
+                        text-align: center; 
+                        font-size: 12px; 
+                        color: #666; 
+                        background: #f0f0f0;
+                        border-top: 1px solid #ddd;
+                    }
+                    .footer p {
+                        margin: 5px 0;
+                    }
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1 style="margin: 0; font-size: 24px;">Diamondback Coding</h1>
+                        <h2>Diamondback Coding</h2>
                     </div>
                     <div class="content">
-                        ${htmlBody}
+                        ${body.replace(/\n/g, '<br>')}
                     </div>
                     <div class="footer">
-                        <p><strong>Diamondback Coding</strong><br>
-                        15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                        <a href="mailto:diamondbackcoding@gmail.com">diamondbackcoding@gmail.com</a> | (940) 217-8680</p>
+                        <p><strong>Diamondback Coding</strong></p>
+                        <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
+                        <p>diamondbackcoding@gmail.com | (940) 217-8680</p>
                     </div>
                 </div>
             </body>
             </html>
         `;
         
-        const info = await transporter.sendMail({
-            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
-            to: to,
-            subject: subject,
-            html: emailHTML
-        });
+        // Send the email using Nodemailer
+        try {
+            const info = await transporter.sendMail({
+                from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                to: to,
+                subject: subject,
+                html: emailHTML
+            });
+            
+            console.log('[EMAIL API] ✅ Email sent successfully to:', to);
+            console.log('[EMAIL API] Message ID:', info.messageId);
+            
+        } catch (emailError) {
+            console.error('[EMAIL API] ❌ Email send error:', emailError);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to send email: ' + emailError.message
+            });
+        }
         
-        console.log(`✅ Custom email sent to ${to}: "${subject}"`);
-        
-        // Log to lead activity if leadId provided
+        // 🔥 UPDATE: Update last_contact_date in database
         if (leadId) {
             try {
-                const leadResult = await pool.query('SELECT notes FROM leads WHERE id = $1', [leadId]);
-                if (leadResult.rows.length > 0) {
+                const updateResult = await pool.query(
+                    `UPDATE leads 
+                     SET last_contact_date = CURRENT_TIMESTAMP,
+                         status = CASE 
+                             WHEN status = 'new' THEN 'contacted'
+                             ELSE status 
+                         END,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $1
+                     RETURNING id, name, email, status, last_contact_date`,
+                    [leadId]
+                );
+                
+                if (updateResult.rows.length > 0) {
+                    console.log('[EMAIL API] ✅ Updated last_contact_date for lead:', leadId);
+                    console.log('[EMAIL API] Lead data:', updateResult.rows[0]);
+                    
+                    // Optional: Add a note to the lead's notes
+                    const notesResult = await pool.query(
+                        'SELECT notes FROM leads WHERE id = $1',
+                        [leadId]
+                    );
+                    
                     let notes = [];
-                    try {
-                        notes = JSON.parse(leadResult.rows[0].notes) || [];
-                    } catch (e) {
-                        notes = [];
+                    if (notesResult.rows[0]?.notes) {
+                        try {
+                            notes = JSON.parse(notesResult.rows[0].notes);
+                        } catch (e) {
+                            notes = [];
+                        }
                     }
                     
                     notes.push({
-                        text: `📧 Email sent: "${subject}"`,
-                        author: 'System',
+                        text: `Email sent: "${subject}"`,
+                        author: req.user.username || 'Admin',
                         date: new Date().toISOString()
                     });
                     
                     await pool.query(
-                        'UPDATE leads SET notes = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+                        'UPDATE leads SET notes = $1 WHERE id = $2',
                         [JSON.stringify(notes), leadId]
                     );
+                    
+                    console.log('[EMAIL API] ✅ Added email note to lead');
+                } else {
+                    console.warn('[EMAIL API] ⚠️ Lead not found for ID:', leadId);
                 }
-            } catch (noteError) {
-                console.error('Error logging email to lead notes:', noteError);
+                
+            } catch (dbError) {
+                console.error('[EMAIL API] ❌ Database update error:', dbError);
+                // Don't fail the request if DB update fails, email was still sent
             }
         }
         
-        res.json({
-            success: true,
-            message: 'Email sent successfully',
-            messageId: info.messageId
+        // Return success response
+        res.json({ 
+            success: true, 
+            message: 'Email sent successfully and lead updated',
+            messageId: info?.messageId
         });
+        
     } catch (error) {
-        console.error('Send custom email error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to send email: ' + error.message
+        console.error('[EMAIL API] ❌ Unexpected error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Server error: ' + error.message 
         });
     }
 });

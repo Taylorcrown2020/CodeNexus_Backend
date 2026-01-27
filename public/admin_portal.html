@@ -5676,20 +5676,11 @@ window.doSendEmail = async function(leadId, leadEmail) {
     console.log('[EMAIL] Subject:', subject);
     console.log('[EMAIL] Body length:', body.length);
     
-    // Get authentication token with multiple fallbacks
     const token = getAuthToken();
-    
-    console.log('[EMAIL] Auth token check:');
-    console.log('  - Token exists:', !!token);
-    console.log('  - Token preview:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
-    console.log('  - LocalStorage token:', !!localStorage.getItem('adminToken'));
-    console.log('  - SessionStorage token:', !!sessionStorage.getItem('adminToken'));
-    console.log('  - State token:', !!(window.state && window.state.authToken));
     
     if (!token) {
         console.error('[EMAIL] ❌ No authentication token found');
         alert('Authentication error: Please refresh the page and log in again.');
-        // Redirect to login
         window.location.href = '/admin/login';
         return;
     }
@@ -5712,33 +5703,23 @@ window.doSendEmail = async function(leadId, leadEmail) {
         });
         
         console.log('[EMAIL] Response status:', response.status);
-        console.log('[EMAIL] Response headers:', Object.fromEntries(response.headers.entries()));
         
-        // Handle authentication errors
         if (response.status === 401) {
-            console.error('[EMAIL] ❌ Authentication failed - token expired or invalid');
+            console.error('[EMAIL] ❌ Authentication failed');
             alert('Your session has expired. Please log in again.');
-            
-            // Clear all tokens
             localStorage.removeItem('adminToken');
             sessionStorage.removeItem('adminToken');
-            if (window.state) {
-                window.state.authToken = null;
-            }
-            
-            // Redirect to login
+            if (window.state) window.state.authToken = null;
             window.location.href = '/admin/login';
             return;
         }
         
-        // Handle forbidden errors
         if (response.status === 403) {
             console.error('[EMAIL] ❌ Access denied');
             alert('Access denied. You do not have permission to send emails.');
             return;
         }
         
-        // Parse response
         let responseData;
         try {
             responseData = await response.json();
@@ -5748,14 +5729,13 @@ window.doSendEmail = async function(leadId, leadEmail) {
             throw new Error('Invalid server response');
         }
         
-        // Handle server errors
         if (!response.ok) {
             const errorMessage = responseData.message || responseData.error || `Server error: ${response.status}`;
             console.error('[EMAIL] ❌ Server error:', errorMessage);
             throw new Error(errorMessage);
         }
         
-        // Success!
+        // ✅ Email sent successfully!
         console.log('[EMAIL] ✅ Email sent successfully');
         alert('Email sent successfully!');
         
@@ -5766,10 +5746,36 @@ window.doSendEmail = async function(leadId, leadEmail) {
             console.log('[EMAIL] Modal closed');
         }
         
-        // Mark lead as followed up
-        console.log('[EMAIL] Marking lead as followed up...');
-        await markFollowedUp(leadId);
-        console.log('[EMAIL] ✅ Lead marked as followed up');
+        // 🔥 UPDATE: Mark lead as contacted with timestamp
+        console.log('[EMAIL] Updating lead last_contact_date...');
+        const updateResponse = await fetch(`${API_URL}/api/leads/${leadId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                status: 'contacted',
+                last_contact_date: new Date().toISOString()
+            })
+        });
+        
+        if (!updateResponse.ok) {
+            console.warn('[EMAIL] ⚠️ Failed to update lead contact date');
+        } else {
+            console.log('[EMAIL] ✅ Lead contact date updated');
+        }
+        
+        // Reload data to reflect changes
+        await loadLeads();
+        updateBadges();
+        
+        // Re-render current section
+        if (state.currentSection === 'followups') {
+            await renderFollowUps(document.getElementById('contentArea'));
+        } else if (state.currentSection === 'contacted') {
+            renderSection('contacted');
+        }
         
     } catch (error) {
         console.error('[EMAIL] ❌ Error:', error);
@@ -15289,53 +15295,60 @@ async function renderFollowUps(content) {
 // Mark lead as contacted
 async function markFollowedUp(leadId) {
     try {
-        // Update the follow-up record
-        const response = await fetch(`${API_URL}/api/follow-ups/${leadId}/mark-followed-up`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${getAuthToken()}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        console.log('[FOLLOW-UP] Marking lead as followed up:', leadId);
         
-        if (!response.ok) {
-            throw new Error('Failed to mark as followed up');
+        // Get auth token
+        const token = getAuthToken();
+        
+        if (!token) {
+            console.error('[FOLLOW-UP] ❌ No authentication token found');
+            showToast('Authentication error: Please refresh and log in again', 'error');
+            return;
         }
         
-        // IMPORTANT: Also update the lead's status to 'contacted'
-        const leadUpdateResponse = await fetch(`${API_URL}/api/leads/${leadId}/status`, {
-            method: 'PATCH',
+        // Update the lead record with new last_contact_date
+        const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+            method: 'PUT',
             headers: {
-                'Authorization': `Bearer ${getAuthToken()}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ 
                 status: 'contacted',
-                last_contacted: new Date().toISOString()
+                last_contact_date: new Date().toISOString()
             })
         });
         
-        if (!leadUpdateResponse.ok) {
-            console.warn('Lead status update failed, but follow-up was marked');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to update lead');
         }
         
-        showToast('✓ Marked as followed up', 'success');
+        const result = await response.json();
+        console.log('[FOLLOW-UP] ✅ Lead updated successfully:', result);
+        
+        showToast('✓ Marked as contacted', 'success');
         
         // Reload data to reflect changes
+        console.log('[FOLLOW-UP] Reloading data...');
         await loadLeads();
-        await loadFollowUps();
         updateBadges();
         
-        // If we're in the contacted section, re-render it
-        if (state.currentSection === 'contacted') {
+        // Re-render current section
+        if (state.currentSection === 'followups') {
+            console.log('[FOLLOW-UP] Re-rendering follow-ups section');
+            await renderFollowUps(document.getElementById('contentArea'));
+        } else if (state.currentSection === 'contacted') {
+            console.log('[FOLLOW-UP] Re-rendering contacted section');
             renderSection('contacted');
-        } else if (state.currentSection === 'followups') {
-            renderFollowUps(document.getElementById('contentArea'));
         }
         
+        console.log('[FOLLOW-UP] ✅ Process complete');
+        
     } catch (error) {
-        console.error('Mark followed up error:', error);
-        showToast('Failed to mark as followed up', 'error');
+        console.error('[FOLLOW-UP] ❌ Error:', error);
+        console.error('[FOLLOW-UP] Error stack:', error.stack);
+        showToast('Failed to mark as contacted: ' + error.message, 'error');
     }
 }
 

@@ -14468,7 +14468,6 @@ async function sendBulkEmail(category, count) {
         return;
     }
     
-    // Show loading state
     const sendBtn = event.target.closest('button');
     const originalText = sendBtn.innerHTML;
     sendBtn.disabled = true;
@@ -14497,7 +14496,6 @@ async function sendBulkEmail(category, count) {
         showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
         closeEmailModal();
         
-        // Refresh the follow-ups section
         const contentArea = document.getElementById('contentArea');
         if (contentArea) {
             await renderFollowUps(contentArea);
@@ -14506,8 +14504,6 @@ async function sendBulkEmail(category, count) {
     } catch (error) {
         console.error('[EMAIL] Bulk send error:', error);
         showToast('Failed to send emails: ' + error.message, 'error');
-        
-        // Restore button
         sendBtn.disabled = false;
         sendBtn.innerHTML = originalText;
     }
@@ -14933,27 +14929,68 @@ function toggleNotes(button) {
 
 async function renderFollowUps(content) {
     console.log('[FOLLOW-UPS] Starting render...');
+    console.log('[FOLLOW-UPS] API_URL:', API_URL);
+    console.log('[FOLLOW-UPS] Auth token exists:', !!state.authToken);
     
     try {
         // Show loading state
         content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
         
-        // Fetch stats and categorized data
-        const [statsResponse, categoriesResponse] = await Promise.all([
-            fetch(`${API_URL}/api/follow-ups/stats`, {
-                headers: { 'Authorization': `Bearer ${state.authToken}` }
-            }),
-            fetch(`${API_URL}/api/follow-ups/categorized`, {
-                headers: { 'Authorization': `Bearer ${state.authToken}` }
-            })
-        ]);
+        // Build URLs
+        const statsUrl = `${API_URL}/api/follow-ups/stats`;
+        const categorizedUrl = `${API_URL}/api/follow-ups/categorized`;
         
-        if (!statsResponse.ok || !categoriesResponse.ok) {
-            throw new Error('Failed to load follow-ups data');
+        console.log('[FOLLOW-UPS] Fetching from:', statsUrl);
+        console.log('[FOLLOW-UPS] Fetching from:', categorizedUrl);
+        
+        // Fetch stats and categorized data with detailed error catching
+        let statsResponse, categoriesResponse;
+        
+        try {
+            [statsResponse, categoriesResponse] = await Promise.all([
+                fetch(statsUrl, {
+                    headers: { 
+                        'Authorization': `Bearer ${state.authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                }),
+                fetch(categorizedUrl, {
+                    headers: { 
+                        'Authorization': `Bearer ${state.authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+            ]);
+        } catch (fetchError) {
+            console.error('[FOLLOW-UPS] Fetch error:', fetchError);
+            throw new Error(`Network error: ${fetchError.message}`);
         }
         
-        const statsData = await statsResponse.json();
-        const categoriesData = await categoriesResponse.json();
+        console.log('[FOLLOW-UPS] Stats response status:', statsResponse.status);
+        console.log('[FOLLOW-UPS] Categories response status:', categoriesResponse.status);
+        
+        // Check for errors
+        if (!statsResponse.ok) {
+            const errorText = await statsResponse.text();
+            console.error('[FOLLOW-UPS] Stats API error:', errorText);
+            throw new Error(`Stats API returned ${statsResponse.status}: ${errorText}`);
+        }
+        
+        if (!categoriesResponse.ok) {
+            const errorText = await categoriesResponse.text();
+            console.error('[FOLLOW-UPS] Categories API error:', errorText);
+            throw new Error(`Categories API returned ${categoriesResponse.status}: ${errorText}`);
+        }
+        
+        // Parse responses
+        let statsData, categoriesData;
+        try {
+            statsData = await statsResponse.json();
+            categoriesData = await categoriesResponse.json();
+        } catch (parseError) {
+            console.error('[FOLLOW-UPS] JSON parse error:', parseError);
+            throw new Error(`Failed to parse API response: ${parseError.message}`);
+        }
         
         console.log('[FOLLOW-UPS] Raw data:', { statsData, categoriesData });
         
@@ -14961,7 +14998,8 @@ async function renderFollowUps(content) {
         const stats = statsData.stats || statsData || {};
         const categories = categoriesData.categories || categoriesData || [];
         
-        console.log('[FOLLOW-UPS] Processed:', { stats, categories });
+        console.log('[FOLLOW-UPS] Processed data:', { stats, categories });
+        console.log('[FOLLOW-UPS] Number of categories:', categories.length);
         
         // Category label mappings
         const categoryLabels = {
@@ -14975,6 +15013,9 @@ async function renderFollowUps(content) {
         // Calculate total pending from categories
         const totalPending = categories.reduce((sum, cat) => sum + (cat.count || 0), 0);
         const neverContacted = categories.find(c => c.follow_up_category === 'never_contacted')?.count || 0;
+        
+        console.log('[FOLLOW-UPS] Total pending:', totalPending);
+        console.log('[FOLLOW-UPS] Never contacted:', neverContacted);
         
         // Build the HTML
         content.innerHTML = `
@@ -15097,15 +15138,32 @@ async function renderFollowUps(content) {
             `}
         `;
         
-        console.log('[FOLLOW-UPS] Render complete');
+        console.log('[FOLLOW-UPS] ✅ Render complete');
         
     } catch (error) {
-        console.error('[FOLLOW-UPS] Render error:', error);
+        console.error('[FOLLOW-UPS] ❌ Render error:', error);
+        console.error('[FOLLOW-UPS] Error stack:', error.stack);
+        
         content.innerHTML = `
             <div style="text-align: center; padding: 40px; color: var(--status-lost);">
-                <h3>Error Loading Follow-Ups</h3>
-                <p>${error.message}</p>
-                <button class="btn btn-secondary" onclick="renderSection('followups')">Try Again</button>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px; color: var(--status-lost);">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <h3 style="margin-bottom: 12px;">Error Loading Follow-Ups</h3>
+                <p style="color: var(--text-muted); margin-bottom: 8px;">${error.message}</p>
+                <details style="margin: 20px auto; max-width: 600px; text-align: left; background: var(--bg-secondary); padding: 16px; border-radius: 8px;">
+                    <summary style="cursor: pointer; font-weight: 600; margin-bottom: 8px;">Debug Information</summary>
+                    <pre style="font-size: 11px; overflow-x: auto; color: var(--text-secondary);">${JSON.stringify({
+                        api_url: API_URL,
+                        has_auth_token: !!state.authToken,
+                        auth_token_length: state.authToken?.length,
+                        error_message: error.message,
+                        error_stack: error.stack
+                    }, null, 2)}</pre>
+                </details>
+                <button class="btn btn-secondary" onclick="renderFollowUps(document.getElementById('contentArea'))">Try Again</button>
             </div>
         `;
     }
@@ -15146,7 +15204,6 @@ async function markFollowedUp(leadId) {
         
         showToast('✓ Marked as contacted', 'success');
         
-        // Reload the follow-ups view
         const contentArea = document.getElementById('contentArea');
         if (contentArea) {
             await renderFollowUps(contentArea);

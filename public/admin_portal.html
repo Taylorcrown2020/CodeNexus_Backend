@@ -5643,15 +5643,10 @@ window.doSendEmail = async function(leadId, leadEmail) {
     }
     
     try {
-        // DEBUG: Check what URL is being constructed
-        const url = `${API_URL}/api/leads/${leadId}/email`;
-        console.log('Full URL being called:', url);
-        console.log('API_URL value:', API_URL);
-        console.log('Lead ID:', leadId);
-        
         console.log('Sending email:', { leadId, leadEmail, subject, body });
         
-        const response = await fetch(url, {
+        // Use the correct endpoint: /api/email/send-custom
+        const response = await fetch(`${API_URL}/api/email/send-custom`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.authToken}`,
@@ -5660,12 +5655,12 @@ window.doSendEmail = async function(leadId, leadEmail) {
             body: JSON.stringify({
                 to: leadEmail,
                 subject: subject,
-                body: body
+                body: body,
+                leadId: leadId  // This will log the email in the lead's notes
             })
         });
         
         console.log('Response status:', response.status);
-        console.log('Response headers:', [...response.headers.entries()]);
         
         const responseData = await response.json();
         console.log('Response data:', responseData);
@@ -5677,6 +5672,7 @@ window.doSendEmail = async function(leadId, leadEmail) {
         alert('Email sent successfully!');
         document.querySelector('.modal-overlay')?.remove();
         
+        // Optionally mark as contacted
         await markFollowedUp(leadId);
         
     } catch (error) {
@@ -5684,13 +5680,6 @@ window.doSendEmail = async function(leadId, leadEmail) {
         alert('Failed to send email: ' + error.message);
     }
 };
-
-function closeEmailModal() {
-    const modal = document.querySelector('.modal-overlay');
-    if (modal) {
-        modal.remove();
-    }
-}
 
 async function sendEmail(leadId, leadEmail) {
     const subject = document.getElementById('emailSubject')?.value;

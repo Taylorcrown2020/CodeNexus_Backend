@@ -5642,10 +5642,19 @@ window.doSendEmail = async function(leadId, leadEmail) {
         return;
     }
     
+    // DEBUG: Check if token exists
+    console.log('🔍 Checking auth token...');
+    console.log('Token exists?', !!state.authToken);
+    console.log('Token preview:', state.authToken ? state.authToken.substring(0, 20) + '...' : 'NO TOKEN');
+    
+    if (!state.authToken) {
+        alert('You are not logged in. Please refresh the page and log in again.');
+        return;
+    }
+    
     try {
         console.log('Sending email:', { leadId, leadEmail, subject, body });
         
-        // Use the correct endpoint: /api/email/send-custom
         const response = await fetch(`${API_URL}/api/email/send-custom`, {
             method: 'POST',
             headers: {
@@ -5656,11 +5665,20 @@ window.doSendEmail = async function(leadId, leadEmail) {
                 to: leadEmail,
                 subject: subject,
                 body: body,
-                leadId: leadId  // This will log the email in the lead's notes
+                leadId: leadId
             })
         });
         
         console.log('Response status:', response.status);
+        
+        // If 401, token is invalid/expired
+        if (response.status === 401) {
+            alert('Your session has expired. Please refresh the page and log in again.');
+            // Optionally: clear token and redirect to login
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/login';
+            return;
+        }
         
         const responseData = await response.json();
         console.log('Response data:', responseData);
@@ -5672,7 +5690,6 @@ window.doSendEmail = async function(leadId, leadEmail) {
         alert('Email sent successfully!');
         document.querySelector('.modal-overlay')?.remove();
         
-        // Optionally mark as contacted
         await markFollowedUp(leadId);
         
     } catch (error) {

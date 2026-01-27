@@ -5645,6 +5645,7 @@ window.doSendEmail = async function(leadId, leadEmail) {
     try {
         console.log('Sending email:', { leadId, leadEmail, subject, body });
         
+        // Fixed: Changed fetch`...` to fetch('...')
         const response = await fetch(`${API_URL}/api/leads/${leadId}/email`, {
             method: 'POST',
             headers: {

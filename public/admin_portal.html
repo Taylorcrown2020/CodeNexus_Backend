@@ -5714,17 +5714,19 @@ async function sendEmail(leadId, leadEmail) {
     sendBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px;"></div> Sending...';
     
     try {
-        const response = await fetch(`${API_URL}/api/leads/${leadId}/email`, {
+        const response = await fetch(`${API_URL}/api/email/send-custom`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.authToken}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                to: leadEmail,
-                subject: subject,
-                body: body
-            })
+body: JSON.stringify({
+    to: leadEmail,
+    toName: leadName, // Add the lead's name if you have it
+    subject: subject,
+    body: body,
+    leadId: leadId
+})
         });
         
         if (!response.ok) {

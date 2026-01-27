@@ -2487,6 +2487,26 @@ textarea::placeholder {
     border-color: var(--border-default) !important;
 }
 
+#createModal .tab {
+    padding: 8px 16px;
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+#createModal .tab.active {
+    background: var(--accent-amber);
+    color: white;
+}
+
+#createModal .tab:hover:not(.active) {
+    background: var(--bg-secondary);
+}
+
 /* ========================================
    RESPONSIVE
 ======================================== */
@@ -7884,12 +7904,12 @@ async function openInvoiceModal(leadId) {
     const today = new Date().toISOString().split('T')[0];
     const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    bodyEl.innerHTML = `
-        <div class="tabs">
-            <button class="tab active" onclick="switchInvoiceTab('details')">Details</button>
-            <button class="tab" onclick="switchInvoiceTab('items')">Items</button>
-            <button class="tab" onclick="switchInvoiceTab('preview')">Preview</button>
-        </div>
+bodyEl.innerHTML = `
+    <div class="tabs" style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid var(--border-subtle); padding-bottom: 8px;">
+        <button class="tab active" onclick="event.preventDefault(); switchInvoiceTab('details')" style="padding: 8px 16px; background: var(--accent-amber); color: white; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600;">Details</button>
+        <button class="tab" onclick="event.preventDefault(); switchInvoiceTab('items')" style="padding: 8px 16px; background: var(--bg-hover); color: var(--text-primary); border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600;">Items</button>
+        <button class="tab" onclick="event.preventDefault(); switchInvoiceTab('preview')" style="padding: 8px 16px; background: var(--bg-hover); color: var(--text-primary); border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600;">Preview</button>
+    </div>
         
         <div id="invoiceDetailsTab">
             <div class="form-grid">
@@ -8241,26 +8261,36 @@ renderSection('tasks');
 // INVOICE FUNCTIONS
 // ========================================
 function switchInvoiceTab(tab) {
-document.querySelectorAll('#invoiceModal .tab').forEach(t => t.classList.remove('active'));
-document.querySelector(`#invoiceModal .tab:nth-child(${tab === 'details' ? 1 : tab === 'items' ? 2 : 3})`).classList.add('active');
-document.getElementById('invoiceDetailsTab').style.display = tab === 'details' ? 'block' : 'none';
-document.getElementById('invoiceItemsTab').style.display = tab === 'items' ? 'block' : 'none';
-document.getElementById('invoicePreviewTab').style.display = tab === 'preview' ? 'block' : 'none';
+    // Remove active class from all tabs
+    document.querySelectorAll('#createModal .tab').forEach(t => t.classList.remove('active'));
+    
+    // Add active class to clicked tab
+    const tabs = document.querySelectorAll('#createModal .tab');
+    if (tab === 'details') tabs[0]?.classList.add('active');
+    if (tab === 'items') tabs[1]?.classList.add('active');
+    if (tab === 'preview') tabs[2]?.classList.add('active');
+    
+    // Hide all tab contents
+    document.getElementById('invoiceDetailsTab').style.display = tab === 'details' ? 'block' : 'none';
+    document.getElementById('invoiceItemsTab').style.display = tab === 'items' ? 'block' : 'none';
+    document.getElementById('invoicePreviewTab').style.display = tab === 'preview' ? 'block' : 'none';
 
-if (tab === 'preview') {
-    updateInvoicePreview();
-}
+    // If switching to preview, update it
+    if (tab === 'preview') {
+        updateInvoicePreview();
+    }
 }
 function recalculateInvoice() {
-if (state.currentInvoice) {
-const subtotal = state.currentInvoice.items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
-const taxRate = parseFloat(document.getElementById('invoiceTaxRate').value) || 0;
-const discount = parseFloat(document.getElementById('invoiceDiscount').value) || 0;
-    state.currentInvoice.subtotal = subtotal;
-    state.currentInvoice.tax_amount = subtotal * (taxRate / 100);
-    state.currentInvoice.discount_amount = discount;
-    state.currentInvoice.total_amount = subtotal + state.currentInvoice.tax_amount - discount;
-}
+    if (state.currentInvoice && state.currentInvoice.items) {
+        const subtotal = state.currentInvoice.items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+        const taxRate = parseFloat(document.getElementById('invoiceTaxRate')?.value || 0);
+        const discount = parseFloat(document.getElementById('invoiceDiscount')?.value || 0);
+        
+        state.currentInvoice.subtotal = subtotal;
+        state.currentInvoice.tax_amount = subtotal * (taxRate / 100);
+        state.currentInvoice.discount_amount = discount;
+        state.currentInvoice.total_amount = subtotal + state.currentInvoice.tax_amount - discount;
+    }
 }
 function addCustomInvoiceItem() {
 const description = prompt('Item description:');
@@ -8307,34 +8337,44 @@ recalculateInvoice();
 document.querySelector(`[data-item-index="${idx}"]`).remove();
 }
 function updateInvoicePreview() {
-recalculateInvoice();
-const invoice = {
-    invoice_number: document.getElementById('invoiceNumber').value,
-    issue_date: document.getElementById('invoiceIssueDate').value,
-    due_date: document.getElementById('invoiceDueDate').value,
-    customer_name: state.currentInvoice.lead.name,
-    customer_email: state.currentInvoice.lead.email,
-    customer_company: state.currentInvoice.lead.company,
-    subtotal: state.currentInvoice.subtotal,
-    tax_rate: parseFloat(document.getElementById('invoiceTaxRate').value) || 0,
-    tax_amount: state.currentInvoice.tax_amount,
-    discount_amount: state.currentInvoice.discount_amount,
-    total_amount: state.currentInvoice.total_amount,
-    notes: document.getElementById('invoiceNotes').value,
-    items: state.currentInvoice.items
-};
+    recalculateInvoice();
+    
+    const invoice = {
+        invoice_number: document.getElementById('invoiceNumber').value,
+        issue_date: document.getElementById('invoiceIssueDate').value,
+        due_date: document.getElementById('invoiceDueDate').value,
+        customer_name: state.currentInvoice.lead.name,
+        customer_email: state.currentInvoice.lead.email,
+        customer_company: state.currentInvoice.lead.company,
+        subtotal: state.currentInvoice.subtotal || 0,
+        tax_rate: parseFloat(document.getElementById('invoiceTaxRate').value) || 0,
+        tax_amount: state.currentInvoice.tax_amount || 0,
+        discount_amount: state.currentInvoice.discount_amount || 0,
+        total_amount: state.currentInvoice.total_amount || 0,
+        notes: document.getElementById('invoiceNotes').value,
+        items: state.currentInvoice.items,
+        status: 'preview' // Don't show payment link in preview
+    };
 
-document.getElementById('invoicePreviewTab').innerHTML = renderInvoicePreview(invoice);
+    // Generate preview HTML (reuse your existing renderInvoicePreview function)
+    renderInvoicePreview(invoice).then(html => {
+        document.getElementById('invoicePreviewTab').innerHTML = html;
+    });
 }
 async function saveInvoice() {
-    if (!state.currentInvoice || state.currentInvoice.items.length === 0) {
+    console.log('💾 saveInvoice called');
+    
+    if (!state.currentInvoice || !state.currentInvoice.items || state.currentInvoice.items.length === 0) {
         showToast('Please add at least one item to the invoice', 'error');
         return;
     }
     
-    const shortDescription = document.getElementById('invoiceShortDescription').value.trim();
+    const shortDescription = document.getElementById('invoiceShortDescription')?.value.trim();
     if (!shortDescription) {
         showToast('Please enter an invoice description', 'error');
+        // Switch back to details tab to show the error
+        switchInvoiceTab('details');
+        document.getElementById('invoiceShortDescription')?.focus();
         return;
     }
     
@@ -8345,18 +8385,22 @@ async function saveInvoice() {
         lead_id: state.currentInvoice.leadId,
         issue_date: document.getElementById('invoiceIssueDate').value,
         due_date: document.getElementById('invoiceDueDate').value,
-        subtotal: state.currentInvoice.subtotal,
+        subtotal: state.currentInvoice.subtotal || 0,
         tax_rate: parseFloat(document.getElementById('invoiceTaxRate').value) || 0,
-        tax_amount: state.currentInvoice.tax_amount,
-        discount_amount: state.currentInvoice.discount_amount,
-        total_amount: state.currentInvoice.total_amount,
+        tax_amount: state.currentInvoice.tax_amount || 0,
+        discount_amount: state.currentInvoice.discount_amount || 0,
+        total_amount: state.currentInvoice.total_amount || 0,
         status: document.getElementById('invoiceStatus').value,
-        short_description: shortDescription, // ADD THIS LINE
+        short_description: shortDescription,
         notes: document.getElementById('invoiceNotes').value,
         items: state.currentInvoice.items
     };
 
+    console.log('📤 Sending invoice data:', invoiceData);
+
     try {
+        showToast('Creating invoice...', 'info');
+        
         const r = await fetch(`${API_URL}/api/invoices`, {
             method: 'POST',
             headers: {
@@ -8366,16 +8410,22 @@ async function saveInvoice() {
             body: JSON.stringify(invoiceData)
         });
         
-        if (!r.ok) throw new Error('Failed to create invoice');
+        const responseData = await r.json();
+        console.log('📥 Server response:', responseData);
+        
+        if (!r.ok) {
+            throw new Error(responseData.message || 'Failed to create invoice');
+        }
         
         await loadInvoices();
         updateBadges();
-        closeInvoiceModal();
-        closeDetailModal();
+        closeCreateModal(); // ✅ Changed from closeInvoiceModal
+        state.currentInvoice = null;
         showToast('Invoice created successfully', 'success');
         renderSection('invoices');
     } catch (e) {
-        showToast('Error creating invoice', 'error');
+        console.error('❌ Error creating invoice:', e);
+        showToast('Error creating invoice: ' + e.message, 'error');
     }
 }
 async function createInvoiceFromExpenses() {

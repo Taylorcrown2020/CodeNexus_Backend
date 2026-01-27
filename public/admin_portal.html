@@ -5593,13 +5593,27 @@ function formatFileSize(bytes) {
 
 // ==================== EMAIL FUNCTIONS ====================
 
-function openEmailTemplateModal(leadId) {
+function openEmailTemplateModal(leadId, event) {
     console.log('[EMAIL] Opening email modal for lead:', leadId);
     
     // Find the lead data from the page
-    const leadElement = event.target.closest('tr');
-    const leadName = leadElement.querySelector('.contact-name')?.textContent || 'Lead';
-    const leadEmail = leadElement.querySelector('.contact-email')?.textContent || '';
+    let leadName = 'Lead';
+    let leadEmail = '';
+    
+    if (event) {
+        const leadElement = event.target.closest('tr');
+        leadName = leadElement.querySelector('.contact-name')?.textContent || 'Lead';
+        leadEmail = leadElement.querySelector('.contact-email')?.textContent || '';
+    }
+    
+    // Fallback: find from state if email not found from DOM
+    if (!leadEmail && state.leads) {
+        const lead = state.leads.find(l => l.id === leadId);
+        if (lead) {
+            leadName = lead.name;
+            leadEmail = lead.email;
+        }
+    }
     
     if (!leadEmail) {
         showToast('Lead email not found', 'error');
@@ -13132,7 +13146,7 @@ async function renderFollowUps(content) {
                                                 </svg>
                                                 Mark Contacted
                                             </button>
-                                            <button class="btn btn-sm btn-secondary" onclick="alert('Email button clicked for lead ${lead.id}'); console.log('Clicked email for lead:', ${lead.id});">
+                                            <button class="btn btn-sm btn-secondary" onclick="openEmailTemplateModal(${lead.id}, event)">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                                     <polyline points="22,6 12,13 2,6"/>
@@ -15119,7 +15133,7 @@ async function renderFollowUps(content) {
                                                 </svg>
                                                 Mark Contacted
                                             </button>
-                                            <button class="btn btn-sm btn-secondary" onclick="alert('Email button clicked for lead ${lead.id}'); console.log('Clicked email for lead:', ${lead.id});">
+                                            <button class="btn btn-sm btn-secondary" onclick="openEmailTemplateModal(${lead.id}, event)">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                                     <polyline points="22,6 12,13 2,6"/>

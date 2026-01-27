@@ -3008,11 +3008,24 @@ let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('ad
 
 // Helper function to get the current auth token
 function getAuthToken() {
-    return localStorage.getItem('adminToken') || 
-           sessionStorage.getItem('adminToken') || 
-           localStorage.getItem('token') || 
-           sessionStorage.getItem('token') ||
-           authToken;
+    // Check state first (fastest)
+    if (state.authToken) {
+        return state.authToken;
+    }
+    
+    // Then check storage and cache it
+    const token = localStorage.getItem('adminToken') || 
+                  sessionStorage.getItem('adminToken') || 
+                  localStorage.getItem('token') || 
+                  sessionStorage.getItem('token') ||
+                  authToken;
+    
+    if (token) {
+        state.authToken = token; // Cache in state
+        authToken = token; // Update global variable too
+    }
+    
+    return token;
 }
 
 // Service Packages will be defined later but we need placeholder
@@ -3024,6 +3037,7 @@ const state = {
     employees: [],
     invoices: [],
     tasks: [],
+    tickets: [], // Make sure this exists
     currentSection: 'dashboard',
     searchTerm: '',
     currentFilter: 'all',
@@ -3034,6 +3048,7 @@ const state = {
     clientAccounts: [],
     clientUploads: [],
     currentClient: null,
+    authToken: null, // ← ADD THIS LINE
     settings: {
         emailNotifications: true,
         pushNotifications: false,
@@ -3047,6 +3062,8 @@ const state = {
 // INITIALIZATION
 // ========================================
 document.addEventListener('DOMContentLoaded', async function() {
+    state.authToken = authToken;
+    
     if (!authToken) {
         window.location.href = '/admin';
         return;

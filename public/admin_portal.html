@@ -1965,6 +1965,139 @@ body {
     transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Toast Container */
+#toastContainer {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+}
+
+/* Toast Base */
+.toast {
+    min-width: 320px;
+    max-width: 480px;
+    background: var(--bg-elevated);
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: auto;
+    animation: slideIn 0.3s ease-out;
+    border-left: 4px solid transparent;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Toast Icon */
+.toast-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Toast Message */
+.toast-message {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+/* Toast Close Button */
+.toast-close {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    border-radius: 6px;
+}
+
+.toast-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* Toast Types */
+.toast.success {
+    border-left-color: #10b981;
+}
+
+.toast.success .toast-icon {
+    color: #10b981;
+}
+
+.toast.error {
+    border-left-color: #ef4444;
+}
+
+.toast.error .toast-icon {
+    color: #ef4444;
+}
+
+.toast.warning {
+    border-left-color: #f59e0b;
+}
+
+.toast.warning .toast-icon {
+    color: #f59e0b;
+}
+
+.toast.info {
+    border-left-color: #3b82f6;
+}
+
+.toast.info .toast-icon {
+    color: #3b82f6;
+}
+
+/* Progress Bar */
+.toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: currentColor;
+    opacity: 0.3;
+    animation: progress 5s linear forwards;
+}
+
+@keyframes progress {
+    from {
+        width: 100%;
+    }
+    to {
+        width: 0%;
+    }
+}
+
 /* ========================================
    SETTINGS
 ======================================== */
@@ -8726,8 +8859,11 @@ function openPaymentModal(invoiceId) {
     const invoice = state.invoices.find(i => i.id === invoiceId);
     if (!invoice) return;
     
-    const modal = document.getElementById('paymentModal');
-    const bodyEl = document.getElementById('paymentModalBody');
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = 'Record Payment';
     
     bodyEl.innerHTML = `
         <form id="paymentForm" onsubmit="handlePaymentSubmit(event, ${invoiceId})">
@@ -8740,7 +8876,7 @@ function openPaymentModal(invoiceId) {
                     <span style="color: var(--text-secondary); font-size: 13px;">Customer</span>
                     <span style="color: var(--text-primary); font-weight: 600;">${invoice.customer_name || 'Unknown'}</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border-subtle); margin-top: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 2px solid var(--accent-amber); margin-top: 12px;">
                     <span style="color: var(--text-secondary); font-size: 14px; font-weight: 600;">Total Amount</span>
                     <span style="color: var(--accent-amber); font-weight: 800; font-size: 24px; font-family: var(--font-mono);">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
                 </div>
@@ -8796,7 +8932,7 @@ function openPaymentModal(invoiceId) {
             </div>
             
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
                 <button type="submit" class="btn btn-success">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -8813,7 +8949,7 @@ function openPaymentModal(invoiceId) {
 
 // Close Payment Modal
 function closePaymentModal() {
-    document.getElementById('paymentModal').classList.remove('active');
+    closeCreateModal(); // Just reuse the existing function since we're using createModal now
 }
 
 // Handle Payment Submission
@@ -8829,7 +8965,14 @@ async function handlePaymentSubmit(event, invoiceId) {
         paymentNotes: formData.get('paymentNotes')
     };
     
+    if (!data.paymentMethod) {
+        showToast('Please select a payment method', 'error');
+        return;
+    }
+    
     try {
+        showToast('Recording payment...', 'info');
+        
         const r = await fetch(`${API_URL}/api/invoices/${invoiceId}/status`, {
             method: 'PATCH',
             headers: {
@@ -8839,19 +8982,23 @@ async function handlePaymentSubmit(event, invoiceId) {
             body: JSON.stringify(data)
         });
         
-        if (!r.ok) throw new Error('Failed to update invoice status');
+        if (!r.ok) {
+            const errorData = await r.json();
+            throw new Error(errorData.message || 'Failed to update invoice status');
+        }
         
         const result = await r.json();
         
         await loadInvoices();
         await loadLeads();
         updateBadges();
-        closePaymentModal();
-        closeDetailModal();
+        closeCreateModal();
+        closeDetailModal(); // Close the detail modal too if it's open
         showToast('Payment recorded successfully! Customer updated to ACTIVE status.', 'success');
         renderSection('invoices');
     } catch (e) {
-        showToast('Error recording payment', 'error');
+        console.error('Payment error:', e);
+        showToast('Error recording payment: ' + e.message, 'error');
     }
 }
 
@@ -9261,28 +9408,68 @@ sessionStorage.removeItem('adminToken');
 window.location.href = '/admin';
 }
 function showToast(message, type = 'success') {
-const container = document.getElementById('toastContainer');
-const icons = {
-success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
-error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
-warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-};
-const toast = document.createElement('div');
-toast.className = `toast ${type}`;
-toast.innerHTML = `
-    <div class="toast-icon">${icons[type]}</div>
-    <div class="toast-message">${message}</div>
-    <button class="toast-close" onclick="this.parentElement.remove()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-    </button>
-`;
-
-container.appendChild(toast);
-setTimeout(() => toast.remove(), 5000);
+    const container = document.getElementById('toastContainer');
+    
+    const icons = {
+        success: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>`,
+        error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>`,
+        warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>`,
+        info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>`
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon">${icons[type]}</div>
+        <div class="toast-message">${message}</div>
+        <button class="toast-close" onclick="this.parentElement.remove()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        <div class="toast-progress" style="color: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};"></div>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
 }
+
+// Add slideOut animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
 
 // ========================================
 // LEAD ACTION FUNCTIONS (MISSING!)
@@ -9358,7 +9545,8 @@ async function emailInvoiceToClient() {
         return;
     }
     
-    showToast('Sending invoice email...', 'warning');
+    // Show loading toast
+    showToast('Sending invoice email...', 'info');
     
     try {
         const response = await fetch(`${API_URL}/api/email/send-invoice`, {
@@ -9374,20 +9562,22 @@ async function emailInvoiceToClient() {
             })
         });
         
-        if (!response.ok) {
-            throw new Error('Failed to send email');
-        }
-        
         const result = await response.json();
         
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to send email');
+        }
+        
         if (result.success) {
-            showToast(`✓ Invoice emailed to ${invoice.customer_email}`, 'success');
+            // ✅ Success notification
+            showToast(`✓ Invoice successfully sent to ${invoice.customer_email}`, 'success');
         } else {
             throw new Error(result.message || 'Failed to send email');
         }
     } catch (error) {
         console.error('Email error:', error);
-        showToast('Failed to send email. Please try again.', 'error');
+        // ❌ Error notification
+        showToast(`✗ Failed to send email: ${error.message}`, 'error');
     }
 }
 

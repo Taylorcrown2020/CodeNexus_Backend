@@ -4135,6 +4135,12 @@ async function renderSection(section) {
         case 'leads':
             renderLeadsTable(content, 'leads');
             break;
+
+            case 'new':
+    case 'pending':
+    case 'contacted':
+        renderLeadsTable(content, 'leads');
+        break;
             
         case 'customers':
             renderLeadsTable(content, 'customers');
@@ -4284,13 +4290,28 @@ function selectLeadForInvoice(leadId) {
 
 // 1. RENDER LEADS TABLE (MISSING)
 function renderLeadsTable(content, type) {
-    const data = type === 'customers' ? state.customers : state.leads;
+    // Determine what data to show based on section and filter
+    let data;
+    if (type === 'customers') {
+        data = state.customers;
+    } else {
+        // For leads section, apply status filter if we're in a status-specific section
+        data = state.leads;
+        
+        // If current section is a status filter (new/pending/contacted), apply it
+        if (state.currentSection === 'new' || state.currentSection === 'pending' || state.currentSection === 'contacted') {
+            data = data.filter(l => l.status === state.currentSection);
+        }
+    }
+    
+    // Apply additional filters
     const filtered = filterLeads(data);
     
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
                 <input type="text" class="search-input" placeholder="Search ${type}..." 
+                       value="${state.searchTerm || ''}"
                        onkeyup="handleSearch(this.value)">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
@@ -4422,8 +4443,11 @@ function renderEmployees(content) {
 function filterLeads(data) {
     let filtered = [...data];
     
-    // Apply status filter
-    if (state.currentFilter && state.currentFilter !== 'all') {
+    // Only apply filter if it's not 'all' AND we're NOT in a status-specific section
+    // (because status-specific sections already filtered the data)
+    const isInStatusSection = ['new', 'pending', 'contacted'].includes(state.currentSection);
+    
+    if (state.currentFilter && state.currentFilter !== 'all' && !isInStatusSection) {
         filtered = filtered.filter(lead => lead.status === state.currentFilter);
     }
     
@@ -15255,29 +15279,53 @@ async function renderFollowUps(content) {
 // Mark lead as contacted
 async function markFollowedUp(leadId) {
     try {
-        const response = await fetch(`${API_URL}/api/leads/${leadId}/contacted`, {
+        // Update the follow-up record
+        const response = await fetch(`${API_URL}/api/follow-ups/${leadId}/mark-followed-up`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${authToken}`,
+                'Authorization': `Bearer ${getAuthToken()}`,
                 'Content-Type': 'application/json'
             }
         });
         
         if (!response.ok) {
-            throw new Error('Failed to mark as contacted');
+            throw new Error('Failed to mark as followed up');
         }
         
-        const data = await response.json();
+        // IMPORTANT: Also update the lead's status to 'contacted'
+        const leadUpdateResponse = await fetch(`${API_URL}/api/leads/${leadId}/status`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                status: 'contacted',
+                last_contacted: new Date().toISOString()
+            })
+        });
         
-        if (data.success) {
-            showToast('Lead marked as contacted successfully', 'success');
-            renderSection('followups');
-        } else {
-            throw new Error(data.message || 'Failed to update lead');
+        if (!leadUpdateResponse.ok) {
+            console.warn('Lead status update failed, but follow-up was marked');
         }
+        
+        showToast('✓ Marked as followed up', 'success');
+        
+        // Reload data to reflect changes
+        await loadLeads();
+        await loadFollowUps();
+        updateBadges();
+        
+        // If we're in the contacted section, re-render it
+        if (state.currentSection === 'contacted') {
+            renderSection('contacted');
+        } else if (state.currentSection === 'followups') {
+            renderFollowUps(document.getElementById('contentArea'));
+        }
+        
     } catch (error) {
-        console.error('[FOLLOW-UP] Mark contacted error:', error);
-        showToast('Error: ' + error.message, 'error');
+        console.error('Mark followed up error:', error);
+        showToast('Failed to mark as followed up', 'error');
     }
 }
 

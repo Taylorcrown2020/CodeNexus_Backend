@@ -1400,10 +1400,11 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
 });
 
 // Update lead status (HANDLES CUSTOMER CONVERSION)
+// Update lead status (HANDLES CUSTOMER CONVERSION + LAST CONTACTED)
 app.patch('/api/leads/:id/status', authenticateToken, async (req, res) => {
     try {
         const leadId = req.params.id;
-        const { status, isCustomer, customerStatus } = req.body;
+        const { status, isCustomer, customerStatus, last_contacted } = req.body;
 
         // If converting to customer
         if (isCustomer) {
@@ -1418,7 +1419,22 @@ app.patch('/api/leads/:id/status', authenticateToken, async (req, res) => {
             );
             
             console.log(`✅ Lead ${leadId} converted to customer`);
-        } else {
+        } 
+        // If updating to 'contacted' status with last_contacted timestamp
+        else if (status === 'contacted' && last_contacted) {
+            await pool.query(
+                `UPDATE leads 
+                 SET status = $1, 
+                     last_contacted = $2,
+                     updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = $3`,
+                [status, last_contacted, leadId]
+            );
+            
+            console.log(`✅ Lead ${leadId} marked as contacted at ${last_contacted}`);
+        }
+        // Regular status update
+        else {
             await pool.query(
                 'UPDATE leads SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
                 [status, leadId]

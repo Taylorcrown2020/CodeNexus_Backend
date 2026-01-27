@@ -4325,6 +4325,71 @@ function selectLeadForInvoice(leadId) {
     closeCreateModal();
     openCreateModal('invoice', leadId);
 }
+
+function showClientSelectionForInvoice() {
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = 'Create Invoice - Select Client';
+    
+    const clients = [...state.customers, ...state.leads];
+    
+    bodyEl.innerHTML = `
+        <div style="margin-bottom: 16px;">
+            <input type="text" class="form-input" id="clientSearch" 
+                   placeholder="Search clients..." 
+                   oninput="filterClientList(this.value)">
+        </div>
+        <div id="clientList" style="max-height: 400px; overflow-y: auto;">
+            ${clients.map(client => `
+                <div class="client-item" onclick="selectClientForNewInvoice(${client.id})" 
+                     style="padding: 12px; border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
+                     onmouseover="this.style.background='var(--bg-secondary)'" 
+                     onmouseout="this.style.background='transparent'">
+                    <div style="font-weight: 600;">${client.name}</div>
+                    <div style="font-size: 13px; color: var(--text-muted);">${client.email}</div>
+                    ${client.company ? `<div style="font-size: 12px; color: var(--text-muted);">${client.company}</div>` : ''}
+                </div>
+            `).join('')}
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+            <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+function selectClientForNewInvoice(leadId) {
+    console.log('✅ Client selected, opening invoice modal for lead:', leadId);
+    closeCreateModal();
+    // Small delay to allow modal to close smoothly
+    setTimeout(() => {
+        openInvoiceModal(leadId);
+    }, 100);
+}
+
+function filterClientList(searchTerm) {
+    const clients = [...state.customers, ...state.leads];
+    const filtered = clients.filter(c => 
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.company && c.company.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    
+    const listEl = document.getElementById('clientList');
+    listEl.innerHTML = filtered.map(client => `
+        <div class="client-item" onclick="selectClientForNewInvoice(${client.id})" 
+             style="padding: 12px; border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
+             onmouseover="this.style.background='var(--bg-secondary)'" 
+             onmouseout="this.style.background='transparent'">
+            <div style="font-weight: 600;">${client.name}</div>
+            <div style="font-size: 13px; color: var(--text-muted);">${client.email}</div>
+            ${client.company ? `<div style="font-size: 12px; color: var(--text-muted);">${client.company}</div>` : ''}
+        </div>
+    `).join('');
+}
 // ========================================
 // RENDER FUNCTIONS
 // ========================================
@@ -7697,7 +7762,13 @@ if (type === 'lead') {
         </form>
     `;
 } else if (type === 'invoice') {
-    openInvoiceModal(leadId);
+    if (leadId) {
+        // If leadId provided, open invoice modal directly
+        openInvoiceModal(leadId);
+    } else {
+        // If no leadId, show client selection first
+        showClientSelectionForInvoice();
+    }
     return;
 } else if (type === 'employee') {
     titleEl.textContent = 'Add Team Member';

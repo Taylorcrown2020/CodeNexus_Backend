@@ -14455,39 +14455,34 @@ async function sendBulkEmailByCategory(category, subject, message) {
 }
 
 function openCategoryEmailModal(category, categoryLabel, count) {
-    console.log('[EMAIL] Opening bulk email modal for category:', category);
+    console.log('[BULK EMAIL] Opening modal for:', category, categoryLabel, count);
     
     const modalHtml = `
-        <div class="modal-overlay" id="emailModal" onclick="if(event.target.id==='emailModal') closeEmailModal()">
-            <div class="modal" style="max-width: 600px;">
-                <div class="modal-header">
-                    <h3>Email All - ${categoryLabel}</h3>
-                    <button class="modal-close" onclick="closeEmailModal()">×</button>
+        <div class="modal-overlay" id="bulkEmailModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+            <div class="modal" style="background: white; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow: auto;" onclick="event.stopPropagation()">
+                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb;">
+                    <h3 style="margin: 0;">Email All - ${categoryLabel}</h3>
                 </div>
-                <div class="modal-body">
-                    <p style="margin-bottom: 20px; color: var(--text-muted); padding: 12px; background: var(--bg-secondary); border-radius: 6px;">
+                <div style="padding: 20px;">
+                    <p style="margin-bottom: 20px; color: #666; padding: 12px; background: #f3f4f6; border-radius: 6px;">
                         📧 This will send an email to <strong>${count} leads</strong> in this category.
                     </p>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
                         <input type="text" id="bulkEmailSubject" placeholder="Email subject" 
-                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;">
+                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
                     </div>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
                         <textarea id="bulkEmailBody" rows="10" placeholder="Type your message here..." 
-                                  style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+                                  style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="closeEmailModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="sendBulkEmail('${category}', ${count})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
-                            <line x1="22" y1="2" x2="11" y2="13"/>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                        </svg>
+                <div style="padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="closeBulkEmailModal()">Cancel</button>
+                    <button class="btn btn-primary" id="sendBulkEmailBtn" onclick="sendBulkEmail('${category}', ${count})">
                         Send to ${count} Leads
                     </button>
                 </div>
@@ -14495,21 +14490,36 @@ function openCategoryEmailModal(category, categoryLabel, count) {
         </div>
     `;
     
+    // Remove any existing modal
+    const existingModal = document.getElementById('bulkEmailModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Add click to close
+    document.getElementById('bulkEmailModal').addEventListener('click', function(e) {
+        if (e.target.id === 'bulkEmailModal') {
+            closeBulkEmailModal();
+        }
+    });
     
     setTimeout(() => {
         document.getElementById('bulkEmailSubject')?.focus();
     }, 100);
 }
 
-function closeEmailModal() {
-    const modal = document.getElementById('emailModal');
+function closeBulkEmailModal() {
+    const modal = document.getElementById('bulkEmailModal');
     if (modal) {
         modal.remove();
     }
 }
 
 async function sendBulkEmail(category, count) {
+    console.log('[BULK EMAIL] Sending to category:', category);
+    
     const subject = document.getElementById('bulkEmailSubject')?.value;
     const body = document.getElementById('bulkEmailBody')?.value;
     
@@ -14518,13 +14528,20 @@ async function sendBulkEmail(category, count) {
         return;
     }
     
-    const sendBtn = event.target.closest('button');
+    const sendBtn = document.getElementById('sendBulkEmailBtn');
+    if (!sendBtn) {
+        console.error('[BULK EMAIL] Send button not found');
+        return;
+    }
+    
     const originalText = sendBtn.innerHTML;
     sendBtn.disabled = true;
-    sendBtn.innerHTML = '<div class="spinner"></div> Sending...';
+    sendBtn.innerHTML = 'Sending...';
     
     try {
         const token = getAuthToken();
+        
+        console.log('[BULK EMAIL] Sending request to:', `${API_URL}/api/follow-ups/email-category`);
         
         const response = await fetch(`${API_URL}/api/follow-ups/email-category`, {
             method: 'POST',
@@ -14539,14 +14556,18 @@ async function sendBulkEmail(category, count) {
             })
         });
         
+        console.log('[BULK EMAIL] Response status:', response.status);
+        
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || 'Failed to send bulk emails');
         }
         
         const result = await response.json();
+        console.log('[BULK EMAIL] Success:', result);
+        
         showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
-        closeEmailModal();
+        closeBulkEmailModal();
         
         // Refresh follow-ups
         const contentArea = document.getElementById('contentArea');
@@ -14555,7 +14576,7 @@ async function sendBulkEmail(category, count) {
         }
         
     } catch (error) {
-        console.error('[EMAIL] Bulk send error:', error);
+        console.error('[BULK EMAIL] Error:', error);
         showToast('Failed to send emails: ' + error.message, 'error');
     } finally {
         sendBtn.disabled = false;

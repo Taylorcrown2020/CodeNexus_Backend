@@ -4171,9 +4171,10 @@ async function renderSection(section) {
             renderProjects(content);
             break;
             
-        case 'tickets':
-            renderTickets();
-            break;
+case 'support':
+case 'tickets':
+    renderTickets();
+    break;
             
         case 'documents':
             renderDocuments(content);

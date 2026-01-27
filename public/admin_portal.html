@@ -5634,6 +5634,11 @@ window.showEmailModal = function(leadId, leadName, leadEmail) {
 };
 
 window.doSendEmail = async function(leadId, leadEmail) {
+    console.log('[EMAIL] Starting send email process...');
+    console.log('[EMAIL] Lead ID:', leadId);
+    console.log('[EMAIL] Lead Email:', leadEmail);
+    
+    // Get form values
     const subject = document.getElementById('emailSubject_' + leadId)?.value;
     const body = document.getElementById('emailBody_' + leadId)?.value;
     
@@ -5642,23 +5647,34 @@ window.doSendEmail = async function(leadId, leadEmail) {
         return;
     }
     
-    // DEBUG: Check if token exists
-    console.log('🔍 Checking auth token...');
-    console.log('Token exists?', !!state.authToken);
-    console.log('Token preview:', state.authToken ? state.authToken.substring(0, 20) + '...' : 'NO TOKEN');
+    console.log('[EMAIL] Subject:', subject);
+    console.log('[EMAIL] Body length:', body.length);
     
-    if (!state.authToken) {
-        alert('You are not logged in. Please refresh the page and log in again.');
+    // Get authentication token with multiple fallbacks
+    const token = getAuthToken();
+    
+    console.log('[EMAIL] Auth token check:');
+    console.log('  - Token exists:', !!token);
+    console.log('  - Token preview:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+    console.log('  - LocalStorage token:', !!localStorage.getItem('adminToken'));
+    console.log('  - SessionStorage token:', !!sessionStorage.getItem('adminToken'));
+    console.log('  - State token:', !!(window.state && window.state.authToken));
+    
+    if (!token) {
+        console.error('[EMAIL] ❌ No authentication token found');
+        alert('Authentication error: Please refresh the page and log in again.');
+        // Redirect to login
+        window.location.href = '/admin/login';
         return;
     }
     
     try {
-        console.log('Sending email:', { leadId, leadEmail, subject, body });
+        console.log('[EMAIL] Sending request to server...');
         
         const response = await fetch(`${API_URL}/api/email/send-custom`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${state.authToken}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -5669,86 +5685,120 @@ window.doSendEmail = async function(leadId, leadEmail) {
             })
         });
         
-        console.log('Response status:', response.status);
+        console.log('[EMAIL] Response status:', response.status);
+        console.log('[EMAIL] Response headers:', Object.fromEntries(response.headers.entries()));
         
-        // If 401, token is invalid/expired
+        // Handle authentication errors
         if (response.status === 401) {
-            alert('Your session has expired. Please refresh the page and log in again.');
-            // Optionally: clear token and redirect to login
+            console.error('[EMAIL] ❌ Authentication failed - token expired or invalid');
+            alert('Your session has expired. Please log in again.');
+            
+            // Clear all tokens
             localStorage.removeItem('adminToken');
+            sessionStorage.removeItem('adminToken');
+            if (window.state) {
+                window.state.authToken = null;
+            }
+            
+            // Redirect to login
             window.location.href = '/admin/login';
             return;
         }
         
-        const responseData = await response.json();
-        console.log('Response data:', responseData);
-        
-        if (!response.ok) {
-            throw new Error(responseData.message || responseData.error || `Server error: ${response.status}`);
+        // Handle forbidden errors
+        if (response.status === 403) {
+            console.error('[EMAIL] ❌ Access denied');
+            alert('Access denied. You do not have permission to send emails.');
+            return;
         }
         
-        alert('Email sent successfully!');
-        document.querySelector('.modal-overlay')?.remove();
+        // Parse response
+        let responseData;
+        try {
+            responseData = await response.json();
+            console.log('[EMAIL] Response data:', responseData);
+        } catch (parseError) {
+            console.error('[EMAIL] Failed to parse response:', parseError);
+            throw new Error('Invalid server response');
+        }
         
+        // Handle server errors
+        if (!response.ok) {
+            const errorMessage = responseData.message || responseData.error || `Server error: ${response.status}`;
+            console.error('[EMAIL] ❌ Server error:', errorMessage);
+            throw new Error(errorMessage);
+        }
+        
+        // Success!
+        console.log('[EMAIL] ✅ Email sent successfully');
+        alert('Email sent successfully!');
+        
+        // Close modal
+        const modal = document.querySelector('.modal-overlay');
+        if (modal) {
+            modal.remove();
+            console.log('[EMAIL] Modal closed');
+        }
+        
+        // Mark lead as followed up
+        console.log('[EMAIL] Marking lead as followed up...');
         await markFollowedUp(leadId);
+        console.log('[EMAIL] ✅ Lead marked as followed up');
         
     } catch (error) {
-        console.error('Email error:', error);
+        console.error('[EMAIL] ❌ Error:', error);
+        console.error('[EMAIL] Error stack:', error.stack);
         alert('Failed to send email: ' + error.message);
     }
 };
 
-async function sendEmail(leadId, leadEmail) {
-    const subject = document.getElementById('emailSubject')?.value;
-    const body = document.getElementById('emailBody')?.value;
+// Helper function to verify auth token is valid
+async function verifyAuthToken() {
+    const token = getAuthToken();
     
-    if (!subject || !body) {
-        showToast('Please fill in subject and message', 'error');
-        return;
+    if (!token) {
+        console.warn('[AUTH] No token found');
+        return false;
     }
-    
-    // Show loading state
-    const sendBtn = event.target.closest('button');
-    const originalText = sendBtn.innerHTML;
-    sendBtn.disabled = true;
-    sendBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px;"></div> Sending...';
     
     try {
-        const response = await fetch(`${API_URL}/api/email/send-custom`, {
+        const response = await fetch(`${API_URL}/api/admin/verify`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${state.authToken}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
-            },
-body: JSON.stringify({
-    to: leadEmail,
-    toName: leadName, // Add the lead's name if you have it
-    subject: subject,
-    body: body,
-    leadId: leadId
-})
+            }
         });
         
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to send email');
+        if (response.ok) {
+            console.log('[AUTH] ✅ Token is valid');
+            return true;
+        } else {
+            console.warn('[AUTH] ⚠️ Token is invalid or expired');
+            return false;
         }
-        
-        showToast('Email sent successfully!', 'success');
-        closeEmailModal();
-        
-        // Mark as contacted
-        await markFollowedUp(leadId);
-        
     } catch (error) {
-        console.error('[EMAIL] Send error:', error);
-        showToast('Failed to send email: ' + error.message, 'error');
-        
-        // Restore button
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = originalText;
+        console.error('[AUTH] ❌ Token verification failed:', error);
+        return false;
     }
 }
+
+// Function to ensure user is authenticated before sending email
+async function ensureAuthenticated() {
+    const isValid = await verifyAuthToken();
+    
+    if (!isValid) {
+        alert('Your session has expired. Please log in again.');
+        localStorage.removeItem('adminToken');
+        sessionStorage.removeItem('adminToken');
+        window.location.href = '/admin/login';
+        return false;
+    }
+    
+    return true;
+}
+
+
 
 // Switch between template and compose tabs
 function switchEmailTab(tab) {

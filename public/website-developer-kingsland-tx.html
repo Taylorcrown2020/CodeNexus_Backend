@@ -3764,6 +3764,73 @@
     </div>
 
     <script>
+
+async function sendEmail(leadId, leadEmail) {
+    const subject = document.getElementById('emailSubject')?.value;
+    const body = document.getElementById('emailBody')?.value;
+    
+    if (!subject || !body) {
+        showToast('Please fill in subject and message', 'error');
+        return;
+    }
+    
+    // Show loading state
+    const sendBtn = event.target.closest('button');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px;"></div> Sending...';
+    
+    try {
+        const response = await fetch(`${API_URL}/api/email/send-custom`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${state.authToken}`,
+                'Content-Type': 'application/json'
+            },
+body: JSON.stringify({
+    to: leadEmail,
+    toName: leadName, // Add the lead's name if you have it
+    subject: subject,
+    body: body,
+    leadId: leadId
+})
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to send email');
+        }
+        
+        showToast('Email sent successfully!', 'success');
+        closeEmailModal();
+        
+        // Mark as contacted
+        await markFollowedUp(leadId);
+        
+    } catch (error) {
+        console.error('[EMAIL] Send error:', error);
+        showToast('Failed to send email: ' + error.message, 'error');
+        
+        // Restore button
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = originalText;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         // Mobile Menu Functions
         function toggleMobileMenu() {
             const btn = document.querySelector('.mobile-menu-btn');

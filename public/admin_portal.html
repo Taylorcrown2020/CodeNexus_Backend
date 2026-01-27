@@ -6675,8 +6675,15 @@ ${inv.status !== 'paid' ? `
 }
 
 // ADD THIS NEW FUNCTION (place it after renderInvoices):
-function openInvoiceDetail(invoiceId) {
+async function openInvoiceDetail(invoiceId) {
     console.log('🔍 openInvoiceDetail called with ID:', invoiceId);
+    
+    // First, ensure invoices are loaded
+    if (!state.invoices || state.invoices.length === 0) {
+        console.log('📊 Invoices not loaded, loading now...');
+        await loadInvoices();
+    }
+    
     console.log('📊 Current invoices in state:', state.invoices);
     console.log('🎯 Looking for invoice with ID:', invoiceId);
     
@@ -14514,13 +14521,15 @@ async function sendBulkEmail(category, count) {
     const sendBtn = event.target.closest('button');
     const originalText = sendBtn.innerHTML;
     sendBtn.disabled = true;
-    sendBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px;"></div> Sending...';
+    sendBtn.innerHTML = '<div class="spinner"></div> Sending...';
     
     try {
+        const token = getAuthToken();
+        
         const response = await fetch(`${API_URL}/api/follow-ups/email-category`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${state.authToken}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -14539,6 +14548,7 @@ async function sendBulkEmail(category, count) {
         showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
         closeEmailModal();
         
+        // Refresh follow-ups
         const contentArea = document.getElementById('contentArea');
         if (contentArea) {
             await renderFollowUps(contentArea);
@@ -14547,6 +14557,7 @@ async function sendBulkEmail(category, count) {
     } catch (error) {
         console.error('[EMAIL] Bulk send error:', error);
         showToast('Failed to send emails: ' + error.message, 'error');
+    } finally {
         sendBtn.disabled = false;
         sendBtn.innerHTML = originalText;
     }
@@ -15270,6 +15281,45 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
+}
+
+async function testFollowUpSystem() {
+    console.log('[TEST] Testing follow-up system...');
+    
+    const token = getAuthToken();
+    console.log('[TEST] Auth token exists:', !!token);
+    console.log('[TEST] API_URL:', API_URL);
+    
+    try {
+        // Test stats endpoint
+        const statsResponse = await fetch(`${API_URL}/api/follow-ups/stats`, {
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('[TEST] Stats response:', statsResponse.status);
+        
+        // Test categorized endpoint
+        const categorizedResponse = await fetch(`${API_URL}/api/follow-ups/categorized`, {
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('[TEST] Categorized response:', categorizedResponse.status);
+        
+        if (statsResponse.ok && categorizedResponse.ok) {
+            console.log('[TEST] ✅ Follow-up system is working!');
+            showToast('Follow-up system is working correctly', 'success');
+        } else {
+            console.error('[TEST] ❌ Follow-up system has issues');
+            showToast('Follow-up system needs attention', 'error');
+        }
+    } catch (error) {
+        console.error('[TEST] ❌ Follow-up system error:', error);
+        showToast('Follow-up system error: ' + error.message, 'error');
+    }
 }
 
 </script>

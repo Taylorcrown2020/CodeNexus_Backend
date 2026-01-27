@@ -570,6 +570,12 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
+        .contact-info {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
         /* Mobile Menu */
         .mobile-menu-btn {
             display: none;
@@ -720,11 +726,21 @@
 .hero {
     position: relative;
     height: 90vh;
-    margin-top: 73px;  /* ADD THIS */
+    margin-top: 73px;
     overflow: hidden;
-    background-image: url('https://diamondbackcoding.com/pexels-jeswin-15161974.jpg');
-    background-size: cover;
-    background-position: center;
+}
+
+.hero-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translate(-50%, -50%);
+    object-fit: cover;
+    z-index: 0;
 }
 
 .hero::before {
@@ -734,40 +750,54 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.45) 100%);
     z-index: 1;
 }
 
-        .hero-text {
-            position: absolute;
-            bottom: 100px;
-            left: 60px;
-            right: 60px;
-            max-width: 900px;
-            color: #fff;
-            z-index: 2;
-        }
+.hero-text {
+    position: absolute;
+    bottom: 100px;
+    left: 60px;
+    right: 60px;
+    max-width: 900px;
+    color: #fff;
+    z-index: 2;
+}
 
-        .hero-title {
-            font-size: 64px;
-            font-weight: 700;
-            line-height: 1.1;
-            margin-bottom: 24px;
-            letter-spacing: -2px;
-        }
+.hero-title {
+    font-size: 64px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 24px;
+    letter-spacing: -2px;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9),
+                 0 0 40px rgba(0, 0, 0, 0.8),
+                 0 0 20px rgba(0, 0, 0, 0.9);
+}
 
-        .hero-title .highlight {
-            color: #fff;
-        }
+.hero-subtitle {
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.6;
+    margin-bottom: 40px;
+    opacity: 0.95;
+    letter-spacing: -0.3px;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9),
+                 0 0 30px rgba(0, 0, 0, 0.8),
+                 0 0 15px rgba(0, 0, 0, 0.9);
+}
 
-        .hero-subtitle {
-            font-size: 18px;
-            font-weight: 400;
-            line-height: 1.6;
-            margin-bottom: 40px;
-            opacity: 0.95;
-            letter-spacing: -0.3px;
-        }
+.hero-quiz-link {
+    display: inline-block;
+    margin-top: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9),
+                 0 0 20px rgba(0, 0, 0, 0.8);
+}
 
         .hero-subtitle a {
             color: #fff;
@@ -2448,15 +2478,15 @@
     transition: transform 0.3s ease;
 }
 
-.hero-quiz-link {
-    display: inline-block;
-    margin-top: 14px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #fff;
-    text-decoration: underline;
-    cursor: pointer;
-    transition: opacity 0.2s ease;
+/* Also add shadow to the buttons for consistency */
+.hero-cta .btn-primary,
+.hero-cta .btn-secondary {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.hero-cta .btn-primary:hover,
+.hero-cta .btn-secondary:hover {
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5);
 }
 
 .hero-quiz-link:hover {
@@ -3275,6 +3305,9 @@
         <!-- Hero Section -->
         <!-- Hero Section -->
 <section class="hero">
+    <video class="hero-video" autoplay muted loop playsinline poster="https://diamondbackcoding.com/Austin.mp4">
+    <source src="Austin.mp4" type="video/mp4">
+</video>
     <div class="hero-text">
         <h1 class="hero-title">
             Professional <span class="highlight">Website Design & Development</span><br>

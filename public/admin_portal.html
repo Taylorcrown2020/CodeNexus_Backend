@@ -4233,6 +4233,23 @@ function showInvoiceLeadSelector() {
     const titleEl = document.getElementById('createModalTitle');
     const bodyEl = document.getElementById('createModalBody');
     
+    // Debug: Check if modal elements exist
+    if (!modal) {
+        console.error('createModal not found');
+        showToast('Modal not found. Please refresh the page.', 'error');
+        return;
+    }
+    if (!titleEl) {
+        console.error('createModalTitle not found');
+        showToast('Modal title element not found.', 'error');
+        return;
+    }
+    if (!bodyEl) {
+        console.error('createModalBody not found');
+        showToast('Modal body element not found.', 'error');
+        return;
+    }
+    
     titleEl.textContent = 'Select Customer/Lead for Invoice';
     
     const allLeadsAndCustomers = [...state.leads, ...state.customers];
@@ -4265,6 +4282,7 @@ function showInvoiceLeadSelector() {
     `;
     
     modal.classList.add('active');
+    console.log('Modal opened successfully');
 }
 
 function filterLeadSelector() {

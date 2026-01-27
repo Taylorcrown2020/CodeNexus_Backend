@@ -5643,10 +5643,15 @@ window.doSendEmail = async function(leadId, leadEmail) {
     }
     
     try {
+        // DEBUG: Check what URL is being constructed
+        const url = `${API_URL}/api/leads/${leadId}/email`;
+        console.log('Full URL being called:', url);
+        console.log('API_URL value:', API_URL);
+        console.log('Lead ID:', leadId);
+        
         console.log('Sending email:', { leadId, leadEmail, subject, body });
         
-        // Fixed: Changed fetch`...` to fetch('...')
-        const response = await fetch(`${API_URL}/api/leads/${leadId}/email`, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${state.authToken}`,
@@ -5660,6 +5665,7 @@ window.doSendEmail = async function(leadId, leadEmail) {
         });
         
         console.log('Response status:', response.status);
+        console.log('Response headers:', [...response.headers.entries()]);
         
         const responseData = await response.json();
         console.log('Response data:', responseData);

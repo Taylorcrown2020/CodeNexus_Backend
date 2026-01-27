@@ -4185,9 +4185,10 @@ async function renderSection(section) {
             renderScoringRules(content);
             break;
             
-        case 'client-portal':
-            renderClientPortal();
-            break;
+case 'clientPortal':  // Add this case
+case 'client-portal':
+    renderClientPortal();
+    break;
             
         case 'followups':
             await renderFollowUps(content);
@@ -5751,6 +5752,11 @@ window.doSendEmail = async function(leadId, leadEmail) {
         alert('Failed to send email: ' + error.message);
     }
 };
+
+
+
+
+
 
 // Helper function to verify auth token is valid
 async function verifyAuthToken() {

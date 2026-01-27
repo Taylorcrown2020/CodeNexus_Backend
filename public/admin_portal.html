@@ -5643,6 +5643,8 @@ window.doSendEmail = async function(leadId, leadEmail) {
     }
     
     try {
+        console.log('Sending email:', { leadId, leadEmail, subject, body });
+        
         const response = await fetch(`${API_URL}/api/leads/${leadId}/email`, {
             method: 'POST',
             headers: {
@@ -5656,7 +5658,14 @@ window.doSendEmail = async function(leadId, leadEmail) {
             })
         });
         
-        if (!response.ok) throw new Error('Failed to send');
+        console.log('Response status:', response.status);
+        
+        const responseData = await response.json();
+        console.log('Response data:', responseData);
+        
+        if (!response.ok) {
+            throw new Error(responseData.message || responseData.error || `Server error: ${response.status}`);
+        }
         
         alert('Email sent successfully!');
         document.querySelector('.modal-overlay')?.remove();

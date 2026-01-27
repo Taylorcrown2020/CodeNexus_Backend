@@ -6676,28 +6676,43 @@ ${inv.status !== 'paid' ? `
 
 // ADD THIS NEW FUNCTION (place it after renderInvoices):
 async function openInvoiceDetail(invoiceId) {
-    console.log('🔍 openInvoiceDetail called with ID:', invoiceId);
+    console.log('🔍 [INVOICE DETAIL] Function called with ID:', invoiceId);
     
-    // First, ensure invoices are loaded
-    if (!state.invoices || state.invoices.length === 0) {
-        console.log('📊 Invoices not loaded, loading now...');
-        await loadInvoices();
+    try {
+        // CRITICAL: Ensure invoices are loaded first
+        if (!state.invoices || state.invoices.length === 0) {
+            console.log('📊 [INVOICE DETAIL] Invoices not in state, loading...');
+            await loadInvoices();
+        }
+        
+        console.log('📊 [INVOICE DETAIL] Total invoices in state:', state.invoices?.length);
+        console.log('🎯 [INVOICE DETAIL] Looking for invoice ID:', invoiceId, 'Type:', typeof invoiceId);
+        
+        // Find invoice - try both as number and string
+        let invoice = state.invoices.find(i => i.id === parseInt(invoiceId));
+        if (!invoice) {
+            invoice = state.invoices.find(i => i.id == invoiceId); // Use loose equality
+        }
+        
+        if (!invoice) {
+            console.error('❌ [INVOICE DETAIL] Invoice not found!');
+            console.error('Available IDs:', state.invoices.map(i => i.id));
+            showToast('Invoice not found', 'error');
+            return;
+        }
+        
+        console.log('✅ [INVOICE DETAIL] Found invoice:', invoice.invoice_number);
+        
+        // Set current invoice in state
+        state.currentInvoice = invoice;
+        
+        // Call the detail modal
+        await openDetailModal('invoice', invoiceId);
+        
+    } catch (error) {
+        console.error('❌ [INVOICE DETAIL] Error:', error);
+        showToast('Error opening invoice: ' + error.message, 'error');
     }
-    
-    console.log('📊 Current invoices in state:', state.invoices);
-    console.log('🎯 Looking for invoice with ID:', invoiceId);
-    
-    const invoice = state.invoices.find(i => i.id === invoiceId);
-    console.log('✅ Found invoice:', invoice);
-    
-    if (!invoice) {
-        console.error('❌ Invoice not found in state.invoices');
-        showToast('Invoice not found', 'error');
-        return;
-    }
-    
-    console.log('📞 Calling openDetailModal...');
-    openDetailModal('invoice', invoiceId);
 }
 
 function renderTasks(content) {

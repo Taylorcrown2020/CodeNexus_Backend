@@ -13206,7 +13206,8 @@ async function renderFollowUps(content) {
                             </p>
                         </div>
                         <button class="btn btn-primary btn-sm" 
-                                onclick="openCategoryEmailModal('${category.follow_up_category}', '${categoryLabels[category.follow_up_category]}', ${category.count})">
+                                // Update the button in renderFollowUps to open a modal instead
+<button class="btn btn-primary" onclick="openCategoryEmailModal('${category.follow_up_category}', '${categoryTitle}', ${category.count})">Send Bulk Email to Category</button>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                 <polyline points="22,6 12,13 2,6"/>
@@ -14616,6 +14617,13 @@ function openCategoryEmailModal(category, categoryLabel, count) {
     }, 100);
 }
 
+function closeEmailModal() {
+    const modal = document.getElementById('emailModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
 async function sendBulkEmail(category, count) {
     const subject = document.getElementById('bulkEmailSubject')?.value;
     const body = document.getElementById('bulkEmailBody')?.value;
@@ -15193,7 +15201,8 @@ async function renderFollowUps(content) {
                             </p>
                         </div>
                         <button class="btn btn-primary btn-sm" 
-                                onclick="openCategoryEmailModal('${category.follow_up_category}', '${categoryLabels[category.follow_up_category]}', ${category.count})">
+                                // Update the button in renderFollowUps to open a modal instead
+<button class="btn btn-primary" onclick="openCategoryEmailModal('${category.follow_up_category}', '${categoryTitle}', ${category.count})">Send Bulk Email to Category</button>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                 <polyline points="22,6 12,13 2,6"/>

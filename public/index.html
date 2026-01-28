@@ -2002,18 +2002,24 @@
     height: 20px;
 }
         
-        @media (max-width: 768px) {
+@media (max-width: 768px) {
+    .announcement-banner {
+        font-size: 12px;
+        padding: 10px 16px;
+    }
+
     nav {
         padding: 16px 24px;
+        top: 38px;
     }
     
     .nav-links {
         position: fixed;
-        top: 113px;
+        top: 89px;
         right: -100%;
         width: 80%;
         max-width: 300px;
-        height: calc(100vh - 113px);
+        height: calc(100vh - 89px);
         background: var(--black);
         display: flex !important;
         flex-direction: column;
@@ -2038,7 +2044,17 @@
         font-size: 16px;
     }
     
+    .contact-info {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-end;
+    }
+
     .contact-info .phone {
+        display: none;
+    }
+
+    .login-link {
         display: none;
     }
     
@@ -2049,6 +2065,7 @@
         cursor: pointer;
         padding: 8px;
         z-index: 1000;
+        position: relative;
     }
     
     .mobile-menu-btn span {
@@ -2071,126 +2088,145 @@
     .mobile-menu-btn.active span:nth-child(3) {
         transform: rotate(-45deg) translate(7px, -6px);
     }
-            
-            .hero-content {
-                padding: 80px 24px;
-            }
-            
-            .hero-title {
-                font-size: 32px;
-            }
-            
-            .hero-cta {
-                flex-direction: column;
-            }
-            
-            .btn-primary,
-            .btn-secondary {
-                width: 100%;
-                text-align: center;
-            }
-            
-            .features-section,
-            .brand-building-section,
-            .services-section,
-            .maps-section,
-            .footer-cta-section {
-                padding: 80px 24px;
-            }
-            
-            .section-title {
-                font-size: 32px;
-            }
-            
-            .features-grid,
-            .services-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .feature-card,
-            .service-card {
-                border-right: none;
-                padding: 40px 24px;
-            }
 
-            .brand-tabs {
-                flex-direction: column;
-            }
+    .nav-cta-btn {
+        padding: 10px 20px;
+        font-size: 11px;
+    }
+    
+    .hero {
+        margin-top: 89px;
+        min-height: 50vh;
+    }
 
-            .brand-content,
-            .maps-content {
-                grid-template-columns: 1fr;
-            }
+    .hero-background {
+        width: 100%;
+        opacity: 0.3;
+    }
 
-            .mockup-tablet {
-                display: none;
-            }
+    .hero-content {
+        padding: 60px 24px;
+    }
+    
+    .hero-title {
+        font-size: 32px;
+    }
 
-            .footer-cta-container {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .footer-cta-text h2 {
-                font-size: 32px;
-            }
-
-            .footer-cta-buttons {
-                flex-direction: column;
-                width: 100%;
-            }
-
-            .btn-outline-white {
-                width: 100%;
-            }
-            
-            footer {
-                padding: 60px 24px 32px;
-            }
-            
-            .footer-container {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 40px;
-            }
-
-            .footer-bottom {
-                flex-direction: column;
-                gap: 24px;
-                text-align: center;
-            }
-
-            .footer-bottom-left {
-                flex-direction: column;
-            }
-
-            .modal-content,
-            .quiz-modal-content {
-                padding: 40px 24px;
-            }
-
-            .option-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .chatbot-window {
-                width: calc(100vw - 48px);
-            }
-        }
-        /* Mobile responsive */
-@media (max-width: 768px) {
-    .footer-cta-hero {
+    .hero-subtitle {
+        font-size: 16px;
+    }
+    
+    .hero-cta {
         flex-direction: column;
-        padding: 80px 40px;
-        margin: 40px 24px;
+        gap: 12px;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        text-align: center;
+        padding: 14px 32px;
+    }
+    
+    .features-section,
+    .brand-building-section,
+    .services-section,
+    .maps-section {
+        padding: 60px 24px;
+    }
+    
+    .section-title {
+        font-size: 28px;
+    }
+
+    .section-subtitle {
+        font-size: 10px;
+    }
+
+    .section-description {
+        font-size: 15px;
+    }
+    
+    .features-grid,
+    .services-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    
+    .feature-card,
+    .service-card {
+        border-right: none;
+        padding: 40px 24px;
+    }
+
+    .feature-card:last-child {
+        border-bottom: none;
+    }
+
+    .brand-tabs {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .brand-tab {
+        width: 100%;
         text-align: center;
     }
 
+    .brand-content {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .brand-text {
+        padding-right: 0;
+    }
+
+    .brand-content-title {
+        font-size: 32px;
+    }
+
+    .mockup-tablet {
+        display: none;
+    }
+
+    .mockup-laptop {
+        width: 80%;
+    }
+
+    .mockup-mobile {
+        width: 140px;
+        left: 10px;
+    }
+
+    .maps-content {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .maps-text h2 {
+        font-size: 32px;
+    }
+
+    .maps-embed {
+        height: 300px;
+    }
+
+    .footer-cta-hero {
+        flex-direction: column;
+        padding: 60px 24px;
+        margin: 40px 24px;
+        text-align: center;
+        gap: 30px;
+    }
+
     .footer-cta-text h2 {
-        font-size: 36px;
+        font-size: 32px;
     }
 
     .footer-cta-actions {
         width: 100%;
+        flex-direction: column;
     }
 
     .footer-cta-btn-primary {
@@ -2200,13 +2236,76 @@
 
     .footer-cta-contact {
         flex-direction: column;
-        gap: 32px;
-        padding: 60px 24px;
+        gap: 24px;
+        padding: 40px 24px;
         text-align: center;
+    }
+
+    .footer-cta-phone {
+        font-size: 24px;
     }
 
     .footer-cta-btn-outline {
         width: 100%;
+    }
+    
+    footer {
+        padding: 60px 24px 32px;
+    }
+    
+    .footer-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+
+    .footer-bottom-left {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .footer-copyright {
+        font-size: 12px;
+    }
+
+    .footer-legal-links {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .modal-content,
+    .quiz-modal-content {
+        padding: 40px 24px;
+        margin: 20px;
+    }
+
+    .modal-title,
+    .quiz-title {
+        font-size: 28px;
+    }
+
+    .option-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chatbot-window {
+        width: calc(100vw - 48px);
+        bottom: 90px;
+        right: -100%;
+    }
+
+    .chatbot-window.active {
+        right: 24px;
+    }
+
+    .chatbot-container {
+        bottom: 20px;
+        right: 20px;
     }
 }
     </style>

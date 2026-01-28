@@ -11095,7 +11095,7 @@ function generateTimelineHTML(timeline) {
     } else {
         switch (timeline.paymentTerms) {
             case 'completion':
-                paymentTermsHtml = '50% Deposit + 50% on Completion';
+                paymentTermsHtml = '100% Due Upon Completion';
                 break;
             case 'net30':
                 paymentTermsHtml = 'Net 30 (Payment due 30 days after completion)';
@@ -11110,7 +11110,7 @@ function generateTimelineHTML(timeline) {
                 paymentTermsHtml = timeline.customPaymentDetails || 'Custom Payment Plan';
                 break;
             default:
-                paymentTermsHtml = '50% Deposit + 50% on Completion';
+                paymentTermsHtml = '100% Due Upon Completion';
         }
     }
     
@@ -11487,7 +11487,7 @@ function exportTimelineAsPDF() {
         } else {
             switch (timeline.paymentTerms) {
                 case 'completion':
-                    paymentTermsHtml = '50% Deposit + 50% on Completion';
+                    paymentTermsHtml = '100% Due Upon Completion';
                     break;
                 case 'net30':
                     paymentTermsHtml = '50% Deposit + 50% Net 30';
@@ -11502,7 +11502,7 @@ function exportTimelineAsPDF() {
                     paymentTermsHtml = timeline.customPaymentDetails || 'Custom Payment Plan';
                     break;
                 default:
-                    paymentTermsHtml = '50% Deposit + 50% on Completion';
+                    paymentTermsHtml = '100% Due Upon Completion';
             }
         }
         

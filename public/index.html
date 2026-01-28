@@ -723,6 +723,129 @@ nav {
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
 
+/* Stick figure container - RUNS IN THE NAV! */
+.stick-figure {
+    position: absolute;  /* ← Changed from 'fixed' */
+    bottom: 0;
+    left: -30px;
+    width: 20px;
+    height: 25px;
+    animation: runAcrossWithTrick 15s linear infinite;
+    z-index: 10;
+}
+
+/* Head */
+.stick-figure::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    background: #000;
+    border-radius: 50%;
+}
+
+/* Body */
+.stick-figure::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 8px;
+    background: #000;
+}
+
+/* Arms */
+.left-arm, .right-arm {
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform-origin: top center;
+    width: 1px;
+    height: 6px;
+    background: #000;
+}
+
+.left-arm { animation: leftArmRun 0.3s linear infinite; }
+.right-arm { animation: rightArmRun 0.3s linear infinite; }
+
+/* Legs */
+.left-leg, .right-leg {
+    position: absolute;
+    top: 13px;
+    left: 50%;
+    transform-origin: top center;
+    width: 1px;
+    height: 10px;
+    background: #000;
+}
+
+.left-leg { animation: leftLegRun 0.3s linear infinite; }
+.right-leg { animation: rightLegRun 0.3s linear infinite; }
+
+/* Running with BACKFLIP and CARTWHEEL tricks! */
+@keyframes runAcrossWithTrick {
+    0% { left: -30px; transform: scaleX(1) translateY(0) rotate(0deg); }
+    5% { transform: scaleX(1) translateY(-2px) rotate(0deg); }
+    10% { transform: scaleX(1) translateY(0) rotate(0deg); }
+    20% { transform: scaleX(1) translateY(0) rotate(0deg); }
+    25% { left: 50%; transform: scaleX(1) translateY(0) rotate(0deg); }
+    
+    /* BACKFLIP! */
+    26% { transform: scaleX(1) translateY(-15px) rotate(90deg); }
+    27% { transform: scaleX(1) translateY(-25px) rotate(180deg); }
+    28% { transform: scaleX(1) translateY(-30px) rotate(270deg); }
+    29% { transform: scaleX(1) translateY(-25px) rotate(360deg); }
+    30% { transform: scaleX(1) translateY(-15px) rotate(360deg); }
+    31% { transform: scaleX(1) translateY(0) rotate(360deg); }
+    
+    40% { transform: scaleX(1) translateY(0) rotate(360deg); }
+    50% { left: calc(100% + 30px); transform: scaleX(1) rotate(360deg); }
+    52% { transform: scaleX(-1) rotate(360deg); }
+    70% { transform: scaleX(-1) translateY(0) rotate(360deg); }
+    75% { left: 50%; transform: scaleX(-1) translateY(0) rotate(360deg); }
+    
+    /* CARTWHEEL! */
+    76% { transform: scaleX(-1) translateY(-10px) rotate(405deg); }
+    77% { transform: scaleX(-1) translateY(-20px) rotate(450deg); }
+    78% { transform: scaleX(-1) translateY(-25px) rotate(495deg); }
+    79% { transform: scaleX(-1) translateY(-20px) rotate(540deg); }
+    80% { transform: scaleX(-1) translateY(-10px) rotate(585deg); }
+    81% { transform: scaleX(-1) translateY(0) rotate(630deg); }
+    
+    100% { left: -30px; transform: scaleX(-1) rotate(630deg); }
+}
+
+/* Super fast arm swing */
+@keyframes leftArmRun {
+    0%, 100% { transform: translateX(-50%) rotate(-70deg); }
+    50% { transform: translateX(-50%) rotate(70deg); }
+}
+
+@keyframes rightArmRun {
+    0%, 100% { transform: translateX(-50%) rotate(70deg); }
+    50% { transform: translateX(-50%) rotate(-70deg); }
+}
+
+/* Super fast leg stride */
+@keyframes leftLegRun {
+    0%, 100% { transform: translateX(-50%) rotate(-55deg); }
+    25% { transform: translateX(-50%) rotate(0deg); }
+    50% { transform: translateX(-50%) rotate(55deg); }
+    75% { transform: translateX(-50%) rotate(0deg); }
+}
+
+@keyframes rightLegRun {
+    0%, 100% { transform: translateX(-50%) rotate(55deg); }
+    25% { transform: translateX(-50%) rotate(0deg); }
+    50% { transform: translateX(-50%) rotate(-55deg); }
+    75% { transform: translateX(-50%) rotate(0deg); }
+}
+
 .hero {
     position: relative;
     height: 90vh;
@@ -738,9 +861,27 @@ nav {
     min-height: 100%;
     width: auto;
     height: auto;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0.55);
     object-fit: cover;
+    object-position: center center;
     z-index: 0;
+}
+
+/* Remove video controls on all devices */
+.hero-video::-webkit-media-controls {
+    display: none !important;
+}
+
+.hero-video::-webkit-media-controls-enclosure {
+    display: none !important;
+}
+
+.hero-video::-webkit-media-controls-panel {
+    display: none !important;
+}
+
+.hero-video::-webkit-media-controls-play-button {
+    display: none !important;
 }
 
 .hero::before {
@@ -3281,8 +3422,13 @@ nav {
                     <span></span>
                 </button>
             </div>
-        </div>
-    </nav>
+            <div class="stick-figure">
+    <div class="left-arm"></div>
+    <div class="right-arm"></div>
+    <div class="left-leg"></div>
+    <div class="right-leg"></div>
+</div>
+</nav>
 
     <!-- Mobile Navigation -->
     <nav class="mobile-nav-overlay" id="mobileNav">
@@ -3300,9 +3446,8 @@ nav {
 
     <main id="main-content">
         <!-- Hero Section -->
-        <!-- Hero Section -->
 <section class="hero">
-    <video class="hero-video" autoplay muted loop playsinline poster="https://diamondbackcoding.com/Austin.mp4">
+<video class="hero-video" autoplay muted loop playsinline webkit-playsinline>
     <source src="Austin.mp4" type="video/mp4">
 </video>
     <div class="hero-text">

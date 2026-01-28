@@ -694,19 +694,25 @@
             color: #000;
         }
         
-        .logo-carousel {
-            background: var(--black);
-            padding: 24px 60px;
-            overflow: hidden;
-            position: relative;
-        }
-        
-        .logo-track {
-            display: flex;
-            gap: 80px;
-            align-items: center;
-            animation: scroll 30s linear infinite;
-        }
+.logo-carousel {
+    background: var(--black);
+    padding: 24px 60px;
+    overflow: hidden;
+    position: relative;
+}
+
+.logo-track {
+    display: flex;
+    gap: 80px;
+    align-items: center;
+    animation: scroll 40s linear infinite;
+    width: max-content;
+}
+
+@keyframes scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
         
         .logo-item {
             flex-shrink: 0;
@@ -791,18 +797,20 @@
             color: var(--grey-700);
         }
 
-        .brand-mockup {
-            position: relative;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-        }
+.brand-mockup {
+    position: relative;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 500px;
+}
 
-        .mockup-laptop {
-            position: relative;
-            width: 60%;
-            z-index: 2;
-        }
+.mockup-laptop {
+    position: relative;
+    width: 60%;
+    z-index: 2;
+    margin-top: 60px;
+}
 
         .mockup-laptop-frame {
             background: #1a1a1a;
@@ -830,13 +838,13 @@
             border-radius: 0 0 12px 12px;
         }
 
-        .mockup-mobile {
-            position: absolute;
-            left: 0;
-            bottom: -20px;
-            width: 180px;
-            z-index: 3;
-        }
+.mockup-mobile {
+    position: absolute;
+    left: 0;
+    bottom: 20px;
+    width: 180px;
+    z-index: 3;
+}
 
         .mockup-mobile-frame {
             background: #1a1a1a;
@@ -858,14 +866,14 @@
             object-fit: cover;
         }
 
-        .mockup-tablet {
-            position: absolute;
-            right: -60px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 280px;
-            z-index: 1;
-        }
+.mockup-tablet {
+    position: absolute;
+    right: -60px;
+    top: 60%;
+    transform: translateY(-50%);
+    width: 280px;
+    z-index: 1;
+}
 
         .mockup-tablet-frame {
             background: #1a1a1a;
@@ -1129,11 +1137,10 @@
             border: 0;
         }
 
-        /* FOOTER CTA SECTION */
 .footer-cta-section {
     padding: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 100%),
-                url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1920&q=80') center/cover;
+    background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.85) 100%),
+                url('https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=1920&q=80') center/cover;
     background-attachment: fixed;
     color: var(--white);
     position: relative;
@@ -1702,264 +1709,368 @@
             color: var(--grey-600);
         }
 
-        .chatbot-container {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 99999;
-        }
+.chatbot-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 99999;
+}
 
-        .chatbot-toggle {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            background: var(--black);
-            color: var(--white);
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
+.chatbot-toggle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--black);
+    color: var(--white);
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.3s ease;
+}
 
-        .chatbot-toggle svg {
-            width: 28px;
-            height: 28px;
-        }
+.chatbot-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 32px rgba(0,0,0,0.4);
+}
 
-        .chat-icon {
-            display: block;
-        }
+.chatbot-toggle svg {
+    width: 28px;
+    height: 28px;
+}
 
-        .close-icon {
-            display: none;
-        }
+.chat-icon {
+    display: block;
+}
 
-        .chatbot-toggle.active .chat-icon {
-            display: none;
-        }
+.close-icon {
+    display: none;
+}
 
-        .chatbot-toggle.active .close-icon {
-            display: block;
-        }
+.chatbot-toggle.active .chat-icon {
+    display: none;
+}
 
-        .chatbot-badge {
-            position: absolute;
-            top: -4px;
-            right: -4px;
-            background: #e74c3c;
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: 600;
-        }
+.chatbot-toggle.active .close-icon {
+    display: block;
+}
 
-        .chatbot-window {
-            display: none;
-            position: absolute;
-            bottom: 80px;
-            right: 0;
-            width: 400px;
-            max-height: 600px;
-            background: var(--white);
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-            flex-direction: column;
-        }
+.chatbot-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--gold);
+    color: var(--black);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    border: 2px solid var(--white);
+}
 
-        .chatbot-window.active {
-            display: flex;
-        }
+.chatbot-window {
+    display: none;
+    position: absolute;
+    bottom: 80px;
+    right: 0;
+    width: 400px;
+    max-height: 600px;
+    background: var(--white);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    flex-direction: column;
+    border: 1px solid var(--grey-300);
+}
 
-        .chatbot-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--grey-300);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+.chatbot-window.active {
+    display: flex;
+}
 
-        .chatbot-header-info {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
+.chatbot-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--grey-300);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--grey-50);
+}
 
-        .chatbot-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--grey-100);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
+.chatbot-header-info {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
 
-        .chatbot-title {
-            font-size: 15px;
-            font-weight: 600;
-        }
+.chatbot-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+}
 
-        .chatbot-status {
-            font-size: 12px;
-            color: var(--grey-600);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
+.chatbot-avatar svg {
+    width: 20px;
+    height: 20px;
+}
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #2ecc71;
-        }
+.chatbot-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--black);
+    margin-bottom: 2px;
+}
 
-        .chatbot-close {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 4px;
-            color: var(--grey-600);
-        }
+.chatbot-status {
+    font-size: 12px;
+    color: var(--grey-600);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
 
-        .chatbot-close svg {
-            width: 20px;
-            height: 20px;
-        }
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2ecc71;
+}
 
-        .chatbot-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            max-height: 400px;
-        }
+.chatbot-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: var(--grey-600);
+    transition: color 0.2s;
+}
 
-        .message {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
+.chatbot-close:hover {
+    color: var(--black);
+}
 
-        .message-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: var(--grey-100);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            flex-shrink: 0;
-        }
+.chatbot-close svg {
+    width: 20px;
+    height: 20px;
+}
 
-        .user-message .message-avatar {
-            background: var(--black);
-            color: var(--white);
-        }
+.chatbot-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    max-height: 400px;
+    background: var(--white);
+}
 
-        .message-content {
-            flex: 1;
-        }
+.message {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
 
-        .message-content p {
-            font-size: 14px;
-            line-height: 1.5;
-            margin-bottom: 4px;
-        }
+.message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--grey-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
 
-        .message-time {
-            font-size: 11px;
-            color: var(--grey-600);
-        }
+.message-avatar svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--grey-700);
+}
 
-        .chatbot-quick-actions {
-            padding: 16px 20px;
-            border-top: 1px solid var(--grey-300);
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
+.user-message .message-avatar {
+    background: var(--black);
+}
 
-        .quick-action-btn {
-            padding: 10px 12px;
-            border: 1px solid var(--grey-300);
-            background: var(--white);
-            cursor: pointer;
-            font-size: 12px;
-            text-align: center;
-        }
+.user-message .message-avatar svg {
+    stroke: var(--white);
+}
 
-        .chatbot-input-container {
-            padding: 16px 20px;
-            border-top: 1px solid var(--grey-300);
-            display: flex;
-            gap: 12px;
-        }
+.message-content {
+    flex: 1;
+}
 
-        .chatbot-input {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid var(--grey-300);
-            font-size: 14px;
-            font-family: 'Inter', sans-serif;
-        }
+.message-content p {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 4px;
+    color: var(--black);
+}
 
-        .chatbot-input:focus {
-            outline: none;
-            border-color: var(--black);
-        }
+.message-time {
+    font-size: 11px;
+    color: var(--grey-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 
-        .chatbot-send {
-            width: 44px;
-            height: 44px;
-            border: none;
-            background: var(--black);
-            color: var(--white);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+.chatbot-quick-actions {
+    padding: 16px 24px;
+    border-top: 1px solid var(--grey-300);
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    background: var(--grey-50);
+}
 
-        .chatbot-send svg {
-            width: 20px;
-            height: 20px;
-        }
+.quick-action-btn {
+    padding: 12px 16px;
+    border: 1px solid var(--grey-300);
+    background: var(--white);
+    cursor: pointer;
+    font-size: 12px;
+    text-align: left;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--black);
+}
+
+.quick-action-btn:hover {
+    border-color: var(--black);
+    background: var(--grey-50);
+}
+
+.quick-action-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--black);
+}
+
+.chatbot-input-container {
+    padding: 20px 24px;
+    border-top: 1px solid var(--grey-300);
+    display: flex;
+    gap: 12px;
+    background: var(--white);
+}
+
+.chatbot-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--grey-300);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    border-radius: 6px;
+    transition: border-color 0.2s;
+}
+
+.chatbot-input:focus {
+    outline: none;
+    border-color: var(--black);
+}
+
+.chatbot-send {
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: var(--black);
+    color: var(--white);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.chatbot-send:hover {
+    background: var(--grey-700);
+}
+
+.chatbot-send svg {
+    width: 20px;
+    height: 20px;
+}
         
         @media (max-width: 768px) {
-            nav {
-                padding: 16px 24px;
-            }
-            
-            .nav-links,
-            .contact-info .phone {
-                display: none;
-            }
-            
-            .mobile-menu-btn {
-                display: block;
-                background: none;
-                border: none;
-                cursor: pointer;
-                padding: 8px;
-            }
-            
-            .mobile-menu-btn span {
-                display: block;
-                width: 24px;
-                height: 2px;
-                background: var(--white);
-                margin: 5px 0;
-            }
+    nav {
+        padding: 16px 24px;
+    }
+    
+    .nav-links {
+        position: fixed;
+        top: 113px;
+        right: -100%;
+        width: 80%;
+        max-width: 300px;
+        height: calc(100vh - 113px);
+        background: var(--black);
+        display: flex !important;
+        flex-direction: column;
+        padding: 40px 24px;
+        gap: 24px;
+        transition: right 0.3s ease;
+        box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+        z-index: 999;
+    }
+    
+    .nav-links.active {
+        right: 0;
+    }
+    
+    .nav-links li {
+        width: 100%;
+    }
+    
+    .nav-links a {
+        display: block;
+        padding: 12px 0;
+        font-size: 16px;
+    }
+    
+    .contact-info .phone {
+        display: none;
+    }
+    
+    .mobile-menu-btn {
+        display: block;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        z-index: 1000;
+    }
+    
+    .mobile-menu-btn span {
+        display: block;
+        width: 24px;
+        height: 2px;
+        background: var(--white);
+        margin: 5px 0;
+        transition: all 0.3s ease;
+    }
+    
+    .mobile-menu-btn.active span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+    }
+    
+    .mobile-menu-btn.active span:nth-child(2) {
+        opacity: 0;
+    }
+    
+    .mobile-menu-btn.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -6px);
+    }
             
             .hero-content {
                 padding: 80px 24px;
@@ -2161,23 +2272,38 @@
         </div>
     </section>
 
-    <!-- Logo Carousel -->
-    <div class="logo-carousel">
-        <div class="logo-track">
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Shopify_logo_2018.svg" alt="Shopify"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Stripe_Logo%2C_revised_2016.svg" alt="Stripe"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/33/Twilio-logo-red.svg" alt="Twilio"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/MongoDB_Logo.svg" alt="MongoDB"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/29/Postgresql_elephant.svg" alt="PostgreSQL"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon"></div>
-            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Shopify_logo_2018.svg" alt="Shopify"></div>
-        </div>
+<!-- Logo Carousel -->
+<div class="logo-carousel">
+    <div class="logo-track">
+        <!-- First set -->
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue.js"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg" alt="Node.js"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Shopify_logo_2018.svg" alt="Shopify"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Stripe_Logo%2C_revised_2016.svg" alt="Stripe"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/33/Twilio-logo-red.svg" alt="Twilio"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/MongoDB_Logo.svg" alt="MongoDB"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/29/Postgresql_elephant.svg" alt="PostgreSQL"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/96/Sass_Logo_Color.svg" alt="Sass"></div>
+        
+        <!-- Duplicate set for seamless loop -->
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue.js"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg" alt="Node.js"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Shopify_logo_2018.svg" alt="Shopify"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Stripe_Logo%2C_revised_2016.svg" alt="Stripe"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/33/Twilio-logo-red.svg" alt="Twilio"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/MongoDB_Logo.svg" alt="MongoDB"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/29/Postgresql_elephant.svg" alt="PostgreSQL"></div>
+        <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/96/Sass_Logo_Color.svg" alt="Sass"></div>
     </div>
+</div>
 
     <!-- Build Your Brand Section -->
     <section class="brand-building-section">
@@ -2931,67 +3057,98 @@
         </div>
     </div>
 
-    <!-- Chatbot -->
-    <div class="chatbot-container">
-        <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
-            <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-            <span class="chatbot-badge" id="chatbotBadge">1</span>
-        </button>
+<!-- Chatbot -->
+<div class="chatbot-container">
+    <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
+        <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span class="chatbot-badge" id="chatbotBadge">1</span>
+    </button>
 
-        <div class="chatbot-window" id="chatbotWindow">
-            <div class="chatbot-header">
-                <div class="chatbot-header-info">
-                    <div class="chatbot-avatar">💬</div>
-                    <div>
-                        <div class="chatbot-title">Diamondback Coding</div>
-                        <div class="chatbot-status">
-                            <span class="status-dot"></span>
-                            Online
-                        </div>
-                    </div>
-                </div>
-                <button class="chatbot-close" onclick="toggleChatbot()">
+    <div class="chatbot-window" id="chatbotWindow">
+        <div class="chatbot-header">
+            <div class="chatbot-header-info">
+                <div class="chatbot-avatar">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
-                </button>
-            </div>
-
-            <div class="chatbot-messages" id="chatbotMessages">
-                <div class="message bot-message">
-                    <div class="message-avatar">🤖</div>
-                    <div class="message-content">
-                        <p>Hi! How can I help you today?</p>
-                        <div class="message-time">Just now</div>
+                </div>
+                <div>
+                    <div class="chatbot-title">Diamondback Coding</div>
+                    <div class="chatbot-status">
+                        <span class="status-dot"></span>
+                        Online
                     </div>
                 </div>
             </div>
+            <button class="chatbot-close" onclick="toggleChatbot()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
 
-            <div class="chatbot-quick-actions">
-                <button class="quick-action-btn" data-action="pricing">💰 Pricing</button>
-                <button class="quick-action-btn" data-action="timeline">⏱️ Timeline</button>
-                <button class="quick-action-btn" data-action="services">🛠️ Services</button>
-                <button class="quick-action-btn" data-action="contact">📞 Contact</button>
-            </div>
-
-            <div class="chatbot-input-container">
-                <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Type your question..." />
-                <button class="chatbot-send" id="chatbotSendBtn">
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="message bot-message">
+                <div class="message-avatar">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
-                </button>
+                </div>
+                <div class="message-content">
+                    <p>Hi! How can I help you today?</p>
+                    <div class="message-time">Just now</div>
+                </div>
             </div>
         </div>
+
+        <div class="chatbot-quick-actions">
+            <button class="quick-action-btn" data-action="pricing">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Pricing
+            </button>
+            <button class="quick-action-btn" data-action="timeline">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Timeline
+            </button>
+            <button class="quick-action-btn" data-action="services">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                </svg>
+                Services
+            </button>
+            <button class="quick-action-btn" data-action="contact">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                Contact
+            </button>
+        </div>
+
+        <div class="chatbot-input-container">
+            <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Type your question..." />
+            <button class="chatbot-send" id="chatbotSendBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
     </div>
+</div>
 
     <script>
         function switchBrandTab(index) {
@@ -3156,35 +3313,44 @@
             }
         }
 
-        function addUserMessage(text) {
-            const messagesContainer = document.getElementById('chatbotMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message user-message';
-            messageDiv.innerHTML = `
-                <div class="message-avatar">👤</div>
-                <div class="message-content">
-                    <p>${text}</p>
-                    <div class="message-time">Just now</div>
-                </div>
-            `;
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
+function addUserMessage(text) {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message user-message';
+    messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </div>
+        <div class="message-content">
+            <p>${text}</p>
+            <div class="message-time">Just now</div>
+        </div>
+    `;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
 
-        function addBotMessage(text) {
-            const messagesContainer = document.getElementById('chatbotMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message bot-message';
-            messageDiv.innerHTML = `
-                <div class="message-avatar">🤖</div>
-                <div class="message-content">
-                    <p>${text}</p>
-                    <div class="message-time">Just now</div>
-                </div>
-            `;
-            messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
+function addBotMessage(text) {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message bot-message';
+    messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </div>
+        <div class="message-content">
+            <p>${text}</p>
+            <div class="message-time">Just now</div>
+        </div>
+    `;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
 
         const quickResponses = {
             'pricing': "We offer:\n💰 Starter: $1,499\n💼 Professional: $2,999\n🏢 Enterprise: Custom\n\nWant details?",
@@ -3218,6 +3384,30 @@
                 document.getElementById('chatbotSendBtn').click();
             }
         });
+        // Mobile Menu Toggle
+const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+const navLinks = document.querySelector('.nav-links');
+
+mobileMenuBtn.addEventListener('click', function() {
+    navLinks.classList.toggle('active');
+    this.classList.toggle('active');
+});
+
+// Close mobile menu when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('nav')) {
+        navLinks.classList.remove('active');
+        mobileMenuBtn.classList.remove('active');
+    }
+});
+
+// Close mobile menu when clicking a link
+document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', function() {
+        navLinks.classList.remove('active');
+        mobileMenuBtn.classList.remove('active');
+    });
+});
     </script>
 </body>
 </html>

@@ -494,7 +494,7 @@
         }
         
         nav {
-            background: var(--black);
+            background: #1a1a1a; /* Change from var(--black) to match hero */
             padding: 20px 60px;
             display: flex;
             justify-content: space-between;
@@ -542,6 +542,27 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+
+        /* Add this new style */
+.nav-links a.has-dropdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nav-links a.has-dropdown::after {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid var(--white);
+    transition: transform 0.2s;
+}
+
+.nav-links a.has-dropdown:hover::after {
+    transform: translateY(2px);
+}
         
         .contact-info {
             display: flex;
@@ -579,25 +600,26 @@
             display: none;
         }
         
-        .hero {
-            position: relative;
-            min-height: 50vh;
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-            background: #000;
-            margin-top: 113px;
-        }
+.hero {
+    position: relative;
+    min-height: 50vh;
+    display: flex;
+    align-items: center;
+    overflow: visible;
+    background: #1a1a1a;
+    margin-top: 113px;
+    padding-bottom: 80px;
+}
 
-        .hero-background {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 55%;
-            height: 100%;
-            z-index: 1;
-            overflow: hidden;
-        }
+.hero-background {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 65%; /* Change from 55% to let image extend further left */
+    height: 100%;
+    z-index: 1;
+    overflow: hidden;
+}
 
         .hero-video {
             position: absolute;
@@ -609,16 +631,27 @@
             z-index: 0;
         }
 
-        .hero-background::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to right, #000 0%, rgba(0,0,0,0.5) 40%, transparent 80%);
-            z-index: 2;
-        }
+.hero-background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, 
+        #1a1a1a 0%, 
+        rgba(26, 26, 26, 0.98) 8%,
+        rgba(26, 26, 26, 0.92) 15%,
+        rgba(26, 26, 26, 0.82) 22%,
+        rgba(26, 26, 26, 0.68) 30%,
+        rgba(26, 26, 26, 0.5) 38%,
+        rgba(26, 26, 26, 0.32) 46%,
+        rgba(26, 26, 26, 0.18) 54%,
+        rgba(26, 26, 26, 0.08) 62%,
+        rgba(26, 26, 26, 0.02) 70%,
+        transparent 80%);
+    z-index: 2;
+}
 
         .hero-content {
             position: relative;
@@ -695,10 +728,12 @@
         }
         
 .logo-carousel {
-    background: var(--black);
+    background: transparent;
     padding: 24px 60px;
     overflow: hidden;
     position: relative;
+    margin-top: -80px;
+    z-index: 10;
 }
 
 .logo-track {
@@ -802,7 +837,9 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    min-height: 500px;
+    height: 350px; /* Change this value - try 300px, 400px, etc. */
+    border-radius: 16px;
+    overflow: hidden;
 }
 
 .mockup-laptop {
@@ -905,14 +942,20 @@
             margin-bottom: 64px;
         }
         
-        .section-subtitle {
-            font-size: 11px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            color: var(--grey-600);
-            margin-bottom: 16px;
-        }
+.section-subtitle {
+    font-size: 52px;
+    font-weight: 300; /* Lighter, more refined weight */
+    text-transform: none;
+    letter-spacing: -1px; /* Tighter, more elegant spacing */
+    color: #e8e8e8; /* Softer white */
+    margin-bottom: 60px;
+    font-family: 'Playfair Display', Georgia, serif; /* More elegant serif font */
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: #e8e8e8;
+    background-clip: unset;
+    line-height: 1.15;
+}
         
         .section-title {
             font-size: 40px;
@@ -1279,7 +1322,7 @@
         
         /* FULL FOOTER */
         footer {
-            background: #0a0a0a;
+            background: #000;
             color: var(--white);
             padding: 80px 60px 40px;
         }
@@ -2001,6 +2044,240 @@
     width: 20px;
     height: 20px;
 }
+
+.growth-features-section {
+    padding: 96px 60px;
+    background: #1a1a1a;
+    position: relative;
+    margin-top: 0;
+}
+
+.growth-features-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.growth-features-title {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 56px;
+    font-weight: 400;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 80px;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+}
+
+.growth-features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.growth-feature-card {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    aspect-ratio: 1;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.growth-features-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr; /* Adjust ratio - try 2fr 1fr for wider left */
+    grid-template-rows: 250px 250px 250px; /* Adjust heights - all smaller values */
+    gap: 20px; /* Adjust spacing between cards */
+}
+
+.growth-feature-card.large {
+    grid-row: 1 / 4; /* Spans 3 rows */
+}
+
+.growth-feature-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+
+.growth-feature-card.large {
+    grid-column: span 2;
+    grid-row: span 2;
+}
+
+.growth-feature-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.growth-feature-card:hover img {
+    transform: scale(1.05);
+}
+
+.growth-feature-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 40px;
+    background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, transparent 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    transition: padding 0.3s ease;
+}
+
+.growth-feature-card:hover .growth-feature-overlay {
+    padding: 48px;
+}
+
+.growth-feature-overlay h3 {
+    font-family: 'Inter', sans-serif;
+    font-size: 26px;
+    font-weight: 500;
+    color: white;
+    margin: 0;
+    letter-spacing: -0.5px;
+    line-height: 1.3;
+    max-width: 70%;
+}
+
+.growth-feature-card.large .growth-feature-overlay h3 {
+    font-size: 36px;
+    letter-spacing: -0.8px;
+}
+
+.fade-text {
+    background: linear-gradient(to right, 
+        #999999 0%, 
+        #888888 25%, 
+        #666666 50%, 
+        #444444 75%, 
+        #333333 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.feature-explore-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255,255,255,0.4);
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+}
+
+.feature-explore-btn:hover {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.6);
+    transform: rotate(90deg);
+}
+
+.new-badge {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    background: var(--gold);
+    color: #000;
+    padding: 8px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    border-radius: 6px;
+    z-index: 2;
+    box-shadow: 0 4px 12px rgba(244, 200, 126, 0.4);
+}
+
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+    .growth-features-section {
+        padding: 80px 40px;
+    }
+    
+    .growth-features-title {
+        font-size: 40px;
+        margin-bottom: 60px;
+    }
+    
+    .growth-features-grid {
+        gap: 20px;
+    }
+    
+    .growth-feature-overlay h3 {
+        font-size: 22px;
+    }
+    
+    .growth-feature-card.large .growth-feature-overlay h3 {
+        font-size: 28px;
+    }
+}
+
+@media (max-width: 768px) {
+    .growth-features-section {
+        padding: 60px 24px;
+    }
+    
+    .growth-features-title {
+        font-size: 32px;
+        margin-bottom: 40px;
+        letter-spacing: -0.8px;
+    }
+    
+    .growth-features-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .growth-feature-card.large {
+        grid-column: span 1;
+        grid-row: span 1;
+    }
+    
+    .growth-feature-overlay {
+        padding: 24px;
+    }
+    
+    .growth-feature-card:hover .growth-feature-overlay {
+        padding: 24px;
+    }
+    
+    .growth-feature-overlay h3 {
+        font-size: 20px;
+        max-width: 80%;
+    }
+    
+    .growth-feature-card.large .growth-feature-overlay h3 {
+        font-size: 24px;
+    }
+    
+    .feature-explore-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 24px;
+    }
+    
+    .new-badge {
+        top: 16px;
+        left: 16px;
+        padding: 6px 12px;
+        font-size: 10px;
+    }
+}
         
 @media (max-width: 768px) {
     .announcement-banner {
@@ -2020,7 +2297,7 @@ nav {
         width: 80%;
         max-width: 300px;
         height: calc(100vh - 89px);
-        background: var(--black);
+        background: #000000f4;
         display: flex !important;
         flex-direction: column;
         padding: 40px 24px;
@@ -2094,10 +2371,11 @@ nav {
         font-size: 11px;
     }
     
-.hero {
-    margin-top: 110px; /* Adjusted for smaller nav */
-    min-height: 50vh;
-}
+    .hero {
+        margin-top: 110px;
+        min-height: 50vh;
+        padding-bottom: 60px;
+    }
 
     .hero-background {
         width: 100%;
@@ -2119,6 +2397,11 @@ nav {
     .hero-cta {
         flex-direction: column;
         gap: 12px;
+    }
+
+    .logo-carousel {
+        margin-top: -60px;
+        padding: 20px 24px;
     }
     
     .btn-primary,
@@ -2404,120 +2687,176 @@ nav {
     </div>
 </div>
 
-    <!-- Build Your Brand Section -->
-    <section class="brand-building-section">
-        <div class="section-header">
-            <div class="section-subtitle">The Growth Platform</div>
-            <h2 class="section-title">Fuel Your Business Success</h2>
-        </div>
-
-        <div class="brand-tabs">
-            <button class="brand-tab active" onclick="switchBrandTab(0)">Build your brand</button>
-            <button class="brand-tab" onclick="switchBrandTab(1)">Scale your business</button>
-            <button class="brand-tab" onclick="switchBrandTab(2)">Amaze your clients</button>
-        </div>
-
-        <div class="brand-content-wrapper">
-            <div class="brand-content active" data-tab="0">
-                <div class="brand-text">
-                    <h3 class="brand-content-title">Build your brand</h3>
-                    <p class="brand-content-description">
-                        Establish a memorable brand that resonates with your ideal clients, showcases your unique value, and sets you apart from the competition.
-                    </p>
-                </div>
-                <div class="brand-mockup">
-                    <div class="mockup-laptop">
-                        <div class="mockup-laptop-frame">
-                            <div class="mockup-laptop-screen">
-                                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800" alt="Brand Website">
-                            </div>
-                        </div>
-                        <div class="mockup-laptop-base"></div>
-                    </div>
-                    <div class="mockup-mobile">
-                        <div class="mockup-mobile-frame">
-                            <div class="mockup-mobile-screen">
-                                <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400" alt="Mobile Brand">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mockup-tablet">
-                        <div class="mockup-tablet-frame">
-                            <div class="mockup-tablet-screen">
-                                <img src="https://images.unsplash.com/photo-1432821596592-e2c18b78144f?w=600" alt="Tablet View">
-                            </div>
-                        </div>
-                    </div>
+<!-- New Growth Features Section -->
+<section class="growth-features-section">
+    <div class="growth-features-container">
+        <h2 class="growth-features-title">The Journey to Legendary Begins Now</h2>
+        
+        <div class="growth-features-grid">
+            <div class="growth-feature-card large">
+                <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&q=80" alt="Luxury Real Estate Website">
+                <div class="growth-feature-overlay">
+                    <h3>Launch your dream website</h3>
+                    <button class="feature-explore-btn" onclick="openModal()">+</button>
                 </div>
             </div>
-
-            <div class="brand-content" data-tab="1">
-                <div class="brand-text">
-                    <h3 class="brand-content-title">Scale your business</h3>
-                    <p class="brand-content-description">
-                        Streamline operations with powerful CRM tools, automated workflows, and integrated systems.
-                    </p>
-                </div>
-                <div class="brand-mockup">
-                    <div class="mockup-laptop">
-                        <div class="mockup-laptop-frame">
-                            <div class="mockup-laptop-screen">
-                                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800" alt="Business Dashboard">
-                            </div>
-                        </div>
-                        <div class="mockup-laptop-base"></div>
-                    </div>
-                    <div class="mockup-mobile">
-                        <div class="mockup-mobile-frame">
-                            <div class="mockup-mobile-screen">
-                                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400" alt="Mobile Dashboard">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mockup-tablet">
-                        <div class="mockup-tablet-frame">
-                            <div class="mockup-tablet-screen">
-                                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600" alt="Tablet Dashboard">
-                            </div>
-                        </div>
-                    </div>
+            
+            <div class="growth-feature-card">
+                <div class="new-badge">NEW</div>
+                <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=600&q=80" alt="CRM Mobile App">
+                <div class="growth-feature-overlay">
+                    <h3>Presence® CRM</h3>
+                    <button class="feature-explore-btn" onclick="openModal()">+</button>
                 </div>
             </div>
-
-            <div class="brand-content" data-tab="2">
-                <div class="brand-text">
-                    <h3 class="brand-content-title">Amaze your clients</h3>
-                    <p class="brand-content-description">
-                        Deliver exceptional experiences with professional presentations and instant communication tools.
-                    </p>
+            
+            <div class="growth-feature-card">
+                <img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?w=600&q=80" alt="AI Lead Nurture">
+                <div class="growth-feature-overlay">
+                    <h3>Manage and nurture leads with AI</h3>
+                    <button class="feature-explore-btn" onclick="openModal()">+</button>
                 </div>
-                <div class="brand-mockup">
-                    <div class="mockup-laptop">
-                        <div class="mockup-laptop-frame">
-                            <div class="mockup-laptop-screen">
-                                <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800" alt="Client Portal">
-                            </div>
+            </div>
+            
+            <div class="growth-feature-card">
+                <img src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=600&q=80" alt="Branded App">
+                <div class="growth-feature-overlay">
+                    <h3>Offer your own branded app</h3>
+                    <button class="feature-explore-btn" onclick="openModal()">+</button>
+                </div>
+            </div>
+            
+            <div class="growth-feature-card">
+                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80" alt="Paid Ads">
+                <div class="growth-feature-overlay">
+                    <h3>Drive ROI with paid ads</h3>
+                    <button class="feature-explore-btn" onclick="openModal()">+</button>
+                </div>
+            </div>
+                        <div class="growth-feature-card">
+                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80" alt="Paid Ads">
+                <div class="growth-feature-overlay">
+                    <h3>Drive ROI with paid ads</h3>
+                    <button class="feature-explore-btn" onclick="openModal()">+</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Build Your Brand Section with Auto-Rotating Tabs -->
+<section class="brand-building-section">
+    <div class="section-header">
+        <h2 class="section-title" style="font-size: 56px; margin-bottom: 60px;">The growth platform to fuel your real estate success</h2>
+    </div>
+
+    <div class="brand-tabs">
+        <button class="brand-tab active" onclick="switchBrandTab(0)">Build your brand</button>
+        <button class="brand-tab" onclick="switchBrandTab(1)">Scale your business</button>
+        <button class="brand-tab" onclick="switchBrandTab(2)">Amaze your clients</button>
+    </div>
+
+    <div class="brand-content-wrapper">
+        <div class="brand-content active" data-tab="0">
+            <div class="brand-text">
+                <h3 class="brand-content-title">Build your brand</h3>
+                <p class="brand-content-description">
+                    Establish a memorable brand that resonates with your ideal clients, showcases your unique value, and sets you apart from the competition.
+                </p>
+            </div>
+            <div class="brand-mockup">
+                <div class="mockup-laptop">
+                    <div class="mockup-laptop-frame">
+                        <div class="mockup-laptop-screen">
+                            <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800" alt="Brand Website" class="rotating-image">
                         </div>
-                        <div class="mockup-laptop-base"></div>
                     </div>
-                    <div class="mockup-mobile">
-                        <div class="mockup-mobile-frame">
-                            <div class="mockup-mobile-screen">
-                                <img src="https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400" alt="Mobile Client">
-                            </div>
+                    <div class="mockup-laptop-base"></div>
+                </div>
+                <div class="mockup-mobile">
+                    <div class="mockup-mobile-frame">
+                        <div class="mockup-mobile-screen">
+                            <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400" alt="Mobile Brand" class="rotating-image">
                         </div>
                     </div>
-                    <div class="mockup-tablet">
-                        <div class="mockup-tablet-frame">
-                            <div class="mockup-tablet-screen">
-                                <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=600" alt="Tablet Client">
-                            </div>
+                </div>
+                <div class="mockup-tablet">
+                    <div class="mockup-tablet-frame">
+                        <div class="mockup-tablet-screen">
+                            <img src="https://images.unsplash.com/photo-1432821596592-e2c18b78144f?w=600" alt="Tablet View" class="rotating-image">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
+
+        <div class="brand-content" data-tab="1">
+            <div class="brand-text">
+                <h3 class="brand-content-title">Scale your business</h3>
+                <p class="brand-content-description">
+                    Streamline operations with powerful CRM tools, automated workflows, and integrated systems that grow with your business.
+                </p>
+            </div>
+            <div class="brand-mockup">
+                <div class="mockup-laptop">
+                    <div class="mockup-laptop-frame">
+                        <div class="mockup-laptop-screen">
+                            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800" alt="Business Dashboard" class="rotating-image">
+                        </div>
+                    </div>
+                    <div class="mockup-laptop-base"></div>
+                </div>
+                <div class="mockup-mobile">
+                    <div class="mockup-mobile-frame">
+                        <div class="mockup-mobile-screen">
+                            <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400" alt="Mobile Dashboard" class="rotating-image">
+                        </div>
+                    </div>
+                </div>
+                <div class="mockup-tablet">
+                    <div class="mockup-tablet-frame">
+                        <div class="mockup-tablet-screen">
+                            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600" alt="Tablet Dashboard" class="rotating-image">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="brand-content" data-tab="2">
+            <div class="brand-text">
+                <h3 class="brand-content-title">Amaze your clients</h3>
+                <p class="brand-content-description">
+                    Deliver exceptional experiences with professional presentations, instant communication tools, and seamless client portals.
+                </p>
+            </div>
+            <div class="brand-mockup">
+                <div class="mockup-laptop">
+                    <div class="mockup-laptop-frame">
+                        <div class="mockup-laptop-screen">
+                            <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800" alt="Client Portal" class="rotating-image">
+                        </div>
+                    </div>
+                    <div class="mockup-laptop-base"></div>
+                </div>
+                <div class="mockup-mobile">
+                    <div class="mockup-mobile-frame">
+                        <div class="mockup-mobile-screen">
+                            <img src="https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400" alt="Mobile Client" class="rotating-image">
+                        </div>
+                    </div>
+                </div>
+                <div class="mockup-tablet">
+                    <div class="mockup-tablet-frame">
+                        <div class="mockup-tablet-screen">
+                            <img src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=600" alt="Tablet Client" class="rotating-image">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
     <!-- Features Section -->
     <section class="features-section">
@@ -3571,6 +3910,54 @@ document.querySelectorAll('.nav-links a').forEach(link => {
         mobileMenuBtn.classList.remove('active');
     });
 });
+
+// Auto-rotate brand tabs every 5 seconds
+let currentBrandTab = 0;
+const totalBrandTabs = 3;
+
+function autoRotateBrandTabs() {
+    currentBrandTab = (currentBrandTab + 1) % totalBrandTabs;
+    switchBrandTab(currentBrandTab);
+}
+
+// Start auto-rotation
+let brandTabInterval = setInterval(autoRotateBrandTabs, 5000);
+
+// Pause auto-rotation when user manually clicks
+document.querySelectorAll('.brand-tab').forEach((tab, index) => {
+    tab.addEventListener('click', () => {
+        clearInterval(brandTabInterval);
+        currentBrandTab = index;
+        // Restart auto-rotation after 10 seconds of inactivity
+        setTimeout(() => {
+            brandTabInterval = setInterval(autoRotateBrandTabs, 5000);
+        }, 10000);
+    });
+});
+
+// Rotating images for mockups
+const mockupImages = [
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800',
+    'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800',
+    'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800'
+];
+
+let currentImageIndex = 0;
+
+function rotateImages() {
+    const laptopScreens = document.querySelectorAll('.mockup-laptop-screen');
+    currentImageIndex = (currentImageIndex + 1) % mockupImages.length;
+    
+    laptopScreens.forEach(screen => {
+        const img = screen.querySelector('img');
+        if (img) {
+            img.src = mockupImages[currentImageIndex];
+        }
+    });
+}
+
+// Rotate images every 4 seconds
+setInterval(rotateImages, 4000);
     </script>
 </body>
 </html>

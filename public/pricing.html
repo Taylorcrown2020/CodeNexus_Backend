@@ -330,13 +330,7 @@ body.crm-active .hero,
     display: none !important;
 }
 
-/* Hide main filter section when All tab is active */
-.service-content[data-service-content="all"].active ~ .filter-section:not(.crm-filters):not(.webdev-filters):not(.seo-filters) {
-    display: none !important;
-}
-
         /* Hide default hero when CRM tab is active */
-        .service-content[data-service-content="crm"].active ~ .hero,
         body.crm-active .hero {
             display: none;
         }
@@ -1284,6 +1278,9 @@ body.crm-active .hero,
         We just launched our Diamondback® CRM 
         <a href="services.html">Read more about what we're doing</a>
     </div>
+
+<!-- Default "All" content wrapper -->
+<div class="service-content active" data-service-content="all">
     
     <!-- Navigation -->
     <nav>
@@ -1316,47 +1313,48 @@ body.crm-active .hero,
         </div>
     </nav>
 
-            <!-- CRM TAB CONTENT - MATCHING REFERENCE IMAGES -->
-    <div class="service-content" data-service-content="crm">
-        
-        <!-- 1. Light Hero with Phone (Image 1 Style) -->
-        <section class="lp-hero-split">
-            <div class="lp-hero-container">
-                <div class="lp-hero-text">
-                    <div class="lp-badge">Diamondback Coding®</div>
-                    <h1 class="lp-hero-title">Transparent Pricing for Texas Businesses</h1>
-                    <p class="lp-hero-description">
-                        No hidden fees. No surprises. Choose your service and see exactly what you'll pay.
-                    </p>
-                    <button class="lp-cta-btn">GET STARTED</button>
-                </div>
-                <div class="lp-hero-visual">
-                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop&q=80" alt="CRM Dashboard Interface" class="lp-hero-image">
-                </div>
-            </div>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">Transparent Pricing for Texas Businesses</h1>
+            <p class="hero-subtitle">
+                No hidden fees. No surprises. Choose your service and see exactly what you'll pay.
+            </p>
         </div>
     </section>
 
-        <!-- Logo Carousel -->
-        <div class="logo-carousel">
-            <div class="logo-track">
-                <!-- First set -->
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue.js"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg" alt="Node.js"></div>
-                
-                <!-- Duplicate set for seamless loop -->
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue.js"></div>
-                <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg" alt="Node.js"></div>
-            </div>
+    <!-- Logo Carousel -->
+    <div class="logo-carousel">
+        <div class="logo-track">
+            <!-- First set -->
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue.js"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg" alt="Node.js"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Shopify_logo_2018.svg" alt="Shopify"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Stripe_Logo%2C_revised_2016.svg" alt="Stripe"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/33/Twilio-logo-red.svg" alt="Twilio"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/MongoDB_Logo.svg" alt="MongoDB"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/29/Postgresql_elephant.svg" alt="PostgreSQL"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/96/Sass_Logo_Color.svg" alt="Sass"></div>
+            
+            <!-- Duplicate set for seamless loop -->
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue.js"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg" alt="Node.js"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Shopify_logo_2018.svg" alt="Shopify"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Stripe_Logo%2C_revised_2016.svg" alt="Stripe"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/33/Twilio-logo-red.svg" alt="Twilio"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/93/MongoDB_Logo.svg" alt="MongoDB"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/2/29/Postgresql_elephant.svg" alt="PostgreSQL"></div>
+            <div class="logo-item"><img src="https://upload.wikimedia.org/wikipedia/commons/9/96/Sass_Logo_Color.svg" alt="Sass"></div>
         </div>
+    </div>
 
     <!-- Filter Tabs -->
     <section class="filter-section">
@@ -1368,9 +1366,6 @@ body.crm-active .hero,
             <button class="filter-tab" data-service="marketing">Digital Marketing</button>
         </div>
     </section>
-
-<!-- ALL SERVICES -->
-<div class="service-content active" data-service-content="all">
     
     <!-- Service Showcases -->
     <section class="luxury-showcases-section">
@@ -1378,25 +1373,25 @@ body.crm-active .hero,
         <!-- Website Development Showcase -->
         <div class="luxury-showcase">
             <div class="luxury-showcase-content">
-                <div class="luxury-showcase-label">K</div>
-                <h2 class="luxury-showcase-title">Website Development</h2>
+                <div class="luxury-showcase-label">WEB DEVELOPMENT</div>
+                <h2 class="luxury-showcase-title">Custom Websites That Convert</h2>
                 <p class="luxury-showcase-description">
-                    .
+                    Professional, mobile-responsive websites built with the latest technologies. From simple landing pages to complex e-commerce platforms, we deliver beautiful, high-performing sites that drive results for Texas businesses.
                 </p>
                 <button class="luxury-showcase-btn" onclick="switchToTab('development')">VIEW MORE</button>
             </div>
             <div class="luxury-showcase-image">
-                <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&h=800&fit=crop&q=80" alt="Luxury Website Design">
+                <img src="https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=1200&h=800&fit=crop&q=80" alt="Modern Website Development">
             </div>
         </div>
 
         <!-- SEO Services Showcase -->
         <div class="luxury-showcase reverse">
             <div class="luxury-showcase-content">
-                <div class="luxury-showcase-label">H</div>
-                <h2 class="luxury-showcase-title">Search Engine Optimization</h2>
+                <div class="luxury-showcase-label">SEO SERVICES</div>
+                <h2 class="luxury-showcase-title">Dominate Local Search Results</h2>
                 <p class="luxury-showcase-description">
-                    .
+                    Rank higher on Google and get found by customers actively searching for your services. Our proven SEO strategies help Hill Country businesses increase organic traffic by an average of 287% within six months.
                 </p>
                 <button class="luxury-showcase-btn" onclick="switchToTab('seo')">VIEW MORE</button>
             </div>
@@ -1408,30 +1403,30 @@ body.crm-active .hero,
         <!-- CRM Solutions Showcase -->
         <div class="luxury-showcase">
             <div class="luxury-showcase-content">
-                <div class="luxury-showcase-label">C</div>
-                <h2 class="luxury-showcase-title">CRM Solutions</h2>
+                <div class="luxury-showcase-label">CRM SOLUTIONS</div>
+                <h2 class="luxury-showcase-title">Never Lose Another Lead</h2>
                 <p class="luxury-showcase-description">
-                    .
+                    Streamline your sales process with powerful CRM tools designed for Texas businesses. Automate follow-ups, track customer interactions, and close more deals with our intuitive customer relationship management platform.
                 </p>
                 <button class="luxury-showcase-btn" onclick="switchToTab('crm')">VIEW MORE</button>
             </div>
             <div class="luxury-showcase-image">
-                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&h=800&fit=crop&q=80" alt="CRM Dashboard">
+                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&h=800&fit=crop&q=80" alt="CRM Dashboard Interface">
             </div>
         </div>
 
         <!-- Digital Marketing Showcase -->
         <div class="luxury-showcase reverse">
             <div class="luxury-showcase-content">
-                <div class="luxury-showcase-label">M</div>
-                <h2 class="luxury-showcase-title">Digital Marketing</h2>
+                <div class="luxury-showcase-label">DIGITAL MARKETING</div>
+                <h2 class="luxury-showcase-title">Reach More Customers Online</h2>
                 <p class="luxury-showcase-description">
-                    H
+                    Target your ideal customers with data-driven digital marketing campaigns. From social media advertising to Google Ads, we help you maximize ROI and grow your business with strategic online marketing.
                 </p>
                 <button class="luxury-showcase-btn" onclick="switchToTab('marketing')">VIEW MORE</button>
             </div>
             <div class="luxury-showcase-image">
-                <img src="https://images.unsplash.com/photo-1432888622747-4eb9a8f2c293?w=1200&h=800&fit=crop&q=80" alt="Digital Marketing Campaign">
+                <img src="https://images.unsplash.com/photo-1533750516457-a7f992034fec?w=1200&h=800&fit=crop&q=80" alt="Digital Marketing Campaign">
             </div>
         </div>
 
@@ -1928,8 +1923,38 @@ body.crm-active .hero,
 
 </div>
 
-    <!-- CRM TAB CONTENT - MATCHING REFERENCE IMAGES -->
     <div class="service-content" data-service-content="crm">
+        
+        <!-- Navigation -->
+        <nav>
+            <div class="nav-container">
+                <a href="index.html" class="nav-logo">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="white" stroke-width="1.5"/>
+                        <path d="M12 12L3 7.5" stroke="white" stroke-width="1.5"/>
+                        <path d="M12 12V21" stroke="white" stroke-width="1.5"/>
+                        <path d="M12 12L21 7.5" stroke="white" stroke-width="1.5"/>
+                    </svg>
+                    DIAMONDBACK CODING
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">HOME</a></li>
+                    <li><a href="pricing.html">PRICING</a></li>
+                    <li><a href="portfolio.html">PORTFOLIO</a></li>
+                    <li><a href="services.html">SERVICES</a></li>
+                </ul>
+                <div class="contact-info">
+                    <a href="tel:+19402178680" class="phone">940-217-8680</a>
+                    <a href="client_portal.html" class="login-link">LOG IN</a>
+                    <button class="nav-cta-btn">GET STARTED</button>
+                    <button class="mobile-menu-btn">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </div>
+            </div>
+        </nav>
         
         <!-- 1. Light Hero with Phone (Image 1 Style) -->
         <section class="lp-hero-split">
@@ -2563,7 +2588,38 @@ body.crm-active .hero,
     </div>
 
     <!-- WEB DEVELOPMENT TAB CONTENT -->
-<div class="service-content" data-service-content="development">
+    <div class="service-content" data-service-content="development">
+        
+        <!-- Navigation -->
+        <nav>
+            <div class="nav-container">
+                <a href="index.html" class="nav-logo">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="white" stroke-width="1.5"/>
+                        <path d="M12 12L3 7.5" stroke="white" stroke-width="1.5"/>
+                        <path d="M12 12V21" stroke="white" stroke-width="1.5"/>
+                        <path d="M12 12L21 7.5" stroke="white" stroke-width="1.5"/>
+                    </svg>
+                    DIAMONDBACK CODING
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">HOME</a></li>
+                    <li><a href="pricing.html">PRICING</a></li>
+                    <li><a href="portfolio.html">PORTFOLIO</a></li>
+                    <li><a href="services.html">SERVICES</a></li>
+                </ul>
+                <div class="contact-info">
+                    <a href="tel:+19402178680" class="phone">940-217-8680</a>
+                    <a href="client_portal.html" class="login-link">LOG IN</a>
+                    <button class="nav-cta-btn">GET STARTED</button>
+                    <button class="mobile-menu-btn">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </div>
+            </div>
+        </nav>
     
     <!-- Web Dev Hero -->
     <section class="webdev-hero-split">
@@ -2961,7 +3017,7 @@ body.crm-active .hero,
 .webdev-hero-split {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     padding: 50px 60px 40px;
-    margin-top: 0;  /* FIXED - no extra spacing */
+    margin-top: 113px;
 }
 
 .webdev-hero-container {
@@ -3374,6 +3430,36 @@ body.crm-active .hero,
 
 <!-- SEO TAB CONTENT -->
 <div class="service-content" data-service-content="seo">
+
+        <nav>
+            <div class="nav-container">
+                <a href="index.html" class="nav-logo">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="white" stroke-width="1.5"/>
+                        <path d="M12 12L3 7.5" stroke="white" stroke-width="1.5"/>
+                        <path d="M12 12V21" stroke="white" stroke-width="1.5"/>
+                        <path d="M12 12L21 7.5" stroke="white" stroke-width="1.5"/>
+                    </svg>
+                    DIAMONDBACK CODING
+                </a>
+                <ul class="nav-links">
+                    <li><a href="index.html">HOME</a></li>
+                    <li><a href="pricing.html">PRICING</a></li>
+                    <li><a href="portfolio.html">PORTFOLIO</a></li>
+                    <li><a href="services.html">SERVICES</a></li>
+                </ul>
+                <div class="contact-info">
+                    <a href="tel:+19402178680" class="phone">940-217-8680</a>
+                    <a href="client_portal.html" class="login-link">LOG IN</a>
+                    <button class="nav-cta-btn">GET STARTED</button>
+                    <button class="mobile-menu-btn">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </div>
+            </div>
+        </nav>
     
     <!-- SEO Hero -->
     <section class="seo-hero-split">

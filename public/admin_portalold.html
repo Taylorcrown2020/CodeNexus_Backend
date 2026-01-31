@@ -4149,13 +4149,10 @@ async function loadTickets() {
 
 // Example: Send individual email (adapt to your existing single send logic)
 async function sendIndividualEmail(leadId) {
-    // Find the lead from state so we can get name + email for the modal
-    const lead = state.leads.find(l => l.id === parseInt(leadId)) || state.leads.find(l => l.id === leadId);
-    if (!lead) {
-        showToast('Lead not found', 'error');
-        return;
-    }
-    showEmailModal(lead.id, lead.name, lead.email);
+    // Prompt for subject/message, then send via /api/follow-ups/send/:id
+    // After success, call loadCategorizedFollowUps() to refresh
+    showToast('Email sent! Refreshing...', 'success');
+    await loadCategorizedFollowUps();
 }
 
 async function renderSection(section) {
@@ -5962,8 +5959,7 @@ window.doSendEmail = async function(leadId, leadEmail) {
                 to: leadEmail,
                 subject: subject,
                 body: body,
-                leadId: leadId,
-                isFollowUp: state.currentSection === 'followups'
+                leadId: leadId
             })
         });
         
@@ -14834,7 +14830,7 @@ async function sendBulkEmailByCategory(category, subject, message) {
                 'Authorization': `Bearer ${authToken}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ category, subject, message, isFollowUp: true })
+            body: JSON.stringify({ category, subject, message })
         });
         
         const data = await response.json();
@@ -14949,8 +14945,7 @@ async function sendBulkEmail(category, count) {
             body: JSON.stringify({
                 category: category,
                 subject: subject,
-                body: body,
-                isFollowUp: true
+                body: body
             })
         });
         
@@ -14998,7 +14993,73 @@ async function handleCategoryEmailSend(event, category) {
     await sendBulkEmailByCategory(category, subject, message);
 }
 
+async function sendFollowUpEmail(leadId, leadName, leadEmail) {
+    const subject = prompt(`Enter email subject for ${leadName}:`, `Following up - ${leadName}`);
+    if (!subject) return;
+    
+    const message = prompt(`Enter your message to ${leadName}:`, `Hi ${leadName},\n\nI wanted to follow up on your inquiry...\n\nBest regards,\nDiamondback Coding`);
+    if (!message) return;
+    
+    try {
+        showNotification('Sending email...', 'info');
+        
+        const response = await fetch(`/api/follow-ups/${leadId}/send-email`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+            },
+            body: JSON.stringify({ subject, message })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(`Email sent to ${leadName}`, 'success');
+            loadFollowUps(); // Refresh the list
+        } else {
+            showNotification('Failed to send email: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Send email error:', error);
+        showNotification('Failed to send email', 'error');
+    }
+}
 
+async function sendBulkFollowUp(category) {
+    const subject = prompt('Enter email subject for all leads in this category:', 'Quick follow-up');
+    if (!subject) return;
+    
+    const message = prompt('Enter your message (use {name} for personalization):', 'Hi {name},\n\nJust checking in...\n\nBest regards,\nDiamondback Coding');
+    if (!message) return;
+    
+    if (!confirm(`Send email to ALL leads in this category?`)) return;
+    
+    try {
+        showNotification('Sending bulk emails...', 'info');
+        
+        const response = await fetch('/api/follow-ups/send-by-category', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+            },
+            body: JSON.stringify({ category, subject, message })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(`✅ Sent ${data.successCount} emails, ${data.failCount} failed`, 'success');
+            loadFollowUps();
+        } else {
+            showNotification('Bulk send failed: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Bulk send error:', error);
+        showNotification('Failed to send bulk emails', 'error');
+    }
+}
 
 async function markAsContacted(leadId) {
     try {

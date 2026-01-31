@@ -26,7 +26,7 @@
     <meta property="og:site_name" content="Diamondback Coding">
     <meta property="og:title" content="Web Development Portfolio | Diamondback Coding Texas">
     <meta property="og:description" content="Professional web development portfolio showcasing custom websites, CRM solutions, and digital services in Rockwall, Texas. Serving Dallas-Fort Worth metroplex.">
-    <meta property="og:image" content="https://diamondbackcoding.com/Greentechcubelogodesign.png">
+    <meta property="og:image" content="https://diamondbackcoding.com/logo-512x512.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:locale" content="en_US">
@@ -87,7 +87,7 @@
       "priceRange": "$$",
       "openingHours": "Mo-Fr 08:00-17:00",
       "image": "https://diamondbackcoding.com/Greentechcubelogodesign.png",
-      "logo": "https://diamondbackcoding.com/Greentechcubelogodesign.png",
+      "logo": "https://diamondbackcoding.com/logo-512x512.png",
       "sameAs": [
         "https://www.facebook.com/diamondbackcoding",
         "https://twitter.com/diamondbackcoding",
@@ -221,18 +221,12 @@
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
     
     <!-- Favicon - ALL SIZES -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/Greentechcubelogodesign.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/Greentechcubelogodesign.png">
-    <link rel="shortcut icon" href="/Greentechcubelogodesign.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/Greentechcubelogodesign.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="/Greentechcubelogodesign.png">
-    <link rel="apple-touch-icon" sizes="144x144" href="/Greentechcubelogodesign.png">
-    <link rel="apple-touch-icon" sizes="120x120" href="/Greentechcubelogodesign.png">
-    <link rel="apple-touch-icon" sizes="114x114" href="/Greentechcubelogodesign.png">
-    <link rel="apple-touch-icon" sizes="76x76" href="/Greentechcubelogodesign.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="/Greentechcubelogodesign.png">
-    <link rel="apple-touch-icon" sizes="60x60" href="/Greentechcubelogodesign.png">
-    <link rel="apple-touch-icon" sizes="57x57" href="/Greentechcubelogodesign.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
     
     <!-- Sitemap & Robots -->
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
@@ -285,15 +279,14 @@
             line-height: 1.6;
         }
         
-        /* Announcement Banner */
-        .announcement-banner {
+.announcement-banner {
             background: linear-gradient(115deg, transparent 0%, transparent 42%, rgba(60,60,70,0.25) 45%, rgba(40,40,50,0.35) 48%, rgba(60,60,70,0.25) 51%, transparent 54%, transparent 100%),
                 linear-gradient(-65deg, transparent 0%, transparent 58%, rgba(80,80,90,0.2) 62%, rgba(50,50,60,0.3) 65%, rgba(80,80,90,0.2) 68%, transparent 72%, transparent 100%),
                 #f5f5f8;
             color: #1a1a1a;
-            padding: 12px 20px;
+            padding: 10px 20px;
             text-align: center;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             position: fixed;
             top: 0;
@@ -301,6 +294,7 @@
             z-index: 1001;
             box-shadow: 0 2px 12px rgba(0,0,0,0.12);
             border-bottom: 1px solid rgba(0,0,0,0.1);
+            white-space: nowrap;
         }
 
         .announcement-banner a {
@@ -1013,153 +1007,357 @@
             list-style: none;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            nav {
-                padding: 16px 24px;
-            }
+@media (max-width: 768px) {
+    nav {
+        padding: 12px 20px;  /* CHANGE from 16px 24px */
+    }
             
-            .nav-links,
-            .contact-info .phone,
-            .login-link {
-                display: none;
-            }
-            
+.nav-links {
+    position: fixed;
+    top: 89px;
+    right: -100%;
+    width: 80%;
+    max-width: 300px;
+    height: calc(100vh - 89px);
+    background: #000000f4;
+    display: flex !important;
+    flex-direction: column;
+    padding: 40px 24px;
+    gap: 24px;
+    transition: right 0.3s ease;
+    box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+    z-index: 999;
+}
+
+.nav-links.active {
+    right: 0;
+}
+
+.nav-links li {
+    width: 100%;
+}
+
+.nav-links a {
+    display: block;
+    padding: 12px 0;
+    font-size: 16px;
+}
+
+/* Mobile Dropdown */
+.dropdown-menu {
+    position: static;
+    transform: none;
+    background: rgba(255,255,255,0.05);
+    margin-top: 8px;
+    border-radius: 8px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.has-dropdown:hover .dropdown-menu,
+.has-dropdown.active .dropdown-menu {
+    max-height: 500px;
+}
+
+.dropdown-menu a {
+    padding: 10px 16px;
+    font-size: 14px;
+}
+
+.contact-info .phone,
+.contact-info .login-link {
+    display: none;
+}
+
+.nav-cta-btn {
+    padding: 10px 20px;
+    font-size: 11px;
+}
+
             .mobile-menu-btn {
                 display: block;
+                z-index: 1001;
+                position: relative;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 8px;
             }
 
-            .hero {
+            .mobile-menu-btn span {
+                display: block;
+                width: 24px;
+                height: 2px;
+                background: var(--white);
+                margin: 5px 0;
+                transition: all 0.3s ease;
+            }
+
+            .mobile-menu-btn.active span:nth-child(1) {
+                transform: translateY(7px) rotate(45deg);
+            }
+            .mobile-menu-btn.active span:nth-child(2) {
+                opacity: 0;
+            }
+            .mobile-menu-btn.active span:nth-child(3) {
+                transform: translateY(-7px) rotate(-45deg);
+            }
+
+            .dropdown-menu {
+                position: static;
+                transform: none;
+                background: rgba(255,255,255,0.06);
+                margin-top: 4px;
+                border-radius: 8px;
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+                opacity: 1;
+                visibility: visible;
+                box-shadow: none;
+                padding: 0;
+            }
+
+            .has-dropdown.active .dropdown-menu {
+                max-height: 300px;
+            }
+
+            .dropdown-menu a {
+                padding: 10px 20px;
+                font-size: 16px;
+                color: rgba(255,255,255,0.7);
+                text-transform: none;
+            }
+
+            .dropdown-menu a:hover {
+                padding-left: 24px;
+            }
+
+            .dropdown-divider {
+                margin: 6px 12px;
+            }
+
+            .mobile-nav-cta {
+                display: block;
+                margin-top: 40px;
+                background: var(--gold);
+                color: #000;
+                padding: 16px 32px;
+                font-size: 13px;
+                font-weight: 600;
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                width: 100%;
+                text-align: center;
+            }
+
+            /* --- HERO --- */
+.hero {
                 grid-template-columns: 1fr;
-                padding: 60px 24px 0;
-                min-height: auto;
+                padding: 48px 24px 40px;
+                background: #f0efe8;
+                color: #0a0a0a;
+                gap: 0;
+            }
+
+            .hero-visual {
+                display: none;
             }
 
             .hero-content {
                 padding-right: 0;
                 max-width: 100%;
+                order: 1;
+            }
+
+            .hero-label {
+                background: #1a1a1a;
+                color: #fff;
+                display: inline-block;
+                padding: 8px 14px;
+                font-size: 11px;
+                border-radius: 4px;
+                margin-bottom: 24px;
             }
 
             .hero-title {
-                font-size: 42px;
+                font-size: 38px;
+                color: #0a0a0a;
+                margin-bottom: 20px;
+                letter-spacing: -1px;
             }
 
             .hero-subtitle {
                 font-size: 16px;
+                color: #666;
+                margin-bottom: 32px;
+                line-height: 1.6;
+            }
+
+            .hero-cta {
+                display: block;
+                width: 100%;
+                text-align: center;
+                padding: 18px 24px;
+                font-size: 13px;
             }
 
             .hero-reviews {
-                flex-wrap: wrap;
+                display: none;
             }
 
-            .hero-seen-in {
-                margin-top: 60px;
-            }
-
-            .seen-logos {
-                gap: 40px;
-            }
-
-            .hero-visual {
-                order: -1;
-            }
-
-            .mockup-container {
-                margin-bottom: 40px;
-                height: 350px;
-            }
-
-            .mockup-mobile {
-                width: 30%;
-                bottom: -10px;
-                left: -20px;
-            }
-
+            /* --- TECH LOGOS STRIP --- */
             .tech-overlay {
                 position: static;
-                padding: 24px 0;
-                margin-top: 40px;
+                padding: 28px 0;
+                margin-top: 0;
+                background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
             }
 
             .tech-track {
-                gap: 60px;
+                gap: 48px;
                 padding: 0 24px;
             }
 
             .tech-logo {
-                height: 28px;
+                height: 22px;
             }
 
+            /* --- PORTFOLIO CASE STUDIES --- */
             .portfolio-section {
-                padding: 60px 24px;
+                padding: 60px 20px;
             }
 
             .case-study {
                 grid-template-columns: 1fr;
-                gap: 40px;
-                padding: 40px 32px;
-                margin-bottom: 60px;
+                gap: 0;
+                padding: 32px 24px 40px;
+                margin-bottom: 40px;
+                border-radius: 12px;
             }
 
             .case-study:nth-child(even) {
                 direction: ltr;
             }
 
+            .case-study-visual {
+                height: 260px;
+                border-radius: 10px;
+                margin-bottom: 28px;
+                order: -1;
+            }
+
             .case-study-text {
                 padding-right: 0;
+                order: 1;
             }
 
             .case-study:nth-child(even) .case-study-text {
                 padding-left: 0;
             }
 
-            .case-study-title {
-                font-size: 32px;
+            .case-study-category {
+                font-size: 11px;
+                margin-bottom: 12px;
             }
 
-            .case-study-visual {
-                height: 400px;
+            .case-study-title {
+                font-size: 28px;
+                margin-bottom: 16px;
+            }
+
+            .case-study-description {
+                font-size: 15px;
+                margin-bottom: 24px;
+                line-height: 1.6;
+            }
+
+            .case-study-features {
+                margin-bottom: 28px;
+            }
+
+            .case-study-features li {
+                font-size: 14px;
+                padding: 10px 0;
+            }
+
+            .case-study-btn {
+                display: block;
+                width: 100%;
+                text-align: center;
+                padding: 16px 24px;
+            }
+
+            /* --- FOOTER CTA --- */
+            .footer-cta-section {
+                background-attachment: scroll;
             }
 
             .footer-cta-hero {
                 flex-direction: column;
-                padding: 60px 24px;
-                margin: 40px 24px;
+                padding: 48px 24px;
+                margin: 32px 20px;
                 text-align: center;
+                gap: 28px;
             }
 
             .footer-cta-text h2 {
-                font-size: 32px;
+                font-size: 30px;
             }
 
+            .footer-cta-btn-primary {
+                display: block;
+                width: 100%;
+                text-align: center;
+            }
+
+            /* --- FOOTER --- */
             footer {
-                padding: 60px 24px 32px;
+                padding: 52px 24px 32px;
             }
 
             .footer-container {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 40px;
+                gap: 36px;
             }
 
-            .dropdown-menu {
-                position: static;
-                transform: none;
-                background: rgba(255,255,255,0.05);
-                margin-top: 8px;
-                border-radius: 8px;
-                max-height: 0;
-                overflow: hidden;
-                transition: max-height 0.3s ease;
+            .footer-column h4 {
+                font-size: 12px;
+                margin-bottom: 18px;
             }
 
-            .has-dropdown:hover .dropdown-menu,
-            .has-dropdown.active .dropdown-menu {
-                max-height: 300px;
-            }
-
-            .dropdown-menu a {
-                padding: 10px 16px;
+            .footer-links a {
                 font-size: 14px;
+            }
+
+            /* --- MODAL --- */
+            .modal-content {
+                width: 95% !important;
+                max-height: 95vh !important;
+            }
+
+            .modal-header {
+                padding: 32px 24px !important;
+            }
+
+            .modal-header h2 {
+                font-size: 26px !important;
+            }
+
+            .modal-content > div:last-child {
+                padding: 28px 24px !important;
+            }
+
+            .modal-content .modal-header + div {
+                padding: 28px 24px !important;
+            }
+
+            #contactForm .grid-row {
+                grid-template-columns: 1fr !important;
             }
         }
     </style>
@@ -1186,24 +1384,24 @@
         <ul class="nav-links">
             <li><a href="index.html">HOME</a></li>
             <li><a href="portfolio.html" aria-current="page">PROJECTS</a></li>
-            <li class="has-dropdown">
-                <a href="pricing.html">
-                    SERVICES
-                    <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><a href="pricing.html">Website Design & Development</a></li>
-                    <li><a href="pricing.html">CRM Solutions</a></li>
-                    <li><a href="pricing.html">SEO & Digital Marketing</a></li>
-                    <li><a href="pricing.html">E-Commerce Development</a></li>
-                    <li><a href="pricing.html">Custom Web Applications</a></li>
-                    <li class="dropdown-divider"></li>
-                    <li><a href="pricing.html">View Pricing</a></li>
-                </ul>
-            </li>
-            <li class="has-dropdown">
+<li class="has-dropdown">
+    <a href="services.html">
+        SERVICES
+        <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </a>
+    <ul class="dropdown-menu">
+        <li><a href="pricing.html#development">Website Design & Development</a></li>
+        <li><a href="pricing.html#crm">CRM Solutions</a></li>
+        <li><a href="pricing.html#seo">SEO & Digital Marketing</a></li>
+        <li><a href="pricing.html#development">E-Commerce Development</a></li>
+        <li><a href="pricing.html#development">Custom Web Applications</a></li>
+        <li class="dropdown-divider"></li>
+        <li><a href="pricing.html">View Pricing</a></li>
+    </ul>
+</li>
+<li class="has-dropdown">
                 <a href="#company">
                     COMPANY
                     <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1218,7 +1416,7 @@
                     <li><a href="careers.html">Careers</a></li>
                 </ul>
             </li>
-        </ul>
+</ul>
         <div class="contact-info">
             <a href="tel:+19402178680" class="phone" itemprop="telephone">940-217-8680</a>
             <a href="client_portal.html" class="login-link">LOG IN</a>
@@ -1583,26 +1781,62 @@
     const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
     const navLinks = document.querySelector('.nav-links');
 
-    if (mobileMenuBtn) {
-        mobileMenuBtn.addEventListener('click', function() {
+if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
             navLinks.classList.toggle('active');
             this.classList.toggle('active');
         });
     }
 
-    // Close mobile menu when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('nav')) {
+document.querySelectorAll('.has-dropdown > a').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+        if (window.innerWidth <= 768) {
+            e.preventDefault();
+            var parent = this.closest('.has-dropdown');
+            document.querySelectorAll('.has-dropdown').forEach(function(item) {
+                if (item !== parent) item.classList.remove('active');
+            });
+            parent.classList.toggle('active');
+        }
+    });
+});
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('nav')) {
+        if (navLinks) navLinks.classList.remove('active');
+        if (mobileMenuBtn) mobileMenuBtn.classList.remove('active');
+        document.querySelectorAll('.has-dropdown').forEach(function(item) {
+            item.classList.remove('active');
+        });
+    }
+});
+
+document.querySelectorAll('.nav-links a').forEach(function(link) {
+    link.addEventListener('click', function() {
+        if (this.closest('.dropdown-menu')) {
             if (navLinks) navLinks.classList.remove('active');
             if (mobileMenuBtn) mobileMenuBtn.classList.remove('active');
         }
     });
+});
 
-    // Close mobile menu when clicking a link
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        link.addEventListener('click', function() {
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('nav')) {
             if (navLinks) navLinks.classList.remove('active');
             if (mobileMenuBtn) mobileMenuBtn.classList.remove('active');
+            document.querySelectorAll('.has-dropdown').forEach(function(item) {
+                item.classList.remove('active');
+            });
+        }
+    });
+
+    document.querySelectorAll('.nav-links a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (this.closest('.dropdown-menu')) {
+                if (navLinks) navLinks.classList.remove('active');
+                if (mobileMenuBtn) mobileMenuBtn.classList.remove('active');
+            }
         });
     });
 </script>

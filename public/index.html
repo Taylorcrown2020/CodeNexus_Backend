@@ -2297,6 +2297,7 @@
             color: var(--grey-600);
         }
 
+/* CHATBOT CSS - Add to your <style> section */
 .chatbot-container {
     position: fixed;
     bottom: 24px;
@@ -3330,7 +3331,9 @@ nav {
     .option-grid {
         grid-template-columns: 1fr;
     }
-
+    }
+/* Mobile Responsive */
+@media (max-width: 768px) {
     .chatbot-window {
         width: calc(100vw - 48px);
         bottom: 90px;
@@ -4256,6 +4259,7 @@ nav {
     </div>
 
 <!-- Chatbot -->
+<!-- CHATBOT HTML - Add before closing </body> tag -->
 <div class="chatbot-container">
     <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
         <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -4539,18 +4543,20 @@ async function handleSubmit(event) {
             document.getElementById('planDescription').textContent = planDescription;
         }
 
-        function toggleChatbot() {
-            const toggle = document.getElementById('chatbotToggle');
-            const windowEl = document.getElementById('chatbotWindow');
-            const badge = document.getElementById('chatbotBadge');
-            
-            toggle.classList.toggle('active');
-            windowEl.classList.toggle('active');
-            
-            if (toggle.classList.contains('active') && badge) {
-                badge.style.display = 'none';
-            }
-        }
+/* CHATBOT JAVASCRIPT - Add to your <script> section */
+
+function toggleChatbot() {
+    const toggle = document.getElementById('chatbotToggle');
+    const windowEl = document.getElementById('chatbotWindow');
+    const badge = document.getElementById('chatbotBadge');
+    
+    toggle.classList.toggle('active');
+    windowEl.classList.toggle('active');
+    
+    if (toggle.classList.contains('active') && badge) {
+        badge.style.display = 'none';
+    }
+}
 
 function addUserMessage(text) {
     const messagesContainer = document.getElementById('chatbotMessages');
@@ -4591,38 +4597,38 @@ function addBotMessage(text) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-        const quickResponses = {
-            'pricing': "We offer:\n💰 Starter: $1,499\n💼 Professional: $2,999\n🏢 Enterprise: Custom\n\nWant details?",
-            'timeline': "Most projects:\n📅 Starter: 2-3 weeks\n📅 Professional: 3-4 weeks\n📅 Enterprise: Custom",
-            'services': "We provide:\n🌐 Web Development\n🛒 E-commerce\n💼 CRM Solutions\n🔍 SEO Services",
-            'contact': "📞 (940) 217-8680\n📧 contact@diamondbackcoding.com\n⏰ Mon-Fri 8AM-5PM CST"
-        };
+const quickResponses = {
+    'pricing': "We offer three packages:\nStarter Package\nProfessional Package\nEnterprise Package\n\nWould you like to schedule a consultation?",
+    'timeline': "Most projects:\nStarter: 2-3 weeks\nProfessional: 3-4 weeks\nEnterprise: Custom timeline\n\nReady to get started?",
+    'services': "We provide:\nWeb Development\nE-commerce Solutions\nCRM Solutions\nSEO Services\nDigital Marketing\n\nWhat interests you?",
+    'contact': "Phone: (940) 217-8680\nEmail: contact@diamondbackcoding.com\nHours: Mon-Fri 8AM-5PM CST\n\nHow can we help you today?"
+};
 
-        document.querySelectorAll('.quick-action-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const action = this.getAttribute('data-action');
-                addUserMessage(this.textContent);
-                setTimeout(() => addBotMessage(quickResponses[action]), 500);
-            });
-        });
+document.querySelectorAll('.quick-action-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const action = this.getAttribute('data-action');
+        addUserMessage(this.textContent.trim());
+        setTimeout(() => addBotMessage(quickResponses[action]), 500);
+    });
+});
 
-        document.getElementById('chatbotSendBtn').addEventListener('click', function() {
-            const input = document.getElementById('chatbotInput');
-            const message = input.value.trim();
-            if (message) {
-                addUserMessage(message);
-                input.value = '';
-                setTimeout(() => {
-                    addBotMessage("Thanks! Call us at (940) 217-8680 for immediate assistance.");
-                }, 1000);
-            }
-        });
+document.getElementById('chatbotSendBtn').addEventListener('click', function() {
+    const input = document.getElementById('chatbotInput');
+    const message = input.value.trim();
+    if (message) {
+        addUserMessage(message);
+        input.value = '';
+        setTimeout(() => {
+            addBotMessage("Thanks! Call us at (940) 217-8680 for immediate assistance.");
+        }, 1000);
+    }
+});
 
-        document.getElementById('chatbotInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.getElementById('chatbotSendBtn').click();
-            }
-        });
+document.getElementById('chatbotInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('chatbotSendBtn').click();
+    }
+});
         // Mobile Menu Toggle
 const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
 const navLinks = document.querySelector('.nav-links');

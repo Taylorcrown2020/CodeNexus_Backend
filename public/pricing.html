@@ -5090,12 +5090,12 @@ BUDGET & CONTACT:
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    const quickResponses = {
-        'pricing': "We offer:\n💰 Starter: $1,499\n💼 Professional: $2,999\n🏢 Enterprise: Custom\n\nWant details?",
-        'timeline': "Most projects:\n📅 Starter: 2-3 weeks\n📅 Professional: 3-4 weeks\n📅 Enterprise: Custom",
-        'services': "We provide:\n🌐 Web Development\n🛒 E-commerce\n💼 CRM Solutions\n🔍 SEO Services",
-        'contact': "📞 (940) 217-8680\n📧 contact@diamondbackcoding.com\n⏰ Mon-Fri 8AM-5PM CST"
-    };
+const quickResponses = {
+    'pricing': "We offer three packages:\nStarter Package\nProfessional Package\nEnterprise Package\n\nWould you like to schedule a consultation?",
+    'timeline': "Most projects:\nStarter: 2-3 weeks\nProfessional: 3-4 weeks\nEnterprise: Custom timeline\n\nReady to get started?",
+    'services': "We provide:\nWeb Development\nE-commerce Solutions\nCRM Solutions\nSEO Services\nDigital Marketing\n\nWhat interests you?",
+    'contact': "Phone: (940) 217-8680\nEmail: contact@diamondbackcoding.com\nHours: Mon-Fri 8AM-5PM CST\n\nHow can we help you today?"
+};
 
     document.querySelectorAll('.quick-action-btn').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -5167,5 +5167,327 @@ document.addEventListener('DOMContentLoaded', function() {
 function handleSubmit(e) { e.preventDefault(); alert('Thank you!'); closeModal(); }
 
 </script>
+<!-- CHATBOT -->
+<div class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>
+    <span class="chatbot-badge" id="chatbotBadge">1</span>
+</div>
+
+<div class="chatbot-window" id="chatbotWindow">
+    <div class="chatbot-header">
+        <div class="chatbot-header-content">
+            <h3>Chat with us</h3>
+            <p>We're here to help!</p>
+        </div>
+        <button class="chatbot-close" onclick="toggleChatbot()">×</button>
+    </div>
+    
+    <div class="chatbot-messages" id="chatbotMessages">
+        <div class="message bot-message">
+            <div class="message-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+            <div class="message-content">
+                <p>Hi! How can we help you today?</p>
+                <div class="message-time">Just now</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="chatbot-quick-actions">
+        <button class="quick-action-btn" data-action="pricing">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            Pricing
+        </button>
+        <button class="quick-action-btn" data-action="timeline">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            Timeline
+        </button>
+        <button class="quick-action-btn" data-action="services">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+            Services
+        </button>
+        <button class="quick-action-btn" data-action="contact">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            Contact
+        </button>
+    </div>
+    
+    <div class="chatbot-input-container">
+        <input type="text" id="chatbotInput" placeholder="Type your message..." />
+        <button class="chatbot-send-btn" id="chatbotSendBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+        </button>
+    </div>
+</div>
+<style>
+    /* CHATBOT STYLES */
+.chatbot-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 60px;
+    height: 60px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    transition: all 0.3s ease;
+}
+
+.chatbot-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.chatbot-toggle svg {
+    stroke: var(--black);
+}
+
+.chatbot-toggle.active {
+    background: var(--black);
+}
+
+.chatbot-toggle.active svg {
+    stroke: var(--white);
+}
+
+.chatbot-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #e74c3c;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.chatbot-window {
+    position: fixed;
+    bottom: 100px;
+    right: 24px;
+    width: 380px;
+    height: 600px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    display: none;
+    flex-direction: column;
+    z-index: 9998;
+    overflow: hidden;
+}
+
+.chatbot-window.active {
+    display: flex;
+}
+
+.chatbot-header {
+    background: var(--black);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chatbot-header-content h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.chatbot-header-content p {
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+.chatbot-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chatbot-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: var(--grey-50);
+}
+
+.message {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.message-avatar {
+    width: 36px;
+    height: 36px;
+    background: var(--grey-300);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.message-avatar svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--grey-700);
+}
+
+.bot-message .message-avatar {
+    background: var(--gold);
+}
+
+.bot-message .message-avatar svg {
+    stroke: var(--black);
+}
+
+.message-content {
+    flex: 1;
+}
+
+.message-content p {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+
+.user-message .message-content p {
+    background: var(--black);
+    color: white;
+}
+
+.message-time {
+    font-size: 11px;
+    color: var(--grey-600);
+    padding: 0 4px;
+}
+
+.chatbot-quick-actions {
+    padding: 16px 20px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--grey-300);
+}
+
+.quick-action-btn {
+    background: var(--grey-200);
+    border: none;
+    padding: 10px 16px;
+    font-size: 13px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.quick-action-btn svg {
+    stroke: var(--grey-700);
+    flex-shrink: 0;
+}
+
+.quick-action-btn:hover {
+    background: var(--gold);
+}
+
+.quick-action-btn:hover svg {
+    stroke: var(--black);
+}
+
+.chatbot-input-container {
+    padding: 16px 20px;
+    border-top: 1px solid var(--grey-300);
+    display: flex;
+    gap: 8px;
+}
+
+#chatbotInput {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid var(--grey-300);
+    border-radius: 24px;
+    font-size: 14px;
+    outline: none;
+}
+
+#chatbotInput:focus {
+    border-color: var(--gold);
+}
+
+.chatbot-send-btn {
+    width: 44px;
+    height: 44px;
+    background: var(--gold);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.chatbot-send-btn:hover {
+    background: #e6b86b;
+    transform: scale(1.1);
+}
+
+.chatbot-send-btn svg {
+    stroke: var(--black);
+}
+
+@media (max-width: 768px) {
+    .chatbot-window {
+        width: calc(100% - 32px);
+        height: calc(100% - 140px);
+        right: 16px;
+        bottom: 90px;
+    }
+}
+</style>
 </body>
 </html>

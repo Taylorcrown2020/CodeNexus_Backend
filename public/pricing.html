@@ -4514,15 +4514,119 @@ body.crm-active .hero,
     </div>
 </div>
 
+<script>
+        // Modal Functions
+    function openModal() {
+        document.getElementById('contactModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
 
-    <script>
-        // Filter tabs functionality
-        const filterTabs = document.querySelectorAll('.filter-tab');
-        const serviceContents = document.querySelectorAll('.service-content');
-        const heroSection = document.querySelector('.hero');
-        const mainFilterSection = document.querySelector('.filter-section:not(.crm-filters):not(.webdev-filters):not(.seo-filters):not(.marketing-filters)');
+    function closeModal() {
+        document.getElementById('contactModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
 
-    // Filter tabs functionality
+    // Close modal when clicking outside
+    document.getElementById('contactModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('contactModal').style.display === 'flex') {
+            closeModal();
+        }
+    });
+
+    // Form submission
+    function handleSubmit(event) {
+        event.preventDefault();
+        alert('✅ Thank you! We\'ve received your project request and will get back to you within 24 hours.');
+        closeModal();
+        document.getElementById('contactForm').reset();
+    }
+// ==========================================
+// MODAL FUNCTIONS (MUST BE GLOBAL)
+// ==========================================
+function openModal() { 
+    document.getElementById('contactModal').style.display = 'flex'; 
+}
+
+function closeModal() { 
+    document.getElementById('contactModal').style.display = 'none'; 
+}
+
+function handleSubmit(e) { 
+    e.preventDefault(); 
+    alert('Thank you!'); 
+    closeModal(); 
+}
+
+// ==========================================
+// CHATBOT (MUST BE GLOBAL)
+// ==========================================
+const quickResponses = {
+    'pricing': "We offer three packages:\n• Starter Package\n• Professional Package\n• Enterprise Package\n\nWould you like to schedule a consultation?",
+    'timeline': "Most projects:\n• Starter: 2-3 weeks\n• Professional: 3-4 weeks\n• Enterprise: Custom timeline\n\nReady to get started?",
+    'services': "We provide:\n• Web Development\n• E-commerce Solutions\n• CRM Solutions\n• SEO Services\n• Digital Marketing\n\nWhat interests you?",
+    'contact': "📞 Phone: (940) 217-8680\n📧 Email: contact@diamondbackcoding.com\n🕐 Hours: Mon-Fri 8AM-5PM CST\n\nHow can we help you today?"
+};
+
+function toggleChatbot() {
+    const toggle = document.getElementById('chatbotToggle');
+    const windowEl = document.getElementById('chatbotWindow');
+    const badge = document.getElementById('chatbotBadge');
+    
+    toggle.classList.toggle('active');
+    windowEl.classList.toggle('active');
+    
+    if (toggle.classList.contains('active') && badge) {
+        badge.style.display = 'none';
+    }
+}
+
+function addUserMessage(text) {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message user-message';
+    messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </div>
+        <div class="message-content">
+            <p>${text}</p>
+            <div class="message-time">Just now</div>
+        </div>
+    `;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function addBotMessage(text) {
+    const messagesContainer = document.getElementById('chatbotMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message bot-message';
+    messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </div>
+        <div class="message-content">
+            <p style="white-space: pre-line;">${text}</p>
+            <div class="message-time">Just now</div>
+        </div>
+    `;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// ==========================================
+// TAB SWITCHING (MUST BE GLOBAL)
+// ==========================================
 function switchToTab(service) {
     // Update all filter tabs (both in main and service-specific sections)
     document.querySelectorAll('.filter-tab').forEach(tab => {
@@ -4552,90 +4656,60 @@ function switchToTab(service) {
         if (mainFilterSection) mainFilterSection.style.display = 'none';
         // Scroll to top when switching to dedicated landing pages
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        // For other tabs, scroll to the filter section with offset for fixed nav
-const filterSection = document.querySelector('.filter-section');
-if (filterSection) {
-    const offsetTop = filterSection.offsetTop - 120; // 120px offset for fixed nav + banner
-    window.scrollTo({ top: offsetTop, behavior: 'smooth' });
-}
     } else {
         document.body.classList.remove('crm-active');
         if (heroSection) heroSection.style.display = 'flex';
         if (mainFilterSection) mainFilterSection.style.display = 'block';
         // Scroll to filters for other tabs
-        window.scrollTo({ top: 400, behavior: 'smooth' });
-        // For other tabs, scroll to the filter section with offset for fixed nav
-const filterSection = document.querySelector('.filter-section');
-if (filterSection) {
-    const offsetTop = filterSection.offsetTop - 120; // 120px offset for fixed nav + banner
-    window.scrollTo({ top: offsetTop, behavior: 'smooth' });
-}
+        const filterSection = document.querySelector('.filter-section');
+        if (filterSection) {
+            const offsetTop = filterSection.offsetTop - 120;
+            window.scrollTo({ top: offsetTop, behavior: 'smooth' });
+        }
     }
 }
 
-// Add click event listeners to all filter tabs
+// FAQ Toggle
+function toggleFaq(element) {
+    element.classList.toggle('active');
+}
+
+// ==========================================
+// INITIALIZE EVERYTHING ON DOM LOAD (ONLY ONE!)
+// ==========================================
 document.addEventListener('DOMContentLoaded', function() {
     // Set default active tab to Web Development on page load
     switchToTab('development');
     
+    // Modal click outside to close
+    const modal = document.getElementById('contactModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) { 
+            if (e.target === modal) closeModal(); 
+        });
+    }
+
+    // Filter tab clicks
     document.querySelectorAll('.filter-tab').forEach(tab => {
         tab.addEventListener('click', function() {
             const service = this.getAttribute('data-service');
             switchToTab(service);
         });
     });
-});
 
-    // FAQ Toggle
-    function toggleFaq(element) {
-        element.classList.toggle('active');
-    }
-    </script>
-
-    <script>
-        // Chatbot functionality
-        function toggleChatbot() {
-            const toggle = document.getElementById('chatbotToggle');
-            const windowEl = document.getElementById('chatbotWindow');
-            const badge = document.getElementById('chatbotBadge');
-            
-            toggle.classList.toggle('active');
-            windowEl.classList.toggle('active');
-            
-            if (toggle.classList.contains('active') && badge) {
-                badge.style.display = 'none';
-            }
-        }
-
-        // Quick actions
-        document.querySelectorAll('.quick-action-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const action = this.getAttribute('data-action');
-                alert(`Quick action: ${action}`);
-            });
-        });
-    </script>
-
-    <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Get ALL mobile menu buttons and nav links
+    // Mobile menu functionality
     const mobileMenuBtns = document.querySelectorAll('.mobile-menu-btn');
     const navLinksAll = document.querySelectorAll('.nav-links');
 
-    // Add click handler to each mobile menu button
-    mobileMenuBtns.forEach(function(btn, index) {
+    mobileMenuBtns.forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log('Mobile menu clicked!'); // Debug line
-            
-            // Toggle all nav-links (since you have multiple navs)
             navLinksAll.forEach(function(nav) {
                 nav.classList.toggle('active');
             });
             
-            // Toggle all buttons
             mobileMenuBtns.forEach(function(menuBtn) {
                 menuBtn.classList.toggle('active');
             });
@@ -4688,423 +4762,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-});
 
-    // ==========================================
-    // MODAL FUNCTIONS
-    // ==========================================
-    function openModal() {
-        document.getElementById('contactModal').classList.add('active');
-    }
-
-    function closeModal() {
-        document.getElementById('contactModal').classList.remove('active');
-    }
-
-    // Close modal when clicking outside
-    document.getElementById('contactModal').addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
-
-    // ==========================================
-    // FORM SUBMISSION
-    // ==========================================
-    async function handleSubmit(event) {
-        event.preventDefault();
-        
-        const submitBtn = event.target.querySelector('.form-submit');
-        const originalBtnText = submitBtn.textContent;
-        
-        const fullName = document.getElementById('fullName').value.trim();
-        const nameParts = fullName.split(' ');
-        
-        const formData = {
-            firstName: nameParts[0] || 'Unknown',
-            lastName: nameParts.slice(1).join(' ') || '',
-            email: document.getElementById('email').value.trim(),
-            phone: document.getElementById('phone').value.trim(),
-            service: document.getElementById('service').value,
-            budget: document.getElementById('budget').value,
-            details: document.getElementById('details').value.trim()
-        };
-        
-        submitBtn.disabled = true;
-        submitBtn.textContent = '⏳ Sending...';
-        
-        try {
-            const response = await fetch(`${window.location.origin}/api/leads`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(formData)
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                alert('✅ Thank you! We\'ve received your project request and will get back to you within 24 hours.');
-                closeModal();
-                document.getElementById('contactForm').reset();
-            } else {
-                alert('❌ Error: ' + (data.message || 'Something went wrong. Please try again.'));
-            }
-        } catch (error) {
-            console.error('Form submission error:', error);
-            alert('❌ Network error. Please check your connection and try again.');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalBtnText;
-        }
-    }
-
-    // ==========================================
-    // FAQ TOGGLE
-    // ==========================================
-    function toggleFaq(element) {
-        element.classList.toggle('active');
-    }
-
-    // ==========================================
-    // QUIZ MODAL
-    // ==========================================
-    let quizData = {
-        business_type: '',
-        primary_goal: '',
-        ecommerce: '',
-        name: '',
-        email: '',
-        phone: '',
-        budget: ''
-    };
-
-    let currentStep = 1;
-    const totalSteps = 5;
-
-    function openQuizModal() {
-        document.getElementById('quizModal').classList.add('active');
-        resetQuiz();
-    }
-
-    function closeQuizModal() {
-        document.getElementById('quizModal').classList.remove('active');
-    }
-
-    function resetQuiz() {
-        currentStep = 1;
-        quizData = {
-            business_type: '',
-            primary_goal: '',
-            ecommerce: '',
-            name: '',
-            email: '',
-            phone: '',
-            budget: ''
-        };
-        
-        document.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
-        document.querySelectorAll('.quiz-step').forEach((step, index) => {
-            step.classList.remove('active');
-            if (index === 0) step.classList.add('active');
-        });
-        
-        updateProgress();
-        updateNavigationButtons();
-    }
-
-    function selectOption(element, key, value) {
-        quizData[key] = value;
-        
-        const siblings = element.parentElement.querySelectorAll('.quiz-option');
-        siblings.forEach(opt => opt.classList.remove('selected'));
-        element.classList.add('selected');
-        
-        setTimeout(() => {
-            nextStep();
-        }, 300);
-    }
-
-    function validateAndNext() {
-        const name = document.getElementById('quizName').value.trim();
-        const email = document.getElementById('quizEmail').value.trim();
-        const phone = document.getElementById('quizPhone').value.trim();
-        
-        if (!name || !email || !phone) {
-            alert('⚠️ Please fill out all required fields.');
-            return;
-        }
-        
-        if (!email.includes('@')) {
-            alert('⚠️ Please enter a valid email address.');
-            return;
-        }
-        
-        const nameParts = name.split(' ');
-        quizData.name = name;
-        quizData.firstName = nameParts[0] || '';
-        quizData.lastName = nameParts.slice(1).join(' ') || '';
-        quizData.email = email;
-        quizData.phone = phone;
-        
-        nextStep();
-    }
-
-    function nextStep() {
-        if (currentStep < totalSteps) {
-            currentStep++;
-            updateStep();
-        } else {
-            calculateResults();
-        }
-    }
-
-    function previousStep() {
-        if (currentStep > 1) {
-            currentStep--;
-            updateStep();
-        }
-    }
-
-    function skipStep() {
-        nextStep();
-    }
-
-    function updateStep() {
-        document.querySelectorAll('.quiz-step').forEach((step, index) => {
-            step.classList.remove('active');
-            if (index + 1 === currentStep) {
-                step.classList.add('active');
-            }
-        });
-        
-        updateProgress();
-        updateNavigationButtons();
-    }
-
-    function updateProgress() {
-        const progress = (currentStep / totalSteps) * 100;
-        document.getElementById('progressBar').style.width = progress + '%';
-        document.getElementById('currentStep').textContent = currentStep;
-        document.getElementById('totalSteps').textContent = totalSteps;
-    }
-
-    function updateNavigationButtons() {
-        const backBtn = document.getElementById('backBtn');
-        const skipBtn = document.getElementById('skipBtn');
-        const navContainer = document.getElementById('quizNav');
-        
-        if (currentStep === 1) {
-            backBtn.style.display = 'none';
-        } else {
-            backBtn.style.display = 'block';
-        }
-        
-        if (currentStep === 4) {
-            skipBtn.style.display = 'none';
-        } else if (currentStep < 4 || currentStep === 5) {
-            skipBtn.style.display = 'block';
-        } else {
-            skipBtn.style.display = 'none';
-        }
-        
-        if (currentStep === 6) {
-            navContainer.style.display = 'none';
-        } else {
-            navContainer.style.display = 'flex';
-        }
-    }
-
-    async function calculateResults() {
-        let recommendedPlan = 'Starter';
-        let planPrice = '$1499';
-        let planReason = '';
-        let score = 0;
-        
-        if (quizData.business_type === 'enterprise' || quizData.business_type === 'growing_company') score += 2;
-        if (quizData.business_type === 'small_business') score += 1;
-        
-        if (quizData.primary_goal === 'custom_app') score += 3;
-        if (quizData.primary_goal === 'sell_online') score += 2;
-        if (quizData.primary_goal === 'generate_leads') score += 1;
-        
-        if (quizData.ecommerce === 'advanced') score += 3;
-        if (quizData.ecommerce === 'full') score += 2;
-        if (quizData.ecommerce === 'basic') score += 1;
-        
-        if (quizData.budget === 'Custom') score += 3;
-        if (quizData.budget === '$2999.99') score += 2;
-        if (quizData.budget === '$1499.99') score += 1;
-        
-        if (score >= 8) {
-            recommendedPlan = 'Enterprise';
-            planPrice = 'Custom Pricing';
-            planReason = 'Based on your needs for advanced features and scalability, our Enterprise package offers the flexibility and power you need.';
-        } else if (score >= 5) {
-            recommendedPlan = 'Professional';
-            planPrice = '$2999';
-            planReason = 'Your requirements indicate a need for advanced features and enhanced functionality. The Professional package gives you robust capabilities and tools to scale.';
-        } else {
-            recommendedPlan = 'Starter';
-            planPrice = '$1499';
-            planReason = 'Perfect for getting your business online with a solid foundation! The Starter package includes all essential features and room to grow.';
-        }
-        
-        document.querySelector('.plan-name').textContent = recommendedPlan + ' Package';
-        document.querySelector('.plan-price').textContent = planPrice;
-        document.querySelector('.plan-reason').textContent = planReason;
-        
-        let detailsHTML = '<strong>Based on your answers:</strong><br><br>';
-        detailsHTML += `✓ Business Type: ${formatValue(quizData.business_type)}<br>`;
-        detailsHTML += `✓ Primary Goal: ${formatValue(quizData.primary_goal)}<br>`;
-        detailsHTML += `✓ E-commerce: ${formatValue(quizData.ecommerce)}<br>`;
-        detailsHTML += `✓ Budget Range: ${quizData.budget}`;
-        
-        document.getElementById('resultsDetails').innerHTML = detailsHTML;
-        
-        await submitQuizLead(recommendedPlan);
-        
-        currentStep = 6;
-        updateStep();
-    }
-
-    function formatValue(value) {
-        if (!value) return 'Not specified';
-        return value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    }
-
-    async function submitQuizLead(recommendedPlan) {
-        try {
-            const details = `
-QUIZ RESULTS - Recommended Plan: ${recommendedPlan}
-
-BUSINESS INFORMATION:
-- Business Type: ${formatValue(quizData.business_type)}
-- Primary Goal: ${formatValue(quizData.primary_goal)}
-- E-commerce: ${formatValue(quizData.ecommerce)}
-
-BUDGET & CONTACT:
-- Budget Range: ${quizData.budget}
-- Name: ${quizData.name}
-- Email: ${quizData.email}
-- Phone: ${quizData.phone}
-            `.trim();
-            
-            const response = await fetch(`${window.location.origin}/api/leads`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    firstName: quizData.firstName,
-                    lastName: quizData.lastName,
-                    email: quizData.email,
-                    phone: quizData.phone,
-                    service: `Pricing Quiz - ${recommendedPlan} Package`,
-                    budget: quizData.budget,
-                    details: details
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                console.log('✅ Quiz lead submitted successfully');
-            }
-        } catch (error) {
-            console.error('Error submitting quiz lead:', error);
-        }
-    }
-
-    // ==========================================
-    // COOKIE CONSENT
-    // ==========================================
-    document.addEventListener('DOMContentLoaded', function() {
-        const cookieConsent = localStorage.getItem('cookieConsent');
-        if (!cookieConsent) {
-            setTimeout(() => {
-                document.getElementById('cookieConsent').classList.add('show');
-            }, 1000);
-        }
-    });
-
-    function acceptCookies() {
-        localStorage.setItem('cookieConsent', 'accepted');
-        document.getElementById('cookieConsent').classList.remove('show');
-    }
-
-    function declineCookies() {
-        localStorage.setItem('cookieConsent', 'declined');
-        document.getElementById('cookieConsent').classList.remove('show');
-    }
-
-    // ==========================================
-    // CHATBOT
-    // ==========================================
-    function toggleChatbot() {
-        const toggle = document.getElementById('chatbotToggle');
-        const windowEl = document.getElementById('chatbotWindow');
-        const badge = document.getElementById('chatbotBadge');
-        
-        toggle.classList.toggle('active');
-        windowEl.classList.toggle('active');
-        
-        if (toggle.classList.contains('active') && badge) {
-            badge.style.display = 'none';
-        }
-    }
-
-    function addUserMessage(text) {
-        const messagesContainer = document.getElementById('chatbotMessages');
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message user-message';
-        messageDiv.innerHTML = `
-            <div class="message-avatar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-            </div>
-            <div class="message-content">
-                <p>${text}</p>
-                <div class="message-time">Just now</div>
-            </div>
-        `;
-        messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    function addBotMessage(text) {
-        const messagesContainer = document.getElementById('chatbotMessages');
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message bot-message';
-        messageDiv.innerHTML = `
-            <div class="message-avatar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
-            </div>
-            <div class="message-content">
-                <p>${text}</p>
-                <div class="message-time">Just now</div>
-            </div>
-        `;
-        messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-const quickResponses = {
-    'pricing': "We offer three packages:\nStarter Package\nProfessional Package\nEnterprise Package\n\nWould you like to schedule a consultation?",
-    'timeline': "Most projects:\nStarter: 2-3 weeks\nProfessional: 3-4 weeks\nEnterprise: Custom timeline\n\nReady to get started?",
-    'services': "We provide:\nWeb Development\nE-commerce Solutions\nCRM Solutions\nSEO Services\nDigital Marketing\n\nWhat interests you?",
-    'contact': "Phone: (940) 217-8680\nEmail: contact@diamondbackcoding.com\nHours: Mon-Fri 8AM-5PM CST\n\nHow can we help you today?"
-};
-
+    // Chatbot quick action buttons
     document.querySelectorAll('.quick-action-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const action = this.getAttribute('data-action');
-            addUserMessage(this.textContent);
+            const buttonText = this.textContent.trim();
+            addUserMessage(buttonText);
             setTimeout(() => addBotMessage(quickResponses[action]), 500);
         });
     });
 
+    // Chatbot send button
     document.getElementById('chatbotSendBtn').addEventListener('click', function() {
         const input = document.getElementById('chatbotInput');
         const message = input.value.trim();
@@ -5112,20 +4781,19 @@ const quickResponses = {
             addUserMessage(message);
             input.value = '';
             setTimeout(() => {
-                addBotMessage("Thanks! Call us at (940) 217-8680 for immediate assistance.");
+                addBotMessage("Thanks for your message! For immediate assistance, call us at (940) 217-8680 or use the quick actions below.");
             }, 1000);
         }
     });
 
+    // Chatbot enter key to send
     document.getElementById('chatbotInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             document.getElementById('chatbotSendBtn').click();
         }
     });
 
-    // ==========================================
-    // SMOOTH SCROLLING
-    // ==========================================
+    // Smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
@@ -5138,34 +4806,28 @@ const quickResponses = {
             }
         });
     });
-    // Add this inside your DOMContentLoaded event listener
-document.querySelectorAll('a[href*="#"]').forEach(link => {
-    const href = link.getAttribute('href');
-    if (href.includes('crm-solutions')) {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            switchToTab('crm');
-        });
-    } else if (href.includes('web-design')) {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            switchToTab('development');
-        });
-    } else if (href.includes('seo-marketing')) {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            switchToTab('seo');
-        });
-    }
+    
+    // Tab switching from anchor links
+    document.querySelectorAll('a[href*="#"]').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href.includes('crm-solutions')) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchToTab('crm');
+            });
+        } else if (href.includes('web-design')) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchToTab('development');
+            });
+        } else if (href.includes('seo-marketing')) {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchToTab('seo');
+            });
+        }
+    });
 });
-function openModal() { document.getElementById('contactModal').style.display = 'flex'; }
-function closeModal() { document.getElementById('contactModal').style.display = 'none'; }
-document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('contactModal');
-    if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
-});
-function handleSubmit(e) { e.preventDefault(); alert('Thank you!'); closeModal(); }
-
 </script>
 <!-- CHATBOT -->
 <div class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">

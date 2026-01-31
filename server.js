@@ -9,6 +9,7 @@ const PDFDocument = require('pdfkit');
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const path = require('path');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 require('dotenv').config();
@@ -605,7 +606,25 @@ await client.query(`
                               WHERE table_name='leads' AND column_name='password_reset_required') THEN
                     ALTER TABLE leads ADD COLUMN password_reset_required BOOLEAN DEFAULT FALSE;
                 END IF;
+
+                -- Add unsubscribe columns for email opt-out
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='unsubscribed') THEN
+                    ALTER TABLE leads ADD COLUMN unsubscribed BOOLEAN DEFAULT FALSE;
+                END IF;
+
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                              WHERE table_name='leads' AND column_name='unsubscribe_token') THEN
+                    ALTER TABLE leads ADD COLUMN unsubscribe_token VARCHAR(255);
+                END IF;
             END $$;
+        `);
+
+        // Create index on unsubscribe_token for fast lookups
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_leads_unsubscribe_token 
+            ON leads(unsubscribe_token) 
+            WHERE unsubscribe_token IS NOT NULL
         `);
 
         // Migrate existing data from first_name/last_name to name
@@ -5785,6 +5804,7 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
                 FROM leads l
                 WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
                 AND l.is_customer = FALSE
+                AND l.unsubscribed = FALSE
                 AND (
                     l.last_contact_date IS NULL
                     OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
@@ -7892,6 +7912,7 @@ app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
             FROM leads
             WHERE status IN ('new', 'contacted', 'qualified', 'pending')
             AND is_customer = FALSE
+            AND unsubscribed = FALSE
         `);
         
         console.log('[FOLLOW-UP STATS] ✅ Stats retrieved:', stats.rows[0]);
@@ -7931,6 +7952,7 @@ app.get('/api/follow-ups', authenticateToken, async (req, res) => {
             FROM leads l
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
+            AND l.unsubscribed = FALSE
             AND (
                 l.last_contact_date IS NULL
                 OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days'
@@ -8652,122 +8674,6 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
     }
 });
 
-// ========================================
-// BULK FOLLOW-UP EMAIL
-// ========================================
-
-// Send follow-up emails to multiple leads
-app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
-    try {
-        const { leadIds, subject, message, template } = req.body;
-        
-        if (!leadIds || leadIds.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'No leads selected'
-            });
-        }
-        
-        console.log(`[BULK FOLLOW-UP] Sending to ${leadIds.length} leads`);
-        
-        let successCount = 0;
-        let failCount = 0;
-        const errors = [];
-        
-        for (const leadId of leadIds) {
-            try {
-                // Call the single send endpoint logic
-                const leadResult = await pool.query(
-                    'SELECT * FROM leads WHERE id = $1',
-                    [leadId]
-                );
-                
-                if (leadResult.rows.length === 0) {
-                    failCount++;
-                    errors.push({ leadId, error: 'Lead not found' });
-                    continue;
-                }
-                
-                const lead = leadResult.rows[0];
-                
-                if (!lead.email) {
-                    failCount++;
-                    errors.push({ leadId, error: 'No email address' });
-                    continue;
-                }
-                
-                // Send email (simplified - use template logic from above)
-                let emailSubject = subject || `Following up - ${lead.name}`;
-                let emailBody = message || `Hi ${lead.name}, just checking in...`;
-                
-                const mailOptions = {
-                    from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
-                    to: lead.email,
-                    subject: emailSubject,
-                    html: `<p>${emailBody.replace(/\n/g, '<br>')}</p>`
-                };
-                
-                await transporter.sendMail(mailOptions);
-                
-                // Update lead
-                await pool.query(
-                    `UPDATE leads 
-                     SET last_contact_date = CURRENT_DATE,
-                         status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
-                         updated_at = CURRENT_TIMESTAMP 
-                     WHERE id = $1`,
-                    [leadId]
-                );
-                
-                // Add note to lead (NEW: Mirror single send logic)
-                let notes = [];
-                try {
-                    if (lead.notes) {
-                        notes = JSON.parse(lead.notes);
-                    }
-                } catch (e) {
-                    notes = [];
-                }
-                
-                notes.push({
-                    text: `Follow-up email sent: "${emailSubject}"`,
-                    author: req.user.username || 'Admin',
-                    date: new Date().toISOString()
-                });
-                
-                await pool.query(
-                    'UPDATE leads SET notes = $1 WHERE id = $2',
-                    [JSON.stringify(notes), leadId]
-                );
-                
-                successCount++;
-                
-            } catch (error) {
-                console.error(`[BULK] Error sending to lead ${leadId}:`, error);
-                failCount++;
-                errors.push({ leadId, error: error.message });
-            }
-        }
-        
-        console.log(`[BULK FOLLOW-UP] ✅ Sent: ${successCount}, ❌ Failed: ${failCount}`);
-        
-        res.json({
-            success: true,
-            message: `Sent ${successCount} emails, ${failCount} failed`,
-            successCount,
-            failCount,
-            errors: errors.length > 0 ? errors : undefined
-        });
-        
-    } catch (error) {
-        console.error('[BULK FOLLOW-UP] Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Bulk send failed',
-            error: error.message
-        });
-    }
-});
 
 // Send bulk email to specific follow-up category
 app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res) => {
@@ -8803,6 +8709,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
             FROM leads l
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
+            AND l.unsubscribed = FALSE
             AND l.email IS NOT NULL
             AND (
                 CASE 
@@ -8940,62 +8847,283 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
     }
 });
 
-// Get follow-up statistics with categories
-app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
+
+// ========================================
+// SEND BULK EMAIL BY CATEGORY (frontend endpoint)
+// Frontend calls POST /api/follow-ups/email-category
+// with { category, subject, body }
+// ========================================
+app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) => {
     try {
-        console.log('[FOLLOW-UP STATS] Getting statistics');
-        
-        const stats = await pool.query(`
+        // Frontend sends 'body', internal send-by-category uses 'message' — normalise here
+        const { category, subject, body, message } = req.body;
+        const emailMessage = body || message;
+
+        console.log(`[EMAIL-CATEGORY] Sending to category: ${category}`);
+
+        if (!category || !subject || !emailMessage) {
+            return res.status(400).json({
+                success: false,
+                message: 'Category, subject, and body/message are required'
+            });
+        }
+
+        const validCategories = ['never_contacted', '1_day', '3_day', '7_day', '14_day'];
+        if (!validCategories.includes(category)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid category'
+            });
+        }
+
+        // Fetch leads in this category, excluding unsubscribed
+        const leadsResult = await pool.query(`
             SELECT 
-                COUNT(*) FILTER (WHERE last_contact_date IS NULL) as never_contacted,
-                COUNT(*) FILTER (WHERE (CURRENT_DATE - last_contact_date) >= 1 AND (CURRENT_DATE - last_contact_date) < 3) as one_day,
-                COUNT(*) FILTER (WHERE (CURRENT_DATE - last_contact_date) >= 3 AND (CURRENT_DATE - last_contact_date) < 7) as three_day,
-                COUNT(*) FILTER (WHERE (CURRENT_DATE - last_contact_date) >= 7 AND (CURRENT_DATE - last_contact_date) < 14) as seven_day,
-                COUNT(*) FILTER (WHERE (CURRENT_DATE - last_contact_date) >= 14) as fourteen_day,
-                COUNT(*) as total_pending
-            FROM leads
-            WHERE status IN ('new', 'contacted', 'qualified', 'pending')
-            AND is_customer = FALSE
+                l.id,
+                l.name,
+                l.email,
+                l.notes,
+                l.unsubscribe_token
+            FROM leads l
+            WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
+            AND l.is_customer = FALSE
+            AND l.unsubscribed = FALSE
+            AND l.email IS NOT NULL
             AND (
-                last_contact_date IS NULL
-                OR last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
+                CASE 
+                    WHEN $1 = 'never_contacted' THEN l.last_contact_date IS NULL
+                    WHEN $1 = '14_day' THEN (CURRENT_DATE - l.last_contact_date) >= 14
+                    WHEN $1 = '7_day' THEN (CURRENT_DATE - l.last_contact_date) >= 7 AND (CURRENT_DATE - l.last_contact_date) < 14
+                    WHEN $1 = '3_day' THEN (CURRENT_DATE - l.last_contact_date) >= 3 AND (CURRENT_DATE - l.last_contact_date) < 7
+                    WHEN $1 = '1_day' THEN (CURRENT_DATE - l.last_contact_date) >= 1 AND (CURRENT_DATE - l.last_contact_date) < 3
+                END
             )
-        `);
-        
-        console.log('[FOLLOW-UP STATS] ✅ Stats retrieved:', stats.rows[0]);
-        
+        `, [category]);
+
+        const leads = leadsResult.rows;
+
+        if (leads.length === 0) {
+            return res.json({
+                success: true,
+                message: 'No leads in this category',
+                sent_count: 0,
+                fail_count: 0
+            });
+        }
+
+        console.log(`[EMAIL-CATEGORY] Found ${leads.length} leads in ${category}`);
+
+        const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+        let sent_count = 0;
+        let fail_count = 0;
+        const errors = [];
+
+        for (const lead of leads) {
+            try {
+                // Generate unsubscribe token if this lead doesn't have one yet
+                let token = lead.unsubscribe_token;
+                if (!token) {
+                    token = crypto.randomBytes(32).toString('hex');
+                    await pool.query(
+                        'UPDATE leads SET unsubscribe_token = $1 WHERE id = $2',
+                        [token, lead.id]
+                    );
+                }
+
+                const unsubscribeUrl = `${BASE_URL}/api/unsubscribe/${token}`;
+
+                const emailHTML = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>
+                            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                            .header { background: #22c55e; color: white; padding: 30px; text-align: center; margin-bottom: 30px; }
+                            .content { padding: 20px; background: white; white-space: pre-wrap; }
+                            .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
+                            .footer a { color: #999; text-decoration: none; }
+                            .footer a:hover { color: #22c55e; text-decoration: underline; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="header">
+                                <h1 style="margin: 0; font-size: 24px;">Diamondback Coding</h1>
+                            </div>
+                            <div class="content">
+                                ${emailMessage.replace(/\n/g, '<br>')}
+                            </div>
+                            <div class="footer">
+                                <p><strong>Diamondback Coding</strong><br>
+                                15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                                <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
+                                <p style="margin-top: 12px; border-top: 1px solid #ddd; padding-top: 10px;">
+                                    <a href="${unsubscribeUrl}">Unsubscribe from follow-up emails</a>
+                                </p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                const mailOptions = {
+                    from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                    to: lead.email,
+                    subject: subject,
+                    html: emailHTML
+                };
+
+                await transporter.sendMail(mailOptions);
+
+                // Update last_contact_date and status
+                await pool.query(
+                    `UPDATE leads 
+                     SET last_contact_date = CURRENT_DATE,
+                         status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
+                         updated_at = CURRENT_TIMESTAMP 
+                     WHERE id = $1`,
+                    [lead.id]
+                );
+
+                // Append note to lead
+                let notes = [];
+                try {
+                    if (lead.notes) notes = JSON.parse(lead.notes);
+                } catch (e) {
+                    notes = [];
+                }
+                notes.push({
+                    text: `Follow-up email sent: "${subject}"`,
+                    author: req.user.username || 'Admin',
+                    date: new Date().toISOString()
+                });
+                await pool.query(
+                    'UPDATE leads SET notes = $1 WHERE id = $2',
+                    [JSON.stringify(notes), lead.id]
+                );
+
+                sent_count++;
+                console.log(`[EMAIL-CATEGORY] ✅ Sent to ${lead.email}`);
+
+            } catch (error) {
+                console.error(`[EMAIL-CATEGORY] ❌ Error sending to ${lead.email}:`, error);
+                fail_count++;
+                errors.push({ leadId: lead.id, email: lead.email, error: error.message });
+            }
+        }
+
+        console.log(`[EMAIL-CATEGORY] ✅ Complete: ${sent_count} sent, ${fail_count} failed`);
+
         res.json({
             success: true,
-            stats: stats.rows[0]
+            message: `Sent ${sent_count} emails to ${category} category, ${fail_count} failed`,
+            sent_count,
+            fail_count,
+            totalLeads: leads.length,
+            errors: errors.length > 0 ? errors : undefined
         });
+
     } catch (error) {
-        console.error('[FOLLOW-UP STATS] Error:', error);
+        console.error('[EMAIL-CATEGORY] Error:', error);
         res.status(500).json({
             success: false,
-            message: 'Error fetching stats'
+            message: 'Bulk send failed',
+            error: error.message
         });
     }
 });
 
-async function renderFollowUps(content, categories) {
-    console.log('[DEBUG] renderFollowUps called');
-    console.log('[DEBUG] content element:', content);
-    console.log('[DEBUG] categories:', categories);
-    console.log('[DEBUG] categories type:', typeof categories);
-    console.log('[DEBUG] categories is array?:', Array.isArray(categories));
-    
-    // Just show the raw data for now
-    content.innerHTML = `
-        <div style="padding: 40px;">
-            <h2>DEBUG INFO</h2>
-            <pre style="background: #f5f5f5; padding: 20px; border-radius: 8px; overflow: auto;">
-Categories: ${JSON.stringify(categories, null, 2)}
-            </pre>
-        </div>
-    `;
-}
-
 // ========================================
+// PUBLIC UNSUBSCRIBE ENDPOINT (no auth required)
+// ========================================
+app.get('/api/unsubscribe/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        if (!token || token.length < 10) {
+            return res.status(400).send(`
+                <!DOCTYPE html><html><head><title>Invalid Link</title></head>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 80px auto; text-align: center; padding: 0 20px;">
+                    <h2 style="color: #ef4444;">Invalid Unsubscribe Link</h2>
+                    <p style="color: #666;">This link is invalid or has already been used.</p>
+                </body></html>
+            `);
+        }
+
+        // Find the lead by token
+        const result = await pool.query(
+            'SELECT id, name, email, unsubscribed FROM leads WHERE unsubscribe_token = $1',
+            [token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).send(`
+                <!DOCTYPE html><html><head><title>Not Found</title></head>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 80px auto; text-align: center; padding: 0 20px;">
+                    <h2 style="color: #ef4444;">Link Not Found</h2>
+                    <p style="color: #666;">This unsubscribe link is not valid. It may have expired or been removed.</p>
+                </body></html>
+            `);
+        }
+
+        const lead = result.rows[0];
+
+        // Already unsubscribed — still show success (idempotent)
+        if (lead.unsubscribed) {
+            return res.send(`
+                <!DOCTYPE html><html><head><title>Already Unsubscribed</title></head>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 80px auto; text-align: center; padding: 0 20px;">
+                    <h2 style="color: #22c55e;">Already Unsubscribed</h2>
+                    <p style="color: #666;">You have already been removed from our follow-up email list.</p>
+                </body></html>
+            `);
+        }
+
+        // Set unsubscribed flag
+        await pool.query(
+            'UPDATE leads SET unsubscribed = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+            [lead.id]
+        );
+
+        console.log(`[UNSUBSCRIBE] ✅ Lead ${lead.id} (${lead.email}) unsubscribed via token`);
+
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head><title>Unsubscribed</title></head>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 80px auto; text-align: center; padding: 0 20px;">
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 48px 32px;">
+                    <div style="width: 64px; height: 64px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <h2 style="color: #166534; margin: 0 0 12px;">Successfully Unsubscribed</h2>
+                    <p style="color: #4ade80; margin: 0 0 8px; font-size: 15px;">
+                        You have been removed from Diamondback Coding's follow-up email list.
+                    </p>
+                    <p style="color: #6b7280; margin: 0; font-size: 13px;">
+                        You will no longer receive follow-up emails from us. If you change your mind, 
+                        please reach out to <a href="mailto:contact@diamondbackcoding.com" style="color: #16a34a;">contact@diamondbackcoding.com</a>.
+                    </p>
+                </div>
+            </body>
+            </html>
+        `);
+
+    } catch (error) {
+        console.error('[UNSUBSCRIBE] Error:', error);
+        res.status(500).send(`
+            <!DOCTYPE html><html><head><title>Error</title></head>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 80px auto; text-align: center; padding: 0 20px;">
+                <h2 style="color: #ef4444;">Something Went Wrong</h2>
+                <p style="color: #666;">Please try again later or contact us at <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a>.</p>
+            </body></html>
+        `);
+    }
+});
+
 // HEALTH CHECK
 // ========================================
 app.get('/api/health', (req, res) => {

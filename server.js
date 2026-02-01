@@ -9705,40 +9705,40 @@ async function sendApplicationStatusEmail(app, jobTitle, newStatus) {
     const statusConfig = {
         new: {
             subject: `Your application for ${jobTitle} has been received`,
-            headline: 'Application Received',
             bodyHTML: `
+                <p>Hi ${firstName},</p>
                 <p>Thank you for submitting your application for the <strong>${jobTitle}</strong> position. We've received everything and our team will begin reviewing your materials shortly.</p>
                 <p>We appreciate your interest in joining Diamondback Coding and will be in touch with next steps.</p>
             `
         },
         reviewing: {
             subject: `Your application for ${jobTitle} is under review`,
-            headline: 'Application Under Review',
             bodyHTML: `
+                <p>Hi ${firstName},</p>
                 <p>Great news — our team has started reviewing your application for the <strong>${jobTitle}</strong> position.</p>
                 <p>We're taking a close look at your background and qualifications. You'll hear from us soon with an update on next steps.</p>
             `
         },
         interviewing: {
             subject: `You've been selected for an interview — ${jobTitle}`,
-            headline: 'Interview Invitation',
             bodyHTML: `
+                <p>Hi ${firstName},</p>
                 <p>Congratulations! We'd like to invite you to interview for the <strong>${jobTitle}</strong> position at Diamondback Coding.</p>
                 <p>A member of our team will be reaching out shortly with scheduling details. In the meantime, please feel free to reply to this email with any questions.</p>
             `
         },
         hired: {
-            subject: `Congratulations — Welcome to Diamondback Coding! 🎉`,
-            headline: 'Congratulations, You\'re Hired!',
+            subject: `Congratulations — Welcome to Diamondback Coding!`,
             bodyHTML: `
+                <p>Hi ${firstName},</p>
                 <p>We are thrilled to let you know that you have been selected for the <strong>${jobTitle}</strong> position at Diamondback Coding.</p>
                 <p>We'll be sending you onboarding details and next steps shortly. We're truly excited to have you on the team!</p>
             `
         },
         rejected: {
             subject: `Your application for ${jobTitle} — Update`,
-            headline: 'Application Update',
             bodyHTML: `
+                <p>Hi ${firstName},</p>
                 <p>Thank you for taking the time to apply for the <strong>${jobTitle}</strong> position at Diamondback Coding. We truly appreciate your interest in our team.</p>
                 <p>After careful consideration, we have decided to move forward with other candidates at this time. This was not an easy decision, and we want you to know that your application was given thorough and serious consideration.</p>
                 <p>We encourage you to keep an eye on future openings — we'd love to see you apply again.</p>
@@ -9746,8 +9746,8 @@ async function sendApplicationStatusEmail(app, jobTitle, newStatus) {
         },
         on_hold: {
             subject: `Your application for ${jobTitle} has been placed on hold`,
-            headline: 'Application on Hold',
             bodyHTML: `
+                <p>Hi ${firstName},</p>
                 <p>We wanted to let you know that your application for the <strong>${jobTitle}</strong> position has been temporarily placed on hold.</p>
                 <p>This may be due to changes in the hiring timeline or other factors on our end. Rest assured your application remains active and we will follow up with you as soon as we have more information.</p>
             `
@@ -9760,95 +9760,20 @@ async function sendApplicationStatusEmail(app, jobTitle, newStatus) {
         return;
     }
 
-    // Status-specific accent color
-    const accentColors = {
-        new: '#3b82f6',
-        reviewing: '#f59e0b',
-        interviewing: '#8b5cf6',
-        hired: '#22c55e',
-        rejected: '#ef4444',
-        on_hold: '#71717a'
-    };
-    const accent = accentColors[newStatus] || '#22c55e';
+    const emailHTML = buildEmailHTML(`
+        ${config.bodyHTML}
+
+        <div class="sign-off">
+            <p>Warm regards,</p>
+            <p class="team-name">The Diamondback Coding Team</p>
+        </div>
+    `);
 
     const mailOptions = {
         from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
         to: app.email,
         subject: config.subject,
-        html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-                    .container { max-width: 600px; margin: 0 auto; background: white; }
-                    .header { background: linear-gradient(135deg, ${accent} 0%, ${accent}cc 100%); color: white; padding: 40px 30px; text-align: center; }
-                    .header h1 { margin: 0; font-size: 26px; font-weight: 600; }
-                    .header p { margin: 10px 0 0 0; opacity: 0.9; font-size: 14px; }
-                    .content { padding: 40px 30px; }
-                    .content h2 { color: #1f2937; font-size: 20px; margin: 0 0 24px 0; }
-                    .content p { color: #6b7280; line-height: 1.7; margin: 0 0 16px 0; font-size: 15px; }
-                    .detail-box { background: #f9fafb; border-left: 4px solid ${accent}; padding: 20px 24px; margin: 28px 0; border-radius: 0 8px 8px 0; }
-                    .detail-box .label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; margin-bottom: 4px; }
-                    .detail-box .value { display: block; font-size: 15px; color: #1f2937; font-weight: 500; }
-                    .detail-row { margin-bottom: 14px; }
-                    .detail-row:last-child { margin-bottom: 0; }
-                    .status-badge { display: inline-block; background: ${accent}18; color: ${accent}; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; text-transform: capitalize; letter-spacing: 0.3px; }
-                    .footer { background: #1f2937; color: #9ca3af; padding: 30px; text-align: center; font-size: 13px; }
-                    .footer p { margin: 0 0 8px 0; }
-                    .footer a { color: #22c55e; text-decoration: none; }
-                    .footer a:hover { text-decoration: underline; }
-                    .footer-copy { font-size: 11px; opacity: 0.7; margin-top: 20px; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>${config.headline}</h1>
-                        <p>Diamondback Coding</p>
-                    </div>
-
-                    <div class="content">
-                        <h2>Hi ${firstName},</h2>
-
-                        ${config.bodyHTML}
-
-                        <div class="detail-box">
-                            <div class="detail-row">
-                                <span class="label">Position</span>
-                                <span class="value">${jobTitle}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="label">Application Status</span>
-                                <span class="value"><span class="status-badge">${newStatus.replace('_', ' ')}</span></span>
-                            </div>
-                        </div>
-
-                        <p style="margin-top: 30px;">
-                            If you have any questions or need to get in touch, please don't hesitate to reply to this email or contact us directly.
-                        </p>
-
-                        <p>
-                            <strong>Best regards,</strong><br>
-                            The Diamondback Coding Hiring Team
-                        </p>
-                    </div>
-
-                    <div class="footer">
-                        <p><strong>Diamondback Coding</strong></p>
-                        <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
-                        <p>
-                            <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> |
-                            <a href="tel:+19402178680">(940) 217-8680</a>
-                        </p>
-                        <p class="footer-copy">
-                            &copy; ${new Date().getFullYear()} Diamondback Coding. All rights reserved.
-                        </p>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `
+        html: emailHTML
     };
 
     await transporter.sendMail(mailOptions);

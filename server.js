@@ -16,7 +16,7 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const BASE_URL = process.env.BASE_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 
 // Service Packages Definition (same as frontend)
 const servicePackages = {
@@ -287,9 +287,9 @@ app.get('/api/test/ping', (req, res) => {
 function buildEmailHTML(bodyHTML, opts = {}) {
     const year = new Date().getFullYear();
     const unsubscribeBlock = opts.unsubscribeUrl
-        ? `<tr><td style="padding: 12px 0 0 0; border-top: 1px solid #3a3a3a;">
-            <a href="${opts.unsubscribeUrl}" style="color: #888; font-size: 11px; text-decoration: none;">Unsubscribe from follow-up emails</a>
-           </td></tr>`
+        ? `<div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e8e4dc;">
+            <a href="${opts.unsubscribeUrl}" style="color: #999; font-size: 11px; text-decoration: none; letter-spacing: 0.3px;">Unsubscribe from follow-up emails</a>
+           </div>`
         : '';
 
     return `<!DOCTYPE html>
@@ -308,39 +308,40 @@ function buildEmailHTML(bodyHTML, opts = {}) {
         -webkit-font-smoothing: antialiased;
     }
     a { color: inherit; text-decoration: none; }
-    .email-outer {
+
+    .email-page {
         max-width: 620px;
         margin: 0 auto;
-        background: #ffffff;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 28px 0;
     }
-    .email-header {
-        background-color: #111111;
-        padding: 32px 36px 28px;
+    .email-card {
+        background: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.07);
     }
     .logo-row {
         display: flex;
         align-items: center;
         gap: 10px;
+        padding: 32px 40px 0 40px;
     }
-    .logo-icon { width: 28px; height: 28px; }
+    .logo-icon { width: 26px; height: 26px; }
     .logo-text {
-        font-size: 18px;
-        font-weight: 600;
-        letter-spacing: 2.2px;
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: 1.8px;
         text-transform: uppercase;
-        color: #D4A847;
+        color: #111111;
         font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
     }
+    .logo-text .gold { color: #D4A847; }
     .email-body {
-        padding: 36px 40px 32px;
-        background: #ffffff;
+        padding: 28px 40px 0 40px;
     }
     .email-body p {
         font-size: 15px;
-        line-height: 1.75;
+        line-height: 1.8;
         color: #3d3d3d;
         margin-bottom: 16px;
     }
@@ -351,7 +352,7 @@ function buildEmailHTML(bodyHTML, opts = {}) {
     }
     .email-body li {
         font-size: 15px;
-        line-height: 1.75;
+        line-height: 1.8;
         color: #3d3d3d;
         margin-bottom: 6px;
     }
@@ -463,71 +464,65 @@ function buildEmailHTML(bodyHTML, opts = {}) {
     .sign-off p { font-size: 15px; color: #3d3d3d; margin-bottom: 2px; }
     .sign-off .team-name { font-weight: 600; color: #111; }
     .email-footer {
-        background: #1a1a1a;
-        padding: 28px 36px 24px;
+        padding: 32px 40px 28px 40px;
+        margin-top: 28px;
     }
-    .footer-brand {
-        font-size: 13px;
-        font-weight: 600;
-        color: #D4A847;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-bottom: 10px;
+    .footer-divider {
+        border: none;
+        border-top: 1px solid #eae7e0;
+        margin-bottom: 20px;
     }
     .footer-address {
         font-size: 12px;
-        color: #777;
-        line-height: 1.7;
-        margin-bottom: 14px;
+        color: #999;
+        line-height: 1.8;
+        margin-bottom: 10px;
     }
+    .footer-address a { color: #999; text-decoration: none; }
+    .footer-address a:hover { color: #D4A847; }
     .footer-nav {
         font-size: 11px;
-        color: #666;
-        margin-bottom: 18px;
+        color: #bbb;
+        margin-bottom: 6px;
     }
-    .footer-nav a { color: #999; margin-right: 14px; text-decoration: none; }
+    .footer-nav a { color: #bbb; margin-right: 14px; text-decoration: none; }
     .footer-nav a:hover { color: #D4A847; }
     .footer-copy {
         font-size: 11px;
-        color: #555;
-        padding-top: 14px;
-        border-top: 1px solid #2e2e2e;
+        color: #bbb;
+        margin-top: 10px;
     }
 </style>
 </head>
 <body>
-<div style="padding: 28px 0;" align="center">
-    <div class="email-outer">
-        <div class="email-header">
-            <div class="logo-row">
-                <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M14 2L26 8.5V21.5L14 28L2 21.5V8.5L14 2Z" stroke="#D4A847" stroke-width="1.8" fill="none"/>
-                    <path d="M14 2L26 8.5L14 15L2 8.5L14 2Z" stroke="#D4A847" stroke-width="1.2" fill="none" opacity="0.5"/>
-                    <path d="M14 15V28" stroke="#D4A847" stroke-width="1.2" opacity="0.5"/>
-                </svg>
-                <span class="logo-text">Diamondback Coding</span>
-            </div>
+<div class="email-page" align="center">
+    <div class="email-card">
+        <div class="logo-row">
+            <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 2L26 8.5V21.5L14 28L2 21.5V8.5L14 2Z" stroke="#D4A847" stroke-width="1.8" fill="none"/>
+                <path d="M14 2L26 8.5L14 15L2 8.5L14 2Z" stroke="#D4A847" stroke-width="1.2" fill="none" opacity="0.5"/>
+                <path d="M14 15V28" stroke="#D4A847" stroke-width="1.2" opacity="0.5"/>
+            </svg>
+            <span class="logo-text">Diamondback <span class="gold">Coding</span></span>
         </div>
         <div class="email-body">
             ${bodyHTML}
         </div>
         <div class="email-footer">
-            <table width="100%" cellpadding="0" cellspacing="0">
-                <tr><td class="footer-brand">Diamondback Coding</td></tr>
-                <tr><td class="footer-address">
-                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    <a href="mailto:contact@diamondbackcoding.com" style="color:#999;">contact@diamondbackcoding.com</a> &nbsp;\u00b7&nbsp;
-                    <a href="tel:+19402178680" style="color:#999;">(940) 217-8680</a>
-                </td></tr>
-                <tr><td class="footer-nav">
-                    <a href="https://diamondbackcoding.com">Website</a>
-                    <a href="https://diamondbackcoding.com/projects">Projects</a>
-                    <a href="https://diamondbackcoding.com/services">Services</a>
-                    <a href="https://diamondbackcoding.com/company">Company</a>
-                </td></tr>
-                ${unsubscribeBlock}
-                <tr><td class="footer-copy">&copy; ${year} Diamondback Coding. All rights reserved.</td></tr>
-            </table>
+            <hr class="footer-divider">
+            <div class="footer-address">
+                15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> &nbsp;&#183;&nbsp;
+                <a href="tel:+19402178680">(940) 217-8680</a>
+            </div>
+            <div class="footer-nav">
+                <a href="https://diamondbackcoding.com">Website</a>
+                <a href="https://diamondbackcoding.com/projects">Projects</a>
+                <a href="https://diamondbackcoding.com/services">Services</a>
+                <a href="https://diamondbackcoding.com/company">Company</a>
+            </div>
+            ${unsubscribeBlock}
+            <div class="footer-copy">&copy; ${year} Diamondback Coding. All rights reserved.</div>
         </div>
     </div>
 </div>
@@ -5915,6 +5910,139 @@ app.post('/api/automation/generate-followup-reminders', authenticateToken, async
 });
 
 // ========================================
+// AUTOMATED FOLLOW-UP EMAIL SENDER
+// Called by the frontend "Test Run Now" button
+// and can also be triggered by a cron job
+// ========================================
+app.post('/api/automation/auto-followup', authenticateToken, async (req, res) => {
+    try {
+        const { delayDays, subject, body } = req.body;
+
+        if (!delayDays || !subject || !body) {
+            return res.status(400).json({
+                success: false,
+                message: 'delayDays, subject, and body are required'
+            });
+        }
+
+        console.log(`[AUTO FOLLOW-UP] Running with delay=${delayDays}d, subject="${subject}"`);
+
+        // Find leads that haven't been contacted in delayDays or more, and are not unsubscribed
+        const leadsResult = await pool.query(`
+            SELECT 
+                l.id,
+                l.name,
+                l.email,
+                l.project_type,
+                l.notes,
+                l.unsubscribe_token
+            FROM leads l
+            WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
+            AND l.is_customer = FALSE
+            AND l.unsubscribed = FALSE
+            AND l.email IS NOT NULL
+            AND (
+                l.last_contact_date IS NULL
+                OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day' * $1
+            )
+        `, [delayDays]);
+
+        const leads = leadsResult.rows;
+        console.log(`[AUTO FOLLOW-UP] Found ${leads.length} leads eligible for auto follow-up`);
+
+        let sent_count = 0;
+        let skipped_count = 0;
+        const errors = [];
+
+        for (const lead of leads) {
+            try {
+                if (!lead.email) {
+                    skipped_count++;
+                    continue;
+                }
+
+                // Replace template variables
+                const personalizedBody = body
+                    .replace(/\{\{name\}\}/g, lead.name || 'there')
+                    .replace(/\{\{project_type\}\}/g, lead.project_type || 'your project');
+
+                // Generate unsubscribe token if needed
+                let token = lead.unsubscribe_token;
+                if (!token) {
+                    token = crypto.randomBytes(32).toString('hex');
+                    await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [token, lead.id]);
+                }
+                const unsubscribeUrl = `${BASE_URL}/api/unsubscribe/${token}`;
+
+                // Build branded email
+                const emailHTML = buildEmailHTML(`
+                    <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.8; color: #3d3d3d;">${personalizedBody.replace(/\n/g, '<br>')}</div>
+
+                    <div class="sign-off">
+                        <p>Warm regards,</p>
+                        <p class="team-name">The Diamondback Coding Team</p>
+                    </div>
+                `, { unsubscribeUrl });
+
+                await transporter.sendMail({
+                    from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                    to: lead.email,
+                    subject: subject,
+                    html: emailHTML
+                });
+
+                // Update last_contact_date and status
+                await pool.query(
+                    `UPDATE leads 
+                     SET last_contact_date = CURRENT_TIMESTAMP,
+                         status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
+                         updated_at = CURRENT_TIMESTAMP 
+                     WHERE id = $1`,
+                    [lead.id]
+                );
+
+                // Append note
+                let notes = [];
+                try {
+                    if (lead.notes) notes = JSON.parse(lead.notes);
+                } catch (e) { notes = []; }
+                notes.push({
+                    text: `[Auto] Follow-up email sent: "${subject}"`,
+                    author: 'System (Auto)',
+                    date: new Date().toISOString()
+                });
+                await pool.query('UPDATE leads SET notes = $1 WHERE id = $2', [JSON.stringify(notes), lead.id]);
+
+                sent_count++;
+                console.log(`[AUTO FOLLOW-UP] ✅ Sent to ${lead.email} (${lead.name})`);
+
+            } catch (sendError) {
+                console.error(`[AUTO FOLLOW-UP] ❌ Error sending to ${lead.email}:`, sendError.message);
+                errors.push({ leadId: lead.id, email: lead.email, error: sendError.message });
+            }
+        }
+
+        console.log(`[AUTO FOLLOW-UP] ✅ Complete: ${sent_count} sent, ${skipped_count} skipped, ${errors.length} errors`);
+
+        res.json({
+            success: true,
+            message: `Auto follow-up complete: ${sent_count} sent`,
+            sent_count,
+            skipped_count,
+            total_eligible: leads.length,
+            errors: errors.length > 0 ? errors : undefined
+        });
+
+    } catch (error) {
+        console.error('[AUTO FOLLOW-UP] ❌ Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Auto follow-up failed: ' + error.message
+        });
+    }
+});
+
+// ========================================
 // ADD THESE ROUTES TO YOUR server.js
 // Place them with your other email routes
 // ========================================
@@ -6034,8 +6162,9 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
         `, { unsubscribeUrl });
         
         // Send the email using Nodemailer
+        let info = null;
         try {
-            const info = await transporter.sendMail({
+            info = await transporter.sendMail({
                 from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
                 to: to,
                 subject: subject,

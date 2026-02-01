@@ -7075,6 +7075,50 @@ function renderSettings(content) {
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
+
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Automated Follow-Up Emails</div>
+                        <div class="setting-desc">Automatically send follow-up emails to leads who haven't been contacted within the configured delay</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="autoFollowUpToggle" ${state.settings.autoFollowUpEnabled ? 'checked' : ''} onchange="toggleAutoFollowUp()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div id="autoFollowUpConfig" style="display: ${state.settings.autoFollowUpEnabled ? 'block' : 'none'}; margin-top: 16px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-subtle);">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Send after (days without contact)</label>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <input type="number" id="autoFollowUpDelay" min="1" max="30" value="${state.settings.autoFollowUpDelay || 3}" 
+                                   style="width: 80px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 14px; background: var(--bg-primary); color: var(--text-primary);"
+                                   onchange="saveAutoFollowUpSettings()">
+                            <span style="font-size: 13px; color: var(--text-muted);">days</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Email Subject</label>
+                        <input type="text" id="autoFollowUpSubject" value="${(state.settings.autoFollowUpSubject || 'Quick check-in from Diamondback Coding').replace(/"/g, '&quot;')}" 
+                               style="width: 100%; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 14px; background: var(--bg-primary); color: var(--text-primary); box-sizing: border-box;"
+                               onchange="saveAutoFollowUpSettings()">
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Email Body <span style="color: var(--text-muted); font-weight: 400;">(use {{'{'}{'{'}}name{'}'}{'}'}} for lead name, {{'{'}{'{'}}project_type{'}'}{'}'}} for project type)</span></label>
+                        <textarea id="autoFollowUpBody" rows="5" 
+                                  style="width: 100%; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 14px; background: var(--bg-primary); color: var(--text-primary); resize: vertical; font-family: inherit; box-sizing: border-box;"
+                                  onchange="saveAutoFollowUpSettings()">${(state.settings.autoFollowUpBody || "Hi {{name}},\n\nI wanted to follow up on your recent inquiry about {{project_type}}. We'd love to help bring your project to life.\n\nWould you be available for a quick call this week to discuss?\n\nLooking forward to hearing from you.")}</textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn btn-primary btn-sm" onclick="runAutoFollowUpNow()" style="display: flex; align-items: center; gap: 6px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                            Test Run Now
+                        </button>
+                        <span id="autoFollowUpStatus" style="font-size: 12px; color: var(--text-muted);"></span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -9056,6 +9100,79 @@ function toggleSetting(setting) {
     applySettings();
     
     showToast('Setting updated', 'success');
+}
+
+function toggleAutoFollowUp() {
+    const toggle = document.getElementById('autoFollowUpToggle');
+    const config = document.getElementById('autoFollowUpConfig');
+    state.settings.autoFollowUpEnabled = toggle.checked;
+    config.style.display = toggle.checked ? 'block' : 'none';
+    localStorage.setItem('adminSettings', JSON.stringify(state.settings));
+    showToast(toggle.checked ? 'Automated follow-ups enabled' : 'Automated follow-ups disabled', toggle.checked ? 'success' : 'info');
+}
+
+function saveAutoFollowUpSettings() {
+    state.settings.autoFollowUpDelay = parseInt(document.getElementById('autoFollowUpDelay')?.value) || 3;
+    state.settings.autoFollowUpSubject = document.getElementById('autoFollowUpSubject')?.value || '';
+    state.settings.autoFollowUpBody = document.getElementById('autoFollowUpBody')?.value || '';
+    localStorage.setItem('adminSettings', JSON.stringify(state.settings));
+}
+
+async function runAutoFollowUpNow() {
+    const statusEl = document.getElementById('autoFollowUpStatus');
+    const btn = document.querySelector('[onclick="runAutoFollowUpNow()"]');
+    
+    // Save current settings first
+    saveAutoFollowUpSettings();
+
+    const delay = state.settings.autoFollowUpDelay || 3;
+    const subject = state.settings.autoFollowUpSubject || 'Quick check-in from Diamondback Coding';
+    const body = state.settings.autoFollowUpBody || '';
+
+    if (!subject || !body) {
+        showToast('Please fill in subject and body before running', 'error');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+    }
+    if (statusEl) statusEl.textContent = 'Running...';
+
+    try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_URL}/api/automation/auto-followup`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                delayDays: delay,
+                subject: subject,
+                body: body
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            showToast(`Auto follow-up complete: ${result.sent_count} email(s) sent, ${result.skipped_count || 0} skipped`, 'success');
+            if (statusEl) statusEl.textContent = `Last run: just now — ${result.sent_count} sent`;
+        } else {
+            showToast('Auto follow-up failed: ' + (result.message || 'Unknown error'), 'error');
+            if (statusEl) statusEl.textContent = 'Failed';
+        }
+    } catch (error) {
+        showToast('Error running auto follow-up: ' + error.message, 'error');
+        if (statusEl) statusEl.textContent = 'Error';
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    }
 }
 
 function applySettings() {

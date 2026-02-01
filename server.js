@@ -272,6 +272,322 @@ app.get('/api/test/ping', (req, res) => {
 });
 
 // ========================================
+// SHARED EMAIL TEMPLATE
+// ========================================
+// Single source of truth for all outgoing email styling.
+// Matches the diamondbackcoding.com brand: black / gold / white.
+// Usage: buildEmailHTML(bodyHTML, { unsubscribeUrl, footerExtra })
+
+function buildEmailHTML(bodyHTML, opts = {}) {
+    const year = new Date().getFullYear();
+    const unsubscribeBlock = opts.unsubscribeUrl
+        ? `<tr><td style="padding: 12px 0 0 0; border-top: 1px solid #3a3a3a;">
+            <a href="${opts.unsubscribeUrl}" style="color: #888; font-size: 11px; text-decoration: none;">Unsubscribe from follow-up emails</a>
+           </td></tr>`
+        : '';
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diamondback Coding</title>
+<style>
+    /* Reset */
+    body, td, th, div, p, a, ul, li, ol { margin: 0; padding: 0; }
+    img { border: none; display: block; }
+
+    body {
+        font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+        background-color: #f0efe9;
+        color: #2a2a2a;
+        -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* Outer wrapper */
+    .email-outer {
+        max-width: 620px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    /* ── Header (black bar with gold logo) ── */
+    .email-header {
+        background-color: #111111;
+        padding: 32px 36px 28px;
+    }
+    .logo-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .logo-icon {
+        width: 28px;
+        height: 28px;
+    }
+    .logo-text {
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 2.2px;
+        text-transform: uppercase;
+        color: #D4A847;
+        font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+    }
+
+    /* ── Body card ── */
+    .email-body {
+        padding: 36px 40px 32px;
+        background: #ffffff;
+    }
+    .email-body p {
+        font-size: 15px;
+        line-height: 1.75;
+        color: #3d3d3d;
+        margin-bottom: 16px;
+    }
+    .email-body p:last-child { margin-bottom: 0; }
+
+    /* Lists inside body */
+    .email-body ul, .email-body ol {
+        padding-left: 22px;
+        margin-bottom: 16px;
+    }
+    .email-body li {
+        font-size: 15px;
+        line-height: 1.75;
+        color: #3d3d3d;
+        margin-bottom: 6px;
+    }
+
+    /* Headings */
+    .email-body h2 {
+        font-size: 20px;
+        color: #111111;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+    .email-body h3 {
+        font-size: 16px;
+        color: #111111;
+        margin-top: 24px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    /* Info box (gold left border) */
+    .info-box {
+        background: #faf8f2;
+        border-left: 3px solid #D4A847;
+        border-radius: 4px;
+        padding: 18px 20px;
+        margin: 20px 0;
+    }
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        padding: 5px 0;
+    }
+    .info-label { color: #777; font-weight: 600; }
+    .info-value { color: #111; font-weight: 700; }
+    .info-value.gold { color: #D4A847; }
+
+    /* Highlight / amount box */
+    .highlight-box {
+        background: #faf8f2;
+        border-radius: 6px;
+        padding: 24px;
+        text-align: center;
+        margin: 24px 0;
+    }
+    .highlight-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #888;
+        margin-bottom: 6px;
+    }
+    .highlight-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #D4A847;
+    }
+
+    /* Pay button */
+    .btn-gold {
+        display: inline-block;
+        background: #D4A847;
+        color: #111111;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        padding: 14px 32px;
+        border-radius: 4px;
+        text-decoration: none;
+        margin: 8px 0;
+    }
+    .btn-center { text-align: center; margin: 28px 0; }
+    .btn-note {
+        font-size: 11px;
+        color: #999;
+        text-align: center;
+        margin-top: 6px;
+    }
+
+    /* Attachment callout */
+    .attachment-box {
+        background: #faf8f2;
+        border: 1px solid #e8e0c8;
+        border-radius: 6px;
+        padding: 16px 20px;
+        margin: 20px 0;
+        font-size: 14px;
+        color: #555;
+    }
+    .attachment-box strong { color: #111; }
+
+    /* Invoice table */
+    .inv-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    .inv-table th {
+        background: #f5f3ed;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #888;
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 2px solid #D4A847;
+    }
+    .inv-table th:last-child, .inv-table td:last-child { text-align: right; }
+    .inv-table th:nth-child(2) { text-align: center; }
+    .inv-table td {
+        padding: 11px 12px;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+        color: #3d3d3d;
+    }
+    .inv-table td:nth-child(2) { text-align: center; }
+    .inv-totals { text-align: right; margin-top: 14px; }
+    .inv-totals p { font-size: 14px; color: #555; margin-bottom: 4px; }
+    .inv-totals .total-line { font-size: 18px; font-weight: 700; color: #111; }
+    .inv-totals .total-line span { color: #D4A847; }
+
+    /* Notes box */
+    .notes-box {
+        background: #faf8f2;
+        border-radius: 6px;
+        padding: 16px 20px;
+        margin: 20px 0;
+    }
+    .notes-box p { font-size: 14px; color: #555; }
+
+    /* Sign-off */
+    .sign-off { margin-top: 28px; }
+    .sign-off p { font-size: 15px; color: #3d3d3d; margin-bottom: 2px; }
+    .sign-off .team-name { font-weight: 600; color: #111; }
+
+    /* ── Footer (dark) ── */
+    .email-footer {
+        background: #1a1a1a;
+        padding: 28px 36px 24px;
+    }
+    .footer-brand {
+        font-size: 13px;
+        font-weight: 600;
+        color: #D4A847;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+    .footer-address {
+        font-size: 12px;
+        color: #777;
+        line-height: 1.7;
+        margin-bottom: 14px;
+    }
+    .footer-nav {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 18px;
+    }
+    .footer-nav a {
+        color: #999;
+        margin-right: 14px;
+        text-decoration: none;
+    }
+    .footer-nav a:hover { color: #D4A847; }
+    .footer-copy {
+        font-size: 11px;
+        color: #555;
+        padding-top: 14px;
+        border-top: 1px solid #2e2e2e;
+    }
+</style>
+</head>
+<body>
+<div style="padding: 28px 0;" align="center">
+    <div class="email-outer">
+
+        <!-- Header -->
+        <div class="email-header">
+            <div class="logo-row">
+                <!-- Cube icon inline SVG matching site logo -->
+                <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2L26 8.5V21.5L14 28L2 21.5V8.5L14 2Z" stroke="#D4A847" stroke-width="1.8" fill="none"/>
+                    <path d="M14 2L26 8.5L14 15L2 8.5L14 2Z" stroke="#D4A847" stroke-width="1.2" fill="none" opacity="0.5"/>
+                    <path d="M14 15V28" stroke="#D4A847" stroke-width="1.2" opacity="0.5"/>
+                </svg>
+                <span class="logo-text">Diamondback Coding</span>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="email-body">
+            ${bodyHTML}
+        </div>
+
+        <!-- Footer -->
+        <div class="email-footer">
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td class="footer-brand">Diamondback Coding</td>
+                </tr>
+                <tr>
+                    <td class="footer-address">
+                        15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                        <a href="mailto:contact@diamondbackcoding.com" style="color:#999;">contact@diamondbackcoding.com</a> &nbsp;·&nbsp;
+                        <a href="tel:+19402178680" style="color:#999;">(940) 217-8680</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="footer-nav">
+                        <a href="https://diamondbackcoding.com">Website</a>
+                        <a href="https://diamondbackcoding.com/projects">Projects</a>
+                        <a href="https://diamondbackcoding.com/services">Services</a>
+                        <a href="https://diamondbackcoding.com/company">Company</a>
+                    </td>
+                </tr>
+                ${unsubscribeBlock}
+                <tr>
+                    <td class="footer-copy">
+                        &copy; ${year} Diamondback Coding. All rights reserved.
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+    </div>
+</div>
+</body>
+</html>`;
+}
+
+// ========================================
 // DATABASE CONNECTION
 // ========================================
 
@@ -1051,28 +1367,6 @@ console.log('✅ Client portal tables initialized');
             END $$;
         `);
         
-        // Migration: Create auto_campaigns table for persistent auto-send campaigns
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS auto_campaigns (
-                id SERIAL PRIMARY KEY,
-                lead_id INTEGER NOT NULL UNIQUE REFERENCES leads(id) ON DELETE CASCADE,
-                lead_name VARCHAR(255),
-                lead_email VARCHAR(255),
-                subject TEXT NOT NULL,
-                body TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                next_send_date TIMESTAMP
-            )
-        `);
-
-        await client.query(`
-            CREATE INDEX IF NOT EXISTS idx_auto_campaigns_lead
-            ON auto_campaigns(lead_id)
-        `);
-
-        console.log('✅ auto_campaigns table ready');
-
         console.log('✅ Database migrations completed');
 
         await client.query('COMMIT');
@@ -3414,104 +3708,54 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
             servicePackages[k]?.name || k
         ).join(', ');
 
-        const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; background: white; }
-        .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 40px 30px; text-align: center; }
-        .header h1 { color: white; font-size: 28px; margin: 0 0 8px 0; }
-        .header p { color: rgba(255,255,255,0.95); font-size: 14px; margin: 0; }
-        .content { padding: 40px 30px; }
-        .info-box { background: #f8f9fa; border-left: 4px solid #22c55e; padding: 20px; margin: 20px 0; border-radius: 4px; }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
-        .info-label { color: #666; font-weight: 600; }
-        .info-value { color: #000; font-weight: 700; }
-        .attachment-note { background: #fff3cd; border: 1px solid #ffc107; padding: 16px; border-radius: 6px; margin: 20px 0; font-size: 13px; }
-        .footer { background: #333; color: white; padding: 30px; text-align: center; font-size: 12px; }
-        .footer a { color: #22c55e; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🎉 Your Project Timeline is Ready!</h1>
-            <p>Service Level Agreement & Project Details</p>
-        </div>
-        
-        <div class="content">
-            <p style="font-size: 15px; line-height: 1.7; color: #444;">
-                <strong>Hi ${timeline.clientName},</strong>
-            </p>
-            
-            <p style="font-size: 15px; line-height: 1.7; color: #444;">
-                Thank you for choosing Diamondback Coding! We're excited to work with you on 
+        const emailHtml = buildEmailHTML(`
+            <p><strong style="font-size:16px;">Hi ${timeline.clientName},</strong></p>
+
+            <p>
+                Thank you for choosing Diamondback Coding! We're excited to work with you on
                 <strong>${timeline.projectName || 'your project'}</strong>.
             </p>
-            
-            <p style="font-size: 15px; line-height: 1.7; color: #444;">
-                Attached to this email is your complete <strong>Service Level Agreement (SLA)</strong> 
+
+            <p>
+                Attached to this email is your complete <strong>Service Level Agreement (SLA)</strong>
                 which includes the detailed project timeline, deliverables, and terms.
             </p>
-            
+
             <div class="info-box">
                 <div class="info-row">
-                    <span class="info-label">Project:</span>
+                    <span class="info-label">Project</span>
                     <span class="info-value">${timeline.projectName || 'Web Development'}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Investment:</span>
-                    <span class="info-value" style="color: #22c55e;">
-                        ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}
-                    </span>
+                    <span class="info-label">Investment</span>
+                    <span class="info-value gold">${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Services:</span>
+                    <span class="info-label">Services</span>
                     <span class="info-value">${packagesText}</span>
                 </div>
             </div>
-            
-            <div class="attachment-note">
-                <strong>📎 PDF Attached:</strong> Please review the attached SLA document for complete 
+
+            <div class="attachment-box">
+                <strong>📎 PDF Attached</strong> — Please review the attached SLA document for complete
                 project details, timeline, and terms. <strong>Your signature is required</strong> to proceed.
             </div>
-            
-            <h3 style="color: #333; margin-top: 30px;">Next Steps:</h3>
-            <ol style="font-size: 14px; line-height: 1.8; color: #555;">
+
+            <h3>Next Steps</h3>
+            <ol>
                 <li><strong>Review</strong> the attached SLA document carefully</li>
                 <li><strong>Sign</strong> the document in the designated client signature area</li>
                 <li><strong>Return</strong> the signed copy to us via email</li>
                 <li>We'll schedule our <strong>kick-off meeting</strong> to get started!</li>
             </ol>
-            
-            <p style="font-size: 15px; line-height: 1.7; color: #444; margin-top: 30px;">
-                Have questions? We're here to help! Feel free to reach out anytime.
-            </p>
-            
-            <p style="font-size: 15px; color: #444; margin-top: 20px;">
-                <strong>Looking forward to building something amazing together!</strong><br>
-                — The Diamondback Coding Team
-            </p>
-        </div>
-        
-        <div class="footer">
-            <p style="margin: 0 0 8px 0;"><strong>Diamondback Coding</strong></p>
-            <p style="margin: 0 0 4px 0;">15709 Spillman Ranch Loop, Austin, TX 78738</p>
-            <p style="margin: 0 0 4px 0;">
-                <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> • 
-                <a href="tel:+19402178680">(940) 217-8680</a>
-            </p>
-            <p style="margin: 20px 0 0 0; font-size: 11px; opacity: 0.7;">
-                © ${new Date().getFullYear()} Diamondback Coding. All rights reserved.
-            </p>
-        </div>
-    </div>
-</body>
-</html>
-        `;
+
+            <p>Have questions? We're here to help — feel free to reach out anytime.</p>
+
+            <div class="sign-off">
+                <p>Looking forward to building something amazing together!</p>
+                <p class="team-name">— The Diamondback Coding Team</p>
+            </div>
+        `);
 
         // Send email with PDF attachment
         const mailOptions = {
@@ -3596,111 +3840,73 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
         const taxAmount = parseFloat(invoice.tax_amount || 0);
         const discount = parseFloat(invoice.discount_amount || 0);
         
-        const emailHTML = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                    .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
-                    .content { padding: 30px; max-width: 800px; margin: 0 auto; background: white; }
-                    .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-                    .btn { background: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; }
-                    .invoice-amount { font-size: 32px; font-weight: bold; color: #22c55e; margin: 20px 0; }
-                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                    th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; border-bottom: 2px solid #22c55e; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1 style="margin: 0; font-size: 32px;">INVOICE</h1>
-                    <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 18px;">#${invoice.invoice_number}</p>
+        const emailHTML = buildEmailHTML(`
+            <p><strong style="font-size:16px;">Hello ${clientName || 'Valued Customer'},</strong></p>
+
+            <p>Thank you for your business! Here is your invoice.</p>
+
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Invoice Number</span>
+                    <span class="info-value">${invoice.invoice_number}</span>
                 </div>
-                
-                <div class="content">
-                    <h2>Hello ${clientName || 'Valued Customer'},</h2>
-                    
-                    <p>Thank you for your business! Here's your invoice.</p>
-                    
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div>
-                                <p style="margin: 5px 0; font-size: 12px; color: #666;">INVOICE NUMBER</p>
-                                <p style="margin: 5px 0; font-weight: bold;">${invoice.invoice_number}</p>
-                            </div>
-                            <div>
-                                <p style="margin: 5px 0; font-size: 12px; color: #666;">ISSUE DATE</p>
-                                <p style="margin: 5px 0; font-weight: bold;">${new Date(invoice.issue_date).toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                                <p style="margin: 5px 0; font-size: 12px; color: #666;">DUE DATE</p>
-                                <p style="margin: 5px 0; font-weight: bold;">${new Date(invoice.due_date).toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                                <p style="margin: 5px 0; font-size: 12px; color: #666;">AMOUNT DUE</p>
-                                <p style="margin: 5px 0; font-size: 24px; font-weight: bold; color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <h3>Invoice Details</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th style="text-align: center;">Qty</th>
-                                <th style="text-align: right;">Unit Price</th>
-                                <th style="text-align: right;">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemsHTML}
-                        </tbody>
-                    </table>
-                    
-                    <div style="text-align: right; margin-top: 20px;">
-                        <p style="margin: 5px 0;"><strong>Subtotal:</strong> $${parseFloat(invoice.subtotal).toLocaleString()}</p>
-                        ${taxAmount > 0 ? `<p style="margin: 5px 0;"><strong>Tax (${invoice.tax_rate}%):</strong> $${taxAmount.toLocaleString()}</p>` : ''}
-                        ${discount > 0 ? `<p style="margin: 5px 0;"><strong>Discount:</strong> -$${discount.toLocaleString()}</p>` : ''}
-                        <p style="margin: 15px 0 0 0; font-size: 20px;"><strong>Total:</strong> <span style="color: #22c55e;">$${parseFloat(invoice.total_amount).toLocaleString()}</span></p>
-                    </div>
-                    
-                    ${invoice.stripe_payment_link ? `
-                        <div style="text-align: center; margin: 40px 0; padding: 30px; background: #f8f9fa; border-radius: 10px;">
-                            <p style="margin: 0 0 20px 0; font-size: 16px; font-weight: bold;">Pay Online Securely</p>
-                            <a href="${invoice.stripe_payment_link}" class="btn">
-                                Pay Invoice Now
-                            </a>
-                            <p style="font-size: 12px; color: #666; margin: 15px 0 0 0;">
-                                Secure payment powered by Stripe
-                            </p>
-                        </div>
-                    ` : ''}
-                    
-                    ${invoice.notes ? `
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                            <p style="margin: 0 0 10px 0; font-weight: bold;">Notes:</p>
-                            <p style="margin: 0;">${invoice.notes}</p>
-                        </div>
-                    ` : ''}
-                    
-                    <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
-                    
-                    <p>Best regards,<br>
-                    <strong>Diamondback Coding Team</strong></p>
+                <div class="info-row">
+                    <span class="info-label">Issue Date</span>
+                    <span class="info-value">${new Date(invoice.issue_date).toLocaleDateString()}</span>
                 </div>
-                
-                <div class="footer">
-                    <p><strong>Diamondback Coding</strong><br>
-                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
-                    <p style="margin-top: 15px; color: #999; font-size: 11px;">
-                        This is an automated message. Please do not reply directly to this email.
-                    </p>
+                <div class="info-row">
+                    <span class="info-label">Due Date</span>
+                    <span class="info-value">${new Date(invoice.due_date).toLocaleDateString()}</span>
                 </div>
-            </body>
-            </html>
-        `;
+                <div class="info-row">
+                    <span class="info-label">Amount Due</span>
+                    <span class="info-value gold" style="font-size:20px;">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
+                </div>
+            </div>
+
+            <h3>Invoice Details</h3>
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Qty</th>
+                        <th>Unit Price</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHTML}
+                </tbody>
+            </table>
+
+            <div class="inv-totals">
+                <p><strong>Subtotal:</strong> $${parseFloat(invoice.subtotal).toLocaleString()}</p>
+                ${taxAmount > 0 ? `<p><strong>Tax (${invoice.tax_rate}%):</strong> $${taxAmount.toLocaleString()}</p>` : ''}
+                ${discount > 0 ? `<p><strong>Discount:</strong> -$${discount.toLocaleString()}</p>` : ''}
+                <p class="total-line"><strong>Total:</strong> <span>$${parseFloat(invoice.total_amount).toLocaleString()}</span></p>
+            </div>
+
+            ${invoice.stripe_payment_link ? `
+                <div class="btn-center">
+                    <a href="${invoice.stripe_payment_link}" class="btn-gold">Pay Invoice Now</a>
+                    <p class="btn-note">Secure payment powered by Stripe</p>
+                </div>
+            ` : ''}
+
+            ${invoice.notes ? `
+                <div class="notes-box">
+                    <p><strong>Notes</strong></p>
+                    <p>${invoice.notes}</p>
+                </div>
+            ` : ''}
+
+            <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
+
+            <div class="sign-off">
+                <p>Best regards,</p>
+                <p class="team-name">The Diamondback Coding Team</p>
+            </div>
+        `);
         
         console.log('Preparing to send email...');
         console.log('From:', process.env.EMAIL_USER);
@@ -3756,27 +3962,25 @@ app.post('/api/email/test', authenticateToken, async (req, res) => {
             from: `"Diamondback Coding Test" <${process.env.EMAIL_USER}>`,
             to: process.env.EMAIL_USER,
             subject: 'Email Test - Diamondback Coding',
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background: #22c55e; color: white; padding: 30px; text-align: center;">
-                        <h1 style="margin: 0;">Email is Working!</h1>
+            html: buildEmailHTML(`
+                <h2 style="color: #D4A847;">✓ Email is Working!</h2>
+                <p>If you're reading this, your email configuration is working correctly.</p>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Email User</span>
+                        <span class="info-value">${process.env.EMAIL_USER}</span>
                     </div>
-                    <div style="padding: 30px; background: #f8f9fa;">
-                        <h2>Test Successful</h2>
-                        <p>If you're reading this, your email configuration is working correctly!</p>
-                        <p><strong>Configuration Details:</strong></p>
-                        <ul>
-                            <li>Email User: ${process.env.EMAIL_USER}</li>
-                            <li>Service: Gmail</li>
-                            <li>Time: ${new Date().toISOString()}</li>
-                        </ul>
-                        <p>You can now send invoices and SLAs to your clients.</p>
+                    <div class="info-row">
+                        <span class="info-label">Service</span>
+                        <span class="info-value">Gmail</span>
                     </div>
-                    <div style="padding: 20px; text-align: center; background: #333; color: white; font-size: 12px;">
-                        <p>Diamondback Coding Email System</p>
+                    <div class="info-row">
+                        <span class="info-label">Timestamp</span>
+                        <span class="info-value">${new Date().toISOString()}</span>
                     </div>
                 </div>
-            `
+                <p>You can now send invoices and SLAs to your clients.</p>
+            `)
         });
         
         console.log('Test email sent successfully');
@@ -3818,43 +4022,30 @@ app.post('/api/email/test', authenticateToken, async (req, res) => {
 
 // Helper function to generate email HTML
 function generateInvoiceEmailHTML(invoice) {
-    // Use similar HTML structure as your PDF export
-    return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
-                .invoice-details { padding: 20px; background: #f8f9fa; }
-                .total { font-size: 24px; font-weight: bold; color: #22c55e; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>Diamondback Coding</h1>
-                    <p>Invoice ${invoice.invoice_number}</p>
-                </div>
-                <div class="invoice-details">
-                    <p><strong>To:</strong> ${invoice.customer_name}</p>
-                    <p><strong>Amount Due:</strong> <span class="total">$${parseFloat(invoice.total_amount).toLocaleString()}</span></p>
-                    <p><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</p>
-                    ${invoice.stripe_payment_link ? `
-                        <p style="margin-top: 30px;">
-                            <a href="${invoice.stripe_payment_link}" 
-                               style="background: #22c55e; color: white; padding: 15px 30px; 
-                                      text-decoration: none; border-radius: 5px; display: inline-block;">
-                                Pay Invoice
-                            </a>
-                        </p>
-                    ` : ''}
-                </div>
+    return buildEmailHTML(`
+        <p><strong style="font-size:16px;">Hello ${invoice.customer_name || 'Valued Customer'},</strong></p>
+
+        <div class="info-box">
+            <div class="info-row">
+                <span class="info-label">Invoice</span>
+                <span class="info-value">${invoice.invoice_number}</span>
             </div>
-        </body>
-        </html>
-    `;
+            <div class="info-row">
+                <span class="info-label">Due Date</span>
+                <span class="info-value">${new Date(invoice.due_date).toLocaleDateString()}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Amount Due</span>
+                <span class="info-value gold" style="font-size:20px;">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
+            </div>
+        </div>
+
+        ${invoice.stripe_payment_link ? `
+            <div class="btn-center">
+                <a href="${invoice.stripe_payment_link}" class="btn-gold">Pay Invoice</a>
+            </div>
+        ` : ''}
+    `);
 }
 
 app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
@@ -3885,83 +4076,45 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
         console.log('✅ PDF generated successfully');
         
         console.log('📧 Creating email HTML...');
-        const emailHTML = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-                    .header { background: #22c55e; color: white; padding: 30px; text-align: center; }
-                    .content { padding: 30px; max-width: 800px; margin: 0 auto; background: white; }
-                    .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-                    .btn { 
-                        background: #22c55e; 
-                        color: white; 
-                        padding: 15px 30px; 
-                        text-decoration: none; 
-                        border-radius: 5px; 
-                        display: inline-block;
-                        font-weight: bold;
-                    }
-                    .invoice-amount {
-                        font-size: 32px;
-                        font-weight: bold;
-                        color: #22c55e;
-                        margin: 20px 0;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1 style="margin: 0; font-size: 32px;">DIAMONDBACK CODING</h1>
-                    <p style="margin: 5px 0 0 0; opacity: 0.9;">Premium Development Services</p>
+        const emailHTML = buildEmailHTML(`
+            <p><strong style="font-size:16px;">Hello ${clientName || 'Valued Customer'},</strong></p>
+
+            <p>Your invoice is attached to this email. Here is a quick summary:</p>
+
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Invoice Number</span>
+                    <span class="info-value">${invoice.invoice_number}</span>
                 </div>
-                
-                <div class="content">
-                    <h2>Hello ${clientName || 'Valued Customer'},</h2>
-                    
-                    <p>Your invoice is attached to this email.</p>
-                    
-                    <p><strong>Invoice Details:</strong></p>
-                    <ul style="line-height: 2;">
-                        <li><strong>Invoice Number:</strong> ${invoice.invoice_number}</li>
-                        <li><strong>Issue Date:</strong> ${new Date(invoice.issue_date).toLocaleDateString()}</li>
-                        <li><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</li>
-                    </ul>
-                    
-                    <div style="text-align: center; background: #f8f9fa; padding: 30px; border-radius: 10px; margin: 30px 0;">
-                        <div style="font-size: 14px; color: #666; margin-bottom: 10px;">Amount Due</div>
-                        <div class="invoice-amount">$${parseFloat(invoice.total_amount).toLocaleString()}</div>
-                    </div>
-                    
-                    ${invoice.stripe_payment_link ? `
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="${invoice.stripe_payment_link}" class="btn">
-                                Pay Invoice Online
-                            </a>
-                            <p style="font-size: 12px; color: #666; margin-top: 10px;">
-                                Secure payment powered by Stripe
-                            </p>
-                        </div>
-                    ` : ''}
-                    
-                    <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
-                    
-                    <p>Best regards,<br>
-                    <strong>Diamondback Coding Team</strong></p>
+                <div class="info-row">
+                    <span class="info-label">Issue Date</span>
+                    <span class="info-value">${new Date(invoice.issue_date).toLocaleDateString()}</span>
                 </div>
-                
-                <div class="footer">
-                    <p><strong>Diamondback Coding</strong><br>
-                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
-                    <p style="margin-top: 15px; color: #999; font-size: 11px;">
-                        This is an automated message. Please do not reply directly to this email.
-                    </p>
+                <div class="info-row">
+                    <span class="info-label">Due Date</span>
+                    <span class="info-value">${new Date(invoice.due_date).toLocaleDateString()}</span>
                 </div>
-            </body>
-            </html>
-        `;
+            </div>
+
+            <div class="highlight-box">
+                <div class="highlight-label">Amount Due</div>
+                <div class="highlight-value">$${parseFloat(invoice.total_amount).toLocaleString()}</div>
+            </div>
+
+            ${invoice.stripe_payment_link ? `
+                <div class="btn-center">
+                    <a href="${invoice.stripe_payment_link}" class="btn-gold">Pay Invoice Online</a>
+                    <p class="btn-note">Secure payment powered by Stripe</p>
+                </div>
+            ` : ''}
+
+            <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
+
+            <div class="sign-off">
+                <p>Best regards,</p>
+                <p class="team-name">The Diamondback Coding Team</p>
+            </div>
+        `);
         
         console.log('📤 Preparing to send email...');
         console.log('📧 From:', process.env.EMAIL_USER);
@@ -5831,9 +5984,6 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
                     l.last_contact_date IS NULL
                     OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
                 )
-                AND NOT EXISTS (
-                    SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id
-                )
             )
             SELECT 
                 follow_up_category,
@@ -5882,11 +6032,10 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
 // Send custom email
 app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
     try {
-        const { to, subject, body, leadId, toName, isAutoCampaign } = req.body;
+        const { to, subject, body, leadId, toName } = req.body;
         
         console.log('[EMAIL API] Sending custom email to:', to);
         console.log('[EMAIL API] Lead ID:', leadId);
-        console.log('[EMAIL API] Auto-campaign:', isAutoCampaign);
         
         // Validate required fields
         if (!to || !subject || !body) {
@@ -5897,70 +6046,14 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
         }
         
         // Create email HTML
-        const emailHTML = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { 
-                        font-family: Arial, sans-serif; 
-                        line-height: 1.6; 
-                        color: #333; 
-                        margin: 0;
-                        padding: 0;
-                    }
-                    .container { 
-                        max-width: 600px; 
-                        margin: 0 auto; 
-                        background: #ffffff;
-                    }
-                    .header { 
-                        background: #22c55e; 
-                        color: white; 
-                        padding: 30px 20px; 
-                        text-align: center; 
-                    }
-                    .header h2 {
-                        margin: 0;
-                        font-size: 24px;
-                    }
-                    .content { 
-                        padding: 30px 20px; 
-                        background: #f9f9f9; 
-                    }
-                    .content p {
-                        margin: 0 0 15px 0;
-                    }
-                    .footer { 
-                        padding: 20px; 
-                        text-align: center; 
-                        font-size: 12px; 
-                        color: #666; 
-                        background: #f0f0f0;
-                        border-top: 1px solid #ddd;
-                    }
-                    .footer p {
-                        margin: 5px 0;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h2>Diamondback Coding</h2>
-                    </div>
-                    <div class="content">
-                        ${body.replace(/\n/g, '<br>')}
-                    </div>
-                    <div class="footer">
-                        <p><strong>Diamondback Coding</strong></p>
-                        <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
-                        <p>contact@diamondbackcoding.com | (940) 217-8680</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
+        const emailHTML = buildEmailHTML(`
+            <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${body.replace(/\n/g, '<br>')}</div>
+
+            <div class="sign-off">
+                <p>Warm regards,</p>
+                <p class="team-name">The Diamondback Coding Team</p>
+            </div>
+        `);
         
         // Send the email using Nodemailer
         try {
@@ -6039,36 +6132,6 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
             }
         }
         
-        // If auto-campaign flag is set, persist to auto_campaigns table
-        if (isAutoCampaign && leadId) {
-            try {
-                // Look up lead name
-                const leadRow = await pool.query('SELECT name, email FROM leads WHERE id = $1', [leadId]);
-                const leadName = leadRow.rows[0]?.name || toName || 'Unknown';
-                const leadEmail = leadRow.rows[0]?.email || to;
-
-                // Calculate next send date (tomorrow 9 AM)
-                const nextSend = new Date();
-                nextSend.setDate(nextSend.getDate() + 1);
-                nextSend.setHours(9, 0, 0, 0);
-
-                await pool.query(`
-                    INSERT INTO auto_campaigns (lead_id, lead_name, lead_email, subject, body, next_send_date)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                    ON CONFLICT (lead_id) DO UPDATE SET
-                        subject = EXCLUDED.subject,
-                        body = EXCLUDED.body,
-                        next_send_date = EXCLUDED.next_send_date,
-                        updated_at = CURRENT_TIMESTAMP
-                `, [leadId, leadName, leadEmail, subject, body, nextSend.toISOString()]);
-
-                console.log('[EMAIL API] ✅ Auto-campaign persisted for lead:', leadId);
-            } catch (acErr) {
-                console.error('[EMAIL API] ⚠️ Failed to persist auto-campaign:', acErr);
-                // Don't fail the request — email was still sent
-            }
-        }
-
         // Return success response
         res.json({ 
             success: true, 
@@ -8351,126 +8414,54 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
         from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: 'Welcome to Diamondback Coding Client Portal',
-        html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-                    .container { max-width: 600px; margin: 0 auto; background: white; }
-                    .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 40px 30px; text-align: center; }
-                    .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
-                    .header p { margin: 10px 0 0 0; opacity: 0.9; font-size: 14px; }
-                    .content { padding: 40px 30px; }
-                    .content h2 { color: #1f2937; font-size: 20px; margin: 0 0 20px 0; }
-                    .content p { color: #6b7280; line-height: 1.6; margin: 0 0 16px 0; }
-                    .credentials-box { background: #f9fafb; border-left: 4px solid #22c55e; padding: 24px; margin: 30px 0; border-radius: 8px; }
-                    .credentials-box h3 { margin: 0 0 20px 0; color: #22c55e; font-size: 16px; font-weight: 600; }
-                    .credential-item { margin: 0 0 16px 0; }
-                    .credential-item:last-child { margin-bottom: 0; }
-                    .credential-label { display: block; font-weight: 600; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-                    .credential-value { display: block; font-size: 15px; color: #111827; font-family: 'Courier New', Courier, monospace; background: white; padding: 10px 14px; border-radius: 6px; border: 1px solid #e5e7eb; }
-                    .warning-box { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 16px; border-radius: 8px; margin: 24px 0; }
-                    .warning-box strong { color: #78350f; }
-                    .btn-container { text-align: center; margin: 30px 0; }
-                    .btn { display: inline-block; background: #22c55e; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }
-                    .btn:hover { background: #16a34a; }
-                    .features { margin: 30px 0; }
-                    .features h3 { color: #1f2937; font-size: 18px; margin: 0 0 16px 0; }
-                    .features ul { margin: 0; padding: 0; list-style: none; }
-                    .features li { color: #6b7280; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
-                    .features li:last-child { border-bottom: none; }
-                    .features li strong { color: #1f2937; }
-                    .footer { background: #1f2937; color: #9ca3af; padding: 30px; text-align: center; font-size: 13px; }
-                    .footer p { margin: 0 0 8px 0; }
-                    .footer a { color: #22c55e; text-decoration: none; }
-                    .footer a:hover { text-decoration: underline; }
-                    .footer-copy { font-size: 11px; opacity: 0.7; margin-top: 20px; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>Welcome to Your Client Portal</h1>
-                        <p>Diamondback Coding</p>
-                    </div>
-                    
-                    <div class="content">
-                        <h2>Hi ${name},</h2>
-                        
-                        <p>
-                            Your client portal account has been successfully created. You can now track your projects, 
-                            view invoices, upload files, and communicate with our team through a secure online portal.
-                        </p>
-                        
-                        <div class="credentials-box">
-                            <h3>Login Credentials</h3>
-                            
-                            <div class="credential-item">
-                                <span class="credential-label">Portal URL</span>
-                                <span class="credential-value">https://diamondbackcoding.com/client_portal.html</span>
-                            </div>
-                            
-                            <div class="credential-item">
-                                <span class="credential-label">Email Address</span>
-                                <span class="credential-value">${email}</span>
-                            </div>
-                            
-                            <div class="credential-item">
-                                <span class="credential-label">Temporary Password</span>
-                                <span class="credential-value">${temporaryPassword}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="warning-box">
-                            <strong>Important Security Notice</strong><br>
-                            Please change your password immediately after logging in for the first time. 
-                            Never share your login credentials with anyone.
-                        </div>
-                        
-                        <div class="btn-container">
-                            <a href="https://diamondbackcoding.com/client_portal.html" class="btn">
-                                Access Your Portal
-                            </a>
-                        </div>
-                        
-                        <div class="features">
-                            <h3>Portal Features</h3>
-                            <ul>
-                                <li><strong>Project Tracking</strong> — View real-time progress on your projects</li>
-                                <li><strong>Milestone Approvals</strong> — Review and approve completed work</li>
-                                <li><strong>Invoice Management</strong> — Access and download all your invoices</li>
-                                <li><strong>File Sharing</strong> — Upload and download project files securely</li>
-                                <li><strong>Support Tickets</strong> — Submit support requests directly</li>
-                            </ul>
-                        </div>
-                        
-                        <p style="margin-top: 30px;">
-                            If you have any questions or need assistance accessing your portal, 
-                            please don't hesitate to contact us.
-                        </p>
-                        
-                        <p style="margin-top: 24px;">
-                            <strong>Best regards,</strong><br>
-                            The Diamondback Coding Team
-                        </p>
-                    </div>
-                    
-                    <div class="footer">
-                        <p><strong>Diamondback Coding</strong></p>
-                        <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
-                        <p>
-                            <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | 
-                            <a href="tel:+19402178680">(940) 217-8680</a>
-                        </p>
-                        <p class="footer-copy">
-                            &copy; ${new Date().getFullYear()} Diamondback Coding. All rights reserved.
-                        </p>
-                    </div>
+        html: buildEmailHTML(`
+            <p><strong style="font-size:16px;">Hi ${name},</strong></p>
+
+            <p>
+                Your client portal account has been successfully created. You can now track your projects,
+                view invoices, upload files, and communicate with our team through a secure online portal.
+            </p>
+
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Portal URL</span>
+                    <span class="info-value" style="font-size:13px; font-family: 'Courier New', monospace;">diamondbackcoding.com/client_portal.html</span>
                 </div>
-            </body>
-            </html>
-        `
+                <div class="info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-value" style="font-size:13px; font-family: 'Courier New', monospace;">${email}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Temporary Password</span>
+                    <span class="info-value gold" style="font-size:13px; font-family: 'Courier New', monospace;">${temporaryPassword}</span>
+                </div>
+            </div>
+
+            <div class="attachment-box" style="border-color: #D4A847; background: #fdf9ee;">
+                <strong>⚠️ Security Notice</strong> — Please change your password immediately after logging in.
+                Never share your login credentials with anyone.
+            </div>
+
+            <div class="btn-center">
+                <a href="https://diamondbackcoding.com/client_portal.html" class="btn-gold">Access Your Portal</a>
+            </div>
+
+            <h3>Portal Features</h3>
+            <ul>
+                <li><strong>Project Tracking</strong> — View real-time progress on your projects</li>
+                <li><strong>Milestone Approvals</strong> — Review and approve completed work</li>
+                <li><strong>Invoice Management</strong> — Access and download all your invoices</li>
+                <li><strong>File Sharing</strong> — Upload and download project files securely</li>
+                <li><strong>Support Tickets</strong> — Submit support requests directly</li>
+            </ul>
+
+            <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
+
+            <div class="sign-off">
+                <p>Best regards,</p>
+                <p class="team-name">The Diamondback Coding Team</p>
+            </div>
+        `)
     };
 
     try {
@@ -8554,35 +8545,14 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
             from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
             to: lead.email,
             subject: emailSubject,
-            html: `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                        .header { background: #22c55e; color: white; padding: 30px; text-align: center; margin-bottom: 30px; }
-                        .content { padding: 20px; background: white; }
-                        .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1 style="margin: 0; font-size: 24px;">Diamondback Coding</h1>
-                        </div>
-                        <div class="content">
-                            ${emailBody.replace(/\n/g, '<br>')}
-                        </div>
-                        <div class="footer">
-                            <p><strong>Diamondback Coding</strong><br>
-                            15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                            <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `
+            html: buildEmailHTML(`
+                <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${emailBody.replace(/\n/g, '<br>')}</div>
+
+                <div class="sign-off">
+                    <p>Warm regards,</p>
+                    <p class="team-name">The Diamondback Coding Team</p>
+                </div>
+            `)
         };
         
         await transporter.sendMail(mailOptions);
@@ -8687,7 +8657,13 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
                     from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
                     to: lead.email,
                     subject: emailSubject,
-                    html: `<p>${emailBody.replace(/\n/g, '<br>')}</p>`
+                    html: buildEmailHTML(`
+                        <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${emailBody.replace(/\n/g, '<br>')}</div>
+                        <div class="sign-off">
+                            <p>Warm regards,</p>
+                            <p class="team-name">The Diamondback Coding Team</p>
+                        </div>
+                    `)
                 };
                 
                 await transporter.sendMail(mailOptions);
@@ -8798,35 +8774,14 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
         // Send emails
         for (const lead of leads) {
             try {
-                const emailHTML = `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <style>
-                            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                            .header { background: #22c55e; color: white; padding: 30px; text-align: center; margin-bottom: 30px; }
-                            .content { padding: 20px; background: white; white-space: pre-wrap; }
-                            .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <div class="header">
-                                <h1 style="margin: 0; font-size: 24px;">Diamondback Coding</h1>
-                            </div>
-                            <div class="content">
-                                ${message.replace(/\n/g, '<br>')}
-                            </div>
-                            <div class="footer">
-                                <p><strong>Diamondback Coding</strong><br>
-                                15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                                <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>
-                `;
+                const emailHTML = buildEmailHTML(`
+                    <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${message.replace(/\n/g, '<br>')}</div>
+
+                    <div class="sign-off">
+                        <p>Warm regards,</p>
+                        <p class="team-name">The Diamondback Coding Team</p>
+                    </div>
+                `);
                 
                 const mailOptions = {
                     from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
@@ -8912,7 +8867,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
 app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) => {
     try {
         // Frontend sends 'body', internal send-by-category uses 'message' — normalise here
-        const { category, subject, body, message, isAutoCampaign } = req.body;
+        const { category, subject, body, message } = req.body;
         const emailMessage = body || message;
 
         console.log(`[EMAIL-CATEGORY] Sending to category: ${category}`);
@@ -8988,40 +8943,14 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
 
                 const unsubscribeUrl = `${BASE_URL}/api/unsubscribe/${token}`;
 
-                const emailHTML = `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <style>
-                            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                            .header { background: #22c55e; color: white; padding: 30px; text-align: center; margin-bottom: 30px; }
-                            .content { padding: 20px; background: white; white-space: pre-wrap; }
-                            .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
-                            .footer a { color: #999; text-decoration: none; }
-                            .footer a:hover { color: #22c55e; text-decoration: underline; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <div class="header">
-                                <h1 style="margin: 0; font-size: 24px;">Diamondback Coding</h1>
-                            </div>
-                            <div class="content">
-                                ${emailMessage.replace(/\n/g, '<br>')}
-                            </div>
-                            <div class="footer">
-                                <p><strong>Diamondback Coding</strong><br>
-                                15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                                <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | (940) 217-8680</p>
-                                <p style="margin-top: 12px; border-top: 1px solid #ddd; padding-top: 10px;">
-                                    <a href="${unsubscribeUrl}">Unsubscribe from follow-up emails</a>
-                                </p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>
-                `;
+                const emailHTML = buildEmailHTML(`
+                    <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${emailMessage.replace(/\n/g, '<br>')}</div>
+
+                    <div class="sign-off">
+                        <p>Warm regards,</p>
+                        <p class="team-name">The Diamondback Coding Team</p>
+                    </div>
+                `, { unsubscribeUrl: unsubscribeUrl });
 
                 const mailOptions = {
                     from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
@@ -9071,37 +9000,12 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
 
         console.log(`[EMAIL-CATEGORY] ✅ Complete: ${sent_count} sent, ${fail_count} failed`);
 
-        // If auto-campaign flag is set, persist all successfully sent leads
-        if (isAutoCampaign) {
-            const nextSend = new Date();
-            nextSend.setDate(nextSend.getDate() + 1);
-            nextSend.setHours(9, 0, 0, 0);
-
-            for (const lead of leads) {
-                try {
-                    await pool.query(`
-                        INSERT INTO auto_campaigns (lead_id, lead_name, lead_email, subject, body, next_send_date)
-                        VALUES ($1, $2, $3, $4, $5, $6)
-                        ON CONFLICT (lead_id) DO UPDATE SET
-                            subject = EXCLUDED.subject,
-                            body = EXCLUDED.body,
-                            next_send_date = EXCLUDED.next_send_date,
-                            updated_at = CURRENT_TIMESTAMP
-                    `, [lead.id, lead.name, lead.email, subject, emailMessage, nextSend.toISOString()]);
-                } catch (acErr) {
-                    console.error(`[EMAIL-CATEGORY] ⚠️ Failed to persist auto-campaign for lead ${lead.id}:`, acErr);
-                }
-            }
-            console.log(`[EMAIL-CATEGORY] ✅ Persisted auto-campaigns for ${leads.length} leads`);
-        }
-
         res.json({
             success: true,
             message: `Sent ${sent_count} emails to ${category} category, ${fail_count} failed`,
             sent_count,
             fail_count,
             totalLeads: leads.length,
-            leads: leads.map(l => ({ id: l.id, name: l.name, email: l.email })),
             errors: errors.length > 0 ? errors : undefined
         });
 
@@ -9112,119 +9016,6 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
             message: 'Bulk send failed',
             error: error.message
         });
-    }
-});
-
-// ========================================
-// AUTO-CAMPAIGN CRUD ENDPOINTS
-// ========================================
-
-// GET all active auto-campaigns
-app.get('/api/auto-campaigns', authenticateToken, async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT
-                ac.lead_id,
-                ac.lead_name,
-                ac.lead_email,
-                ac.subject,
-                ac.body,
-                ac.created_at,
-                ac.updated_at,
-                ac.next_send_date
-            FROM auto_campaigns ac
-            ORDER BY ac.created_at DESC
-        `);
-        res.json({ success: true, campaigns: result.rows });
-    } catch (error) {
-        console.error('[AUTO-CAMPAIGNS] GET error:', error);
-        res.status(500).json({ success: false, message: 'Failed to load auto-campaigns' });
-    }
-});
-
-// POST create a new auto-campaign (or upsert if lead already has one)
-app.post('/api/auto-campaigns', authenticateToken, async (req, res) => {
-    try {
-        const { leadId, name, email, subject, body } = req.body;
-
-        if (!leadId || !subject || !body) {
-            return res.status(400).json({ success: false, message: 'leadId, subject, and body are required' });
-        }
-
-        const nextSend = new Date();
-        nextSend.setDate(nextSend.getDate() + 1);
-        nextSend.setHours(9, 0, 0, 0);
-
-        await pool.query(`
-            INSERT INTO auto_campaigns (lead_id, lead_name, lead_email, subject, body, next_send_date)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (lead_id) DO UPDATE SET
-                lead_name = EXCLUDED.lead_name,
-                lead_email = EXCLUDED.lead_email,
-                subject = EXCLUDED.subject,
-                body = EXCLUDED.body,
-                next_send_date = EXCLUDED.next_send_date,
-                updated_at = CURRENT_TIMESTAMP
-        `, [leadId, name || 'Unknown', email || '', subject, body, nextSend.toISOString()]);
-
-        console.log('[AUTO-CAMPAIGNS] ✅ Created/updated campaign for lead:', leadId);
-        res.json({ success: true, message: 'Auto-campaign saved' });
-    } catch (error) {
-        console.error('[AUTO-CAMPAIGNS] POST error:', error);
-        res.status(500).json({ success: false, message: 'Failed to save auto-campaign' });
-    }
-});
-
-// PUT update an existing auto-campaign's subject/body
-app.put('/api/auto-campaigns/:leadId', authenticateToken, async (req, res) => {
-    try {
-        const { leadId } = req.params;
-        const { subject, body } = req.body;
-
-        if (!subject || !body) {
-            return res.status(400).json({ success: false, message: 'subject and body are required' });
-        }
-
-        const result = await pool.query(`
-            UPDATE auto_campaigns
-            SET subject = $1,
-                body = $2,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE lead_id = $3
-            RETURNING lead_id
-        `, [subject, body, leadId]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ success: false, message: 'Auto-campaign not found' });
-        }
-
-        console.log('[AUTO-CAMPAIGNS] ✅ Updated campaign for lead:', leadId);
-        res.json({ success: true, message: 'Auto-campaign updated' });
-    } catch (error) {
-        console.error('[AUTO-CAMPAIGNS] PUT error:', error);
-        res.status(500).json({ success: false, message: 'Failed to update auto-campaign' });
-    }
-});
-
-// DELETE turn off an auto-campaign
-app.delete('/api/auto-campaigns/:leadId', authenticateToken, async (req, res) => {
-    try {
-        const { leadId } = req.params;
-
-        const result = await pool.query(
-            'DELETE FROM auto_campaigns WHERE lead_id = $1 RETURNING lead_id',
-            [leadId]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ success: false, message: 'Auto-campaign not found' });
-        }
-
-        console.log('[AUTO-CAMPAIGNS] ✅ Deleted campaign for lead:', leadId);
-        res.json({ success: true, message: 'Auto-campaign turned off' });
-    } catch (error) {
-        console.error('[AUTO-CAMPAIGNS] DELETE error:', error);
-        res.status(500).json({ success: false, message: 'Failed to turn off auto-campaign' });
     }
 });
 

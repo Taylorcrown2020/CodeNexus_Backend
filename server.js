@@ -1209,11 +1209,24 @@ await client.query(`CREATE TABLE IF NOT EXISTS auto_campaigns (
     lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
     subject VARCHAR(500) NOT NULL,
     body TEXT NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_sent_at TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`);
+
+// Migration: ensure all columns exist on auto_campaigns (safe if table already existed without them)
+await client.query(`
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'auto_campaigns' AND column_name = 'is_active') THEN
+            ALTER TABLE auto_campaigns ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'auto_campaigns' AND column_name = 'updated_at') THEN
+            ALTER TABLE auto_campaigns ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'auto_campaigns' AND column_name = 'last_sent_at') THEN
+            ALTER TABLE auto_campaigns ADD COLUMN last_sent_at TIMESTAMP;
+        END IF;
+    END $$;
+`);
 await client.query(`CREATE INDEX IF NOT EXISTS idx_auto_campaigns_lead ON auto_campaigns(lead_id)`);
 await client.query(`CREATE INDEX IF NOT EXISTS idx_auto_campaigns_active ON auto_campaigns(is_active) WHERE is_active = TRUE`);
 console.log('✅ Auto-campaigns table initialized');

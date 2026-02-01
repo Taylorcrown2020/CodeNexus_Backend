@@ -8629,6 +8629,13 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
                 message: 'Lead has no email address'
             });
         }
+
+        if (lead.unsubscribed) {
+            return res.status(400).json({
+                success: false,
+                message: 'This lead has unsubscribed from emails'
+            });
+        }
         
         // Determine email content
         let emailSubject = subject;
@@ -8782,6 +8789,12 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
                 if (!lead.email) {
                     failCount++;
                     errors.push({ leadId, error: 'No email address' });
+                    continue;
+                }
+
+                if (lead.unsubscribed) {
+                    failCount++;
+                    errors.push({ leadId, error: 'Lead has unsubscribed' });
                     continue;
                 }
                 
@@ -9209,6 +9222,10 @@ app.post('/api/auto-campaigns', authenticateToken, async (req, res) => {
         const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
         if (!leadResult.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
         const lead = leadResult.rows[0];
+
+        if (lead.unsubscribed) {
+            return res.status(400).json({ success: false, message: 'This lead has unsubscribed from emails' });
+        }
 
         // Block duplicate active campaign on same lead
         const existing = await pool.query('SELECT id FROM auto_campaigns WHERE lead_id = $1 AND is_active = TRUE', [leadId]);

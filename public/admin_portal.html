@@ -15798,6 +15798,7 @@ async function testFollowUpSystem() {
 var recruitmentState = { jobs: [], applications: [], selectedJob: null, selectedApp: null, view: 'applications' };
 
 async function renderRecruitment(content) {
+    recruitmentState = { jobs: [], applications: [], selectedJob: null, selectedApp: null, view: 'applications' };
     content.innerHTML = `<div style="opacity:0.5;padding:40px;text-align:center;color:var(--text-muted);">Loading Recruitment...</div>`;
     try {
         await loadRecruitmentData();
@@ -15805,23 +15806,37 @@ async function renderRecruitment(content) {
         renderRecruitmentUI(content);
     } catch(e) {
         console.error('[RECRUITMENT]', e);
-        content.innerHTML = `<div style="padding:40px;text-align:center;color:var(--status-danger);"><h3>Error loading recruitment data</h3><p style="color:var(--text-muted);margin-top:8px;">${e.message}</p></div>`;
+        content.innerHTML = `<div style="padding:40px;text-align:center;color:var(--status-danger);"><h3>Error loading recruitment data</h3><p style="color:var(--text-muted);margin-top:8px;">${e.message}</p><button class="btn btn-secondary" style="margin-top:16px;" onclick="renderRecruitment(document.getElementById('contentArea'))">Retry</button></div>`;
     }
 }
 
 async function loadRecruitmentData() {
     const token = getAuthToken();
     if (!token) throw new Error('Not authenticated — please log in again.');
-    const [jobsRes, appsRes] = await Promise.all([
-        fetch(`${API_URL}/api/admin/jobs`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/admin/applications`, { headers: { Authorization: `Bearer ${token}` } })
-    ]);
-    if (!jobsRes.ok) throw new Error(`Jobs endpoint returned ${jobsRes.status}. Make sure the server has the /api/admin/jobs route.`);
-    if (!appsRes.ok) throw new Error(`Applications endpoint returned ${appsRes.status}. Make sure the server has the /api/admin/applications route.`);
-    const jobsData = await jobsRes.json();
-    const appsData = await appsRes.json();
-    recruitmentState.jobs = jobsData.jobs || [];
-    recruitmentState.applications = appsData.applications || [];
+
+    let jobsRes, appsRes;
+    try {
+        [jobsRes, appsRes] = await Promise.all([
+            fetch(`${API_URL}/api/admin/jobs`, { headers: { Authorization: `Bearer ${token}` } }),
+            fetch(`${API_URL}/api/admin/applications`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+    } catch (networkErr) {
+        throw new Error('Network error — check that your server is running. (' + networkErr.message + ')');
+    }
+
+    if (!jobsRes.ok) throw new Error('Jobs endpoint returned ' + jobsRes.status + '. Deploy the updated server.js first.');
+    if (!appsRes.ok) throw new Error('Applications endpoint returned ' + appsRes.status + '. Deploy the updated server.js first.');
+
+    let jobsData, appsData;
+    try {
+        jobsData = await jobsRes.json();
+        appsData = await appsRes.json();
+    } catch (parseErr) {
+        throw new Error('Server returned non-JSON response. Deploy the updated server.js first. (' + parseErr.message + ')');
+    }
+
+    recruitmentState.jobs        = (jobsData && jobsData.jobs)               ? jobsData.jobs               : [];
+    recruitmentState.applications = (appsData && appsData.applications)      ? appsData.applications       : [];
 }
 
 function renderRecruitmentUI(content) {

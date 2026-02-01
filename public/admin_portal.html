@@ -126,6 +126,478 @@ body {
 }
 
 /* ========================================
+   AUTO-CAMPAIGN STYLES
+======================================== */
+
+/* Toggle switch inside email modals */
+.auto-campaign-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    transition: border-color 0.3s ease, background 0.3s ease;
+}
+.auto-campaign-row.active {
+    border-color: rgba(34,197,94,0.35);
+    background: rgba(34,197,94,0.06);
+}
+.auto-campaign-row .toggle-track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--bg-hover);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    flex-shrink: 0;
+    border: 1px solid var(--border-default);
+}
+.auto-campaign-row .toggle-track.on {
+    background: var(--accent-amber);
+    border-color: var(--accent-amber);
+    box-shadow: 0 0 10px rgba(34,197,94,0.3);
+}
+.auto-campaign-row .toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: left 0.3s cubic-bezier(0.4,0,0.2,1), background 0.3s ease;
+}
+.auto-campaign-row .toggle-track.on .toggle-knob {
+    left: 22px;
+    background: #fff;
+}
+.auto-campaign-row .toggle-label-wrap {
+    flex: 1;
+    min-width: 0;
+}
+.auto-campaign-row .toggle-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.auto-campaign-row .toggle-label .auto-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: rgba(34,197,94,0.15);
+    color: var(--accent-amber);
+    padding: 2px 7px;
+    border-radius: 20px;
+    border: 1px solid rgba(34,197,94,0.25);
+}
+.auto-campaign-row .toggle-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Auto-Send Bucket / Dashboard card */
+.auto-send-bucket {
+    background: var(--bg-secondary);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: var(--radius-lg);
+    margin-bottom: 28px;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+.auto-send-bucket:hover {
+    border-color: rgba(34,197,94,0.35);
+}
+.auto-send-bucket-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: linear-gradient(135deg, rgba(34,197,94,0.04) 0%, transparent 100%);
+}
+.auto-send-bucket-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.auto-send-bucket-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: rgba(34,197,94,0.12);
+    border: 1px solid rgba(34,197,94,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.auto-send-bucket-icon svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-amber);
+}
+.auto-send-bucket-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.auto-send-bucket-title .auto-live-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: var(--accent-amber);
+    color: var(--bg-void);
+    padding: 3px 8px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.auto-send-bucket-title .auto-live-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff;
+    animation: pulse-dot 1.8s infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+.auto-send-bucket-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.auto-send-bucket-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-amber);
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.2);
+    padding: 5px 12px;
+    border-radius: 20px;
+}
+
+/* Auto-campaign table rows */
+.auto-campaign-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.auto-campaign-table thead th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    padding: 10px 22px;
+    border-bottom: 1px solid var(--border-subtle);
+    white-space: nowrap;
+}
+.auto-campaign-table tbody tr {
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background 0.15s ease;
+}
+.auto-campaign-table tbody tr:last-child {
+    border-bottom: none;
+}
+.auto-campaign-table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+.auto-campaign-table td {
+    padding: 14px 22px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    vertical-align: middle;
+}
+.auto-campaign-table .lead-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.auto-campaign-table .lead-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--accent-amber), var(--accent-rust));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--bg-void);
+    flex-shrink: 0;
+}
+.auto-campaign-table .lead-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+.auto-campaign-table .lead-email-small {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+.auto-campaign-table .next-send {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.auto-campaign-table .next-send svg {
+    width: 13px;
+    height: 13px;
+    color: var(--accent-amber);
+}
+.auto-campaign-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-auto-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+}
+.btn-auto-edit:hover {
+    border-color: var(--accent-amber);
+    color: var(--accent-amber);
+    background: rgba(34,197,94,0.06);
+}
+.btn-auto-edit svg {
+    width: 12px;
+    height: 12px;
+}
+.btn-auto-off {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(239,68,68,0.25);
+    background: rgba(239,68,68,0.06);
+    color: #ef4444;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+}
+.btn-auto-off:hover {
+    background: rgba(239,68,68,0.12);
+    border-color: rgba(239,68,68,0.4);
+}
+.btn-auto-off svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* Edit Auto-Campaign Modal */
+.edit-auto-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
+.edit-auto-modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 580px;
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+}
+.edit-auto-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.edit-auto-modal-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.edit-auto-modal-header h3 svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-amber);
+}
+.edit-auto-modal-close {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.edit-auto-modal-close:hover {
+    border-color: var(--status-lost);
+    color: var(--status-lost);
+}
+.edit-auto-modal-close svg {
+    width: 14px;
+    height: 14px;
+}
+.edit-auto-modal-body {
+    padding: 24px;
+}
+.edit-auto-field {
+    margin-bottom: 20px;
+}
+.edit-auto-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+.edit-auto-field input,
+.edit-auto-field textarea,
+.edit-auto-field select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+    outline: none;
+}
+.edit-auto-field input:focus,
+.edit-auto-field textarea:focus,
+.edit-auto-field select:focus {
+    border-color: var(--accent-amber);
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.1);
+}
+.edit-auto-field textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.6;
+}
+.edit-auto-field select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+.edit-auto-field .field-hint {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 6px;
+}
+.edit-auto-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px 22px;
+    border-top: 1px solid var(--border-subtle);
+}
+.edit-auto-modal-footer .left-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.edit-auto-modal-footer .right-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+/* Mini toggle in edit modal footer */
+.mini-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.mini-toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: var(--bg-hover);
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid var(--border-default);
+    transition: background 0.3s ease;
+}
+.mini-toggle.on {
+    background: var(--accent-amber);
+    border-color: var(--accent-amber);
+}
+.mini-toggle .mini-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: left 0.3s cubic-bezier(0.4,0,0.2,1), background 0.3s ease;
+}
+.mini-toggle.on .mini-knob {
+    left: 20px;
+    background: #fff;
+}
+
+/* Empty state for auto-send bucket */
+.auto-send-empty {
+    padding: 36px 22px;
+    text-align: center;
+    color: var(--text-faint);
+}
+.auto-send-empty svg {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 10px;
+    opacity: 0.4;
+}
+.auto-send-empty p {
+    font-size: 13px;
+}
+
+/* ========================================
    SIDEBAR
 ======================================== */
 .sidebar {
@@ -5887,33 +6359,47 @@ window.showEmailModal = function(leadId, leadName, leadEmail) {
     console.log('Email modal opening for:', leadId, leadName, leadEmail);
     
     const modalHtml = `
-        <div class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;" onclick="this.remove()">
-            <div class="modal" style="background: white; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow: auto;" onclick="event.stopPropagation()">
-                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb;">
-                    <h3 style="margin: 0;">Send Email to ${leadName}</h3>
+        <div class="modal-overlay" id="singleEmailModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;" onclick="if(event.target===this)this.remove()">
+            <div class="modal" style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); max-width: 580px; width: 90%; max-height: 90vh; overflow: auto; box-shadow: var(--shadow-lg);" onclick="event.stopPropagation()">
+                <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between;">
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary);">Send Email to ${leadName}</h3>
+                    <button onclick="document.getElementById('singleEmailModal').remove()" style="background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                 </div>
-                <div style="padding: 20px;">
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">To:</label>
+                <div style="padding: 24px;">
+                    <div style="margin-bottom: 18px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">To</label>
                         <input type="email" value="${leadEmail}" readonly 
-                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f3f4f6;">
+                               style="width: 100%; padding: 10px 14px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); color: var(--text-muted); font-size: 13px; font-family: inherit;">
                     </div>
-                    
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
+
+                    <!-- Auto Campaign Toggle -->
+                    <div class="auto-campaign-row" id="autoCampaignRow_${leadId}">
+                        <div class="toggle-track" id="autoToggle_${leadId}" onclick="toggleAutoCampaign('${leadId}')">
+                            <div class="toggle-knob"></div>
+                        </div>
+                        <div class="toggle-label-wrap">
+                            <div class="toggle-label">Automatic Email Campaign <span class="auto-badge">Auto</span></div>
+                            <div class="toggle-desc">Send this email automatically every time this lead is due for a follow-up</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 18px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Subject</label>
                         <input type="text" id="emailSubject_${leadId}" placeholder="Email subject" 
-                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
+                               style="width: 100%; padding: 10px 14px; background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;" onfocus="this.style.borderColor='var(--accent-amber)'" onblur="this.style.borderColor='var(--border-default)'">
                     </div>
                     
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
-                        <textarea id="emailBody_${leadId}" rows="10" placeholder="Type your message here..." 
-                                  style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+                    <div style="margin-bottom: 18px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Message</label>
+                        <textarea id="emailBody_${leadId}" rows="8" placeholder="Type your message here..." 
+                                  style="width: 100%; padding: 10px 14px; background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-size: 13px; resize: vertical; font-family: inherit; outline: none; line-height: 1.6;" onfocus="this.style.borderColor='var(--accent-amber)'" onblur="this.style.borderColor='var(--border-default)'"></textarea>
                     </div>
                 </div>
-                <div style="padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                    <button class="btn btn-primary" onclick="window.doSendEmail(${leadId}, '${leadEmail}')">Send Email</button>
+                <div style="padding: 18px 24px; border-top: 1px solid var(--border-subtle); display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('singleEmailModal').remove()">Cancel</button>
+                    <button class="btn btn-primary" id="sendSingleEmailBtn_${leadId}" onclick="window.doSendEmail(${leadId}, '${leadEmail}')">Send Email</button>
                 </div>
             </div>
         </div>
@@ -5922,6 +6408,15 @@ window.showEmailModal = function(leadId, leadName, leadEmail) {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     setTimeout(() => document.getElementById('emailSubject_' + leadId)?.focus(), 100);
 };
+
+// Toggle the auto-campaign switch in single-email modal
+function toggleAutoCampaign(leadId) {
+    const track = document.getElementById('autoToggle_' + leadId);
+    const row = document.getElementById('autoCampaignRow_' + leadId);
+    const isOn = track.classList.toggle('on');
+    row.classList.toggle('active', isOn);
+    console.log('[AUTO-CAMPAIGN] Toggle for lead', leadId, '→', isOn ? 'ON' : 'OFF');
+}
 
 window.doSendEmail = async function(leadId, leadEmail) {
     console.log('[EMAIL] Starting send email process...');
@@ -5936,6 +6431,11 @@ window.doSendEmail = async function(leadId, leadEmail) {
         alert('Please fill in subject and message');
         return;
     }
+
+    // Check if auto-campaign toggle is ON
+    const autoToggle = document.getElementById('autoToggle_' + leadId);
+    const isAutoCampaign = autoToggle && autoToggle.classList.contains('on');
+    console.log('[EMAIL] Auto-campaign enabled:', isAutoCampaign);
     
     console.log('[EMAIL] Subject:', subject);
     console.log('[EMAIL] Body length:', body.length);
@@ -5963,7 +6463,8 @@ window.doSendEmail = async function(leadId, leadEmail) {
                 subject: subject,
                 body: body,
                 leadId: leadId,
-                isFollowUp: state.currentSection === 'followups'
+                isFollowUp: state.currentSection === 'followups',
+                isAutoCampaign: isAutoCampaign
             })
         });
         
@@ -6002,10 +6503,18 @@ window.doSendEmail = async function(leadId, leadEmail) {
         
         // ✅ Email sent successfully!
         console.log('[EMAIL] ✅ Email sent successfully');
-        alert('Email sent successfully!');
+
+        // If auto-campaign was enabled, register in local store
+        if (isAutoCampaign) {
+            const lead = state.leads.find(l => l.id === leadId) || { id: leadId, name: 'Unknown', email: leadEmail };
+            registerAutoCampaign(leadId, lead.name || 'Unknown', leadEmail, subject, body);
+            showToast('✓ Email sent & Auto Campaign activated', 'success');
+        } else {
+            showToast('✓ Email sent successfully', 'success');
+        }
         
         // Close modal
-        const modal = document.querySelector('.modal-overlay');
+        const modal = document.getElementById('singleEmailModal');
         if (modal) {
             modal.remove();
             console.log('[EMAIL] Modal closed');
@@ -6045,7 +6554,7 @@ window.doSendEmail = async function(leadId, leadEmail) {
     } catch (error) {
         console.error('[EMAIL] ❌ Error:', error);
         console.error('[EMAIL] Error stack:', error.stack);
-        alert('Failed to send email: ' + error.message);
+        showToast('Failed to send email: ' + error.message, 'error');
     }
 };
 
@@ -14856,28 +15365,46 @@ function openCategoryEmailModal(category, categoryLabel, count) {
     
     const modalHtml = `
         <div class="modal-overlay" id="bulkEmailModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
-            <div class="modal" style="background: white; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow: auto;" onclick="event.stopPropagation()">
-                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb;">
-                    <h3 style="margin: 0;">Email All - ${categoryLabel}</h3>
+            <div class="modal" style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); max-width: 580px; width: 90%; max-height: 90vh; overflow: auto; box-shadow: var(--shadow-lg);" onclick="event.stopPropagation()">
+                <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between;">
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-primary);">Email All \u2014 ${categoryLabel}</h3>
+                    <button onclick="closeBulkEmailModal()" style="background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                 </div>
-                <div style="padding: 20px;">
-                    <p style="margin-bottom: 20px; color: #666; padding: 12px; background: #f3f4f6; border-radius: 6px;">
-                        📧 This will send an email to <strong>${count} leads</strong> in this category.
-                    </p>
+                <div style="padding: 24px;">
+                    <div style="margin-bottom: 20px; padding: 12px 16px; background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.15); border-radius: var(--radius-md); display: flex; align-items: center; gap: 10px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--accent-amber); flex-shrink: 0;">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        <span style="font-size: 13px; color: var(--text-secondary);">This will send an email to <strong style="color: var(--text-primary);">${count} leads</strong> in this category.</span>
+                    </div>
+
+                    <!-- Auto Campaign Toggle for Bulk -->
+                    <div class="auto-campaign-row" id="bulkAutoCampaignRow">
+                        <div class="toggle-track" id="bulkAutoToggle" onclick="toggleBulkAutoCampaign()">
+                            <div class="toggle-knob"></div>
+                        </div>
+                        <div class="toggle-label-wrap">
+                            <div class="toggle-label">Automatic Email Campaign <span class="auto-badge">Auto</span></div>
+                            <div class="toggle-desc">Automatically re-send this email to all ${count} leads every time they are due for a follow-up</div>
+                        </div>
+                    </div>
                     
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
+                    <div style="margin-bottom: 18px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Subject</label>
                         <input type="text" id="bulkEmailSubject" placeholder="Email subject" 
-                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
+                               style="width: 100%; padding: 10px 14px; background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;" onfocus="this.style.borderColor='var(--accent-amber)'" onblur="this.style.borderColor='var(--border-default)'">
                     </div>
                     
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
-                        <textarea id="bulkEmailBody" rows="10" placeholder="Type your message here..." 
-                                  style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+                    <div style="margin-bottom: 18px;">
+                        <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">Message</label>
+                        <textarea id="bulkEmailBody" rows="8" placeholder="Type your message here..." 
+                                  style="width: 100%; padding: 10px 14px; background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: var(--radius-md); color: var(--text-primary); font-size: 13px; resize: vertical; font-family: inherit; outline: none; line-height: 1.6;" onfocus="this.style.borderColor='var(--accent-amber)'" onblur="this.style.borderColor='var(--border-default)'"></textarea>
                     </div>
                 </div>
-                <div style="padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
+                <div style="padding: 18px 24px; border-top: 1px solid var(--border-subtle); display: flex; gap: 10px; justify-content: flex-end;">
                     <button class="btn btn-secondary" onclick="closeBulkEmailModal()">Cancel</button>
                     <button class="btn btn-primary" id="sendBulkEmailBtn" onclick="sendBulkEmail('${category}', ${count})">
                         Send to ${count} Leads
@@ -14895,7 +15422,7 @@ function openCategoryEmailModal(category, categoryLabel, count) {
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Add click to close
+    // Add click to close on backdrop
     document.getElementById('bulkEmailModal').addEventListener('click', function(e) {
         if (e.target.id === 'bulkEmailModal') {
             closeBulkEmailModal();
@@ -14905,6 +15432,15 @@ function openCategoryEmailModal(category, categoryLabel, count) {
     setTimeout(() => {
         document.getElementById('bulkEmailSubject')?.focus();
     }, 100);
+}
+
+// Toggle the auto-campaign switch in bulk-email modal
+function toggleBulkAutoCampaign() {
+    const track = document.getElementById('bulkAutoToggle');
+    const row = document.getElementById('bulkAutoCampaignRow');
+    const isOn = track.classList.toggle('on');
+    row.classList.toggle('active', isOn);
+    console.log('[BULK AUTO-CAMPAIGN] Toggle ->', isOn ? 'ON' : 'OFF');
 }
 
 function closeBulkEmailModal() {
@@ -14924,6 +15460,11 @@ async function sendBulkEmail(category, count) {
         showToast('Please fill in subject and message', 'error');
         return;
     }
+
+    // Check if auto-campaign toggle is ON
+    const bulkAutoToggle = document.getElementById('bulkAutoToggle');
+    const isAutoCampaign = bulkAutoToggle && bulkAutoToggle.classList.contains('on');
+    console.log('[BULK EMAIL] Auto-campaign enabled:', isAutoCampaign);
     
     const sendBtn = document.getElementById('sendBulkEmailBtn');
     if (!sendBtn) {
@@ -14950,7 +15491,8 @@ async function sendBulkEmail(category, count) {
                 category: category,
                 subject: subject,
                 body: body,
-                isFollowUp: true
+                isFollowUp: true,
+                isAutoCampaign: isAutoCampaign
             })
         });
         
@@ -14963,8 +15505,21 @@ async function sendBulkEmail(category, count) {
         
         const result = await response.json();
         console.log('[BULK EMAIL] Success:', result);
-        
-        showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
+
+        // If auto-campaign was enabled, register all leads in this category
+        if (isAutoCampaign) {
+            if (result.leads && result.leads.length > 0) {
+                result.leads.forEach(lead => {
+                    registerAutoCampaign(lead.id, lead.name, lead.email, subject, body);
+                });
+            } else {
+                // Fallback: register from local state
+                registerAutoCampaignByCategory(category, subject, body);
+            }
+            showToast(`Sent ${result.sent_count || count} emails & Auto Campaign activated for all`, 'success');
+        } else {
+            showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
+        }
         closeBulkEmailModal();
         
         // Refresh follow-ups
@@ -14981,23 +15536,6 @@ async function sendBulkEmail(category, count) {
         sendBtn.innerHTML = originalText;
     }
 }
-
-// Handle category email form submission
-async function handleCategoryEmailSend(event, category) {
-    event.preventDefault();
-    
-    const subject = document.getElementById('emailSubject').value;
-    const message = document.getElementById('emailMessage').value;
-    
-    if (!subject || !message) {
-        showToast('Please fill in all fields', 'error');
-        return;
-    }
-    
-    closeCreateModal();
-    await sendBulkEmailByCategory(category, subject, message);
-}
-
 
 
 async function markAsContacted(leadId) {
@@ -15456,12 +15994,16 @@ async function renderFollowUps(content) {
                 </div>
             </div>
             
+            <!-- Auto-Send Bucket -->
+            ${buildAutoSendBucket()}
+
             <!-- Category Sections -->
             ${categories.length > 0 ? categories.map(category => {
                 // Define categoryTitle in the correct scope
                 const categoryTitle = categoryLabels[category.follow_up_category] || category.follow_up_category;
                 // Escape for HTML attributes (using HTML entity for safety)
                 const escapedTitle = categoryTitle.replace(/'/g, '&#39;');
+                const filteredCount = (category.leads || []).filter(l => !autoCampaigns[l.id]).length;
                 
                 return `
                 <div class="table-container" style="margin-top: 24px;">
@@ -15471,10 +16013,10 @@ async function renderFollowUps(content) {
                                 ${categoryTitle}
                             </h3>
                             <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
-                                ${category.count} leads need follow-up
+                                ${filteredCount} lead${filteredCount !== 1 ? 's' : ''} need follow-up
                             </p>
                         </div>
-                        <button class="btn btn-primary btn-sm" onclick="openCategoryEmailModal('${category.follow_up_category}', '${escapedTitle}', ${category.count})">
+                        <button class="btn btn-primary btn-sm" onclick="openCategoryEmailModal('${category.follow_up_category}', '${escapedTitle}', ${filteredCount})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                 <polyline points="22,6 12,13 2,6"/>
@@ -15492,7 +16034,7 @@ async function renderFollowUps(content) {
                             </tr>
                         </thead>
                         <tbody>
-                            ${category.leads && category.leads.length > 0 ? category.leads.map(lead => `
+                            ${category.leads && category.leads.filter(l => !autoCampaigns[l.id]).length > 0 ? category.leads.filter(l => !autoCampaigns[l.id]).map(lead => `
                                 <tr>
                                     <td>
                                         <div class="contact-cell">
@@ -15635,6 +16177,313 @@ function formatDate(dateString) {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
 }
+
+
+// ==================== AUTO-CAMPAIGN ENGINE ====================
+// In-memory store for auto campaigns (keyed by lead ID)
+// Structure: { leadId: { id, name, email, subject, body, createdAt, nextSendDate } }
+const autoCampaigns = {};
+
+// Register a single lead into the auto-campaign store
+function registerAutoCampaign(leadId, name, email, subject, body) {
+    const now = new Date();
+    autoCampaigns[leadId] = {
+        id: leadId,
+        name: name,
+        email: email,
+        subject: subject,
+        body: body,
+        createdAt: now.toISOString(),
+        nextSendDate: getNextFollowUpDate(now)
+    };
+    console.log('[AUTO-CAMPAIGN] Registered lead', leadId, autoCampaigns[leadId]);
+    // If we're on the follow-ups page, re-render to update the bucket
+    if (state.currentSection === 'followups') {
+        const contentArea = document.getElementById('contentArea');
+        if (contentArea) renderFollowUps(contentArea);
+    }
+}
+
+// Bulk register: find leads matching a follow-up category from local state
+function registerAutoCampaignByCategory(category, subject, body) {
+    const categoryMap = {
+        'never_contacted': (lead) => !lead.last_contact_date,
+        '1_day': (lead) => {
+            if (!lead.last_contact_date) return false;
+            const days = (new Date() - new Date(lead.last_contact_date)) / 86400000;
+            return days >= 1 && days < 3;
+        },
+        '3_day': (lead) => {
+            if (!lead.last_contact_date) return false;
+            const days = (new Date() - new Date(lead.last_contact_date)) / 86400000;
+            return days >= 3 && days < 7;
+        },
+        '7_day': (lead) => {
+            if (!lead.last_contact_date) return false;
+            const days = (new Date() - new Date(lead.last_contact_date)) / 86400000;
+            return days >= 7 && days < 14;
+        },
+        '14_day': (lead) => {
+            if (!lead.last_contact_date) return false;
+            const days = (new Date() - new Date(lead.last_contact_date)) / 86400000;
+            return days >= 14;
+        }
+    };
+    const filter = categoryMap[category];
+    if (!filter) return;
+    (state.leads || []).forEach(lead => {
+        if (filter(lead) && lead.status !== 'closed' && lead.status !== 'lost') {
+            registerAutoCampaign(lead.id, lead.name, lead.email, subject, body);
+        }
+    });
+}
+
+// Calculate the next follow-up send date (next occurrence based on current category logic)
+function getNextFollowUpDate(fromDate) {
+    const d = new Date(fromDate);
+    // Default: schedule for tomorrow at 9 AM
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    return d.toISOString();
+}
+
+// Turn OFF auto-campaign for a lead — removes from store
+function turnOffAutoCampaign(leadId) {
+    if (autoCampaigns[leadId]) {
+        delete autoCampaigns[leadId];
+        console.log('[AUTO-CAMPAIGN] Turned off for lead', leadId);
+        showToast('Auto campaign turned off. Lead will appear in normal follow-ups.', 'success');
+        // Re-render
+        if (state.currentSection === 'followups') {
+            const contentArea = document.getElementById('contentArea');
+            if (contentArea) renderFollowUps(contentArea);
+        }
+    }
+}
+
+// Open the edit modal for an auto-campaign lead
+function openEditAutoCampaign(leadId) {
+    const campaign = autoCampaigns[leadId];
+    if (!campaign) return;
+
+    const nextDate = new Date(campaign.nextSendDate);
+    const nextDateFormatted = nextDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' at ' + nextDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+    const html = `
+        <div class="edit-auto-modal-overlay" id="editAutoModal" onclick="if(event.target===this)closeEditAutoCampaign()">
+            <div class="edit-auto-modal" onclick="event.stopPropagation()">
+                <div class="edit-auto-modal-header">
+                    <h3>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        Edit Auto Campaign
+                    </h3>
+                    <button class="edit-auto-modal-close" onclick="closeEditAutoCampaign()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="edit-auto-modal-body">
+                    <div class="edit-auto-field">
+                        <label>Lead</label>
+                        <input type="text" value="${campaign.name} — ${campaign.email}" readonly style="color: var(--text-muted); cursor: default;">
+                    </div>
+                    <div class="edit-auto-field">
+                        <label>Next Scheduled Send</label>
+                        <input type="text" value="${nextDateFormatted}" readonly style="color: var(--accent-amber); font-weight: 600; cursor: default;">
+                        <div class="field-hint">Emails are sent automatically each time this lead appears in a follow-up bucket.</div>
+                    </div>
+                    <div class="edit-auto-field">
+                        <label>Subject</label>
+                        <input type="text" id="editAutoSubject_${leadId}" value="${campaign.subject.replace(/"/g, '&quot;')}">
+                    </div>
+                    <div class="edit-auto-field">
+                        <label>Email Body</label>
+                        <textarea id="editAutoBody_${leadId}">${campaign.body.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                    </div>
+                </div>
+                <div class="edit-auto-modal-footer">
+                    <div class="left-actions">
+                        <div class="mini-toggle-row">
+                            <div class="mini-toggle on" id="editAutoToggle_${leadId}" onclick="toggleEditAutoSwitch('${leadId}')">
+                                <div class="mini-knob"></div>
+                            </div>
+                            <span>Auto Send</span>
+                        </div>
+                    </div>
+                    <div class="right-actions">
+                        <button class="btn btn-secondary" onclick="closeEditAutoCampaign()">Cancel</button>
+                        <button class="btn btn-primary" onclick="saveEditAutoCampaign('${leadId}')">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeEditAutoCampaign() {
+    const modal = document.getElementById('editAutoModal');
+    if (modal) modal.remove();
+}
+
+// Toggle the mini auto-send switch inside the edit modal
+function toggleEditAutoSwitch(leadId) {
+    const toggle = document.getElementById('editAutoToggle_' + leadId);
+    const isOn = toggle.classList.toggle('on');
+    console.log('[EDIT AUTO] Mini toggle ->', isOn ? 'ON' : 'OFF');
+    if (!isOn) {
+        // User turned it off — save first then turn off
+        showToast('Toggle is off. Click Save to apply & remove from Auto Send.', 'info');
+    }
+}
+
+// Save edits to an auto-campaign
+function saveEditAutoCampaign(leadId) {
+    const campaign = autoCampaigns[leadId];
+    if (!campaign) return;
+
+    const newSubject = document.getElementById('editAutoSubject_' + leadId)?.value;
+    const newBody = document.getElementById('editAutoBody_' + leadId)?.value;
+    const toggle = document.getElementById('editAutoToggle_' + leadId);
+    const isStillOn = toggle && toggle.classList.contains('on');
+
+    if (!newSubject || !newBody) {
+        showToast('Subject and body cannot be empty', 'error');
+        return;
+    }
+
+    if (!isStillOn) {
+        // User turned off auto — remove from campaigns
+        delete autoCampaigns[leadId];
+        showToast('Auto campaign turned off. ' + campaign.name + ' will appear in normal follow-ups.', 'success');
+    } else {
+        // Update the campaign
+        campaign.subject = newSubject;
+        campaign.body = newBody;
+        showToast('Auto campaign updated for ' + campaign.name, 'success');
+    }
+
+    closeEditAutoCampaign();
+    // Re-render
+    if (state.currentSection === 'followups') {
+        const contentArea = document.getElementById('contentArea');
+        if (contentArea) renderFollowUps(contentArea);
+    }
+}
+
+// Build the Auto-Send Bucket HTML to inject at the top of the follow-ups content
+function buildAutoSendBucket() {
+    const campaigns = Object.values(autoCampaigns);
+    if (campaigns.length === 0) {
+        // Return a collapsed/empty bucket
+        return `
+            <div class="auto-send-bucket" style="opacity: 0.55;">
+                <div class="auto-send-bucket-header">
+                    <div class="auto-send-bucket-header-left">
+                        <div class="auto-send-bucket-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="auto-send-bucket-title">Auto Send <span class="auto-live-badge" style="background: var(--text-faint); animation: none;">Idle</span></div>
+                            <div class="auto-send-bucket-subtitle">No active auto campaigns</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="auto-send-empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    <p>Toggle "Automatic Email Campaign" on when sending an email to activate auto-send for that lead.</p>
+                </div>
+            </div>
+        `;
+    }
+
+    const rows = campaigns.map(c => {
+        const nextDate = new Date(c.nextSendDate);
+        const nextStr = nextDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const initials = getInitials(c.name);
+        return `
+            <tr>
+                <td>
+                    <div class="lead-cell">
+                        <div class="lead-avatar">${initials}</div>
+                        <div>
+                            <div class="lead-name">${c.name}</div>
+                            <div class="lead-email-small">${c.email}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div style="font-size: 12px; color: var(--text-secondary); font-style: italic; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${c.subject}">${c.subject}</div>
+                </td>
+                <td>
+                    <div class="next-send">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        ${nextStr}
+                    </div>
+                </td>
+                <td>
+                    <div class="auto-campaign-actions">
+                        <button class="btn-auto-edit" onclick="openEditAutoCampaign('${c.id}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            Edit
+                        </button>
+                        <button class="btn-auto-off" onclick="turnOffAutoCampaign('${c.id}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                            </svg>
+                            Turn Off
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <div class="auto-send-bucket">
+            <div class="auto-send-bucket-header">
+                <div class="auto-send-bucket-header-left">
+                    <div class="auto-send-bucket-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="auto-send-bucket-title">Auto Send <span class="auto-live-badge">Live</span></div>
+                        <div class="auto-send-bucket-subtitle">Emails sent automatically on each follow-up schedule</div>
+                    </div>
+                </div>
+                <div class="auto-send-bucket-count">${campaigns.length} active campaign${campaigns.length !== 1 ? 's' : ''}</div>
+            </div>
+            <table class="auto-campaign-table">
+                <thead>
+                    <tr>
+                        <th>Lead</th>
+                        <th>Subject</th>
+                        <th>Next Send</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
 
 async function testFollowUpSystem() {
     console.log('[TEST] Testing follow-up system...');

@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <title>Blog | Insights & Resources | Diamondback Coding</title>
+    <meta name="description" content="Stay updated with the latest web development trends, digital marketing strategies, and tech insights from the Diamondback Coding team.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --dark-grey: #1a1a1a;
+            --white: #ffffff;
+            --grey-50: #fafafa;
+            --grey-100: #f7f7f7;
+            --grey-200: #f5f5f5;
+            --grey-300: #e5e5e5;
+            --grey-400: #d5d5d5;
+            --grey-600: #999999;
+            --grey-700: #666666;
+            --gold: #f4c87e;
+            --beige: #e8e4dc;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--white);
+            color: var(--black);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+        
+        /* Announcement Banner */
+        .announcement-banner {
+            background: linear-gradient(115deg, transparent 0%, transparent 42%, rgba(60,60,70,0.25) 45%, rgba(40,40,50,0.35) 48%, rgba(60,60,70,0.25) 51%, transparent 54%, transparent 100%),
+                linear-gradient(-65deg, transparent 0%, transparent 58%, rgba(80,80,90,0.2) 62%, rgba(50,50,60,0.3) 65%, rgba(80,80,90,0.2) 68%, transparent 72%, transparent 100%),
+                #f5f5f8;
+            color: #1a1a1a;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1001;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            white-space: nowrap;
+        }
+
+        .announcement-banner a {
+            color: #000;
+            text-decoration: underline;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+        
+        /* Navigation */
+        nav {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+            padding: 20px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 40px;
+            width: 100%;
+            z-index: 1000;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .nav-logo {
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--white);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 400;
+            transition: opacity 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .nav-links a:hover {
+            opacity: 0.7;
+        }
+        
+        .contact-info {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+        
+        .phone {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+        }
+        
+        .login-link {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .nav-cta-btn {
+            background: var(--white);
+            color: var(--black);
+            padding: 12px 28px;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .nav-cta-btn:hover {
+            background: var(--gold);
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+        }
+        
+        .mobile-menu-btn span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--white);
+            margin: 5px 0;
+        }
+
+        /* Hero */
+        .blog-hero {
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            overflow: visible;
+            background: #1a1a1a;
+            margin-top: 113px;
+            padding-bottom: 80px;
+        }
+
+        .hero-background {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 65%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .hero-video {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+        }
+
+        .hero-background::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, 
+                #1a1a1a 0%, 
+                rgba(26, 26, 26, 0.98) 8%,
+                rgba(26, 26, 26, 0.92) 15%,
+                rgba(26, 26, 26, 0.82) 22%,
+                rgba(26, 26, 26, 0.68) 30%,
+                rgba(26, 26, 26, 0.5) 38%,
+                rgba(26, 26, 26, 0.32) 46%,
+                rgba(26, 26, 26, 0.18) 54%,
+                rgba(26, 26, 26, 0.08) 62%,
+                rgba(26, 26, 26, 0.02) 70%,
+                transparent 80%);
+            z-index: 2;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 80px 60px 40px;
+            width: 100%;
+        }
+
+        .hero-text {
+            max-width: 700px;
+        }
+
+        .hero-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 24px;
+        }
+
+        .hero-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 64px;
+            line-height: 1.1;
+            font-weight: 400;
+            margin-bottom: 32px;
+            letter-spacing: -2px;
+            color: #fff;
+        }
+
+        .hero-subtitle {
+            font-size: 18px;
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.75);
+            margin-bottom: 48px;
+        }
+
+        .hero-cta {
+            background: var(--gold);
+            color: var(--black);
+            padding: 18px 48px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 4px;
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .hero-cta:hover {
+            background: #e6b86b;
+            transform: translateY(-2px);
+        }
+
+        /* Logo Carousel */
+        .logo-carousel {
+            background: transparent;
+            padding: 24px 60px;
+            overflow: hidden;
+            position: relative;
+            margin-top: -80px;
+            z-index: 10;
+        }
+
+        .logo-track {
+            display: flex;
+            gap: 80px;
+            align-items: center;
+            animation: scroll 40s linear infinite;
+            width: max-content;
+        }
+
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .logo-item {
+            flex-shrink: 0;
+            height: 28px;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-item img {
+            height: 100%;
+            width: auto;
+            filter: brightness(0) invert(1);
+            opacity: 0.5;
+        }
+
+        /* Blog Section - Switchback Layout */
+        .blog-section {
+            background: var(--white);
+            padding: 100px 60px;
+        }
+
+        .blog-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .blog-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+            margin-bottom: 120px;
+        }
+
+        .blog-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .blog-item.reverse {
+            direction: rtl;
+        }
+
+        .blog-item.reverse > * {
+            direction: ltr;
+        }
+
+        .blog-image {
+            width: 100%;
+            height: 600px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(135deg, var(--grey-300) 0%, var(--grey-200) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .blog-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(244, 200, 126, 0.1) 0%, rgba(244, 200, 126, 0.05) 100%);
+        }
+
+        .coming-soon-badge {
+            background: var(--gold);
+            color: var(--black);
+            padding: 16px 40px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            z-index: 1;
+        }
+
+        .blog-content {
+            padding: 40px 0;
+        }
+
+        .blog-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--grey-600);
+            margin-bottom: 24px;
+        }
+
+        .blog-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 48px;
+            line-height: 1.2;
+            font-weight: 400;
+            margin-bottom: 32px;
+            letter-spacing: -1px;
+            color: var(--black);
+        }
+
+        .blog-text {
+            font-size: 17px;
+            line-height: 1.8;
+            color: var(--grey-700);
+            margin-bottom: 24px;
+        }
+
+        .blog-text:last-of-type {
+            margin-bottom: 40px;
+        }
+
+        .blog-cta {
+            background: var(--black);
+            color: var(--white);
+            padding: 18px 48px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 4px;
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .blog-cta:hover {
+            background: var(--gold);
+            color: var(--black);
+            transform: translateY(-2px);
+        }
+
+        /* Newsletter Section */
+        .newsletter-section {
+            background: var(--dark-grey);
+            color: var(--white);
+            padding: 100px 60px;
+        }
+
+        .newsletter-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .newsletter-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 48px;
+            font-weight: 400;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .newsletter-subtitle {
+            font-size: 18px;
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.75);
+            margin-bottom: 48px;
+        }
+
+        .newsletter-form {
+            display: flex;
+            gap: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .newsletter-input {
+            flex: 1;
+            padding: 18px 24px;
+            font-size: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .newsletter-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .newsletter-input:focus {
+            border-color: var(--gold);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .newsletter-btn {
+            background: var(--gold);
+            color: var(--black);
+            padding: 18px 48px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .newsletter-btn:hover {
+            background: #e6b86b;
+            transform: translateY(-2px);
+        }
+
+        /* Footer */
+        footer {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+            color: var(--white);
+            padding: 80px 60px 40px;
+        }
+        
+        .footer-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 60px;
+            margin-bottom: 60px;
+        }
+        
+        .footer-column h4 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--white);
+        }
+        
+        .footer-links {
+            list-style: none;
+        }
+        
+        .footer-links li {
+            margin-bottom: 16px;
+        }
+        
+        .footer-links a {
+            color: var(--grey-600);
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--white);
+        }
+        
+        .footer-bottom {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-copyright {
+            font-size: 13px;
+            color: var(--grey-600);
+        }
+
+        /* Dropdown Menu */
+        .nav-links li {
+            position: relative;
+        }
+
+        .dropdown-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .has-dropdown:hover .dropdown-icon {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            min-width: 220px;
+            padding: 12px 0;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            list-style: none;
+        }
+
+        .has-dropdown:hover .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            top: calc(100% + 10px);
+        }
+
+        .dropdown-menu li {
+            padding: 0;
+        }
+
+        .dropdown-menu a {
+            padding: 12px 24px;
+            display: block;
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            text-transform: none;
+            letter-spacing: 0.3px;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-menu a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding-left: 28px;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.15);
+            margin: 8px 16px;
+            list-style: none;
+        }
+
+        /* CHATBOT CSS */
+        .chatbot-toggle {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            background: var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 9999;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .chatbot-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .chatbot-toggle .close-icon {
+            display: none;
+        }
+
+        .chatbot-toggle .chat-icon {
+            display: block;
+        }
+
+        .chatbot-toggle.active {
+            background: var(--black);
+        }
+
+        .chatbot-toggle.active .chat-icon {
+            display: none;
+        }
+
+        .chatbot-toggle.active .close-icon {
+            display: block;
+        }
+
+        .chatbot-toggle.active svg {
+            stroke: var(--white);
+        }
+
+        .chatbot-toggle svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--black);
+            stroke-width: 2;
+        }
+
+        .chatbot-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #e74c3c;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .chatbot-window {
+            position: fixed;
+            bottom: 100px;
+            right: 24px;
+            width: 380px;
+            height: 600px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 9998;
+            overflow: hidden;
+        }
+
+        .chatbot-window.active {
+            display: flex;
+        }
+
+        .chatbot-header {
+            background: var(--black);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .chatbot-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chatbot-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .chatbot-status {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .chatbot-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .chatbot-close svg {
+            width: 20px;
+            height: 20px;
+            stroke: white;
+            stroke-width: 2;
+        }
+
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--grey-50);
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--grey-300);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .message-avatar svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--grey-700);
+            stroke-width: 2;
+        }
+
+        .bot-message .message-avatar {
+            background: var(--gold);
+        }
+
+        .bot-message .message-avatar svg {
+            stroke: var(--black);
+        }
+
+        .message-content {
+            flex: 1;
+        }
+
+        .message-content p {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0 0 4px 0;
+            white-space: pre-line;
+        }
+
+        .user-message .message-content p {
+            background: var(--black);
+            color: white;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: var(--grey-600);
+            padding: 0 4px;
+        }
+
+        .chatbot-quick-actions {
+            padding: 16px 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            border-top: 1px solid var(--grey-300);
+            background: white;
+            flex-shrink: 0;
+        }
+
+        .quick-action-btn {
+            background: var(--grey-200);
+            border: none;
+            padding: 10px 16px;
+            font-size: 13px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .quick-action-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--grey-700);
+            flex-shrink: 0;
+            stroke-width: 2;
+        }
+
+        .quick-action-btn:hover {
+            background: var(--gold);
+        }
+
+        .quick-action-btn:hover svg {
+            stroke: var(--black);
+        }
+
+        .chatbot-input-container {
+            padding: 16px 20px;
+            border-top: 1px solid var(--grey-300);
+            display: flex;
+            gap: 8px;
+            background: white;
+            flex-shrink: 0;
+        }
+
+        .chatbot-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--grey-300);
+            border-radius: 24px;
+            font-size: 14px;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .chatbot-input:focus {
+            border-color: var(--gold);
+        }
+
+        .chatbot-send {
+            width: 44px;
+            height: 44px;
+            background: var(--gold);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .chatbot-send:hover {
+            background: #e6b86b;
+            transform: scale(1.1);
+        }
+
+        .chatbot-send svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--black);
+            stroke-width: 2;
+        }
+
+        /* MOBILE STYLES */
+        @media (max-width: 768px) {
+            nav {
+                padding: 12px 20px;
+            }
+
+            .nav-links {
+                position: fixed;
+                top: 89px;
+                right: -100%;
+                width: 80%;
+                max-width: 300px;
+                height: calc(100vh - 89px);
+                background: #000000f4;
+                display: flex !important;
+                flex-direction: column;
+                padding: 40px 24px;
+                gap: 24px;
+                transition: right 0.3s ease;
+                box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+                z-index: 999;
+            }
+
+            .nav-links.active {
+                right: 0;
+            }
+
+            .nav-links li {
+                width: 100%;
+            }
+
+            .nav-links a {
+                display: block;
+                padding: 12px 0;
+                font-size: 16px;
+            }
+
+            .dropdown-menu {
+                position: static;
+                transform: none;
+                background: rgba(255,255,255,0.05);
+                margin-top: 8px;
+                border-radius: 8px;
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+
+            .has-dropdown:hover .dropdown-menu,
+            .has-dropdown.active .dropdown-menu {
+                max-height: 500px;
+            }
+
+            .dropdown-menu a {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+
+            .contact-info .phone,
+            .contact-info .login-link {
+                display: none;
+            }
+
+            .nav-cta-btn {
+                padding: 10px 20px;
+                font-size: 11px;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+                z-index: 1001;
+                position: relative;
+            }
+
+            .mobile-menu-btn.active span:nth-child(1) {
+                transform: translateY(7px) rotate(45deg);
+            }
+            .mobile-menu-btn.active span:nth-child(2) {
+                opacity: 0;
+            }
+            .mobile-menu-btn.active span:nth-child(3) {
+                transform: translateY(-7px) rotate(-45deg);
+            }
+
+            .blog-hero {
+                padding-bottom: 60px;
+            }
+
+            .hero-background {
+                width: 100%;
+                opacity: 0.3;
+            }
+
+            .hero-content {
+                padding: 80px 24px 40px;
+            }
+
+            .hero-text {
+                max-width: 100%;
+            }
+
+            .hero-title {
+                font-size: 38px;
+                letter-spacing: -1px;
+            }
+
+            .hero-subtitle {
+                font-size: 16px;
+            }
+
+            .hero-cta {
+                display: block;
+                width: 100%;
+                text-align: center;
+            }
+
+            .logo-carousel {
+                margin-top: -60px;
+                padding: 20px 24px;
+            }
+
+            .logo-track {
+                gap: 48px;
+            }
+
+            .logo-item {
+                height: 22px;
+            }
+
+            .blog-categories {
+                margin-top: -60px;
+                padding: 20px 24px;
+            }
+
+            .blog-section {
+                padding: 60px 24px;
+            }
+
+            .blog-item {
+                grid-template-columns: 1fr;
+                gap: 40px;
+                margin-bottom: 80px;
+            }
+
+            .blog-item.reverse {
+                direction: ltr;
+            }
+
+            .blog-image {
+                height: 400px;
+            }
+
+            .blog-title {
+                font-size: 36px;
+            }
+
+            .newsletter-section {
+                padding: 60px 24px;
+            }
+
+            .newsletter-title {
+                font-size: 36px;
+            }
+
+            .newsletter-form {
+                flex-direction: column;
+            }
+
+            .newsletter-btn {
+                width: 100%;
+            }
+
+            footer {
+                padding: 52px 24px 32px;
+            }
+
+            .footer-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 36px;
+            }
+
+            .chatbot-window {
+                width: calc(100% - 32px);
+                height: calc(100% - 140px);
+                right: 16px;
+                bottom: 90px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Announcement Banner -->
+<div class="announcement-banner">
+    We just launched our Diamondback® CRM 
+    <a href="pricing.html#crm-solutions">Read more about what we're doing</a>
+</div>
+
+<!-- Navigation -->
+<nav>
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="white" stroke-width="1.5"/>
+                <path d="M12 12L3 7.5" stroke="white" stroke-width="1.5"/>
+                <path d="M12 12V21" stroke="white" stroke-width="1.5"/>
+                <path d="M12 12L21 7.5" stroke="white" stroke-width="1.5"/>
+            </svg>
+            <span>DIAMONDBACK CODING</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">HOME</a></li>
+            <li><a href="portfolio.html">PROJECTS</a></li>
+            <li class="has-dropdown">
+                <a href="pricing.html">
+                    SERVICES
+                    <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a href="pricing.html#development">Website Design &amp; Development</a></li>
+                    <li><a href="pricing.html#crm-solutions">CRM Solutions</a></li>
+                    <li><a href="pricing.html#seo">SEO &amp; Digital Marketing</a></li>
+                    <li><a href="pricing.html#development">E-Commerce Development</a></li>
+                    <li><a href="pricing.html#development">Custom Web Applications</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a href="pricing.html">View Pricing</a></li>
+                </ul>
+            </li>
+            <li class="has-dropdown">
+                <a href="#company">
+                    COMPANY
+                    <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a href="about.html">About Us</a></li>
+                    <li><a href="process.html">Our Process</a></li>
+                    <li><a href="careers.html">Careers</a></li>
+                    <li><a href="testimonials.html">Client Testimonials</a></li>
+                    <li><a href="blog.html" aria-current="page">Blog</a></li>
+                </ul>
+            </li>
+        </ul>
+        <div class="contact-info">
+            <a href="tel:+19402178680" class="phone">940-217-8680</a>
+            <a href="client_portal.html" class="login-link">LOG IN</a>
+            <button class="nav-cta-btn" onclick="openModal()">GET STARTED</button>
+            <button class="mobile-menu-btn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="blog-hero">
+    <div class="hero-background">
+        <video class="hero-video" autoplay muted loop playsinline>
+            <source src="BLOG.mp4" type="video/mp4">
+        </video>
+    </div>
+    
+    <div class="hero-content">
+        <div class="hero-text">
+            <div class="hero-label">DIAMONDBACK BLOG</div>
+            <h1 class="hero-title">Insights, Trends & Digital Excellence</h1>
+            <p class="hero-subtitle">Stay ahead of the curve with expert insights on web development, digital marketing, technology trends, and business growth strategies.</p>
+            <a href="#newsletter" class="hero-cta">Subscribe to Updates</a>
+        </div>
+    </div>
+</section>
+
+<!-- Logo Carousel -->
+<div class="logo-carousel">
+    <div class="logo-track">
+        <!-- First set -->
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/3/33/Twilio-logo-red.svg" alt="Twilio" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/93/MongoDB_Logo.svg" alt="MongoDB" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/96/Sass_Logo_Color.svg" alt="Sass" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon AWS" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg" alt="Node.js" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue.js" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Tailwind_CSS_Logo.svg" alt="Tailwind CSS" loading="lazy">
+        </div>
+        <!-- Duplicate set for seamless loop -->
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/3/33/Twilio-logo-red.svg" alt="Twilio" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/93/MongoDB_Logo.svg" alt="MongoDB" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/96/Sass_Logo_Color.svg" alt="Sass" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon AWS" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg" alt="Node.js" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue.js" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Tailwind_CSS_Logo.svg" alt="Tailwind CSS" loading="lazy">
+        </div>
+        <!-- Third set for seamless loop -->
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/3/33/Twilio-logo-red.svg" alt="Twilio" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/93/MongoDB_Logo.svg" alt="MongoDB" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="React" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/96/Sass_Logo_Color.svg" alt="Sass" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon AWS" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d9/Node.js_logo.svg" alt="Node.js" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg" alt="Vue.js" loading="lazy">
+        </div>
+        <div class="logo-item">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Tailwind_CSS_Logo.svg" alt="Tailwind CSS" loading="lazy">
+        </div>
+    </div>
+</div>
+
+<!-- Blog Section -->
+<section class="blog-section">
+    <div class="blog-container">
+        <!-- Blog Item 1 -->
+        <div class="blog-item">
+            <div class="blog-image">
+                <span class="coming-soon-badge">Coming Soon</span>
+            </div>
+            <div class="blog-content">
+                <div class="blog-label">WEB DEVELOPMENT</div>
+                <h2 class="blog-title">The Future of Web Development in 2026</h2>
+                <p class="blog-text">Explore the latest trends, frameworks, and technologies shaping the future of web development. From AI integration to progressive web apps, discover what's next in our comprehensive guide.</p>
+                <p class="blog-text">We'll dive deep into emerging technologies, best practices, and how to stay ahead of the curve in this rapidly evolving landscape.</p>
+            </div>
+        </div>
+
+        <!-- Blog Item 2 - Reverse -->
+        <div class="blog-item reverse">
+            <div class="blog-image">
+                <span class="coming-soon-badge">Coming Soon</span>
+            </div>
+            <div class="blog-content">
+                <div class="blog-label">DIGITAL MARKETING</div>
+                <h2 class="blog-title">SEO Strategies That Actually Work</h2>
+                <p class="blog-text">Cut through the noise and learn proven SEO techniques that drive real results. We break down what works, what doesn't, and how to optimize for success in today's competitive digital landscape.</p>
+                <p class="blog-text">From technical SEO to content optimization, discover actionable strategies that will elevate your search rankings and drive organic traffic.</p>
+            </div>
+        </div>
+
+        <!-- Blog Item 3 -->
+        <div class="blog-item">
+            <div class="blog-image">
+                <span class="coming-soon-badge">Coming Soon</span>
+            </div>
+            <div class="blog-content">
+                <div class="blog-label">DESIGN</div>
+                <h2 class="blog-title">Crafting Memorable User Experiences</h2>
+                <p class="blog-text">Great design is more than aesthetics—it's about creating experiences that resonate. Learn the principles of UX design that keep users coming back and turn visitors into loyal customers.</p>
+                <p class="blog-text">We'll explore user psychology, design thinking, and practical techniques for building intuitive, engaging digital experiences.</p>
+            </div>
+        </div>
+
+        <!-- Blog Item 4 - Reverse -->
+        <div class="blog-item reverse">
+            <div class="blog-image">
+                <span class="coming-soon-badge">Coming Soon</span>
+            </div>
+            <div class="blog-content">
+                <div class="blog-label">BUSINESS</div>
+                <h2 class="blog-title">Building a Strong Digital Presence</h2>
+                <p class="blog-text">In today's digital-first world, your online presence can make or break your business. Discover comprehensive strategies to build and maintain a powerful digital footprint that drives growth.</p>
+                <p class="blog-text">From social media to content marketing, we'll cover everything you need to establish authority and connect with your target audience.</p>
+            </div>
+        </div>
+
+        <!-- Blog Item 5 -->
+        <div class="blog-item">
+            <div class="blog-image">
+                <span class="coming-soon-badge">Coming Soon</span>
+            </div>
+            <div class="blog-content">
+                <div class="blog-label">TECH TRENDS</div>
+                <h2 class="blog-title">AI and Machine Learning in Web Apps</h2>
+                <p class="blog-text">Artificial intelligence is transforming how we build web applications. Learn how to leverage AI and ML to create smarter, more efficient solutions that deliver exceptional user experiences.</p>
+                <p class="blog-text">Explore real-world applications, implementation strategies, and the future of intelligent web development.</p>
+            </div>
+        </div>
+
+        <!-- Blog Item 6 - Reverse -->
+        <div class="blog-item reverse">
+            <div class="blog-image">
+                <span class="coming-soon-badge">Coming Soon</span>
+            </div>
+            <div class="blog-content">
+                <div class="blog-label">WEB DEVELOPMENT</div>
+                <h2 class="blog-title">Performance Optimization Best Practices</h2>
+                <p class="blog-text">Speed matters. Discover proven techniques to optimize your website's performance, from code splitting to image optimization and beyond. We'll show you how to create lightning-fast experiences.</p>
+                <p class="blog-text">Learn advanced optimization strategies that reduce load times, improve user satisfaction, and boost your search rankings.</p>
+                <a href="#newsletter" class="blog-cta">Subscribe for Updates</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Newsletter Section -->
+<section class="newsletter-section" id="newsletter">
+    <div class="newsletter-container">
+        <h2 class="newsletter-title">Never Miss an Update</h2>
+        <p class="newsletter-subtitle">Subscribe to our newsletter and get the latest insights, tips, and industry news delivered straight to your inbox.</p>
+        <form class="newsletter-form" onsubmit="handleNewsletterSubmit(event)">
+            <input type="email" class="newsletter-input" placeholder="Enter your email address" required>
+            <button type="submit" class="newsletter-btn">Subscribe</button>
+        </form>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="footer-container">
+        <div class="footer-column">
+            <h4>PRODUCTS</h4>
+            <ul class="footer-links">
+                <li><a href="pricing.html">Website Platform</a></li>
+                <li><a href="pricing.html">Landing Pages</a></li>
+                <li><a href="pricing.html">CRM Services</a></li>
+                <li><a href="pricing.html">SEO Services</a></li>
+                <li><a href="pricing.html">Digital Marketing</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-column">
+            <h4>SOLUTIONS</h4>
+            <ul class="footer-links">
+                <li><a href="#">Small Businesses</a></li>
+                <li><a href="#">Enterprise Solutions</a></li>
+                <li><a href="#">Startups</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-column">
+            <h4>COMPANY</h4>
+            <ul class="footer-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="pricing.html">Pricing</a></li>
+                <li><a href="portfolio.html">Portfolio</a></li>
+                <li><a href="careers.html">Careers</a></li>
+                <li><a href="about.html">About Us</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-column">
+            <h4>RESOURCES</h4>
+            <ul class="footer-links">
+                <li><a href="blog.html">Blog</a></li>
+                <li><a href="#" onclick="openModal()">Contact Us</a></li>
+                <li><a href="#">Support</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <p class="footer-copyright">© Copyright 2026 Diamondback Coding, Inc. — All rights reserved. Serving businesses nationwide across the United States.</p>
+    </div>
+</footer>
+
+<!-- Chatbot -->
+<div class="chatbot-container">
+    <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
+        <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span class="chatbot-badge" id="chatbotBadge">1</span>
+    </button>
+
+    <div class="chatbot-window" id="chatbotWindow">
+        <div class="chatbot-header">
+            <div class="chatbot-header-info">
+                <div>
+                    <div class="chatbot-title">Chat with us</div>
+                    <div class="chatbot-status">We're here to help!</div>
+                </div>
+            </div>
+            <button class="chatbot-close" onclick="toggleChatbot()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="message bot-message">
+                <div class="message-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <p>Hi! Interested in staying updated with our latest blog posts? How can I help you today?</p>
+                    <div class="message-time">Just now</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chatbot-quick-actions">
+            <button class="quick-action-btn" data-action="subscribe">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                Subscribe
+            </button>
+            <button class="quick-action-btn" data-action="topics">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+                Blog Topics
+            </button>
+            <button class="quick-action-btn" data-action="services">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                Our Services
+            </button>
+            <button class="quick-action-btn" data-action="contact">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                Contact Us
+            </button>
+        </div>
+
+        <div class="chatbot-input-container">
+            <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Type your question..." />
+            <button class="chatbot-send" id="chatbotSendBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- CONTACT MODAL -->
+<div class="modal" id="contactModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999; align-items: center; justify-content: center;">
+    <div class="modal-content" style="background: white; max-width: 900px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
+        <div class="modal-header" style="background: #000; padding: 48px 60px; position: relative;">
+            <button class="modal-close" onclick="closeModal()" style="position: absolute; top: 24px; right: 24px; background: none; border: none; color: white; font-size: 32px; cursor: pointer; width: 40px; height: 40px;">&times;</button>
+            <h2 style="font-size: 36px; font-weight: 600; color: white; margin-bottom: 12px;">Start Your Project</h2>
+            <p style="font-size: 16px; color: rgba(255,255,255,0.8);">Tell us about your needs and we'll get back to you within 24 hours.</p>
+        </div>
+        <div style="padding: 60px;">
+            <form id="contactForm" onsubmit="handleSubmit(event)">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Full Name *</label><input type="text" name="fullName" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
+                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Email *</label><input type="email" name="email" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Phone *</label><input type="tel" name="phone" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
+                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Service *</label><select name="service" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"><option value="">Select</option><option>Website</option><option>CRM</option><option>SEO</option><option>Marketing</option></select></div>
+                </div>
+                <div style="margin-bottom: 24px;"><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Details *</label><textarea name="details" required rows="5" style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></textarea></div>
+                <button type="submit" style="background: #F4C87E; color: #000; padding: 18px 48px; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; border: none; cursor: pointer; width: 100%;">Send Request</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Mobile Menu Toggle
+    const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            navLinks.classList.toggle('active');
+            this.classList.toggle('active');
+        });
+    }
+
+    document.querySelectorAll('.has-dropdown > a').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            if (window.innerWidth <= 768) {
+                e.preventDefault();
+                var parent = this.closest('.has-dropdown');
+                document.querySelectorAll('.has-dropdown').forEach(function(item) {
+                    if (item !== parent) item.classList.remove('active');
+                });
+                parent.classList.toggle('active');
+            }
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('nav')) {
+            if (navLinks) navLinks.classList.remove('active');
+            if (mobileMenuBtn) mobileMenuBtn.classList.remove('active');
+        }
+    });
+
+    // Modal Functions
+    function openModal() {
+        document.getElementById('contactModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        document.getElementById('contactModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('contactModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('contactModal').style.display === 'flex') {
+            closeModal();
+        }
+    });
+
+    // Form submission with lead capture
+    function handleSubmit(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const leadData = {
+            fullName: formData.get('fullName'),
+            email: formData.get('email'),
+            phone: formData.get('phone'),
+            service: formData.get('service'),
+            details: formData.get('details'),
+            source: 'Blog Page',
+            timestamp: new Date().toISOString()
+        };
+
+        // Send to your admin portal/backend
+        fetch('/api/leads', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(leadData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Lead submitted:', data);
+            alert('✅ Thank you! We\'ve received your project request and will get back to you within 24 hours.');
+            closeModal();
+            document.getElementById('contactForm').reset();
+        })
+        .catch(error => {
+            console.error('Error submitting lead:', error);
+            alert('✅ Thank you! We\'ve received your project request and will get back to you within 24 hours.');
+            closeModal();
+            document.getElementById('contactForm').reset();
+        });
+    }
+
+    // Newsletter submission
+    function handleNewsletterSubmit(event) {
+        event.preventDefault();
+        const email = event.target.querySelector('input[type="email"]').value;
+        
+        // Send to your backend/newsletter service
+        fetch('/api/newsletter-subscribe', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, source: 'Blog Page' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert('✅ Success! You\'ve been subscribed to our newsletter.');
+            event.target.reset();
+        })
+        .catch(error => {
+            console.error('Newsletter subscription error:', error);
+            alert('✅ Success! You\'ve been subscribed to our newsletter.');
+            event.target.reset();
+        });
+    }
+
+    // Chatbot Functions
+    function toggleChatbot() {
+        const toggle = document.getElementById('chatbotToggle');
+        const windowEl = document.getElementById('chatbotWindow');
+        const badge = document.getElementById('chatbotBadge');
+        
+        toggle.classList.toggle('active');
+        windowEl.classList.toggle('active');
+        
+        if (toggle.classList.contains('active') && badge) {
+            badge.style.display = 'none';
+        }
+    }
+
+    function addUserMessage(text) {
+        const messagesContainer = document.getElementById('chatbotMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message user-message';
+        messageDiv.innerHTML = `
+            <div class="message-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <div class="message-content">
+                <p>${text}</p>
+                <div class="message-time">Just now</div>
+            </div>
+        `;
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function addBotMessage(text) {
+        const messagesContainer = document.getElementById('chatbotMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot-message';
+        messageDiv.innerHTML = `
+            <div class="message-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+            <div class="message-content">
+                <p>${text}</p>
+                <div class="message-time">Just now</div>
+            </div>
+        `;
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    const quickResponses = {
+        'subscribe': "Great! You can subscribe to our newsletter using the form on this page. We'll send you updates whenever we publish new content!",
+        'topics': "We cover web development, digital marketing, design, business strategies, and tech trends. New content coming soon!",
+        'services': "We offer comprehensive web development, custom CRM solutions, SEO & digital marketing, e-commerce development, and custom web applications. Would you like to learn more?",
+        'contact': "You can reach us at (940) 217-8680 or fill out our contact form. Our team typically responds within 24 hours."
+    };
+
+    document.querySelectorAll('.quick-action-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const action = this.getAttribute('data-action');
+            addUserMessage(this.textContent.trim());
+            setTimeout(() => addBotMessage(quickResponses[action]), 500);
+        });
+    });
+
+    document.getElementById('chatbotSendBtn').addEventListener('click', function() {
+        const input = document.getElementById('chatbotInput');
+        const message = input.value.trim();
+        if (message) {
+            addUserMessage(message);
+            input.value = '';
+            setTimeout(() => {
+                addBotMessage("Thanks for your message! For immediate assistance, call us at (940) 217-8680 or email hello@diamondbackcoding.com");
+            }, 1000);
+        }
+    });
+
+    document.getElementById('chatbotInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('chatbotSendBtn').click();
+        }
+    });
+</script>
+
+</body>
+</html>

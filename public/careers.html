@@ -1427,51 +1427,9 @@
 <!-- Job Listings Section -->
 <section class="jobs-section" id="jobs">
     <div class="jobs-container">
-        
-        <!-- Sales & Marketing -->
-        <div class="job-category active">
-            <div class="job-category-header">
-                <div class="job-category-left">
-                    <div class="job-category-toggle">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </div>
-                    <h2 class="job-category-title">Sales & Marketing</h2>
-                </div>
-                <span class="job-category-count">4 POSITIONS</span>
-            </div>
-            <div class="job-listings">
-                <div class="job-item">
-                    <a href="apply.html?job=account-executive-1" class="job-title">Account Executive</a>
-                    <div class="job-meta">
-                        <span class="job-meta-item">Full-time</span>
-                        <span class="job-meta-item">Remote</span>
-                    </div>
-                </div>
-                <div class="job-item">
-                    <a href="apply.html?job=account-executive-2" class="job-title">Account Executive</a>
-                    <div class="job-meta">
-                        <span class="job-meta-item">Full-time</span>
-                        <span class="job-meta-item">Remote</span>
-                    </div>
-                </div>
-                <div class="job-item">
-                    <a href="apply.html?job=account-executive-3" class="job-title">Account Executive</a>
-                    <div class="job-meta">
-                        <span class="job-meta-item">Full-time</span>
-                        <span class="job-meta-item">Remote</span>
-                    </div>
-                </div>
-                <div class="job-item">
-                    <a href="apply.html?job=account-executive-4" class="job-title">Account Executive</a>
-                    <div class="job-meta">
-                        <span class="job-meta-item">Full-time</span>
-                        <span class="job-meta-item">Remote</span>
-                    </div>
-                </div>
-            </div>
+        <!-- Dynamic job listings injected by JS -->
+        <div id="jobCategoriesContainer">
+            <div style="text-align:center;padding:60px 20px;color:#999;font-size:15px;">Loading positions...</div>
         </div>
 
     </div>
@@ -1896,6 +1854,81 @@
     function openModal() {
         alert('Contact form would open here. For careers inquiries, please email careers@diamondbackcoding.com');
     }
+
+    // ─── Dynamic Job Listings from API ───
+    const JOBS_API = '/api/jobs'; // adjust if your server runs on a different origin
+
+    async function loadJobs() {
+        const container = document.getElementById('jobCategoriesContainer');
+        try {
+            const res = await fetch(JOBS_API);
+            const data = await res.json();
+            if (!data.success || !data.jobs || data.jobs.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;font-size:15px;">No positions available at this time. Check back soon!</div>';
+                return;
+            }
+            // Group jobs by department
+            const grouped = {};
+            data.jobs.forEach(job => {
+                const dept = job.department || 'General';
+                if (!grouped[dept]) grouped[dept] = [];
+                grouped[dept].push(job);
+            });
+
+            let html = '';
+            let firstCat = true;
+            Object.keys(grouped).sort().forEach(dept => {
+                const jobs = grouped[dept];
+                const activeClass = firstCat ? ' active' : '';
+                firstCat = false;
+                html += `
+                <div class="job-category${activeClass}">
+                    <div class="job-category-header">
+                        <div class="job-category-left">
+                            <div class="job-category-toggle">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </div>
+                            <h2 class="job-category-title">${dept}</h2>
+                        </div>
+                        <span class="job-category-count">${jobs.length} POSITION${jobs.length !== 1 ? 'S' : ''}</span>
+                    </div>
+                    <div class="job-listings">
+                        ${jobs.map(job => `
+                        <div class="job-item">
+                            <a href="apply.html?job=${job.id}" class="job-title">${job.title}</a>
+                            <div class="job-meta">
+                                <span class="job-meta-item">${job.type}</span>
+                                <span class="job-meta-item">${job.location}</span>
+                            </div>
+                        </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+
+            // Re-bind category toggle events on the freshly rendered elements
+            document.querySelectorAll('.job-category-header').forEach(header => {
+                header.addEventListener('click', function() {
+                    const category = this.closest('.job-category');
+                    const wasActive = category.classList.contains('active');
+                    document.querySelectorAll('.job-category').forEach(cat => {
+                        if (cat !== category) cat.classList.remove('active');
+                    });
+                    if (!wasActive) category.classList.add('active');
+                    else category.classList.remove('active');
+                });
+            });
+        } catch (err) {
+            console.error('[CAREERS] Failed to load jobs:', err);
+            container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#999;font-size:15px;">Unable to load positions. Please try again later.</div>';
+        }
+    }
+    loadJobs();
+
 </script>
 
 </body>

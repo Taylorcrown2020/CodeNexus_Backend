@@ -1231,6 +1231,49 @@ await client.query(`CREATE INDEX IF NOT EXISTS idx_auto_campaigns_lead ON auto_c
 await client.query(`CREATE INDEX IF NOT EXISTS idx_auto_campaigns_active ON auto_campaigns(is_active) WHERE is_active = TRUE`);
 console.log('✅ Auto-campaigns table initialized');
 
+// ── Recruitment: jobs & applications ──
+await client.query(`CREATE TABLE IF NOT EXISTS jobs (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    department VARCHAR(100) NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'Full-time',
+    location VARCHAR(100) NOT NULL DEFAULT 'Remote',
+    description TEXT,
+    duties TEXT[] DEFAULT '{}',
+    requirements TEXT[] DEFAULT '{}',
+    published BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`);
+await client.query(`CREATE INDEX IF NOT EXISTS idx_jobs_published ON jobs(published)`);
+
+await client.query(`CREATE TABLE IF NOT EXISTS applications (
+    id SERIAL PRIMARY KEY,
+    job_id INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+    first_name VARCHAR(150) NOT NULL,
+    last_name VARCHAR(150) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(50),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    linkedin_url TEXT,
+    portfolio_url TEXT,
+    experience VARCHAR(20),
+    cover_letter TEXT,
+    start_date VARCHAR(50),
+    expected_salary VARCHAR(100),
+    referral_source VARCHAR(100),
+    resume_path TEXT,
+    resume_original_name TEXT,
+    status VARCHAR(50) DEFAULT 'new',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`);
+await client.query(`CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id)`);
+await client.query(`CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status)`);
+console.log('✅ Recruitment tables (jobs, applications) initialized');
+
         // ========================================
         // DATABASE MIGRATIONS
         // ========================================
@@ -9443,6 +9486,210 @@ app.get('/api/unsubscribe/:token', async (req, res) => {
 });
 
 // HEALTH CHECK
+
+// ========================================
+// RECRUITMENT: JOBS & APPLICATIONS
+// ========================================
+
+// --- JOBS (admin-created) ---
+
+// GET all published jobs (public — no auth, used by careers + apply pages)
+app.get('/api/jobs', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT id, title, department, type, location, description, duties, requirements, created_at, updated_at
+            FROM jobs
+            WHERE published = true
+            ORDER BY created_at DESC
+        `);
+        res.json({ success: true, jobs: result.rows });
+    } catch (err) {
+        console.error('[JOBS] GET /api/jobs error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch jobs' });
+    }
+});
+
+// GET all jobs (admin — includes drafts)
+app.get('/api/admin/jobs', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM jobs ORDER BY created_at DESC');
+        res.json({ success: true, jobs: result.rows });
+    } catch (err) {
+        console.error('[JOBS] GET /api/admin/jobs error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch jobs' });
+    }
+});
+
+// POST create job
+app.post('/api/admin/jobs', authenticateToken, async (req, res) => {
+    try {
+        const { title, department, type, location, description, duties, requirements, published } = req.body;
+        if (!title || !department || !type || !location || !description) {
+            return res.status(400).json({ success: false, message: 'Title, department, type, location, and description are required' });
+        }
+        const result = await pool.query(`
+            INSERT INTO jobs (title, department, type, location, description, duties, requirements, published)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+        `, [title, department, type, location, description, duties || [], requirements || [], published || false]);
+        res.status(201).json({ success: true, job: result.rows[0] });
+    } catch (err) {
+        console.error('[JOBS] POST error:', err);
+        res.status(500).json({ success: false, message: 'Failed to create job' });
+    }
+});
+
+// PUT update job
+app.put('/api/admin/jobs/:id', authenticateToken, async (req, res) => {
+    try {
+        const { title, department, type, location, description, duties, requirements, published } = req.body;
+        const result = await pool.query(`
+            UPDATE jobs
+            SET title = COALESCE($1, title),
+                department = COALESCE($2, department),
+                type = COALESCE($3, type),
+                location = COALESCE($4, location),
+                description = COALESCE($5, description),
+                duties = COALESCE($6, duties),
+                requirements = COALESCE($7, requirements),
+                published = COALESCE($8, published),
+                updated_at = NOW()
+            WHERE id = $9
+            RETURNING *
+        `, [title, department, type, location, description, duties, requirements, published, req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Job not found' });
+        res.json({ success: true, job: result.rows[0] });
+    } catch (err) {
+        console.error('[JOBS] PUT error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update job' });
+    }
+});
+
+// DELETE job
+app.delete('/api/admin/jobs/:id', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query('DELETE FROM jobs WHERE id = $1 RETURNING id', [req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Job not found' });
+        res.json({ success: true, message: 'Job deleted' });
+    } catch (err) {
+        console.error('[JOBS] DELETE error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete job' });
+    }
+});
+
+// --- APPLICATIONS (candidates submit) ---
+
+// POST submit application (public — candidates use this)
+app.post('/api/applications', upload.single('resume'), async (req, res) => {
+    try {
+        const { jobId, firstName, lastName, email, phone, city, state, linkedIn, portfolio, experience, coverLetter, startDate, salary, referral } = req.body;
+        if (!jobId || !firstName || !lastName || !email || !phone) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
+        const jobCheck = await pool.query('SELECT id FROM jobs WHERE id = $1 AND published = true', [jobId]);
+        if (jobCheck.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Job not found or no longer available' });
+        }
+        const resumePath = req.file ? req.file.path : null;
+        const resumeOriginalName = req.file ? req.file.originalname : null;
+        const result = await pool.query(`
+            INSERT INTO applications (job_id, first_name, last_name, email, phone, city, state, linkedin_url, portfolio_url, experience, cover_letter, start_date, expected_salary, referral_source, resume_path, resume_original_name, status)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'new')
+            RETURNING *
+        `, [jobId, firstName, lastName, email, phone, city||null, state||null, linkedIn||null, portfolio||null, experience||null, coverLetter||null, startDate||null, salary||null, referral||null, resumePath, resumeOriginalName]);
+        res.status(201).json({ success: true, message: 'Application submitted successfully', application: result.rows[0] });
+    } catch (err) {
+        console.error('[APPLICATIONS] POST error:', err);
+        res.status(500).json({ success: false, message: 'Failed to submit application' });
+    }
+});
+
+// GET all applications (admin)
+app.get('/api/admin/applications', authenticateToken, async (req, res) => {
+    try {
+        const { jobId, status } = req.query;
+        let query = `
+            SELECT a.*, j.title as job_title, j.department
+            FROM applications a
+            JOIN jobs j ON a.job_id = j.id
+        `;
+        const params = [];
+        const conditions = [];
+        if (jobId) { conditions.push(`a.job_id = $${params.length + 1}`); params.push(jobId); }
+        if (status) { conditions.push(`a.status = $${params.length + 1}`); params.push(status); }
+        if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
+        query += ' ORDER BY a.created_at DESC';
+        const result = await pool.query(query, params);
+        res.json({ success: true, applications: result.rows });
+    } catch (err) {
+        console.error('[APPLICATIONS] GET error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch applications' });
+    }
+});
+
+// GET single application (admin)
+app.get('/api/admin/applications/:id', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT a.*, j.title as job_title, j.department
+            FROM applications a JOIN jobs j ON a.job_id = j.id
+            WHERE a.id = $1
+        `, [req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Application not found' });
+        res.json({ success: true, application: result.rows[0] });
+    } catch (err) {
+        console.error('[APPLICATIONS] GET single error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch application' });
+    }
+});
+
+// PATCH update application status / notes (admin)
+app.patch('/api/admin/applications/:id', authenticateToken, async (req, res) => {
+    try {
+        const { status, notes } = req.body;
+        const sets = [];
+        const params = [];
+        if (status !== undefined) { sets.push(`status = $${params.length + 1}`); params.push(status); }
+        if (notes !== undefined) { sets.push(`notes = $${params.length + 1}`); params.push(notes); }
+        if (sets.length === 0) return res.status(400).json({ success: false, message: 'Nothing to update' });
+        sets.push('updated_at = NOW()');
+        params.push(req.params.id);
+        const result = await pool.query(`UPDATE applications SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`, params);
+        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Application not found' });
+        res.json({ success: true, application: result.rows[0] });
+    } catch (err) {
+        console.error('[APPLICATIONS] PATCH error:', err);
+        res.status(500).json({ success: false, message: 'Failed to update application' });
+    }
+});
+
+// DELETE application (admin)
+app.delete('/api/admin/applications/:id', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query('DELETE FROM applications WHERE id = $1 RETURNING id', [req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Application not found' });
+        res.json({ success: true, message: 'Application deleted' });
+    } catch (err) {
+        console.error('[APPLICATIONS] DELETE error:', err);
+        res.status(500).json({ success: false, message: 'Failed to delete application' });
+    }
+});
+
+// GET download resume (admin)
+app.get('/api/admin/applications/:id/resume', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT resume_path, resume_original_name FROM applications WHERE id = $1', [req.params.id]);
+        if (result.rows.length === 0 || !result.rows[0].resume_path) {
+            return res.status(404).json({ success: false, message: 'No resume on file' });
+        }
+        res.setHeader('Content-Disposition', `attachment; filename="${result.rows[0].resume_original_name || 'resume'}"`);
+        res.sendFile(path.resolve(result.rows[0].resume_path));
+    } catch (err) {
+        console.error('[APPLICATIONS] GET resume error:', err);
+        res.status(500).json({ success: false, message: 'Failed to download resume' });
+    }
+});
+
 // ========================================
 app.get('/api/health', (req, res) => {
     res.json({ 

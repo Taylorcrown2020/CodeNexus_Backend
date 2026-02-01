@@ -778,155 +778,64 @@
 </div>
 
 <script>
-    // Job position data with descriptions and duties
-    const jobData = {
-        'account-executive-1': {
-            title: 'Account Executive',
-            type: 'Full-time',
-            location: 'Remote',
-            description: 'Join our growing sales team as an Account Executive! You will be responsible for generating new business opportunities, managing the full sales cycle, and closing deals with small to medium-sized businesses. This is an excellent opportunity for a motivated sales professional who thrives in a fast-paced environment and wants to be part of a rapidly growing company.',
-            duties: [
-                'Generate new business through prospecting, cold calling, and networking',
-                'Qualify leads and conduct discovery calls to understand client needs',
-                'Present and demonstrate our web development and digital solutions',
-                'Develop and deliver compelling sales proposals and presentations',
-                'Negotiate contracts and close deals to meet quarterly sales targets',
-                'Maintain accurate records of sales activities in our CRM system',
-                'Build and maintain a robust sales pipeline',
-                'Collaborate with the marketing team on lead generation campaigns',
-                'Attend industry events and networking functions to build relationships',
-                'Stay current on industry trends and competitive landscape'
-            ],
-            requirements: [
-                '2+ years of B2B sales experience, preferably in technology or services',
-                'Proven track record of meeting or exceeding sales quotas',
-                'Strong prospecting and lead generation skills',
-                'Excellent presentation and negotiation abilities',
-                'Self-motivated with a results-driven approach',
-                'Proficiency with CRM software (Salesforce, HubSpot, or similar)',
-                'Bachelor\'s degree preferred but not required',
-                'Ability to work independently in a remote environment'
-            ]
-        },
-        'account-executive-2': {
-            title: 'Account Executive',
-            type: 'Full-time',
-            location: 'Remote',
-            description: 'Join our growing sales team as an Account Executive! You will be responsible for generating new business opportunities, managing the full sales cycle, and closing deals with small to medium-sized businesses. This is an excellent opportunity for a motivated sales professional who thrives in a fast-paced environment and wants to be part of a rapidly growing company.',
-            duties: [
-                'Generate new business through prospecting, cold calling, and networking',
-                'Qualify leads and conduct discovery calls to understand client needs',
-                'Present and demonstrate our web development and digital solutions',
-                'Develop and deliver compelling sales proposals and presentations',
-                'Negotiate contracts and close deals to meet quarterly sales targets',
-                'Maintain accurate records of sales activities in our CRM system',
-                'Build and maintain a robust sales pipeline',
-                'Collaborate with the marketing team on lead generation campaigns',
-                'Attend industry events and networking functions to build relationships',
-                'Stay current on industry trends and competitive landscape'
-            ],
-            requirements: [
-                '2+ years of B2B sales experience, preferably in technology or services',
-                'Proven track record of meeting or exceeding sales quotas',
-                'Strong prospecting and lead generation skills',
-                'Excellent presentation and negotiation abilities',
-                'Self-motivated with a results-driven approach',
-                'Proficiency with CRM software (Salesforce, HubSpot, or similar)',
-                'Bachelor\'s degree preferred but not required',
-                'Ability to work independently in a remote environment'
-            ]
-        },
-        'account-executive-3': {
-            title: 'Account Executive',
-            type: 'Full-time',
-            location: 'Remote',
-            description: 'Join our growing sales team as an Account Executive! You will be responsible for generating new business opportunities, managing the full sales cycle, and closing deals with small to medium-sized businesses. This is an excellent opportunity for a motivated sales professional who thrives in a fast-paced environment and wants to be part of a rapidly growing company.',
-            duties: [
-                'Generate new business through prospecting, cold calling, and networking',
-                'Qualify leads and conduct discovery calls to understand client needs',
-                'Present and demonstrate our web development and digital solutions',
-                'Develop and deliver compelling sales proposals and presentations',
-                'Negotiate contracts and close deals to meet quarterly sales targets',
-                'Maintain accurate records of sales activities in our CRM system',
-                'Build and maintain a robust sales pipeline',
-                'Collaborate with the marketing team on lead generation campaigns',
-                'Attend industry events and networking functions to build relationships',
-                'Stay current on industry trends and competitive landscape'
-            ],
-            requirements: [
-                '2+ years of B2B sales experience, preferably in technology or services',
-                'Proven track record of meeting or exceeding sales quotas',
-                'Strong prospecting and lead generation skills',
-                'Excellent presentation and negotiation abilities',
-                'Self-motivated with a results-driven approach',
-                'Proficiency with CRM software (Salesforce, HubSpot, or similar)',
-                'Bachelor\'s degree preferred but not required',
-                'Ability to work independently in a remote environment'
-            ]
-        },
-        'account-executive-4': {
-            title: 'Account Executive',
-            type: 'Full-time',
-            location: 'Remote',
-            description: 'Join our growing sales team as an Account Executive! You will be responsible for generating new business opportunities, managing the full sales cycle, and closing deals with small to medium-sized businesses. This is an excellent opportunity for a motivated sales professional who thrives in a fast-paced environment and wants to be part of a rapidly growing company.',
-            duties: [
-                'Generate new business through prospecting, cold calling, and networking',
-                'Qualify leads and conduct discovery calls to understand client needs',
-                'Present and demonstrate our web development and digital solutions',
-                'Develop and deliver compelling sales proposals and presentations',
-                'Negotiate contracts and close deals to meet quarterly sales targets',
-                'Maintain accurate records of sales activities in our CRM system',
-                'Build and maintain a robust sales pipeline',
-                'Collaborate with the marketing team on lead generation campaigns',
-                'Attend industry events and networking functions to build relationships',
-                'Stay current on industry trends and competitive landscape'
-            ],
-            requirements: [
-                '2+ years of B2B sales experience, preferably in technology or services',
-                'Proven track record of meeting or exceeding sales quotas',
-                'Strong prospecting and lead generation skills',
-                'Excellent presentation and negotiation abilities',
-                'Self-motivated with a results-driven approach',
-                'Proficiency with CRM software (Salesforce, HubSpot, or similar)',
-                'Bachelor\'s degree preferred but not required',
-                'Ability to work independently in a remote environment'
-            ]
-        }
-    };
+    const JOBS_API = '/api/jobs';
+    const APPLICATIONS_API = '/api/applications';
 
     // Get job ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     const jobId = urlParams.get('job');
-    
-    // Update page with job details
-    if (jobId && jobData[jobId]) {
-        const job = jobData[jobId];
-        document.getElementById('jobTitle').textContent = job.title;
-        document.getElementById('jobType').textContent = job.type;
-        document.getElementById('jobLocation').textContent = job.location;
-        document.title = `Apply for ${job.title} | Diamondback Coding`;
-        
-        // Populate description
-        document.getElementById('jobDescription').textContent = job.description;
-        
-        // Populate duties
-        const dutiesList = document.getElementById('jobDuties');
-        job.duties.forEach(duty => {
-            const li = document.createElement('li');
-            li.textContent = duty;
-            dutiesList.appendChild(li);
-        });
-        
-        // Populate requirements
-        const requirementsList = document.getElementById('jobRequirements');
-        job.requirements.forEach(requirement => {
-            const li = document.createElement('li');
-            li.textContent = requirement;
-            requirementsList.appendChild(li);
-        });
-    } else {
-        // Redirect to careers page if no valid job ID
-        window.location.href = 'careers.html';
+
+    async function initPage() {
+        if (!jobId) {
+            window.location.href = 'careers.html';
+            return;
+        }
+        try {
+            const res = await fetch(JOBS_API);
+            const data = await res.json();
+            if (!data.success) throw new Error('Failed to fetch jobs');
+
+            // Find this specific job by ID
+            const job = data.jobs.find(j => String(j.id) === String(jobId));
+            if (!job) {
+                window.location.href = 'careers.html';
+                return;
+            }
+
+            // Populate header
+            document.getElementById('jobTitle').textContent = job.title;
+            document.getElementById('jobType').textContent = job.type;
+            document.getElementById('jobLocation').textContent = job.location;
+            document.title = `Apply for ${job.title} | Diamondback Coding`;
+
+            // Populate description
+            document.getElementById('jobDescription').textContent = job.description || '';
+
+            // Populate duties
+            const dutiesList = document.getElementById('jobDuties');
+            dutiesList.innerHTML = '';
+            (job.duties || []).forEach(duty => {
+                const li = document.createElement('li');
+                li.textContent = duty;
+                dutiesList.appendChild(li);
+            });
+
+            // Populate requirements
+            const requirementsList = document.getElementById('jobRequirements');
+            requirementsList.innerHTML = '';
+            (job.requirements || []).forEach(req => {
+                const li = document.createElement('li');
+                li.textContent = req;
+                requirementsList.appendChild(li);
+            });
+
+            // Store job for form submission
+            window._currentJob = job;
+
+        } catch (err) {
+            console.error('[APPLY] Error loading job:', err);
+            window.location.href = 'careers.html';
+        }
     }
 
     // File Upload Handling
@@ -934,34 +843,15 @@
     const fileInput = document.getElementById('resume');
     const uploadedFileDiv = document.getElementById('uploadedFile');
 
-    fileUploadContainer.addEventListener('click', () => {
-        fileInput.click();
-    });
-
-    fileUploadContainer.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        fileUploadContainer.classList.add('drag-over');
-    });
-
-    fileUploadContainer.addEventListener('dragleave', () => {
-        fileUploadContainer.classList.remove('drag-over');
-    });
-
+    fileUploadContainer.addEventListener('click', () => { fileInput.click(); });
+    fileUploadContainer.addEventListener('dragover', (e) => { e.preventDefault(); fileUploadContainer.classList.add('drag-over'); });
+    fileUploadContainer.addEventListener('dragleave', () => { fileUploadContainer.classList.remove('drag-over'); });
     fileUploadContainer.addEventListener('drop', (e) => {
         e.preventDefault();
         fileUploadContainer.classList.remove('drag-over');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            fileInput.files = files;
-            displayUploadedFile(files[0]);
-        }
+        if (e.dataTransfer.files.length > 0) { fileInput.files = e.dataTransfer.files; displayUploadedFile(e.dataTransfer.files[0]); }
     });
-
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            displayUploadedFile(e.target.files[0]);
-        }
-    });
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) displayUploadedFile(e.target.files[0]); });
 
     function displayUploadedFile(file) {
         const fileSize = (file.size / 1024 / 1024).toFixed(2);
@@ -985,8 +875,7 @@
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
-            </div>
-        `;
+            </div>`;
         uploadedFileDiv.style.display = 'block';
     }
 
@@ -996,52 +885,51 @@
         uploadedFileDiv.innerHTML = '';
     }
 
-    // Form Submission
-    document.getElementById('applicationForm').addEventListener('submit', function(e) {
+    // Form Submission — sends to backend API
+    document.getElementById('applicationForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        // Get form data
-        const formData = new FormData(this);
-        const applicationData = {
-            position: jobData[jobId].title,
-            jobId: jobId,
-            firstName: formData.get('firstName'),
-            lastName: formData.get('lastName'),
-            email: formData.get('email'),
-            phone: formData.get('phone'),
-            city: formData.get('city'),
-            state: formData.get('state'),
-            linkedIn: formData.get('linkedIn'),
-            portfolio: formData.get('portfolio'),
-            experience: formData.get('experience'),
-            coverLetter: formData.get('coverLetter'),
-            startDate: formData.get('startDate'),
-            salary: formData.get('salary'),
-            referral: formData.get('referral'),
-            submittedAt: new Date().toISOString()
-        };
+        const submitBtn = this.querySelector('.submit-button');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>Submitting...</span>';
 
-        // Log to console (will eventually send to admin portal)
-        console.log('Application submitted:', applicationData);
-        console.log('Resume file:', formData.get('resume'));
+        try {
+            const formData = new FormData();
+            formData.append('jobId', jobId);
+            formData.append('firstName', this.firstName.value);
+            formData.append('lastName', this.lastName.value);
+            formData.append('email', this.email.value);
+            formData.append('phone', this.phone.value);
+            formData.append('city', this.city.value);
+            formData.append('state', this.state.value);
+            formData.append('linkedIn', this.linkedIn.value);
+            formData.append('portfolio', this.portfolio.value);
+            formData.append('experience', this.experience.value);
+            formData.append('coverLetter', this.coverLetter.value);
+            formData.append('startDate', this.startDate.value);
+            formData.append('salary', this.salary.value);
+            formData.append('referral', this.referral.value);
+            if (fileInput.files[0]) formData.append('resume', fileInput.files[0]);
 
-        // TODO: Send to admin portal API endpoint
-        // Example:
-        // fetch('/api/applications', {
-        //     method: 'POST',
-        //     body: formData
-        // }).then(response => response.json())
-        //   .then(data => {
-        //       // Handle success
-        //   });
+            const res = await fetch(APPLICATIONS_API, { method: 'POST', body: formData });
+            const data = await res.json();
 
-        // Show success message
-        document.getElementById('applicationFormContainer').style.display = 'none';
-        document.getElementById('successMessage').classList.add('show');
-
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (res.ok && data.success) {
+                document.getElementById('applicationFormContainer').style.display = 'none';
+                document.getElementById('successMessage').classList.add('show');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                throw new Error(data.message || 'Submission failed');
+            }
+        } catch (err) {
+            console.error('[APPLY] Submission error:', err);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>Submit Application</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
+            alert('There was an error submitting your application. Please try again.');
+        }
     });
+
+    // Init
+    initPage();
 </script>
 
 </body>

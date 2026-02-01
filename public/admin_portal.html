@@ -2947,6 +2947,13 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
                 </svg>
                 Support Tickets
             </div>
+            <div class="nav-item" data-section="recruitment">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                Recruitment
+            </div>
             <div class="nav-item" data-section="scoring-rules">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"/>
@@ -4209,7 +4216,8 @@ async function renderSection(section) {
         pipeline: 'Sales Pipeline',
         'lead-scoring': 'Lead Scoring',
         'scoring-rules': 'Scoring Rules',
-        'client-portal': 'Client Portal'
+        'client-portal': 'Client Portal',
+        recruitment: 'Recruitment'
     };
     
     const pageTitleEl = document.getElementById('pageTitle');
@@ -4280,6 +4288,15 @@ async function renderSection(section) {
                         <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                     </svg>
                     Create Project Timeline
+                </button>
+            `;
+        } else if (section === 'recruitment') {
+            actionButtons += `
+                <button class="btn btn-primary" onclick="openJobModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Create Job
                 </button>
             `;
         } else if (section === 'dashboard') {
@@ -4370,6 +4387,10 @@ case 'client-portal':
     renderClientPortal();
     break;
             
+        case 'recruitment':
+            await renderRecruitment(content);
+            break;
+
         case 'followups':
             await renderFollowUps(content);
             break;
@@ -15767,6 +15788,499 @@ async function testFollowUpSystem() {
         console.error('[TEST] ❌ Follow-up system error:', error);
         showToast('Follow-up system error: ' + error.message, 'error');
     }
+}
+
+
+// ========================================
+// RECRUITMENT
+// ========================================
+
+let recruitmentState = { jobs: [], applications: [], selectedJob: null, selectedApp: null, view: 'applications' };
+
+async function renderRecruitment(content) {
+    content.innerHTML = `<div style="opacity:0.5;padding:40px;text-align:center;color:var(--text-muted);">Loading Recruitment...</div>`;
+    try {
+        await loadRecruitmentData();
+        recruitmentState.view = 'applications';
+        renderRecruitmentUI(content);
+    } catch(e) {
+        console.error('[RECRUITMENT]', e);
+        content.innerHTML = `<div style="padding:40px;text-align:center;color:var(--status-danger);"><h3>Error loading recruitment data</h3><p style="color:var(--text-muted);margin-top:8px;">${e.message}</p></div>`;
+    }
+}
+
+async function loadRecruitmentData() {
+    const token = getAuthToken();
+    const [jobsRes, appsRes] = await Promise.all([
+        fetch(`${API_URL}/api/admin/jobs`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/admin/applications`, { headers: { Authorization: `Bearer ${token}` } })
+    ]);
+    recruitmentState.jobs = (await jobsRes.json()).jobs || [];
+    recruitmentState.applications = (await appsRes.json()).applications || [];
+}
+
+function renderRecruitmentUI(content) {
+    const jobs = recruitmentState.jobs;
+    const apps = recruitmentState.applications;
+    const filterJobId = recruitmentState.selectedJob;
+    const filteredApps = filterJobId ? apps.filter(a => String(a.job_id) === String(filterJobId)) : apps;
+
+    // Stats
+    const totalApps = apps.length;
+    const newApps = apps.filter(a => a.status === 'new').length;
+    const publishedJobs = jobs.filter(j => j.published).length;
+    const totalJobs = jobs.length;
+
+    content.innerHTML = `
+    <!-- Recruitment Stats -->
+    <div class="stats-grid" style="margin-bottom:24px;">
+        <div class="stat-card" style="border-top:3px solid var(--accent-amber);">
+            <div class="stat-header"><span class="stat-label">Open Positions</span>
+                <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+            </div>
+            <div class="stat-value">${publishedJobs}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${totalJobs - publishedJobs} draft${totalJobs - publishedJobs !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="stat-card" style="border-top:3px solid var(--accent-amber);">
+            <div class="stat-header"><span class="stat-label">Total Applications</span>
+                <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            </div>
+            <div class="stat-value">${totalApps}</div>
+        </div>
+        <div class="stat-card" style="border-top:3px solid #22c55e;">
+            <div class="stat-header"><span class="stat-label">New (Unreviewed)</span>
+                <div class="stat-icon" style="background:rgba(34,197,94,0.12);color:#22c55e;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            </div>
+            <div class="stat-value" style="color:#22c55e;">${newApps}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-header"><span class="stat-label">Hired</span>
+                <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></div>
+            </div>
+            <div class="stat-value">${apps.filter(a=>a.status==='hired').length}</div>
+        </div>
+    </div>
+
+    <!-- Tabs: Applications | Jobs -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;align-items:center;flex-wrap:wrap;">
+        <button class="btn ${recruitmentState.view==='applications'?'btn-primary':'btn-secondary'}" onclick="switchRecView('applications')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Applications
+        </button>
+        <button class="btn ${recruitmentState.view==='jobs'?'btn-primary':'btn-secondary'}" onclick="switchRecView('jobs')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            Manage Jobs
+        </button>
+        ${recruitmentState.view === 'applications' ? `
+        <select onchange="filterByJob(this.value)" style="margin-left:auto;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;min-width:200px;">
+            <option value="">All Positions</option>
+            ${jobs.map(j => `<option value="${j.id}" ${String(filterJobId)===String(j.id)?'selected':''}>
+                ${j.title} (${apps.filter(a=>String(a.job_id)===String(j.id)).length})
+                ${j.published ? '' : ' [Draft]'}
+            </option>`).join('')}
+        </select>` : ''}
+    </div>
+
+    <!-- Content area -->
+    <div id="recContentArea">
+    ${recruitmentState.view === 'applications' ? renderApplicationsTable(filteredApps) : renderJobsTable(jobs)}
+    </div>
+
+    <!-- Detail Modal (hidden) -->
+    <div id="recDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:none;align-items:center;justify-content:center;">
+        <div id="recDetailInner" style="background:var(--bg-secondary);border-radius:var(--radius-lg);width:90%;max-width:720px;max-height:85vh;overflow-y:auto;padding:36px;position:relative;border:1px solid var(--border-default);"></div>
+    </div>
+
+    <!-- Job Modal (hidden) -->
+    <div id="recJobModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
+        <div id="recJobModalInner" style="background:var(--bg-secondary);border-radius:var(--radius-lg);width:90%;max-width:680px;max-height:85vh;overflow-y:auto;padding:36px;position:relative;border:1px solid var(--border-default);"></div>
+    </div>
+    `;
+}
+
+function renderApplicationsTable(apps) {
+    if (apps.length === 0) return `<div style="text-align:center;padding:60px 20px;color:var(--text-muted);">No applications found.</div>`;
+    return `
+    <div class="table-container">
+        <table class="data-table">
+            <thead><tr>
+                <th>Candidate</th>
+                <th>Position</th>
+                <th>Status</th>
+                <th>Experience</th>
+                <th>Applied</th>
+                <th style="width:140px;">Actions</th>
+            </tr></thead>
+            <tbody>
+            ${apps.map(a => `
+                <tr>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:36px;height:36px;border-radius:50%;background:var(--bg-elevated);border:1px solid var(--border-default);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--accent-amber);">${getInitials(a.first_name + ' ' + a.last_name)}</div>
+                            <div>
+                                <div style="font-weight:600;font-size:14px;">${a.first_name} ${a.last_name}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">${a.email}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="font-size:13px;color:var(--text-secondary);">${a.job_title || '—'}</td>
+                    <td><span style="display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:${getAppStatusBg(a.status)};color:${getAppStatusColor(a.status)};">${a.status}</span></td>
+                    <td style="font-size:13px;color:var(--text-secondary);">${a.experience || '—'}</td>
+                    <td style="font-size:12px;color:var(--text-muted);">${formatDate(a.created_at)}</td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" onclick="openAppDetail(${a.id})">View</button>
+                            ${a.resume_path ? `<button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" onclick="downloadResume(${a.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('')}
+            </tbody>
+        </table>
+    </div>`;
+}
+
+function renderJobsTable(jobs) {
+    if (jobs.length === 0) return `<div style="text-align:center;padding:60px 20px;color:var(--text-muted);">No jobs created yet. Click "Create Job" to add one.</div>`;
+    return `
+    <div class="table-container">
+        <table class="data-table">
+            <thead><tr>
+                <th>Title</th>
+                <th>Department</th>
+                <th>Type / Location</th>
+                <th>Status</th>
+                <th>Applications</th>
+                <th style="width:180px;">Actions</th>
+            </tr></thead>
+            <tbody>
+            ${jobs.map(j => {
+                const appCount = recruitmentState.applications.filter(a => String(a.job_id) === String(j.id)).length;
+                return `
+                <tr>
+                    <td style="font-weight:600;font-size:14px;">${j.title}</td>
+                    <td style="font-size:13px;color:var(--text-secondary);">${j.department}</td>
+                    <td style="font-size:13px;color:var(--text-secondary);">${j.type} · ${j.location}</td>
+                    <td><span style="display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:${j.published ? 'rgba(34,197,94,0.12)' : 'rgba(113,113,122,0.15)'};color:${j.published ? '#22c55e' : '#71717a'};">${j.published ? 'Published' : 'Draft'}</span></td>
+                    <td style="font-size:14px;font-weight:600;color:var(--accent-amber);">${appCount}</td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" onclick="openJobModal(${j.id})">Edit</button>
+                            <button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;background:${j.published ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'};color:${j.published ? '#ef4444' : '#22c55e'};" onclick="toggleJobPublished(${j.id}, ${j.published})">
+                                ${j.published ? 'Unpublish' : 'Publish'}
+                            </button>
+                            <button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;color:#ef4444;" onclick="deleteJob(${j.id})">Delete</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('')}
+            </tbody>
+        </table>
+    </div>`;
+}
+
+function getAppStatusBg(s) {
+    const map = { new:'rgba(34,197,94,0.12)', reviewing:'rgba(245,158,11,0.12)', interviewing:'rgba(59,130,246,0.12)', hired:'rgba(34,197,94,0.2)', rejected:'rgba(239,68,68,0.12)', on_hold:'rgba(113,113,122,0.15)' };
+    return map[s] || 'rgba(113,113,122,0.15)';
+}
+function getAppStatusColor(s) {
+    const map = { new:'#22c55e', reviewing:'#f59e0b', interviewing:'#3b82f6', hired:'#16a34a', rejected:'#ef4444', on_hold:'#71717a' };
+    return map[s] || '#71717a';
+}
+
+function switchRecView(view) {
+    recruitmentState.view = view;
+    renderRecruitmentUI(document.getElementById('contentArea'));
+}
+
+function filterByJob(jobId) {
+    recruitmentState.selectedJob = jobId || null;
+    renderRecruitmentUI(document.getElementById('contentArea'));
+}
+
+// ── Application Detail Modal ──
+function openAppDetail(appId) {
+    const app = recruitmentState.applications.find(a => a.id === appId);
+    if (!app) return;
+    recruitmentState.selectedApp = app;
+
+    const modal = document.getElementById('recDetailModal');
+    const inner = document.getElementById('recDetailInner');
+
+    inner.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">
+            <div>
+                <h2 style="font-size:22px;font-weight:700;margin-bottom:4px;">${app.first_name} ${app.last_name}</h2>
+                <p style="color:var(--text-muted);font-size:14px;">Applied for <strong style="color:var(--text-secondary);">${app.job_title || 'Unknown'}</strong> · ${formatDate(app.created_at)}</p>
+            </div>
+            <button onclick="closeAppDetail()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:22px;line-height:1;">×</button>
+        </div>
+
+        <!-- Status Selector -->
+        <div style="margin-bottom:20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Status:</span>
+            ${['new','reviewing','interviewing','hired','rejected','on_hold'].map(s => `
+                <button onclick="updateAppStatus(${app.id},'${s}')" style="padding:5px 12px;border-radius:14px;border:1px solid ${app.status===s?getAppStatusColor(s):'var(--border-default)'};background:${app.status===s?getAppStatusBg(s):'transparent'};color:${app.status===s?getAppStatusColor(s):'var(--text-secondary)'};font-size:11px;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">${s.replace('_',' ')}</button>
+            `).join('')}
+        </div>
+
+        <!-- Info Grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+            ${[
+                ['Email', app.email],
+                ['Phone', app.phone],
+                ['City / State', [app.city, app.state].filter(Boolean).join(', ') || '—'],
+                ['Experience', app.experience || '—'],
+                ['Start Availability', app.start_date || '—'],
+                ['Expected Salary', app.expected_salary || '—'],
+                ['Referral Source', app.referral_source || '—'],
+                ['LinkedIn', app.linkedin_url ? `<a href="${app.linkedin_url}" target="_blank" style="color:var(--accent-amber);text-decoration:none;">${app.linkedin_url}</a>` : '—'],
+                ['Portfolio', app.portfolio_url ? `<a href="${app.portfolio_url}" target="_blank" style="color:var(--accent-amber);text-decoration:none;">${app.portfolio_url}</a>` : '—'],
+            ].map(([label, val]) => `
+                <div style="background:var(--bg-tertiary);padding:12px 14px;border-radius:var(--radius-md);border:1px solid var(--border-subtle);">
+                    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:4px;">${label}</div>
+                    <div style="font-size:13px;color:var(--text-primary);">${val}</div>
+                </div>
+            `).join('')}
+        </div>
+
+        <!-- Cover Letter -->
+        ${app.cover_letter ? `
+        <div style="margin-bottom:20px;">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px;">Cover Letter</div>
+            <div style="background:var(--bg-tertiary);padding:16px;border-radius:var(--radius-md);border:1px solid var(--border-subtle);font-size:14px;color:var(--text-secondary);line-height:1.7;white-space:pre-wrap;">${app.cover_letter}</div>
+        </div>` : ''}
+
+        <!-- Resume Download -->
+        ${app.resume_path ? `
+        <div style="margin-bottom:20px;">
+            <button class="btn btn-secondary" onclick="downloadResume(${app.id})" style="display:inline-flex;align-items:center;gap:8px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Resume (${app.resume_original_name || 'resume'})
+            </button>
+        </div>` : ''}
+
+        <!-- Admin Notes -->
+        <div>
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px;">Admin Notes</div>
+            <textarea id="appNotesTA" style="width:100%;min-height:100px;background:var(--bg-tertiary);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:12px;color:var(--text-primary);font-size:13px;font-family:var(--font-display);resize:vertical;" placeholder="Add internal notes here...">${app.notes || ''}</textarea>
+            <button class="btn btn-secondary" style="margin-top:8px;padding:6px 14px;font-size:12px;" onclick="saveAppNotes(${app.id})">Save Notes</button>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+}
+
+function closeAppDetail() {
+    document.getElementById('recDetailModal').style.display = 'none';
+}
+
+async function updateAppStatus(appId, status) {
+    try {
+        const res = await fetch(`${API_URL}/api/admin/applications/${appId}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        if (res.ok) {
+            showToast('Status updated to ' + status, 'success');
+            await loadRecruitmentData();
+            // Update in-place
+            const app = recruitmentState.applications.find(a => a.id === appId);
+            if (app) { recruitmentState.selectedApp = app; openAppDetail(appId); }
+            renderRecruitmentUI(document.getElementById('contentArea'));
+        } else {
+            showToast('Failed to update status', 'error');
+        }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function saveAppNotes(appId) {
+    const notes = document.getElementById('appNotesTA')?.value || '';
+    try {
+        const res = await fetch(`${API_URL}/api/admin/applications/${appId}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes })
+        });
+        if (res.ok) { showToast('Notes saved', 'success'); await loadRecruitmentData(); }
+        else showToast('Failed to save notes', 'error');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function downloadResume(appId) {
+    try {
+        const res = await fetch(`${API_URL}/api/admin/applications/${appId}/resume`, {
+            headers: { Authorization: `Bearer ${getAuthToken()}` }
+        });
+        if (res.ok) {
+            const blob = await res.blob();
+            const cd = res.headers.get('content-disposition') || '';
+            const match = cd.match(/filename="?([^";]+)"?/);
+            const filename = match ? match[1] : 'resume';
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+            document.body.removeChild(a); URL.revokeObjectURL(url);
+        } else showToast('No resume on file', 'error');
+    } catch(e) { showToast('Error downloading resume', 'error'); }
+}
+
+// ── Job Create/Edit Modal ──
+function openJobModal(jobId) {
+    const job = jobId ? recruitmentState.jobs.find(j => j.id === jobId) : null;
+    const modal = document.getElementById('recJobModal');
+    const inner = document.getElementById('recJobModalInner');
+
+    inner.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <h2 style="font-size:20px;font-weight:700;">${job ? 'Edit Job' : 'Create New Job'}</h2>
+            <button onclick="closeJobModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:22px;">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Job Title *</label>
+                <input id="jobFormTitle" type="text" value="${job?.title||''}" style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;" required>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Department *</label>
+                    <input id="jobFormDept" type="text" value="${job?.department||''}" placeholder="e.g. Engineering" style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;" required>
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Type *</label>
+                    <select id="jobFormType" style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;">
+                        <option value="Full-time" ${job?.type==='Full-time'?'selected':''}>Full-time</option>
+                        <option value="Part-time" ${job?.type==='Part-time'?'selected':''}>Part-time</option>
+                        <option value="Contract" ${job?.type==='Contract'?'selected':''}>Contract</option>
+                        <option value="Internship" ${job?.type==='Internship'?'selected':''}>Internship</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Location *</label>
+                <input id="jobFormLocation" type="text" value="${job?.location||'Remote'}" style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;" required>
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Description *</label>
+                <textarea id="jobFormDesc" style="width:100%;min-height:120px;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;font-family:var(--font-display);resize:vertical;" required>${job?.description||''}</textarea>
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Duties (one per line)</label>
+                <textarea id="jobFormDuties" style="width:100%;min-height:100px;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;font-family:var(--font-display);resize:vertical;">${(job?.duties||[]).join('\n')}</textarea>
+            </div>
+            <div>
+                <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Requirements (one per line)</label>
+                <textarea id="jobFormReqs" style="width:100%;min-height:100px;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;font-family:var(--font-display);resize:vertical;">${(job?.requirements||[]).join('\n')}</textarea>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--border-subtle);">
+                <label style="position:relative;width:44px;height:24px;">
+                    <input type="checkbox" id="jobFormPublished" ${job?.published?'checked':''} style="opacity:0;width:0;height:0;">
+                    <span style="position:absolute;inset:0;background:var(--bg-hover);border-radius:24px;cursor:pointer;transition:0.2s;" onclick="this.parentElement.querySelector('input').click()"></span>
+                    <span style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:var(--text-muted);border-radius:50%;transition:0.2s;pointer-events:none;"></span>
+                </label>
+                <span style="font-size:13px;color:var(--text-secondary);">Publish to careers page</span>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;">
+                <button class="btn btn-secondary" onclick="closeJobModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveJob(${jobId||'null'})">
+                    ${job ? 'Save Changes' : 'Create Job'}
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Toggle switch styling
+    const checkbox = document.getElementById('jobFormPublished');
+    const track = inner.querySelector('label span:first-of-type');
+    const thumb = inner.querySelector('label span:last-of-type');
+    function updateToggle() {
+        if (checkbox.checked) { track.style.background = 'var(--accent-amber)'; thumb.style.left = '23px'; }
+        else { track.style.background = 'var(--bg-hover)'; thumb.style.left = '3px'; }
+    }
+    checkbox.addEventListener('change', updateToggle);
+    updateToggle();
+
+    modal.style.display = 'flex';
+}
+
+function closeJobModal() {
+    document.getElementById('recJobModal').style.display = 'none';
+}
+
+async function saveJob(jobId) {
+    const title = document.getElementById('jobFormTitle').value.trim();
+    const department = document.getElementById('jobFormDept').value.trim();
+    const type = document.getElementById('jobFormType').value;
+    const location = document.getElementById('jobFormLocation').value.trim();
+    const description = document.getElementById('jobFormDesc').value.trim();
+    const duties = document.getElementById('jobFormDuties').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const requirements = document.getElementById('jobFormReqs').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const published = document.getElementById('jobFormPublished').checked;
+
+    if (!title || !department || !type || !location || !description) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+    }
+
+    const payload = { title, department, type, location, description, duties, requirements, published };
+    try {
+        let res;
+        if (jobId) {
+            res = await fetch(`${API_URL}/api/admin/jobs/${jobId}`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            res = await fetch(`${API_URL}/api/admin/jobs`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(jobId ? 'Job updated' : 'Job created', 'success');
+            closeJobModal();
+            await loadRecruitmentData();
+            renderRecruitmentUI(document.getElementById('contentArea'));
+        } else {
+            showToast('Failed: ' + (data.message || 'Unknown error'), 'error');
+        }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function toggleJobPublished(jobId, currentlyPublished) {
+    try {
+        const res = await fetch(`${API_URL}/api/admin/jobs/${jobId}`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ published: !currentlyPublished })
+        });
+        if (res.ok) {
+            showToast(currentlyPublished ? 'Job unpublished' : 'Job published to careers page', currentlyPublished ? 'warning' : 'success');
+            await loadRecruitmentData();
+            renderRecruitmentUI(document.getElementById('contentArea'));
+        } else showToast('Failed to update', 'error');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function deleteJob(jobId) {
+    if (!confirm('Delete this job? All applications for it will be orphaned.')) return;
+    try {
+        const res = await fetch(`${API_URL}/api/admin/jobs/${jobId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${getAuthToken()}` }
+        });
+        if (res.ok) {
+            showToast('Job deleted', 'success');
+            await loadRecruitmentData();
+            renderRecruitmentUI(document.getElementById('contentArea'));
+        } else showToast('Failed to delete', 'error');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 </script>

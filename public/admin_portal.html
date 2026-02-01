@@ -3360,7 +3360,7 @@ async function updateBadges() {
     document.getElementById('customersBadge').textContent = state.customers.length;
     document.getElementById('invoicesBadge').textContent = unpaidInvoices;
 
-    // Fetch follow-ups count from API
+    // Fetch follow-ups count
     try {
         const res = await fetch(`${API_URL}/api/follow-ups/categorized`, {
             headers: { 'Authorization': `Bearer ${state.authToken}`, 'Content-Type': 'application/json' }
@@ -3368,13 +3368,11 @@ async function updateBadges() {
         if (res.ok) {
             const data = await res.json();
             const categories = data.categories || data || [];
-            const totalFollowUps = categories.reduce((sum, cat) => sum + (cat.count || 0), 0);
+            const total = categories.reduce((sum, cat) => sum + (cat.count || 0), 0);
             const badge = document.getElementById('followupsBadge');
-            if (badge) badge.textContent = totalFollowUps;
+            if (badge) badge.textContent = total;
         }
-    } catch (e) {
-        // non-fatal — badge stays at previous value
-    }
+    } catch (e) { /* non-fatal */ }
 }
 
 // ========================================
@@ -5888,72 +5886,82 @@ function formatFileSize(bytes) {
 window.showEmailModal = function(leadId, leadName, leadEmail) {
     console.log('Email modal opening for:', leadId, leadName, leadEmail);
     
+    // Remove any existing email modal first
+    const existing = document.getElementById('emailModal_' + leadId);
+    if (existing) existing.remove();
+
     const modalHtml = `
-        <div class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;" onclick="this.remove()">
+        <div class="modal-overlay" id="emailModal_${leadId}" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
             <div class="modal" style="background: white; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow: auto;" onclick="event.stopPropagation()">
-                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb;">
+                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
                     <h3 style="margin: 0;">Send Email to ${leadName}</h3>
+                    <button onclick="document.getElementById('emailModal_${leadId}').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;">&times;</button>
                 </div>
                 <div style="padding: 20px;">
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">To:</label>
                         <input type="email" value="${leadEmail}" readonly 
-                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f3f4f6;">
+                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f3f4f6; box-sizing: border-box;">
                     </div>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
                         <input type="text" id="emailSubject_${leadId}" placeholder="Email subject" 
-                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
+                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
                     </div>
                     
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
                         <textarea id="emailBody_${leadId}" rows="10" placeholder="Type your message here..." 
-                                  style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+                                  style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit; box-sizing: border-box;"></textarea>
                     </div>
                 </div>
                 <div style="padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-                    <button class="btn btn-primary" onclick="window.doSendEmail(${leadId}, '${leadEmail}')">Send Email</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('emailModal_${leadId}').remove()">Cancel</button>
+                    <button class="btn btn-primary" id="sendEmailBtn_${leadId}" onclick="window.doSendEmail(${leadId}, '${leadEmail}')">Send Email</button>
                 </div>
             </div>
         </div>
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Close modal when clicking the dark overlay background (not the modal itself)
+    const overlay = document.getElementById('emailModal_' + leadId);
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.remove();
+    });
+
     setTimeout(() => document.getElementById('emailSubject_' + leadId)?.focus(), 100);
 };
 
 window.doSendEmail = async function(leadId, leadEmail) {
-    console.log('[EMAIL] Starting send email process...');
-    console.log('[EMAIL] Lead ID:', leadId);
-    console.log('[EMAIL] Lead Email:', leadEmail);
+    console.log('[EMAIL] Starting send email process for lead:', leadId);
     
-    // Get form values
     const subject = document.getElementById('emailSubject_' + leadId)?.value;
     const body = document.getElementById('emailBody_' + leadId)?.value;
     
     if (!subject || !body) {
-        alert('Please fill in subject and message');
+        showToast('Please fill in both subject and message', 'error');
         return;
     }
     
-    console.log('[EMAIL] Subject:', subject);
-    console.log('[EMAIL] Body length:', body.length);
-    
     const token = getAuthToken();
-    
     if (!token) {
-        console.error('[EMAIL] ❌ No authentication token found');
-        alert('Authentication error: Please refresh the page and log in again.');
+        showToast('Session expired — please log in again', 'error');
         window.location.href = '/admin/login';
         return;
     }
+
+    // Disable button while sending
+    const sendBtn = document.getElementById('sendEmailBtn_' + leadId);
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending...';
+        sendBtn.style.opacity = '0.6';
+    }
     
     try {
-        console.log('[EMAIL] Sending request to server...');
-        
         const response = await fetch(`${API_URL}/api/email/send-custom`, {
             method: 'POST',
             headers: {
@@ -5969,75 +5977,46 @@ window.doSendEmail = async function(leadId, leadEmail) {
             })
         });
         
-        console.log('[EMAIL] Response status:', response.status);
-        
         if (response.status === 401) {
-            console.error('[EMAIL] ❌ Authentication failed');
-            alert('Your session has expired. Please log in again.');
-            localStorage.removeItem('adminToken');
-            sessionStorage.removeItem('adminToken');
-            if (window.state) window.state.authToken = null;
+            showToast('Session expired — please log in again', 'error');
             window.location.href = '/admin/login';
             return;
         }
         
-        if (response.status === 403) {
-            console.error('[EMAIL] ❌ Access denied');
-            alert('Access denied. You do not have permission to send emails.');
-            return;
-        }
-        
-        let responseData;
-        try {
-            responseData = await response.json();
-            console.log('[EMAIL] Response data:', responseData);
-        } catch (parseError) {
-            console.error('[EMAIL] Failed to parse response:', parseError);
-            throw new Error('Invalid server response');
-        }
+        let responseData = {};
+        try { responseData = await response.json(); } catch(e) {}
         
         if (!response.ok) {
-            const errorMessage = responseData.message || responseData.error || `Server error: ${response.status}`;
-            console.error('[EMAIL] ❌ Server error:', errorMessage);
-            throw new Error(errorMessage);
+            throw new Error(responseData.message || responseData.error || `Server error: ${response.status}`);
         }
         
-        // ✅ Email sent successfully!
+        // ✅ Success — close modal first, then show toast
+        const modal = document.getElementById('emailModal_' + leadId);
+        if (modal) modal.remove();
+        
+        showToast(`Email sent successfully to ${leadEmail}`, 'success');
+        
         console.log('[EMAIL] ✅ Email sent successfully');
-        alert('Email sent successfully!');
+
+        // Update lead status to contacted
+        try {
+            await fetch(`${API_URL}/api/leads/${leadId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    status: 'contacted',
+                    last_contact_date: new Date().toISOString()
+                })
+            });
+        } catch(e) { console.warn('[EMAIL] Could not update lead status'); }
         
-        // Close modal
-        const modal = document.querySelector('.modal-overlay');
-        if (modal) {
-            modal.remove();
-            console.log('[EMAIL] Modal closed');
-        }
-        
-        // 🔥 UPDATE: Mark lead as contacted with timestamp
-        console.log('[EMAIL] Updating lead last_contact_date...');
-        const updateResponse = await fetch(`${API_URL}/api/leads/${leadId}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-                status: 'contacted',
-                last_contact_date: new Date().toISOString()
-            })
-        });
-        
-        if (!updateResponse.ok) {
-            console.warn('[EMAIL] ⚠️ Failed to update lead contact date');
-        } else {
-            console.log('[EMAIL] ✅ Lead contact date updated');
-        }
-        
-        // Reload data to reflect changes
+        // Reload data
         await loadLeads();
         updateBadges();
         
-        // Re-render current section
         if (state.currentSection === 'followups') {
             await renderFollowUps(document.getElementById('contentArea'));
         } else if (state.currentSection === 'contacted') {
@@ -6046,8 +6025,13 @@ window.doSendEmail = async function(leadId, leadEmail) {
         
     } catch (error) {
         console.error('[EMAIL] ❌ Error:', error);
-        console.error('[EMAIL] Error stack:', error.stack);
-        alert('Failed to send email: ' + error.message);
+        showToast('Failed to send email: ' + error.message, 'error');
+        // Re-enable button on error
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send Email';
+            sendBtn.style.opacity = '1';
+        }
     }
 };
 
@@ -14978,7 +14962,7 @@ async function sendBulkEmail(category, count) {
         showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
         closeBulkEmailModal();
         
-        // Refresh follow-ups and sidebar badges
+        // Refresh badges and follow-ups
         updateBadges();
         const contentArea = document.getElementById('contentArea');
         if (contentArea) {
@@ -15623,7 +15607,6 @@ async function markFollowedUp(leadId) {
         
         showToast('✓ Marked as contacted', 'success');
         
-        // Refresh badges and follow-ups list
         updateBadges();
         const contentArea = document.getElementById('contentArea');
         if (contentArea) {

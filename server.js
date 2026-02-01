@@ -1051,6 +1051,28 @@ console.log('✅ Client portal tables initialized');
             END $$;
         `);
         
+        // Migration: Create auto_campaigns table for persistent auto-send campaigns
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS auto_campaigns (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER NOT NULL UNIQUE REFERENCES leads(id) ON DELETE CASCADE,
+                lead_name VARCHAR(255),
+                lead_email VARCHAR(255),
+                subject TEXT NOT NULL,
+                body TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                next_send_date TIMESTAMP
+            )
+        `);
+
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_auto_campaigns_lead
+            ON auto_campaigns(lead_id)
+        `);
+
+        console.log('✅ auto_campaigns table ready');
+
         console.log('✅ Database migrations completed');
 
         await client.query('COMMIT');
@@ -5809,6 +5831,9 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
                     l.last_contact_date IS NULL
                     OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
                 )
+                AND NOT EXISTS (
+                    SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id
+                )
             )
             SELECT 
                 follow_up_category,
@@ -5857,10 +5882,11 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
 // Send custom email
 app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
     try {
-        const { to, subject, body, leadId, toName } = req.body;
+        const { to, subject, body, leadId, toName, isAutoCampaign } = req.body;
         
         console.log('[EMAIL API] Sending custom email to:', to);
         console.log('[EMAIL API] Lead ID:', leadId);
+        console.log('[EMAIL API] Auto-campaign:', isAutoCampaign);
         
         // Validate required fields
         if (!to || !subject || !body) {
@@ -6013,6 +6039,36 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
             }
         }
         
+        // If auto-campaign flag is set, persist to auto_campaigns table
+        if (isAutoCampaign && leadId) {
+            try {
+                // Look up lead name
+                const leadRow = await pool.query('SELECT name, email FROM leads WHERE id = $1', [leadId]);
+                const leadName = leadRow.rows[0]?.name || toName || 'Unknown';
+                const leadEmail = leadRow.rows[0]?.email || to;
+
+                // Calculate next send date (tomorrow 9 AM)
+                const nextSend = new Date();
+                nextSend.setDate(nextSend.getDate() + 1);
+                nextSend.setHours(9, 0, 0, 0);
+
+                await pool.query(`
+                    INSERT INTO auto_campaigns (lead_id, lead_name, lead_email, subject, body, next_send_date)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT (lead_id) DO UPDATE SET
+                        subject = EXCLUDED.subject,
+                        body = EXCLUDED.body,
+                        next_send_date = EXCLUDED.next_send_date,
+                        updated_at = CURRENT_TIMESTAMP
+                `, [leadId, leadName, leadEmail, subject, body, nextSend.toISOString()]);
+
+                console.log('[EMAIL API] ✅ Auto-campaign persisted for lead:', leadId);
+            } catch (acErr) {
+                console.error('[EMAIL API] ⚠️ Failed to persist auto-campaign:', acErr);
+                // Don't fail the request — email was still sent
+            }
+        }
+
         // Return success response
         res.json({ 
             success: true, 
@@ -8856,7 +8912,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
 app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) => {
     try {
         // Frontend sends 'body', internal send-by-category uses 'message' — normalise here
-        const { category, subject, body, message } = req.body;
+        const { category, subject, body, message, isAutoCampaign } = req.body;
         const emailMessage = body || message;
 
         console.log(`[EMAIL-CATEGORY] Sending to category: ${category}`);
@@ -9015,12 +9071,37 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
 
         console.log(`[EMAIL-CATEGORY] ✅ Complete: ${sent_count} sent, ${fail_count} failed`);
 
+        // If auto-campaign flag is set, persist all successfully sent leads
+        if (isAutoCampaign) {
+            const nextSend = new Date();
+            nextSend.setDate(nextSend.getDate() + 1);
+            nextSend.setHours(9, 0, 0, 0);
+
+            for (const lead of leads) {
+                try {
+                    await pool.query(`
+                        INSERT INTO auto_campaigns (lead_id, lead_name, lead_email, subject, body, next_send_date)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        ON CONFLICT (lead_id) DO UPDATE SET
+                            subject = EXCLUDED.subject,
+                            body = EXCLUDED.body,
+                            next_send_date = EXCLUDED.next_send_date,
+                            updated_at = CURRENT_TIMESTAMP
+                    `, [lead.id, lead.name, lead.email, subject, emailMessage, nextSend.toISOString()]);
+                } catch (acErr) {
+                    console.error(`[EMAIL-CATEGORY] ⚠️ Failed to persist auto-campaign for lead ${lead.id}:`, acErr);
+                }
+            }
+            console.log(`[EMAIL-CATEGORY] ✅ Persisted auto-campaigns for ${leads.length} leads`);
+        }
+
         res.json({
             success: true,
             message: `Sent ${sent_count} emails to ${category} category, ${fail_count} failed`,
             sent_count,
             fail_count,
             totalLeads: leads.length,
+            leads: leads.map(l => ({ id: l.id, name: l.name, email: l.email })),
             errors: errors.length > 0 ? errors : undefined
         });
 
@@ -9031,6 +9112,119 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
             message: 'Bulk send failed',
             error: error.message
         });
+    }
+});
+
+// ========================================
+// AUTO-CAMPAIGN CRUD ENDPOINTS
+// ========================================
+
+// GET all active auto-campaigns
+app.get('/api/auto-campaigns', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                ac.lead_id,
+                ac.lead_name,
+                ac.lead_email,
+                ac.subject,
+                ac.body,
+                ac.created_at,
+                ac.updated_at,
+                ac.next_send_date
+            FROM auto_campaigns ac
+            ORDER BY ac.created_at DESC
+        `);
+        res.json({ success: true, campaigns: result.rows });
+    } catch (error) {
+        console.error('[AUTO-CAMPAIGNS] GET error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load auto-campaigns' });
+    }
+});
+
+// POST create a new auto-campaign (or upsert if lead already has one)
+app.post('/api/auto-campaigns', authenticateToken, async (req, res) => {
+    try {
+        const { leadId, name, email, subject, body } = req.body;
+
+        if (!leadId || !subject || !body) {
+            return res.status(400).json({ success: false, message: 'leadId, subject, and body are required' });
+        }
+
+        const nextSend = new Date();
+        nextSend.setDate(nextSend.getDate() + 1);
+        nextSend.setHours(9, 0, 0, 0);
+
+        await pool.query(`
+            INSERT INTO auto_campaigns (lead_id, lead_name, lead_email, subject, body, next_send_date)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (lead_id) DO UPDATE SET
+                lead_name = EXCLUDED.lead_name,
+                lead_email = EXCLUDED.lead_email,
+                subject = EXCLUDED.subject,
+                body = EXCLUDED.body,
+                next_send_date = EXCLUDED.next_send_date,
+                updated_at = CURRENT_TIMESTAMP
+        `, [leadId, name || 'Unknown', email || '', subject, body, nextSend.toISOString()]);
+
+        console.log('[AUTO-CAMPAIGNS] ✅ Created/updated campaign for lead:', leadId);
+        res.json({ success: true, message: 'Auto-campaign saved' });
+    } catch (error) {
+        console.error('[AUTO-CAMPAIGNS] POST error:', error);
+        res.status(500).json({ success: false, message: 'Failed to save auto-campaign' });
+    }
+});
+
+// PUT update an existing auto-campaign's subject/body
+app.put('/api/auto-campaigns/:leadId', authenticateToken, async (req, res) => {
+    try {
+        const { leadId } = req.params;
+        const { subject, body } = req.body;
+
+        if (!subject || !body) {
+            return res.status(400).json({ success: false, message: 'subject and body are required' });
+        }
+
+        const result = await pool.query(`
+            UPDATE auto_campaigns
+            SET subject = $1,
+                body = $2,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE lead_id = $3
+            RETURNING lead_id
+        `, [subject, body, leadId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Auto-campaign not found' });
+        }
+
+        console.log('[AUTO-CAMPAIGNS] ✅ Updated campaign for lead:', leadId);
+        res.json({ success: true, message: 'Auto-campaign updated' });
+    } catch (error) {
+        console.error('[AUTO-CAMPAIGNS] PUT error:', error);
+        res.status(500).json({ success: false, message: 'Failed to update auto-campaign' });
+    }
+});
+
+// DELETE turn off an auto-campaign
+app.delete('/api/auto-campaigns/:leadId', authenticateToken, async (req, res) => {
+    try {
+        const { leadId } = req.params;
+
+        const result = await pool.query(
+            'DELETE FROM auto_campaigns WHERE lead_id = $1 RETURNING lead_id',
+            [leadId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Auto-campaign not found' });
+        }
+
+        console.log('[AUTO-CAMPAIGNS] ✅ Deleted campaign for lead:', leadId);
+        res.json({ success: true, message: 'Auto-campaign turned off' });
+    } catch (error) {
+        console.error('[AUTO-CAMPAIGNS] DELETE error:', error);
+        res.status(500).json({ success: false, message: 'Failed to turn off auto-campaign' });
     }
 });
 

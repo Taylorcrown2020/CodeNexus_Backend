@@ -3683,6 +3683,10 @@ const state = {
     }
 };
 
+// In-memory store for auto-send campaigns (keyed by lead ID)
+// Structure: { leadId: { id, name, email, subject, body, createdAt, nextSendDate } }
+const autoCampaigns = {};
+
 // ========================================
 // INITIALIZATION
 // ========================================
@@ -3726,7 +3730,8 @@ async function loadAllData() {
         loadLeads(),
         loadEmployees(),
         loadInvoices(),
-        loadTasks()
+        loadTasks(),
+        loadAutoCampaigns()
     ]);
     updateBadges();
 }
@@ -16180,12 +16185,39 @@ function formatDate(dateString) {
 
 
 // ==================== AUTO-CAMPAIGN ENGINE ====================
-// In-memory store for auto campaigns (keyed by lead ID)
-// Structure: { leadId: { id, name, email, subject, body, createdAt, nextSendDate } }
-const autoCampaigns = {};
 
-// Register a single lead into the auto-campaign store
-function registerAutoCampaign(leadId, name, email, subject, body) {
+// Load persisted auto-campaigns from server into local store
+async function loadAutoCampaigns() {
+    try {
+        const token = getAuthToken();
+        const res = await fetch(`${API_URL}/api/auto-campaigns`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) {
+            console.warn('[AUTO-CAMPAIGN] Failed to load campaigns:', res.status);
+            return;
+        }
+        const data = await res.json();
+        // Populate local store
+        (data.campaigns || []).forEach(c => {
+            autoCampaigns[c.lead_id] = {
+                id: c.lead_id,
+                name: c.lead_name,
+                email: c.lead_email,
+                subject: c.subject,
+                body: c.body,
+                createdAt: c.created_at,
+                nextSendDate: c.next_send_date || getNextFollowUpDate(new Date()).toString()
+            };
+        });
+        console.log('[AUTO-CAMPAIGN] Loaded', Object.keys(autoCampaigns).length, 'persisted campaigns');
+    } catch (err) {
+        console.error('[AUTO-CAMPAIGN] Error loading campaigns:', err);
+    }
+}
+
+// Register a single lead into the auto-campaign store AND persist to server
+async function registerAutoCampaign(leadId, name, email, subject, body) {
     const now = new Date();
     autoCampaigns[leadId] = {
         id: leadId,
@@ -16196,8 +16228,21 @@ function registerAutoCampaign(leadId, name, email, subject, body) {
         createdAt: now.toISOString(),
         nextSendDate: getNextFollowUpDate(now)
     };
-    console.log('[AUTO-CAMPAIGN] Registered lead', leadId, autoCampaigns[leadId]);
-    // If we're on the follow-ups page, re-render to update the bucket
+    console.log('[AUTO-CAMPAIGN] Registered lead', leadId);
+
+    // Persist to server
+    try {
+        const token = getAuthToken();
+        await fetch(`${API_URL}/api/auto-campaigns`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ leadId, name, email, subject, body })
+        });
+    } catch (err) {
+        console.error('[AUTO-CAMPAIGN] Failed to persist:', err);
+    }
+
+    // Re-render if on follow-ups page
     if (state.currentSection === 'followups') {
         const contentArea = document.getElementById('contentArea');
         if (contentArea) renderFollowUps(contentArea);
@@ -16238,26 +16283,36 @@ function registerAutoCampaignByCategory(category, subject, body) {
     });
 }
 
-// Calculate the next follow-up send date (next occurrence based on current category logic)
+// Calculate the next follow-up send date
 function getNextFollowUpDate(fromDate) {
     const d = new Date(fromDate);
-    // Default: schedule for tomorrow at 9 AM
     d.setDate(d.getDate() + 1);
     d.setHours(9, 0, 0, 0);
     return d.toISOString();
 }
 
-// Turn OFF auto-campaign for a lead — removes from store
-function turnOffAutoCampaign(leadId) {
-    if (autoCampaigns[leadId]) {
-        delete autoCampaigns[leadId];
-        console.log('[AUTO-CAMPAIGN] Turned off for lead', leadId);
-        showToast('Auto campaign turned off. Lead will appear in normal follow-ups.', 'success');
-        // Re-render
-        if (state.currentSection === 'followups') {
-            const contentArea = document.getElementById('contentArea');
-            if (contentArea) renderFollowUps(contentArea);
-        }
+// Turn OFF auto-campaign for a lead — removes from store AND server
+async function turnOffAutoCampaign(leadId) {
+    if (!autoCampaigns[leadId]) return;
+    const name = autoCampaigns[leadId].name;
+    delete autoCampaigns[leadId];
+    console.log('[AUTO-CAMPAIGN] Turned off for lead', leadId);
+
+    // Delete from server
+    try {
+        const token = getAuthToken();
+        await fetch(`${API_URL}/api/auto-campaigns/${leadId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+    } catch (err) {
+        console.error('[AUTO-CAMPAIGN] Failed to delete from server:', err);
+    }
+
+    showToast(`Auto campaign turned off for ${name}. They will appear in normal follow-ups again.`, 'success');
+    if (state.currentSection === 'followups') {
+        const contentArea = document.getElementById('contentArea');
+        if (contentArea) renderFollowUps(contentArea);
     }
 }
 
@@ -16332,14 +16387,10 @@ function toggleEditAutoSwitch(leadId) {
     const toggle = document.getElementById('editAutoToggle_' + leadId);
     const isOn = toggle.classList.toggle('on');
     console.log('[EDIT AUTO] Mini toggle ->', isOn ? 'ON' : 'OFF');
-    if (!isOn) {
-        // User turned it off — save first then turn off
-        showToast('Toggle is off. Click Save to apply & remove from Auto Send.', 'info');
-    }
 }
 
-// Save edits to an auto-campaign
-function saveEditAutoCampaign(leadId) {
+// Save edits to an auto-campaign — PUTs to server
+async function saveEditAutoCampaign(leadId) {
     const campaign = autoCampaigns[leadId];
     if (!campaign) return;
 
@@ -16354,18 +16405,35 @@ function saveEditAutoCampaign(leadId) {
     }
 
     if (!isStillOn) {
-        // User turned off auto — remove from campaigns
-        delete autoCampaigns[leadId];
-        showToast('Auto campaign turned off. ' + campaign.name + ' will appear in normal follow-ups.', 'success');
-    } else {
-        // Update the campaign
-        campaign.subject = newSubject;
-        campaign.body = newBody;
-        showToast('Auto campaign updated for ' + campaign.name, 'success');
+        // User toggled auto off — delete from server
+        closeEditAutoCampaign();
+        await turnOffAutoCampaign(leadId);
+        return;
+    }
+
+    // Update locally
+    campaign.subject = newSubject;
+    campaign.body = newBody;
+
+    // Persist update to server
+    try {
+        const token = getAuthToken();
+        const res = await fetch(`${API_URL}/api/auto-campaigns/${leadId}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject: newSubject, body: newBody })
+        });
+        if (res.ok) {
+            showToast('Auto campaign updated for ' + campaign.name, 'success');
+        } else {
+            showToast('Failed to save changes', 'error');
+        }
+    } catch (err) {
+        console.error('[AUTO-CAMPAIGN] Failed to update on server:', err);
+        showToast('Failed to save changes', 'error');
     }
 
     closeEditAutoCampaign();
-    // Re-render
     if (state.currentSection === 'followups') {
         const contentArea = document.getElementById('contentArea');
         if (contentArea) renderFollowUps(contentArea);

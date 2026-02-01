@@ -5886,9 +5886,10 @@ function formatFileSize(bytes) {
 window.showEmailModal = function(leadId, leadName, leadEmail) {
     console.log('Email modal opening for:', leadId, leadName, leadEmail);
     
-    // Remove any existing email modal first
     const existing = document.getElementById('emailModal_' + leadId);
     if (existing) existing.remove();
+
+    const inFollowUps = state.currentSection === 'followups';
 
     const modalHtml = `
         <div class="modal-overlay" id="emailModal_${leadId}" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
@@ -5900,23 +5901,34 @@ window.showEmailModal = function(leadId, leadName, leadEmail) {
                 <div style="padding: 20px;">
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">To:</label>
-                        <input type="email" value="${leadEmail}" readonly 
-                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f3f4f6; box-sizing: border-box;">
+                        <input type="email" value="${leadEmail}" readonly style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f3f4f6; box-sizing: border-box;">
                     </div>
-                    
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
-                        <input type="text" id="emailSubject_${leadId}" placeholder="Email subject" 
-                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
+                        <input type="text" id="emailSubject_${leadId}" placeholder="Email subject" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
                     </div>
-                    
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
-                        <textarea id="emailBody_${leadId}" rows="10" placeholder="Type your message here..." 
-                                  style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit; box-sizing: border-box;"></textarea>
+                        <textarea id="emailBody_${leadId}" rows="10" placeholder="Type your message here..." style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit; box-sizing: border-box;"></textarea>
                     </div>
+                    ${inFollowUps ? `
+                    <div style="margin-top: 18px; padding: 14px 16px; background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; font-weight: 600; color: #111;">Auto-Campaign</div>
+                            <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Automatically re-send this email every time this lead is due for follow-up</div>
+                        </div>
+                        <label style="position: relative; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer;">
+                            <input type="checkbox" id="autoSwitch_${leadId}" style="opacity:0;width:0;height:0;">
+                            <span id="autoTrack_${leadId}" style="position:absolute;inset:0;background:#d1d5db;border-radius:24px;transition:.2s;"><span id="autoThumb_${leadId}" style="position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span></span>
+                        </label>
+                    </div>
+                    ` : ''}
                 </div>
-                <div style="padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
+                <div style="padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+                    <span id="autoLabel_${leadId}" style="display:none;font-size:12px;color:#8a7d5a;margin-right:auto;align-items:center;gap:5px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#D4A847" stroke-width="2.5" style="width:14px;height:14px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        Auto-campaign will be created
+                    </span>
                     <button class="btn btn-secondary" onclick="document.getElementById('emailModal_${leadId}').remove()">Cancel</button>
                     <button class="btn btn-primary" id="sendEmailBtn_${leadId}" onclick="window.doSendEmail(${leadId}, '${leadEmail}')">Send Email</button>
                 </div>
@@ -5926,17 +5938,33 @@ window.showEmailModal = function(leadId, leadName, leadEmail) {
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Close modal when clicking the dark overlay background (not the modal itself)
     const overlay = document.getElementById('emailModal_' + leadId);
-    overlay.addEventListener('click', function(e) {
-        if (e.target === overlay) overlay.remove();
-    });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+    // Wire toggle animation + label
+    const sw = document.getElementById('autoSwitch_' + leadId);
+    if (sw) {
+        sw.addEventListener('change', function() {
+            const track = document.getElementById('autoTrack_' + leadId);
+            const thumb = document.getElementById('autoThumb_' + leadId);
+            const label = document.getElementById('autoLabel_' + leadId);
+            if (this.checked) {
+                track.style.background = '#D4A847';
+                thumb.style.left = '23px';
+                label.style.display = 'flex';
+            } else {
+                track.style.background = '#d1d5db';
+                thumb.style.left = '3px';
+                label.style.display = 'none';
+            }
+        });
+    }
 
     setTimeout(() => document.getElementById('emailSubject_' + leadId)?.focus(), 100);
 };
 
 window.doSendEmail = async function(leadId, leadEmail) {
-    console.log('[EMAIL] Starting send email process for lead:', leadId);
+    console.log('[EMAIL] Starting send for lead:', leadId);
     
     const subject = document.getElementById('emailSubject_' + leadId)?.value;
     const body = document.getElementById('emailBody_' + leadId)?.value;
@@ -5953,29 +5981,28 @@ window.doSendEmail = async function(leadId, leadEmail) {
         return;
     }
 
-    // Disable button while sending
+    const isAuto = document.getElementById('autoSwitch_' + leadId)?.checked || false;
+
     const sendBtn = document.getElementById('sendEmailBtn_' + leadId);
-    if (sendBtn) {
-        sendBtn.disabled = true;
-        sendBtn.textContent = 'Sending...';
-        sendBtn.style.opacity = '0.6';
-    }
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; sendBtn.style.opacity = '0.6'; }
     
     try {
-        const response = await fetch(`${API_URL}/api/email/send-custom`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                to: leadEmail,
-                subject: subject,
-                body: body,
-                leadId: leadId,
-                isFollowUp: state.currentSection === 'followups'
-            })
-        });
+        let response;
+        if (isAuto) {
+            // Create auto-campaign (server sends first email)
+            response = await fetch(`${API_URL}/api/auto-campaigns`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leadId, subject, body })
+            });
+        } else {
+            // Normal one-shot send
+            response = await fetch(`${API_URL}/api/email/send-custom`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to: leadEmail, subject, body, leadId, isFollowUp: state.currentSection === 'followups' })
+            });
+        }
         
         if (response.status === 401) {
             showToast('Session expired — please log in again', 'error');
@@ -5986,52 +6013,24 @@ window.doSendEmail = async function(leadId, leadEmail) {
         let responseData = {};
         try { responseData = await response.json(); } catch(e) {}
         
-        if (!response.ok) {
-            throw new Error(responseData.message || responseData.error || `Server error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(responseData.message || responseData.error || `Server error: ${response.status}`);
         
-        // ✅ Success — close modal first, then show toast
+        // Close modal
         const modal = document.getElementById('emailModal_' + leadId);
         if (modal) modal.remove();
         
-        showToast(`Email sent successfully to ${leadEmail}`, 'success');
-        
-        console.log('[EMAIL] ✅ Email sent successfully');
+        showToast(isAuto ? `Auto-campaign created for ${leadEmail} — first email sent` : `Email sent successfully to ${leadEmail}`, 'success');
+        console.log('[EMAIL] ✅ Done');
 
-        // Update lead status to contacted
-        try {
-            await fetch(`${API_URL}/api/leads/${leadId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    status: 'contacted',
-                    last_contact_date: new Date().toISOString()
-                })
-            });
-        } catch(e) { console.warn('[EMAIL] Could not update lead status'); }
-        
-        // Reload data
         await loadLeads();
         updateBadges();
-        
-        if (state.currentSection === 'followups') {
-            await renderFollowUps(document.getElementById('contentArea'));
-        } else if (state.currentSection === 'contacted') {
-            renderSection('contacted');
-        }
+        if (state.currentSection === 'followups') await renderFollowUps(document.getElementById('contentArea'));
+        else if (state.currentSection === 'contacted') renderSection('contacted');
         
     } catch (error) {
         console.error('[EMAIL] ❌ Error:', error);
-        showToast('Failed to send email: ' + error.message, 'error');
-        // Re-enable button on error
-        if (sendBtn) {
-            sendBtn.disabled = false;
-            sendBtn.textContent = 'Send Email';
-            sendBtn.style.opacity = '1';
-        }
+        showToast('Failed: ' + error.message, 'error');
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send Email'; sendBtn.style.opacity = '1'; }
     }
 };
 
@@ -7074,50 +7073,6 @@ function renderSettings(content) {
                         <input type="checkbox" ${state.settings.autoAssign ? 'checked' : ''} onchange="toggleSetting('autoAssign')">
                         <span class="toggle-slider"></span>
                     </label>
-                </div>
-
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Automated Follow-Up Emails</div>
-                        <div class="setting-desc">Automatically send follow-up emails to leads who haven't been contacted within the configured delay</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" id="autoFollowUpToggle" ${state.settings.autoFollowUpEnabled ? 'checked' : ''} onchange="toggleAutoFollowUp()">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <div id="autoFollowUpConfig" style="display: ${state.settings.autoFollowUpEnabled ? 'block' : 'none'}; margin-top: 16px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-subtle);">
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Send after (days without contact)</label>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <input type="number" id="autoFollowUpDelay" min="1" max="30" value="${state.settings.autoFollowUpDelay || 3}" 
-                                   style="width: 80px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 14px; background: var(--bg-primary); color: var(--text-primary);"
-                                   onchange="saveAutoFollowUpSettings()">
-                            <span style="font-size: 13px; color: var(--text-muted);">days</span>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Email Subject</label>
-                        <input type="text" id="autoFollowUpSubject" value="${(state.settings.autoFollowUpSubject || 'Quick check-in from Diamondback Coding').replace(/"/g, '&quot;')}" 
-                               style="width: 100%; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 14px; background: var(--bg-primary); color: var(--text-primary); box-sizing: border-box;"
-                               onchange="saveAutoFollowUpSettings()">
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">Email Body <span style="color: var(--text-muted); font-weight: 400;">(use {{'{'}{'{'}}name{'}'}{'}'}} for lead name, {{'{'}{'{'}}project_type{'}'}{'}'}} for project type)</span></label>
-                        <textarea id="autoFollowUpBody" rows="5" 
-                                  style="width: 100%; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 14px; background: var(--bg-primary); color: var(--text-primary); resize: vertical; font-family: inherit; box-sizing: border-box;"
-                                  onchange="saveAutoFollowUpSettings()">${(state.settings.autoFollowUpBody || "Hi {{name}},\n\nI wanted to follow up on your recent inquiry about {{project_type}}. We'd love to help bring your project to life.\n\nWould you be available for a quick call this week to discuss?\n\nLooking forward to hearing from you.")}</textarea>
-                    </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <button class="btn btn-primary btn-sm" onclick="runAutoFollowUpNow()" style="display: flex; align-items: center; gap: 6px;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                <polygon points="5 3 19 12 5 21 5 3"/>
-                            </svg>
-                            Test Run Now
-                        </button>
-                        <span id="autoFollowUpStatus" style="font-size: 12px; color: var(--text-muted);"></span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -9100,79 +9055,6 @@ function toggleSetting(setting) {
     applySettings();
     
     showToast('Setting updated', 'success');
-}
-
-function toggleAutoFollowUp() {
-    const toggle = document.getElementById('autoFollowUpToggle');
-    const config = document.getElementById('autoFollowUpConfig');
-    state.settings.autoFollowUpEnabled = toggle.checked;
-    config.style.display = toggle.checked ? 'block' : 'none';
-    localStorage.setItem('adminSettings', JSON.stringify(state.settings));
-    showToast(toggle.checked ? 'Automated follow-ups enabled' : 'Automated follow-ups disabled', toggle.checked ? 'success' : 'info');
-}
-
-function saveAutoFollowUpSettings() {
-    state.settings.autoFollowUpDelay = parseInt(document.getElementById('autoFollowUpDelay')?.value) || 3;
-    state.settings.autoFollowUpSubject = document.getElementById('autoFollowUpSubject')?.value || '';
-    state.settings.autoFollowUpBody = document.getElementById('autoFollowUpBody')?.value || '';
-    localStorage.setItem('adminSettings', JSON.stringify(state.settings));
-}
-
-async function runAutoFollowUpNow() {
-    const statusEl = document.getElementById('autoFollowUpStatus');
-    const btn = document.querySelector('[onclick="runAutoFollowUpNow()"]');
-    
-    // Save current settings first
-    saveAutoFollowUpSettings();
-
-    const delay = state.settings.autoFollowUpDelay || 3;
-    const subject = state.settings.autoFollowUpSubject || 'Quick check-in from Diamondback Coding';
-    const body = state.settings.autoFollowUpBody || '';
-
-    if (!subject || !body) {
-        showToast('Please fill in subject and body before running', 'error');
-        return;
-    }
-
-    if (btn) {
-        btn.disabled = true;
-        btn.style.opacity = '0.6';
-    }
-    if (statusEl) statusEl.textContent = 'Running...';
-
-    try {
-        const token = getAuthToken();
-        const response = await fetch(`${API_URL}/api/automation/auto-followup`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                delayDays: delay,
-                subject: subject,
-                body: body
-            })
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-            showToast(`Auto follow-up complete: ${result.sent_count} email(s) sent, ${result.skipped_count || 0} skipped`, 'success');
-            if (statusEl) statusEl.textContent = `Last run: just now — ${result.sent_count} sent`;
-        } else {
-            showToast('Auto follow-up failed: ' + (result.message || 'Unknown error'), 'error');
-            if (statusEl) statusEl.textContent = 'Failed';
-        }
-    } catch (error) {
-        showToast('Error running auto follow-up: ' + error.message, 'error');
-        if (statusEl) statusEl.textContent = 'Error';
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.style.opacity = '1';
-        }
-    }
 }
 
 function applySettings() {
@@ -14966,6 +14848,9 @@ async function sendBulkEmailByCategory(category, subject, message) {
 function openCategoryEmailModal(category, categoryLabel, count) {
     console.log('[BULK EMAIL] Opening modal for:', category, categoryLabel, count);
     
+    const existingModal = document.getElementById('bulkEmailModal');
+    if (existingModal) existingModal.remove();
+
     const modalHtml = `
         <div class="modal-overlay" id="bulkEmailModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
             <div class="modal" style="background: white; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow: auto;" onclick="event.stopPropagation()">
@@ -14976,20 +14861,31 @@ function openCategoryEmailModal(category, categoryLabel, count) {
                     <p style="margin-bottom: 20px; color: #666; padding: 12px; background: #f3f4f6; border-radius: 6px;">
                         📧 This will send an email to <strong>${count} leads</strong> in this category.
                     </p>
-                    
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
-                        <input type="text" id="bulkEmailSubject" placeholder="Email subject" 
-                               style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
+                        <input type="text" id="bulkEmailSubject" placeholder="Email subject" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
                     </div>
-                    
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
-                        <textarea id="bulkEmailBody" rows="10" placeholder="Type your message here..." 
-                                  style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+                        <textarea id="bulkEmailBody" rows="10" placeholder="Type your message here..." style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit; box-sizing: border-box;"></textarea>
+                    </div>
+                    <!-- Auto-Campaign Toggle -->
+                    <div style="margin-top: 18px; padding: 14px 16px; background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; font-weight: 600; color: #111;">Auto-Campaign</div>
+                            <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">Automatically re-send this email every time these leads are due for follow-up</div>
+                        </div>
+                        <label style="position: relative; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer;">
+                            <input type="checkbox" id="bulkAutoSwitch" style="opacity:0;width:0;height:0;">
+                            <span id="bulkAutoTrack" style="position:absolute;inset:0;background:#d1d5db;border-radius:24px;transition:.2s;"><span id="bulkAutoThumb" style="position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span></span>
+                        </label>
                     </div>
                 </div>
-                <div style="padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
+                <div style="padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+                    <span id="bulkAutoLabel" style="display:none;font-size:12px;color:#8a7d5a;margin-right:auto;align-items:center;gap:5px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#D4A847" stroke-width="2.5" style="width:14px;height:14px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        Auto-campaigns will be created for all ${count} leads
+                    </span>
                     <button class="btn btn-secondary" onclick="closeBulkEmailModal()">Cancel</button>
                     <button class="btn btn-primary" id="sendBulkEmailBtn" onclick="sendBulkEmail('${category}', ${count})">
                         Send to ${count} Leads
@@ -14999,24 +14895,25 @@ function openCategoryEmailModal(category, categoryLabel, count) {
         </div>
     `;
     
-    // Remove any existing modal
-    const existingModal = document.getElementById('bulkEmailModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // Add click to close
     document.getElementById('bulkEmailModal').addEventListener('click', function(e) {
-        if (e.target.id === 'bulkEmailModal') {
-            closeBulkEmailModal();
-        }
+        if (e.target.id === 'bulkEmailModal') closeBulkEmailModal();
     });
+
+    // Wire toggle
+    const sw = document.getElementById('bulkAutoSwitch');
+    if (sw) {
+        sw.addEventListener('change', function() {
+            const track = document.getElementById('bulkAutoTrack');
+            const thumb = document.getElementById('bulkAutoThumb');
+            const label = document.getElementById('bulkAutoLabel');
+            if (this.checked) { track.style.background='#D4A847'; thumb.style.left='23px'; label.style.display='flex'; }
+            else { track.style.background='#d1d5db'; thumb.style.left='3px'; label.style.display='none'; }
+        });
+    }
     
-    setTimeout(() => {
-        document.getElementById('bulkEmailSubject')?.focus();
-    }, 100);
+    setTimeout(() => { document.getElementById('bulkEmailSubject')?.focus(); }, 100);
 }
 
 function closeBulkEmailModal() {
@@ -15036,59 +14933,80 @@ async function sendBulkEmail(category, count) {
         showToast('Please fill in subject and message', 'error');
         return;
     }
+
+    const isAuto = document.getElementById('bulkAutoSwitch')?.checked || false;
     
     const sendBtn = document.getElementById('sendBulkEmailBtn');
-    if (!sendBtn) {
-        console.error('[BULK EMAIL] Send button not found');
-        return;
-    }
-    
+    if (!sendBtn) return;
     const originalText = sendBtn.innerHTML;
     sendBtn.disabled = true;
     sendBtn.innerHTML = 'Sending...';
     
     try {
         const token = getAuthToken();
-        
-        console.log('[BULK EMAIL] Sending request to:', `${API_URL}/api/follow-ups/email-category`);
-        
-        const response = await fetch(`${API_URL}/api/follow-ups/email-category`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                category: category,
-                subject: subject,
-                body: body,
-                isFollowUp: true
-            })
-        });
-        
-        console.log('[BULK EMAIL] Response status:', response.status);
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to send bulk emails');
+
+        if (isAuto) {
+            // AUTO MODE: fetch leads in this category, then create a campaign for each
+            console.log('[BULK EMAIL] Auto-campaign mode');
+            sendBtn.innerHTML = 'Creating campaigns...';
+
+            const catRes = await fetch(`${API_URL}/api/follow-ups/categorized`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            });
+            const catData = await catRes.json();
+            const targetCat = (catData.categories || []).find(c => c.follow_up_category === category);
+
+            if (!targetCat?.leads?.length) {
+                showToast('No leads found in this category', 'error');
+                sendBtn.disabled = false; sendBtn.innerHTML = originalText;
+                return;
+            }
+
+            let created = 0, skipped = 0, failed = 0;
+            for (const lead of targetCat.leads) {
+                try {
+                    const res = await fetch(`${API_URL}/api/auto-campaigns`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ leadId: lead.id, subject, body })
+                    });
+                    if (res.ok) created++;
+                    else if (res.status === 409) skipped++;
+                    else failed++;
+                } catch(e) { failed++; }
+            }
+
+            let msg = `Done: ${created} campaign${created !== 1 ? 's' : ''} created`;
+            if (skipped) msg += `, ${skipped} already active`;
+            if (failed) msg += `, ${failed} failed`;
+            showToast(msg, 'success');
+            closeBulkEmailModal();
+
+        } else {
+            // NORMAL ONE-SHOT BULK
+            const response = await fetch(`${API_URL}/api/follow-ups/email-category`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category, subject, body, isFollowUp: true })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to send bulk emails');
+            }
+            
+            const result = await response.json();
+            showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
+            closeBulkEmailModal();
         }
         
-        const result = await response.json();
-        console.log('[BULK EMAIL] Success:', result);
-        
-        showToast(`Successfully sent ${result.sent_count || count} emails!`, 'success');
-        closeBulkEmailModal();
-        
-        // Refresh badges and follow-ups
         updateBadges();
         const contentArea = document.getElementById('contentArea');
-        if (contentArea) {
-            await renderFollowUps(contentArea);
-        }
+        if (contentArea) await renderFollowUps(contentArea);
         
     } catch (error) {
         console.error('[BULK EMAIL] Error:', error);
-        showToast('Failed to send emails: ' + error.message, 'error');
+        showToast('Failed: ' + error.message, 'error');
     } finally {
         sendBtn.disabled = false;
         sendBtn.innerHTML = originalText;
@@ -15449,79 +15367,38 @@ function toggleNotes(button) {
 
 async function renderFollowUps(content) {
     console.log('[FOLLOW-UPS] Starting render...');
-    console.log('[FOLLOW-UPS] API_URL:', API_URL);
-    console.log('[FOLLOW-UPS] Auth token exists:', !!state.authToken);
     
     try {
-        // Show loading state
         content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
         
-        // Build URLs
-        const statsUrl = `${API_URL}/api/follow-ups/stats`;
-        const categorizedUrl = `${API_URL}/api/follow-ups/categorized`;
-        
-        console.log('[FOLLOW-UPS] Fetching from:', statsUrl);
-        console.log('[FOLLOW-UPS] Fetching from:', categorizedUrl);
-        
-        // Fetch stats and categorized data with detailed error catching
-        let statsResponse, categoriesResponse;
-        
-        try {
-            [statsResponse, categoriesResponse] = await Promise.all([
-                fetch(statsUrl, {
-                    headers: { 
-                        'Authorization': `Bearer ${state.authToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                }),
-                fetch(categorizedUrl, {
-                    headers: { 
-                        'Authorization': `Bearer ${state.authToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                })
-            ]);
-        } catch (fetchError) {
-            console.error('[FOLLOW-UPS] Fetch error:', fetchError);
-            throw new Error(`Network error: ${fetchError.message}`);
-        }
-        
-        console.log('[FOLLOW-UPS] Stats response status:', statsResponse.status);
-        console.log('[FOLLOW-UPS] Categories response status:', categoriesResponse.status);
-        
-        // Check for errors
-        if (!statsResponse.ok) {
-            const errorText = await statsResponse.text();
-            console.error('[FOLLOW-UPS] Stats API error:', errorText);
-            throw new Error(`Stats API returned ${statsResponse.status}: ${errorText}`);
-        }
-        
-        if (!categoriesResponse.ok) {
-            const errorText = await categoriesResponse.text();
-            console.error('[FOLLOW-UPS] Categories API error:', errorText);
-            throw new Error(`Categories API returned ${categoriesResponse.status}: ${errorText}`);
-        }
-        
-        // Parse responses
-        let statsData, categoriesData;
-        try {
-            statsData = await statsResponse.json();
-            categoriesData = await categoriesResponse.json();
-        } catch (parseError) {
-            console.error('[FOLLOW-UPS] JSON parse error:', parseError);
-            throw new Error(`Failed to parse API response: ${parseError.message}`);
-        }
-        
-        console.log('[FOLLOW-UPS] Raw data:', { statsData, categoriesData });
-        
-        // Handle different response formats
-        const stats = statsData.stats || statsData || {};
-        const categories = categoriesData.categories || categoriesData || [];
-        
-        console.log('[FOLLOW-UPS] Processed data:', { stats, categories });
-        console.log('[FOLLOW-UPS] Number of categories:', categories.length);
-        
-        // Category label mappings
+        const token = state.authToken || localStorage.getItem('token');
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+        // Fire run-due in background so any due auto-campaigns get sent
+        fetch(`${API_URL}/api/auto-campaigns/run-due`, { method: 'POST', headers })
+            .then(r => r.json())
+            .then(d => { if (d.sent_count > 0) console.log(`[AUTO] run-due sent ${d.sent_count}`); })
+            .catch(e => console.warn('[AUTO] run-due:', e.message));
+
+        // Fetch stats, categories, AND campaigns in parallel
+        const [statsRes, categoriesRes, campaignsRes] = await Promise.all([
+            fetch(`${API_URL}/api/follow-ups/stats`, { headers }),
+            fetch(`${API_URL}/api/follow-ups/categorized`, { headers }),
+            fetch(`${API_URL}/api/auto-campaigns`, { headers })
+        ]);
+
+        if (!statsRes.ok) throw new Error(`Stats API: ${statsRes.status}`);
+        if (!categoriesRes.ok) throw new Error(`Categories API: ${categoriesRes.status}`);
+
+        const statsData = await statsRes.json();
+        const categoriesData = await categoriesRes.json();
+        const campaignsData = campaignsRes.ok ? await campaignsRes.json() : { campaigns: [] };
+
+        const categories = categoriesData.categories || [];
+        const allCampaigns = campaignsData.campaigns || [];
+        const activeCampaigns = allCampaigns.filter(c => c.is_active);
+        const pausedCampaigns = allCampaigns.filter(c => !c.is_active);
+
         const categoryLabels = {
             'never_contacted': 'Never Contacted',
             '1_day': '1-Day Follow-Up',
@@ -15529,164 +15406,267 @@ async function renderFollowUps(content) {
             '7_day': '7-Day Follow-Up',
             '14_day': '14+ Day Follow-Up'
         };
-        
-        // Calculate total pending from categories
+
         const totalPending = categories.reduce((sum, cat) => sum + (cat.count || 0), 0);
         const neverContacted = categories.find(c => c.follow_up_category === 'never_contacted')?.count || 0;
-        
-        console.log('[FOLLOW-UPS] Total pending:', totalPending);
-        console.log('[FOLLOW-UPS] Never contacted:', neverContacted);
-        
-        // Build the HTML
-        content.innerHTML = `
-            <!-- Stats Cards -->
-            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Total Pending</span>
-                        <div class="stat-icon amber">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                            </svg>
+
+        // Build campaign rows HTML
+        let campaignRowsHtml = '';
+        for (const c of allCampaigns) {
+            const escapedSubject = c.subject.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            const escapedBody = c.body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            const escapedName = (c.lead_name||'').replace(/'/g,"\\'");
+            campaignRowsHtml += `
+                <tr id="campRow_${c.id}" style="${!c.is_active ? 'opacity:0.5;' : ''}">
+                    <td>
+                        <div class="contact-cell">
+                            <div class="contact-avatar">${'getInitials' in window ? getInitials(c.lead_name||'?') : '?'}</div>
+                            <div class="contact-info">
+                                <div class="contact-name">${c.lead_name||'Unknown'} ${!c.is_active ? '<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:10px;margin-left:4px;">Paused</span>' : ''}</div>
+                                <div class="contact-email">${c.lead_email||''}</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="stat-value">${totalPending}</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Never Contacted</span>
-                        <div class="stat-icon red">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                                <line x1="12" y1="9" x2="12" y2="13"/>
-                                <line x1="12" y1="17" x2="12.01" y2="17"/>
-                            </svg>
+                    </td>
+                    <td style="font-size:13px;color:var(--text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapedSubject}</td>
+                    <td style="font-size:13px;color:var(--text-muted);">${c.last_sent_at ? formatDate(c.last_sent_at) : 'Pending'}</td>
+                    <td>
+                        <div class="action-buttons" style="gap:6px;flex-wrap:wrap;">
+                            <button class="btn btn-sm btn-secondary" onclick="openCampaignEdit(${c.id})" style="font-size:11px;padding:4px 8px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Edit
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="toggleCampaign(${c.id}, ${c.is_active})" style="font-size:11px;padding:4px 8px;">
+                                ${c.is_active
+                                    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause'
+                                    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polygon points="5 3 19 12 5 21 5 3"/></svg> Resume'}
+                            </button>
+                            <button class="btn btn-sm" onclick="removeCampaign(${c.id})" style="font-size:11px;padding:4px 8px;background:#fef2f2;color:#dc2626;border-color:#fecaca;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                Remove
+                            </button>
                         </div>
-                    </div>
-                    <div class="stat-value">${neverContacted}</div>
-                </div>
-            </div>
-            
-            <!-- Category Sections -->
-            ${categories.length > 0 ? categories.map(category => {
-                // Define categoryTitle in the correct scope
+                    </td>
+                </tr>
+                <!-- Inline edit form -->
+                <tr id="campEdit_${c.id}" style="display:none;">
+                    <td colspan="4" style="padding:16px;background:var(--bg-secondary);border-top:1px solid var(--border-subtle);">
+                        <div style="max-width:520px;">
+                            <div style="margin-bottom:10px;">
+                                <label style="display:block;font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Subject</label>
+                                <input type="text" id="campEditSubj_${c.id}" value="${escapedSubject}" style="width:100%;padding:8px 10px;border:1px solid var(--border-default);border-radius:6px;font-size:13px;background:var(--bg-primary);color:var(--text-primary);box-sizing:border-box;">
+                            </div>
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block;font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Message</label>
+                                <textarea id="campEditBody_${c.id}" rows="5" style="width:100%;padding:8px 10px;border:1px solid var(--border-default);border-radius:6px;font-size:13px;background:var(--bg-primary);color:var(--text-primary);resize:vertical;font-family:inherit;box-sizing:border-box;">${escapedBody}</textarea>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn btn-primary btn-sm" onclick="saveCampaignEdit(${c.id})" style="font-size:12px;">Save Changes</button>
+                                <button class="btn btn-secondary btn-sm" onclick="closeCampaignEdit(${c.id})" style="font-size:12px;">Cancel</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>`;
+        }
+
+        // Build category sections HTML
+        let categorySectionsHtml = '';
+        if (categories.length > 0) {
+            for (const category of categories) {
                 const categoryTitle = categoryLabels[category.follow_up_category] || category.follow_up_category;
-                // Escape for HTML attributes (using HTML entity for safety)
                 const escapedTitle = categoryTitle.replace(/'/g, '&#39;');
-                
-                return `
+                let leadsHtml = '';
+                if (category.leads && category.leads.length > 0) {
+                    for (const lead of category.leads) {
+                        const escapedLeadName = lead.name.replace(/'/g, "\\'");
+                        leadsHtml += `
+                            <tr>
+                                <td>
+                                    <div class="contact-cell">
+                                        <div class="contact-avatar">${'getInitials' in window ? getInitials(lead.name) : '?'}</div>
+                                        <div class="contact-info">
+                                            <div class="contact-name">${lead.name}</div>
+                                            <div class="contact-email">${lead.email}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
+                                <td>
+                                    <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
+                                        ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                            Mark Contacted
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${escapedLeadName}', '${lead.email}')">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                            Email
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>`;
+                    }
+                } else {
+                    leadsHtml = '<tr><td colspan="4" style="text-align:center;padding:20px;">No leads in this category</td></tr>';
+                }
+                categorySectionsHtml += `
                 <div class="table-container" style="margin-top: 24px;">
                     <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">
-                                ${categoryTitle}
-                            </h3>
-                            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
-                                ${category.count} leads need follow-up
-                            </p>
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">${categoryTitle}</h3>
+                            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">${category.count} leads need follow-up</p>
                         </div>
                         <button class="btn btn-primary btn-sm" onclick="openCategoryEmailModal('${category.follow_up_category}', '${escapedTitle}', ${category.count})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                <polyline points="22,6 12,13 2,6"/>
-                            </svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                             Email All
                         </button>
                     </div>
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Lead</th>
-                                <th>Last Contact</th>
-                                <th>Days Since</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${category.leads && category.leads.length > 0 ? category.leads.map(lead => `
-                                <tr>
-                                    <td>
-                                        <div class="contact-cell">
-                                            <div class="contact-avatar">${getInitials(lead.name)}</div>
-                                            <div class="contact-info">
-                                                <div class="contact-name">${lead.name}</div>
-                                                <div class="contact-email">${lead.email}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
-                                    <td>
-                                        <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
-                                            ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                                    <polyline points="22 4 12 14.01 9 11.01"/>
-                                                </svg>
-                                                Mark Contacted
-                                            </button>
-                                            <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${lead.name.replace(/'/g, "\\'")}', '${lead.email}')">
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                                    <polyline points="22,6 12,13 2,6"/>
-                                                </svg>
-                                                Email
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `).join('') : '<tr><td colspan="4" style="text-align: center; padding: 20px;">No leads in this category</td></tr>'}
-                        </tbody>
+                        <thead><tr><th>Lead</th><th>Last Contact</th><th>Days Since</th><th>Actions</th></tr></thead>
+                        <tbody>${leadsHtml}</tbody>
                     </table>
-                </div>
-                `;
-            }).join('') : `
+                </div>`;
+            }
+        } else {
+            categorySectionsHtml = `
                 <div style="text-align: center; padding: 60px; color: var(--text-muted);">
-                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px;">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                     <div class="empty-title" style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">All Caught Up!</div>
                     <div class="empty-description" style="color: var(--text-muted);">No follow-ups needed right now</div>
+                </div>`;
+        }
+
+        content.innerHTML = `
+            <!-- Stats Cards -->
+            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Pending</span>
+                        <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                    </div>
+                    <div class="stat-value">${totalPending}</div>
                 </div>
-            `}
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Never Contacted</span>
+                        <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+                    </div>
+                    <div class="stat-value">${neverContacted}</div>
+                </div>
+                <div class="stat-card" style="border-top: 3px solid #D4A847;">
+                    <div class="stat-header">
+                        <span class="stat-label">On Auto-Send</span>
+                        <div class="stat-icon" style="background:rgba(212,168,71,0.1);color:#D4A847;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+                    </div>
+                    <div class="stat-value" style="color:#D4A847;">${activeCampaigns.length}</div>
+                    ${pausedCampaigns.length > 0 ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${pausedCampaigns.length} paused</div>` : ''}
+                </div>
+            </div>
+
+            <!-- ON AUTO-SEND BUCKET -->
+            ${allCampaigns.length > 0 ? `
+            <div class="table-container" style="margin-bottom: 28px; border: 1px solid #D4A847; border-radius: 8px; overflow: hidden;">
+                <div style="padding: 16px 18px; background: linear-gradient(135deg, #fdfbf5 0%, #fff8e6 100%); border-bottom: 1px solid #e8dcc8; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#D4A847" stroke-width="2.5" style="width:20px;height:20px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 2px; color: #111;">On Auto-Send</h3>
+                            <p style="font-size: 12px; color: #8a7d5a; margin: 0;">${activeCampaigns.length} active — emails fire automatically each follow-up cycle</p>
+                        </div>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>Lead</th><th>Subject</th><th>Last Sent</th><th style="width:220px;">Actions</th></tr></thead>
+                    <tbody>${campaignRowsHtml}</tbody>
+                </table>
+            </div>
+            ` : ''}
+
+            <!-- NORMAL FOLLOW-UP CATEGORIES -->
+            ${categorySectionsHtml}
         `;
         
         console.log('[FOLLOW-UPS] ✅ Render complete');
         
     } catch (error) {
-        console.error('[FOLLOW-UPS] ❌ Render error:', error);
-        console.error('[FOLLOW-UPS] Error stack:', error.stack);
-        
+        console.error('[FOLLOW-UPS] ❌ Error:', error);
         content.innerHTML = `
             <div style="text-align: center; padding: 40px; color: var(--status-lost);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px; color: var(--status-lost);">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
                 <h3 style="margin-bottom: 12px;">Error Loading Follow-Ups</h3>
                 <p style="color: var(--text-muted); margin-bottom: 8px;">${error.message}</p>
-                <details style="margin: 20px auto; max-width: 600px; text-align: left; background: var(--bg-secondary); padding: 16px; border-radius: 8px;">
-                    <summary style="cursor: pointer; font-weight: 600; margin-bottom: 8px;">Debug Information</summary>
-                    <pre style="font-size: 11px; overflow-x: auto; color: var(--text-secondary);">${JSON.stringify({
-                        api_url: API_URL,
-                        has_auth_token: !!state.authToken,
-                        auth_token_length: state.authToken?.length,
-                        error_message: error.message,
-                        error_stack: error.stack
-                    }, null, 2)}</pre>
-                </details>
                 <button class="btn btn-secondary" onclick="renderFollowUps(document.getElementById('contentArea'))">Try Again</button>
             </div>
         `;
     }
+}
+
+// ---- AUTO-CAMPAIGN ACTION HANDLERS ----
+
+function openCampaignEdit(id) {
+    const row = document.getElementById('campEdit_' + id);
+    if (row) row.style.display = 'table-row';
+}
+function closeCampaignEdit(id) {
+    const row = document.getElementById('campEdit_' + id);
+    if (row) row.style.display = 'none';
+}
+
+async function saveCampaignEdit(id) {
+    const subject = document.getElementById('campEditSubj_' + id)?.value;
+    const body = document.getElementById('campEditBody_' + id)?.value;
+    if (!subject || !body) { showToast('Subject and message are required', 'error'); return; }
+
+    try {
+        const res = await fetch(`${API_URL}/api/auto-campaigns/${id}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, body })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('Campaign updated', 'success');
+            closeCampaignEdit(id);
+            await renderFollowUps(document.getElementById('contentArea'));
+        } else {
+            showToast('Failed: ' + (data.message || 'Unknown error'), 'error');
+        }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function toggleCampaign(id, currentlyActive) {
+    try {
+        const res = await fetch(`${API_URL}/api/auto-campaigns/${id}/toggle`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(currentlyActive ? 'Campaign paused — lead will reappear in normal follow-ups' : 'Campaign resumed', currentlyActive ? 'warning' : 'success');
+            await renderFollowUps(document.getElementById('contentArea'));
+        } else {
+            showToast('Failed: ' + (data.message||''), 'error');
+        }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function removeCampaign(id) {
+    if (!confirm('Remove this auto-campaign? The lead will reappear in the normal follow-up list on their next due date.')) return;
+    try {
+        const res = await fetch(`${API_URL}/api/auto-campaigns/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('Campaign removed', 'success');
+            await renderFollowUps(document.getElementById('contentArea'));
+        } else {
+            showToast('Failed: ' + (data.message||''), 'error');
+        }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // Mark lead as contacted

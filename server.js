@@ -16,7 +16,7 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 // Service Packages Definition (same as frontend)
 const servicePackages = {
@@ -287,9 +287,9 @@ app.get('/api/test/ping', (req, res) => {
 function buildEmailHTML(bodyHTML, opts = {}) {
     const year = new Date().getFullYear();
     const unsubscribeBlock = opts.unsubscribeUrl
-        ? `<div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e8e4dc;">
-            <a href="${opts.unsubscribeUrl}" style="color: #999; font-size: 11px; text-decoration: none; letter-spacing: 0.3px;">Unsubscribe from follow-up emails</a>
-           </div>`
+        ? `<tr><td style="padding: 12px 0 0 0; border-top: 1px solid #3a3a3a;">
+            <a href="${opts.unsubscribeUrl}" style="color: #888; font-size: 11px; text-decoration: none;">Unsubscribe from follow-up emails</a>
+           </td></tr>`
         : '';
 
     return `<!DOCTYPE html>
@@ -308,40 +308,39 @@ function buildEmailHTML(bodyHTML, opts = {}) {
         -webkit-font-smoothing: antialiased;
     }
     a { color: inherit; text-decoration: none; }
-
-    .email-page {
+    .email-outer {
         max-width: 620px;
         margin: 0 auto;
-        padding: 28px 0;
-    }
-    .email-card {
         background: #ffffff;
-        border-radius: 12px;
+        border-radius: 8px;
         overflow: hidden;
-        box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .email-header {
+        background-color: #111111;
+        padding: 32px 36px 28px;
     }
     .logo-row {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 32px 40px 0 40px;
     }
-    .logo-icon { width: 26px; height: 26px; }
+    .logo-icon { width: 28px; height: 28px; }
     .logo-text {
-        font-size: 17px;
-        font-weight: 700;
-        letter-spacing: 1.8px;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 2.2px;
         text-transform: uppercase;
-        color: #111111;
+        color: #D4A847;
         font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
     }
-    .logo-text .gold { color: #D4A847; }
     .email-body {
-        padding: 28px 40px 0 40px;
+        padding: 36px 40px 32px;
+        background: #ffffff;
     }
     .email-body p {
         font-size: 15px;
-        line-height: 1.8;
+        line-height: 1.75;
         color: #3d3d3d;
         margin-bottom: 16px;
     }
@@ -352,7 +351,7 @@ function buildEmailHTML(bodyHTML, opts = {}) {
     }
     .email-body li {
         font-size: 15px;
-        line-height: 1.8;
+        line-height: 1.75;
         color: #3d3d3d;
         margin-bottom: 6px;
     }
@@ -464,65 +463,71 @@ function buildEmailHTML(bodyHTML, opts = {}) {
     .sign-off p { font-size: 15px; color: #3d3d3d; margin-bottom: 2px; }
     .sign-off .team-name { font-weight: 600; color: #111; }
     .email-footer {
-        padding: 32px 40px 28px 40px;
-        margin-top: 28px;
+        background: #1a1a1a;
+        padding: 28px 36px 24px;
     }
-    .footer-divider {
-        border: none;
-        border-top: 1px solid #eae7e0;
-        margin-bottom: 20px;
+    .footer-brand {
+        font-size: 13px;
+        font-weight: 600;
+        color: #D4A847;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
     }
     .footer-address {
         font-size: 12px;
-        color: #999;
-        line-height: 1.8;
-        margin-bottom: 10px;
+        color: #777;
+        line-height: 1.7;
+        margin-bottom: 14px;
     }
-    .footer-address a { color: #999; text-decoration: none; }
-    .footer-address a:hover { color: #D4A847; }
     .footer-nav {
         font-size: 11px;
-        color: #bbb;
-        margin-bottom: 6px;
+        color: #666;
+        margin-bottom: 18px;
     }
-    .footer-nav a { color: #bbb; margin-right: 14px; text-decoration: none; }
+    .footer-nav a { color: #999; margin-right: 14px; text-decoration: none; }
     .footer-nav a:hover { color: #D4A847; }
     .footer-copy {
         font-size: 11px;
-        color: #bbb;
-        margin-top: 10px;
+        color: #555;
+        padding-top: 14px;
+        border-top: 1px solid #2e2e2e;
     }
 </style>
 </head>
 <body>
-<div class="email-page" align="center">
-    <div class="email-card">
-        <div class="logo-row">
-            <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14 2L26 8.5V21.5L14 28L2 21.5V8.5L14 2Z" stroke="#D4A847" stroke-width="1.8" fill="none"/>
-                <path d="M14 2L26 8.5L14 15L2 8.5L14 2Z" stroke="#D4A847" stroke-width="1.2" fill="none" opacity="0.5"/>
-                <path d="M14 15V28" stroke="#D4A847" stroke-width="1.2" opacity="0.5"/>
-            </svg>
-            <span class="logo-text">Diamondback <span class="gold">Coding</span></span>
+<div style="padding: 28px 0;" align="center">
+    <div class="email-outer">
+        <div class="email-header">
+            <div class="logo-row">
+                <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2L26 8.5V21.5L14 28L2 21.5V8.5L14 2Z" stroke="#D4A847" stroke-width="1.8" fill="none"/>
+                    <path d="M14 2L26 8.5L14 15L2 8.5L14 2Z" stroke="#D4A847" stroke-width="1.2" fill="none" opacity="0.5"/>
+                    <path d="M14 15V28" stroke="#D4A847" stroke-width="1.2" opacity="0.5"/>
+                </svg>
+                <span class="logo-text">Diamondback Coding</span>
+            </div>
         </div>
         <div class="email-body">
             ${bodyHTML}
         </div>
         <div class="email-footer">
-            <hr class="footer-divider">
-            <div class="footer-address">
-                15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> &nbsp;&#183;&nbsp;
-                <a href="tel:+19402178680">(940) 217-8680</a>
-            </div>
-            <div class="footer-nav">
-                <a href="https://diamondbackcoding.com">Website</a>
-                <a href="https://diamondbackcoding.com/projects">Projects</a>
-                <a href="https://diamondbackcoding.com/services">Services</a>
-                <a href="https://diamondbackcoding.com/company">Company</a>
-            </div>
-            ${unsubscribeBlock}
-            <div class="footer-copy">&copy; ${year} Diamondback Coding. All rights reserved.</div>
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td class="footer-brand">Diamondback Coding</td></tr>
+                <tr><td class="footer-address">
+                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                    <a href="mailto:contact@diamondbackcoding.com" style="color:#999;">contact@diamondbackcoding.com</a> &nbsp;\u00b7&nbsp;
+                    <a href="tel:+19402178680" style="color:#999;">(940) 217-8680</a>
+                </td></tr>
+                <tr><td class="footer-nav">
+                    <a href="https://diamondbackcoding.com">Website</a>
+                    <a href="https://diamondbackcoding.com/projects">Projects</a>
+                    <a href="https://diamondbackcoding.com/services">Services</a>
+                    <a href="https://diamondbackcoding.com/company">Company</a>
+                </td></tr>
+                ${unsubscribeBlock}
+                <tr><td class="footer-copy">&copy; ${year} Diamondback Coding. All rights reserved.</td></tr>
+            </table>
         </div>
     </div>
 </div>
@@ -1198,6 +1203,20 @@ await client.query(`CREATE TABLE IF NOT EXISTS client_uploads (
 )`);
 
 console.log('✅ Client portal tables initialized');
+
+await client.query(`CREATE TABLE IF NOT EXISTS auto_campaigns (
+    id SERIAL PRIMARY KEY,
+    lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+    subject VARCHAR(500) NOT NULL,
+    body TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_sent_at TIMESTAMP
+)`);
+await client.query(`CREATE INDEX IF NOT EXISTS idx_auto_campaigns_lead ON auto_campaigns(lead_id)`);
+await client.query(`CREATE INDEX IF NOT EXISTS idx_auto_campaigns_active ON auto_campaigns(is_active) WHERE is_active = TRUE`);
+console.log('✅ Auto-campaigns table initialized');
 
         // ========================================
         // DATABASE MIGRATIONS
@@ -5910,139 +5929,6 @@ app.post('/api/automation/generate-followup-reminders', authenticateToken, async
 });
 
 // ========================================
-// AUTOMATED FOLLOW-UP EMAIL SENDER
-// Called by the frontend "Test Run Now" button
-// and can also be triggered by a cron job
-// ========================================
-app.post('/api/automation/auto-followup', authenticateToken, async (req, res) => {
-    try {
-        const { delayDays, subject, body } = req.body;
-
-        if (!delayDays || !subject || !body) {
-            return res.status(400).json({
-                success: false,
-                message: 'delayDays, subject, and body are required'
-            });
-        }
-
-        console.log(`[AUTO FOLLOW-UP] Running with delay=${delayDays}d, subject="${subject}"`);
-
-        // Find leads that haven't been contacted in delayDays or more, and are not unsubscribed
-        const leadsResult = await pool.query(`
-            SELECT 
-                l.id,
-                l.name,
-                l.email,
-                l.project_type,
-                l.notes,
-                l.unsubscribe_token
-            FROM leads l
-            WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
-            AND l.is_customer = FALSE
-            AND l.unsubscribed = FALSE
-            AND l.email IS NOT NULL
-            AND (
-                l.last_contact_date IS NULL
-                OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day' * $1
-            )
-        `, [delayDays]);
-
-        const leads = leadsResult.rows;
-        console.log(`[AUTO FOLLOW-UP] Found ${leads.length} leads eligible for auto follow-up`);
-
-        let sent_count = 0;
-        let skipped_count = 0;
-        const errors = [];
-
-        for (const lead of leads) {
-            try {
-                if (!lead.email) {
-                    skipped_count++;
-                    continue;
-                }
-
-                // Replace template variables
-                const personalizedBody = body
-                    .replace(/\{\{name\}\}/g, lead.name || 'there')
-                    .replace(/\{\{project_type\}\}/g, lead.project_type || 'your project');
-
-                // Generate unsubscribe token if needed
-                let token = lead.unsubscribe_token;
-                if (!token) {
-                    token = crypto.randomBytes(32).toString('hex');
-                    await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [token, lead.id]);
-                }
-                const unsubscribeUrl = `${BASE_URL}/api/unsubscribe/${token}`;
-
-                // Build branded email
-                const emailHTML = buildEmailHTML(`
-                    <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.8; color: #3d3d3d;">${personalizedBody.replace(/\n/g, '<br>')}</div>
-
-                    <div class="sign-off">
-                        <p>Warm regards,</p>
-                        <p class="team-name">The Diamondback Coding Team</p>
-                    </div>
-                `, { unsubscribeUrl });
-
-                await transporter.sendMail({
-                    from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
-                    to: lead.email,
-                    subject: subject,
-                    html: emailHTML
-                });
-
-                // Update last_contact_date and status
-                await pool.query(
-                    `UPDATE leads 
-                     SET last_contact_date = CURRENT_TIMESTAMP,
-                         status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
-                         updated_at = CURRENT_TIMESTAMP 
-                     WHERE id = $1`,
-                    [lead.id]
-                );
-
-                // Append note
-                let notes = [];
-                try {
-                    if (lead.notes) notes = JSON.parse(lead.notes);
-                } catch (e) { notes = []; }
-                notes.push({
-                    text: `[Auto] Follow-up email sent: "${subject}"`,
-                    author: 'System (Auto)',
-                    date: new Date().toISOString()
-                });
-                await pool.query('UPDATE leads SET notes = $1 WHERE id = $2', [JSON.stringify(notes), lead.id]);
-
-                sent_count++;
-                console.log(`[AUTO FOLLOW-UP] ✅ Sent to ${lead.email} (${lead.name})`);
-
-            } catch (sendError) {
-                console.error(`[AUTO FOLLOW-UP] ❌ Error sending to ${lead.email}:`, sendError.message);
-                errors.push({ leadId: lead.id, email: lead.email, error: sendError.message });
-            }
-        }
-
-        console.log(`[AUTO FOLLOW-UP] ✅ Complete: ${sent_count} sent, ${skipped_count} skipped, ${errors.length} errors`);
-
-        res.json({
-            success: true,
-            message: `Auto follow-up complete: ${sent_count} sent`,
-            sent_count,
-            skipped_count,
-            total_eligible: leads.length,
-            errors: errors.length > 0 ? errors : undefined
-        });
-
-    } catch (error) {
-        console.error('[AUTO FOLLOW-UP] ❌ Error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Auto follow-up failed: ' + error.message
-        });
-    }
-});
-
-// ========================================
 // ADD THESE ROUTES TO YOUR server.js
 // Place them with your other email routes
 // ========================================
@@ -6072,6 +5958,9 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
                 AND (
                     l.last_contact_date IS NULL
                     OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
                 )
             )
             SELECT 
@@ -6162,9 +6051,8 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
         `, { unsubscribeUrl });
         
         // Send the email using Nodemailer
-        let info = null;
         try {
-            info = await transporter.sendMail({
+            const info = await transporter.sendMail({
                 from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
                 to: to,
                 subject: subject,
@@ -9231,6 +9119,202 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
             message: 'Bulk send failed',
             error: error.message
         });
+    }
+});
+
+// ========================================
+// AUTO-CAMPAIGNS
+// ========================================
+
+// GET all campaigns (with lead info joined)
+app.get('/api/auto-campaigns', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT ac.*, l.name as lead_name, l.email as lead_email, l.project_type as lead_project_type, l.last_contact_date
+            FROM auto_campaigns ac
+            JOIN leads l ON l.id = ac.lead_id
+            ORDER BY ac.created_at DESC
+        `);
+        res.json({ success: true, campaigns: result.rows });
+    } catch (err) {
+        console.error('[AUTO-CAMPAIGNS] GET error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch campaigns' });
+    }
+});
+
+// POST create campaign + send first email immediately
+app.post('/api/auto-campaigns', authenticateToken, async (req, res) => {
+    try {
+        const { leadId, subject, body } = req.body;
+        if (!leadId || !subject || !body) {
+            return res.status(400).json({ success: false, message: 'leadId, subject, and body are required' });
+        }
+
+        const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
+        if (!leadResult.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
+        const lead = leadResult.rows[0];
+
+        // Block duplicate active campaign on same lead
+        const existing = await pool.query('SELECT id FROM auto_campaigns WHERE lead_id = $1 AND is_active = TRUE', [leadId]);
+        if (existing.rows.length) return res.status(409).json({ success: false, message: 'This lead already has an active auto-campaign' });
+
+        // Personalize
+        const personalizedBody = body
+            .replace(/\{\{name\}\}/g, lead.name || 'there')
+            .replace(/\{\{project_type\}\}/g, lead.project_type || 'your project');
+
+        // Unsubscribe token
+        let unsub = lead.unsubscribe_token;
+        if (!unsub) {
+            unsub = crypto.randomBytes(32).toString('hex');
+            await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsub, leadId]);
+        }
+        const unsubscribeUrl = `${BASE_URL}/api/unsubscribe/${unsub}`;
+
+        // Send first email
+        const emailHTML = buildEmailHTML(`
+            <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${personalizedBody.replace(/\n/g, '<br>')}</div>
+            <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
+        `, { unsubscribeUrl });
+
+        await transporter.sendMail({
+            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+            to: lead.email,
+            subject: subject,
+            html: emailHTML
+        });
+
+        // Insert campaign row
+        const ins = await pool.query(`
+            INSERT INTO auto_campaigns (lead_id, subject, body, is_active, last_sent_at)
+            VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP) RETURNING *
+        `, [leadId, subject, body]);
+
+        // Update lead
+        await pool.query(`UPDATE leads SET last_contact_date = CURRENT_TIMESTAMP, status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [leadId]);
+
+        // Log note
+        let notes = [];
+        try { if (lead.notes) notes = JSON.parse(lead.notes); } catch(e) {}
+        notes.push({ text: `[Auto-Campaign] Started — first email sent: "${subject}"`, author: req.user?.username || 'Admin', date: new Date().toISOString() });
+        await pool.query('UPDATE leads SET notes = $1 WHERE id = $2', [JSON.stringify(notes), leadId]);
+
+        console.log(`[AUTO-CAMPAIGNS] ✅ Created #${ins.rows[0].id} for lead ${leadId}`);
+        res.json({ success: true, campaign: ins.rows[0] });
+    } catch (err) {
+        console.error('[AUTO-CAMPAIGNS] POST error:', err);
+        res.status(500).json({ success: false, message: 'Failed to create campaign: ' + err.message });
+    }
+});
+
+// PUT edit subject/body
+app.put('/api/auto-campaigns/:id', authenticateToken, async (req, res) => {
+    try {
+        const { subject, body } = req.body;
+        if (!subject || !body) return res.status(400).json({ success: false, message: 'subject and body required' });
+        const result = await pool.query(`UPDATE auto_campaigns SET subject=$1, body=$2, updated_at=CURRENT_TIMESTAMP WHERE id=$3 RETURNING *`, [subject, body, req.params.id]);
+        if (!result.rows.length) return res.status(404).json({ success: false, message: 'Campaign not found' });
+        res.json({ success: true, campaign: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to update' });
+    }
+});
+
+// PATCH toggle active/paused
+app.patch('/api/auto-campaigns/:id/toggle', authenticateToken, async (req, res) => {
+    try {
+        const cur = await pool.query('SELECT * FROM auto_campaigns WHERE id=$1', [req.params.id]);
+        if (!cur.rows.length) return res.status(404).json({ success: false, message: 'Not found' });
+        const newVal = !cur.rows[0].is_active;
+        const result = await pool.query(`UPDATE auto_campaigns SET is_active=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2 RETURNING *`, [newVal, req.params.id]);
+
+        // Note on lead
+        const lead = await pool.query('SELECT notes FROM leads WHERE id=$1', [cur.rows[0].lead_id]);
+        if (lead.rows.length) {
+            let notes = [];
+            try { if (lead.rows[0].notes) notes = JSON.parse(lead.rows[0].notes); } catch(e) {}
+            notes.push({ text: `[Auto-Campaign] ${newVal ? 'Resumed' : 'Paused'}`, author: req.user?.username || 'Admin', date: new Date().toISOString() });
+            await pool.query('UPDATE leads SET notes=$1 WHERE id=$2', [JSON.stringify(notes), cur.rows[0].lead_id]);
+        }
+        res.json({ success: true, campaign: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Toggle failed' });
+    }
+});
+
+// DELETE remove campaign
+app.delete('/api/auto-campaigns/:id', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query('DELETE FROM auto_campaigns WHERE id=$1 RETURNING *', [req.params.id]);
+        if (!result.rows.length) return res.status(404).json({ success: false, message: 'Not found' });
+        res.json({ success: true, message: 'Campaign removed' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Delete failed' });
+    }
+});
+
+// POST run-due — fires emails for active campaigns where last_sent_at >= 1 day ago
+// Called by the frontend each time the follow-ups page loads
+app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
+    try {
+        console.log('[AUTO-CAMPAIGNS] Checking for due campaigns...');
+        const due = await pool.query(`
+            SELECT ac.*, l.name as lead_name, l.email as lead_email, l.project_type as lead_project_type, l.unsubscribe_token, l.notes as lead_notes
+            FROM auto_campaigns ac
+            JOIN leads l ON l.id = ac.lead_id
+            WHERE ac.is_active = TRUE
+              AND l.unsubscribed = FALSE
+              AND l.email IS NOT NULL
+              AND (ac.last_sent_at IS NULL OR ac.last_sent_at <= CURRENT_TIMESTAMP - INTERVAL '1 day')
+        `);
+        console.log(`[AUTO-CAMPAIGNS] ${due.rows.length} due`);
+
+        let sent = 0;
+        const errors = [];
+        for (const c of due.rows) {
+            try {
+                const pBody = c.body
+                    .replace(/\{\{name\}\}/g, c.lead_name || 'there')
+                    .replace(/\{\{project_type\}\}/g, c.lead_project_type || 'your project');
+
+                let unsub = c.unsubscribe_token;
+                if (!unsub) {
+                    unsub = crypto.randomBytes(32).toString('hex');
+                    await pool.query('UPDATE leads SET unsubscribe_token=$1 WHERE id=$2', [unsub, c.lead_id]);
+                }
+
+                const emailHTML = buildEmailHTML(`
+                    <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${pBody.replace(/\n/g, '<br>')}</div>
+                    <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
+                `, { unsubscribeUrl: `${BASE_URL}/api/unsubscribe/${unsub}` });
+
+                await transporter.sendMail({
+                    from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                    to: c.lead_email,
+                    subject: c.subject,
+                    html: emailHTML
+                });
+
+                await pool.query('UPDATE auto_campaigns SET last_sent_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=$1', [c.id]);
+                await pool.query(`UPDATE leads SET last_contact_date=CURRENT_TIMESTAMP, status=CASE WHEN status='new' THEN 'contacted' ELSE status END, updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [c.lead_id]);
+
+                // Note
+                let notes = [];
+                try { if (c.lead_notes) notes = JSON.parse(c.lead_notes); } catch(e) {}
+                notes.push({ text: `[Auto-Campaign] Email sent automatically: "${c.subject}"`, author: 'System', date: new Date().toISOString() });
+                await pool.query('UPDATE leads SET notes=$1 WHERE id=$2', [JSON.stringify(notes), c.lead_id]);
+
+                sent++;
+                console.log(`[AUTO-CAMPAIGNS] ✅ Sent to ${c.lead_email}`);
+            } catch (e) {
+                console.error(`[AUTO-CAMPAIGNS] ❌ Campaign ${c.id}:`, e.message);
+                errors.push({ id: c.id, error: e.message });
+            }
+        }
+        res.json({ success: true, sent, total_due: due.rows.length, errors });
+    } catch (err) {
+        console.error('[AUTO-CAMPAIGNS] run-due error:', err);
+        res.status(500).json({ success: false, message: 'run-due failed' });
     }
 });
 

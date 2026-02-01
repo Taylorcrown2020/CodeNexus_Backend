@@ -15795,7 +15795,7 @@ async function testFollowUpSystem() {
 // RECRUITMENT
 // ========================================
 
-let recruitmentState = { jobs: [], applications: [], selectedJob: null, selectedApp: null, view: 'applications' };
+var recruitmentState = { jobs: [], applications: [], selectedJob: null, selectedApp: null, view: 'applications' };
 
 async function renderRecruitment(content) {
     content.innerHTML = `<div style="opacity:0.5;padding:40px;text-align:center;color:var(--text-muted);">Loading Recruitment...</div>`;
@@ -15811,12 +15811,17 @@ async function renderRecruitment(content) {
 
 async function loadRecruitmentData() {
     const token = getAuthToken();
+    if (!token) throw new Error('Not authenticated — please log in again.');
     const [jobsRes, appsRes] = await Promise.all([
         fetch(`${API_URL}/api/admin/jobs`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/api/admin/applications`, { headers: { Authorization: `Bearer ${token}` } })
     ]);
-    recruitmentState.jobs = (await jobsRes.json()).jobs || [];
-    recruitmentState.applications = (await appsRes.json()).applications || [];
+    if (!jobsRes.ok) throw new Error(`Jobs endpoint returned ${jobsRes.status}. Make sure the server has the /api/admin/jobs route.`);
+    if (!appsRes.ok) throw new Error(`Applications endpoint returned ${appsRes.status}. Make sure the server has the /api/admin/applications route.`);
+    const jobsData = await jobsRes.json();
+    const appsData = await appsRes.json();
+    recruitmentState.jobs = jobsData.jobs || [];
+    recruitmentState.applications = appsData.applications || [];
 }
 
 function renderRecruitmentUI(content) {
@@ -15887,7 +15892,7 @@ function renderRecruitmentUI(content) {
     </div>
 
     <!-- Detail Modal (hidden) -->
-    <div id="recDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:none;align-items:center;justify-content:center;">
+    <div id="recDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
         <div id="recDetailInner" style="background:var(--bg-secondary);border-radius:var(--radius-lg);width:90%;max-width:720px;max-height:85vh;overflow-y:auto;padding:36px;position:relative;border:1px solid var(--border-default);"></div>
     </div>
 

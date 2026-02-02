@@ -1625,14 +1625,7 @@
             <p style="font-size: 16px; color: rgba(255,255,255,0.8);">Tell us about your needs and we'll get back to you within 24 hours.</p>
         </div>
         <div style="padding: 60px;">
-            <form id="contactForm" action="https://formsubmit.co/careers@diamondbackcoding.com" method="POST">
-                <!-- FormSubmit Configuration -->
-                <input type="hidden" name="_subject" value="New Career Inquiry from Website">
-                <input type="hidden" name="_captcha" value="false">
-                <input type="hidden" name="_template" value="table">
-                <input type="hidden" name="_next" value="https://yourdomain.com/careers.html?success=true">
-                <input type="text" name="_honey" style="display:none">
-                <input type="hidden" name="source" value="Careers Page">
+<form id="contactForm" onsubmit="handleSubmit(event)">
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
                     <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Full Name *</label><input type="text" name="fullName" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>

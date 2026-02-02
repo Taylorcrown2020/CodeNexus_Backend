@@ -6,7 +6,7 @@
     
     <!-- Primary Meta Tags -->
     <title>Terms of Service | Diamondback Coding</title>
-    <meta name="description" content="Terms of Service for Diamondback Coding web development services. Read our terms, conditions, and policies.">
+    <meta name="description" content="Terms of Service for Diamondback Coding web development services. Read our terms, conditions, and policies for working with us.">
     <meta name="robots" content="noindex, follow">
     <link rel="canonical" href="https://diamondbackcoding.com/terms_of_service.html">
     
@@ -15,7 +15,7 @@
     <meta property="og:title" content="Terms of Service | Diamondback Coding">
     <meta property="og:description" content="Terms of Service for Diamondback Coding web development services.">
     <meta property="og:url" content="https://diamondbackcoding.com/terms_of_service.html">
-    <title>Terms of Service — Diamondback Coding</title>
+    
     <!-- Breadcrumb Schema -->
     <script type="application/ld+json">
     {
@@ -35,446 +35,1317 @@
       }]
     }
     </script>
+    
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --white: #ffffff;
+            --grey-50: #fafafa;
+            --grey-100: #f7f7f7;
+            --grey-200: #f5f5f5;
+            --grey-300: #e5e5e5;
+            --grey-400: #d5d5d5;
+            --grey-600: #999999;
+            --grey-700: #666666;
+            --gold: #f4c87e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--white);
+            color: var(--black);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
+        
+        .announcement-banner {
+            margin-top: 0;
+            background: linear-gradient(115deg, transparent 0%, transparent 42%, rgba(60,60,70,0.25) 45%, rgba(40,40,50,0.35) 48%, rgba(60,60,70,0.25) 51%, transparent 54%, transparent 100%),
+                linear-gradient(-65deg, transparent 0%, transparent 58%, rgba(80,80,90,0.2) 62%, rgba(50,50,60,0.3) 65%, rgba(80,80,90,0.2) 68%, transparent 72%, transparent 100%),
+                #f5f5f8;
+            color: #1a1a1a;
+            padding: 12px 20px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1001;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
 
-        <link rel="stylesheet" href="terms-of-service.css">
+        .announcement-banner a {
+            color: #000;
+            text-decoration: underline;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+        
+        nav {
+            background: #1a1a1a;
+            padding: 20px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 40px;
+            width: 100%;
+            z-index: 1000;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .nav-logo {
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--white);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 400;
+            transition: opacity 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-    </head>
+        .nav-links a:hover {
+            opacity: 0.7;
+        }
+        
+        /* Dropdown Menu */
+        .nav-links li {
+            position: relative;
+        }
+
+        .dropdown-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .has-dropdown:hover .dropdown-icon {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            min-width: 220px;
+            padding: 12px 0;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            list-style: none;
+        }
+
+        .has-dropdown:hover .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            top: calc(100% + 10px);
+        }
+
+        .dropdown-menu li {
+            padding: 0;
+        }
+
+        .dropdown-menu a {
+            padding: 12px 24px;
+            display: block;
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            text-transform: none;
+            letter-spacing: 0.3px;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-menu a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding-left: 28px;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.15);
+            margin: 8px 16px;
+            list-style: none;
+        }
+
+        .contact-info {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+        
+        .phone {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+        }
+        
+        .login-link {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .nav-cta-btn {
+            background: var(--white);
+            color: var(--black);
+            padding: 12px 28px;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+        }
+
+        /* PRIVACY POLICY SPECIFIC STYLES */
+        .privacy-hero {
+            background: #1a1a1a;
+            padding: 160px 60px 80px;
+            margin-top: 113px;
+            text-align: center;
+        }
+
+        .privacy-badge {
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--gold);
+            display: inline-block;
+            margin-bottom: 24px;
+        }
+
+        .privacy-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 64px;
+            line-height: 1.1;
+            font-weight: 400;
+            color: var(--white);
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+        }
+
+        .privacy-updated {
+            font-size: 15px;
+            color: var(--grey-600);
+        }
+
+        .privacy-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 80px 60px;
+        }
+
+        .privacy-intro {
+            font-size: 18px;
+            line-height: 1.8;
+            color: var(--grey-700);
+            margin-bottom: 60px;
+            text-align: center;
+        }
+
+        .privacy-content h2 {
+            font-size: 32px;
+            font-weight: 500;
+            margin-top: 60px;
+            margin-bottom: 24px;
+            letter-spacing: -0.5px;
+        }
+
+        .privacy-content h3 {
+            font-size: 22px;
+            font-weight: 500;
+            margin-top: 40px;
+            margin-bottom: 16px;
+        }
+
+        .privacy-content p {
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--grey-700);
+            margin-bottom: 20px;
+        }
+
+        .privacy-content ul {
+            margin: 24px 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .privacy-content ul li {
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--grey-700);
+            margin-bottom: 16px;
+            padding-left: 32px;
+            position: relative;
+        }
+
+        .privacy-content ul li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        .privacy-content strong {
+            font-weight: 600;
+            color: var(--black);
+        }
+
+        .privacy-content a {
+            color: var(--black);
+            text-decoration: underline;
+            font-weight: 500;
+        }
+
+        .privacy-content a:hover {
+            opacity: 0.7;
+        }
+
+        .info-box {
+            background: var(--grey-50);
+            border-left: 4px solid var(--gold);
+            padding: 32px;
+            margin: 40px 0;
+        }
+
+        .info-box p {
+            margin-bottom: 0;
+        }
+
+        .disclaimer-box {
+            background: var(--grey-100);
+            padding: 32px;
+            margin: 60px 0 0;
+            border: 1px solid var(--grey-300);
+        }
+
+        .disclaimer-box p {
+            font-size: 14px;
+            color: var(--grey-700);
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--grey-300);
+            margin: 60px 0;
+        }
+
+        /* FOOTER */
+        footer {
+            background: #000;
+            color: var(--white);
+            padding: 80px 60px 40px;
+        }
+        
+        .footer-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 60px;
+            margin-bottom: 60px;
+        }
+        
+        .footer-column h4 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--white);
+        }
+        
+        .footer-links {
+            list-style: none;
+        }
+        
+        .footer-links li {
+            margin-bottom: 16px;
+        }
+        
+        .footer-links a {
+            color: var(--grey-600);
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--white);
+        }
+        
+        .footer-bottom {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-bottom-left {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .footer-copyright {
+            font-size: 13px;
+            color: var(--grey-600);
+        }
+
+        .footer-legal-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .footer-legal-links a {
+            font-size: 13px;
+            color: var(--grey-600);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-legal-links a:hover {
+            color: var(--white);
+        }
+
+        .footer-social {
+            display: flex;
+            gap: 16px;
+        }
+
+        .footer-social a {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--grey-600);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .footer-social a:hover {
+            border-color: var(--white);
+            color: var(--white);
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--white);
+            padding: 60px;
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 32px;
+            cursor: pointer;
+            color: var(--grey-600);
+        }
+
+        .modal-badge {
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--grey-600);
+            display: block;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 36px;
+            font-weight: 300;
+            letter-spacing: -0.8px;
+            margin-bottom: 16px;
+        }
+
+        .modal-description {
+            font-size: 15px;
+            color: var(--grey-700);
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--grey-300);
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--black);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-submit {
+            background: var(--black);
+            color: var(--white);
+            padding: 16px 32px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: none;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .announcement-banner {
+                font-size: 12px;
+                padding: 10px 16px;
+            }
+
+            nav {
+                padding: 12px 20px;
+                top: 38px;
+            }
+            
+            .nav-links {
+                position: fixed;
+                top: 89px;
+                right: -100%;
+                width: 80%;
+                max-width: 300px;
+                height: calc(100vh - 89px);
+                background: #000000f4;
+                display: flex !important;
+                flex-direction: column;
+                padding: 40px 24px;
+                gap: 24px;
+                transition: right 0.3s ease;
+                box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+                z-index: 999;
+            }
+            
+            .nav-links.active {
+                right: 0;
+            }
+            
+            .nav-links li {
+                width: 100%;
+            }
+            
+            .nav-links a {
+                display: block;
+                padding: 12px 0;
+                font-size: 16px;
+            }
+
+            /* Mobile Dropdown */
+            .dropdown-menu {
+                position: static;
+                transform: none;
+                background: rgba(255,255,255,0.06);
+                margin-top: 4px;
+                border-radius: 8px;
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+                opacity: 1;
+                visibility: visible;
+                box-shadow: none;
+                padding: 0;
+            }
+
+            .has-dropdown.active .dropdown-menu {
+                max-height: 300px;
+            }
+
+            .dropdown-menu a {
+                padding: 10px 20px;
+                font-size: 16px;
+                color: rgba(255,255,255,0.7);
+                text-transform: none;
+            }
+
+            .dropdown-menu a:hover {
+                padding-left: 24px;
+            }
+
+            .dropdown-divider {
+                margin: 6px 12px;
+            }
+            
+            .contact-info {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-end;
+            }
+
+            .contact-info .phone {
+                display: none;
+            }
+
+            .login-link {
+                display: none;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 8px;
+                z-index: 1000;
+                position: relative;
+            }
+            
+            .mobile-menu-btn span {
+                display: block;
+                width: 24px;
+                height: 2px;
+                background: var(--white);
+                margin: 5px 0;
+                transition: all 0.3s ease;
+            }
+            
+            .mobile-menu-btn.active span:nth-child(1) {
+                transform: rotate(45deg) translate(5px, 5px);
+            }
+            
+            .mobile-menu-btn.active span:nth-child(2) {
+                opacity: 0;
+            }
+            
+            .mobile-menu-btn.active span:nth-child(3) {
+                transform: rotate(-45deg) translate(7px, -6px);
+            }
+
+            .nav-cta-btn {
+                padding: 10px 20px;
+                font-size: 11px;
+            }
+
+            .privacy-hero {
+                padding: 120px 24px 60px;
+                margin-top: 89px;
+            }
+
+            .privacy-title {
+                font-size: 40px;
+            }
+
+            .privacy-container {
+                padding: 60px 24px;
+            }
+
+            .privacy-content h2 {
+                font-size: 28px;
+            }
+
+            .privacy-content h3 {
+                font-size: 20px;
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 24px;
+                text-align: center;
+            }
+
+            .footer-bottom-left {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .modal-content {
+                padding: 40px 24px;
+            }
+
+            .modal-title {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
 <body>
-    <!-- ========================================
-         NAVIGATION BAR
-    ======================================== -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="#" class="nav-logo">Diamondback Coding</a>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="pricing.html">Pricing</a></li>
-                <li><a href="portfolio.html">Portfolio</a></li>
-                <li><a href="services.html">Services</a></li>
-                <li><a href="#" class="nav-cta-btn" onclick="openModal(); return false;">Get Started</a></li>
-            </ul>
-        </div>
-    </nav>
-
-    <!-- ========================================
-         MOBILE MENU BUTTON
-    ======================================== -->
-    <button class="mobile-menu-btn" 
-            onclick="toggleMobileMenu()" 
-            aria-label="Toggle mobile menu"
-            aria-expanded="false"
-            aria-controls="mobileNav">
-        <span></span>
-        <span></span>
-        <span></span>
-    </button>
-
-    <!-- ========================================
-         MOBILE NAVIGATION
-    ======================================== -->
-    <nav class="mobile-nav-overlay" 
-         id="mobileNav" 
-         role="navigation" 
-         aria-label="Mobile navigation">
-        <div class="mobile-nav-content">
-            <ul class="mobile-nav-links">
-                <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
-                <li><a href="pricing.html" onclick="closeMobileMenu()">Pricing</a></li>
-                <li><a href="portfolio.html" onclick="closeMobileMenu()">Portfolio</a></li>
-                <li><a href="services.html" onclick="closeMobileMenu()">Services</a></li>
-                <li><a href="#contact" onclick="closeMobileMenu()">Contact</a></li>
-            </ul>
-            <button class="nav-cta-btn" onclick="openModal(); closeMobileMenu();">Start Your Project</button>
-        </div>
-    </nav>
-
-    <!-- ========================================
-     LEGAL CONTENT
-======================================== -->
-<div class="legal-container">
-    <div class="legal-header">
-        <span class="legal-badge">// Legal</span>
-        <h1 class="legal-title">Terms of Service</h1>
-        <p class="legal-updated">Last Updated: January 1, 2026</p>
+    <!-- ANNOUNCEMENT BANNER -->
+    <div class="announcement-banner">
+        Limited Time: Get 20% off all web development packages.
+        <a href="#contact-modal" onclick="openModal(); return false;">Start your project today</a>
     </div>
 
-    <div class="legal-content">
-        <p>Welcome to Diamondback Coding. These Terms of Service ("Terms") govern your use of our website and services. By accessing our website or engaging our services, you agree to be bound by these Terms.</p>
-
-        <div class="info-box">
-            <p><strong>Important:</strong> Please read these Terms carefully before using our services. If you do not agree to these Terms, please do not use our website or services.</p>
+<!-- Navigation -->
+<nav role="navigation" aria-label="Main navigation">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo" itemscope itemtype="https://schema.org/Organization">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="white" stroke-width="1.5"/>
+                <path d="M12 12L3 7.5" stroke="white" stroke-width="1.5"/>
+                <path d="M12 12V21" stroke="white" stroke-width="1.5"/>
+                <path d="M12 12L21 7.5" stroke="white" stroke-width="1.5"/>
+            </svg>
+            <span itemprop="name">DIAMONDBACK CODING</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">HOME</a></li>
+            <li><a href="portfolio.html">PROJECTS</a></li>
+            <li class="has-dropdown">
+                <a href="pricing.html">
+                    SERVICES
+                    <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a href="pricing.html#development">Website Design &amp; Development</a></li>
+                    <li><a href="pricing.html#crm-solutions">CRM Solutions</a></li>
+                    <li><a href="pricing.html#seo">SEO &amp; Digital Marketing</a></li>
+                    <li><a href="pricing.html#development">E-Commerce Development</a></li>
+                    <li><a href="pricing.html#development">Custom Web Applications</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a href="pricing.html">View Pricing</a></li>
+                </ul>
+            </li>
+            <li class="has-dropdown">
+                <a href="#company">
+                    COMPANY
+                    <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a href="about.html">About Us</a></li>
+                    <li><a href="process.html">Our Process</a></li>
+                    <li><a href="testimonials.html">Client Testimonials</a></li>
+                    <li><a href="blog.html">Blog</a></li>
+                    <li><a href="careers.html">Careers</a></li>
+                </ul>
+            </li>
+        </ul>
+        <div class="contact-info">
+            <a href="tel:+19402178680" class="phone" itemprop="telephone">940-217-8680</a>
+            <a href="client_portal.html" class="login-link">LOG IN</a>
+            <button class="nav-cta-btn" onclick="openModal()" aria-label="Get Started">GET STARTED</button>
+            <button class="mobile-menu-btn" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
+    </div>
+</nav>
 
-        <h2>1. Acceptance of Terms</h2>
-        <p>By accessing and using Diamondback Coding's website (diamondbackcoding.com) or engaging our web development services, you accept and agree to be bound by these Terms of Service and our Privacy Policy. These Terms apply to all visitors, users, and clients of our services.</p>
-        <p>If you are entering into this agreement on behalf of a company or other legal entity, you represent that you have the authority to bind such entity to these Terms.</p>
+    <!-- PRIVACY POLICY HERO -->
+    <section class="privacy-hero">
+        <span class="privacy-badge">LEGAL</span>
+        <h1 class="privacy-title">Terms of Service</h1>
+        <p class="privacy-updated">Last Updated: February 1, 2026</p>
+    </section>
 
-        <h2>2. Description of Services</h2>
-        <p>Diamondback Coding provides web development and design services for small to medium-sized businesses, including but not limited to:</p>
-        <ul>
-            <li>Custom website design and development</li>
-            <li>E-commerce platform development</li>
-            <li>Web application development</li>
-            <li>Landing page creation</li>
-            <li>Website redesign and optimization</li>
-            <li>Website maintenance and support</li>
-            <li>SEO optimization services</li>
-            <li>Hosting and deployment services</li>
-        </ul>
-        <p>Specific services, deliverables, timelines, and pricing will be outlined in individual project agreements or statements of work.</p>
-
-        <h2>3. Client Responsibilities</h2>
-
-        <h3>3.1 Content and Materials</h3>
-        <p>You are responsible for providing:</p>
-        <ul>
-            <li>All text, images, logos, and other content for your website in a timely manner</li>
-            <li>Legal rights and permissions for all materials provided</li>
-            <li>Accurate information about your business, products, and services</li>
-            <li>Timely feedback and approvals at project milestones</li>
-        </ul>
-
-        <h3>3.2 Communication and Collaboration</h3>
-        <p>Clients agree to:</p>
-        <ul>
-            <li>Respond to requests for information within a reasonable timeframe</li>
-            <li>Designate a primary point of contact for the project</li>
-            <li>Attend scheduled meetings and review sessions</li>
-            <li>Provide constructive feedback in a timely manner</li>
-        </ul>
-
-        <h3>3.3 Third-Party Services</h3>
-        <p>You are responsible for:</p>
-        <ul>
-            <li>Obtaining and maintaining your own domain name</li>
-            <li>Providing access to necessary third-party accounts (hosting, email services, etc.)</li>
-            <li>Paying for any third-party services required for your project</li>
-        </ul>
-
-        <h2>4. Payment Terms</h2>
-
-        <h3>4.1 Pricing and Invoicing</h3>
-        <p>Project pricing will be outlined in your project proposal or contract. Unless otherwise specified:</p>
-        <ul>
-            <li>No payment is required before work begins</li>
-            <li>Full payment (100%) is due upon project completion</li>
-            <li>An invoice will be issued upon completion of the project</li>
-            <li>Invoices are payable within 14 days of receipt</li>
-            <li>Late payments may incur a 1.5% monthly interest charge</li>
-        </ul>
-
-        <h3>4.2 Additional Work</h3>
-        <p>Work beyond the original scope will be billed separately at our standard hourly rate or as agreed upon in writing. You will be notified and must approve any additional charges before such work begins.</p>
-
-        <h3>4.3 Refund Policy</h3>
-        <p>Due to the custom nature of our services:</p>
-        <ul>
-            <li>No refunds will be issued for completed work</li>
-            <li>If a project is canceled before completion, you will only be billed for work completed up to the termination date</li>
-            <li>Any unpaid invoices for completed work remain due and payable</li>
-        </ul>
-
-        <h2>5. Project Timeline and Delays</h2>
-        <p>We will make reasonable efforts to complete your project within the estimated timeline. However:</p>
-        <ul>
-            <li>Timelines are estimates and not guarantees</li>
-            <li>Delays caused by client feedback, content delivery, or scope changes may extend the timeline</li>
-            <li>We are not liable for delays caused by circumstances beyond our control</li>
-            <li>Significant delays in client response (30+ days) may result in project suspension or cancellation</li>
-        </ul>
-
-        <h2>6. Intellectual Property Rights</h2>
-
-        <h3>6.1 Client Ownership</h3>
-        <p>Upon full payment, you own:</p>
-        <ul>
-            <li>Custom design elements created specifically for your project</li>
-            <li>Content you provided</li>
-            <li>Final delivered website files and code</li>
-        </ul>
-
-        <h3>6.2 Diamondback Coding Rights</h3>
-        <p>Diamondback Coding retains ownership of:</p>
-        <ul>
-            <li>Pre-existing code, frameworks, and development tools</li>
-            <li>Design templates and code libraries used across multiple projects</li>
-            <li>General methodologies and development processes</li>
-            <li>The right to showcase your project in our portfolio (unless otherwise agreed)</li>
-        </ul>
-
-        <h3>6.3 Third-Party Assets</h3>
-        <p>Some projects may include third-party assets (fonts, icons, stock photos, plugins) that have their own licensing terms. You are responsible for complying with these licenses.</p>
-
-        <h2>7. Warranties and Disclaimers</h2>
-
-        <h3>7.1 Our Warranty</h3>
-        <ul>
-            <li>Services will be performed in a professional manner</li>
-            <li>Work will be free from defects in workmanship for 30 days after project completion</li>
-            <li>Code will be original or properly licensed</li>
-        </ul>
-
-        <h3>7.2 Client Warranty</h3>
-        <ul>
-            <li>You have legal rights to all content provided</li>
-            <li>Your content does not infringe on third-party rights</li>
-            <li>Information provided is accurate and not misleading</li>
-        </ul>
-
-        <h3>7.3 Disclaimers</h3>
-        <p>EXCEPT AS EXPRESSLY PROVIDED ABOVE, SERVICES ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.</p>
-
-        <h2>8. Limitation of Liability</h2>
-        <ul>
-            <li>Our total liability shall not exceed the amount paid for the specific project</li>
-            <li>We are not liable for indirect, incidental, special, or consequential damages</li>
-            <li>We are not liable for loss of profits, data, or business opportunities</li>
-            <li>We are not responsible for third-party services or hosting issues</li>
-        </ul>
-
-        <h2>9. Indemnification</h2>
-        <ul>
-            <li>Your breach of these Terms</li>
-            <li>Content you provide that infringes on third-party rights</li>
-            <li>Your use of the website or services</li>
-            <li>Any illegal or harmful content on your website</li>
-        </ul>
-
-        <h2>10. Confidentiality</h2>
-        <p>Both parties agree to keep confidential any proprietary information shared during the project.</p>
-
-        <h2>11. Termination</h2>
-
-        <h3>11.1 Termination by Client</h3>
-        <ul>
-            <li>You will be billed for all work completed up to the termination date</li>
-            <li>Payment for completed work is due within 14 days of invoice</li>
-            <li>You will receive files and deliverables for work that has been completed and paid for</li>
-        </ul>
-
-        <h3>11.2 Termination by Diamondback Coding</h3>
-        <ul>
-            <li>Payment is not received within 30 days of invoice</li>
-            <li>You breach these Terms</li>
-            <li>You request illegal or unethical work</li>
-            <li>Communication ceases for more than 30 days</li>
-        </ul>
-
-        <h2>12. Support and Maintenance</h2>
-        <ul>
-            <li>Bug fixes for issues present at launch are included for 30 days</li>
-            <li>Extended support and maintenance plans are available separately</li>
-            <li>Emergency support may be available for additional fees</li>
-            <li>Updates beyond original scope are billed separately</li>
-        </ul>
-
-        <h2>13. Website Use and Conduct</h2>
-        <ul>
-            <li>Use the site for illegal purposes</li>
-            <li>Attempt to hack or disrupt systems</li>
-            <li>Upload malicious code</li>
-            <li>Harvest data</li>
-            <li>Impersonate others</li>
-            <li>Spam or harass</li>
-        </ul>
-
-        <h2>14. Force Majeure</h2>
-        <p>Neither party is liable for failure to perform due to circumstances beyond reasonable control.</p>
-
-        <h2>15. Modifications to Terms</h2>
-        <p>We reserve the right to modify these Terms at any time.</p>
-
-        <h2>16. Governing Law</h2>
-        <p>These Terms are governed by the laws of the State of Texas.</p>
-
-        <h2>17. Severability</h2>
-        <p>If any provision is unenforceable, remaining provisions remain in effect.</p>
-
-        <h2>18. Entire Agreement</h2>
-        <p>These Terms constitute the entire agreement between you and Diamondback Coding.</p>
-
-        <h2>19. Contact Information</h2>
-        <div class="info-box">
-            <p><strong>Diamondback Coding</strong><br>
-            Email: <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a><br>
-            Website: <a href="https://diamondbackcoding.com">https://diamondbackcoding.com</a></p>
-        </div>
-
-        <p style="font-size:12px;color:var(--text-light);margin-top:40px;">
-            <strong>Disclaimer:</strong> These Terms are provided as a template. Consult a legal professional to ensure compliance.
+    <!-- PRIVACY POLICY CONTENT -->
+    <div class="privacy-container">
+        <p class="privacy-intro">
+            Welcome to Diamondback Coding. These Terms of Service govern your use of our website and services. By accessing our website or engaging our services across the United States, you agree to be bound by these Terms.
         </p>
+
+        <div class="privacy-content">
+            <div class="info-box">
+                <p><strong>Important:</strong> Please read these Terms carefully before using our services. If you do not agree to these Terms, please do not use our website or services.</p>
+            </div>
+
+            <h2>1. Acceptance of Terms</h2>
+            <p>By accessing and using Diamondback Coding's website (diamondbackcoding.com) or engaging our web development services, you accept and agree to be bound by these Terms of Service and our Privacy Policy. These Terms apply to all visitors, users, and clients of our services nationwide.</p>
+            <p>If you are entering into this agreement on behalf of a company or other legal entity, you represent that you have the authority to bind such entity to these Terms.</p>
+
+            <h2>2. Description of Services</h2>
+            <p>Diamondback Coding provides web development and design services for businesses across the United States, including but not limited to:</p>
+            <ul>
+                <li><strong>Website Design & Development:</strong> Custom website design and development tailored to your business needs</li>
+                <li><strong>E-Commerce Solutions:</strong> Online store development with Shopify, WooCommerce, and custom platforms</li>
+                <li><strong>Web Applications:</strong> Custom web application development using modern frameworks</li>
+                <li><strong>Landing Pages:</strong> High-converting landing page creation for marketing campaigns</li>
+                <li><strong>Website Optimization:</strong> Website redesign, performance optimization, and modernization</li>
+                <li><strong>CRM Solutions:</strong> Customer relationship management system development and integration</li>
+                <li><strong>SEO Services:</strong> Search engine optimization and digital marketing services</li>
+                <li><strong>Maintenance & Support:</strong> Ongoing website maintenance, updates, and technical support</li>
+                <li><strong>Hosting & Deployment:</strong> Website hosting, deployment, and infrastructure management</li>
+            </ul>
+            <p>Specific services, deliverables, timelines, and pricing will be outlined in individual project agreements or statements of work.</p>
+
+            <h2>3. Client Responsibilities</h2>
+
+            <h3>3.1 Content and Materials</h3>
+            <p>You are responsible for providing:</p>
+            <ul>
+                <li>All text, images, logos, videos, and other content for your website in a timely manner</li>
+                <li>Legal rights, licenses, and permissions for all materials provided</li>
+                <li>Accurate and truthful information about your business, products, and services</li>
+                <li>Timely feedback, revisions, and approvals at designated project milestones</li>
+                <li>Brand guidelines, style preferences, and design direction</li>
+            </ul>
+
+            <h3>3.2 Communication and Collaboration</h3>
+            <p>Clients agree to:</p>
+            <ul>
+                <li>Respond to requests for information, feedback, and approvals within a reasonable timeframe (typically 3-5 business days)</li>
+                <li>Designate a primary point of contact with decision-making authority for the project</li>
+                <li>Attend scheduled meetings, review sessions, and project check-ins</li>
+                <li>Provide constructive, specific feedback in a timely and professional manner</li>
+                <li>Consolidate feedback from multiple stakeholders before providing revisions</li>
+            </ul>
+
+            <h3>3.3 Third-Party Services</h3>
+            <p>You are responsible for:</p>
+            <ul>
+                <li>Obtaining and maintaining your own domain name registration</li>
+                <li>Providing access credentials to necessary third-party accounts (hosting providers, email services, analytics platforms, etc.)</li>
+                <li>Paying for any third-party services, subscriptions, or licenses required for your project</li>
+                <li>Ensuring compliance with terms of service for all third-party platforms you use</li>
+            </ul>
+
+            <h2>4. Payment Terms</h2>
+
+            <h3>4.1 Pricing and Invoicing</h3>
+            <p>Project pricing will be clearly outlined in your project proposal, contract, or statement of work. Unless otherwise specified in writing:</p>
+            <ul>
+                <li><strong>No upfront payment required:</strong> No payment is required before work begins on your project</li>
+                <li><strong>Payment upon completion:</strong> Full payment (100%) is due upon project completion and delivery</li>
+                <li><strong>Invoice issuance:</strong> An itemized invoice will be issued upon completion of the project</li>
+                <li><strong>Payment due date:</strong> Invoices are payable within 14 calendar days of receipt</li>
+                <li><strong>Late payment fees:</strong> Late payments may incur a 1.5% monthly interest charge (18% APR)</li>
+                <li><strong>Payment methods:</strong> We accept payment via bank transfer, credit card, PayPal, and other approved methods</li>
+            </ul>
+
+            <h3>4.2 Scope Changes and Additional Work</h3>
+            <p>Work beyond the original project scope will be billed separately:</p>
+            <ul>
+                <li>Additional features, pages, or functionality not included in the original agreement</li>
+                <li>Revisions exceeding the number included in your package</li>
+                <li>Emergency or expedited work requests</li>
+                <li>Post-launch updates and modifications</li>
+            </ul>
+            <p>You will be notified in writing and must approve any additional charges before such work begins. Additional work is typically billed at our standard hourly rate or as agreed upon in writing.</p>
+
+            <h3>4.3 Refund Policy</h3>
+            <p>Due to the custom, time-intensive nature of our web development services:</p>
+            <ul>
+                <li><strong>No refunds for completed work:</strong> No refunds will be issued for work that has been completed and delivered</li>
+                <li><strong>Cancellation before completion:</strong> If a project is canceled before completion, you will only be billed for work completed up to the termination date at our standard rates</li>
+                <li><strong>Unpaid invoices:</strong> Any unpaid invoices for completed work remain due and payable regardless of project status</li>
+                <li><strong>Satisfaction guarantee:</strong> We work with you to ensure satisfaction through revisions during the agreed-upon revision period</li>
+            </ul>
+
+            <h2>5. Project Timeline and Delays</h2>
+            <p>We will make commercially reasonable efforts to complete your project within the estimated timeline provided. However:</p>
+            <ul>
+                <li><strong>Estimates, not guarantees:</strong> All timelines are estimates and not firm delivery guarantees unless explicitly stated in a contract</li>
+                <li><strong>Client-caused delays:</strong> Delays caused by late client feedback, slow content delivery, scope changes, or approval delays may extend the project timeline</li>
+                <li><strong>Force majeure:</strong> We are not liable for delays caused by circumstances beyond our reasonable control (natural disasters, pandemics, infrastructure failures, etc.)</li>
+                <li><strong>Extended client delays:</strong> Significant delays in client response or content provision (30+ days without communication) may result in project suspension, timeline reset, or project cancellation</li>
+                <li><strong>Timeline adjustments:</strong> Timeline changes will be communicated promptly and documented in writing</li>
+            </ul>
+
+            <h2>6. Intellectual Property Rights</h2>
+
+            <h3>6.1 Client Ownership</h3>
+            <p>Upon receipt of full payment for the project, you own:</p>
+            <ul>
+                <li>Custom design elements, graphics, and visual assets created specifically and exclusively for your project</li>
+                <li>All content, text, images, and materials you provided to us</li>
+                <li>Final delivered website files, custom code, and project deliverables</li>
+                <li>The right to modify, update, and maintain your website</li>
+            </ul>
+
+            <h3>6.2 Diamondback Coding Rights</h3>
+            <p>Diamondback Coding retains ownership and rights to:</p>
+            <ul>
+                <li>Pre-existing code, frameworks, libraries, and development tools used across multiple projects</li>
+                <li>Design templates, code snippets, and reusable components from our library</li>
+                <li>General methodologies, processes, techniques, and know-how</li>
+                <li>The right to showcase your project in our portfolio, case studies, and marketing materials (unless explicitly prohibited in writing)</li>
+                <li>The right to create derivative works for other clients using similar approaches</li>
+            </ul>
+
+            <h3>6.3 Third-Party Assets and Licenses</h3>
+            <p>Some projects may include third-party assets such as:</p>
+            <ul>
+                <li>Premium fonts, icon sets, and stock photography</li>
+                <li>WordPress themes, plugins, or extensions</li>
+                <li>JavaScript libraries, frameworks, and packages</li>
+                <li>SaaS platform integrations and APIs</li>
+            </ul>
+            <p>These assets have their own licensing terms. You are responsible for complying with these licenses and may need to purchase separate licenses for commercial use.</p>
+
+            <h2>7. Warranties and Disclaimers</h2>
+
+            <h3>7.1 Our Warranties</h3>
+            <p>Diamondback Coding warrants that:</p>
+            <ul>
+                <li><strong>Professional standards:</strong> All services will be performed in a professional, workmanlike manner consistent with industry standards</li>
+                <li><strong>Workmanship guarantee:</strong> Delivered work will be free from defects in workmanship for 30 days after project completion</li>
+                <li><strong>Original work:</strong> All custom code and designs will be original or properly licensed</li>
+                <li><strong>Functional delivery:</strong> The website will function as described in the project scope at the time of delivery</li>
+            </ul>
+
+            <h3>7.2 Client Warranties</h3>
+            <p>You warrant and represent that:</p>
+            <ul>
+                <li>You have legal rights to all content, trademarks, and materials provided to us</li>
+                <li>Your content does not infringe on any third-party intellectual property rights</li>
+                <li>All information provided is accurate, current, and not misleading</li>
+                <li>You have authority to enter into this agreement on behalf of your organization</li>
+                <li>Your use of our services complies with all applicable laws and regulations</li>
+            </ul>
+
+            <h3>7.3 Disclaimers</h3>
+            <p><strong>EXCEPT AS EXPRESSLY PROVIDED ABOVE, ALL SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND, WHETHER EXPRESS OR IMPLIED.</strong></p>
+            <p>We specifically disclaim:</p>
+            <ul>
+                <li>Any warranty of merchantability or fitness for a particular purpose</li>
+                <li>Guarantees of specific search engine rankings or traffic results</li>
+                <li>Warranties regarding third-party services, hosting, or platforms</li>
+                <li>Guarantees of error-free or uninterrupted service</li>
+            </ul>
+
+            <h2>8. Limitation of Liability</h2>
+            <p><strong>TO THE MAXIMUM EXTENT PERMITTED BY LAW:</strong></p>
+            <ul>
+                <li><strong>Liability cap:</strong> Our total liability for any claims arising from or related to this agreement shall not exceed the total amount paid by you for the specific project giving rise to the claim</li>
+                <li><strong>No consequential damages:</strong> We are not liable for any indirect, incidental, special, consequential, or punitive damages</li>
+                <li><strong>No business losses:</strong> We are not liable for loss of profits, revenue, data, business opportunities, or goodwill</li>
+                <li><strong>Third-party issues:</strong> We are not responsible for issues caused by third-party services, hosting providers, or platforms</li>
+                <li><strong>Client content:</strong> We are not liable for any damages resulting from content you provide or actions you take</li>
+            </ul>
+
+            <h2>9. Indemnification</h2>
+            <p>You agree to indemnify, defend, and hold harmless Diamondback Coding, its officers, employees, contractors, and affiliates from any claims, damages, liabilities, costs, and expenses (including reasonable attorney's fees) arising from:</p>
+            <ul>
+                <li>Your breach of these Terms of Service</li>
+                <li>Content you provide that infringes on third-party intellectual property rights or violates applicable laws</li>
+                <li>Your use or misuse of the website, services, or delivered products</li>
+                <li>Any illegal, harmful, or prohibited content on your website</li>
+                <li>Your violation of any laws or regulations</li>
+                <li>Third-party claims related to your business or website</li>
+            </ul>
+
+            <h2>10. Confidentiality</h2>
+            <p>Both parties agree to:</p>
+            <ul>
+                <li>Keep confidential any proprietary, sensitive, or confidential information shared during the project</li>
+                <li>Not disclose confidential information to third parties without written permission</li>
+                <li>Use confidential information only for purposes related to the project</li>
+                <li>Return or destroy confidential information upon project completion or termination</li>
+            </ul>
+            <p>This confidentiality obligation does not apply to information that: (a) is publicly available, (b) was known prior to disclosure, (c) is independently developed, or (d) must be disclosed by law.</p>
+
+            <h2>11. Termination</h2>
+
+            <h3>11.1 Termination by Client</h3>
+            <p>You may terminate the project at any time with written notice. Upon termination:</p>
+            <ul>
+                <li>You will be billed for all work completed up to the termination date at our standard rates</li>
+                <li>Payment for completed work is due within 14 days of invoice receipt</li>
+                <li>You will receive all files and deliverables for work that has been completed and paid for</li>
+                <li>No refunds will be issued for completed work</li>
+            </ul>
+
+            <h3>11.2 Termination by Diamondback Coding</h3>
+            <p>We reserve the right to terminate the project immediately if:</p>
+            <ul>
+                <li>Payment is not received within 30 days of the invoice due date</li>
+                <li>You materially breach these Terms</li>
+                <li>You request illegal, unethical, or prohibited work</li>
+                <li>Communication ceases for more than 30 days without explanation</li>
+                <li>You engage in abusive, threatening, or unprofessional conduct</li>
+            </ul>
+
+            <h2>12. Support and Maintenance</h2>
+
+            <h3>12.1 Post-Launch Support</h3>
+            <ul>
+                <li><strong>Bug fixes:</strong> We will fix any bugs or errors that were present at the time of launch for 30 days post-launch at no additional charge</li>
+                <li><strong>Training:</strong> Basic training on how to update and maintain your website is included</li>
+                <li><strong>Documentation:</strong> We provide documentation for custom features and functionality</li>
+            </ul>
+
+            <h3>12.2 Ongoing Maintenance</h3>
+            <ul>
+                <li>Extended support and maintenance plans are available for purchase separately</li>
+                <li>Emergency or priority support may be available for additional fees</li>
+                <li>Updates, enhancements, and new features beyond the original scope are billed separately</li>
+                <li>Third-party plugin/theme updates and compatibility fixes may require additional charges</li>
+            </ul>
+
+            <h2>13. Website Use and Conduct</h2>
+            <p>When using our website or services, you agree not to:</p>
+            <ul>
+                <li>Use the site for any illegal purposes or to violate any laws</li>
+                <li>Attempt to hack, disrupt, or gain unauthorized access to our systems</li>
+                <li>Upload or transmit viruses, malware, or other malicious code</li>
+                <li>Harvest, scrape, or collect data from our website without permission</li>
+                <li>Impersonate any person or entity or misrepresent your affiliation</li>
+                <li>Spam, harass, threaten, or abuse our staff or other users</li>
+                <li>Interfere with the proper functioning of the website</li>
+                <li>Violate any intellectual property rights</li>
+            </ul>
+
+            <h2>14. Force Majeure</h2>
+            <p>Neither party shall be liable for failure to perform its obligations due to circumstances beyond its reasonable control, including but not limited to:</p>
+            <ul>
+                <li>Natural disasters, acts of God, severe weather</li>
+                <li>War, terrorism, civil unrest</li>
+                <li>Pandemics, epidemics, public health emergencies</li>
+                <li>Government actions, laws, or regulations</li>
+                <li>Internet or telecommunications failures</li>
+                <li>Power outages or infrastructure failures</li>
+            </ul>
+
+            <h2>15. Modifications to Terms</h2>
+            <p>We reserve the right to modify these Terms at any time. Changes will be effective immediately upon posting to our website. Your continued use of our services after changes constitute acceptance of the modified Terms. For active projects, existing agreements remain subject to the terms in effect when the project began unless both parties agree otherwise in writing.</p>
+
+            <h2>16. Governing Law and Jurisdiction</h2>
+            <p>These Terms shall be governed by and construed in accordance with the laws of the United States and the State of Texas, without regard to its conflict of law principles. Any legal action or proceeding arising under these Terms will be brought exclusively in the federal or state courts located in Texas, and the parties hereby consent to personal jurisdiction and venue therein.</p>
+
+            <h2>17. Dispute Resolution</h2>
+            <p>In the event of any dispute arising from these Terms:</p>
+            <ul>
+                <li><strong>Good faith negotiation:</strong> Parties agree to first attempt to resolve disputes through good-faith negotiation</li>
+                <li><strong>Mediation:</strong> If negotiation fails, parties agree to non-binding mediation before pursuing litigation</li>
+                <li><strong>Attorney's fees:</strong> The prevailing party in any legal action may be entitled to recover reasonable attorney's fees and costs</li>
+            </ul>
+
+            <h2>18. Severability</h2>
+            <p>If any provision of these Terms is found to be unenforceable or invalid under applicable law, such provision will be modified to the minimum extent necessary to make it enforceable, or if modification is not possible, it will be severed from these Terms. The remaining provisions shall remain in full force and effect.</p>
+
+            <h2>19. Waiver</h2>
+            <p>No waiver of any term or condition of these Terms shall be deemed a further or continuing waiver of such term or any other term. Our failure to enforce any right or provision of these Terms shall not constitute a waiver of such right or provision.</p>
+
+            <h2>20. Assignment</h2>
+            <p>You may not assign or transfer these Terms or any rights hereunder without our prior written consent. We may assign these Terms to any affiliate or in connection with a merger, acquisition, or sale of assets, or by operation of law.</p>
+
+            <h2>21. Entire Agreement</h2>
+            <p>These Terms, together with our Privacy Policy and any project-specific contracts or statements of work, constitute the entire agreement between you and Diamondback Coding regarding the use of our website and services, and supersede all prior agreements, understandings, and communications, whether written or oral.</p>
+
+            <h2>22. Contact Information</h2>
+            <p>If you have questions, concerns, or disputes regarding these Terms of Service, please contact us:</p>
+            
+            <div class="info-box">
+                <p><strong>Diamondback Coding</strong><br>
+                Email: <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a><br>
+                Phone: <a href="tel:+19402178680">+1 (940) 217-8680</a><br>
+                Website: <a href="https://diamondbackcoding.com">https://diamondbackcoding.com</a></p>
+                <p style="margin-top: 16px;">We will respond to your inquiry within 2-3 business days.</p>
+            </div>
+
+            <hr>
+
+            <div class="disclaimer-box">
+                <p>
+                    <strong>Legal Disclaimer:</strong> These Terms of Service are provided for informational purposes and represent our standard terms for web development services. They may not cover all legal requirements for every jurisdiction or situation. We recommend consulting with a qualified legal professional to ensure these terms meet your specific needs and comply with all applicable laws and regulations. This document should be reviewed in conjunction with our Privacy Policy and any project-specific agreements.
+                </p>
+            </div>
+        </div>
     </div>
-</div>
 
-<!-- ========================================
-     FOOTER
-======================================== -->
-<footer class="footer">
-    <div class="footer-container">
-        <div>
-            <div class="footer-brand">Diamondback Coding</div>
-            <p class="footer-description">
-                Building exceptional web experiences for businesses that want to win. 
-                Clean code, fast delivery, real results.
-            </p>
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-column">
+                <h4>Company</h4>
+                <ul class="footer-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="services.html">Services</a></li>
+                    <li><a href="portfolio.html">Portfolio</a></li>
+                    <li><a href="pricing.html">Pricing</a></li>
+                    <li><a href="#" onclick="openModal(); return false;">Contact</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Services</h4>
+                <ul class="footer-links">
+                    <li><a href="services.html">Web Design</a></li>
+                    <li><a href="services.html">Web Development</a></li>
+                    <li><a href="services.html">E-Commerce Solutions</a></li>
+                    <li><a href="services.html">SEO & Marketing</a></li>
+                    <li><a href="services.html">Website Maintenance</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Resources</h4>
+                <ul class="footer-links">
+                    <li><a href="#">Blog</a></li>
+                    <li><a href="#">Case Studies</a></li>
+                    <li><a href="#">FAQs</a></li>
+                    <li><a href="#">Support</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Contact</h4>
+                <ul class="footer-links">
+                    <li><a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a></li>
+                    <li><a href="tel:+19402178680">+1 (940) 217-8680</a></li>
+                    <li>Mon-Fri: 8AM - 5PM CST</li>
+                </ul>
+            </div>
         </div>
 
-        <div>
-            <h4 class="footer-title">Services</h4>
-            <ul class="footer-links">
-        <li><a href="services.html">Web Design</a></li>
-        <li><a href="services.html">Web Development</a></li>
-        <li><a href="services.html">E-commerce</a></li>
-        <li><a href="services.html">Web Applications</a></li>
-        <!-- ADD THESE -->
-        <li><a href="services.html">SEO Services</a></li>
-        <li><a href="services.html">Digital Marketing</a></li>
-        <li><a href="services.html">Social Media</a></li>
-        <li><a href="services.html">Google Ads</a></li>
-            </ul>
+        <div class="footer-bottom">
+            <div class="footer-bottom-left">
+                <p class="footer-copyright">© 2026 Diamondback Coding. All rights reserved.</p>
+                <ul class="footer-legal-links">
+                    <li><a href="privacy_policy.html">Privacy Policy</a></li>
+                    <li><a href="terms_of_service.html">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div class="footer-social">
+                <a href="#" aria-label="LinkedIn">in</a>
+                <a href="#" aria-label="Twitter">𝕏</a>
+                <a href="#" aria-label="Instagram">ig</a>
+            </div>
         </div>
+    </footer>
 
-        <div>
-            <h4 class="footer-title">Company</h4>
-            <ul class="footer-links">
-                <li><a href="portfolio.html">Portfolio</a></li>
-                <li><a href="#" onclick="openModal(); return false;">Contact</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h4 class="footer-title">Legal</h4>
-            <ul class="footer-links">
-                <li><a href="privacy_policy.html">Privacy Policy</a></li>
-                <li><a href="terms_of_service.html">Terms of Service</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h4 class="footer-title">Areas We Serve:</h4>
-            <ul class="footer-links">
-                <li><a href="web-development-llano-tx.html">Llano</a></li>
-                <li><a href="web-design-marble-falls-tx.html">Marble Falls</a></li>
-                <li><a href="website-developer-kingsland-tx.html">Kingsland</a></li>
-                <li><a href="web-services-brady-tx.html">Brady</a></li>
-                <li><a href="custom-websites-mason-tx.html">Mason</a></li>
-                <li><a href="web-development-fredericksburg-tx.html">Fredericksburg</a></li>
-                <li><a href="web-design-burnet-tx.html">Burnet</a></li>
-                <li><a href="seo-services-johnson-city-tx.html">Johnson City</a></li>
-                <li><a href="digital-marketing-lampasas-tx.html">Lampasas</a></li>
-                <li><a href="web-developer-horseshoe-bay-tx.html">Horseshoe Bay</a></li>
-                <li><a href="website-design-buchanan-dam-tx.html">Buchanan Dam</a></li>
-                <li><a href="web-developer-blanco-tx.html">Blanco</a></li>
-                <li><a href="web-services-kerrville-tx.html">Kerrville</a></li>
-                <li><a href="web-development-boerne-tx.html">Boerne</a></li>
-                <li><a href="web-services-comfort-tx.html">Comfort</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h4 class="footer-title">Connect</h4>
-            <ul class="footer-links">
-                <li><a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a></li>
-                <li><a href="tel:+19402178680">+1 (940) 217-8680</li>
-                <li>// Available Mon-Fri<br>8AM - 5PM CST</a></li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="footer-bottom">
-        <p>© <time datetime="2026">2026</time> Diamondback Coding. Built with code and caffeine.</p>
-    </div>
-</footer>
-
-<!-- ========================================
-         CONTACT MODAL - ENHANCED VERSION
-         Replace your existing modal in index.html with this
-    ======================================== -->
+    <!-- CONTACT MODAL -->
     <div class="modal-overlay" id="contactModal">
         <div class="modal-content">
-            <button class="modal-close" onclick="closeModal()"></button>
+            <button class="modal-close" onclick="closeModal()">×</button>
             
-            <span class="modal-badge">// Let's Talk</span>
+            <span class="modal-badge">LET'S TALK</span>
             <h2 class="modal-title">Start Your Project</h2>
             <p class="modal-description">
-                Fill out the form below and we'll get back to you within 24 hours 
-                with a detailed quote and project timeline.
+                Fill out the form below and we'll get back to you within 24 hours with a detailed quote and project timeline.
             </p>
 
             <form class="modal-form" id="contactForm" onsubmit="handleSubmit(event)">
                 <div class="form-group">
-                    <label class="form-label">// Your Name *</label>
+                    <label class="form-label">Full Name *</label>
                     <input type="text" id="fullName" class="form-input" placeholder="John Doe" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Email Address *</label>
+                    <label class="form-label">Email Address *</label>
                     <input type="email" id="email" class="form-input" placeholder="john@example.com" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Phone Number</label>
+                    <label class="form-label">Phone Number</label>
                     <input type="tel" id="phone" class="form-input" placeholder="+1 (234) 567-8900">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Service Needed *</label>
+                    <label class="form-label">Service Needed *</label>
                     <select id="service" class="form-input" required>
                         <option value="">Select a service...</option>
-<option value="Web Design">Web Design</option>
-<option value="Web Development">Web Development</option>
-<option value="E-commerce Platform">E-commerce Platform</option>
-<option value="Custom Web Application">Custom Web Application</option>
-<option value="Landing Page">Landing Page</option>
-<option value="Corporate Website">Corporate Website</option>
-<option value="Website Redesign">Website Redesign</option>
-<option value="Web Maintenance">Web Maintenance</option>
-<option value="SEO Optimization">SEO Optimization</option>
-<option value="Marketing">Marketing</option>
+                        <option value="Web Design">Web Design</option>
+                        <option value="Web Development">Web Development</option>
+                        <option value="E-commerce Platform">E-commerce Platform</option>
+                        <option value="Custom Web Application">Custom Web Application</option>
+                        <option value="SEO Optimization">SEO Optimization</option>
+                        <option value="Website Maintenance">Website Maintenance</option>
                         <option value="Other">Other / Not Sure</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Budget Range *</label>
+                    <label class="form-label">Budget Range *</label>
                     <select id="budget" class="form-input" required>
                         <option value="">Select your budget...</option>
-                        <option value="$1499.99">$1499.99 (Starter)</option>
-                        <option value="$2999.99">$2999.99 (Professional)</option>
-                        <option value="Custom">Custom (Enterprise)</option>
+                        <option value="$1,500 - $3,000">$1,500 - $3,000</option>
+                        <option value="$3,000 - $5,000">$3,000 - $5,000</option>
+                        <option value="$5,000 - $10,000">$5,000 - $10,000</option>
+                        <option value="$10,000+">$10,000+</option>
                         <option value="Not Sure">Not Sure Yet</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Project Details *</label>
-                    <textarea id="details" class="form-textarea" placeholder="Tell us about your project, timeline, specific features you need, etc..." required></textarea>
+                    <label class="form-label">Project Details *</label>
+                    <textarea id="details" class="form-textarea" placeholder="Tell us about your project..." required></textarea>
                 </div>
 
                 <button type="submit" class="form-submit">Send Message</button>
 
-<p style="font-size: 11px; color: var(--text-light); margin-top: 16px; text-align: center; line-height: 1.5;">
-    By submitting this form, you agree to our 
-    <a href="privacy_policy.html" target="_blank" style="color: var(--primary); text-decoration: none; border-bottom: 1px solid var(--primary);">Privacy Policy</a>
-    and
-    <a href="terms_of_service.html" target="_blank" style="color: var(--primary); text-decoration: none; border-bottom: 1px solid var(--primary);">Terms of Service</a>.
-</p>
+                <p style="font-size: 12px; color: var(--grey-600); margin-top: 16px; text-align: center;">
+                    By submitting this form, you agree to our 
+                    <a href="privacy_policy.html" style="color: var(--black); text-decoration: underline;">Privacy Policy</a>
+                    and
+                    <a href="terms_of_service.html" style="color: var(--black); text-decoration: underline;">Terms of Service</a>.
+                </p>
             </form>
         </div>
     </div>
 
     <script>
+        // Modal Functions
+        function openModal() {
+            document.getElementById('contactModal').classList.add('active');
+        }
 
-// Replace the existing form submit handler in your index.html with this:
+        function closeModal() {
+            document.getElementById('contactModal').classList.remove('active');
+        }
 
-// Form Submit Handler - ENHANCED VERSION
+        // Close modal when clicking outside
+        document.getElementById('contactModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const navLinks = document.querySelector('.nav-links');
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                navLinks.classList.toggle('active');
+                this.classList.toggle('active');
+            });
+        }
+
+        document.querySelectorAll('.has-dropdown > a').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                if (window.innerWidth <= 768) {
+                    e.preventDefault();
+                    var parent = this.closest('.has-dropdown');
+                    document.querySelectorAll('.has-dropdown').forEach(function(item) {
+                        if (item !== parent) item.classList.remove('active');
+                    });
+                    parent.classList.toggle('active');
+                }
+            });
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('nav')) {
+                if (navLinks) navLinks.classList.remove('active');
+                if (mobileMenuBtn) mobileMenuBtn.classList.remove('active');
+                document.querySelectorAll('.has-dropdown').forEach(function(item) {
+                    item.classList.remove('active');
+                });
+            }
+        });
+
+        document.querySelectorAll('.nav-links a').forEach(function(link) {
+            link.addEventListener('click', function() {
+                if (this.closest('.dropdown-menu')) {
+                    if (navLinks) navLinks.classList.remove('active');
+                    if (mobileMenuBtn) mobileMenuBtn.classList.remove('active');
+                }
+            });
+        });
+
+        // Form Submit Handler
         async function handleSubmit(event) {
             event.preventDefault();
             
             const submitBtn = event.target.querySelector('.form-submit');
             const originalBtnText = submitBtn.textContent;
             
-            // Get form data with proper field mapping
             const fullName = document.getElementById('fullName').value.trim();
             const nameParts = fullName.split(' ');
             
@@ -488,16 +1359,13 @@
                 details: document.getElementById('details').value.trim()
             };
             
-            // Validate required fields
             if (!formData.firstName || !formData.email || !formData.service || !formData.budget || !formData.details) {
-                alert('⚠️ Please fill out all required fields marked with *');
+                alert('Please fill out all required fields marked with *');
                 return;
             }
             
-            // Disable button and show loading state
             submitBtn.disabled = true;
-            submitBtn.textContent = '⏳ Sending...';
-            submitBtn.style.cursor = 'not-allowed';
+            submitBtn.textContent = 'Sending...';
             submitBtn.style.opacity = '0.6';
             
             try {
@@ -512,73 +1380,21 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Success!
-                    alert('✅ Thank you for reaching out! We\'ve received your project request and will get back to you within 24 hours.');
+                    alert('Thank you! We\'ve received your request and will get back to you within 24 hours.');
                     closeModal();
                     document.getElementById('contactForm').reset();
                 } else {
-                    // Server returned an error
-                    alert('❌ Error: ' + (data.message || 'Something went wrong. Please try again.'));
+                    alert('Error: ' + (data.message || 'Something went wrong. Please try again.'));
                 }
             } catch (error) {
                 console.error('Form submission error:', error);
-                alert('❌ Network error. Please check your internet connection and try again.');
+                alert('Network error. Please try again.');
             } finally {
-                // Re-enable button
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalBtnText;
-                submitBtn.style.cursor = 'pointer';
                 submitBtn.style.opacity = '1';
             }
         }
-
-        // Keep your existing modal functions (openModal, closeModal)
-        // This is just showing them again for completeness:
-        
-        // NEW VERSION (USE THIS):
-function openModal() {
-    const modal = document.getElementById('contactModal');
-    modal.classList.add('active');
-    // ✅ Let modal handle its own scrolling
-}
-
-        // NEW VERSION (USE THIS):
-function closeModal() {
-    const modal = document.getElementById('contactModal');
-    modal.classList.remove('active');
-    // ✅ DON'T touch body overflow
-}
-
-        // Close modal when clicking outside
-        document.getElementById('contactModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
-        });
-
-    // NEW VERSION (USE THIS):
-function toggleMobileMenu() {
-    const btn = document.querySelector('.mobile-menu-btn');
-    const nav = document.getElementById('mobileNav');
-    
-    const isActive = btn.classList.toggle('active');
-    nav.classList.toggle('active');
-    btn.setAttribute('aria-expanded', isActive);
-    
-    // ✅ DON'T touch body overflow - let it scroll naturally
-}
-
-    // NEW VERSION (USE THIS):
-function closeMobileMenu() {
-    const btn = document.querySelector('.mobile-menu-btn');
-    const nav = document.getElementById('mobileNav');
-    
-    btn.classList.remove('active');
-    nav.classList.remove('active');
-    btn.setAttribute('aria-expanded', 'false');
-    
-    // ✅ DON'T touch body overflow
-}
-</script>
+    </script>
 </body>
 </html>

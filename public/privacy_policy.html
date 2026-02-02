@@ -6,7 +6,7 @@
     
     <!-- Primary Meta Tags -->
     <title>Privacy Policy | Diamondback Coding</title>
-    <meta name="description" content="Privacy Policy for Diamondback Coding. Learn how we collect, use, and protect your personal information.">
+    <meta name="description" content="Privacy Policy for Diamondback Coding. Learn how we collect, use, and protect your personal information across the United States.">
     <meta name="robots" content="noindex, follow">
     <link rel="canonical" href="https://diamondbackcoding.com/privacy_policy.html">
     
@@ -15,7 +15,7 @@
     <meta property="og:title" content="Privacy Policy | Diamondback Coding">
     <meta property="og:description" content="Privacy Policy for Diamondback Coding. Learn how we protect your data.">
     <meta property="og:url" content="https://diamondbackcoding.com/privacy_policy.html">
-    <title>Privacy Policy — Diamondback Coding</title>
+    
     <!-- Breadcrumb Schema -->
     <script type="application/ld+json">
     {
@@ -35,72 +35,820 @@
       }]
     }
     </script>
+    
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --white: #ffffff;
+            --grey-50: #fafafa;
+            --grey-100: #f7f7f7;
+            --grey-200: #f5f5f5;
+            --grey-300: #e5e5e5;
+            --grey-400: #d5d5d5;
+            --grey-600: #999999;
+            --grey-700: #666666;
+            --gold: #f4c87e;
+        }
         
-<link rel="stylesheet" href="privacy-policy.css">
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--white);
+            color: var(--black);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
+        
+        .announcement-banner {
+            margin-top: 0;
+            background: linear-gradient(115deg, transparent 0%, transparent 42%, rgba(60,60,70,0.25) 45%, rgba(40,40,50,0.35) 48%, rgba(60,60,70,0.25) 51%, transparent 54%, transparent 100%),
+                linear-gradient(-65deg, transparent 0%, transparent 58%, rgba(80,80,90,0.2) 62%, rgba(50,50,60,0.3) 65%, rgba(80,80,90,0.2) 68%, transparent 72%, transparent 100%),
+                #f5f5f8;
+            color: #1a1a1a;
+            padding: 12px 20px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1001;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
 
+        .announcement-banner a {
+            color: #000;
+            text-decoration: underline;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+        
+        nav {
+            background: #1a1a1a;
+            padding: 20px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 40px;
+            width: 100%;
+            z-index: 1000;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .nav-logo {
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--white);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 400;
+            transition: opacity 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-links a:hover {
+            opacity: 0.7;
+        }
+        
+        /* Dropdown Menu */
+        .nav-links li {
+            position: relative;
+        }
+
+        .dropdown-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .has-dropdown:hover .dropdown-icon {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            min-width: 220px;
+            padding: 12px 0;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            list-style: none;
+        }
+
+        .has-dropdown:hover .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            top: calc(100% + 10px);
+        }
+
+        .dropdown-menu li {
+            padding: 0;
+        }
+
+        .dropdown-menu a {
+            padding: 12px 24px;
+            display: block;
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            text-transform: none;
+            letter-spacing: 0.3px;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-menu a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding-left: 28px;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.15);
+            margin: 8px 16px;
+            list-style: none;
+        }
+
+        .contact-info {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+        
+        .phone {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+        }
+        
+        .login-link {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .nav-cta-btn {
+            background: var(--white);
+            color: var(--black);
+            padding: 12px 28px;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+        }
+
+        /* PRIVACY POLICY SPECIFIC STYLES */
+        .privacy-hero {
+            background: #1a1a1a;
+            padding: 160px 60px 80px;
+            margin-top: 113px;
+            text-align: center;
+        }
+
+        .privacy-badge {
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--gold);
+            display: inline-block;
+            margin-bottom: 24px;
+        }
+
+        .privacy-title {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 64px;
+            line-height: 1.1;
+            font-weight: 400;
+            color: var(--white);
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+        }
+
+        .privacy-updated {
+            font-size: 15px;
+            color: var(--grey-600);
+        }
+
+        .privacy-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 80px 60px;
+        }
+
+        .privacy-intro {
+            font-size: 18px;
+            line-height: 1.8;
+            color: var(--grey-700);
+            margin-bottom: 60px;
+            text-align: center;
+        }
+
+        .privacy-content h2 {
+            font-size: 32px;
+            font-weight: 500;
+            margin-top: 60px;
+            margin-bottom: 24px;
+            letter-spacing: -0.5px;
+        }
+
+        .privacy-content h3 {
+            font-size: 22px;
+            font-weight: 500;
+            margin-top: 40px;
+            margin-bottom: 16px;
+        }
+
+        .privacy-content p {
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--grey-700);
+            margin-bottom: 20px;
+        }
+
+        .privacy-content ul {
+            margin: 24px 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .privacy-content ul li {
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--grey-700);
+            margin-bottom: 16px;
+            padding-left: 32px;
+            position: relative;
+        }
+
+        .privacy-content ul li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        .privacy-content strong {
+            font-weight: 600;
+            color: var(--black);
+        }
+
+        .privacy-content a {
+            color: var(--black);
+            text-decoration: underline;
+            font-weight: 500;
+        }
+
+        .privacy-content a:hover {
+            opacity: 0.7;
+        }
+
+        .info-box {
+            background: var(--grey-50);
+            border-left: 4px solid var(--gold);
+            padding: 32px;
+            margin: 40px 0;
+        }
+
+        .info-box p {
+            margin-bottom: 0;
+        }
+
+        .disclaimer-box {
+            background: var(--grey-100);
+            padding: 32px;
+            margin: 60px 0 0;
+            border: 1px solid var(--grey-300);
+        }
+
+        .disclaimer-box p {
+            font-size: 14px;
+            color: var(--grey-700);
+            font-style: italic;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--grey-300);
+            margin: 60px 0;
+        }
+
+        /* FOOTER */
+        footer {
+            background: #000;
+            color: var(--white);
+            padding: 80px 60px 40px;
+        }
+        
+        .footer-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 60px;
+            margin-bottom: 60px;
+        }
+        
+        .footer-column h4 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--white);
+        }
+        
+        .footer-links {
+            list-style: none;
+        }
+        
+        .footer-links li {
+            margin-bottom: 16px;
+        }
+        
+        .footer-links a {
+            color: var(--grey-600);
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--white);
+        }
+        
+        .footer-bottom {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-bottom-left {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .footer-copyright {
+            font-size: 13px;
+            color: var(--grey-600);
+        }
+
+        .footer-legal-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .footer-legal-links a {
+            font-size: 13px;
+            color: var(--grey-600);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-legal-links a:hover {
+            color: var(--white);
+        }
+
+        .footer-social {
+            display: flex;
+            gap: 16px;
+        }
+
+        .footer-social a {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--grey-600);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .footer-social a:hover {
+            border-color: var(--white);
+            color: var(--white);
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--white);
+            padding: 60px;
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 32px;
+            cursor: pointer;
+            color: var(--grey-600);
+        }
+
+        .modal-badge {
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--grey-600);
+            display: block;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 36px;
+            font-weight: 300;
+            letter-spacing: -0.8px;
+            margin-bottom: 16px;
+        }
+
+        .modal-description {
+            font-size: 15px;
+            color: var(--grey-700);
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--grey-300);
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--black);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-submit {
+            background: var(--black);
+            color: var(--white);
+            padding: 16px 32px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: none;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .announcement-banner {
+                font-size: 12px;
+                padding: 10px 16px;
+            }
+
+            nav {
+                padding: 12px 20px;
+                top: 38px;
+            }
+            
+            .nav-links {
+                position: fixed;
+                top: 89px;
+                right: -100%;
+                width: 80%;
+                max-width: 300px;
+                height: calc(100vh - 89px);
+                background: #000000f4;
+                display: flex !important;
+                flex-direction: column;
+                padding: 40px 24px;
+                gap: 24px;
+                transition: right 0.3s ease;
+                box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+                z-index: 999;
+            }
+            
+            .nav-links.active {
+                right: 0;
+            }
+            
+            .nav-links li {
+                width: 100%;
+            }
+            
+            .nav-links a {
+                display: block;
+                padding: 12px 0;
+                font-size: 16px;
+            }
+
+            /* Mobile Dropdown */
+            .dropdown-menu {
+                position: static;
+                transform: none;
+                background: rgba(255,255,255,0.06);
+                margin-top: 4px;
+                border-radius: 8px;
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+                opacity: 1;
+                visibility: visible;
+                box-shadow: none;
+                padding: 0;
+            }
+
+            .has-dropdown.active .dropdown-menu {
+                max-height: 300px;
+            }
+
+            .dropdown-menu a {
+                padding: 10px 20px;
+                font-size: 16px;
+                color: rgba(255,255,255,0.7);
+                text-transform: none;
+            }
+
+            .dropdown-menu a:hover {
+                padding-left: 24px;
+            }
+
+            .dropdown-divider {
+                margin: 6px 12px;
+            }
+            
+            .contact-info {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-end;
+            }
+
+            .contact-info .phone {
+                display: none;
+            }
+
+            .login-link {
+                display: none;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 8px;
+                z-index: 1000;
+                position: relative;
+            }
+            
+            .mobile-menu-btn span {
+                display: block;
+                width: 24px;
+                height: 2px;
+                background: var(--white);
+                margin: 5px 0;
+                transition: all 0.3s ease;
+            }
+            
+            .mobile-menu-btn.active span:nth-child(1) {
+                transform: rotate(45deg) translate(5px, 5px);
+            }
+            
+            .mobile-menu-btn.active span:nth-child(2) {
+                opacity: 0;
+            }
+            
+            .mobile-menu-btn.active span:nth-child(3) {
+                transform: rotate(-45deg) translate(7px, -6px);
+            }
+
+            .nav-cta-btn {
+                padding: 10px 20px;
+                font-size: 11px;
+            }
+
+            .privacy-hero {
+                padding: 120px 24px 60px;
+                margin-top: 89px;
+            }
+
+            .privacy-title {
+                font-size: 40px;
+            }
+
+            .privacy-container {
+                padding: 60px 24px;
+            }
+
+            .privacy-content h2 {
+                font-size: 28px;
+            }
+
+            .privacy-content h3 {
+                font-size: 20px;
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 24px;
+                text-align: center;
+            }
+
+            .footer-bottom-left {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .modal-content {
+                padding: 40px 24px;
+            }
+
+            .modal-title {
+                font-size: 28px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- ========================================
-         NAVIGATION BAR
-    ======================================== -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="#" class="nav-logo">Diamondback Coding</a>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="pricing.html">Pricing</a></li>
-                <li><a href="portfolio.html">Portfolio</a></li>
-                <li><a href="services.html">Services</a></li>
-                <li><a href="#" class="nav-cta-btn" onclick="openModal(); return false;">Get Started</a></li>
-            </ul>
+    <!-- ANNOUNCEMENT BANNER -->
+    <div class="announcement-banner">
+        Limited Time: Get 20% off all web development packages.
+        <a href="#contact-modal" onclick="openModal(); return false;">Start your project today</a>
+    </div>
+
+<!-- Navigation -->
+<nav role="navigation" aria-label="Main navigation">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo" itemscope itemtype="https://schema.org/Organization">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="white" stroke-width="1.5"/>
+                <path d="M12 12L3 7.5" stroke="white" stroke-width="1.5"/>
+                <path d="M12 12V21" stroke="white" stroke-width="1.5"/>
+                <path d="M12 12L21 7.5" stroke="white" stroke-width="1.5"/>
+            </svg>
+            <span itemprop="name">DIAMONDBACK CODING</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">HOME</a></li>
+            <li><a href="portfolio.html">PROJECTS</a></li>
+            <li class="has-dropdown">
+                <a href="pricing.html">
+                    SERVICES
+                    <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a href="pricing.html#development">Website Design &amp; Development</a></li>
+                    <li><a href="pricing.html#crm-solutions">CRM Solutions</a></li>
+                    <li><a href="pricing.html#seo">SEO &amp; Digital Marketing</a></li>
+                    <li><a href="pricing.html#development">E-Commerce Development</a></li>
+                    <li><a href="pricing.html#development">Custom Web Applications</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a href="pricing.html">View Pricing</a></li>
+                </ul>
+            </li>
+            <li class="has-dropdown">
+                <a href="#company">
+                    COMPANY
+                    <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a href="about.html">About Us</a></li>
+                    <li><a href="process.html">Our Process</a></li>
+                    <li><a href="testimonials.html">Client Testimonials</a></li>
+                    <li><a href="blog.html">Blog</a></li>
+                    <li><a href="careers.html">Careers</a></li>
+                </ul>
+            </li>
+        </ul>
+        <div class="contact-info">
+            <a href="tel:+19402178680" class="phone" itemprop="telephone">940-217-8680</a>
+            <a href="client_portal.html" class="login-link">LOG IN</a>
+            <button class="nav-cta-btn" onclick="openModal()" aria-label="Get Started">GET STARTED</button>
+            <button class="mobile-menu-btn" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
-    </nav>
+    </div>
+</nav>
 
-    <!-- ========================================
-         MOBILE MENU BUTTON
-    ======================================== -->
-    <button class="mobile-menu-btn" 
-            onclick="toggleMobileMenu()" 
-            aria-label="Toggle mobile menu"
-            aria-expanded="false"
-            aria-controls="mobileNav">
-        <span></span>
-        <span></span>
-        <span></span>
-    </button>
+    <!-- PRIVACY POLICY HERO -->
+    <section class="privacy-hero">
+        <span class="privacy-badge">LEGAL</span>
+        <h1 class="privacy-title">Privacy Policy</h1>
+        <p class="privacy-updated">Last Updated: February 1, 2026</p>
+    </section>
 
-    <!-- ========================================
-         MOBILE NAVIGATION
-    ======================================== -->
-    <nav class="mobile-nav-overlay" 
-         id="mobileNav" 
-         role="navigation" 
-         aria-label="Mobile navigation">
-        <div class="mobile-nav-content">
-            <ul class="mobile-nav-links">
-                <li><a href="index.html" onclick="closeMobileMenu()">Home</a></li>
-                <li><a href="pricing.html" onclick="closeMobileMenu()">Pricing</a></li>
-                <li><a href="portfolio.html" onclick="closeMobileMenu()">Portfolio</a></li>
-                <li><a href="services.html" onclick="closeMobileMenu()">Services</a></li>
-                <li><a href="#contact" onclick="closeMobileMenu()">Contact</a></li>
-            </ul>
-            <button class="nav-cta-btn" onclick="openModal(); closeMobileMenu();">Start Your Project</button>
-        </div>
-    </nav>
+    <!-- PRIVACY POLICY CONTENT -->
+    <div class="privacy-container">
+        <p class="privacy-intro">
+            At Diamondback Coding, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website or use our services across the United States.
+        </p>
 
-    <!-- ========================================
-         LEGAL CONTENT
-    ======================================== -->
-    <div class="legal-container">
-        <div class="legal-header">
-            <span class="legal-badge">// Legal</span>
-            <h1 class="legal-title">Privacy Policy</h1>
-            <p class="legal-updated">Last Updated: December 28, 2024</p>
-        </div>
-
-        <div class="legal-content">
-            <p>At Diamondback Coding, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website or use our services.</p>
-
+        <div class="privacy-content">
             <div class="info-box">
                 <p><strong>Contact Us:</strong> If you have questions about this Privacy Policy, please contact us at <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a></p>
             </div>
@@ -110,10 +858,11 @@
             <h3>1.1 Personal Information You Provide</h3>
             <p>When you use our website or contact us, we may collect:</p>
             <ul>
-                <li><strong>Contact Information:</strong> Name, email address, phone number</li>
+                <li><strong>Contact Information:</strong> Name, email address, phone number, and business address</li>
                 <li><strong>Project Information:</strong> Service requirements, budget range, project details, and any other information you provide in contact forms</li>
                 <li><strong>Communication Records:</strong> Correspondence with our team, including emails, notes, and call records</li>
                 <li><strong>Account Information:</strong> If you create an account, we collect username, password (encrypted), and login history</li>
+                <li><strong>Payment Information:</strong> Billing address and payment details for processing transactions (processed securely through third-party payment processors)</li>
             </ul>
 
             <h3>1.2 Automatically Collected Information</h3>
@@ -122,6 +871,7 @@
                 <li><strong>Device Information:</strong> IP address, browser type, operating system, device type</li>
                 <li><strong>Usage Data:</strong> Pages visited, time spent on pages, click patterns, referring website</li>
                 <li><strong>Cookies and Tracking:</strong> We use cookies and similar technologies (see Cookie Policy below)</li>
+                <li><strong>Location Data:</strong> General geographic location based on IP address to provide location-appropriate services</li>
             </ul>
 
             <h2>2. How We Use Your Information</h2>
@@ -130,7 +880,7 @@
             <ul>
                 <li><strong>Service Delivery:</strong> To respond to inquiries, provide quotes, and deliver web development services</li>
                 <li><strong>Communication:</strong> To contact you about your project, send updates, and provide customer support</li>
-                <li><strong>Business Operations:</strong> To manage our CRM system, track leads, and improve our services</li>
+                <li><strong>Business Operations:</strong> To manage our CRM system, track leads, process payments, and improve our services</li>
                 <li><strong>Marketing:</strong> To send promotional materials about our services (you can opt-out at any time)</li>
                 <li><strong>Analytics:</strong> To understand how visitors use our website and improve user experience</li>
                 <li><strong>Legal Compliance:</strong> To comply with legal obligations and enforce our Terms of Service</li>
@@ -142,50 +892,54 @@
             <p>We do not sell your personal information. We may share your information in the following circumstances:</p>
             
             <h3>3.1 Service Providers</h3>
-            <p>We may share information with third-party service providers who assist us in:</p>
+            <p>We may share information with trusted third-party service providers who assist us in:</p>
             <ul>
-                <li>Web hosting and infrastructure (e.g., Render, AWS, or similar platforms)</li>
-                <li>Database management (PostgreSQL hosting services)</li>
-                <li>Email communication services</li>
+                <li>Web hosting and infrastructure services</li>
+                <li>Database management and cloud storage</li>
+                <li>Email communication and marketing platforms</li>
                 <li>Analytics and website performance monitoring</li>
-                <li>Payment processing (if applicable)</li>
+                <li>Payment processing (all payment data is handled through PCI-compliant processors)</li>
+                <li>Customer relationship management (CRM) systems</li>
             </ul>
-            <p>These providers are contractually obligated to keep your information secure and confidential.</p>
+            <p>These providers are contractually obligated to keep your information secure and confidential and may only use it for the purposes we specify.</p>
 
             <h3>3.2 Legal Requirements</h3>
             <p>We may disclose your information if required by law or in response to:</p>
             <ul>
-                <li>Legal process (court orders, subpoenas)</li>
+                <li>Legal process (court orders, subpoenas, warrants)</li>
                 <li>Government or regulatory requests</li>
                 <li>Protection of our rights, property, or safety</li>
                 <li>Investigation of fraud or security issues</li>
+                <li>Enforcement of our Terms of Service</li>
             </ul>
 
             <h3>3.3 Business Transfers</h3>
-            <p>If Diamondback Coding is involved in a merger, acquisition, or sale of assets, your information may be transferred to the new entity.</p>
+            <p>If Diamondback Coding is involved in a merger, acquisition, or sale of assets, your information may be transferred to the new entity. You will be notified via email and/or a prominent notice on our website of any change in ownership or uses of your personal information.</p>
 
             <h2>4. Data Security</h2>
             
             <p>We implement industry-standard security measures to protect your information:</p>
             <ul>
-                <li><strong>Encryption:</strong> Passwords are hashed using bcrypt; sensitive data is encrypted in transit using HTTPS/TLS</li>
-                <li><strong>Access Controls:</strong> Limited employee access to personal data on a need-to-know basis</li>
-                <li><strong>Secure Infrastructure:</strong> Our databases and servers use security best practices</li>
-                <li><strong>Regular Updates:</strong> We keep our systems updated with security patches</li>
+                <li><strong>Encryption:</strong> All passwords are hashed using bcrypt; sensitive data is encrypted in transit using HTTPS/TLS 1.2 or higher</li>
+                <li><strong>Access Controls:</strong> Limited employee access to personal data on a need-to-know basis with multi-factor authentication</li>
+                <li><strong>Secure Infrastructure:</strong> Our databases and servers use security best practices including firewalls, intrusion detection, and regular security audits</li>
+                <li><strong>Regular Updates:</strong> We keep our systems updated with the latest security patches</li>
+                <li><strong>Data Backups:</strong> Regular encrypted backups to prevent data loss</li>
             </ul>
             
             <div class="info-box">
-                <p><strong>Note:</strong> No method of transmission over the internet is 100% secure. While we strive to protect your information, we cannot guarantee absolute security.</p>
+                <p><strong>Note:</strong> No method of transmission over the internet or electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your personal information, we cannot guarantee absolute security.</p>
             </div>
 
             <h2>5. Data Retention</h2>
             
             <p>We retain your information for as long as necessary to fulfill the purposes outlined in this policy:</p>
             <ul>
-                <li><strong>Active Projects:</strong> Information is retained for the duration of your project plus 3 years for legal and accounting purposes</li>
-                <li><strong>Lead Information:</strong> Contact form submissions are retained for up to 2 years unless you request deletion</li>
-                <li><strong>Account Data:</strong> User accounts and associated data are retained until account deletion is requested</li>
+                <li><strong>Active Projects:</strong> Information is retained for the duration of your project plus 7 years for legal, accounting, and tax purposes</li>
+                <li><strong>Lead Information:</strong> Contact form submissions are retained for up to 3 years unless you request deletion</li>
+                <li><strong>Account Data:</strong> User accounts and associated data are retained until account deletion is requested or after 2 years of inactivity</li>
                 <li><strong>Legal Obligations:</strong> Some data may be retained longer to comply with legal or regulatory requirements</li>
+                <li><strong>Marketing Data:</strong> Marketing communications data is retained until you opt-out or for up to 2 years of inactivity</li>
             </ul>
 
             <h2>6. Your Privacy Rights</h2>
@@ -198,15 +952,18 @@
                 <li><strong>Correction:</strong> Request correction of inaccurate or incomplete information</li>
                 <li><strong>Deletion:</strong> Request deletion of your personal information (subject to legal retention requirements)</li>
                 <li><strong>Opt-Out:</strong> Unsubscribe from marketing communications at any time</li>
+                <li><strong>Data Portability:</strong> Request a copy of your data in a structured, commonly used format</li>
             </ul>
 
-            <h3>6.2 California Residents (CCPA)</h3>
-            <p>California residents have additional rights under the California Consumer Privacy Act:</p>
+            <h3>6.2 California Residents (CCPA/CPRA)</h3>
+            <p>California residents have additional rights under the California Consumer Privacy Act and California Privacy Rights Act:</p>
             <ul>
-                <li>Right to know what personal information is collected and how it's used</li>
-                <li>Right to delete personal information (with exceptions)</li>
-                <li>Right to opt-out of the sale of personal information (we do not sell personal information)</li>
-                <li>Right to non-discrimination for exercising your CCPA rights</li>
+                <li>Right to know what personal information is collected, used, shared, or sold and with whom</li>
+                <li>Right to delete personal information (with exceptions for legal compliance)</li>
+                <li>Right to opt-out of the sale or sharing of personal information (we do not sell personal information)</li>
+                <li>Right to correct inaccurate personal information</li>
+                <li>Right to limit the use and disclosure of sensitive personal information</li>
+                <li>Right to non-discrimination for exercising your CCPA/CPRA rights</li>
             </ul>
 
             <h3>6.3 EU/UK Residents (GDPR)</h3>
@@ -217,9 +974,13 @@
                 <li>Right to object to processing</li>
                 <li>Right to withdraw consent at any time</li>
                 <li>Right to lodge a complaint with a supervisory authority</li>
+                <li>Right to not be subject to automated decision-making</li>
             </ul>
 
-            <p><strong>To exercise any of these rights, please contact us at <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a></strong></p>
+            <h3>6.4 Other State Privacy Rights</h3>
+            <p>Residents of Virginia (VCDPA), Colorado (CPA), Connecticut (CTDPA), and other states with comprehensive privacy laws have similar rights. These may include rights to access, correct, delete, and obtain a copy of personal information, as well as to opt-out of certain processing activities.</p>
+
+            <p><strong>To exercise any of these rights, please contact us at <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a>. We will respond to your request within 30-45 days depending on your jurisdiction.</strong></p>
 
             <h2>7. Cookies and Tracking Technologies</h2>
             
@@ -227,221 +988,270 @@
             
             <h3>7.1 Types of Cookies We Use</h3>
             <ul>
-                <li><strong>Essential Cookies:</strong> Required for website functionality (e.g., authentication, session management)</li>
-                <li><strong>Analytics Cookies:</strong> Help us understand how visitors use our website (e.g., page views, traffic sources)</li>
+                <li><strong>Essential Cookies:</strong> Required for website functionality (e.g., authentication, session management, security)</li>
+                <li><strong>Analytics Cookies:</strong> Help us understand how visitors use our website (e.g., page views, traffic sources, user behavior)</li>
                 <li><strong>Preference Cookies:</strong> Remember your settings and preferences</li>
+                <li><strong>Marketing Cookies:</strong> Track visitors across websites to display relevant advertisements (we obtain consent where required)</li>
             </ul>
 
             <h3>7.2 Managing Cookies</h3>
-            <p>You can control cookies through your browser settings. Note that disabling cookies may affect website functionality.</p>
+            <p>You can control cookies through your browser settings. Most browsers allow you to refuse or delete cookies. Note that disabling cookies may affect website functionality and your user experience. You can learn more about managing cookies at <a href="https://www.aboutcookies.org" target="_blank">www.aboutcookies.org</a>.</p>
+
+            <h3>7.3 Do Not Track</h3>
+            <p>Some browsers have "Do Not Track" features. Currently, no uniform technology standard for recognizing and implementing Do Not Track signals has been finalized. We do not currently respond to Do Not Track signals.</p>
 
             <h2>8. Third-Party Links</h2>
             
-            <p>Our website may contain links to third-party websites. We are not responsible for the privacy practices of these external sites. We encourage you to read their privacy policies.</p>
+            <p>Our website may contain links to third-party websites, including client portfolio sites, partner services, and social media platforms. We are not responsible for the privacy practices of these external sites. We encourage you to read their privacy policies before providing any personal information.</p>
 
             <h2>9. Children's Privacy</h2>
             
-            <p>Our services are not intended for individuals under the age of 18. We do not knowingly collect personal information from children. If you believe we have collected information from a child, please contact us immediately.</p>
+            <p>Our services are not intended for individuals under the age of 18. We do not knowingly collect personal information from children under 18. If you are a parent or guardian and believe we have collected information from a child, please contact us immediately at <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a>, and we will delete such information.</p>
 
             <h2>10. International Data Transfers</h2>
             
-            <p>Your information may be transferred to and processed in countries other than your own. We ensure appropriate safeguards are in place to protect your data in accordance with this Privacy Policy and applicable laws.</p>
+            <p>Your information may be transferred to and processed in countries other than your own, including the United States. We ensure appropriate safeguards are in place to protect your data in accordance with this Privacy Policy and applicable laws. For EU/UK residents, we use Standard Contractual Clauses approved by the European Commission for international data transfers.</p>
 
-            <h2>11. Changes to This Privacy Policy</h2>
+            <h2>11. Payment Processing</h2>
             
-            <p>We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated "Last Updated" date. Significant changes will be communicated via email to registered users.</p>
-            
-            <p>Your continued use of our services after changes constitute acceptance of the updated policy.</p>
+            <p>We use third-party payment processors to handle all payment transactions. We do not store complete credit card information on our servers. Payment information is encrypted and processed in accordance with Payment Card Industry Data Security Standard (PCI-DSS) requirements. Our payment processors include:</p>
+            <ul>
+                <li>Stripe (for credit card processing)</li>
+                <li>PayPal (for alternative payment methods)</li>
+            </ul>
 
-            <h2>12. Contact Information</h2>
+            <h2>12. Changes to This Privacy Policy</h2>
+            
+            <p>We may update this Privacy Policy from time to time to reflect changes in our practices, technology, legal requirements, or other factors. Changes will be posted on this page with an updated "Last Updated" date. Significant changes will be communicated via:</p>
+            <ul>
+                <li>Email notification to registered users</li>
+                <li>Prominent notice on our website</li>
+                <li>In-app notification (if applicable)</li>
+            </ul>
+            
+            <p>Your continued use of our services after changes constitute acceptance of the updated policy. We encourage you to review this Privacy Policy periodically.</p>
+
+            <h2>13. Contact Information</h2>
             
             <p>If you have questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:</p>
             
             <div class="info-box">
                 <p><strong>Diamondback Coding</strong><br>
                 Email: <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a><br>
-                General Inquiries: <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a><br>
+                Phone: <a href="tel:+19402178680">+1 (940) 217-8680</a><br>
                 Website: <a href="https://diamondbackcoding.com">https://diamondbackcoding.com</a></p>
+                <p style="margin-top: 16px;">We will respond to your request within 30-45 days of receipt, depending on the complexity of your request and applicable law.</p>
             </div>
 
-            <p>We will respond to your request within 30 days of receipt.</p>
+            <hr>
 
-            <hr style="border: none; border-top: 1px solid rgba(16, 185, 129, 0.2); margin: 40px 0;">
-
-            <p style="font-size: 12px; color: var(--text-light); line-height: 1.6;">
-                <strong>Disclaimer:</strong> This Privacy Policy is provided as a template and may not cover all legal requirements for your specific jurisdiction. We recommend consulting with a legal professional to ensure compliance with all applicable privacy laws and regulations, including GDPR, CCPA, and other data protection laws.
-            </p>
+            <div class="disclaimer-box">
+                <p>
+                    <strong>Legal Disclaimer:</strong> This Privacy Policy is provided for informational purposes and represents our current privacy practices. It may not cover all legal requirements for every jurisdiction. We recommend consulting with a legal professional to ensure compliance with all applicable privacy laws and regulations, including but not limited to GDPR, CCPA, CPRA, VCDPA, CPA, CTDPA, and other federal and state data protection laws. This policy should be reviewed in conjunction with our Terms of Service.
+                </p>
+            </div>
         </div>
     </div>
 
-<!-- ========================================
-     FOOTER
-======================================== -->
-<footer class="footer">
-    <div class="footer-container">
-        <div>
-            <div class="footer-brand">Diamondback Coding</div>
-            <p class="footer-description">
-                Building exceptional web experiences for businesses that want to win. 
-                Clean code, fast delivery, real results.
-            </p>
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-column">
+                <h4>Company</h4>
+                <ul class="footer-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="services.html">Services</a></li>
+                    <li><a href="portfolio.html">Portfolio</a></li>
+                    <li><a href="pricing.html">Pricing</a></li>
+                    <li><a href="#" onclick="openModal(); return false;">Contact</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Services</h4>
+                <ul class="footer-links">
+                    <li><a href="services.html">Web Design</a></li>
+                    <li><a href="services.html">Web Development</a></li>
+                    <li><a href="services.html">E-Commerce Solutions</a></li>
+                    <li><a href="services.html">SEO & Marketing</a></li>
+                    <li><a href="services.html">Website Maintenance</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Resources</h4>
+                <ul class="footer-links">
+                    <li><a href="#">Blog</a></li>
+                    <li><a href="#">Case Studies</a></li>
+                    <li><a href="#">FAQs</a></li>
+                    <li><a href="#">Support</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Contact</h4>
+                <ul class="footer-links">
+                    <li><a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a></li>
+                    <li><a href="tel:+19402178680">+1 (940) 217-8680</a></li>
+                    <li>Mon-Fri: 8AM - 5PM CST</li>
+                </ul>
+            </div>
         </div>
 
-        <div>
-            <h4 class="footer-title">Services</h4>
-            <ul class="footer-links">
-        <li><a href="services.html">Web Design</a></li>
-        <li><a href="services.html">Web Development</a></li>
-        <li><a href="services.html">E-commerce</a></li>
-        <li><a href="services.html">Web Applications</a></li>
-        <!-- ADD THESE -->
-        <li><a href="services.html">SEO Services</a></li>
-        <li><a href="services.html">Digital Marketing</a></li>
-        <li><a href="services.html">Social Media</a></li>
-        <li><a href="services.html">Google Ads</a></li>
-            </ul>
+        <div class="footer-bottom">
+            <div class="footer-bottom-left">
+                <p class="footer-copyright">© 2026 Diamondback Coding. All rights reserved.</p>
+                <ul class="footer-legal-links">
+                    <li><a href="privacy_policy.html">Privacy Policy</a></li>
+                    <li><a href="terms_of_service.html">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div class="footer-social">
+                <a href="#" aria-label="LinkedIn">in</a>
+                <a href="#" aria-label="Twitter">𝕏</a>
+                <a href="#" aria-label="Instagram">ig</a>
+            </div>
         </div>
+    </footer>
 
-        <div>
-            <h4 class="footer-title">Company</h4>
-            <ul class="footer-links">
-                <li><a href="portfolio.html">Portfolio</a></li>
-                <li><a href="#" onclick="openModal(); return false;">Contact</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h4 class="footer-title">Legal</h4>
-            <ul class="footer-links">
-                <li><a href="privacy_policy.html">Privacy Policy</a></li>
-                <li><a href="terms_of_service.html">Terms of Service</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h4 class="footer-title">Areas We Serve:</h4>
-            <ul class="footer-links">
-                <li><a href="web-development-llano-tx.html">Llano</a></li>
-                <li><a href="web-design-marble-falls-tx.html">Marble Falls</a></li>
-                <li><a href="website-developer-kingsland-tx.html">Kingsland</a></li>
-                <li><a href="web-services-brady-tx.html">Brady</a></li>
-                <li><a href="custom-websites-mason-tx.html">Mason</a></li>
-                <li><a href="web-development-fredericksburg-tx.html">Fredericksburg</a></li>
-                <li><a href="web-design-burnet-tx.html">Burnet</a></li>
-                <li><a href="seo-services-johnson-city-tx.html">Johnson City</a></li>
-                <li><a href="digital-marketing-lampasas-tx.html">Lampasas</a></li>
-                <li><a href="web-developer-horseshoe-bay-tx.html">Horseshoe Bay</a></li>
-                <li><a href="website-design-buchanan-dam-tx.html">Buchanan Dam</a></li>
-                <li><a href="web-developer-blanco-tx.html">Blanco</a></li>
-                <li><a href="web-services-kerrville-tx.html">Kerrville</a></li>
-                <li><a href="web-development-boerne-tx.html">Boerne</a></li>
-                <li><a href="web-services-comfort-tx.html">Comfort</a></li>
-            </ul>
-        </div>
-
-        <div>
-            <h4 class="footer-title">Connect</h4>
-            <ul class="footer-links">
-                <li><a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a></li>
-                <li><a href="tel:+19402178680">+1 (940) 217-8680</li>
-                <li>// Available Mon-Fri<br>8AM - 5PM CST</a></li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="footer-bottom">
-        <p>© <time datetime="2026">2026</time> Diamondback Coding. Built with code and caffeine.</p>
-    </div>
-</footer>
-
-<!-- ========================================
-         CONTACT MODAL - ENHANCED VERSION
-         Replace your existing modal in index.html with this
-    ======================================== -->
+    <!-- CONTACT MODAL -->
     <div class="modal-overlay" id="contactModal">
         <div class="modal-content">
-            <button class="modal-close" onclick="closeModal()"></button>
+            <button class="modal-close" onclick="closeModal()">×</button>
             
-            <span class="modal-badge">// Let's Talk</span>
+            <span class="modal-badge">LET'S TALK</span>
             <h2 class="modal-title">Start Your Project</h2>
             <p class="modal-description">
-                Fill out the form below and we'll get back to you within 24 hours 
-                with a detailed quote and project timeline.
+                Fill out the form below and we'll get back to you within 24 hours with a detailed quote and project timeline.
             </p>
 
             <form class="modal-form" id="contactForm" onsubmit="handleSubmit(event)">
                 <div class="form-group">
-                    <label class="form-label">// Your Name *</label>
+                    <label class="form-label">Full Name *</label>
                     <input type="text" id="fullName" class="form-input" placeholder="John Doe" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Email Address *</label>
+                    <label class="form-label">Email Address *</label>
                     <input type="email" id="email" class="form-input" placeholder="john@example.com" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Phone Number</label>
+                    <label class="form-label">Phone Number</label>
                     <input type="tel" id="phone" class="form-input" placeholder="+1 (234) 567-8900">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Service Needed *</label>
+                    <label class="form-label">Service Needed *</label>
                     <select id="service" class="form-input" required>
                         <option value="">Select a service...</option>
-<option value="Web Design">Web Design</option>
-<option value="Web Development">Web Development</option>
-<option value="E-commerce Platform">E-commerce Platform</option>
-<option value="Custom Web Application">Custom Web Application</option>
-<option value="Landing Page">Landing Page</option>
-<option value="Corporate Website">Corporate Website</option>
-<option value="Website Redesign">Website Redesign</option>
-<option value="Web Maintenance">Web Maintenance</option>
-<option value="SEO Optimization">SEO Optimization</option>
-<option value="Marketing">Marketing</option>
+                        <option value="Web Design">Web Design</option>
+                        <option value="Web Development">Web Development</option>
+                        <option value="E-commerce Platform">E-commerce Platform</option>
+                        <option value="Custom Web Application">Custom Web Application</option>
+                        <option value="SEO Optimization">SEO Optimization</option>
+                        <option value="Website Maintenance">Website Maintenance</option>
                         <option value="Other">Other / Not Sure</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Budget Range *</label>
+                    <label class="form-label">Budget Range *</label>
                     <select id="budget" class="form-input" required>
                         <option value="">Select your budget...</option>
-                        <option value="$1499.99">$1499.99 (Starter)</option>
-                        <option value="$2999.99">$2999.99 (Professional)</option>
-                        <option value="Custom">Custom (Enterprise)</option>
+                        <option value="$1,500 - $3,000">$1,500 - $3,000</option>
+                        <option value="$3,000 - $5,000">$3,000 - $5,000</option>
+                        <option value="$5,000 - $10,000">$5,000 - $10,000</option>
+                        <option value="$10,000+">$10,000+</option>
                         <option value="Not Sure">Not Sure Yet</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">// Project Details *</label>
-                    <textarea id="details" class="form-textarea" placeholder="Tell us about your project, timeline, specific features you need, etc..." required></textarea>
+                    <label class="form-label">Project Details *</label>
+                    <textarea id="details" class="form-textarea" placeholder="Tell us about your project..." required></textarea>
                 </div>
 
                 <button type="submit" class="form-submit">Send Message</button>
 
-<p style="font-size: 11px; color: var(--text-light); margin-top: 16px; text-align: center; line-height: 1.5;">
-    By submitting this form, you agree to our 
-    <a href="privacy_policy.html" target="_blank" style="color: var(--primary); text-decoration: none; border-bottom: 1px solid var(--primary);">Privacy Policy</a>
-    and
-    <a href="terms_of_service.html" target="_blank" style="color: var(--primary); text-decoration: none; border-bottom: 1px solid var(--primary);">Terms of Service</a>.
-</p>
+                <p style="font-size: 12px; color: var(--grey-600); margin-top: 16px; text-align: center;">
+                    By submitting this form, you agree to our 
+                    <a href="privacy_policy.html" style="color: var(--black); text-decoration: underline;">Privacy Policy</a>
+                    and
+                    <a href="terms_of_service.html" style="color: var(--black); text-decoration: underline;">Terms of Service</a>.
+                </p>
             </form>
         </div>
     </div>
+
     <script>
+        // Modal Functions
+        function openModal() {
+            document.getElementById('contactModal').classList.add('active');
+        }
 
-// Replace the existing form submit handler in your index.html with this:
+        function closeModal() {
+            document.getElementById('contactModal').classList.remove('active');
+        }
 
-// Form Submit Handler - ENHANCED VERSION
+        // Close modal when clicking outside
+        document.getElementById('contactModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const navLinks = document.querySelector('.nav-links');
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                navLinks.classList.toggle('active');
+                this.classList.toggle('active');
+            });
+        }
+
+        document.querySelectorAll('.has-dropdown > a').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                if (window.innerWidth <= 768) {
+                    e.preventDefault();
+                    var parent = this.closest('.has-dropdown');
+                    document.querySelectorAll('.has-dropdown').forEach(function(item) {
+                        if (item !== parent) item.classList.remove('active');
+                    });
+                    parent.classList.toggle('active');
+                }
+            });
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('nav')) {
+                if (navLinks) navLinks.classList.remove('active');
+                if (mobileMenuBtn) mobileMenuBtn.classList.remove('active');
+                document.querySelectorAll('.has-dropdown').forEach(function(item) {
+                    item.classList.remove('active');
+                });
+            }
+        });
+
+        document.querySelectorAll('.nav-links a').forEach(function(link) {
+            link.addEventListener('click', function() {
+                if (this.closest('.dropdown-menu')) {
+                    if (navLinks) navLinks.classList.remove('active');
+                    if (mobileMenuBtn) mobileMenuBtn.classList.remove('active');
+                }
+            });
+        });
+
+        // Form Submit Handler
         async function handleSubmit(event) {
             event.preventDefault();
             
             const submitBtn = event.target.querySelector('.form-submit');
             const originalBtnText = submitBtn.textContent;
             
-            // Get form data with proper field mapping
             const fullName = document.getElementById('fullName').value.trim();
             const nameParts = fullName.split(' ');
             
@@ -455,16 +1265,13 @@
                 details: document.getElementById('details').value.trim()
             };
             
-            // Validate required fields
             if (!formData.firstName || !formData.email || !formData.service || !formData.budget || !formData.details) {
-                alert('⚠️ Please fill out all required fields marked with *');
+                alert('Please fill out all required fields marked with *');
                 return;
             }
             
-            // Disable button and show loading state
             submitBtn.disabled = true;
-            submitBtn.textContent = '⏳ Sending...';
-            submitBtn.style.cursor = 'not-allowed';
+            submitBtn.textContent = 'Sending...';
             submitBtn.style.opacity = '0.6';
             
             try {
@@ -479,73 +1286,21 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Success!
-                    alert('✅ Thank you for reaching out! We\'ve received your project request and will get back to you within 24 hours.');
+                    alert('Thank you! We\'ve received your request and will get back to you within 24 hours.');
                     closeModal();
                     document.getElementById('contactForm').reset();
                 } else {
-                    // Server returned an error
-                    alert('❌ Error: ' + (data.message || 'Something went wrong. Please try again.'));
+                    alert('Error: ' + (data.message || 'Something went wrong. Please try again.'));
                 }
             } catch (error) {
                 console.error('Form submission error:', error);
-                alert('❌ Network error. Please check your internet connection and try again.');
+                alert('Network error. Please try again.');
             } finally {
-                // Re-enable button
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalBtnText;
-                submitBtn.style.cursor = 'pointer';
                 submitBtn.style.opacity = '1';
             }
         }
-
-        // Keep your existing modal functions (openModal, closeModal)
-        // This is just showing them again for completeness:
-        
-        // NEW VERSION (USE THIS):
-function openModal() {
-    const modal = document.getElementById('contactModal');
-    modal.classList.add('active');
-    // ✅ Let modal handle its own scrolling
-}
-
-        // NEW VERSION (USE THIS):
-function closeModal() {
-    const modal = document.getElementById('contactModal');
-    modal.classList.remove('active');
-    // ✅ DON'T touch body overflow
-}
-
-        // Close modal when clicking outside
-        document.getElementById('contactModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
-        });
-
-    // NEW VERSION (USE THIS):
-function toggleMobileMenu() {
-    const btn = document.querySelector('.mobile-menu-btn');
-    const nav = document.getElementById('mobileNav');
-    
-    const isActive = btn.classList.toggle('active');
-    nav.classList.toggle('active');
-    btn.setAttribute('aria-expanded', isActive);
-    
-    // ✅ DON'T touch body overflow - let it scroll naturally
-}
-
-    // NEW VERSION (USE THIS):
-function closeMobileMenu() {
-    const btn = document.querySelector('.mobile-menu-btn');
-    const nav = document.getElementById('mobileNav');
-    
-    btn.classList.remove('active');
-    nav.classList.remove('active');
-    btn.setAttribute('aria-expanded', 'false');
-    
-    // ✅ DON'T touch body overflow
-}
-</script>
+    </script>
 </body>
 </html>

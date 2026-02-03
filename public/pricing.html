@@ -4498,16 +4498,16 @@ body.crm-active .hero,
             <p style="font-size: 16px; color: rgba(255,255,255,0.8);">Tell us about your needs and we'll get back to you within 24 hours.</p>
         </div>
         <div style="padding: 60px;">
-            <form id="contactForm" onsubmit="handleSubmit(event)">
+<form id="contactForm" onsubmit="handleSubmit(event)">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Full Name *</label><input type="text" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
-                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Email *</label><input type="email" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
+                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Full Name *</label><input type="text" name="fullName" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
+                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Email *</label><input type="email" name="email" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Phone *</label><input type="tel" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
-                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Service *</label><select required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"><option value="">Select</option><option>Website</option><option>CRM</option><option>SEO</option><option>Marketing</option></select></div>
+                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Phone *</label><input type="tel" name="phone" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
+                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Service *</label><select name="service" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"><option value="">Select</option><option>Website</option><option>CRM</option><option>SEO</option><option>Marketing</option></select></div>
                 </div>
-                <div style="margin-bottom: 24px;"><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Details *</label><textarea required rows="5" style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></textarea></div>
+                <div style="margin-bottom: 24px;"><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Details *</label><textarea name="details" required rows="5" style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></textarea></div>
                 <button type="submit" style="background: #F4C87E; color: #000; padding: 18px 48px; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; border: none; cursor: pointer; width: 100%;">Send Request</button>
             </form>
         </div>
@@ -4515,7 +4515,7 @@ body.crm-active .hero,
 </div>
 
 <script>
-        // Modal Functions
+// Modal Functions
     function openModal() {
         document.getElementById('contactModal').style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -4526,11 +4526,6 @@ body.crm-active .hero,
         document.body.style.overflow = 'auto';
     }
 
-    // Close modal when clicking outside
-    document.getElementById('contactModal').addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
-
     // Close modal with Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && document.getElementById('contactModal').style.display === 'flex') {
@@ -4538,29 +4533,62 @@ body.crm-active .hero,
         }
     });
 
-    // Form submission
-    function handleSubmit(event) {
+    // Form submission with lead capture
+    async function handleSubmit(event) {
         event.preventDefault();
-        alert('✅ Thank you! We\'ve received your project request and will get back to you within 24 hours.');
-        closeModal();
-        document.getElementById('contactForm').reset();
+        
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        
+        submitBtn.textContent = 'SENDING...';
+        submitBtn.disabled = true;
+        
+        try {
+            const formData = new FormData(event.target);
+            const data = {
+                name: formData.get('fullName'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                service: formData.get('service'),
+                project_type: formData.get('service'),
+                message: formData.get('details'),
+                details: formData.get('details'),
+                source: 'Pricing Page'
+            };
+            
+            console.log('📤 FORM SUBMISSION STARTED');
+            console.log('Form Data:', data);
+            
+            const response = await fetch('https://diamondbackcoding.com/api/leads', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            console.log('Response Status:', response.status);
+            
+            const result = await response.json();
+            console.log('Response Data:', result);
+            
+            if (result.success) {
+                console.log('✅ SUCCESS');
+                alert('✅ Thank you! We\'ve received your request and will contact you within 24 hours.');
+                closeModal();
+                document.getElementById('contactForm').reset();
+            } else {
+                throw new Error(result.message || 'Submission failed');
+            }
+            
+        } catch (error) {
+            console.error('❌ FORM SUBMISSION ERROR:', error);
+            alert('⚠️ There was an error submitting your form. Please try again or call us at (940) 217-8680.');
+        } finally {
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
     }
-// ==========================================
-// MODAL FUNCTIONS (MUST BE GLOBAL)
-// ==========================================
-function openModal() { 
-    document.getElementById('contactModal').style.display = 'flex'; 
-}
-
-function closeModal() { 
-    document.getElementById('contactModal').style.display = 'none'; 
-}
-
-function handleSubmit(e) { 
-    e.preventDefault(); 
-    alert('Thank you!'); 
-    closeModal(); 
-}
 
 // ==========================================
 // CHATBOT (MUST BE GLOBAL)

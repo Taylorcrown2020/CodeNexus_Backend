@@ -943,6 +943,151 @@
             stroke-width: 2;
         }
 
+        /* SUCCESS MODAL */
+        .success-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 9999999;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .success-content {
+            background: white;
+            max-width: 480px;
+            width: 90%;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }
+
+        .success-icon {
+            width: 72px;
+            height: 72px;
+            background: var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .success-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--black);
+            stroke-width: 3;
+        }
+
+        .success-header h3 {
+            font-size: 28px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 12px;
+        }
+
+        .success-header p {
+            font-size: 15px;
+            color: rgba(255,255,255,0.75);
+            line-height: 1.6;
+        }
+
+        .success-body {
+            padding: 32px 40px 40px;
+            background: white;
+        }
+
+        .success-details {
+            background: var(--grey-50);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .success-detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .success-detail-label {
+            color: var(--grey-700);
+            font-weight: 500;
+        }
+
+        .success-detail-value {
+            color: var(--black);
+            font-weight: 600;
+        }
+
+        .success-actions {
+            display: grid;
+            gap: 12px;
+        }
+
+        .success-btn {
+            padding: 16px 32px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+            border-radius: 6px;
+        }
+
+        .success-btn-primary {
+            background: var(--gold);
+            color: var(--black);
+        }
+
+        .success-btn-primary:hover {
+            background: #e6b86b;
+        }
+
+        .success-btn-secondary {
+            background: transparent;
+            color: var(--grey-700);
+            border: 2px solid var(--grey-300);
+        }
+
+        .success-btn-secondary:hover {
+            background: var(--grey-50);
+        }
+
         /* MOBILE STYLES */
         @media (max-width: 768px) {
             nav {
@@ -1129,6 +1274,22 @@
                 height: calc(100% - 140px);
                 right: 16px;
                 bottom: 90px;
+            }
+
+            .success-content {
+                width: 95%;
+            }
+
+            .success-header {
+                padding: 32px 24px;
+            }
+
+            .success-header h3 {
+                font-size: 24px;
+            }
+
+            .success-body {
+                padding: 24px;
             }
         }
     </style>
@@ -1575,6 +1736,37 @@
     </div>
 </div>
 
+<!-- SUCCESS MODAL -->
+<div class="success-modal" id="successModal">
+    <div class="success-content">
+        <div class="success-header">
+            <div class="success-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <h3>Request Received!</h3>
+            <p>Thank you for reaching out. We'll review your request and get back to you within 24 hours.</p>
+        </div>
+        <div class="success-body">
+            <div class="success-details">
+                <div class="success-detail-item">
+                    <span class="success-detail-label">Response Time</span>
+                    <span class="success-detail-value">Within 24 Hours</span>
+                </div>
+                <div class="success-detail-item">
+                    <span class="success-detail-label">Next Steps</span>
+                    <span class="success-detail-value">We'll Contact You</span>
+                </div>
+            </div>
+            <div class="success-actions">
+                <button class="success-btn success-btn-primary" onclick="closeSuccessModal()">Got It</button>
+                <button class="success-btn success-btn-secondary" onclick="closeSuccessModal(); openModal();">Submit Another Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     // Mobile Menu Toggle
     const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
@@ -1619,15 +1811,29 @@
         document.body.style.overflow = 'auto';
     }
 
+    function closeSuccessModal() {
+        document.getElementById('successModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
     // Close modal when clicking outside
     document.getElementById('contactModal').addEventListener('click', function(e) {
         if (e.target === this) closeModal();
     });
 
+    document.getElementById('successModal').addEventListener('click', function(e) {
+        if (e.target === this) closeSuccessModal();
+    });
+
     // Close modal with Escape key
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && document.getElementById('contactModal').style.display === 'flex') {
-            closeModal();
+        if (e.key === 'Escape') {
+            if (document.getElementById('contactModal').style.display === 'flex') {
+                closeModal();
+            }
+            if (document.getElementById('successModal').style.display === 'flex') {
+                closeSuccessModal();
+            }
         }
     });
 
@@ -1673,9 +1879,13 @@
             
             if (result.success) {
                 console.log('✅ SUCCESS');
-                alert('✅ Thank you! We\'ve received your request and will contact you within 24 hours.');
+                // Close contact modal
                 closeModal();
+                // Reset form
                 document.getElementById('contactForm').reset();
+                // Show success modal
+                document.getElementById('successModal').style.display = 'flex';
+                document.body.style.overflow = 'hidden';
             } else {
                 throw new Error(result.message || 'Submission failed');
             }

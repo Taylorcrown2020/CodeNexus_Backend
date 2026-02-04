@@ -4611,23 +4611,27 @@ body.crm-active .hero,
 </div>
 
 <script>
-// Modal Functions
-    function openModal() {
-        document.getElementById('contactModal').style.display = 'flex';
+function openModal() {
+    console.log('🔓 Opening modal...');
+    const modal = document.getElementById('contactModal');
+    if (modal) {
+        modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        console.log('✅ Modal opened');
+    } else {
+        console.error('❌ Modal not found!');
     }
+}
 
-    function closeModal() {
-        document.getElementById('contactModal').style.display = 'none';
+function closeModal() {
+    console.log('🔒 Closing modal...');
+    const modal = document.getElementById('contactModal');
+    if (modal) {
+        modal.style.display = 'none';
         document.body.style.overflow = 'auto';
+        console.log('✅ Modal closed');
     }
-
-    // Close modal with Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && document.getElementById('contactModal').style.display === 'flex') {
-            closeModal();
-        }
-    });
+}
 
     // Form submission with lead capture
     async function handleSubmit(event) {

@@ -1390,7 +1390,7 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
         const adminCheck = await pool.query('SELECT * FROM admin_users LIMIT 1');
         
         if (adminCheck.rows.length === 0) {
-            const defaultPassword = 'Admin123!';
+            const defaultPassword = 'Tango0401!';
             const hashedPassword = await bcrypt.hash(defaultPassword, 10);
             
             await pool.query(

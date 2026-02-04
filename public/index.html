@@ -655,6 +655,7 @@ window.addEventListener('load', function() {
     justify-content: center;
     overflow: hidden;
     max-width: 100%;
+    padding: 20px 60px 20px 120px; /* Extra padding on left for phone */
 }
 
 .device-laptop {
@@ -663,7 +664,7 @@ window.addEventListener('load', function() {
 }
 
 .device-laptop .device-frame {
-    width: 600px;
+    width: 500px; /* Reduced from 600px */
     background: #1a1a1a;
     border-radius: 12px;
     padding: 12px;
@@ -672,21 +673,21 @@ window.addEventListener('load', function() {
 
 .device-laptop .device-frame img {
     width: 100%;
-    height: 400px; /* ADD THIS - constrains the height */
+    height: 330px; /* Reduced from 400px */
     border-radius: 6px;
     display: block;
-    object-fit: cover; /* ADD THIS - prevents distortion */
+    object-fit: cover;
 }
 
 .device-phone {
     position: absolute;
-    left: -40px;
+    left: 0; /* Changed from -40px */
     bottom: 30px;
     z-index: 3;
 }
 
 .device-phone .device-frame {
-    width: 200px;
+    width: 180px; /* Reduced from 200px */
     background: #1a1a1a;
     border-radius: 28px;
     padding: 12px;
@@ -706,7 +707,7 @@ window.addEventListener('load', function() {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 40px;
+    padding: 40px 60px 40px 120px; /* Extra padding on left for phone */
     overflow: hidden;
     max-width: 100%;
 }
@@ -725,11 +726,11 @@ window.addEventListener('load', function() {
 
 .laptop-screen img {
     width: 100%;
-    max-width: 900px;
-    height: 450px; /* ADD THIS */
+    max-width: 700px; /* Reduced from 900px */
+    height: 380px; /* Reduced from 450px */
     border-radius: 6px 6px 0 0;
     display: block;
-    object-fit: cover; /* ADD THIS */
+    object-fit: cover;
 }
 
 .laptop-base {
@@ -754,7 +755,7 @@ window.addEventListener('load', function() {
 
 .phone-mockup-overlay {
     position: absolute;
-    left: 40px;
+    left: 0; /* Changed from 40px */
     bottom: 40px;
     z-index: 3;
 }
@@ -764,7 +765,7 @@ window.addEventListener('load', function() {
     border-radius: 32px;
     padding: 14px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-    width: 200px;
+    width: 180px; /* Reduced from 200px */
 }
 
 .phone-frame img {
@@ -1060,6 +1061,7 @@ window.addEventListener('load', function() {
             justify-content: center;
             overflow: hidden;
             max-width: 100%;
+            padding: 40px 60px 40px 120px; /* Extra padding on left for phone */
         }
 
         .crm-laptop-device {
@@ -1072,7 +1074,7 @@ window.addEventListener('load', function() {
             border-radius: 12px 12px 0 0;
             padding: 16px 16px 0;
             box-shadow: 0 25px 80px rgba(0,0,0,0.35);
-            max-width: 800px;
+            max-width: 650px; /* Reduced from 800px */
         }
 
         .crm-laptop-frame img {
@@ -1103,7 +1105,7 @@ window.addEventListener('load', function() {
 
         .crm-phone-device {
             position: absolute;
-            left: 40px;
+            left: 0; /* Changed from 40px */
             bottom: 40px;
             z-index: 3;
         }
@@ -1113,7 +1115,7 @@ window.addEventListener('load', function() {
             border-radius: 32px;
             padding: 14px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-            width: 200px;
+            width: 180px; /* Reduced from 200px */
         }
 
         .crm-phone-frame img {
@@ -1347,23 +1349,23 @@ window.addEventListener('load', function() {
             /* Fix device mockups for mobile */
             .crm-device-showcase {
                 min-height: 350px;
-                padding: 0;
+                padding: 20px 20px 20px 80px; /* Adjusted padding for mobile */
             }
 
             .crm-laptop-frame {
-                max-width: 100%;
-                padding: 10px 10px 0;
+                max-width: 280px; /* Reduced for mobile */
+                padding: 8px 8px 0;
             }
 
             .crm-phone-device {
-                left: 20px;
+                left: 0;
                 bottom: 20px;
-                transform: scale(0.8);
+                transform: scale(0.65); /* Smaller scale for mobile */
                 transform-origin: bottom left;
             }
 
             .crm-phone-frame {
-                width: 140px;
+                width: 120px; /* Smaller for mobile */
             }
         }
 
@@ -3082,28 +3084,28 @@ nav {
     /* Fix device mockups for mobile */
     .device-mockups {
         height: 350px;
-        padding: 20px;
+        padding: 20px 20px 20px 80px; /* Adjusted padding for mobile */
     }
 
     .device-laptop .device-frame {
         width: 100%;
-        max-width: 100%;
+        max-width: 280px; /* Reduced for mobile */
         padding: 8px;
     }
 
     .device-laptop .device-frame img {
-        height: 250px;
+        height: 180px; /* Reduced for mobile */
     }
 
     .device-phone {
-        left: -10px;
+        left: 0;
         bottom: 10px;
-        transform: scale(0.75);
+        transform: scale(0.65); /* Smaller scale for mobile */
         transform-origin: bottom left;
     }
 
     .device-phone .device-frame {
-        width: 140px;
+        width: 120px; /* Smaller for mobile */
     }
 
     /* Fix laptop showcase for mobile */
@@ -3113,23 +3115,23 @@ nav {
     }
 
     .laptop-screen {
-        padding: 10px 10px 0;
+        padding: 8px 8px 0;
     }
 
     .laptop-screen img {
-        max-width: 100%;
-        height: 250px;
+        max-width: 280px;
+        height: 180px;
     }
 
     .phone-mockup-overlay {
-        left: 15px;
-        bottom: 15px;
-        transform: scale(0.75);
+        left: 0;
+        bottom: 10px;
+        transform: scale(0.65);
         transform-origin: bottom left;
     }
 
     .phone-frame {
-        width: 140px;
+        width: 120px;
     }
 
     .maps-content {

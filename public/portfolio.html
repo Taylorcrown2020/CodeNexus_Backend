@@ -2273,87 +2273,6 @@
 </div>
 
 <script>
-    // Modal Functions
-    function openModal() {
-        document.getElementById('contactModal').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeModal() {
-        document.getElementById('contactModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-
-    // Close modal when clicking outside
-    document.getElementById('contactModal').addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
-
-    // Close modal with Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && document.getElementById('contactModal').style.display === 'flex') {
-            closeModal();
-        }
-    });
-
-// Form submission with lead capture
-    async function handleSubmit(event) {
-        event.preventDefault();
-        
-        const submitBtn = event.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.textContent;
-        
-        submitBtn.textContent = 'SENDING...';
-        submitBtn.disabled = true;
-        
-        try {
-            const formData = new FormData(event.target);
-            const data = {
-                name: formData.get('fullName'),
-                email: formData.get('email'),
-                phone: formData.get('phone'),
-                service: formData.get('service'),
-                budget: formData.get('budget') || 'Not specified',
-                details: formData.get('details'),
-                project_type: formData.get('service'),
-                message: formData.get('details'),
-                source: 'Blog Page'
-            };
-            
-            console.log('📤 FORM SUBMISSION STARTED');
-            console.log('Form Data:', data);
-            
-            const response = await fetch('https://diamondbackcoding.com/api/leads', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-            
-            console.log('Response Status:', response.status);
-            
-            const result = await response.json();
-            console.log('Response Data:', result);
-            
-            if (result.success) {
-                console.log('✅ SUCCESS');
-                alert('✅ Thank you! We\'ve received your request and will contact you within 24 hours.');
-                closeModal();
-                document.getElementById('contactForm').reset();
-            } else {
-                throw new Error(result.message || 'Submission failed');
-            }
-            
-        } catch (error) {
-            console.error('❌ FORM SUBMISSION ERROR:', error);
-            alert('⚠️ There was an error submitting your form. Please try again or call us at (940) 217-8680.');
-        } finally {
-            submitBtn.textContent = originalText;
-            submitBtn.disabled = false;
-        }
-    }
-
     // Mobile Menu Toggle
     const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
     const navLinks = document.querySelector('.nav-links');
@@ -2483,7 +2402,279 @@ document.getElementById('chatbotInput').addEventListener('keypress', function(e)
         document.getElementById('chatbotSendBtn').click();
     }
 });
-</script>
+    // ==========================================
+    // FORM SUBMISSION
+    // ==========================================
+            function switchBrandTab(index) {
+            document.querySelectorAll('.brand-tab').forEach((tab, i) => {
+                tab.classList.toggle('active', i === index);
+            });
+            document.querySelectorAll('.brand-content').forEach((content, i) => {
+                content.classList.toggle('active', i === index);
+            });
+        }
 
+        function openModal() {
+            document.getElementById('contactModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('contactModal').classList.remove('active');
+        }
+
+        document.getElementById('contactModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+async function handleSubmit(event) {
+    event.preventDefault();
+    
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.textContent;
+    
+    const fullName = document.getElementById('fullName').value.trim();
+    const nameParts = fullName.split(' ');
+    
+    const formData = {
+        firstName: nameParts[0] || 'Unknown',
+        lastName: nameParts.slice(1).join(' ') || '',
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        service: document.getElementById('service').value,
+        details: document.getElementById('details').value.trim()
+    };
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Sending...';
+    
+    try {
+        const response = await fetch(`${window.location.origin}/api/leads`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Close contact modal
+            closeModal();
+            // Reset form
+            document.getElementById('contactForm').reset();
+            // Show success modal
+            document.getElementById('successModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        } else {
+            alert('❌ Error: ' + (data.message || 'Something went wrong. Please try again.'));
+        }
+    } catch (error) {
+        console.error('Form submission error:', error);
+        alert('❌ Network error. Please check your connection and try again.');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+    }
+}
+
+function closeSuccessModal() {
+    document.getElementById('successModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Close modals with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        if (document.getElementById('contactModal').classList.contains('active')) {
+            closeModal();
+        }
+        if (document.getElementById('successModal').style.display === 'flex') {
+            closeSuccessModal();
+        }
+    }
+});
+
+// Close success modal when clicking outside
+document.addEventListener('click', function(e) {
+    const successModal = document.getElementById('successModal');
+    if (e.target === successModal) {
+        closeSuccessModal();
+    }
+});
+</script>
+<!-- SUCCESS MODAL -->
+<div class="success-modal" id="successModal">
+    <div class="success-content">
+        <div class="success-header">
+            <div class="success-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <h3>Request Received!</h3>
+            <p>Thank you for reaching out. We'll review your request and get back to you within 24 hours.</p>
+        </div>
+        <div class="success-body">
+            <div class="success-details">
+                <div class="success-detail-item">
+                    <span class="success-detail-label">Response Time</span>
+                    <span class="success-detail-value">Within 24 Hours</span>
+                </div>
+                <div class="success-detail-item">
+                    <span class="success-detail-label">Next Steps</span>
+                    <span class="success-detail-value">We'll Contact You</span>
+                </div>
+            </div>
+            <div class="success-actions">
+                <button class="success-btn success-btn-primary" onclick="closeSuccessModal()">Got It</button>
+                <button class="success-btn success-btn-secondary" onclick="closeSuccessModal(); openModal();">Submit Another Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    /* SUCCESS MODAL */
+.success-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 9999999;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.success-content {
+    background: white;
+    max-width: 480px;
+    width: 90%;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.success-header {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+    padding: 40px;
+    text-align: center;
+    position: relative;
+}
+
+.success-icon {
+    width: 72px;
+    height: 72px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.success-icon svg {
+    width: 40px;
+    height: 40px;
+    stroke: var(--black);
+    stroke-width: 3;
+}
+
+.success-header h3 {
+    font-size: 28px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 12px;
+}
+
+.success-header p {
+    font-size: 15px;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.6;
+}
+
+.success-body {
+    padding: 32px 40px 40px;
+    background: white;
+}
+
+.success-details {
+    background: var(--grey-50);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.success-detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 14px;
+}
+
+.success-detail-label {
+    color: var(--grey-700);
+    font-weight: 500;
+}
+
+.success-detail-value {
+    color: var(--black);
+    font-weight: 600;
+}
+
+.success-actions {
+    display: grid;
+    gap: 12px;
+}
+
+.success-btn {
+    padding: 16px 32px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Inter', sans-serif;
+    border-radius: 6px;
+}
+
+.success-btn-primary {
+    background: var(--gold);
+    color: var(--black);
+}
+
+.success-btn-primary:hover {
+    background: #e6b86b;
+}
+
+.success-btn-secondary {
+    background: transparent;
+    color: var(--grey-700);
+    border: 2px solid var(--grey-300);
+}
+
+.success-btn-secondary:hover {
+    background: var(--grey-50);
+}
+</style>
 </body>
 </html>

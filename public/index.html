@@ -157,6 +157,7 @@ window.addEventListener('load', function() {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             overflow-x: hidden;
+            width: 100%;
         }
         
         .announcement-banner {
@@ -581,6 +582,8 @@ window.addEventListener('load', function() {
 /* Map visualization */
 .brand-visual-side {
     position: relative;
+    overflow: hidden;
+    max-width: 100%;
 }
 
 .map-container-visual {
@@ -650,6 +653,8 @@ window.addEventListener('load', function() {
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    max-width: 100%;
 }
 
 .device-laptop {
@@ -702,6 +707,8 @@ window.addEventListener('load', function() {
     align-items: center;
     justify-content: center;
     padding: 40px;
+    overflow: hidden;
+    max-width: 100%;
 }
 
 .laptop-mockup-large {
@@ -1041,6 +1048,8 @@ window.addEventListener('load', function() {
 
         .crm-visual-side {
             position: relative;
+            overflow: hidden;
+            max-width: 100%;
         }
 
         .crm-device-showcase {
@@ -1049,6 +1058,8 @@ window.addEventListener('load', function() {
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            max-width: 100%;
         }
 
         .crm-laptop-device {
@@ -1331,6 +1342,28 @@ window.addEventListener('load', function() {
 
             .crm-feature-card {
                 padding: 32px 24px;
+            }
+
+            /* Fix device mockups for mobile */
+            .crm-device-showcase {
+                min-height: 350px;
+                padding: 0;
+            }
+
+            .crm-laptop-frame {
+                max-width: 100%;
+                padding: 10px 10px 0;
+            }
+
+            .crm-phone-device {
+                left: 20px;
+                bottom: 20px;
+                transform: scale(0.8);
+                transform-origin: bottom left;
+            }
+
+            .crm-phone-frame {
+                width: 140px;
             }
         }
 
@@ -3044,6 +3077,59 @@ nav {
     .mockup-mobile {
         width: 140px;
         left: 10px;
+    }
+
+    /* Fix device mockups for mobile */
+    .device-mockups {
+        height: 350px;
+        padding: 20px;
+    }
+
+    .device-laptop .device-frame {
+        width: 100%;
+        max-width: 100%;
+        padding: 8px;
+    }
+
+    .device-laptop .device-frame img {
+        height: 250px;
+    }
+
+    .device-phone {
+        left: -10px;
+        bottom: 10px;
+        transform: scale(0.75);
+        transform-origin: bottom left;
+    }
+
+    .device-phone .device-frame {
+        width: 140px;
+    }
+
+    /* Fix laptop showcase for mobile */
+    .laptop-mockup-large {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .laptop-screen {
+        padding: 10px 10px 0;
+    }
+
+    .laptop-screen img {
+        max-width: 100%;
+        height: 250px;
+    }
+
+    .phone-mockup-overlay {
+        left: 15px;
+        bottom: 15px;
+        transform: scale(0.75);
+        transform-origin: bottom left;
+    }
+
+    .phone-frame {
+        width: 140px;
     }
 
     .maps-content {

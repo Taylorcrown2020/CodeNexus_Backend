@@ -4752,10 +4752,13 @@ function addBotMessage(text) {
 // TAB SWITCHING (MUST BE GLOBAL)
 // ==========================================
 function switchToTab(service) {
-    // Update all filter tabs (both in main and service-specific sections)
+    console.log('🔄 Switching to tab:', service);
+    
+    // Update all filter tabs
     document.querySelectorAll('.filter-tab').forEach(tab => {
         if (tab.getAttribute('data-service') === service) {
             tab.classList.add('active');
+            console.log('✅ Activated tab:', service);
         } else {
             tab.classList.remove('active');
         }
@@ -4765,6 +4768,7 @@ function switchToTab(service) {
     document.querySelectorAll('.service-content').forEach(content => {
         if (content.getAttribute('data-service-content') === service) {
             content.classList.add('active');
+            console.log('✅ Showing content:', service);
         } else {
             content.classList.remove('active');
         }
@@ -4798,12 +4802,11 @@ function toggleFaq(element) {
     element.classList.toggle('active');
 }
 
-// ==========================================
-// INITIALIZE EVERYTHING ON DOM LOAD (ONLY ONE!)
-// ==========================================
 document.addEventListener('DOMContentLoaded', function() {
-    // Set default active tab to Web Development on page load
-    switchToTab('development');
+    console.log('🚀 Page loaded - initializing...');
+    
+    // Set default active tab to CRM on page load
+    switchToTab('crm');
     
     // Modal click outside to close
     const modal = document.getElementById('contactModal');
@@ -4813,15 +4816,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Filter tab clicks
+    // Filter tab clicks - FIXED VERSION
     document.querySelectorAll('.filter-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             const service = this.getAttribute('data-service');
+            console.log('🔘 Tab clicked:', service);
             switchToTab(service);
         });
     });
 
-    // Mobile menu functionality
+    // Mobile menu functionality - FIXED VERSION
     const mobileMenuBtns = document.querySelectorAll('.mobile-menu-btn');
     const navLinksAll = document.querySelectorAll('.nav-links');
 
@@ -4829,6 +4835,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
+            console.log('📱 Mobile menu clicked');
             
             navLinksAll.forEach(function(nav) {
                 nav.classList.toggle('active');
@@ -4860,7 +4867,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Close mobile menu when clicking outside
     document.addEventListener('click', function(e) {
-        if (!e.target.closest('nav')) {
+        if (!e.target.closest('nav') && !e.target.closest('.filter-tab')) {
             navLinksAll.forEach(function(nav) {
                 nav.classList.remove('active');
             });
@@ -4873,49 +4880,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Close when clicking non-dropdown links
-    document.querySelectorAll('.nav-links a').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            if (!this.closest('.has-dropdown') || window.innerWidth > 768) {
-                navLinksAll.forEach(function(nav) {
-                    nav.classList.remove('active');
-                });
-                mobileMenuBtns.forEach(function(btn) {
-                    btn.classList.remove('active');
-                });
-            }
-        });
-    });
-
     // Chatbot quick action buttons
     document.querySelectorAll('.quick-action-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
             const action = this.getAttribute('data-action');
             const buttonText = this.textContent.trim();
+            console.log('💬 Quick action:', action);
             addUserMessage(buttonText);
             setTimeout(() => addBotMessage(quickResponses[action]), 500);
         });
     });
 
     // Chatbot send button
-    document.getElementById('chatbotSendBtn').addEventListener('click', function() {
-        const input = document.getElementById('chatbotInput');
-        const message = input.value.trim();
-        if (message) {
-            addUserMessage(message);
-            input.value = '';
-            setTimeout(() => {
-                addBotMessage("Thanks for your message! For immediate assistance, call us at (940) 217-8680 or use the quick actions below.");
-            }, 1000);
-        }
-    });
+    const chatbotSendBtn = document.getElementById('chatbotSendBtn');
+    if (chatbotSendBtn) {
+        chatbotSendBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const input = document.getElementById('chatbotInput');
+            const message = input.value.trim();
+            if (message) {
+                addUserMessage(message);
+                input.value = '';
+                setTimeout(() => {
+                    addBotMessage("Thanks for your message! For immediate assistance, call us at (940) 217-8680 or use the quick actions below.");
+                }, 1000);
+            }
+        });
+    }
 
     // Chatbot enter key to send
-    document.getElementById('chatbotInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            document.getElementById('chatbotSendBtn').click();
-        }
-    });
+    const chatbotInput = document.getElementById('chatbotInput');
+    if (chatbotInput) {
+        chatbotInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('chatbotSendBtn').click();
+            }
+        });
+    }
+
+    console.log('✅ All event listeners attached');
+});
 
     // Smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -4951,7 +4957,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-});
 </script>
 <!-- CHATBOT -->
 <div class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">

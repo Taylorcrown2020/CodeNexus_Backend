@@ -1422,7 +1422,6 @@ body.crm-active .hero,
                 <ul class="dropdown-menu">
                     <li><a href="about.html">About Us</a></li>
                     <li><a href="process.html">Our Process</a></li>
-                    <li><a href="testimonials.html">Client Testimonials</a></li>
                     <li><a href="blog.html">Blog</a></li>
                     <li><a href="careers.html">Careers</a></li>
                 </ul>
@@ -5177,6 +5176,474 @@ document.addEventListener('DOMContentLoaded', function() {
         bottom: 90px;
     }
 }
+
+/* CONTACT MODAL STYLES */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 999999;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    max-width: 900px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-header {
+    background: #000;
+    padding: 48px 60px;
+    position: relative;
+}
+
+.modal-header .modal-close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    line-height: 1;
+}
+
+.modal-header h2 {
+    font-size: 36px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 12px;
+}
+
+.modal-header p {
+    font-size: 16px;
+    color: rgba(255,255,255,0.8);
+}
+
+.modal-form {
+    padding: 60px;
+}
+
+.modal-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.modal-form .form-group {
+    margin-bottom: 24px;
+}
+
+.modal-form label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.modal-form input,
+.modal-form select,
+.modal-form textarea {
+    width: 100%;
+    padding: 16px 20px;
+    font-size: 15px;
+    border: 2px solid #ddd;
+    font-family: 'Inter', sans-serif;
+}
+
+.modal-form input:focus,
+.modal-form select:focus,
+.modal-form textarea:focus {
+    outline: none;
+    border-color: #000;
+}
+
+.modal-form textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.modal-form button[type="submit"] {
+    background: #F4C87E;
+    color: #000;
+    padding: 18px 48px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.3s;
+}
+
+.modal-form button[type="submit"]:hover {
+    background: #e6b86b;
+}
+
+.modal-form button[type="submit"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* SUCCESS MODAL */
+.success-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 9999999;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.success-content {
+    background: white;
+    max-width: 480px;
+    width: 90%;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.success-header {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+    padding: 40px;
+    text-align: center;
+    position: relative;
+}
+
+.success-icon {
+    width: 72px;
+    height: 72px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.success-icon svg {
+    width: 40px;
+    height: 40px;
+    stroke: var(--black);
+    stroke-width: 3;
+}
+
+.success-header h3 {
+    font-size: 28px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 12px;
+}
+
+.success-header p {
+    font-size: 15px;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.6;
+}
+
+.success-body {
+    padding: 32px 40px 40px;
+    background: white;
+}
+
+.success-details {
+    background: var(--grey-50);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.success-detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 14px;
+}
+
+.success-detail-label {
+    color: var(--grey-700);
+    font-weight: 500;
+}
+
+.success-detail-value {
+    color: var(--black);
+    font-weight: 600;
+}
+
+.success-actions {
+    display: grid;
+    gap: 12px;
+}
+
+.success-btn {
+    padding: 16px 32px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Inter', sans-serif;
+    border-radius: 6px;
+}
+
+.success-btn-primary {
+    background: var(--gold);
+    color: var(--black);
+}
+
+.success-btn-primary:hover {
+    background: #e6b86b;
+}
+
+.success-btn-secondary {
+    background: transparent;
+    color: var(--grey-700);
+    border: 2px solid var(--grey-300);
+}
+
+.success-btn-secondary:hover {
+    background: var(--grey-50);
+}
+
+/* Mobile Responsive for Modals */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .modal-header {
+        padding: 32px 24px;
+    }
+
+    .modal-header h2 {
+        font-size: 28px;
+    }
+
+    .modal-form {
+        padding: 32px 24px;
+    }
+
+    .modal-form .form-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
 </style>
+
+<!-- CONTACT MODAL -->
+<div class="modal-overlay" id="contactModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2>Start Your Project</h2>
+            <p>Tell us about your needs and we'll get back to you within 24 hours.</p>
+        </div>
+        <form class="modal-form" id="contactForm" onsubmit="handleSubmit(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="fullName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="email" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Phone *</label>
+                    <input type="tel" id="phone" required>
+                </div>
+                <div class="form-group">
+                    <label>Service *</label>
+                    <select id="service" required>
+                        <option value="">Select a service...</option>
+                        <option>Website Design</option>
+                        <option>Web Development</option>
+                        <option>E-commerce Development</option>
+                        <option>CRM Solutions</option>
+                        <option>SEO Services</option>
+                        <option>Digital Marketing</option>
+                        <option>Custom Web Applications</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Details *</label>
+                <textarea id="details" required></textarea>
+            </div>
+            <button type="submit">Send Request</button>
+        </form>
+    </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="success-modal" id="successModal">
+    <div class="success-content">
+        <div class="success-header">
+            <div class="success-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <h3>Request Received!</h3>
+            <p>Thank you for reaching out. We'll review your request and get back to you within 24 hours.</p>
+        </div>
+        <div class="success-body">
+            <div class="success-details">
+                <div class="success-detail-item">
+                    <span class="success-detail-label">Response Time</span>
+                    <span class="success-detail-value">Within 24 Hours</span>
+                </div>
+                <div class="success-detail-item">
+                    <span class="success-detail-label">Next Steps</span>
+                    <span class="success-detail-value">We'll Contact You</span>
+                </div>
+            </div>
+            <div class="success-actions">
+                <button class="success-btn success-btn-primary" onclick="closeSuccessModal()">Got It</button>
+                <button class="success-btn success-btn-secondary" onclick="closeSuccessModal(); openModal();">Submit Another Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Modal Functions
+function openModal() {
+    document.getElementById('contactModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('contactModal').classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.getElementById('contactModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// Form submission handler
+async function handleSubmit(event) {
+    event.preventDefault();
+    
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.textContent;
+    
+    const fullName = document.getElementById('fullName').value.trim();
+    const nameParts = fullName.split(' ');
+    
+    const formData = {
+        firstName: nameParts[0] || 'Unknown',
+        lastName: nameParts.slice(1).join(' ') || '',
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        service: document.getElementById('service').value,
+        details: document.getElementById('details').value.trim()
+    };
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Sending...';
+    
+    try {
+        const response = await fetch(`${window.location.origin}/api/leads`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Close contact modal
+            closeModal();
+            // Reset form
+            document.getElementById('contactForm').reset();
+            // Show success modal
+            document.getElementById('successModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        } else {
+            alert('❌ Error: ' + (data.message || 'Something went wrong. Please try again.'));
+        }
+    } catch (error) {
+        console.error('Form submission error:', error);
+        alert('❌ Network error. Please check your connection and try again.');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+    }
+}
+
+function closeSuccessModal() {
+    document.getElementById('successModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Close modals with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        if (document.getElementById('contactModal').classList.contains('active')) {
+            closeModal();
+        }
+        if (document.getElementById('successModal').style.display === 'flex') {
+            closeSuccessModal();
+        }
+    }
+});
+
+// Close success modal when clicking outside
+document.addEventListener('click', function(e) {
+    const successModal = document.getElementById('successModal');
+    if (e.target === successModal) {
+        closeSuccessModal();
+    }
+});
+</script>
 </body>
 </html>

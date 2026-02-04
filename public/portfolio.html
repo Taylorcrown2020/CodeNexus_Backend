@@ -1854,7 +1854,6 @@
                 <ul class="dropdown-menu">
                     <li><a href="about.html">About Us</a></li>
                     <li><a href="process.html">Our Process</a></li>
-                    <li><a href="testimonials.html">Client Testimonials</a></li>
                     <li><a href="blog.html">Blog</a></li>
                     <li><a href="careers.html">Careers</a></li>
                 </ul>
@@ -2164,28 +2163,51 @@
 </footer>
 
 <!-- CONTACT MODAL -->
-<div class="modal" id="contactModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999999; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: white; max-width: 900px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
-        <div class="modal-header" style="background: #000; padding: 48px 60px; position: relative;">
-            <button class="modal-close" onclick="closeModal()" style="position: absolute; top: 24px; right: 24px; background: none; border: none; color: white; font-size: 32px; cursor: pointer; width: 40px; height: 40px;">&times;</button>
-            <h2 style="font-size: 36px; font-weight: 600; color: white; margin-bottom: 12px;">Start Your Project</h2>
-            <p style="font-size: 16px; color: rgba(255,255,255,0.8);">Tell us about your needs and we'll get back to you within 24 hours.</p>
+<!-- CONTACT MODAL -->
+<div class="modal-overlay" id="contactModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2>Start Your Project</h2>
+            <p>Tell us about your needs and we'll get back to you within 24 hours.</p>
         </div>
-        <div style="padding: 60px;">
-<form id="contactForm" onsubmit="handleSubmit(event)">
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Full Name *</label><input type="text" name="fullName" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
-                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Email *</label><input type="email" name="email" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
+        <form class="modal-form" id="contactForm" onsubmit="handleSubmit(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="fullName" required>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Phone *</label><input type="tel" name="phone" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></div>
-                    <div><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Service *</label><select name="service" required style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"><option value="">Select</option><option>Website</option><option>CRM</option><option>SEO</option><option>Marketing</option></select></div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="email" required>
                 </div>
-                <div style="margin-bottom: 24px;"><label style="display: block; font-size: 13px; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Details *</label><textarea name="details" required rows="5" style="width: 100%; padding: 16px 20px; font-size: 15px; border: 2px solid #ddd;"></textarea></div>
-                <button type="submit" style="background: #F4C87E; color: #000; padding: 18px 48px; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; border: none; cursor: pointer; width: 100%;">Send Request</button>
-            </form>
-        </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Phone *</label>
+                    <input type="tel" id="phone" required>
+                </div>
+                <div class="form-group">
+                    <label>Service *</label>
+                    <select id="service" required>
+                        <option value="">Select a service...</option>
+                        <option>Website Design</option>
+                        <option>Web Development</option>
+                        <option>E-commerce Development</option>
+                        <option>CRM Solutions</option>
+                        <option>SEO Services</option>
+                        <option>Digital Marketing</option>
+                        <option>Custom Web Applications</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Details *</label>
+                <textarea id="details" required></textarea>
+            </div>
+            <button type="submit">Send Request</button>
+        </form>
     </div>
 </div>
 
@@ -2531,6 +2553,158 @@ document.addEventListener('click', function(e) {
     </div>
 </div>
 <style>
+/* CONTACT MODAL STYLES */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 999999;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    max-width: 900px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-header {
+    background: #000;
+    padding: 48px 60px;
+    position: relative;
+}
+
+.modal-header .modal-close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    line-height: 1;
+}
+
+.modal-header h2 {
+    font-size: 36px;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 12px;
+}
+
+.modal-header p {
+    font-size: 16px;
+    color: rgba(255,255,255,0.8);
+}
+
+.modal-form {
+    padding: 60px;
+}
+
+.modal-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.modal-form .form-group {
+    margin-bottom: 24px;
+}
+
+.modal-form label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.modal-form input,
+.modal-form select,
+.modal-form textarea {
+    width: 100%;
+    padding: 16px 20px;
+    font-size: 15px;
+    border: 2px solid #ddd;
+    font-family: 'Inter', sans-serif;
+}
+
+.modal-form input:focus,
+.modal-form select:focus,
+.modal-form textarea:focus {
+    outline: none;
+    border-color: #000;
+}
+
+.modal-form textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.modal-form button[type="submit"] {
+    background: #F4C87E;
+    color: #000;
+    padding: 18px 48px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.3s;
+}
+
+.modal-form button[type="submit"]:hover {
+    background: #e6b86b;
+}
+
+.modal-form button[type="submit"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Mobile Responsive for Contact Modal */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .modal-header {
+        padding: 32px 24px;
+    }
+
+    .modal-header h2 {
+        font-size: 28px;
+    }
+
+    .modal-form {
+        padding: 32px 24px;
+    }
+
+    .modal-form .form-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
     /* SUCCESS MODAL */
 .success-modal {
     display: none;

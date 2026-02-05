@@ -977,6 +977,359 @@ window.addEventListener('load', function() {
             .feature-card-modern {
                 padding: 32px 24px;
             }
+            
+            /* BRAND-BUILDING SECTION MOBILE CAROUSEL */
+            .brand-building-section {
+                padding: 60px 20px;
+            }
+            
+            .brand-tabs {
+                display: none;
+            }
+            
+            .brand-content-wrapper {
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .brand-content {
+                display: flex !important;
+                flex-direction: column;
+                min-height: 600px;
+                opacity: 0;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                transition: opacity 0.5s ease, transform 0.5s ease;
+                transform: translateX(100%);
+            }
+            
+            .brand-content.active {
+                opacity: 1;
+                position: relative;
+                transform: translateX(0);
+            }
+            
+            .brand-text-side {
+                order: 2;
+                text-align: center;
+                padding: 0 20px;
+                padding-right: 0;
+            }
+            
+            .brand-visual-side {
+                order: 1;
+                margin-bottom: 32px;
+            }
+            
+            .brand-content-title {
+                font-size: 32px;
+            }
+            
+            .brand-content-description {
+                font-size: 16px;
+            }
+            
+            .device-mockups {
+                height: 400px;
+                padding: 20px;
+            }
+            
+            .device-laptop .device-frame {
+                width: 100%;
+                max-width: 350px;
+            }
+            
+            .device-laptop .device-frame img {
+                height: 220px;
+            }
+            
+            .device-phone {
+                left: 10px;
+                bottom: 20px;
+            }
+            
+            .device-phone .device-frame {
+                width: 140px;
+            }
+            
+            .crm-laptop-showcase {
+                padding: 20px;
+                min-height: 400px;
+            }
+            
+            .laptop-screen img {
+                max-width: 100%;
+                height: 250px;
+            }
+            
+            .phone-mockup-overlay {
+                left: 10px;
+                bottom: 20px;
+            }
+            
+            .phone-frame {
+                width: 140px;
+            }
+        }
+        
+        /* Mobile carousel controls */
+        .mobile-carousel-controls {
+            display: none;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 40px;
+            padding: 0 20px;
+        }
+        
+        .mobile-carousel-arrow {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #1a1a1a;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .mobile-carousel-arrow:hover {
+            background: #f4c87e;
+        }
+        
+        .mobile-carousel-arrow:hover svg {
+            stroke: #1a1a1a;
+        }
+        
+        .mobile-carousel-arrow svg {
+            width: 24px;
+            height: 24px;
+            stroke: #ffffff;
+            stroke-width: 2;
+        }
+        
+        .mobile-carousel-arrow:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .mobile-carousel-dots {
+            display: none;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 24px;
+        }
+        
+        .carousel-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #d0d0d0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .carousel-dot.active {
+            width: 24px;
+            border-radius: 4px;
+            background: #f4c87e;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-carousel-controls,
+            .mobile-carousel-dots {
+                display: flex;
+            }
+        }
+        
+        /* CARD CAROUSEL FOR WEB DEV AND CRM SECTIONS ONLY */
+        .crm-card-carousel {
+            padding: 60px 20px;
+            background: #0a0a0a;
+            display: none;
+        }
+        
+        .crm-carousel-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .crm-carousel-title {
+            font-size: 36px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+            line-height: 1.2;
+        }
+        
+        .crm-carousel-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .crm-carousel-track {
+            display: flex;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .crm-carousel-card {
+            flex: 0 0 100%;
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .crm-carousel-card-image {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+        }
+        
+        .crm-carousel-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .crm-carousel-card-content {
+            padding: 40px 32px;
+        }
+        
+        .crm-carousel-card-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 24px;
+            line-height: 1.3;
+            letter-spacing: -0.5px;
+        }
+        
+        .crm-carousel-card-metric {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+        
+        .crm-carousel-card-description {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+        
+        .crm-carousel-card-author {
+            padding-top: 24px;
+            border-top: 1px solid #e5e5e5;
+        }
+        
+        .crm-carousel-author-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+        
+        .crm-carousel-author-company {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .crm-carousel-controls {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 40px;
+        }
+        
+        .crm-carousel-arrow {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: transparent;
+            border: 2px solid #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .crm-carousel-arrow:hover {
+            background: #f4c87e;
+            border-color: #f4c87e;
+        }
+        
+        .crm-carousel-arrow:hover svg {
+            stroke: #0a0a0a;
+        }
+        
+        .crm-carousel-arrow svg {
+            width: 24px;
+            height: 24px;
+            stroke: #ffffff;
+            stroke-width: 2;
+            transition: stroke 0.3s ease;
+        }
+        
+        .crm-carousel-arrow:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .crm-carousel-arrow:disabled:hover {
+            background: transparent;
+            border-color: #ffffff;
+        }
+        
+        .crm-carousel-arrow:disabled:hover svg {
+            stroke: #ffffff;
+        }
+        
+        .crm-carousel-cta {
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .crm-carousel-btn {
+            display: inline-block;
+            padding: 18px 48px;
+            background: #f4c87e;
+            color: #0a0a0a;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .crm-carousel-btn:hover {
+            background: #e6b86b;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(244, 200, 126, 0.3);
+        }
+        
+        /* Mobile: hide CRM showcase sections, show card carousels */
+        @media (max-width: 768px) {
+            .crm-showcase-section {
+                display: none;
+            }
+            
+            .crm-card-carousel {
+                display: block;
+            }
         }
         
         .service-features {
@@ -1636,6 +1989,35 @@ window.addEventListener('load', function() {
             height: 100%;
             border: 0;
         }
+
+        @media (max-width: 768px) {
+    /* Add these rules to your existing mobile styles */
+    
+    .hero-video {
+        pointer-events: none;
+    }
+    
+    .hero-video::-webkit-media-controls {
+        display: none !important;
+    }
+    
+    .hero-video::-webkit-media-controls-enclosure {
+        display: none !important;
+    }
+    
+    .hero-video::-webkit-media-controls-panel {
+        display: none !important;
+    }
+    
+    /* For other browsers */
+    .hero-video::-moz-media-controls {
+        display: none !important;
+    }
+    
+    .hero-video::--media-controls {
+        display: none !important;
+    }
+}
 
 .footer-cta-section {
     padding: 0;
@@ -3523,6 +3905,102 @@ nav {
             </div>
         </div>
     </div>
+    
+    <!-- Mobile Carousel Controls -->
+    <div class="mobile-carousel-controls">
+        <button class="mobile-carousel-arrow" id="mobilePrevBtn" onclick="mobileBrandCarousel(-1)">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <button class="mobile-carousel-arrow" id="mobileNextBtn" onclick="mobileBrandCarousel(1)">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+    </div>
+    
+    <div class="mobile-carousel-dots">
+        <span class="carousel-dot active" onclick="goToBrandSlide(0)"></span>
+        <span class="carousel-dot" onclick="goToBrandSlide(1)"></span>
+        <span class="carousel-dot" onclick="goToBrandSlide(2)"></span>
+    </div>
+</section>
+
+<!-- MOBILE CARD CAROUSEL: Web Development (Mobile Only) -->
+<section class="crm-card-carousel" id="webDevCardCarousel">
+    <div class="crm-carousel-header">
+        <h2 class="crm-carousel-title">Professional Web Development Services</h2>
+    </div>
+    
+    <div class="crm-carousel-wrapper">
+        <div class="crm-carousel-track" id="webDevCarousel">
+            <!-- Card 1 -->
+            <div class="crm-carousel-card">
+                <div class="crm-carousel-card-image">
+                    <img src="Custom.jpg" alt="Custom Web Development">
+                </div>
+                <div class="crm-carousel-card-content">
+                    <h3 class="crm-carousel-card-title">Custom Web Development</h3>
+                    <div class="crm-carousel-card-metric">100%</div>
+                    <div class="crm-carousel-card-description">Tailored solutions built from the ground up to meet your unique business requirements. Full control, unlimited scalability, and seamless integration with your existing systems.</div>
+                    <div class="crm-carousel-card-author">
+                        <div class="crm-carousel-author-name">Custom Solutions</div>
+                        <div class="crm-carousel-author-company">Diamondback Coding</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Card 2 -->
+            <div class="crm-carousel-card">
+                <div class="crm-carousel-card-image">
+                    <img src="shop.jpg" alt="E-Commerce Development">
+                </div>
+                <div class="crm-carousel-card-content">
+                    <h3 class="crm-carousel-card-title">E-Commerce Development</h3>
+                    <div class="crm-carousel-card-metric">Optimized for Sales</div>
+                    <div class="crm-carousel-card-description">Launch your online store with powerful e-commerce platforms. Secure payment processing, inventory management, and conversion-optimized checkout experiences.</div>
+                    <div class="crm-carousel-card-author">
+                        <div class="crm-carousel-author-name">Online Stores</div>
+                        <div class="crm-carousel-author-company">Diamondback Coding</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Card 3 -->
+            <div class="crm-carousel-card">
+                <div class="crm-carousel-card-image">
+                    <img src="seo.jpg" alt="Performance & SEO">
+                </div>
+                <div class="crm-carousel-card-content">
+                    <h3 class="crm-carousel-card-title">Performance & SEO</h3>
+                    <div class="crm-carousel-card-metric">Ranking-Focused</div>
+                    <div class="crm-carousel-card-description">Lightning-fast loading speeds, technical SEO optimization, and search engine visibility. We build websites that rank and convert.</div>
+                    <div class="crm-carousel-card-author">
+                        <div class="crm-carousel-author-name">SEO Experts</div>
+                        <div class="crm-carousel-author-company">Diamondback Coding</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="crm-carousel-controls">
+        <button class="crm-carousel-arrow" id="webDevPrev" onclick="moveCrmCarousel('webDev', -1)">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <button class="crm-carousel-arrow" id="webDevNext" onclick="moveCrmCarousel('webDev', 1)">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+    </div>
+    
+    <div class="crm-carousel-cta">
+        <button class="crm-carousel-btn" onclick="openModal()">READ MORE</button>
+    </div>
 </section>
 
 <!-- Web Development Showcase Section - Matching CRM Style -->
@@ -3557,14 +4035,6 @@ nav {
             <div class="crm-image-card">
                 <div class="crm-card-image">
                     <img src="Custom.jpg" alt="Custom Web Development">
-                    <div class="crm-card-overlay">
-                        <div class="crm-card-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="16 18 22 12 16 6"/>
-                                <polyline points="8 6 2 12 8 18"/>
-                            </svg>
-                        </div>
-                    </div>
                 </div>
                 <div class="crm-card-content">
                     <h3 class="crm-card-title">Custom Web Development</h3>
@@ -3583,15 +4053,6 @@ nav {
             <div class="crm-image-card">
                 <div class="crm-card-image">
                     <img src="shop.jpg" alt="E-commerce Solutions">
-                    <div class="crm-card-overlay">
-                        <div class="crm-card-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="9" cy="21" r="1"/>
-                                <circle cx="20" cy="21" r="1"/>
-                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                            </svg>
-                        </div>
-                    </div>
                 </div>
                 <div class="crm-card-content">
                     <h3 class="crm-card-title">E-Commerce Development</h3>
@@ -3610,13 +4071,6 @@ nav {
             <div class="crm-image-card">
                 <div class="crm-card-image">
                     <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80" alt="Performance Optimization">
-                    <div class="crm-card-overlay">
-                        <div class="crm-card-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                            </svg>
-                        </div>
-                    </div>
                 </div>
                 <div class="crm-card-content">
                     <h3 class="crm-card-title">Performance & SEO</h3>
@@ -3638,6 +4092,82 @@ nav {
         </div>
     </div>
 </section>
+
+    <!-- MOBILE CARD CAROUSEL: CRM (Mobile Only) -->
+    <section class="crm-card-carousel" id="crmCardCarousel">
+        <div class="crm-carousel-header">
+            <h2 class="crm-carousel-title">Customer Relationship Management Systems</h2>
+        </div>
+        
+        <div class="crm-carousel-wrapper">
+            <div class="crm-carousel-track" id="crmCarousel">
+                <!-- Card 1 -->
+                <div class="crm-carousel-card">
+                    <div class="crm-carousel-card-image">
+                        <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80" alt="Custom-Built CRM">
+                    </div>
+                    <div class="crm-carousel-card-content">
+                        <h3 class="crm-carousel-card-title">Custom-Built CRM</h3>
+                        <div class="crm-carousel-card-metric">100%</div>
+                        <div class="crm-carousel-card-description">Fully customized CRM systems built specifically for your business processes. Own your data, control your features, and integrate seamlessly.</div>
+                        <div class="crm-carousel-card-author">
+                            <div class="crm-carousel-author-name">Custom CRM</div>
+                            <div class="crm-carousel-author-company">Diamondback Coding</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card 2 -->
+                <div class="crm-carousel-card">
+                    <div class="crm-carousel-card-image">
+                        <img src="crm.jpg" alt="Pre-Built CRM">
+                    </div>
+                    <div class="crm-carousel-card-content">
+                        <h3 class="crm-carousel-card-title">Pre-Built CRM Platforms</h3>
+                        <div class="crm-carousel-card-metric">1-2 Weeks</div>
+                        <div class="crm-carousel-card-description">Get started faster with proven solutions, regular updates, and extensive integrations. Monthly subscription-based pricing.</div>
+                        <div class="crm-carousel-card-author">
+                            <div class="crm-carousel-author-name">Quick Deploy</div>
+                            <div class="crm-carousel-author-company">Diamondback Coding</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card 3 -->
+                <div class="crm-carousel-card">
+                    <div class="crm-carousel-card-image">
+                        <img src="data.jpg" alt="CRM Integration">
+                    </div>
+                    <div class="crm-carousel-card-content">
+                        <h3 class="crm-carousel-card-title">CRM Integration & Setup</h3>
+                        <div class="crm-carousel-card-metric">24/7</div>
+                        <div class="crm-carousel-card-description">Expert configuration, data migration, team training, and ongoing support. We handle the technical complexity.</div>
+                        <div class="crm-carousel-card-author">
+                            <div class="crm-carousel-author-name">Full Support</div>
+                            <div class="crm-carousel-author-company">Diamondback Coding</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="crm-carousel-controls">
+            <button class="crm-carousel-arrow" id="crmPrev" onclick="moveCrmCarousel('crm', -1)">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <button class="crm-carousel-arrow" id="crmNext" onclick="moveCrmCarousel('crm', 1)">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="crm-carousel-cta">
+            <button class="crm-carousel-btn" onclick="openModal()">READ MORE</button>
+        </div>
+    </section>
 
     <!-- CRM Services Section - Redesigned with Laptop Showcase -->
     <section class="crm-showcase-section">
@@ -3671,14 +4201,6 @@ nav {
                 <div class="crm-image-card">
                     <div class="crm-card-image">
                         <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80" alt="Custom CRM Dashboard">
-                        <div class="crm-card-overlay">
-                            <div class="crm-card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                    <circle cx="9" cy="7" r="4"/>
-                                </svg>
-                            </div>
-                        </div>
                     </div>
                     <div class="crm-card-content">
                         <h3 class="crm-card-title">Custom-Built CRM</h3>
@@ -3697,14 +4219,6 @@ nav {
                 <div class="crm-image-card">
                     <div class="crm-card-image">
                         <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80" alt="Pre-Built CRM Platform">
-                        <div class="crm-card-overlay">
-                            <div class="crm-card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <line x1="3" y1="9" x2="21" y2="9"/>
-                                </svg>
-                            </div>
-                        </div>
                     </div>
                     <div class="crm-card-content">
                         <h3 class="crm-card-title">Pre-Built CRM Platforms</h3>
@@ -3723,13 +4237,6 @@ nav {
                 <div class="crm-image-card">
                     <div class="crm-card-image">
                         <img src="https://images.unsplash.com/photo-1556761175-4b46a572b786?w=800&q=80" alt="CRM Integration">
-                        <div class="crm-card-overlay">
-                            <div class="crm-card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                                </svg>
-                            </div>
-                        </div>
                     </div>
                     <div class="crm-card-content">
                         <h3 class="crm-card-title">CRM Integration & Setup</h3>
@@ -4323,13 +4830,145 @@ nav {
     // ==========================================
     // FORM SUBMISSION
     // ==========================================
+    // ==========================================
+    // BRAND SECTION MOBILE CAROUSEL
+    // ==========================================
+    let currentBrandSlide = 1; // Start with middle tab active
+    
+    function mobileBrandCarousel(direction) {
+        const totalSlides = 3;
+        const oldSlide = currentBrandSlide;
+        
+        currentBrandSlide += direction;
+        
+        // Boundary checks
+        if (currentBrandSlide < 0) {
+            currentBrandSlide = 0;
+        } else if (currentBrandSlide >= totalSlides) {
+            currentBrandSlide = totalSlides - 1;
+        }
+        
+        // Only update if slide changed
+        if (oldSlide !== currentBrandSlide) {
+            updateBrandSlide();
+        }
+    }
+    
+    function goToBrandSlide(index) {
+        currentBrandSlide = index;
+        updateBrandSlide();
+    }
+    
+    function updateBrandSlide() {
+        // Update content visibility
+        document.querySelectorAll('.brand-content').forEach((content, i) => {
+            content.classList.toggle('active', i === currentBrandSlide);
+        });
+        
+        // Update dots
+        const brandSection = document.querySelector('.brand-building-section');
+        if (brandSection) {
+            brandSection.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === currentBrandSlide);
+            });
+        }
+        
+        // Update button states
+        const prevBtn = document.getElementById('mobilePrevBtn');
+        const nextBtn = document.getElementById('mobileNextBtn');
+        
+        if (prevBtn && nextBtn) {
+            prevBtn.disabled = currentBrandSlide === 0;
+            nextBtn.disabled = currentBrandSlide === 2;
+        }
+    }
+    
+    // ==========================================
+    // CRM CARD CAROUSELS (Web Dev & CRM Sections)
+    // ==========================================
+    const crmCardCarousels = {
+        webDev: { currentSlide: 0, totalSlides: 3 },
+        crm: { currentSlide: 0, totalSlides: 3 }
+    };
+    
+    function moveCrmCarousel(section, direction) {
+        const carousel = crmCardCarousels[section];
+        const oldSlide = carousel.currentSlide;
+        
+        carousel.currentSlide += direction;
+        
+        // Boundary checks
+        if (carousel.currentSlide < 0) {
+            carousel.currentSlide = 0;
+        } else if (carousel.currentSlide >= carousel.totalSlides) {
+            carousel.currentSlide = carousel.totalSlides - 1;
+        }
+        
+        // Only update if slide changed
+        if (oldSlide !== carousel.currentSlide) {
+            updateCrmCarousel(section);
+        }
+    }
+    
+    function updateCrmCarousel(section) {
+        const carousel = crmCardCarousels[section];
+        const track = document.getElementById(section + 'Carousel');
+        
+        if (!track) return;
+        
+        const cards = track.querySelectorAll('.crm-carousel-card');
+        const cardWidth = cards[0].offsetWidth;
+        const offset = -(carousel.currentSlide * cardWidth);
+        
+        track.style.transform = `translateX(${offset}px)`;
+        
+        // Update button states
+        const prevBtn = document.getElementById(section + 'Prev');
+        const nextBtn = document.getElementById(section + 'Next');
+        
+        if (prevBtn && nextBtn) {
+            prevBtn.disabled = carousel.currentSlide === 0;
+            nextBtn.disabled = carousel.currentSlide >= carousel.totalSlides - 1;
+        }
+    }
+    
+    // Initialize carousels on load
+    window.addEventListener('load', () => {
+        if (window.innerWidth <= 768) {
+            updateBrandSlide();
+            updateCrmCarousel('webDev');
+            updateCrmCarousel('crm');
+        }
+    });
+    
+    // Reset on window resize
+    let crmCarouselResizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(crmCarouselResizeTimer);
+        crmCarouselResizeTimer = setTimeout(() => {
+            if (window.innerWidth <= 768) {
+                currentBrandSlide = 1;
+                crmCardCarousels.webDev.currentSlide = 0;
+                crmCardCarousels.crm.currentSlide = 0;
+                updateBrandSlide();
+                updateCrmCarousel('webDev');
+                updateCrmCarousel('crm');
+            }
+        }, 250);
+    });
+    
             function switchBrandTab(index) {
+            // Update desktop tabs
             document.querySelectorAll('.brand-tab').forEach((tab, i) => {
                 tab.classList.toggle('active', i === index);
             });
             document.querySelectorAll('.brand-content').forEach((content, i) => {
                 content.classList.toggle('active', i === index);
             });
+            
+            // Sync with mobile carousel
+            currentBrandSlide = index;
+            updateBrandSlide();
         }
 
         function openModal() {
@@ -4397,6 +5036,19 @@ function closeSuccessModal() {
     document.getElementById('successModal').style.display = 'none';
     document.body.style.overflow = 'auto';
 }
+
+// Add this to your existing <script> section
+document.addEventListener('DOMContentLoaded', function() {
+    const heroVideo = document.querySelector('.hero-video');
+    if (heroVideo) {
+        heroVideo.setAttribute('playsinline', '');
+        heroVideo.setAttribute('webkit-playsinline', '');
+        heroVideo.muted = true;
+        heroVideo.play().catch(function(error) {
+            console.log('Video autoplay failed:', error);
+        });
+    }
+});
 
 // Close modals with Escape key
 document.addEventListener('keydown', function(e) {

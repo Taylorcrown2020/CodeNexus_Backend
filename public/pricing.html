@@ -4774,22 +4774,56 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Mobile menu functionality - FIXED VERSION
+// Mobile menu functionality - SUPER FIXED VERSION
     const mobileMenuBtns = document.querySelectorAll('.mobile-menu-btn');
     const navLinksAll = document.querySelectorAll('.nav-links');
 
-    mobileMenuBtns.forEach(function(btn) {
+    console.log('🔥 MOBILE MENU: Found', mobileMenuBtns.length, 'buttons');
+    console.log('🔥 MOBILE MENU: Found', navLinksAll.length, 'nav menus');
+
+    mobileMenuBtns.forEach(function(btn, index) {
+        console.log('🔥 MOBILE MENU: Attaching listener to button', index);
+        
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('📱 Mobile menu clicked');
             
+            console.log('🔥 MOBILE MENU: BUTTON CLICKED!!!');
+            
+            // Toggle ALL menu buttons
+            mobileMenuBtns.forEach(function(b) {
+                b.classList.toggle('active');
+            });
+            
+            // Toggle ALL nav menus
             navLinksAll.forEach(function(nav) {
                 nav.classList.toggle('active');
             });
             
-            mobileMenuBtns.forEach(function(menuBtn) {
-                menuBtn.classList.toggle('active');
+            console.log('🔥 MOBILE MENU: Menu toggled');
+        });
+    });
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('nav') && !e.target.closest('.mobile-menu-btn')) {
+            navLinksAll.forEach(function(nav) {
+                nav.classList.remove('active');
+            });
+            mobileMenuBtns.forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+        }
+    });
+
+    // Close mobile menu when clicking a nav link
+    document.querySelectorAll('.nav-links a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            navLinksAll.forEach(function(nav) {
+                nav.classList.remove('active');
+            });
+            mobileMenuBtns.forEach(function(btn) {
+                btn.classList.remove('active');
             });
         });
     });
@@ -6141,5 +6175,41 @@ window.testButton = function() {
     }
 }
 </style>
+<script>
+// MOBILE MENU FIX - Put this at the VERY BOTTOM of your HTML file, right before </body>
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔥 MOBILE MENU STARTING');
+    
+    // Find ALL the hamburger buttons and menus
+    const allButtons = document.querySelectorAll('.mobile-menu-btn');
+    const allMenus = document.querySelectorAll('.nav-links');
+    
+    console.log('🔥 Found ' + allButtons.length + ' buttons');
+    console.log('🔥 Found ' + allMenus.length + ' menus');
+    
+    // When ANY button is clicked
+    allButtons.forEach(function(button) {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('🔥 BUTTON WAS CLICKED!!!');
+            
+            // Toggle ALL buttons
+            allButtons.forEach(function(btn) {
+                btn.classList.toggle('active');
+            });
+            
+            // Toggle ALL menus
+            allMenus.forEach(function(menu) {
+                menu.classList.toggle('active');
+            });
+        });
+    });
+    
+    console.log('🔥 MOBILE MENU READY');
+});
+</script>
 </body>
 </html>

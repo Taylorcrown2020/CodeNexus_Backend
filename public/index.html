@@ -194,7 +194,12 @@ window.addEventListener('load', function() {
             position: fixed;
             top: 40px;
             width: 100%;
-            z-index: 1000;
+            z-index: 10000; /* CRITICAL: Higher than video overlay */
+            pointer-events: auto !important; /* Ensure nav is clickable */
+        }
+        
+        nav * {
+            pointer-events: auto !important; /* All nav elements clickable */
         }
         
         .nav-container {
@@ -3583,18 +3588,14 @@ nav {
     }
 }
 /* ====================================
-   NUCLEAR OPTION: HIDE ALL VIDEO CONTROLS
+   HIDE VIDEO CONTROLS - MOBILE MENU SAFE
    ==================================== */
 .hero-video {
-    /* Make video completely non-interactive */
+    /* Make video non-interactive */
     pointer-events: none !important;
     -webkit-user-select: none !important;
     user-select: none !important;
     -webkit-touch-callout: none !important;
-    
-    /* Force no controls on ALL browsers */
-    -webkit-appearance: none !important;
-    appearance: none !important;
 }
 
 /* Kill WebKit (Safari/Chrome/iOS) controls */
@@ -3625,7 +3626,7 @@ nav {
     display: none !important;
 }
 
-/* Cover entire video with invisible overlay */
+/* Cover entire video with invisible overlay - BUT DON'T BLOCK NAV */
 .hero-background::after {
     content: '';
     position: absolute;
@@ -3634,7 +3635,7 @@ nav {
     right: 0;
     bottom: 0;
     z-index: 3;
-    pointer-events: auto;
+    pointer-events: none !important; /* CRITICAL: Don't block nav menu */
 }
 
 /* Mobile specific */
@@ -5093,90 +5094,138 @@ function closeSuccessModal() {
 }
 
 // Add this to your existing <script> section
-// ENHANCED VIDEO AUTOPLAY - Place this BEFORE closing </body> tag
+// ULTIMATE AUTOPLAY - NO USER INTERACTION REQUIRED
 (function() {
     'use strict';
     
-    function killVideoControls() {
+    const initVideo = () => {
         const video = document.getElementById('heroVideo');
-        if (!video) return;
+        if (!video) {
+            console.log('Video element not found');
+            return;
+        }
         
-        // NUCLEAR: Remove all possible control attributes
+        console.log('Initializing video autoplay...');
+        
+        // Remove ALL control attributes
         video.removeAttribute('controls');
         video.controls = false;
         
-        // Force these attributes
+        // Force inline playback
         video.setAttribute('playsinline', '');
         video.setAttribute('webkit-playsinline', '');
         video.setAttribute('x-webkit-airplay', 'deny');
         video.setAttribute('disablePictureInPicture', '');
         video.setAttribute('disableRemotePlayback', '');
-        
         video.playsInline = true;
+        
+        // CRITICAL: Must be muted for autoplay
         video.muted = true;
         video.defaultMuted = true;
+        video.volume = 0;
         
-        // Make it completely unclickable
+        // Make unclickable
         video.style.pointerEvents = 'none';
-        video.parentElement.style.pointerEvents = 'none';
         
-        // Prevent ALL interactions
-        const blockInteraction = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        };
+        // AGGRESSIVE multi-attempt play function
+        let playAttempts = 0;
+        const maxAttempts = 50;
         
-        video.addEventListener('click', blockInteraction, true);
-        video.addEventListener('touchstart', blockInteraction, true);
-        video.addEventListener('touchend', blockInteraction, true);
-        video.addEventListener('touchmove', blockInteraction, true);
-        video.addEventListener('contextmenu', blockInteraction, true);
-        
-        // Aggressive autoplay
-        const forcePlay = () => {
-            if (video.paused) {
-                video.play().catch(() => {
-                    // Retry on mobile after user gesture
-                    const playOnce = () => {
-                        video.play();
-                        document.removeEventListener('touchstart', playOnce);
-                        document.removeEventListener('click', playOnce);
-                    };
-                    document.addEventListener('touchstart', playOnce, { once: true, passive: true });
-                    document.addEventListener('click', playOnce, { once: true });
-                });
+        const attemptPlay = () => {
+            if (playAttempts >= maxAttempts) {
+                console.log('Max autoplay attempts reached');
+                return;
+            }
+            
+            playAttempts++;
+            console.log(`Play attempt ${playAttempts}`);
+            
+            const playPromise = video.play();
+            
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        console.log('✅ Video playing successfully!');
+                    })
+                    .catch(error => {
+                        console.log(`❌ Attempt ${playAttempts} failed:`, error.message);
+                        // Try again after short delay
+                        setTimeout(attemptPlay, 100);
+                    });
             }
         };
         
-        // Keep trying to play
-        forcePlay();
-        video.addEventListener('pause', forcePlay);
-        video.addEventListener('loadeddata', forcePlay);
-        video.addEventListener('canplay', forcePlay);
+        // Start attempting immediately
+        attemptPlay();
         
-        // Monitor and restart on visibility change
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) forcePlay();
+        // Try on multiple events
+        video.addEventListener('loadedmetadata', () => {
+            console.log('Metadata loaded, attempting play...');
+            attemptPlay();
         });
         
-        // Check every second
+        video.addEventListener('loadeddata', () => {
+            console.log('Data loaded, attempting play...');
+            attemptPlay();
+        });
+        
+        video.addEventListener('canplay', () => {
+            console.log('Can play, attempting play...');
+            attemptPlay();
+        });
+        
+        video.addEventListener('canplaythrough', () => {
+            console.log('Can play through, attempting play...');
+            attemptPlay();
+        });
+        
+        // Restart if paused
+        video.addEventListener('pause', () => {
+            if (!video.ended) {
+                console.log('Video paused, restarting...');
+                setTimeout(() => video.play(), 100);
+            }
+        });
+        
+        // Restart on visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && video.paused) {
+                console.log('Page visible, restarting video...');
+                video.play();
+            }
+        });
+        
+        // Keep checking every 2 seconds
         setInterval(() => {
-            if (video.paused) forcePlay();
-        }, 1000);
-    }
+            if (video.paused && !video.ended) {
+                console.log('Periodic check: video paused, restarting...');
+                video.play();
+            }
+        }, 2000);
+        
+        // iOS Safari fallback - try on ANY user interaction (but don't wait for it)
+        const iosPlay = () => {
+            video.play();
+            console.log('iOS interaction play triggered');
+        };
+        
+        document.addEventListener('touchstart', iosPlay, { once: true, passive: true });
+        document.addEventListener('click', iosPlay, { once: true });
+    };
     
-    // Run immediately and on all load events
-    killVideoControls();
+    // Run IMMEDIATELY
+    initVideo();
     
+    // Also run on DOM ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', killVideoControls);
+        document.addEventListener('DOMContentLoaded', initVideo);
     }
     
-    window.addEventListener('load', killVideoControls);
+    // And on full page load
+    window.addEventListener('load', initVideo);
     
-    // Run again after 1 second (for slow networks)
-    setTimeout(killVideoControls, 1000);
+    // And one more time after 500ms
+    setTimeout(initVideo, 500);
 })();
 
 // Close modals with Escape key

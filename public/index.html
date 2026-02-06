@@ -426,40 +426,6 @@ window.addEventListener('load', function() {
             gap: 20px;
         }
 
-/* Hide all video controls - all browsers */
-.hero-video::-webkit-media-controls {
-    display: none !important;
-    -webkit-appearance: none;
-}
-
-.hero-video::-webkit-media-controls-start-playback-button {
-    display: none !important;
-    -webkit-appearance: none;
-}
-
-.hero-video::-webkit-media-controls-play-button {
-    display: none !important;
-    -webkit-appearance: none;
-}
-
-.hero-video::-webkit-media-controls-enclosure {
-    display: none !important;
-}
-
-.hero-video::-webkit-media-controls-panel {
-    display: none !important;
-}
-
-/* Firefox */
-.hero-video::-moz-media-controls {
-    display: none !important;
-}
-
-/* Generic */
-.hero-video::--media-controls {
-    display: none !important;
-}
-
         .btn-primary {
             background: var(--gold);
             color: #000;
@@ -2024,35 +1990,6 @@ window.addEventListener('load', function() {
             height: 100%;
             border: 0;
         }
-
-        @media (max-width: 768px) {
-    /* Add these rules to your existing mobile styles */
-    
-    .hero-video {
-        pointer-events: none;
-    }
-    
-    .hero-video::-webkit-media-controls {
-        display: none !important;
-    }
-    
-    .hero-video::-webkit-media-controls-enclosure {
-        display: none !important;
-    }
-    
-    .hero-video::-webkit-media-controls-panel {
-        display: none !important;
-    }
-    
-    /* For other browsers */
-    .hero-video::-moz-media-controls {
-        display: none !important;
-    }
-    
-    .hero-video::--media-controls {
-        display: none !important;
-    }
-}
 
 .footer-cta-section {
     padding: 0;

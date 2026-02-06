@@ -3647,6 +3647,71 @@ nav {
 }
     </style>
 
+    <style>
+/* Enhanced video controls hiding */
+.hero-video {
+    pointer-events: none !important;
+}
+
+/* Hide controls in all browsers */
+.hero-video::-webkit-media-controls {
+    display: none !important;
+    -webkit-appearance: none !important;
+}
+
+.hero-video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+    -webkit-appearance: none !important;
+}
+
+.hero-video::-webkit-media-controls-play-button {
+    display: none !important;
+    -webkit-appearance: none !important;
+}
+
+.hero-video::-webkit-media-controls-enclosure {
+    display: none !important;
+}
+
+.hero-video::-webkit-media-controls-panel {
+    display: none !important;
+}
+
+.hero-video::-webkit-media-controls-overlay-play-button {
+    display: none !important;
+    -webkit-appearance: none !important;
+}
+
+/* Firefox */
+.hero-video::-moz-media-controls {
+    display: none !important;
+}
+
+/* Generic */
+.hero-video::--media-controls {
+    display: none !important;
+}
+
+/* Mobile specific - extra aggressive hiding */
+@media (max-width: 768px) {
+    .hero-video {
+        pointer-events: none !important;
+    }
+    
+    .hero-video::-webkit-media-controls,
+    .hero-video::-webkit-media-controls-enclosure,
+    .hero-video::-webkit-media-controls-panel,
+    .hero-video::-webkit-media-controls-play-button,
+    .hero-video::-webkit-media-controls-start-playback-button,
+    .hero-video::-webkit-media-controls-overlay-play-button {
+        display: none !important;
+        -webkit-appearance: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+    }
+}
+</style>
+
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -3755,7 +3820,21 @@ nav {
     <!-- Hero Section -->
     <section class="hero">
         <div class="hero-background">
-<video class="hero-video" autoplay muted loop playsinline preload="auto" poster="computer-poster.jpg" webkit-playsinline x5-playsinline disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback">
+<video 
+    class="hero-video" 
+    autoplay 
+    muted 
+    loop 
+    playsinline 
+    preload="auto" 
+    poster="computer-poster.jpg" 
+    webkit-playsinline 
+    x5-playsinline 
+    disablePictureInPicture 
+    controlsList="nodownload nofullscreen noremoteplayback noplaybackrate"
+    controls="false"
+    id="heroVideo"
+    style="pointer-events: none;">
     <source src="computer.mp4" type="video/mp4">
 </video>
         </div>
@@ -4922,76 +5001,75 @@ nav {
     // ==========================================
     // CRM CARD CAROUSELS (Web Dev & CRM Sections)
     // ==========================================
-    const crmCardCarousels = {
-        webDev: { currentSlide: 0, totalSlides: 3 },
-        crm: { currentSlide: 0, totalSlides: 3 }
-    };
+const crmCardCarousels = {
+    webDev: { currentSlide: 0, totalSlides: 3 },
+    crm: { currentSlide: 0, totalSlides: 3 }
+};
+
+function moveCrmCarousel(section, direction) {
+    const carousel = crmCardCarousels[section];
+    const oldSlide = carousel.currentSlide;
     
-    function moveCrmCarousel(section, direction) {
-        const carousel = crmCardCarousels[section];
-        const oldSlide = carousel.currentSlide;
-        
-        carousel.currentSlide += direction;
-        
-        // Boundary checks
-        if (carousel.currentSlide < 0) {
-            carousel.currentSlide = 0;
-        } else if (carousel.currentSlide >= carousel.totalSlides) {
-            carousel.currentSlide = carousel.totalSlides - 1;
-        }
-        
-        // Only update if slide changed
-        if (oldSlide !== carousel.currentSlide) {
-            updateCrmCarousel(section);
-        }
+    carousel.currentSlide += direction;
+    
+    // Boundary checks
+    if (carousel.currentSlide < 0) {
+        carousel.currentSlide = 0;
+    } else if (carousel.currentSlide >= carousel.totalSlides) {
+        carousel.currentSlide = carousel.totalSlides - 1;
     }
     
-    function updateCrmCarousel(section) {
-        const carousel = crmCardCarousels[section];
-        const track = document.getElementById(section + 'Carousel');
-        
-        if (!track) return;
-        
-        const cards = track.querySelectorAll('.crm-carousel-card');
-        const cardWidth = cards[0].offsetWidth;
-        const offset = -(carousel.currentSlide * cardWidth);
-        
-        track.style.transform = `translateX(${offset}px)`;
-        
-        // Update button states
-        const prevBtn = document.getElementById(section + 'Prev');
-        const nextBtn = document.getElementById(section + 'Next');
-        
-        if (prevBtn && nextBtn) {
-            prevBtn.disabled = carousel.currentSlide === 0;
-            nextBtn.disabled = carousel.currentSlide >= carousel.totalSlides - 1;
-        }
+    // Only update if slide changed
+    if (oldSlide !== carousel.currentSlide) {
+        updateCrmCarousel(section);
     }
+}
+
+function updateCrmCarousel(section) {
+    const carousel = crmCardCarousels[section];
+    const track = document.getElementById(section + 'Carousel');
     
-    // Initialize carousels on load
-    window.addEventListener('load', () => {
+    if (!track) return;
+    
+    const cards = track.querySelectorAll('.crm-carousel-card');
+    if (cards.length === 0) return;
+    
+    const cardWidth = cards[0].offsetWidth;
+    const offset = -(carousel.currentSlide * cardWidth);
+    
+    track.style.transform = `translateX(${offset}px)`;
+    
+    // Update button states
+    const prevBtn = document.getElementById(section + 'Prev');
+    const nextBtn = document.getElementById(section + 'Next');
+    
+    if (prevBtn && nextBtn) {
+        prevBtn.disabled = carousel.currentSlide === 0;
+        nextBtn.disabled = carousel.currentSlide >= carousel.totalSlides - 1;
+    }
+}
+
+// Initialize carousels on load - NO AUTO-ROTATION
+window.addEventListener('load', () => {
+    if (window.innerWidth <= 768) {
+        updateBrandSlide();
+        updateCrmCarousel('webDev');
+        updateCrmCarousel('crm');
+    }
+});
+
+// Reset on window resize - KEEP CURRENT POSITION
+let crmCarouselResizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(crmCarouselResizeTimer);
+    crmCarouselResizeTimer = setTimeout(() => {
         if (window.innerWidth <= 768) {
             updateBrandSlide();
             updateCrmCarousel('webDev');
             updateCrmCarousel('crm');
         }
-    });
-    
-    // Reset on window resize
-    let crmCarouselResizeTimer;
-    window.addEventListener('resize', () => {
-        clearTimeout(crmCarouselResizeTimer);
-        crmCarouselResizeTimer = setTimeout(() => {
-            if (window.innerWidth <= 768) {
-                currentBrandSlide = 1;
-                crmCardCarousels.webDev.currentSlide = 0;
-                crmCardCarousels.crm.currentSlide = 0;
-                updateBrandSlide();
-                updateCrmCarousel('webDev');
-                updateCrmCarousel('crm');
-            }
-        }, 250);
-    });
+    }, 250);
+});
     
             function switchBrandTab(index) {
             // Update desktop tabs
@@ -5075,14 +5153,46 @@ function closeSuccessModal() {
 
 // Add this to your existing <script> section
 document.addEventListener('DOMContentLoaded', function() {
-    const heroVideo = document.querySelector('.hero-video');
+    const heroVideo = document.getElementById('heroVideo');
+    
     if (heroVideo) {
+        // Remove any controls attributes
+        heroVideo.removeAttribute('controls');
+        heroVideo.controls = false;
+        
+        // Ensure muted and inline playback
+        heroVideo.muted = true;
+        heroVideo.playsInline = true;
         heroVideo.setAttribute('playsinline', '');
         heroVideo.setAttribute('webkit-playsinline', '');
-        heroVideo.muted = true;
-        heroVideo.play().catch(function(error) {
-            console.log('Video autoplay failed:', error);
-        });
+        
+        // Force play
+        const playVideo = () => {
+            heroVideo.play().catch(function(error) {
+                console.log('Video autoplay attempt failed:', error);
+                // Try again after a brief delay
+                setTimeout(() => {
+                    heroVideo.play().catch(e => console.log('Second attempt failed:', e));
+                }, 100);
+            });
+        };
+        
+        // Attempt to play immediately
+        playVideo();
+        
+        // Also try when the video is loaded
+        heroVideo.addEventListener('loadedmetadata', playVideo);
+        
+        // For iOS: play on any user interaction
+        const playOnInteraction = () => {
+            heroVideo.play();
+            // Remove listeners after first successful play
+            document.removeEventListener('touchstart', playOnInteraction);
+            document.removeEventListener('click', playOnInteraction);
+        };
+        
+        document.addEventListener('touchstart', playOnInteraction, { once: true });
+        document.addEventListener('click', playOnInteraction, { once: true });
     }
 });
 

@@ -215,6 +215,7 @@ window.addEventListener('load', function() {
             height: 100%;
             z-index: 1;
             overflow: hidden;
+            pointer-events: none;
         }
 
         .hero-video {
@@ -225,6 +226,38 @@ window.addEventListener('load', function() {
             height: 100%;
             object-fit: cover;
             z-index: 0;
+            pointer-events: none;
+            display: block; /* Show on desktop */
+        }
+
+        /* Hide all video controls */
+        .hero-video::-webkit-media-controls,
+        .hero-video::-webkit-media-controls-enclosure,
+        .hero-video::-webkit-media-controls-panel,
+        .hero-video::-webkit-media-controls-play-button,
+        .hero-video::-webkit-media-controls-start-playback-button,
+        .hero-video::-webkit-media-controls-overlay-play-button,
+        .hero-video::-webkit-media-controls-overlay-enclosure {
+            display: none !important;
+            -webkit-appearance: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        .hero-video::-moz-media-controls {
+            display: none !important;
+        }
+
+        /* Mobile fallback image */
+        .hero-mobile-image {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            display: none; /* Hidden on desktop */
         }
 
         .hero-background::before {
@@ -1400,6 +1433,15 @@ window.addEventListener('load', function() {
                 width: 100%;
                 opacity: 0.3;
             }
+            
+            /* Mobile: Hide video, show image */
+            .hero-video {
+                display: none !important; /* Hide video on mobile */
+            }
+            
+            .hero-mobile-image {
+                display: block !important; /* Show image on mobile */
+            }
 
             .hero-content {
                 padding-right: 0;
@@ -1628,9 +1670,27 @@ window.addEventListener('load', function() {
 <!-- Hero Section -->
 <section class="careers-hero">
     <div class="hero-background">
-        <video class="hero-video" autoplay muted loop playsinline>
+        <!-- Desktop: Video plays automatically -->
+        <video 
+            id="heroVideo"
+            class="hero-video" 
+            autoplay 
+            muted 
+            loop 
+            playsinline
+            webkit-playsinline
+            preload="auto"
+        >
             <source src="8346903-uhd_3840_2160_25fps.mp4" type="video/mp4">
         </video>
+        
+        <!-- Mobile: Static image (NO PLAY BUTTON!) -->
+        <img 
+            src="careers-hero-mobile.jpg" 
+            alt="Careers at Diamondback Coding" 
+            class="hero-mobile-image"
+            loading="eager"
+        >
     </div>
     
     <div class="hero-content">
@@ -2421,6 +2481,41 @@ window.addEventListener('load', function() {
         }
     }
     loadJobs();
+
+    // Desktop video autoplay (won't run on mobile since video is hidden)
+    (function() {
+        'use strict';
+        
+        const video = document.getElementById('heroVideo');
+        if (!video) return;
+        
+        // Only run if video is visible (desktop only)
+        if (window.innerWidth > 768) {
+            // Remove controls
+            video.removeAttribute('controls');
+            video.controls = false;
+            
+            // Force muted
+            video.muted = true;
+            video.defaultMuted = true;
+            video.volume = 0;
+            
+            // Try to play
+            const playVideo = () => {
+                video.play().catch(() => {
+                    setTimeout(playVideo, 100);
+                });
+            };
+            
+            // Start playing
+            playVideo();
+            
+            // Restart if paused
+            video.addEventListener('pause', () => {
+                if (!video.ended) video.play();
+            });
+        }
+    })();
 
 </script>
 

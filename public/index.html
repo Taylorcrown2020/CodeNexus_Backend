@@ -3647,19 +3647,25 @@ nav {
 }
     </style>
 
-    <style>
-/* Enhanced video controls hiding */
+<style>
+/* ULTIMATE VIDEO CONTROL HIDING */
 .hero-video {
     pointer-events: none !important;
 }
 
-/* Hide controls in all browsers */
+/* WebKit (Safari/Chrome/iOS) */
 .hero-video::-webkit-media-controls {
+    display: none !important;
+    -webkit-appearance: none !important;
+    opacity: 0 !important;
+}
+
+.hero-video::-webkit-media-controls-enclosure {
     display: none !important;
     -webkit-appearance: none !important;
 }
 
-.hero-video::-webkit-media-controls-start-playback-button {
+.hero-video::-webkit-media-controls-panel {
     display: none !important;
     -webkit-appearance: none !important;
 }
@@ -3669,11 +3675,32 @@ nav {
     -webkit-appearance: none !important;
 }
 
-.hero-video::-webkit-media-controls-enclosure {
+.hero-video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+    -webkit-appearance: none !important;
+}
+
+.hero-video::-webkit-media-controls-timeline {
     display: none !important;
 }
 
-.hero-video::-webkit-media-controls-panel {
+.hero-video::-webkit-media-controls-current-time-display {
+    display: none !important;
+}
+
+.hero-video::-webkit-media-controls-time-remaining-display {
+    display: none !important;
+}
+
+.hero-video::-webkit-media-controls-mute-button {
+    display: none !important;
+}
+
+.hero-video::-webkit-media-controls-volume-slider {
+    display: none !important;
+}
+
+.hero-video::-webkit-media-controls-fullscreen-button {
     display: none !important;
 }
 
@@ -3682,17 +3709,17 @@ nav {
     -webkit-appearance: none !important;
 }
 
+/* Prevent the overlay play button specifically on touch */
+.hero-video::-webkit-media-controls-overlay-enclosure {
+    display: none !important;
+}
+
 /* Firefox */
 .hero-video::-moz-media-controls {
     display: none !important;
 }
 
-/* Generic */
-.hero-video::--media-controls {
-    display: none !important;
-}
-
-/* Mobile specific - extra aggressive hiding */
+/* Mobile specific overrides */
 @media (max-width: 768px) {
     .hero-video {
         pointer-events: none !important;
@@ -3701,13 +3728,14 @@ nav {
     .hero-video::-webkit-media-controls,
     .hero-video::-webkit-media-controls-enclosure,
     .hero-video::-webkit-media-controls-panel,
-    .hero-video::-webkit-media-controls-play-button,
-    .hero-video::-webkit-media-controls-start-playback-button,
-    .hero-video::-webkit-media-controls-overlay-play-button {
+    .hero-video::-webkit-media-controls-overlay-play-button,
+    .hero-video::-webkit-media-controls-overlay-enclosure {
         display: none !important;
         -webkit-appearance: none !important;
         opacity: 0 !important;
         visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
     }
 }
 </style>
@@ -3821,20 +3849,18 @@ nav {
     <section class="hero">
         <div class="hero-background">
 <video 
+    id="heroVideo"
     class="hero-video" 
     autoplay 
     muted 
     loop 
     playsinline 
-    preload="auto" 
-    poster="computer-poster.jpg" 
-    webkit-playsinline 
-    x5-playsinline 
-    disablePictureInPicture 
-    controlsList="nodownload nofullscreen noremoteplayback noplaybackrate"
-    controls="false"
-    id="heroVideo"
-    style="pointer-events: none;">
+    preload="metadata"
+    webkit-playsinline
+    x-webkit-airplay="deny"
+    disablePictureInPicture
+    style="pointer-events: none;"
+>
     <source src="computer.mp4" type="video/mp4">
 </video>
         </div>
@@ -5152,49 +5178,99 @@ function closeSuccessModal() {
 }
 
 // Add this to your existing <script> section
-document.addEventListener('DOMContentLoaded', function() {
-    const heroVideo = document.getElementById('heroVideo');
+// ENHANCED VIDEO AUTOPLAY - Place this BEFORE closing </body> tag
+(function() {
+    'use strict';
     
-    if (heroVideo) {
-        // Remove any controls attributes
-        heroVideo.removeAttribute('controls');
-        heroVideo.controls = false;
+    const initVideo = () => {
+        const video = document.getElementById('heroVideo');
+        if (!video) return;
         
-        // Ensure muted and inline playback
-        heroVideo.muted = true;
-        heroVideo.playsInline = true;
-        heroVideo.setAttribute('playsinline', '');
-        heroVideo.setAttribute('webkit-playsinline', '');
+        // CRITICAL: Remove ALL control-related attributes
+        video.removeAttribute('controls');
+        video.controls = false;
         
-        // Force play
-        const playVideo = () => {
-            heroVideo.play().catch(function(error) {
-                console.log('Video autoplay attempt failed:', error);
-                // Try again after a brief delay
-                setTimeout(() => {
-                    heroVideo.play().catch(e => console.log('Second attempt failed:', e));
-                }, 100);
-            });
+        // Force inline playback
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        video.setAttribute('x-webkit-airplay', 'deny');
+        video.playsInline = true;
+        
+        // Ensure muted
+        video.muted = true;
+        video.defaultMuted = true;
+        
+        // Prevent any interaction
+        video.style.pointerEvents = 'none';
+        
+        // Play function with multiple attempts
+        const attemptPlay = (attempt = 0) => {
+            if (attempt > 10) {
+                console.log('Max play attempts reached');
+                return;
+            }
+            
+            video.play()
+                .then(() => {
+                    console.log('Video playing successfully');
+                })
+                .catch(err => {
+                    console.log(`Play attempt ${attempt + 1} failed:`, err.message);
+                    setTimeout(() => attemptPlay(attempt + 1), 200);
+                });
         };
         
-        // Attempt to play immediately
-        playVideo();
+        // Start playing immediately
+        attemptPlay();
         
-        // Also try when the video is loaded
-        heroVideo.addEventListener('loadedmetadata', playVideo);
+        // Try again on various events
+        video.addEventListener('loadedmetadata', () => attemptPlay());
+        video.addEventListener('loadeddata', () => attemptPlay());
+        video.addEventListener('canplay', () => attemptPlay());
         
-        // For iOS: play on any user interaction
-        const playOnInteraction = () => {
-            heroVideo.play();
-            // Remove listeners after first successful play
-            document.removeEventListener('touchstart', playOnInteraction);
-            document.removeEventListener('click', playOnInteraction);
+        // Handle pause events - restart immediately
+        video.addEventListener('pause', (e) => {
+            if (!video.ended) {
+                video.play();
+            }
+        });
+        
+        // iOS-specific: play on first user interaction
+        const playOnTouch = () => {
+            video.play();
+            document.removeEventListener('touchstart', playOnTouch);
+            document.removeEventListener('touchend', playOnTouch);
+            document.removeEventListener('click', playOnTouch);
         };
         
-        document.addEventListener('touchstart', playOnInteraction, { once: true });
-        document.addEventListener('click', playOnInteraction, { once: true });
+        document.addEventListener('touchstart', playOnTouch, { once: true, passive: true });
+        document.addEventListener('touchend', playOnTouch, { once: true, passive: true });
+        document.addEventListener('click', playOnTouch, { once: true });
+        
+        // Prevent context menu on video
+        video.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
+        
+        // Force play on visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && video.paused) {
+                video.play();
+            }
+        });
+    };
+    
+    // Initialize immediately if DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initVideo);
+    } else {
+        initVideo();
     }
-});
+    
+    // Also try on window load
+    window.addEventListener('load', initVideo);
+})();
 
 // Close modals with Escape key
 document.addEventListener('keydown', function(e) {

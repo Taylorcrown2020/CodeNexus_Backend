@@ -3582,6 +3582,76 @@ nav {
         grid-template-columns: 1fr;
     }
 }
+/* ====================================
+   NUCLEAR OPTION: HIDE ALL VIDEO CONTROLS
+   ==================================== */
+.hero-video {
+    /* Make video completely non-interactive */
+    pointer-events: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+    
+    /* Force no controls on ALL browsers */
+    -webkit-appearance: none !important;
+    appearance: none !important;
+}
+
+/* Kill WebKit (Safari/Chrome/iOS) controls */
+.hero-video::-webkit-media-controls,
+.hero-video::-webkit-media-controls-enclosure,
+.hero-video::-webkit-media-controls-panel,
+.hero-video::-webkit-media-controls-play-button,
+.hero-video::-webkit-media-controls-start-playback-button,
+.hero-video::-webkit-media-controls-overlay-play-button,
+.hero-video::-webkit-media-controls-overlay-enclosure,
+.hero-video::-webkit-media-controls-timeline,
+.hero-video::-webkit-media-controls-current-time-display,
+.hero-video::-webkit-media-controls-time-remaining-display,
+.hero-video::-webkit-media-controls-mute-button,
+.hero-video::-webkit-media-controls-volume-slider,
+.hero-video::-webkit-media-controls-fullscreen-button {
+    display: none !important;
+    -webkit-appearance: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Firefox */
+.hero-video::-moz-media-controls {
+    display: none !important;
+}
+
+/* Cover entire video with invisible overlay */
+.hero-background::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    pointer-events: auto;
+}
+
+/* Mobile specific */
+@media (max-width: 768px) {
+    .hero-video {
+        /* Additional mobile-specific overrides */
+        object-position: center center;
+    }
+    
+    .hero-background {
+        pointer-events: none !important;
+    }
+    
+    .hero-background * {
+        pointer-events: none !important;
+    }
+}
     </style>
 
     <script type="application/ld+json">
@@ -3690,104 +3760,37 @@ nav {
     </nav>
 
     <!-- Hero Section -->
-section class="hero">
-    <div class="hero-background">
-        <video 
-            id="heroVideo"
-            class="hero-video" 
-            autoplay 
-            muted 
-            loop 
-            playsinline 
-            preload="metadata"
-            webkit-playsinline
-            x-webkit-airplay="deny"
-            disablePictureInPicture
-        >
-            <source src="computer.mp4" type="video/mp4">
-        </video>
-        <!-- CRITICAL: This div blocks ALL interaction with the video -->
-        <div class="video-overlay-blocker"></div>
-    </div>
-    
-    <div class="hero-content">
-        <div class="hero-text">
-            <h1 class="hero-title">Professional Website Design & Development Nationwide</h1>
-            <p class="hero-subtitle">Expert web development agency delivering custom websites, CRM solutions, and digital marketing services to businesses across the United States.</p>
-            <div class="hero-cta">
-                <button class="btn-primary" onclick="openModal()">GET STARTED</button>
-                <a href="portfolio.html" class="btn-secondary">VIEW OUR WORK</a>
+    <section class="hero">
+<div class="hero-background" style="pointer-events: none;">
+    <video 
+        id="heroVideo"
+        class="hero-video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+        webkit-playsinline
+        x-webkit-airplay="deny"
+        disablePictureInPicture
+        disableRemotePlayback
+        style="pointer-events: none; object-fit: cover;"
+    >
+        <source src="computer.mp4" type="video/mp4">
+    </video>
+</div>
+        
+        <div class="hero-content">
+            <div class="hero-text">
+                <h1 class="hero-title">Professional Website Design & Development Nationwide</h1>
+                <p class="hero-subtitle">Expert web development agency delivering custom websites, CRM solutions, and digital marketing services to businesses across the United States.</p>
+                <div class="hero-cta">
+                    <button class="btn-primary" onclick="openModal()">GET STARTED</button>
+                    <a href="portfolio.html" class="btn-secondary">VIEW OUR WORK</a>
+                </div>
             </div>
         </div>
-    </div>
-</section>
-
-<style>
-/* ULTIMATE VIDEO CONTROL BLOCKER - Add this to your existing styles */
-
-/* Create an absolute overlay div that blocks ALL interaction with video */
-.video-overlay-blocker {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    z-index: 3 !important; /* Above video (z-index 0) but below gradient (z-index 2) */
-    background: transparent !important;
-    pointer-events: all !important; /* Block ALL clicks/taps */
-    cursor: default !important;
-}
-
-/* Force video to be non-interactive */
-.hero-video {
-    pointer-events: none !important;
-    -webkit-user-select: none !important;
-    user-select: none !important;
-    -webkit-touch-callout: none !important;
-}
-
-/* Hide ALL possible video controls - ENHANCED */
-.hero-video::-webkit-media-controls,
-.hero-video::-webkit-media-controls-enclosure,
-.hero-video::-webkit-media-controls-panel,
-.hero-video::-webkit-media-controls-play-button,
-.hero-video::-webkit-media-controls-start-playback-button,
-.hero-video::-webkit-media-controls-overlay-play-button,
-.hero-video::-webkit-media-controls-overlay-enclosure {
-    display: none !important;
-    -webkit-appearance: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    width: 0 !important;
-    height: 0 !important;
-    pointer-events: none !important;
-}
-
-/* Mobile specific overrides - CRITICAL */
-@media (max-width: 768px) {
-    .video-overlay-blocker {
-        z-index: 999 !important; /* Super high on mobile */
-    }
-    
-    .hero-video {
-        pointer-events: none !important;
-    }
-    
-    /* Absolutely prevent iOS from showing ANY controls */
-    .hero-video::-webkit-media-controls,
-    .hero-video::-webkit-media-controls-enclosure,
-    .hero-video::-webkit-media-controls-panel,
-    .hero-video::-webkit-media-controls-overlay-play-button,
-    .hero-video::-webkit-media-controls-overlay-enclosure {
-        display: none !important;
-        -webkit-appearance: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        width: 0 !important;
-        height: 0 !important;
-    }
-}
-</style>
+    </section>
 
 <!-- Logo Carousel -->
 <div class="logo-carousel">
@@ -4879,128 +4882,6 @@ section class="hero">
     </div>
 </div>
 
-<script>
-// ULTIMATE VIDEO AUTOPLAY - Replace your existing video script with this
-(function() {
-    'use strict';
-    
-    const initVideo = () => {
-        const video = document.getElementById('heroVideo');
-        if (!video) return;
-        
-        // CRITICAL: Remove ALL control-related attributes
-        video.removeAttribute('controls');
-        video.controls = false;
-        
-        // Force inline playback
-        video.setAttribute('playsinline', '');
-        video.setAttribute('webkit-playsinline', '');
-        video.setAttribute('x-webkit-airplay', 'deny');
-        video.playsInline = true;
-        
-        // Ensure muted
-        video.muted = true;
-        video.defaultMuted = true;
-        video.volume = 0;
-        
-        // Prevent any interaction
-        video.style.pointerEvents = 'none';
-        
-        // Disable right-click
-        video.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            return false;
-        }, false);
-        
-        // Prevent any touch/click events
-        video.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }, false);
-        
-        video.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }, { passive: false });
-        
-        // Play function with multiple attempts
-        const attemptPlay = (attempt = 0) => {
-            if (attempt > 15) {
-                console.log('Max play attempts reached');
-                return;
-            }
-            
-            video.play()
-                .then(() => {
-                    console.log('Video playing successfully');
-                })
-                .catch(err => {
-                    console.log(`Play attempt ${attempt + 1} failed:`, err.message);
-                    setTimeout(() => attemptPlay(attempt + 1), 100);
-                });
-        };
-        
-        // Start playing immediately
-        attemptPlay();
-        
-        // Try again on various events
-        video.addEventListener('loadedmetadata', () => attemptPlay());
-        video.addEventListener('loadeddata', () => attemptPlay());
-        video.addEventListener('canplay', () => attemptPlay());
-        
-        // Handle pause events - restart immediately
-        video.addEventListener('pause', (e) => {
-            if (!video.ended) {
-                setTimeout(() => video.play(), 10);
-            }
-        });
-        
-        // iOS-specific: play on first user interaction ANYWHERE on page
-        const playOnInteraction = () => {
-            video.play();
-            document.removeEventListener('touchstart', playOnInteraction);
-            document.removeEventListener('touchend', playOnInteraction);
-            document.removeEventListener('click', playOnInteraction);
-            document.removeEventListener('scroll', playOnInteraction);
-        };
-        
-        document.addEventListener('touchstart', playOnInteraction, { once: true, passive: true });
-        document.addEventListener('touchend', playOnInteraction, { once: true, passive: true });
-        document.addEventListener('click', playOnInteraction, { once: true });
-        document.addEventListener('scroll', playOnInteraction, { once: true, passive: true });
-        
-        // Force play on visibility change
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && video.paused) {
-                video.play();
-            }
-        });
-        
-        // Keep trying to play every 2 seconds if paused
-        setInterval(() => {
-            if (video.paused && !video.ended) {
-                video.play().catch(() => {});
-            }
-        }, 2000);
-    };
-    
-    // Initialize immediately if DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initVideo);
-    } else {
-        initVideo();
-    }
-    
-    // Also try on window load
-    window.addEventListener('load', initVideo);
-    
-    // Try again after a short delay (for iOS)
-    setTimeout(initVideo, 500);
-})();
-</script>
-
     <script>
     // ==========================================
     // FORM SUBMISSION
@@ -5210,6 +5091,93 @@ function closeSuccessModal() {
     document.getElementById('successModal').style.display = 'none';
     document.body.style.overflow = 'auto';
 }
+
+// Add this to your existing <script> section
+// ENHANCED VIDEO AUTOPLAY - Place this BEFORE closing </body> tag
+(function() {
+    'use strict';
+    
+    function killVideoControls() {
+        const video = document.getElementById('heroVideo');
+        if (!video) return;
+        
+        // NUCLEAR: Remove all possible control attributes
+        video.removeAttribute('controls');
+        video.controls = false;
+        
+        // Force these attributes
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        video.setAttribute('x-webkit-airplay', 'deny');
+        video.setAttribute('disablePictureInPicture', '');
+        video.setAttribute('disableRemotePlayback', '');
+        
+        video.playsInline = true;
+        video.muted = true;
+        video.defaultMuted = true;
+        
+        // Make it completely unclickable
+        video.style.pointerEvents = 'none';
+        video.parentElement.style.pointerEvents = 'none';
+        
+        // Prevent ALL interactions
+        const blockInteraction = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        };
+        
+        video.addEventListener('click', blockInteraction, true);
+        video.addEventListener('touchstart', blockInteraction, true);
+        video.addEventListener('touchend', blockInteraction, true);
+        video.addEventListener('touchmove', blockInteraction, true);
+        video.addEventListener('contextmenu', blockInteraction, true);
+        
+        // Aggressive autoplay
+        const forcePlay = () => {
+            if (video.paused) {
+                video.play().catch(() => {
+                    // Retry on mobile after user gesture
+                    const playOnce = () => {
+                        video.play();
+                        document.removeEventListener('touchstart', playOnce);
+                        document.removeEventListener('click', playOnce);
+                    };
+                    document.addEventListener('touchstart', playOnce, { once: true, passive: true });
+                    document.addEventListener('click', playOnce, { once: true });
+                });
+            }
+        };
+        
+        // Keep trying to play
+        forcePlay();
+        video.addEventListener('pause', forcePlay);
+        video.addEventListener('loadeddata', forcePlay);
+        video.addEventListener('canplay', forcePlay);
+        
+        // Monitor and restart on visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) forcePlay();
+        });
+        
+        // Check every second
+        setInterval(() => {
+            if (video.paused) forcePlay();
+        }, 1000);
+    }
+    
+    // Run immediately and on all load events
+    killVideoControls();
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', killVideoControls);
+    }
+    
+    window.addEventListener('load', killVideoControls);
+    
+    // Run again after 1 second (for slow networks)
+    setTimeout(killVideoControls, 1000);
+})();
 
 // Close modals with Escape key
 document.addEventListener('keydown', function(e) {

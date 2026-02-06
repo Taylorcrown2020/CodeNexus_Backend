@@ -3587,73 +3587,75 @@ nav {
         grid-template-columns: 1fr;
     }
 }
-/* ====================================
-   HIDE VIDEO CONTROLS - MOBILE MENU SAFE
-   ==================================== */
-.hero-video {
-    /* Make video non-interactive */
+
+</style>
+
+<style>
+/* Hero Video with Mobile Fallback */
+.hero-background {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 65%;
+    height: 100%;
+    z-index: 1;
+    overflow: hidden;
     pointer-events: none !important;
-    -webkit-user-select: none !important;
-    user-select: none !important;
-    -webkit-touch-callout: none !important;
 }
 
-/* Kill WebKit (Safari/Chrome/iOS) controls */
+.hero-video {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    pointer-events: none !important;
+    display: block; /* Show on desktop */
+}
+
+/* Hide all video controls */
 .hero-video::-webkit-media-controls,
 .hero-video::-webkit-media-controls-enclosure,
 .hero-video::-webkit-media-controls-panel,
 .hero-video::-webkit-media-controls-play-button,
 .hero-video::-webkit-media-controls-start-playback-button,
 .hero-video::-webkit-media-controls-overlay-play-button,
-.hero-video::-webkit-media-controls-overlay-enclosure,
-.hero-video::-webkit-media-controls-timeline,
-.hero-video::-webkit-media-controls-current-time-display,
-.hero-video::-webkit-media-controls-time-remaining-display,
-.hero-video::-webkit-media-controls-mute-button,
-.hero-video::-webkit-media-controls-volume-slider,
-.hero-video::-webkit-media-controls-fullscreen-button {
+.hero-video::-webkit-media-controls-overlay-enclosure {
     display: none !important;
     -webkit-appearance: none !important;
     opacity: 0 !important;
-    visibility: hidden !important;
-    width: 0 !important;
-    height: 0 !important;
     pointer-events: none !important;
 }
 
-/* Firefox */
 .hero-video::-moz-media-controls {
     display: none !important;
 }
 
-/* Cover entire video with invisible overlay - BUT DON'T BLOCK NAV */
-.hero-background::after {
-    content: '';
+/* Mobile fallback image */
+.hero-mobile-image {
     position: absolute;
     top: 0;
-    left: 0;
     right: 0;
-    bottom: 0;
-    z-index: 3;
-    pointer-events: none !important; /* CRITICAL: Don't block nav menu */
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    display: none; /* Hidden on desktop */
 }
 
-/* Mobile specific */
+/* Mobile: Hide video, show image */
 @media (max-width: 768px) {
     .hero-video {
-        /* Additional mobile-specific overrides */
-        object-position: center center;
+        display: none !important; /* Hide video on mobile */
     }
     
-    .hero-background {
-        pointer-events: none !important;
-    }
-    
-    .hero-background * {
-        pointer-events: none !important;
+    .hero-mobile-image {
+        display: block !important; /* Show image on mobile */
     }
 }
-    </style>
+</style>
 
     <script type="application/ld+json">
     {
@@ -3762,36 +3764,41 @@ nav {
 
     <!-- Hero Section -->
     <section class="hero">
-<div class="hero-background" style="pointer-events: none;">
-    <video 
-        id="heroVideo"
-        class="hero-video"
-        autoplay
-        muted
-        loop
-        playsinline
-        preload="auto"
-        webkit-playsinline
-        x-webkit-airplay="deny"
-        disablePictureInPicture
-        disableRemotePlayback
-        style="pointer-events: none; object-fit: cover;"
-    >
-        <source src="computer.mp4" type="video/mp4">
-    </video>
-</div>
+    <div class="hero-background">
+        <!-- Desktop: Video plays automatically -->
+        <video 
+            id="heroVideo"
+            class="hero-video"
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="auto"
+            webkit-playsinline
+        >
+            <source src="computer.mp4" type="video/mp4">
+        </video>
         
-        <div class="hero-content">
-            <div class="hero-text">
-                <h1 class="hero-title">Professional Website Design & Development Nationwide</h1>
-                <p class="hero-subtitle">Expert web development agency delivering custom websites, CRM solutions, and digital marketing services to businesses across the United States.</p>
-                <div class="hero-cta">
-                    <button class="btn-primary" onclick="openModal()">GET STARTED</button>
-                    <a href="portfolio.html" class="btn-secondary">VIEW OUR WORK</a>
-                </div>
+        <!-- Mobile: Static image (NO PLAY BUTTON!) -->
+        <img 
+            src="computer-poster.jpg" 
+            alt="Background" 
+            class="hero-mobile-image"
+            loading="eager"
+        >
+    </div>
+    
+    <div class="hero-content">
+        <div class="hero-text">
+            <h1 class="hero-title">Professional Website Design & Development Nationwide</h1>
+            <p class="hero-subtitle">Expert web development agency delivering custom websites, CRM solutions, and digital marketing services to businesses across the United States.</p>
+            <div class="hero-cta">
+                <button class="btn-primary" onclick="openModal()">GET STARTED</button>
+                <a href="portfolio.html" class="btn-secondary">VIEW OUR WORK</a>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
 <!-- Logo Carousel -->
 <div class="logo-carousel">
@@ -5127,6 +5134,10 @@ function closeSuccessModal() {
         // Make unclickable
         video.style.pointerEvents = 'none';
         
+        // Show video now that controls are removed
+        video.classList.add('ready');
+        video.style.opacity = '1';
+        
         // AGGRESSIVE multi-attempt play function
         let playAttempts = 0;
         const maxAttempts = 50;
@@ -5134,6 +5145,8 @@ function closeSuccessModal() {
         const attemptPlay = () => {
             if (playAttempts >= maxAttempts) {
                 console.log('Max autoplay attempts reached');
+                // Show video anyway even if autoplay failed
+                video.style.opacity = '1';
                 return;
             }
             
@@ -5146,6 +5159,8 @@ function closeSuccessModal() {
                 playPromise
                     .then(() => {
                         console.log('✅ Video playing successfully!');
+                        // Ensure video is visible
+                        video.style.opacity = '1';
                     })
                     .catch(error => {
                         console.log(`❌ Attempt ${playAttempts} failed:`, error.message);
@@ -5203,14 +5218,10 @@ function closeSuccessModal() {
             }
         }, 2000);
         
-        // iOS Safari fallback - try on ANY user interaction (but don't wait for it)
-        const iosPlay = () => {
-            video.play();
-            console.log('iOS interaction play triggered');
-        };
-        
-        document.addEventListener('touchstart', iosPlay, { once: true, passive: true });
-        document.addEventListener('click', iosPlay, { once: true });
+        // Fallback: show video after 3 seconds regardless
+        setTimeout(() => {
+            video.style.opacity = '1';
+        }, 3000);
     };
     
     // Run IMMEDIATELY
@@ -5226,6 +5237,40 @@ function closeSuccessModal() {
     
     // And one more time after 500ms
     setTimeout(initVideo, 500);
+})();
+
+(function() {
+    'use strict';
+    
+    const video = document.getElementById('heroVideo');
+    if (!video) return;
+    
+    // Only run if video is visible (desktop only)
+    if (window.innerWidth > 768) {
+        // Remove controls
+        video.removeAttribute('controls');
+        video.controls = false;
+        
+        // Force muted
+        video.muted = true;
+        video.defaultMuted = true;
+        video.volume = 0;
+        
+        // Try to play
+        const playVideo = () => {
+            video.play().catch(() => {
+                setTimeout(playVideo, 100);
+            });
+        };
+        
+        // Start playing
+        playVideo();
+        
+        // Restart if paused
+        video.addEventListener('pause', () => {
+            if (!video.ended) video.play();
+        });
+    }
 })();
 
 // Close modals with Escape key

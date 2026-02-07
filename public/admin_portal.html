@@ -692,7 +692,6 @@ body {
     z-index: 1;
 }
 
-.search-input:focus + .search-icon,
 .search-box:focus-within .search-icon { color: var(--accent-amber); }
 
 .filter-group {
@@ -4596,13 +4595,13 @@ function renderLeadsTable(content, type) {
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
-                <input type="text" class="search-input" placeholder="Search ${type}..." 
-                       value="${state.searchTerm || ''}"
-                       onkeyup="handleSearch(this.value)">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
+                <input type="text" class="search-input" placeholder="Search ${type}..." 
+                       value="${state.searchTerm || ''}"
+                       onkeyup="handleSearch(this.value)">
             </div>
             <div class="filter-group">
                 <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" 
@@ -4751,14 +4750,9 @@ function filterLeads(data) {
 }
 
 // 4. SEARCH HANDLER (MISSING)
-// Debounced search to prevent glitches
-let searchTimeout;
 function handleSearch(searchTerm) {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        state.searchTerm = searchTerm;
-        renderSection(state.currentSection);
-    }, 300); // 300ms debounce
+    state.searchTerm = searchTerm;
+    renderSection(state.currentSection);
 }
 
 // 5. FILTER HANDLER (MISSING)
@@ -5448,98 +5442,59 @@ function renderClientUploads() {
 }
 
 function openCreateClientModal() {
-    // Filter to only show customers
-    const customers = [...state.leads, ...state.customers].filter(lead => lead.is_customer);
-    
-    if (customers.length === 0) {
-        showToast('No customers available. Please convert a lead to a customer first before creating a client portal.', 'warning');
-        return;
-    }
-    
     const modalBody = `
-        <div style="background: var(--accent-amber-dim); border: 1px solid var(--accent-amber); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-amber)" stroke-width="2" style="width: 20px; height: 20px; flex-shrink: 0;">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="16" x2="12" y2="12"/>
-                    <line x1="12" y1="8" x2="12.01" y2="8"/>
-                </svg>
-                <p style="margin: 0; font-size: 13px; color: var(--text-primary); line-height: 1.5;">
-                    <strong>Important:</strong> Client portals can only be created for customers. If you don't see a person in the list below, you need to convert them from a lead to a customer first.
-                </p>
-            </div>
-        </div>
-        
         <form id="createClientForm" onsubmit="handleCreateClient(event)">
             <div class="form-grid">
                 <div class="form-group full-width">
-                    <label class="form-label">Select Customer *</label>
+                    <label class="form-label">Select Lead</label>
                     <select class="form-select" id="selectLead" required>
-                        <option value="">Choose a customer...</option>
-                        ${customers.map(customer => `
-                            <option value="${customer.id}" data-email="${customer.email}" ${customer.client_password ? 'disabled' : ''}>
-                                ${customer.name} - ${customer.company || 'No Company'} ${customer.client_password ? '(Portal Already Exists)' : ''}
+                        <option value="">Choose a lead...</option>
+                        ${state.leads.map(lead => `
+                            <option value="${lead.id}" data-email="${lead.email}">
+                                ${lead.name} - ${lead.company || 'No Company'}
                             </option>
                         `).join('')}
                     </select>
-                    <small style="display: block; margin-top: 6px; color: var(--text-muted); font-size: 12px;">
-                        Only customers are shown. Customers with existing portals are disabled.
-                    </small>
                 </div>
 
                 <div class="form-group full-width">
-                    <label class="form-label">Email *</label>
-                    <input type="email" class="form-input" id="clientEmail" required readonly style="background: var(--bg-hover);">
-                    <small style="display: block; margin-top: 6px; color: var(--text-muted); font-size: 12px;">
-                        Email is automatically filled from customer record
-                    </small>
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="clientEmail" required>
                 </div>
 
                 <div class="form-group full-width">
-                    <label class="form-label">Temporary Password *</label>
+                    <label class="form-label">Temporary Password</label>
                     <div style="display: flex; gap: 8px;">
                         <input type="text" class="form-input" id="tempPassword" required style="flex: 1;">
-                        <button type="button" class="btn btn-secondary" onclick="generatePassword()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                                <polyline points="23 4 23 10 17 10"/>
-                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                            </svg>
-                            Generate
-                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="generatePassword()">Generate</button>
                     </div>
-                    <small style="display: block; margin-top: 6px; color: var(--text-muted); font-size: 12px;">
-                        Customer will be prompted to change this on first login
-                    </small>
                 </div>
 
                 <div class="form-group full-width">
                     <label class="checkbox-label">
                         <input type="checkbox" id="sendWelcomeEmail" checked>
-                        <span>Send welcome email with login credentials</span>
+                        <span>Send welcome email</span>
                     </label>
                 </div>
             </div>
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Create Client Portal</button>
+                <button type="submit" class="btn btn-primary">Create Account</button>
             </div>
         </form>
     `;
 
-    document.getElementById('createModalTitle').textContent = 'Create Client Portal Account';
+    document.getElementById('createModalTitle').textContent = 'Create Client Account';
     document.getElementById('createModalBody').innerHTML = modalBody;
     document.getElementById('createModal').classList.add('active');
 
-    // Auto-fill email when customer is selected
+    // Auto-fill email
     setTimeout(() => {
         document.getElementById('selectLead').addEventListener('change', function() {
             const selected = this.options[this.selectedIndex];
             document.getElementById('clientEmail').value = selected.dataset.email || '';
         });
-        
-        // Auto-generate a password
-        generatePassword();
     }, 100);
 }
 
@@ -6842,11 +6797,11 @@ function renderInvoices(content) {
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
-                <input type="text" class="search-input" id="invoiceSearch" placeholder="Search invoices by number or customer..." value="${state.searchQuery}" onkeyup="handleInvoiceSearch(event)">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
+                <input type="text" class="search-input" id="invoiceSearch" placeholder="Search invoices by number or customer..." value="${state.searchQuery}" onkeyup="handleInvoiceSearch(event)">
             </div>
             <div class="filter-group">
                 <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" onclick="filterInvoices('all')">All</button>
@@ -6991,11 +6946,11 @@ function renderTasks(content) {
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
-                <input type="text" class="search-input" placeholder="Search tasks...">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
+                <input type="text" class="search-input" placeholder="Search tasks...">
             </div>
             <button class="btn btn-primary" onclick="openCreateModal('task')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -9106,6 +9061,10 @@ function filterInvoices(status) {
     state.currentFilter = status;
     renderSection('invoices');
 }
+function handleSearch(query) {
+state.searchQuery = query.toLowerCase();
+renderSection(state.currentSection);
+}
 function toggleSetting(setting) {
     state.settings[setting] = !state.settings[setting];
     
@@ -9912,11 +9871,11 @@ function renderProjects(content) {
         const htmlContent = `
             <div class="controls-bar">
                 <div class="search-box">
-                    <input type="text" class="search-input" id="projectSearch" placeholder="Search projects by client name, company, or project..." onkeyup="handleProjectSearch(event)">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"/>
                         <path d="m21 21-4.35-4.35"/>
                     </svg>
+                    <input type="text" class="search-input" id="projectSearch" placeholder="Search projects by client name, company, or project..." onkeyup="handleProjectSearch(event)">
                 </div>
             </div>
             
@@ -14040,12 +13999,12 @@ function renderLeadsTable(content, type) {
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
-                <input type="text" class="search-input" placeholder="Search..." 
-                       onkeyup="handleSearch(this.value)">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
+                <input type="text" class="search-input" placeholder="Search..." 
+                       onkeyup="handleSearch(this.value)">
             </div>
             <div class="filter-group">
                 <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" 
@@ -14818,168 +14777,66 @@ async function deleteMilestone(projectId, milestoneId, projectName, leadId) {
 
 // Render the follow-ups section
 function renderFollowUps(categories) {
-    const content = document.getElementById('main-content');
+    const content = document.getElementById('main-content');  // Assuming your main content div has this ID
     if (!content) return;
     
     let html = `
         <h2>Follow-Up Queue</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 24px;">Manage leads that need follow-up, organized by urgency</p>
+        <p></p>
     `;
     
     if (categories.length === 0) {
         html += `
-            <div style="text-align: center; padding: 60px 40px; color: var(--text-muted);">
-                <svg viewBox="0 0 24 24" style="width: 64px; height: 64px; color: var(--accent-amber); margin-bottom: 16px;">
+            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; color: var(--accent-amber);">
                     <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" fill="none"/>
                 </svg>
-                <h3 style="font-size: 18px; margin-bottom: 8px;">All Caught Up!</h3>
+                <h3>All Caught Up!</h3>
                 <p>No follow-ups needed right now</p>
             </div>
         `;
     } else {
-        // Create tab-based layout
-        html += `
-            <div style="display: grid; grid-template-columns: 220px 1fr; gap: 24px; margin-top: 24px;">
-                <!-- Sidebar with category tabs -->
-                <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 12px; height: fit-content;">
-                    ${categories.map((category, index) => {
-                        const categoryTitle = {
-                            'never_contacted': 'Never Contacted',
-                            '1_day': '1+ Day Ago',
-                            '3_day': '3+ Days Ago',
-                            '7_day': '7+ Days Ago',
-                            '14_day': '14+ Days Ago'
-                        }[category.follow_up_category] || category.follow_up_category;
-                        
-                        const urgencyColor = {
-                            'never_contacted': '#ef4444',
-                            '1_day': '#f59e0b',
-                            '3_day': '#22c55e',
-                            '7_day': '#3b82f6',
-                            '14_day': '#6b7280'
-                        }[category.follow_up_category] || '#6b7280';
-                        
-                        return `
-                            <div class="followup-tab ${index === 0 ? 'active' : ''}" 
-                                 data-category="${category.follow_up_category}"
-                                 onclick="switchFollowupTab('${category.follow_up_category}')"
-                                 style="padding: 12px 14px; margin-bottom: 6px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; border-left: 3px solid ${urgencyColor}; background: ${index === 0 ? 'var(--bg-hover)' : 'transparent'};">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">${categoryTitle}</span>
-                                    <span style="background: ${urgencyColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${category.count}</span>
+        categories.forEach(category => {
+            const categoryTitle = {
+                'never_contacted': 'Never Contacted',
+                '1_day': '1+ Day Ago',
+                '3_day': '3+ Days Ago',
+                '7_day': '7+ Days Ago',
+                '14_day': '14+ Days Ago'
+            }[category.follow_up_category] || category.follow_up_category;
+            
+            html += `
+                <div class="category-section" style="margin-bottom: 32px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="font-size: 16px; font-weight: 600;">${categoryTitle}</h3>
+                        <span style="background: var(--accent-amber-dim); padding: 4px 12px; border-radius: 20px; font-size: 13px;">${category.count}</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="sendBulkEmailByCategory('${category.follow_up_category}')">Send Bulk Email to Category</button>
+                    <div class="leads-list" style="margin-top: 16px;">
+                        ${category.leads.map(lead => `
+                            <div class="lead-card" style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-bottom: 12px; border: 1px solid var(--border-subtle);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-weight: 600;">${lead.name} (${lead.email})</span>
+                                    <span style="color: var(--text-muted); font-size: 12px;">${lead.days_since_contact} days ago</span>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-secondary btn-sm" onclick="sendIndividualEmail('${lead.id}')">Send Email</button>
+                                </div>
+                                <div class="notes-section" style="margin-top: 12px;">
+                                    <button onclick="toggleNotes(this)" class="btn btn-secondary btn-sm">View Notes</button>
+                                    <div class="notes-content" style="display: none; margin-top: 12px;">
+                                        ${renderLeadNotes(lead.notes)}
+                                    </div>
                                 </div>
                             </div>
-                        `;
-                    }).join('')}
-                </div>
-                
-                <!-- Main content area -->
-                <div id="followupContent" style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 24px;">
-                    ${renderFollowupCategoryContent(categories[0])}
-                </div>
-            </div>
-        `;
-    }
-    
-    content.innerHTML = html;
-    
-    // Store categories in state for tab switching
-    state.followupCategories = categories;
-}
-
-// Helper function to render individual category content
-function renderFollowupCategoryContent(category) {
-    if (!category) return '<p>No data available</p>';
-    
-    const categoryTitle = {
-        'never_contacted': 'Never Contacted',
-        '1_day': '1+ Day Ago',
-        '3_day': '3+ Days Ago',
-        '7_day': '7+ Days Ago',
-        '14_day': '14+ Days Ago'
-    }[category.follow_up_category] || category.follow_up_category;
-    
-    return `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);">
-            <div>
-                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">${categoryTitle}</h3>
-                <p style="font-size: 13px; color: var(--text-secondary);">${category.count} lead${category.count !== 1 ? 's' : ''} requiring follow-up</p>
-            </div>
-            <button class="btn btn-primary" onclick="openCategoryEmailModal('${category.follow_up_category}', '${categoryTitle}', ${category.count})">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                    <polyline points="22,6 12,13 2,6"/>
-                </svg>
-                Email All
-            </button>
-        </div>
-        
-        <div class="leads-list" style="display: flex; flex-direction: column; gap: 12px;">
-            ${category.leads.map(lead => `
-                <div class="lead-card" style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); transition: all 0.2s;" onmouseover="this.style.borderColor='var(--border-default)'" onmouseout="this.style.borderColor='var(--border-subtle)'">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--text-primary);">${lead.name}</div>
-                            <div style="font-size: 13px; color: var(--text-secondary);">${lead.email}</div>
-                            ${lead.phone ? `<div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">${lead.phone}</div>` : ''}
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="display: inline-block; background: var(--accent-amber-dim); color: var(--accent-amber); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${lead.days_since_contact} days ago</span>
-                        </div>
-                    </div>
-                    
-                    ${lead.company || lead.project_type ? `
-                        <div style="display: flex; gap: 16px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-subtle);">
-                            ${lead.company ? `<div style="font-size: 12px;"><span style="color: var(--text-muted);">Company:</span> <span style="color: var(--text-secondary);">${lead.company}</span></div>` : ''}
-                            ${lead.project_type ? `<div style="font-size: 12px;"><span style="color: var(--text-muted);">Project:</span> <span style="color: var(--text-secondary);">${lead.project_type}</span></div>` : ''}
-                        </div>
-                    ` : ''}
-                    
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn btn-secondary btn-sm" onclick="openEmailModal(${lead.id}, '${lead.email}', '${lead.name}')">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                            Send Email
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="openDetailModal('lead', ${lead.id})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                            View Details
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="markAsContacted(${lead.id})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                <polyline points="22 4 12 14.01 9 11.01"/>
-                            </svg>
-                            Mark Contacted
-                        </button>
+                        `).join('')}
                     </div>
                 </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-// Switch between follow-up category tabs
-function switchFollowupTab(categoryName) {
-    // Update tab styling
-    document.querySelectorAll('.followup-tab').forEach(tab => {
-        if (tab.dataset.category === categoryName) {
-            tab.style.background = 'var(--bg-hover)';
-        } else {
-            tab.style.background = 'transparent';
-        }
-    });
-    
-    // Find and render the selected category
-    const category = state.followupCategories.find(c => c.follow_up_category === categoryName);
-    if (category) {
-        document.getElementById('followupContent').innerHTML = renderFollowupCategoryContent(category);
+            `;
+        });
     }
+    
+    content.innerHTML = html;  // Or append to a specific follow-up div if you have one
 }
 
 // Send email to specific follow-up category
@@ -15631,68 +15488,56 @@ async function renderFollowUps(content) {
                 </tr>`;
         }
 
-        // Build category sections HTML
+        // Build category sections HTML with TABBED UI
         let categorySectionsHtml = '';
         if (categories.length > 0) {
-            for (const category of categories) {
-                const categoryTitle = categoryLabels[category.follow_up_category] || category.follow_up_category;
-                const escapedTitle = categoryTitle.replace(/'/g, '&#39;');
-                let leadsHtml = '';
-                if (category.leads && category.leads.length > 0) {
-                    for (const lead of category.leads) {
-                        const escapedLeadName = lead.name.replace(/'/g, "\\'");
-                        leadsHtml += `
-                            <tr>
-                                <td>
-                                    <div class="contact-cell">
-                                        <div class="contact-avatar">${'getInitials' in window ? getInitials(lead.name) : '?'}</div>
-                                        <div class="contact-info">
-                                            <div class="contact-name">${lead.name}</div>
-                                            <div class="contact-email">${lead.email}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
-                                <td>
-                                    <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
-                                        ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                            Mark Contacted
-                                        </button>
-                                        <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${escapedLeadName}', '${lead.email}')">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                                            Email
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>`;
-                    }
-                } else {
-                    leadsHtml = '<tr><td colspan="4" style="text-align:center;padding:20px;">No leads in this category</td></tr>';
-                }
-                categorySectionsHtml += `
-                <div class="table-container" style="margin-top: 24px;">
-                    <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">${categoryTitle}</h3>
-                            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">${category.count} leads need follow-up</p>
+            // Store categories in state for tab switching
+            state.followupCategories = categories;
+            
+            // Build tabs HTML
+            let tabsHTML = '';
+            categories.forEach((cat, idx) => {
+                const catTitle = categoryLabels[cat.follow_up_category] || cat.follow_up_category;
+                const urgencyColors = {
+                    'never_contacted': '#ef4444',
+                    '1_day': '#f59e0b',
+                    '3_day': '#22c55e',
+                    '7_day': '#3b82f6',
+                    '14_day': '#6b7280'
+                };
+                const color = urgencyColors[cat.follow_up_category] || '#6b7280';
+                
+                tabsHTML += `
+                    <div class="followup-tab ${idx === 0 ? 'active' : ''}" 
+                         data-category="${cat.follow_up_category}"
+                         onclick="switchFollowupTab('${cat.follow_up_category}')"
+                         style="padding: 12px 14px; margin-bottom: 6px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; border-left: 3px solid ${color}; background: ${idx === 0 ? 'var(--bg-hover)' : 'transparent'};">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">${catTitle}</span>
+                            <span style="background: ${color}; color: white; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700;">${cat.count}</span>
                         </div>
-                        <button class="btn btn-primary btn-sm" onclick="openCategoryEmailModal('${category.follow_up_category}', '${escapedTitle}', ${category.count})">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                            Email All
-                        </button>
+                    </div>`;
+            });
+            
+            // Build first category content
+            const firstCategory = categories[0];
+            const firstCategoryContent = buildCategoryContent(firstCategory, categoryLabels);
+            
+            categorySectionsHtml = `
+                <div style="display: grid; grid-template-columns: 240px 1fr; gap: 24px; margin-top: 24px;">
+                    <!-- Sidebar with category tabs -->
+                    <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 12px; height: fit-content; position: sticky; top: 100px;">
+                        <div style="padding: 12px 8px 16px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 12px;">
+                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Categories</div>
+                        </div>
+                        ${tabsHTML}
                     </div>
-                    <table class="data-table">
-                        <thead><tr><th>Lead</th><th>Last Contact</th><th>Days Since</th><th>Actions</th></tr></thead>
-                        <tbody>${leadsHtml}</tbody>
-                    </table>
+                    
+                    <!-- Main content area -->
+                    <div id="followupContent" style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 28px; min-height: 600px;">
+                        ${firstCategoryContent}
+                    </div>
                 </div>`;
-            }
         } else {
             categorySectionsHtml = `
                 <div style="text-align: center; padding: 60px; color: var(--text-muted);">
@@ -15763,6 +15608,94 @@ async function renderFollowUps(content) {
                 <button class="btn btn-secondary" onclick="renderFollowUps(document.getElementById('contentArea'))">Try Again</button>
             </div>
         `;
+    }
+}
+
+// Helper function to build category content
+function buildCategoryContent(category, categoryLabels) {
+    const categoryTitle = categoryLabels[category.follow_up_category] || category.follow_up_category;
+    const escapedTitle = categoryTitle.replace(/'/g, '&#39;');
+    
+    let leadsHtml = '';
+    if (category.leads && category.leads.length > 0) {
+        for (const lead of category.leads) {
+            const escapedLeadName = lead.name.replace(/'/g, "\\'");
+            leadsHtml += `
+                <tr>
+                    <td>
+                        <div class="contact-cell">
+                            <div class="contact-avatar">${'getInitials' in window ? getInitials(lead.name) : '?'}</div>
+                            <div class="contact-info">
+                                <div class="contact-name">${lead.name}</div>
+                                <div class="contact-email">${lead.email}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
+                    <td>
+                        <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
+                            ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                Mark Contacted
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${escapedLeadName}', '${lead.email}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                Email
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+        }
+    } else {
+        leadsHtml = '<tr><td colspan="4" style="text-align:center;padding:20px;">No leads in this category</td></tr>';
+    }
+    
+    return `
+        <div>
+            <div style="padding-bottom: 20px; border-bottom: 2px solid var(--border-subtle); margin-bottom: 24px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">${categoryTitle}</h3>
+                <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">${category.count} leads need follow-up</p>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+                <button class="btn btn-primary btn-sm" onclick="openCategoryEmailModal('${category.follow_up_category}', '${escapedTitle}', ${category.count})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    Email All
+                </button>
+            </div>
+            <table class="data-table">
+                <thead><tr><th>Lead</th><th>Last Contact</th><th>Days Since</th><th>Actions</th></tr></thead>
+                <tbody>${leadsHtml}</tbody>
+            </table>
+        </div>`;
+}
+
+// Switch between follow-up category tabs
+function switchFollowupTab(categoryName) {
+    // Update tab styling
+    document.querySelectorAll('.followup-tab').forEach(tab => {
+        if (tab.dataset.category === categoryName) {
+            tab.style.background = 'var(--bg-hover)';
+        } else {
+            tab.style.background = 'transparent';
+        }
+    });
+    
+    // Find and render the selected category
+    const category = state.followupCategories.find(c => c.follow_up_category === categoryName);
+    if (category) {
+        const categoryLabels = {
+            'never_contacted': 'Never Contacted',
+            '1_day': '1-Day Follow-Up',
+            '3_day': '3-Day Follow-Up',
+            '7_day': '7-Day Follow-Up',
+            '14_day': '14+ Day Follow-Up'
+        };
+        document.getElementById('followupContent').innerHTML = buildCategoryContent(category, categoryLabels);
     }
 }
 

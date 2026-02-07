@@ -2983,30 +2983,9 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
             </div>
         </div>
 
-        <!-- ── Operations ── -->
+        <!-- ── Personal Settings ── -->
         <div class="nav-section">
-            <div class="nav-section-title">Operations</div>
-            <div class="nav-item" data-section="employees">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-                </svg>
-                Team
-            </div>
-            <div class="nav-item" data-section="support">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-                Support Tickets
-            </div>
-            
-            <div class="nav-item" data-section="scoring-rules">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M12 1v6m0 6v6m5.196-15.804l-4.243 4.242m-6.364 6.364l-4.243 4.242m15.804 0l-4.242-4.242m-6.364-6.364l-4.242-4.242"/>
-                </svg>
-                Scoring Rules
-            </div>
+            <div class="nav-section-title">Personal</div>
             <div class="nav-item" data-section="settings">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"/>
@@ -3021,8 +3000,8 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
         <div class="user-card" onclick="logout()">
             <div class="user-avatar">AD</div>
             <div class="user-info">
-                <div class="user-name">Admin User</div>
-                <div class="user-role">Administrator</div>
+                <div class="user-name">Employee User</div>
+                <div class="user-role">Employee</div>
             </div>
             <svg class="logout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -3197,6 +3176,141 @@ const API_URL = window.location.origin;
 const API_BASE = API_URL; // Add this
 const FRONTEND_BASE_URL = 'https://diamondbackcoding.com';
 let authToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+
+// ============================================================
+// DEVELOPMENT MODE - BYPASS AUTHENTICATION FOR LOCAL TESTING
+// ============================================================
+const DEV_MODE = true; // ⚠️ SET TO FALSE IN PRODUCTION!
+
+if (DEV_MODE) {
+    console.log('%c🔧 DEVELOPMENT MODE ACTIVE', 'background: #f59e0b; color: white; padding: 8px; font-weight: bold; font-size: 14px;');
+    console.log('Authentication bypassed for local testing');
+    
+    // Set a fake auth token
+    authToken = 'dev-mock-token-12345';
+    localStorage.setItem('adminToken', authToken);
+    
+    // Mock fetch to bypass API calls
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        const url = args[0];
+        
+        console.log('🌐 Fetch intercepted:', url);
+        
+        // Mock auth verification
+        if (url.includes('/api/admin/verify') || url.includes('/api/employee/verify')) {
+            console.log('✅ Mock: Auth verified');
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ success: true, authenticated: true })
+            });
+        }
+        
+        // Mock data loading endpoints
+        if (url.includes('/api/admin/leads') || url.includes('/api/employee/leads')) {
+            console.log('📊 Mock: Returning sample leads');
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ 
+                    success: true, 
+                    leads: [
+                        { id: 1, name: 'Sample Lead 1', email: 'lead1@example.com', phone: '555-0101', status: 'new', created_at: new Date().toISOString() },
+                        { id: 2, name: 'Sample Lead 2', email: 'lead2@example.com', phone: '555-0102', status: 'contacted', created_at: new Date().toISOString() }
+                    ]
+                })
+            });
+        }
+        
+        if (url.includes('/api/admin/employees') || url.includes('/api/employee/employees')) {
+            console.log('👥 Mock: Returning sample employees');
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ 
+                    success: true, 
+                    employees: [
+                        { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Developer', portal_access: true },
+                        { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'Designer', portal_access: false }
+                    ]
+                })
+            });
+        }
+        
+        if (url.includes('/api/admin/invoices') || url.includes('/api/employee/invoices')) {
+            console.log('💰 Mock: Returning sample invoices');
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ 
+                    success: true, 
+                    invoices: []
+                })
+            });
+        }
+        
+        if (url.includes('/api/admin/tasks') || url.includes('/api/employee/tasks')) {
+            console.log('✅ Mock: Returning sample tasks');
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ 
+                    success: true, 
+                    tasks: []
+                })
+            });
+        }
+        
+        if (url.includes('/api/admin/tickets') || url.includes('/api/employee/tickets')) {
+            console.log('🎫 Mock: Returning sample tickets');
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ 
+                    success: true, 
+                    tickets: []
+                })
+            });
+        }
+        
+        if (url.includes('/api/admin/jobs') || url.includes('/api/recruitment/jobs')) {
+            console.log('💼 Mock: Returning sample jobs');
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ 
+                    success: true, 
+                    jobs: [],
+                    applications: []
+                })
+            });
+        }
+        
+        if (url.includes('/api/admin/settings') || url.includes('/api/employee/settings')) {
+            console.log('⚙️ Mock: Returning settings');
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ 
+                    success: true, 
+                    settings: {}
+                })
+            });
+        }
+        
+        // For any other endpoints, return empty success response
+        console.log('📦 Mock: Generic success response');
+        return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ success: true, data: [] })
+        });
+    };
+}
+// ============================================================
+// END DEVELOPMENT MODE
+// ============================================================
 
 // Helper function to get the current auth token
 function getAuthToken() {

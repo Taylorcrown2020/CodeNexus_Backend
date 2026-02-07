@@ -18,6 +18,10 @@ const rateLimit = require('express-rate-limit');
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 
+const app = express();
+const PORT = process.env.PORT || 3000;
+const BASE_URL = process.env.BASE_URL || 'https://diamondbackcoding.com';
+
 const SECURITY_CONFIG = {
     PASSWORD_MIN_LENGTH: 12,
     PASSWORD_EXPIRY_DAYS: 90,
@@ -44,11 +48,6 @@ app.use(helmet({
 const loginLimiter = rateLimit({ windowMs: 900000, max: 5 });
 app.use('/api/admin/login', loginLimiter);
 app.use('/api/employee/login', loginLimiter);
-
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL || 'https://diamondbackcoding.com';
 
 // Service Packages Definition (same as frontend)
 const servicePackages = {

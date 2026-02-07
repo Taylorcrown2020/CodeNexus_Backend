@@ -3,98 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diamondback CRM | Admin Portal</title>
-    <meta name="description" content="Professional CRM & Project Management Dashboard">
+    <title>Diamondback CRM | Professional Lead Management</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.js"></script>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
 :root {
-    /* Brand Colors - DIAMONDBACK */
-    --brand-primary: #D4A574;
-    --brand-gold: #D4A574;
-    --brand-gold-light: #E5C4A0;
-    --brand-gold-dark: #B88F5F;
-    
-    /* Dark Theme Colors */
-    --bg-void: #000000;
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #121212;
-    --bg-tertiary: #1a1a1a;
-    --bg-elevated: #1e1e1e;
-    --bg-hover: rgba(212, 165, 116, 0.08);
-    --bg-card: #141414;
-    
-    /* Borders */
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-default: rgba(255, 255, 255, 0.1);
-    --border-strong: rgba(212, 165, 116, 0.2);
-    --border-accent: rgba(212, 165, 116, 0.4);
-    
-    /* Text */
-    --text-primary: #ffffff;
-    --text-secondary: #b4b4b4;
-    --text-muted: #808080;
-    --text-faint: #4d4d4d;
-    
-    /* Accent Colors */
-    --accent-primary: #D4A574;
-    --accent-dim: rgba(212, 165, 116, 0.12);
-    --accent-glow: rgba(212, 165, 116, 0.25);
-    
-    /* Status Colors */
-    --status-new: #60a5fa;
-    --status-pending: #f59e0b;
-    --status-contacted: #10b981;
-    --status-closed: #6b7280;
+    --bg-void: #0F0F0F;
+    --bg-primary: #1A1A1A;
+    --bg-secondary: #222222;
+    --bg-tertiary: #2A2A2A;
+    --bg-elevated: #333333;
+    --bg-hover: rgba(212,165,116,0.08);
+    --border-subtle: rgba(255,255,255,0.08);
+    --border-default: rgba(255,255,255,0.12);
+    --border-strong: rgba(255,255,255,0.2);
+    --text-primary: #FFFFFF;
+    --text-secondary: #B8B8B8;
+    --text-muted: #888888;
+    --text-faint: #666666;
+--accent-amber: #D4A574;
+--accent-amber-dim: rgba(212,165,116,0.12);
+--accent-amber-glow: rgba(212,165,116,0.25);
+--accent-copper: #B88F5F;
+--accent-rust: #A67C52;
+    --status-new: #D4A574;
+    --status-pending: #D4A574;
+    --status-contacted: #D4A574;
+    --status-closed: #71717a;
     --status-lost: #ef4444;
-    --status-draft: #9ca3af;
-    --status-sent: #3b82f6;
-    --status-paid: #10b981;
-    --status-overdue: #dc2626;
-    --status-success: #10b981;
+    --status-draft: #71717a;
+    --status-sent: #D4A574;
+    --status-paid: #D4A574;
+    --status-overdue: #ef4444;
+    --status-success: #D4A574;
     --status-danger: #ef4444;
-    
-    /* Priority Colors */
     --priority-high: #ef4444;
-    --priority-medium: #f59e0b;
-    --priority-low: #6b7280;
-    
-    /* Typography */
-    --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-mono: 'Space Mono', 'Courier New', monospace;
-    
-    /* Spacing & Layout */
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 24px;
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
-    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.7);
-    --shadow-glow: 0 0 40px rgba(212, 165, 116, 0.15);
+    --priority-medium: #D4A574;
+    --priority-low: #71717a;
+    --font-display: 'Outfit', -apple-system, sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --shadow-glow: 0 0 60px rgba(245,158,11,0.08);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
     --sidebar-width: 280px;
-    --topbar-height: 70px;
-    
-    /* Transitions */
-    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    --topbar-height: 72px;
 }
 
-* { 
-    margin: 0; 
-    padding: 0; 
-    box-sizing: border-box; 
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { 
-    scroll-behavior: smooth; 
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
+html { scroll-behavior: smooth; }
 
 body {
     font-family: var(--font-display);
@@ -103,26 +65,17 @@ body {
     line-height: 1.6;
     min-height: 100vh;
     overflow-x: hidden;
-    font-size: 15px;
-    font-weight: 400;
 }
 
-/* Modern Scrollbar */
-::-webkit-scrollbar { 
-    width: 10px; 
-    height: 10px; 
-}
-::-webkit-scrollbar-track { 
-    background: var(--bg-primary);
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { 
-    background: linear-gradient(180deg, var(--brand-gold-dark), var(--brand-gold));
-    border-radius: 10px;
-    border: 2px solid var(--bg-primary);
+    background: var(--border-strong); 
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
 }
-::-webkit-scrollbar-thumb:hover { 
-    background: linear-gradient(180deg, var(--brand-gold), var(--brand-gold-light));
-}
+::-webkit-scrollbar-thumb:hover { background: var(--accent-amber); background-clip: padding-box; }
 
 /* ========================================
    QR CODE STYLES
@@ -510,7 +463,8 @@ body {
 
 .btn-primary:active { 
     transform: translateY(0);
-    background: linear-gradient(135deg, #B88F5F 0%, #9A7A4F 100%);
+    background: linear-gradient(135deg, #B88F5F 0%, #A67C52 100%);
+    color: #000000;
     box-shadow: 0 2px 8px rgba(212,165,116,0.3);
 }
 
@@ -738,9 +692,10 @@ body {
     height: 18px;
     transition: color 0.2s ease;
     pointer-events: none;
-    z-index: 3;
+    z-index: 1;
 }
 
+.search-input:focus + .search-icon,
 .search-box:focus-within .search-icon { color: var(--accent-amber); }
 
 .filter-group {
@@ -3233,7 +3188,6 @@ const state = {
     tasks: [],
     tickets: [], // Make sure this exists
     currentSection: 'dashboard',
-    currentSettingsTab: 'profile',
     searchTerm: '',
     currentFilter: 'all',
     currentLead: null,
@@ -3249,11 +3203,7 @@ const state = {
         pushNotifications: false,
         darkMode: true,
         autoAssign: false,
-        weeklyReport: true,
-        sessionTimeout: 30,
-        twoFactorAuth: false,
-        ipWhitelistEnabled: false,
-        ipWhitelist: []
+        weeklyReport: true
     }
 };
 
@@ -3387,38 +3337,12 @@ async function loadInvoices() {
 }
 
 async function loadTasks() {
-    try {
-        const r = await fetch(`${API_URL}/api/tasks`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        if (!r.ok) {
-            console.error('Failed to load tasks:', r.status);
-            state.tasks = [];
-            return;
-        }
-        const d = await r.json();
-        if (d.success) {
-            // Convert server format to frontend format
-            state.tasks = (d.tasks || []).map(task => ({
-                id: task.id,
-                title: task.title,
-                description: task.description,
-                dueDate: task.due_date,
-                assignee: task.assigned_name || 'Unassigned',
-                assigned_to: task.assigned_to,
-                priority: task.priority,
-                completed: task.completed,
-                status: task.status,
-                created_at: task.created_at,
-                completed_at: task.completed_at
-            }));
-        } else {
-            state.tasks = [];
-        }
-    } catch (e) {
-        console.error('Load tasks error:', e);
-        state.tasks = [];
-    }
+    state.tasks = [
+        { id: 1, title: 'Follow up with new leads', dueDate: '2026-01-20', assignee: 'Admin', completed: false, priority: 'high' },
+        { id: 2, title: 'Prepare weekly report', dueDate: '2026-01-22', assignee: 'Admin', completed: false, priority: 'medium' },
+        { id: 3, title: 'Review contract terms', dueDate: '2026-01-18', assignee: 'Admin', completed: true, priority: 'low' },
+        { id: 4, title: 'Schedule team meeting', dueDate: '2026-01-25', assignee: 'Admin', completed: false, priority: 'medium' }
+    ];
 }
 
 async function loadExpenses(leadId) {
@@ -4675,13 +4599,13 @@ function renderLeadsTable(content, type) {
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search ${type}..." 
+                       value="${state.searchTerm || ''}"
+                       onkeyup="handleSearch(this.value)">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
-                <input type="text" class="search-input" placeholder="Search ${type}..." 
-                       value="${state.searchTerm || ''}"
-                       onkeyup="handleSearch(this.value)">
             </div>
             <div class="filter-group">
                 <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" 
@@ -6208,7 +6132,7 @@ async function selectEmailTemplate(templateId, leadId) {
         clientName: lead.name,
         clientCompany: lead.company || '',
         projectType: lead.project_type || 'your project',
-        senderName: 'DIAMONDBACK Team'
+        senderName: 'Diamondback Coding Team'
     };
     
     // Show preview modal
@@ -6387,7 +6311,7 @@ Looking forward to hearing from you!
 
 Best regards,
 {{senderName}}
-DIAMONDBACK`
+Diamondback Coding`
     },
     
     proposal: {
@@ -6397,7 +6321,7 @@ DIAMONDBACK`
         category: 'sales',
         body: `Hi {{clientName}},
 
-Thank you for considering DIAMONDBACK for {{projectType}}.
+Thank you for considering Diamondback Coding for {{projectType}}.
 
 I've attached a detailed proposal outlining:
 - Project scope and deliverables
@@ -6409,17 +6333,17 @@ Please review at your convenience. I'm happy to answer any questions or schedule
 
 Best regards,
 {{senderName}}
-DIAMONDBACK`
+Diamondback Coding`
     },
     
     thankYou: {
         id: 'thank-you',
         name: 'Thank You',
-        subject: 'Thank you for choosing DIAMONDBACK!',
+        subject: 'Thank you for choosing Diamondback Coding!',
         category: 'onboarding',
         body: `Hi {{clientName}},
 
-Thank you for choosing DIAMONDBACK for {{projectType}}!
+Thank you for choosing Diamondback Coding for {{projectType}}!
 
 We're excited to work with you and bring your vision to life. Here's what happens next:
 
@@ -6431,7 +6355,7 @@ I'll be your main point of contact throughout the project. Feel free to reach ou
 
 Best regards,
 {{senderName}}
-DIAMONDBACK`
+Diamondback Coding`
     },
     
     projectUpdate: {
@@ -6452,7 +6376,7 @@ We're on track for delivery by {{deliveryDate}}. Let me know if you have any que
 
 Best regards,
 {{senderName}}
-DIAMONDBACK`
+Diamondback Coding`
     },
     
     invoiceReminder: {
@@ -6472,7 +6396,7 @@ Thank you for your business!
 
 Best regards,
 {{senderName}}
-DIAMONDBACK`
+Diamondback Coding`
     },
     
     projectComplete: {
@@ -6496,7 +6420,7 @@ Thank you for trusting us with your project. We'd love to hear your feedback!
 
 Best regards,
 {{senderName}}
-DIAMONDBACK`
+Diamondback Coding`
     },
     
     checkIn: {
@@ -6514,7 +6438,7 @@ We're always here to support you and would love to discuss any future projects y
 
 Best regards,
 {{senderName}}
-DIAMONDBACK`
+Diamondback Coding`
     },
     
     referralRequest: {
@@ -6532,7 +6456,7 @@ Thank you for being an amazing client!
 
 Best regards,
 {{senderName}}
-DIAMONDBACK`
+Diamondback Coding`
     }
 };
 
@@ -6587,7 +6511,7 @@ async function sendTemplatedEmail(templateId, leadId, customVariables = {}) {
             clientName: lead.lead.name,
             clientCompany: lead.lead.company || '',
             projectType: lead.lead.project_type || 'your project',
-            senderName: 'DIAMONDBACK Team',
+            senderName: 'Diamondback Coding Team',
             ...customVariables
         };
         
@@ -6877,11 +6801,11 @@ function renderInvoices(content) {
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
+                <input type="text" class="search-input" id="invoiceSearch" placeholder="Search invoices by number or customer..." value="${state.searchQuery}" onkeyup="handleInvoiceSearch(event)">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
-                <input type="text" class="search-input" id="invoiceSearch" placeholder="Search invoices by number or customer..." value="${state.searchQuery}" onkeyup="handleInvoiceSearch(event)">
             </div>
             <div class="filter-group">
                 <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" onclick="filterInvoices('all')">All</button>
@@ -7026,11 +6950,11 @@ function renderTasks(content) {
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search tasks...">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
-                <input type="text" class="search-input" placeholder="Search tasks...">
             </div>
             <button class="btn btn-primary" onclick="openCreateModal('task')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -7080,29 +7004,24 @@ function renderTasks(content) {
 }
 
 function renderSettings(content) {
-    // Set default tab if not set
-    if (!state.currentSettingsTab) {
-        state.currentSettingsTab = 'profile';
-    }
-    
     content.innerHTML = `
         <div class="settings-layout">
             <div class="settings-nav">
-                <div class="settings-nav-item ${state.currentSettingsTab === 'profile' ? 'active' : ''}" onclick="switchSettingsTab('profile')">
+                <div class="settings-nav-item active">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/>
                         <path d="M12 14c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z"/>
                     </svg>
                     Profile
                 </div>
-                <div class="settings-nav-item ${state.currentSettingsTab === 'notifications' ? 'active' : ''}" onclick="switchSettingsTab('notifications')">
+                <div class="settings-nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
                     Notifications
                 </div>
-                <div class="settings-nav-item ${state.currentSettingsTab === 'security' ? 'active' : ''}" onclick="switchSettingsTab('security')">
+                <div class="settings-nav-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -7111,32 +7030,41 @@ function renderSettings(content) {
                 </div>
             </div>
             
-            <div class="settings-panel" id="settingsPanelContent">
-                ${renderSettingsTabContent(state.currentSettingsTab)}
-            </div>
-        </div>
-    `;
-}
-
-function renderSettingsTabContent(tab) {
-    if (tab === 'profile') {
-        return `
-            <div class="settings-section">
-                <h3 class="settings-section-title">Account Information</h3>
-                <p class="settings-section-desc">Manage your account details</p>
-                
+            <div class="settings-panel">
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Notification Preferences</h3>
+                    <p class="settings-section-desc">Manage how you receive notifications</p>
+                    
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <div class="setting-label">Email Notifications</div>
+                            <div class="setting-desc">Receive notifications via email</div>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" ${state.settings.emailNotifications ? 'checked' : ''} onchange="toggleSetting('emailNotifications')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <div class="setting-label">Push Notifications</div>
+                            <div class="setting-desc">Receive push notifications in browser</div>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" ${state.settings.pushNotifications ? 'checked' : ''} onchange="toggleSetting('pushNotifications')">
+<span class="toggle-slider"></span>
+</label>
+</div>
                 <div class="setting-row">
                     <div class="setting-info">
-                        <div class="setting-label">Username</div>
-                        <div class="setting-desc">admin</div>
+                        <div class="setting-label">Weekly Reports</div>
+                        <div class="setting-desc">Get weekly summary via email</div>
                     </div>
-                </div>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Email</div>
-                        <div class="setting-desc">admin@craftedcode.dev</div>
-                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.weeklyReport ? 'checked' : ''} onchange="toggleSetting('weeklyReport')">
+                        <span class="toggle-slider"></span>
+                    </label>
                 </div>
             </div>
             
@@ -7171,226 +7099,9 @@ function renderSettingsTabContent(tab) {
                     </label>
                 </div>
             </div>
-        `;
-    } else if (tab === 'notifications') {
-        return `
-            <div class="settings-section">
-                <h3 class="settings-section-title">Notification Preferences</h3>
-                <p class="settings-section-desc">Control how and when you receive notifications</p>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Email Notifications</div>
-                        <div class="setting-desc">Receive email alerts for important events</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.emailNotifications ? 'checked' : ''} onchange="toggleSetting('emailNotifications')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">New Lead Notifications</div>
-                        <div class="setting-desc">Get notified when new leads submit the contact form</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.newLeadNotifications !== false ? 'checked' : ''} onchange="toggleSetting('newLeadNotifications')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Payment Notifications</div>
-                        <div class="setting-desc">Receive alerts when invoices are paid</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.paymentNotifications !== false ? 'checked' : ''} onchange="toggleSetting('paymentNotifications')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Task Reminders</div>
-                        <div class="setting-desc">Get reminders for upcoming and overdue tasks</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.taskReminders !== false ? 'checked' : ''} onchange="toggleSetting('taskReminders')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Weekly Reports</div>
-                        <div class="setting-desc">Receive a weekly summary of your CRM activity</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.weeklyReport ? 'checked' : ''} onchange="toggleSetting('weeklyReport')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Browser Notifications</div>
-                        <div class="setting-desc">Show desktop notifications for real-time updates</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.pushNotifications ? 'checked' : ''} onchange="toggleSetting('pushNotifications')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-            
-            <div class="settings-section">
-                <h3 class="settings-section-title">Notification Schedule</h3>
-                <p class="settings-section-desc">Set quiet hours to avoid notifications during specific times</p>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Quiet Hours</div>
-                        <div class="setting-desc">Pause notifications during these hours</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.quietHours ? 'checked' : ''} onchange="toggleSetting('quietHours')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                
-                ${state.settings.quietHours ? `
-                <div class="setting-row" style="padding-left: 20px; border-left: 3px solid var(--accent-amber);">
-                    <div class="setting-info">
-                        <div class="setting-label">From</div>
-                        <input type="time" class="form-input" value="${state.settings.quietHoursStart || '22:00'}" onchange="updateQuietHours('start', this.value)" style="max-width: 150px;">
-                    </div>
-                    <div class="setting-info" style="margin-left: 20px;">
-                        <div class="setting-label">To</div>
-                        <input type="time" class="form-input" value="${state.settings.quietHoursEnd || '08:00'}" onchange="updateQuietHours('end', this.value)" style="max-width: 150px;">
-                    </div>
-                </div>
-                ` : ''}
-            </div>
-        `;
-    } else if (tab === 'security') {
-        return `
-            <div class="settings-section">
-                <h3 class="settings-section-title">Password & Authentication</h3>
-                <p class="settings-section-desc">Manage your login credentials and security settings</p>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Change Password</div>
-                        <div class="setting-desc">Update your account password</div>
-                    </div>
-                    <button class="btn btn-secondary" onclick="openChangePasswordModal()">Change Password</button>
-                </div>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Two-Factor Authentication</div>
-                        <div class="setting-desc">Add an extra layer of security to your account</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.twoFactorAuth ? 'checked' : ''} onchange="toggleSetting('twoFactorAuth')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-            
-            <div class="settings-section">
-                <h3 class="settings-section-title">Session Management</h3>
-                <p class="settings-section-desc">Control your login sessions and timeouts</p>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Session Timeout</div>
-                        <div class="setting-desc">Automatically log out after period of inactivity</div>
-                    </div>
-                    <select class="form-select" onchange="updateSessionTimeout(this.value)" style="max-width: 200px;">
-                        <option value="15" ${state.settings.sessionTimeout === 15 ? 'selected' : ''}>15 minutes</option>
-                        <option value="30" ${state.settings.sessionTimeout === 30 ? 'selected' : ''}>30 minutes</option>
-                        <option value="60" ${state.settings.sessionTimeout === 60 ? 'selected' : ''}>1 hour</option>
-                        <option value="120" ${state.settings.sessionTimeout === 120 ? 'selected' : ''}>2 hours</option>
-                        <option value="480" ${state.settings.sessionTimeout === 480 ? 'selected' : ''}>8 hours</option>
-                        <option value="0" ${state.settings.sessionTimeout === 0 ? 'selected' : ''}>Never</option>
-                    </select>
-                </div>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Active Sessions</div>
-                        <div class="setting-desc">View and manage your active login sessions</div>
-                    </div>
-                    <button class="btn btn-secondary" onclick="showActiveSessions()">View Sessions</button>
-                </div>
-            </div>
-            
-            <div class="settings-section">
-                <h3 class="settings-section-title">Access Control</h3>
-                <p class="settings-section-desc">Restrict access to your account</p>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">IP Whitelist</div>
-                        <div class="setting-desc">Only allow logins from specific IP addresses</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.ipWhitelistEnabled ? 'checked' : ''} onchange="toggleSetting('ipWhitelistEnabled')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                
-                ${state.settings.ipWhitelistEnabled ? `
-                <div class="setting-row" style="padding-left: 20px; border-left: 3px solid var(--accent-amber);">
-                    <div class="setting-info full-width">
-                        <div class="setting-label">Allowed IP Addresses</div>
-                        <div class="setting-desc">Enter one IP address per line</div>
-                        <textarea class="form-textarea" rows="4" placeholder="192.168.1.1
-10.0.0.1" onchange="updateIPWhitelist(this.value)" style="margin-top: 12px; font-family: monospace;">${(state.settings.ipWhitelist || []).join('\n')}</textarea>
-                    </div>
-                </div>
-                ` : ''}
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Login Alerts</div>
-                        <div class="setting-desc">Get notified of new login attempts</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.loginAlerts !== false ? 'checked' : ''} onchange="toggleSetting('loginAlerts')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-            
-            <div class="settings-section">
-                <h3 class="settings-section-title">Activity Log</h3>
-                <p class="settings-section-desc">View recent security-related activities</p>
-                
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">Recent Activity</div>
-                        <div class="setting-desc">Last login: ${new Date().toLocaleString()}</div>
-                    </div>
-                    <button class="btn btn-secondary" onclick="showActivityLog()">View Full Log</button>
-                </div>
-            </div>
-        `;
-    }
-}
-
-function switchSettingsTab(tab) {
-    state.currentSettingsTab = tab;
-    document.getElementById('settingsPanelContent').innerHTML = renderSettingsTabContent(tab);
-    
-    // Update nav items
-    document.querySelectorAll('.settings-nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    event.target.closest('.settings-nav-item').classList.add('active');
+        </div>
+    </div>
+`;
 }
 // ========================================
 // MODAL FUNCTIONS
@@ -8281,22 +7992,12 @@ if (type === 'lead') {
     `;
 } else if (type === 'task') {
     titleEl.textContent = 'Create Task';
-    
-    // Build employee options
-    const employeeOptions = state.employees.map(emp => 
-        `<option value="${emp.id}">${emp.name}</option>`
-    ).join('');
-    
     bodyEl.innerHTML = `
         <form id="createTaskForm" onsubmit="handleCreateTask(event)">
             <div class="form-grid">
                 <div class="form-group full-width">
                     <label class="form-label">Task Title <span class="required">*</span></label>
                     <input type="text" class="form-input" name="title" required>
-                </div>
-                <div class="form-group full-width">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-textarea" name="description" rows="3" placeholder="Add task details..."></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Due Date</label>
@@ -8306,16 +8007,13 @@ if (type === 'lead') {
                     <label class="form-label">Priority</label>
                     <select class="form-select" name="priority">
                         <option value="low">Low</option>
-                        <option value="medium" selected>Medium</option>
+                        <option value="medium">Medium</option>
                         <option value="high">High</option>
                     </select>
                 </div>
-                <div class="form-group full-width">
-                    <label class="form-label">Assign To</label>
-                    <select class="form-select" name="assigned_to">
-                        <option value="">Unassigned</option>
-                        ${employeeOptions}
-                    </select>
+                <div class="form-group">
+                    <label class="form-label">Assignee</label>
+                    <input type="text" class="form-input" name="assignee" value="Admin">
                 </div>
             </div>
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
@@ -8695,54 +8393,24 @@ async function handleCreateEmployee(event) {
         showToast(e.message || 'Error adding employee', 'error');
     }
 }
-async function handleCreateTask(event) {
-    event.preventDefault();
-    const form = event.target;
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-    
-    try {
-        const response = await fetch(`${API_URL}/api/tasks`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${getAuthToken()}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                title: data.title,
-                description: data.description || '',
-                due_date: data.dueDate,
-                priority: data.priority,
-                assigned_to: data.assigned_to ? parseInt(data.assigned_to) : null
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            // Add to local state
-            state.tasks.push({
-                id: result.task.id,
-                title: result.task.title,
-                description: result.task.description,
-                dueDate: result.task.due_date,
-                assignee: result.task.assigned_name || 'Unassigned',
-                assigned_to: result.task.assigned_to,
-                priority: result.task.priority,
-                completed: false,
-                created_at: result.task.created_at
-            });
-            
-            closeCreateModal();
-            showToast('Task created successfully', 'success');
-            renderSection('tasks');
-        } else {
-            showToast(result.message || 'Failed to create task', 'error');
-        }
-    } catch (error) {
-        console.error('Create task error:', error);
-        showToast('Error creating task', 'error');
-    }
+function handleCreateTask(event) {
+event.preventDefault();
+const form = event.target;
+const formData = new FormData(form);
+const data = Object.fromEntries(formData.entries());
+const newTask = {
+    id: state.tasks.length + 1,
+    title: data.title,
+    dueDate: data.dueDate,
+    assignee: data.assignee,
+    priority: data.priority,
+    completed: false
+};
+
+state.tasks.push(newTask);
+closeCreateModal();
+showToast('Task created successfully', 'success');
+renderSection('tasks');
 }
 // ========================================
 // INVOICE FUNCTIONS
@@ -9373,64 +9041,17 @@ try {
     showToast('Error deleting employee', 'error');
 }
 }
-async function deleteTask(id) {
-    if (!confirm('Are you sure you want to delete this task?')) return;
-    
-    try {
-        const response = await fetch(`${API_URL}/api/tasks/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${getAuthToken()}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            state.tasks = state.tasks.filter(t => t.id !== id);
-            showToast('Task deleted successfully', 'success');
-            renderSection('tasks');
-        } else {
-            showToast('Failed to delete task', 'error');
-        }
-    } catch (error) {
-        console.error('Delete task error:', error);
-        showToast('Error deleting task', 'error');
-    }
+function deleteTask(id) {
+state.tasks = state.tasks.filter(t => t.id !== id);
+showToast('Task deleted successfully', 'success');
+renderSection('tasks');
 }
-async function toggleTask(id) {
-    try {
-        const task = state.tasks.find(t => t.id === id);
-        if (!task) return;
-        
-        const newCompletedStatus = !task.completed;
-        
-        const response = await fetch(`${API_URL}/api/tasks/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${getAuthToken()}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ completed: newCompletedStatus })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // Update local state
-            task.completed = newCompletedStatus;
-            task.completed_at = data.task.completed_at;
-            
-            showToast(newCompletedStatus ? 'Task marked as complete' : 'Task marked as incomplete', 'success');
-            renderSection('tasks');
-        } else {
-            showToast('Failed to update task', 'error');
-        }
-    } catch (error) {
-        console.error('Toggle task error:', error);
-        showToast('Error updating task', 'error');
-    }
+function toggleTask(id) {
+const task = state.tasks.find(t => t.id === id);
+if (task) {
+task.completed = !task.completed;
+renderSection('tasks');
+}
 }
 function filterLeads(type) {
 state.currentFilter = type;
@@ -9448,145 +9069,27 @@ function handleSearch(query) {
 state.searchQuery = query.toLowerCase();
 renderSection(state.currentSection);
 }
-async function toggleSetting(setting) {
+function toggleSetting(setting) {
     state.settings[setting] = !state.settings[setting];
-    applySettings(); // Apply the visual changes immediately
-    await saveSettings();
-    showToast('Setting updated', 'success');
-}
-
-async function saveSettings() {
-    // Save to localStorage as backup
+    
+    // Save to localStorage
     localStorage.setItem('adminSettings', JSON.stringify(state.settings));
     
-    try {
-        const response = await fetch(`${API_URL}/api/settings`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${getAuthToken()}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(state.settings)
-        });
-        
-        const data = await response.json();
-        if (!data.success) {
-            console.error('Failed to save settings:', data.message);
-        }
-    } catch (error) {
-        console.error('Save settings error:', error);
-        // Still saved to localStorage so user doesn't lose settings
-    }
-}
-
-async function loadSettings() {
-    try {
-        const response = await fetch(`${API_URL}/api/settings`, {
-            headers: {
-                'Authorization': `Bearer ${getAuthToken()}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        const data = await response.json();
-        if (data.success && data.settings) {
-            state.settings = {
-                ...state.settings,
-                ...data.settings
-            };
-        }
-    } catch (error) {
-        console.error('Load settings error:', error);
-    }
-}
-
-async function updateSessionTimeout(minutes) {
-    state.settings.sessionTimeout = parseInt(minutes);
-    await saveSettings();
-    showToast('Session timeout updated', 'success');
-}
-
-async function updateQuietHours(type, value) {
-    if (type === 'start') {
-        state.settings.quietHoursStart = value;
-    } else {
-        state.settings.quietHoursEnd = value;
-    }
-    await saveSettings();
-    showToast('Quiet hours updated', 'success');
-}
-
-async function updateIPWhitelist(value) {
-    const ips = value.split('\n').map(ip => ip.trim()).filter(ip => ip.length > 0);
-    state.settings.ipWhitelist = ips;
-    await saveSettings();
-    showToast('IP whitelist updated', 'success');
-}
-
-function openChangePasswordModal() {
-    const modal = document.getElementById('createModal');
-    const titleEl = document.getElementById('createModalTitle');
-    const bodyEl = document.getElementById('createModalBody');
+    // Apply the setting
+    applySettings();
     
-    titleEl.textContent = 'Change Password';
-    bodyEl.innerHTML = `
-        <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
-            <div class="form-group">
-                <label class="form-label">Current Password <span class="required">*</span></label>
-                <input type="password" class="form-input" name="currentPassword" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">New Password <span class="required">*</span></label>
-                <input type="password" class="form-input" name="newPassword" required minlength="8">
-                <small style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">Minimum 8 characters</small>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Confirm New Password <span class="required">*</span></label>
-                <input type="password" class="form-input" name="confirmPassword" required>
-            </div>
-            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Change Password</button>
-            </div>
-        </form>
-    `;
-    
-    modal.classList.add('active');
-}
-
-async function handleChangePassword(event) {
-    event.preventDefault();
-    const form = event.target;
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-    
-    if (data.newPassword !== data.confirmPassword) {
-        showToast('Passwords do not match', 'error');
-        return;
-    }
-    
-    // In a real implementation, this would call an API endpoint
-    showToast('Password changed successfully', 'success');
-    closeCreateModal();
-}
-
-function showActiveSessions() {
-    showToast('Active sessions feature coming soon', 'info');
-}
-
-function showActivityLog() {
-    showToast('Activity log feature coming soon', 'info');
+    showToast('Setting updated', 'success');
 }
 
 function applySettings() {
     // Apply dark/light mode
     if (state.settings.darkMode) {
-        document.documentElement.style.setProperty('--bg-void', '#000000');
-        document.documentElement.style.setProperty('--bg-primary', '#0a0a0a');
-        document.documentElement.style.setProperty('--bg-secondary', '#121212');
-        document.documentElement.style.setProperty('--bg-tertiary', '#1a1a1a');
-        document.documentElement.style.setProperty('--bg-elevated', '#1e1e1e');
-        document.documentElement.style.setProperty('--bg-hover', '#242424');
+        document.documentElement.style.setProperty('--bg-void', '#050506');
+        document.documentElement.style.setProperty('--bg-primary', '#0a0a0c');
+        document.documentElement.style.setProperty('--bg-secondary', '#101014');
+        document.documentElement.style.setProperty('--bg-tertiary', '#16161b');
+        document.documentElement.style.setProperty('--bg-elevated', '#1c1c22');
+        document.documentElement.style.setProperty('--bg-hover', '#222229');
         document.documentElement.style.setProperty('--text-primary', '#f4f4f5');
         document.documentElement.style.setProperty('--text-secondary', '#a1a1aa');
         document.documentElement.style.setProperty('--text-muted', '#71717a');
@@ -10372,11 +9875,11 @@ function renderProjects(content) {
         const htmlContent = `
             <div class="controls-bar">
                 <div class="search-box">
+                    <input type="text" class="search-input" id="projectSearch" placeholder="Search projects by client name, company, or project..." onkeyup="handleProjectSearch(event)">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"/>
                         <path d="m21 21-4.35-4.35"/>
                     </svg>
-                    <input type="text" class="search-input" id="projectSearch" placeholder="Search projects by client name, company, or project..." onkeyup="handleProjectSearch(event)">
                 </div>
             </div>
             
@@ -14500,12 +14003,12 @@ function renderLeadsTable(content, type) {
     content.innerHTML = `
         <div class="controls-bar">
             <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search..." 
+                       onkeyup="handleSearch(this.value)">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
-                <input type="text" class="search-input" placeholder="Search..." 
-                       onkeyup="handleSearch(this.value)">
             </div>
             <div class="filter-group">
                 <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" 
@@ -15989,56 +15492,68 @@ async function renderFollowUps(content) {
                 </tr>`;
         }
 
-        // Build category sections HTML with TABBED UI
+        // Build category sections HTML
         let categorySectionsHtml = '';
         if (categories.length > 0) {
-            // Store categories in state for tab switching
-            state.followupCategories = categories;
-            
-            // Build tabs HTML
-            let tabsHTML = '';
-            categories.forEach((cat, idx) => {
-                const catTitle = categoryLabels[cat.follow_up_category] || cat.follow_up_category;
-                const urgencyColors = {
-                    'never_contacted': '#ef4444',
-                    '1_day': '#f59e0b',
-                    '3_day': '#D4A574',
-                    '7_day': '#3b82f6',
-                    '14_day': '#6b7280'
-                };
-                const color = urgencyColors[cat.follow_up_category] || '#6b7280';
-                
-                tabsHTML += `
-                    <div class="followup-tab ${idx === 0 ? 'active' : ''}" 
-                         data-category="${cat.follow_up_category}"
-                         onclick="switchFollowupTab('${cat.follow_up_category}')"
-                         style="padding: 12px 14px; margin-bottom: 6px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; border-left: 3px solid ${color}; background: ${idx === 0 ? 'var(--bg-hover)' : 'transparent'};">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">${catTitle}</span>
-                            <span style="background: ${color}; color: white; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700;">${cat.count}</span>
+            for (const category of categories) {
+                const categoryTitle = categoryLabels[category.follow_up_category] || category.follow_up_category;
+                const escapedTitle = categoryTitle.replace(/'/g, '&#39;');
+                let leadsHtml = '';
+                if (category.leads && category.leads.length > 0) {
+                    for (const lead of category.leads) {
+                        const escapedLeadName = lead.name.replace(/'/g, "\\'");
+                        leadsHtml += `
+                            <tr>
+                                <td>
+                                    <div class="contact-cell">
+                                        <div class="contact-avatar">${'getInitials' in window ? getInitials(lead.name) : '?'}</div>
+                                        <div class="contact-info">
+                                            <div class="contact-name">${lead.name}</div>
+                                            <div class="contact-email">${lead.email}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
+                                <td>
+                                    <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
+                                        ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                            Mark Contacted
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${escapedLeadName}', '${lead.email}')">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                            Email
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>`;
+                    }
+                } else {
+                    leadsHtml = '<tr><td colspan="4" style="text-align:center;padding:20px;">No leads in this category</td></tr>';
+                }
+                categorySectionsHtml += `
+                <div class="table-container" style="margin-top: 24px;">
+                    <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">${categoryTitle}</h3>
+                            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">${category.count} leads need follow-up</p>
                         </div>
-                    </div>`;
-            });
-            
-            // Build first category content
-            const firstCategory = categories[0];
-            const firstCategoryContent = buildCategoryContent(firstCategory, categoryLabels);
-            
-            categorySectionsHtml = `
-                <div style="display: grid; grid-template-columns: 240px 1fr; gap: 24px; margin-top: 24px;">
-                    <!-- Sidebar with category tabs -->
-                    <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 12px; height: fit-content; position: sticky; top: 100px;">
-                        <div style="padding: 12px 8px 16px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 12px;">
-                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Categories</div>
-                        </div>
-                        ${tabsHTML}
+                        <button class="btn btn-primary btn-sm" onclick="openCategoryEmailModal('${category.follow_up_category}', '${escapedTitle}', ${category.count})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                            Email All
+                        </button>
                     </div>
-                    
-                    <!-- Main content area -->
-                    <div id="followupContent" style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 28px; min-height: 600px;">
-                        ${firstCategoryContent}
-                    </div>
+                    <table class="data-table">
+                        <thead><tr><th>Lead</th><th>Last Contact</th><th>Days Since</th><th>Actions</th></tr></thead>
+                        <tbody>${leadsHtml}</tbody>
+                    </table>
                 </div>`;
+            }
         } else {
             categorySectionsHtml = `
                 <div style="text-align: center; padding: 60px; color: var(--text-muted);">
@@ -16063,7 +15578,7 @@ async function renderFollowUps(content) {
                         <span class="stat-label">Never Contacted</span>
                         <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                     </div>
-                    <div class="stat-value" style="color: #ef4444;">${neverContacted}</div>
+                    <div class="stat-value">${neverContacted}</div>
                 </div>
                 <div class="stat-card" style="border-top: 3px solid #D4A847;">
                     <div class="stat-header">
@@ -16109,94 +15624,6 @@ async function renderFollowUps(content) {
                 <button class="btn btn-secondary" onclick="renderFollowUps(document.getElementById('contentArea'))">Try Again</button>
             </div>
         `;
-    }
-}
-
-// Helper function to build category content
-function buildCategoryContent(category, categoryLabels) {
-    const categoryTitle = categoryLabels[category.follow_up_category] || category.follow_up_category;
-    const escapedTitle = categoryTitle.replace(/'/g, '&#39;');
-    
-    let leadsHtml = '';
-    if (category.leads && category.leads.length > 0) {
-        for (const lead of category.leads) {
-            const escapedLeadName = lead.name.replace(/'/g, "\\'");
-            leadsHtml += `
-                <tr>
-                    <td>
-                        <div class="contact-cell">
-                            <div class="contact-avatar">${'getInitials' in window ? getInitials(lead.name) : '?'}</div>
-                            <div class="contact-info">
-                                <div class="contact-name">${lead.name}</div>
-                                <div class="contact-email">${lead.email}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
-                    <td>
-                        <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
-                            ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                Mark Contacted
-                            </button>
-                            <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${escapedLeadName}', '${lead.email}')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                                Email
-                            </button>
-                        </div>
-                    </td>
-                </tr>`;
-        }
-    } else {
-        leadsHtml = '<tr><td colspan="4" style="text-align:center;padding:20px;">No leads in this category</td></tr>';
-    }
-    
-    return `
-        <div>
-            <div style="padding-bottom: 20px; border-bottom: 2px solid var(--border-subtle); margin-bottom: 24px;">
-                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">${categoryTitle}</h3>
-                <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">${category.count} leads need follow-up</p>
-            </div>
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
-                <button class="btn btn-primary btn-sm" onclick="openCategoryEmailModal('${category.follow_up_category}', '${escapedTitle}', ${category.count})">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                    Email All
-                </button>
-            </div>
-            <table class="data-table">
-                <thead><tr><th>Lead</th><th>Last Contact</th><th>Days Since</th><th>Actions</th></tr></thead>
-                <tbody>${leadsHtml}</tbody>
-            </table>
-        </div>`;
-}
-
-// Switch between follow-up category tabs
-function switchFollowupTab(categoryName) {
-    // Update tab styling
-    document.querySelectorAll('.followup-tab').forEach(tab => {
-        if (tab.dataset.category === categoryName) {
-            tab.style.background = 'var(--bg-hover)';
-        } else {
-            tab.style.background = 'transparent';
-        }
-    });
-    
-    // Find and render the selected category
-    const category = state.followupCategories.find(c => c.follow_up_category === categoryName);
-    if (category) {
-        const categoryLabels = {
-            'never_contacted': 'Never Contacted',
-            '1_day': '1-Day Follow-Up',
-            '3_day': '3-Day Follow-Up',
-            '7_day': '7-Day Follow-Up',
-            '14_day': '14+ Day Follow-Up'
-        };
-        document.getElementById('followupContent').innerHTML = buildCategoryContent(category, categoryLabels);
     }
 }
 

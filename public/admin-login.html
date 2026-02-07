@@ -275,65 +275,6 @@
         /* ========================================
            FORM STYLES
         ======================================== */
-        /* ========================================
-           LOGIN TABS
-        ======================================== */
-        .login-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 32px;
-            background: rgba(255,255,255,0.03);
-            padding: 6px;
-            border-radius: 12px;
-        }
-
-        .login-tab {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 12px 20px;
-            background: transparent;
-            border: none;
-            color: var(--grey-600);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .login-tab svg {
-            width: 18px;
-            height: 18px;
-            opacity: 0.7;
-            transition: opacity 0.3s ease;
-        }
-
-        .login-tab:hover {
-            color: var(--grey-400);
-            background: rgba(255,255,255,0.05);
-        }
-
-        .login-tab:hover svg {
-            opacity: 1;
-        }
-
-        .login-tab.active {
-            color: var(--gold);
-            background: rgba(244,200,126,0.1);
-        }
-
-        .login-tab.active svg {
-            opacity: 1;
-            color: var(--gold);
-        }
-
-        /* ========================================
-           LOGIN FORM
-        ======================================== */
         .login-form {
             display: flex;
             flex-direction: column;
@@ -782,26 +723,6 @@
                 <h1 class="login-title">Welcome Back</h1>
                 <p class="login-description">Enter your credentials to access the dashboard</p>
             </div>
-            
-            <!-- Login Type Tabs -->
-            <div class="login-tabs">
-                <button type="button" class="login-tab active" onclick="switchLoginType('admin')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                    Admin Login
-                </button>
-                <button type="button" class="login-tab" onclick="switchLoginType('employee')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    Employee Login
-                </button>
-            </div>
 
             <div id="errorMessage" class="error-message">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -925,24 +846,6 @@
             }
         }
 
-        // Track current login type
-        let currentLoginType = 'admin';
-
-        // Switch between admin and employee login
-        function switchLoginType(type) {
-            currentLoginType = type;
-            
-            // Update tab styling
-            document.querySelectorAll('.login-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.closest('.login-tab').classList.add('active');
-            
-            // Update form placeholder text
-            const subtitle = document.querySelector('.logo-subtitle');
-            subtitle.textContent = type === 'admin' ? 'Admin Portal' : 'Employee Portal';
-        }
-
         // Show error message
         function showError(message) {
             const errorDiv = document.getElementById('errorMessage');
@@ -971,12 +874,8 @@
             loginBtn.classList.add('loading');
             loginBtn.disabled = true;
             
-            // Choose endpoint and redirect based on login type
-            const endpoint = currentLoginType === 'admin' ? '/api/admin/login' : '/api/employee/login';
-            const redirectPath = currentLoginType === 'admin' ? '/admin-portal' : '/employee-portal';
-            
             try {
-                const response = await fetch(endpoint, {
+                const response = await fetch('/api/admin/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -998,8 +897,8 @@
                         sessionStorage.setItem('adminToken', data.token);
                     }
                     
-                    // Redirect to appropriate portal
-                    window.location.href = redirectPath;
+                    // Redirect to admin portal
+                    window.location.href = 'admin_portal.html';
                 } else {
                     showError(data.message || 'Invalid credentials. Please try again.');
                 }

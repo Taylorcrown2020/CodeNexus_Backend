@@ -1669,7 +1669,7 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             console.log('========================================');
             console.log('✅ Default admin user created');
             console.log('   Username: admin');
-            console.log('   Password: Admin123!');
+            console.log('   Password: Tango0401!');
             console.log('   ⚠️  CHANGE THIS PASSWORD IMMEDIATELY!');
             console.log('========================================');
             console.log('');

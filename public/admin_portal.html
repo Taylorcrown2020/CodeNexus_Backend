@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diamondback Coding | Admin Portal</title>
+    <title>Diamondback CRM | Admin Portal</title>
+    <meta name="description" content="Professional CRM & Project Management Dashboard">
     <link rel="preconnect" href="https://fonts.googleapis.com">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.js"></script>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
 :root {
-    /* Brand Colors - Diamondback Coding */
+    /* Brand Colors - DIAMONDBACK */
     --brand-primary: #D4A574;
     --brand-gold: #D4A574;
     --brand-gold-light: #E5C4A0;
@@ -493,22 +494,24 @@ body {
 
 /* Primary Button - Amber/Gold gradient with dark text */
 .btn-primary {
-    background: linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(22,163,74,0.15) 100%);
-    color: #22c55e;
-    border: 1.5px solid rgba(34,197,94,0.3);
+    background: linear-gradient(135deg, #D4A574 0%, #B88F5F 100%);
+    color: #000000;
+    border: none;
     font-weight: 700;
+    box-shadow: 0 4px 16px rgba(212,165,116,0.3);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, rgba(34,197,94,0.25) 0%, rgba(22,163,74,0.25) 100%);
-    border-color: rgba(34,197,94,0.5);
+    background: linear-gradient(135deg, #E5C4A0 0%, #D4A574 100%);
+    color: #000000;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(34,197,94,0.2);
+    box-shadow: 0 6px 20px rgba(212,165,116,0.4);
 }
 
 .btn-primary:active { 
     transform: translateY(0);
-    background: linear-gradient(135deg, rgba(34,197,94,0.3) 0%, rgba(22,163,74,0.3) 100%);
+    background: linear-gradient(135deg, #B88F5F 0%, #9A7A4F 100%);
+    box-shadow: 0 2px 8px rgba(212,165,116,0.3);
 }
 
 /* Secondary Button - Neutral with good contrast */
@@ -550,9 +553,9 @@ body {
 }
 
 .btn-success:hover {
-    background: #22c55e;
+    background: #D4A574;
     color: #ffffff;
-    border-color: #22c55e;
+    border-color: #D4A574;
     transform: translateY(-1px);
 }
 
@@ -565,9 +568,9 @@ body {
 }
 
 .btn-warning:hover {
-    background: #22c55e;
+    background: #D4A574;
     color: #ffffff;
-    border-color: #16a34a;
+    border-color: #B88F5F;
     transform: translateY(-1px);
 }
 
@@ -715,8 +718,6 @@ body {
     font-size: 14px;
     font-family: inherit;
     transition: all 0.2s ease;
-    position: relative;
-    z-index: 2;
 }
 
 .search-input:focus {
@@ -930,7 +931,7 @@ body {
 }
 
 .priority-high { background: rgba(239,68,68,0.15); color: #ef4444; font-weight: 700; }
-.priority-medium { background: rgba(34,197,94,0.15); color: #22c55e; font-weight: 700; }
+.priority-medium { background: rgba(212,165,116,0.15); color: #D4A574; font-weight: 700; }
 .priority-low { background: rgba(113,113,122,0.15); color: #71717a; font-weight: 700; }
 
 /* ========================================
@@ -2845,7 +2846,7 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
                 </svg>
             </div>
             <div class="logo-text">
-                <div class="logo-title">Diamondback Coding</div>
+                <div class="logo-title">DIAMONDBACK</div>
                 <div class="logo-subtitle">Admin Portal</div>
             </div>
         </div>
@@ -6207,7 +6208,7 @@ async function selectEmailTemplate(templateId, leadId) {
         clientName: lead.name,
         clientCompany: lead.company || '',
         projectType: lead.project_type || 'your project',
-        senderName: 'Diamondback Coding Team'
+        senderName: 'DIAMONDBACK Team'
     };
     
     // Show preview modal
@@ -6386,7 +6387,7 @@ Looking forward to hearing from you!
 
 Best regards,
 {{senderName}}
-Diamondback Coding`
+DIAMONDBACK`
     },
     
     proposal: {
@@ -6396,7 +6397,7 @@ Diamondback Coding`
         category: 'sales',
         body: `Hi {{clientName}},
 
-Thank you for considering Diamondback Coding for {{projectType}}.
+Thank you for considering DIAMONDBACK for {{projectType}}.
 
 I've attached a detailed proposal outlining:
 - Project scope and deliverables
@@ -6408,17 +6409,17 @@ Please review at your convenience. I'm happy to answer any questions or schedule
 
 Best regards,
 {{senderName}}
-Diamondback Coding`
+DIAMONDBACK`
     },
     
     thankYou: {
         id: 'thank-you',
         name: 'Thank You',
-        subject: 'Thank you for choosing Diamondback Coding!',
+        subject: 'Thank you for choosing DIAMONDBACK!',
         category: 'onboarding',
         body: `Hi {{clientName}},
 
-Thank you for choosing Diamondback Coding for {{projectType}}!
+Thank you for choosing DIAMONDBACK for {{projectType}}!
 
 We're excited to work with you and bring your vision to life. Here's what happens next:
 
@@ -6430,7 +6431,7 @@ I'll be your main point of contact throughout the project. Feel free to reach ou
 
 Best regards,
 {{senderName}}
-Diamondback Coding`
+DIAMONDBACK`
     },
     
     projectUpdate: {
@@ -6451,7 +6452,7 @@ We're on track for delivery by {{deliveryDate}}. Let me know if you have any que
 
 Best regards,
 {{senderName}}
-Diamondback Coding`
+DIAMONDBACK`
     },
     
     invoiceReminder: {
@@ -6471,7 +6472,7 @@ Thank you for your business!
 
 Best regards,
 {{senderName}}
-Diamondback Coding`
+DIAMONDBACK`
     },
     
     projectComplete: {
@@ -6495,7 +6496,7 @@ Thank you for trusting us with your project. We'd love to hear your feedback!
 
 Best regards,
 {{senderName}}
-Diamondback Coding`
+DIAMONDBACK`
     },
     
     checkIn: {
@@ -6513,7 +6514,7 @@ We're always here to support you and would love to discuss any future projects y
 
 Best regards,
 {{senderName}}
-Diamondback Coding`
+DIAMONDBACK`
     },
     
     referralRequest: {
@@ -6531,7 +6532,7 @@ Thank you for being an amazing client!
 
 Best regards,
 {{senderName}}
-Diamondback Coding`
+DIAMONDBACK`
     }
 };
 
@@ -6586,7 +6587,7 @@ async function sendTemplatedEmail(templateId, leadId, customVariables = {}) {
             clientName: lead.lead.name,
             clientCompany: lead.lead.company || '',
             projectType: lead.lead.project_type || 'your project',
-            senderName: 'Diamondback Coding Team',
+            senderName: 'DIAMONDBACK Team',
             ...customVariables
         };
         
@@ -7925,7 +7926,7 @@ async function renderInvoicePreview(invoice) {
                         </svg>
                     </div>
                     <div>
-                        <div class="invoice-company-name">Diamondback Coding</div>
+                        <div class="invoice-company-name">DIAMONDBACK</div>
                         <div class="invoice-company-tagline">Premium Development Services</div>
                     </div>
                 </div>
@@ -7939,7 +7940,7 @@ async function renderInvoicePreview(invoice) {
                 <div class="invoice-parties">
                     <div>
                         <div class="invoice-party-label">From</div>
-                        <div class="invoice-party-name">Diamondback Coding</div>
+                        <div class="invoice-party-name">DIAMONDBACK</div>
                         <div class="invoice-party-details">
                             15709 Spillman Ranch Loop<br>
                             Austin, TX 78738<br>
@@ -9449,11 +9450,15 @@ renderSection(state.currentSection);
 }
 async function toggleSetting(setting) {
     state.settings[setting] = !state.settings[setting];
+    applySettings(); // Apply the visual changes immediately
     await saveSettings();
     showToast('Setting updated', 'success');
 }
 
 async function saveSettings() {
+    // Save to localStorage as backup
+    localStorage.setItem('adminSettings', JSON.stringify(state.settings));
+    
     try {
         const response = await fetch(`${API_URL}/api/settings`, {
             method: 'PUT',
@@ -9470,6 +9475,7 @@ async function saveSettings() {
         }
     } catch (error) {
         console.error('Save settings error:', error);
+        // Still saved to localStorage so user doesn't lose settings
     }
 }
 
@@ -9575,12 +9581,12 @@ function showActivityLog() {
 function applySettings() {
     // Apply dark/light mode
     if (state.settings.darkMode) {
-        document.documentElement.style.setProperty('--bg-void', '#050506');
-        document.documentElement.style.setProperty('--bg-primary', '#0a0a0c');
-        document.documentElement.style.setProperty('--bg-secondary', '#101014');
-        document.documentElement.style.setProperty('--bg-tertiary', '#16161b');
-        document.documentElement.style.setProperty('--bg-elevated', '#1c1c22');
-        document.documentElement.style.setProperty('--bg-hover', '#222229');
+        document.documentElement.style.setProperty('--bg-void', '#000000');
+        document.documentElement.style.setProperty('--bg-primary', '#0a0a0a');
+        document.documentElement.style.setProperty('--bg-secondary', '#121212');
+        document.documentElement.style.setProperty('--bg-tertiary', '#1a1a1a');
+        document.documentElement.style.setProperty('--bg-elevated', '#1e1e1e');
+        document.documentElement.style.setProperty('--bg-hover', '#242424');
         document.documentElement.style.setProperty('--text-primary', '#f4f4f5');
         document.documentElement.style.setProperty('--text-secondary', '#a1a1aa');
         document.documentElement.style.setProperty('--text-muted', '#71717a');
@@ -9642,13 +9648,13 @@ function printInvoice() {
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1a1a1a; background: #fff; }
                 .container { max-width: 800px; margin: 0 auto; }
-                .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 30px; border-bottom: 4px solid #22c55e; margin-bottom: 30px; }
+                .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 30px; border-bottom: 4px solid #D4A574; margin-bottom: 30px; }
                 .company-info h1 { font-size: 24px; font-weight: 800; margin-bottom: 5px; }
                 .company-info p { color: #666; font-size: 13px; }
-                .invoice-title { font-size: 32px; font-weight: 800; color: #22c55e; }
+                .invoice-title { font-size: 32px; font-weight: 800; color: #D4A574; }
                 .invoice-number { font-size: 14px; color: #666; }
                 .parties { display: flex; justify-content: space-between; margin-bottom: 30px; }
-                .party-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px; }
+                .party-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #D4A574; margin-bottom: 8px; }
                 .party-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
                 .party-details { font-size: 13px; color: #555; line-height: 1.6; }
                 .dates { display: flex; gap: 30px; margin-bottom: 30px; }
@@ -9662,7 +9668,7 @@ function printInvoice() {
                 .total-row { display: flex; justify-content: flex-end; margin-bottom: 8px; }
                 .total-label { width: 150px; text-align: right; padding-right: 20px; color: #666; }
                 .total-value { width: 100px; text-align: right; font-weight: 600; }
-                .grand-total { font-size: 24px; color: #22c55e; font-weight: 800; border-top: 2px solid #22c55e; padding-top: 12px; margin-top: 12px; }
+                .grand-total { font-size: 24px; color: #D4A574; font-weight: 800; border-top: 2px solid #D4A574; padding-top: 12px; margin-top: 12px; }
                 @media print { body { padding: 20px; } }
             </style>
         </head>
@@ -9670,7 +9676,7 @@ function printInvoice() {
             <div class="container">
                 <div class="header">
                     <div class="company-info">
-                        <h1>Diamondback Coding</h1>
+                        <h1>DIAMONDBACK</h1>
                         <p>Premium Development Services</p>
                         <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
                         <p>contact@diamondbackcoding.com</p>
@@ -9684,7 +9690,7 @@ function printInvoice() {
                 <div class="parties">
                     <div>
                         <div class="party-label">From</div>
-                        <div class="party-name">Diamondback Coding</div>
+                        <div class="party-name">DIAMONDBACK</div>
                         <div class="party-details">15709 Spillman Ranch Loop<br>Austin, TX 78738</div>
                     </div>
                     <div>
@@ -11676,14 +11682,14 @@ function generateTimelineHTML(timeline) {
                 <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 12px;">Agreement Overview</div>
                 <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">
                     This Service Level Agreement is entered into as of <strong>${companySignatureDate}</strong> by and between 
-                    <strong>Diamondback Coding</strong> and <strong>${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}</strong>.
+                    <strong>DIAMONDBACK</strong> and <strong>${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}</strong>.
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 32px;">
                 <div>
                     <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 6px;">Service Provider</div>
-                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Diamondback Coding</div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">DIAMONDBACK</div>
                     <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.5;">
                         15709 Spillman Ranch Loop<br>
                         Austin, TX 78738<br>
@@ -11692,7 +11698,7 @@ function generateTimelineHTML(timeline) {
                     </div>
                     <div style="margin-top: 16px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-sm);">
                         <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Company Signature</div>
-                        <div style="font-family: cursive; font-size: 20px; color: var(--accent-amber); margin-bottom: 4px;">Diamondback Coding</div>
+                        <div style="font-family: cursive; font-size: 20px; color: var(--accent-amber); margin-bottom: 4px;">DIAMONDBACK</div>
                         <div style="font-size: 10px; color: var(--text-muted);">Digitally Signed: ${companySignatureDate}</div>
                     </div>
                 </div>
@@ -11915,26 +11921,26 @@ function exportTimelineAsPDF() {
         timeline.packages.forEach(function(key) {
             if (servicePackages[key]) {
                 const pkg = servicePackages[key];
-                packagesListHtml += '<div style="display: inline-block; background: #f8f9fa; border: 1px solid #22c55e; color: #000; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; margin: 0 8px 8px 0;">' + pkg.name + (pkg.isFree ? ' <span style="color: #22c55e;">(FREE)</span>' : '') + '</div>';
+                packagesListHtml += '<div style="display: inline-block; background: #f8f9fa; border: 1px solid #D4A574; color: #000; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; margin: 0 8px 8px 0;">' + pkg.name + (pkg.isFree ? ' <span style="color: #D4A574;">(FREE)</span>' : '') + '</div>';
             }
         });
         
         // Build standardized phases
         let standardPhasesHtml = '<div style="margin-bottom: 40px;">' +
-            '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">WEBSITE DEVELOPMENT PROCESS</div>';
+            '<div style="font-size: 13px; font-weight: 700; color: #D4A574; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #D4A574;">WEBSITE DEVELOPMENT PROCESS</div>';
 
         standardWebsitePhases.forEach(function(phase, index) {
-            standardPhasesHtml += '<div style="margin-bottom: 24px; background: #f8f9fa; padding: 20px; border-left: 4px solid #22c55e; border-radius: 4px;">';
+            standardPhasesHtml += '<div style="margin-bottom: 24px; background: #f8f9fa; padding: 20px; border-left: 4px solid #D4A574; border-radius: 4px;">';
             standardPhasesHtml += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">';
             standardPhasesHtml += '<div style="display: flex; align-items: center; gap: 10px;">';
-            standardPhasesHtml += '<span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; font-size: 13px; font-weight: 700;">' + (index + 1) + '</span>';
+            standardPhasesHtml += '<span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #D4A574; color: white; border-radius: 50%; font-size: 13px; font-weight: 700;">' + (index + 1) + '</span>';
             standardPhasesHtml += '<span style="font-size: 15px; font-weight: 700; color: #000;">' + phase.name + '</span></div>';
             standardPhasesHtml += '<span style="font-size: 12px; color: #666; background: white; padding: 6px 12px; border-radius: 4px; border: 1px solid #ddd;">' + phase.duration + '</span></div>';
             standardPhasesHtml += '<ul style="list-style: none; padding: 0; margin: 12px 0 0 0;">';
             
             phase.tasks.forEach(function(task) {
                 standardPhasesHtml += '<li style="padding: 8px 0; padding-left: 28px; position: relative; font-size: 12px; color: #333; line-height: 1.6;">';
-                standardPhasesHtml += '<span style="position: absolute; left: 8px; top: 8px; color: #22c55e; font-weight: bold;">✓</span>';
+                standardPhasesHtml += '<span style="position: absolute; left: 8px; top: 8px; color: #D4A574; font-weight: bold;">✓</span>';
                 standardPhasesHtml += task + '</li>';
             });
             
@@ -11951,7 +11957,7 @@ function exportTimelineAsPDF() {
             if (!pkg) return;
             
             phasesHtml += '<div style="margin-bottom: 30px; background: white; border: 1px solid #e0e0e0; border-radius: 4px; overflow: hidden;">';
-            phasesHtml += '<div style="background: #22c55e; color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">';
+            phasesHtml += '<div style="background: #D4A574; color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">';
             phasesHtml += '<div><div style="font-size: 16px; font-weight: 700;">' + pkg.name + '</div>';
             phasesHtml += '<div style="font-size: 12px; opacity: 0.95; margin-top: 2px;">' + pkg.description + '</div></div>';
             phasesHtml += '<div style="text-align: right;"><div style="font-size: 10px; text-transform: uppercase; opacity: 0.9;">Duration</div>';
@@ -11970,7 +11976,7 @@ function exportTimelineAsPDF() {
                     
                     phase.tasks.forEach(function(task) {
                         phasesHtml += '<li style="padding: 6px 0; padding-left: 24px; position: relative; font-size: 12px; color: #444; line-height: 1.5;">';
-                        phasesHtml += '<span style="position: absolute; left: 4px; top: 6px; color: #22c55e; font-weight: bold;">•</span>';
+                        phasesHtml += '<span style="position: absolute; left: 4px; top: 6px; color: #D4A574; font-weight: bold;">•</span>';
                         phasesHtml += task + '</li>';
                     });
                     
@@ -11982,7 +11988,7 @@ function exportTimelineAsPDF() {
             // Features list
             if (pkg.features) {
                 phasesHtml += '<div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #f0f0f0;">';
-                phasesHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 12px;">INCLUDED FEATURES</div>';
+                phasesHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #D4A574; margin-bottom: 12px;">INCLUDED FEATURES</div>';
                 phasesHtml += '<div style="display: flex; flex-wrap: wrap; gap: 6px;">';
                 pkg.features.forEach(function(feature) {
                     phasesHtml += '<span style="background: #f8f9fa; color: #333; padding: 4px 10px; border-radius: 3px; font-size: 10px; border: 1px solid #e0e0e0;">' + feature + '</span>';
@@ -12022,8 +12028,8 @@ function exportTimelineAsPDF() {
         // Maintenance section
         let maintenanceHtml = '';
         if (timeline.maintenanceIncluded && timeline.maintenanceIncluded !== 'no') {
-            maintenanceHtml = '<div style="background: #f8f9fa; padding: 20px; border: 1px solid #e0e0e0; border-left: 4px solid #22c55e; border-radius: 4px; margin-bottom: 30px;">';
-            maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 12px; text-transform: uppercase;">Maintenance & Support Terms</div>';
+            maintenanceHtml = '<div style="background: #f8f9fa; padding: 20px; border: 1px solid #e0e0e0; border-left: 4px solid #D4A574; border-radius: 4px; margin-bottom: 30px;">';
+            maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #D4A574; margin-bottom: 12px; text-transform: uppercase;">Maintenance & Support Terms</div>';
             
             if (timeline.maintenanceIncluded === 'free') {
                 maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: #000; margin-bottom: 10px;">✓ FREE Maintenance';
@@ -12047,8 +12053,8 @@ function exportTimelineAsPDF() {
             }
             maintenanceHtml += '</div></div>';
         } else if (longestSupportPeriod > 0) {
-            maintenanceHtml = '<div style="background: #f8f9fa; padding: 20px; border: 1px solid #e0e0e0; border-left: 4px solid #22c55e; border-radius: 4px; margin-bottom: 30px;">';
-            maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 12px; text-transform: uppercase;">Post-Launch Support</div>';
+            maintenanceHtml = '<div style="background: #f8f9fa; padding: 20px; border: 1px solid #e0e0e0; border-left: 4px solid #D4A574; border-radius: 4px; margin-bottom: 30px;">';
+            maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #D4A574; margin-bottom: 12px; text-transform: uppercase;">Post-Launch Support</div>';
             maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: #000; margin-bottom: 10px;">' + longestSupportPeriod + ' Days of FREE Priority Support Included</div>';
             maintenanceHtml += '<div style="font-size: 12px; color: #444; line-height: 1.6;">Following project launch, you will receive ' + longestSupportPeriod + ' days of free priority support including bug fixes, technical assistance, and minor adjustments.</div></div>';
         }
@@ -12057,7 +12063,7 @@ function exportTimelineAsPDF() {
         let scopeHtml = '';
         if (timeline.scope) {
             scopeHtml = '<div style="background: #f8f9fa; padding: 18px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 30px;">';
-            scopeHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px;">Project Scope / Special Requirements</div>';
+            scopeHtml += '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #D4A574; margin-bottom: 8px;">Project Scope / Special Requirements</div>';
             scopeHtml += '<p style="font-size: 12px; color: #444; margin: 0; line-height: 1.6;">' + timeline.scope + '</p></div>';
         }
         
@@ -12104,17 +12110,17 @@ function exportTimelineAsPDF() {
                     '</div>' +
                     
                     // AGREEMENT OVERVIEW
-                    '<div style="background: #f8f9fa; padding: 24px; border-left: 4px solid #22c55e; border-radius: 4px; margin-bottom: 40px;">' +
-                        '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #22c55e; margin-bottom: 12px;">Agreement Overview</div>' +
-                        '<div style="font-size: 12px; color: #444; line-height: 1.7;">This Service Level Agreement ("Agreement") is entered into as of <strong>' + companySignatureDate + '</strong> by and between <strong>Diamondback Coding</strong> ("Provider"), a Texas-based web development company, and <strong>' + timeline.clientName + (timeline.clientCompany ? ' / ' + timeline.clientCompany : '') + '</strong> ("Client").</div>' +
+                    '<div style="background: #f8f9fa; padding: 24px; border-left: 4px solid #D4A574; border-radius: 4px; margin-bottom: 40px;">' +
+                        '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #D4A574; margin-bottom: 12px;">Agreement Overview</div>' +
+                        '<div style="font-size: 12px; color: #444; line-height: 1.7;">This Service Level Agreement ("Agreement") is entered into as of <strong>' + companySignatureDate + '</strong> by and between <strong>DIAMONDBACK</strong> ("Provider"), a Texas-based web development company, and <strong>' + timeline.clientName + (timeline.clientCompany ? ' / ' + timeline.clientCompany : '') + '</strong> ("Client").</div>' +
                     '</div>' +
                     
                     // PARTIES (TWO COLUMNS)
                     '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px;">' +
                         // PROVIDER
                         '<div style="background: white; border: 2px solid #e0e0e0; border-radius: 4px; padding: 24px;">' +
-                            '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #22c55e; margin-bottom: 12px;">Service Provider</div>' +
-                            '<div style="font-size: 16px; font-weight: 700; color: #000; margin-bottom: 8px;">Diamondback Coding</div>' +
+                            '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #D4A574; margin-bottom: 12px;">Service Provider</div>' +
+                            '<div style="font-size: 16px; font-weight: 700; color: #000; margin-bottom: 8px;">DIAMONDBACK</div>' +
                             '<div style="font-size: 11px; color: #666; line-height: 1.6; margin-bottom: 16px;">' +
                                 '15709 Spillman Ranch Loop<br>' +
                                 'Austin, TX 78738<br>' +
@@ -12123,8 +12129,8 @@ function exportTimelineAsPDF() {
                             '</div>' +
                             '<div style="background: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e0e0e0;">' +
                                 '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 8px;">Authorized Signature</div>' +
-                                '<div style="font-family: Brush Script MT, cursive; font-size: 28px; color: #22c55e; margin-bottom: 4px; line-height: 1;">Diamondback Coding</div>' +
-                                '<div style="height: 1px; background: #22c55e; margin: 8px 0;"></div>' +
+                                '<div style="font-family: Brush Script MT, cursive; font-size: 28px; color: #D4A574; margin-bottom: 4px; line-height: 1;">DIAMONDBACK</div>' +
+                                '<div style="height: 1px; background: #D4A574; margin: 8px 0;"></div>' +
                                 '<div style="font-size: 10px; color: #666;">Date: ' + companySignatureDate + '</div>' +
                                 '<div style="font-size: 9px; color: #999; margin-top: 4px;">Digitally Authorized Representative</div>' +
                             '</div>' +
@@ -12132,7 +12138,7 @@ function exportTimelineAsPDF() {
                         
                         // CLIENT
                         '<div style="background: white; border: 2px solid #e0e0e0; border-radius: 4px; padding: 24px;">' +
-                            '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #22c55e; margin-bottom: 12px;">Client</div>' +
+                            '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #D4A574; margin-bottom: 12px;">Client</div>' +
                             '<div style="font-size: 16px; font-weight: 700; color: #000; margin-bottom: 8px;">' + timeline.clientName + '</div>' +
                             '<div style="font-size: 11px; color: #666; line-height: 1.6; margin-bottom: 16px;">' +
                                 (timeline.clientCompany ? timeline.clientCompany + '<br>' : '') +
@@ -12140,7 +12146,7 @@ function exportTimelineAsPDF() {
                                 (timeline.clientPhone || '') + (timeline.clientAddress ? '<br>' : '') +
                                 (timeline.clientAddress ? timeline.clientAddress.replace(/\n/g, '<br>') : '') +
                             '</div>' +
-                            '<div style="background: white; padding: 16px; border-radius: 4px; border: 2px dashed #22c55e;">' +
+                            '<div style="background: white; padding: 16px; border-radius: 4px; border: 2px dashed #D4A574;">' +
                                 '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 8px;">Client Signature Required</div>' +
                                 '<div style="height: 50px; border-bottom: 2px solid #000; margin-bottom: 8px;"></div>' +
                                 '<div style="font-size: 10px; color: #666;">Date: _______________</div>' +
@@ -12151,7 +12157,7 @@ function exportTimelineAsPDF() {
                     
                     // PROJECT DETAILS (4 BOXES)
                     '<div style="margin-bottom: 40px;">' +
-                        '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">PROJECT DETAILS</div>' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #D4A574; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #D4A574;">PROJECT DETAILS</div>' +
                         '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">' +
                             '<div style="background: #f8f9fa; padding: 18px; border-radius: 4px; border: 1px solid #e0e0e0;">' +
                                 '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px;">Project Name</div>' +
@@ -12161,7 +12167,7 @@ function exportTimelineAsPDF() {
                                 '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 6px;">Start Date</div>' +
                                 '<div style="font-size: 15px; font-weight: 700; color: #000; font-family: monospace;">' + formatDate(timeline.startDate) + '</div>' +
                             '</div>' +
-                            '<div style="background: #22c55e; padding: 18px; border-radius: 4px;">' +
+                            '<div style="background: #D4A574; padding: 18px; border-radius: 4px;">' +
                                 '<div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,0.9); margin-bottom: 6px;">Total Investment</div>' +
                                 '<div style="font-size: 22px; font-weight: 800; color: white; font-family: monospace;">' + (timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()) + '</div>' +
                             '</div>' +
@@ -12174,7 +12180,7 @@ function exportTimelineAsPDF() {
                     
                     // SELECTED SERVICES
                     '<div style="margin-bottom: 40px;">' +
-                        '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">SELECTED SERVICES</div>' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #D4A574; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #D4A574;">SELECTED SERVICES</div>' +
                         '<div>' + packagesListHtml + '</div>' +
                     '</div>' +
                     
@@ -12185,22 +12191,22 @@ function exportTimelineAsPDF() {
                     
                     // SERVICE LEVEL COMMITMENTS
                     '<div style="margin-bottom: 40px;">' +
-                        '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">SERVICE LEVEL COMMITMENTS</div>' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #D4A574; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #D4A574;">SERVICE LEVEL COMMITMENTS</div>' +
                         '<div style="display: grid; gap: 16px;">' +
                             '<div style="display: flex; gap: 12px; align-items: start;">' +
-                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">1</div>' +
+                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #D4A574; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">1</div>' +
                                 '<div><div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 4px;">Timeline Adherence</div><div style="font-size: 12px; color: #666; line-height: 1.5;">Provider commits to delivering all project phases within specified timeframes, subject to timely Client feedback and approval.</div></div>' +
                             '</div>' +
                             '<div style="display: flex; gap: 12px; align-items: start;">' +
-                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">2</div>' +
+                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #D4A574; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">2</div>' +
                                 '<div><div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 4px;">Communication Response Time</div><div style="font-size: 12px; color: #666; line-height: 1.5;">Provider will respond to Client inquiries within 24 business hours during regular business hours (Mon-Fri, 8 AM - 5 PM CST).</div></div>' +
                             '</div>' +
                             '<div style="display: flex; gap: 12px; align-items: start;">' +
-                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">3</div>' +
+                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #D4A574; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">3</div>' +
                                 '<div><div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 4px;">Quality Assurance</div><div style="font-size: 12px; color: #666; line-height: 1.5;">All deliverables undergo comprehensive testing across major browsers and devices before client review.</div></div>' +
                             '</div>' +
                             '<div style="display: flex; gap: 12px; align-items: start;">' +
-                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">4</div>' +
+                                '<div style="flex-shrink: 0; width: 32px; height: 32px; background: #D4A574; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">4</div>' +
                                 '<div><div style="font-size: 13px; font-weight: 700; color: #000; margin-bottom: 4px;">Post-Launch Support</div><div style="font-size: 12px; color: #666; line-height: 1.5;">Free priority support period begins immediately after launch (duration specified in selected package).</div></div>' +
                             '</div>' +
                         '</div>' +
@@ -12208,7 +12214,7 @@ function exportTimelineAsPDF() {
                     
                     // DETAILED TIMELINE
                     '<div style="margin-bottom: 40px;">' +
-                        '<div style="font-size: 13px; font-weight: 700; color: #22c55e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #22c55e;">DETAILED PROJECT TIMELINE</div>' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #D4A574; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #D4A574;">DETAILED PROJECT TIMELINE</div>' +
                         phasesHtml +
                     '</div>' +
                     
@@ -12230,14 +12236,14 @@ function exportTimelineAsPDF() {
                     
                     // GOVERNING LAW
                     '<div style="background: #fff; padding: 20px; border: 2px solid #e0e0e0; border-radius: 4px; margin-bottom: 30px;">' +
-                        '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #22c55e; margin-bottom: 8px;">Governing Law</div>' +
+                        '<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #D4A574; margin-bottom: 8px;">Governing Law</div>' +
                         '<div style="font-size: 11px; color: #666; line-height: 1.6;">This Agreement shall be governed by and construed in accordance with the laws of the State of Texas, without regard to its conflict of law provisions. Any disputes arising from this Agreement shall be resolved in the state or federal courts located in Texas.</div>' +
                     '</div>' +
                     
-                    (timeline.notes ? '<div style="background: #f8f9fa; padding: 20px; border: 1px solid #e0e0e0; border-left: 4px solid #22c55e; border-radius: 4px; margin-bottom: 30px;"><div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #22c55e; margin-bottom: 8px;">Additional Notes</div><div style="font-size: 12px; color: #444; line-height: 1.6;">' + timeline.notes + '</div></div>' : '') +
+                    (timeline.notes ? '<div style="background: #f8f9fa; padding: 20px; border: 1px solid #e0e0e0; border-left: 4px solid #D4A574; border-radius: 4px; margin-bottom: 30px;"><div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #D4A574; margin-bottom: 8px;">Additional Notes</div><div style="font-size: 12px; color: #444; line-height: 1.6;">' + timeline.notes + '</div></div>' : '') +
                     
                     // SIGNATURE REMINDER
-                    '<div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 24px; border-radius: 4px; text-align: center; margin-bottom: 40px;">' +
+                    '<div style="background: linear-gradient(135deg, #D4A574 0%, #B88F5F 100%); color: white; padding: 24px; border-radius: 4px; text-align: center; margin-bottom: 40px;">' +
                         '<div style="font-size: 15px; font-weight: 700; margin-bottom: 8px;">⚠️ CLIENT SIGNATURE REQUIRED</div>' +
                         '<div style="font-size: 12px; opacity: 0.95; line-height: 1.5;">Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</div>' +
                     '</div>' +
@@ -15922,7 +15928,7 @@ async function renderFollowUps(content) {
             '14_day': '14+ Day Follow-Up'
         };
 
-        const totalPending = categories.reduce((sum, cat) => sum + (cat.count || 0), 0);
+        const totalPending = categories.reduce((sum, cat) => sum + parseInt(cat.count || 0, 10), 0);
         const neverContacted = categories.find(c => c.follow_up_category === 'never_contacted')?.count || 0;
 
         // Build campaign rows HTML
@@ -15996,7 +16002,7 @@ async function renderFollowUps(content) {
                 const urgencyColors = {
                     'never_contacted': '#ef4444',
                     '1_day': '#f59e0b',
-                    '3_day': '#22c55e',
+                    '3_day': '#D4A574',
                     '7_day': '#3b82f6',
                     '14_day': '#6b7280'
                 };
@@ -16050,7 +16056,7 @@ async function renderFollowUps(content) {
                         <span class="stat-label">Total Pending</span>
                         <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
                     </div>
-                    <div class="stat-value">${totalPending.toLocaleString()}</div>
+                    <div class="stat-value">${totalPending}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
@@ -16437,11 +16443,11 @@ function renderRecruitmentUI(content) {
             </div>
             <div class="stat-value">${totalApps}</div>
         </div>
-        <div class="stat-card" style="border-top:3px solid #22c55e;">
+        <div class="stat-card" style="border-top:3px solid #D4A574;">
             <div class="stat-header"><span class="stat-label">New (Unreviewed)</span>
-                <div class="stat-icon" style="background:rgba(34,197,94,0.12);color:#22c55e;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                <div class="stat-icon" style="background:rgba(212,165,116,0.12);color:#D4A574;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
             </div>
-            <div class="stat-value" style="color:#22c55e;">${newApps}</div>
+            <div class="stat-value" style="color:#D4A574;">${newApps}</div>
         </div>
         <div class="stat-card">
             <div class="stat-header"><span class="stat-label">Hired</span>
@@ -16553,12 +16559,12 @@ function renderJobsTable(jobs) {
                     <td style="font-weight:600;font-size:14px;">${j.title}</td>
                     <td style="font-size:13px;color:var(--text-secondary);">${j.department}</td>
                     <td style="font-size:13px;color:var(--text-secondary);">${j.type} · ${j.location}</td>
-                    <td><span style="display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:${j.published ? 'rgba(34,197,94,0.12)' : 'rgba(113,113,122,0.15)'};color:${j.published ? '#22c55e' : '#71717a'};">${j.published ? 'Published' : 'Draft'}</span></td>
+                    <td><span style="display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;background:${j.published ? 'rgba(212,165,116,0.12)' : 'rgba(113,113,122,0.15)'};color:${j.published ? '#D4A574' : '#71717a'};">${j.published ? 'Published' : 'Draft'}</span></td>
                     <td style="font-size:14px;font-weight:600;color:var(--accent-amber);">${appCount}</td>
                     <td>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
                             <button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;" onclick="openJobModal(${j.id})">Edit</button>
-                            <button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;background:${j.published ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'};color:${j.published ? '#ef4444' : '#22c55e'};" onclick="toggleJobPublished(${j.id}, ${j.published})">
+                            <button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;background:${j.published ? 'rgba(239,68,68,0.1)' : 'rgba(212,165,116,0.1)'};color:${j.published ? '#ef4444' : '#D4A574'};" onclick="toggleJobPublished(${j.id}, ${j.published})">
                                 ${j.published ? 'Unpublish' : 'Publish'}
                             </button>
                             <button class="btn btn-secondary" style="padding:6px 10px;font-size:11px;color:#ef4444;" onclick="deleteJob(${j.id})">Delete</button>
@@ -16572,11 +16578,11 @@ function renderJobsTable(jobs) {
 }
 
 function getAppStatusBg(s) {
-    const map = { new:'rgba(34,197,94,0.12)', reviewing:'rgba(245,158,11,0.12)', interviewing:'rgba(59,130,246,0.12)', hired:'rgba(34,197,94,0.2)', rejected:'rgba(239,68,68,0.12)', on_hold:'rgba(113,113,122,0.15)' };
+    const map = { new:'rgba(212,165,116,0.12)', reviewing:'rgba(245,158,11,0.12)', interviewing:'rgba(59,130,246,0.12)', hired:'rgba(212,165,116,0.2)', rejected:'rgba(239,68,68,0.12)', on_hold:'rgba(113,113,122,0.15)' };
     return map[s] || 'rgba(113,113,122,0.15)';
 }
 function getAppStatusColor(s) {
-    const map = { new:'#22c55e', reviewing:'#f59e0b', interviewing:'#3b82f6', hired:'#16a34a', rejected:'#ef4444', on_hold:'#71717a' };
+    const map = { new:'#D4A574', reviewing:'#f59e0b', interviewing:'#3b82f6', hired:'#B88F5F', rejected:'#ef4444', on_hold:'#71717a' };
     return map[s] || '#71717a';
 }
 

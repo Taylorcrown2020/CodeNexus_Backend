@@ -785,14 +785,14 @@
             
             <!-- Login Type Tabs -->
             <div class="login-tabs">
-                <button type="button" class="login-tab active" onclick="switchLoginType('admin', event)">
+                <button type="button" class="login-tab active" onclick="switchLoginType('admin')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
                     </svg>
                     Admin Login
                 </button>
-                <button type="button" class="login-tab" onclick="switchLoginType('employee', event)">
+                <button type="button" class="login-tab" onclick="switchLoginType('employee')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
@@ -929,20 +929,14 @@
         let currentLoginType = 'admin';
 
         // Switch between admin and employee login
-        function switchLoginType(type, event) {
+        function switchLoginType(type) {
             currentLoginType = type;
             
             // Update tab styling
             document.querySelectorAll('.login-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
-            // Add active class to clicked tab
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
-            } else if (event && event.target) {
-                event.target.classList.add('active');
-            }
+            event.target.closest('.login-tab').classList.add('active');
             
             // Update form placeholder text
             const subtitle = document.querySelector('.logo-subtitle');

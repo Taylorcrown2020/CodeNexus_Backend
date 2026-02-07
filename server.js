@@ -2251,6 +2251,20 @@ app.post('/api/leads', async (req, res) => {
             });
         }
 
+        // Check if email already exists in the system
+        const existingLead = await pool.query(
+            'SELECT id, name, email FROM leads WHERE LOWER(email) = LOWER($1)',
+            [email]
+        );
+
+        if (existingLead.rows.length > 0) {
+            console.log('❌ Duplicate email attempt:', email);
+            return res.status(409).json({
+                success: false,
+                message: `A lead with email ${email} already exists in the system (${existingLead.rows[0].name}). Please use a different email or update the existing lead.`
+            });
+        }
+
         const isAuthenticated = req.headers.authorization;
 
         // Log the incoming data for debugging
@@ -7130,6 +7144,37 @@ app.post('/api/admin/client-accounts', authenticateToken, async (req, res) => {
     const { leadId, email, temporaryPassword, sendWelcomeEmail } = req.body;
     
     try {
+        // First, check if the lead is actually a customer
+        const leadCheck = await pool.query(
+            'SELECT id, name, email, is_customer, client_password FROM leads WHERE id = $1',
+            [leadId]
+        );
+
+        if (leadCheck.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Lead not found.'
+            });
+        }
+
+        const lead = leadCheck.rows[0];
+
+        // CRITICAL: Only allow client portal creation for customers
+        if (!lead.is_customer) {
+            return res.status(403).json({
+                success: false,
+                message: 'Client portals can only be created for customers. Please convert this lead to a customer first before creating a portal account.'
+            });
+        }
+
+        // Check if portal already exists
+        if (lead.client_password) {
+            return res.status(409).json({
+                success: false,
+                message: 'A client portal already exists for this customer. Use the reset password function to change credentials.'
+            });
+        }
+        
         // Hash the password
         const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
         
@@ -7138,23 +7183,24 @@ app.post('/api/admin/client-accounts', authenticateToken, async (req, res) => {
             UPDATE leads 
             SET email = $1, 
                 client_password = $2,
-                is_customer = TRUE,
                 client_account_created_at = CURRENT_TIMESTAMP
             WHERE id = $3
         `, [email, hashedPassword, leadId]);
         
-        // Get lead details for email
+        // Get updated lead details for email
         const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
-        const lead = leadResult.rows[0];
+        const updatedLead = leadResult.rows[0];
         
         // Send welcome email if requested
-        if (sendWelcomeEmail && lead) {
-            await sendClientWelcomeEmail(lead.email, lead.name, temporaryPassword);
+        if (sendWelcomeEmail && updatedLead) {
+            await sendClientWelcomeEmail(updatedLead.email, updatedLead.name, temporaryPassword);
         }
+        
+        console.log(`✅ Client portal created for customer: ${updatedLead.name} (${updatedLead.email})`);
         
         res.json({ 
             success: true, 
-            message: 'Client account created successfully',
+            message: 'Client portal created successfully for customer.',
             credentials: {
                 email: email,
                 temporaryPassword: temporaryPassword
@@ -7162,7 +7208,7 @@ app.post('/api/admin/client-accounts', authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Failed to create client account:', error);
-        res.status(500).json({ success: false, message: 'Failed to create account' });
+        res.status(500).json({ success: false, message: 'Failed to create account: ' + error.message });
     }
 });
 

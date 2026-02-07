@@ -1381,6 +1381,60 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             END $$;
         `);
         
+        // Migration 3: Create tasks table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(500) NOT NULL,
+                description TEXT,
+                due_date DATE,
+                priority VARCHAR(20) DEFAULT 'medium',
+                status VARCHAR(50) DEFAULT 'pending',
+                completed BOOLEAN DEFAULT FALSE,
+                assigned_to INTEGER REFERENCES employees(id),
+                created_by VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP
+            )
+        `);
+        
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to)
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed)
+        `);
+        
+        // Migration 4: Add settings column to admin_users
+        await client.query(`
+            DO $$ 
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'admin_users' 
+                    AND column_name = 'settings'
+                ) THEN
+                    ALTER TABLE admin_users 
+                    ADD COLUMN settings JSONB DEFAULT '{}'::jsonb;
+                    RAISE NOTICE 'Added settings column to admin_users';
+                END IF;
+                
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'admin_users' 
+                    AND column_name = 'updated_at'
+                ) THEN
+                    ALTER TABLE admin_users 
+                    ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+                    RAISE NOTICE 'Added updated_at column to admin_users';
+                END IF;
+            END $$;
+        `);
+        
         console.log('✅ Database migrations completed');
 
         await client.query('COMMIT');
@@ -2222,6 +2276,226 @@ app.patch('/api/employees/:id', authenticateToken, async (req, res) => {
             success: false, 
             message: 'Server error.' 
         });
+    }
+});
+
+// ========================================
+// TASKS ENDPOINTS
+// ========================================
+
+// Get all tasks
+app.get('/api/tasks', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT t.*, e.name as assigned_name, e.email as assigned_email
+            FROM tasks t
+            LEFT JOIN employees e ON t.assigned_to = e.id
+            ORDER BY t.created_at DESC
+        `);
+        
+        res.json({ success: true, tasks: result.rows });
+    } catch (error) {
+        console.error('Get tasks error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Create new task
+app.post('/api/tasks', authenticateToken, async (req, res) => {
+    try {
+        const { title, description, due_date, priority, assigned_to } = req.body;
+        
+        if (!title) {
+            return res.status(400).json({
+                success: false,
+                message: 'Task title is required.'
+            });
+        }
+
+        const result = await pool.query(`
+            INSERT INTO tasks (title, description, due_date, priority, assigned_to, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+        `, [title, description, due_date, priority || 'medium', assigned_to, req.user.email]);
+
+        // Get employee name if assigned
+        let task = result.rows[0];
+        if (task.assigned_to) {
+            const empResult = await pool.query('SELECT name, email FROM employees WHERE id = $1', [task.assigned_to]);
+            if (empResult.rows.length > 0) {
+                task.assigned_name = empResult.rows[0].name;
+                task.assigned_email = empResult.rows[0].email;
+            }
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'Task created successfully',
+            task: task
+        });
+    } catch (error) {
+        console.error('Create task error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Update task (toggle completion, edit, etc)
+app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, due_date, priority, assigned_to, completed, status } = req.body;
+        
+        let query = 'UPDATE tasks SET updated_at = CURRENT_TIMESTAMP';
+        let values = [];
+        let paramCount = 1;
+        
+        if (title !== undefined) {
+            query += `, title = $${paramCount++}`;
+            values.push(title);
+        }
+        if (description !== undefined) {
+            query += `, description = $${paramCount++}`;
+            values.push(description);
+        }
+        if (due_date !== undefined) {
+            query += `, due_date = $${paramCount++}`;
+            values.push(due_date);
+        }
+        if (priority !== undefined) {
+            query += `, priority = $${paramCount++}`;
+            values.push(priority);
+        }
+        if (assigned_to !== undefined) {
+            query += `, assigned_to = $${paramCount++}`;
+            values.push(assigned_to);
+        }
+        if (completed !== undefined) {
+            query += `, completed = $${paramCount++}`;
+            values.push(completed);
+            if (completed) {
+                query += `, completed_at = CURRENT_TIMESTAMP`;
+            } else {
+                query += `, completed_at = NULL`;
+            }
+        }
+        if (status !== undefined) {
+            query += `, status = $${paramCount++}`;
+            values.push(status);
+        }
+        
+        query += ` WHERE id = $${paramCount} RETURNING *`;
+        values.push(id);
+        
+        const result = await pool.query(query, values);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Task not found.'
+            });
+        }
+
+        // Get employee name if assigned
+        let task = result.rows[0];
+        if (task.assigned_to) {
+            const empResult = await pool.query('SELECT name, email FROM employees WHERE id = $1', [task.assigned_to]);
+            if (empResult.rows.length > 0) {
+                task.assigned_name = empResult.rows[0].name;
+                task.assigned_email = empResult.rows[0].email;
+            }
+        }
+
+        res.json({
+            success: true,
+            message: 'Task updated successfully',
+            task: task
+        });
+    } catch (error) {
+        console.error('Update task error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Delete task
+app.delete('/api/tasks/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const result = await pool.query('DELETE FROM tasks WHERE id = $1 RETURNING *', [id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Task not found.'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Task deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete task error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// ========================================
+// USER SETTINGS ENDPOINTS
+// ========================================
+
+// Get user settings
+app.get('/api/settings', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT settings FROM admin_users WHERE email = $1
+        `, [req.user.email]);
+        
+        if (result.rows.length === 0) {
+            return res.json({ 
+                success: true, 
+                settings: {
+                    emailNotifications: true,
+                    pushNotifications: false,
+                    weeklyReport: true,
+                    darkMode: true,
+                    autoAssign: false,
+                    twoFactorAuth: false,
+                    sessionTimeout: 30,
+                    ipWhitelist: []
+                }
+            });
+        }
+
+        res.json({ 
+            success: true, 
+            settings: result.rows[0].settings || {}
+        });
+    } catch (error) {
+        console.error('Get settings error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Update user settings
+app.put('/api/settings', authenticateToken, async (req, res) => {
+    try {
+        const settings = req.body;
+        
+        await pool.query(`
+            UPDATE admin_users 
+            SET settings = $1, updated_at = CURRENT_TIMESTAMP
+            WHERE email = $2
+        `, [JSON.stringify(settings), req.user.email]);
+
+        res.json({
+            success: true,
+            message: 'Settings updated successfully',
+            settings: settings
+        });
+    } catch (error) {
+        console.error('Update settings error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
 

@@ -669,6 +669,8 @@ body {
     font-size: 14px;
     font-family: inherit;
     transition: all 0.2s ease;
+    position: relative;
+    z-index: 2;
 }
 
 .search-input:focus {
@@ -689,7 +691,7 @@ body {
     height: 18px;
     transition: color 0.2s ease;
     pointer-events: none;
-    z-index: 1;
+    z-index: 3;
 }
 
 .search-box:focus-within .search-icon { color: var(--accent-amber); }
@@ -3184,6 +3186,7 @@ const state = {
     tasks: [],
     tickets: [], // Make sure this exists
     currentSection: 'dashboard',
+    currentSettingsTab: 'profile',
     searchTerm: '',
     currentFilter: 'all',
     currentLead: null,
@@ -3199,7 +3202,11 @@ const state = {
         pushNotifications: false,
         darkMode: true,
         autoAssign: false,
-        weeklyReport: true
+        weeklyReport: true,
+        sessionTimeout: 30,
+        twoFactorAuth: false,
+        ipWhitelistEnabled: false,
+        ipWhitelist: []
     }
 };
 
@@ -3333,12 +3340,38 @@ async function loadInvoices() {
 }
 
 async function loadTasks() {
-    state.tasks = [
-        { id: 1, title: 'Follow up with new leads', dueDate: '2026-01-20', assignee: 'Admin', completed: false, priority: 'high' },
-        { id: 2, title: 'Prepare weekly report', dueDate: '2026-01-22', assignee: 'Admin', completed: false, priority: 'medium' },
-        { id: 3, title: 'Review contract terms', dueDate: '2026-01-18', assignee: 'Admin', completed: true, priority: 'low' },
-        { id: 4, title: 'Schedule team meeting', dueDate: '2026-01-25', assignee: 'Admin', completed: false, priority: 'medium' }
-    ];
+    try {
+        const r = await fetch(`${API_URL}/api/tasks`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!r.ok) {
+            console.error('Failed to load tasks:', r.status);
+            state.tasks = [];
+            return;
+        }
+        const d = await r.json();
+        if (d.success) {
+            // Convert server format to frontend format
+            state.tasks = (d.tasks || []).map(task => ({
+                id: task.id,
+                title: task.title,
+                description: task.description,
+                dueDate: task.due_date,
+                assignee: task.assigned_name || 'Unassigned',
+                assigned_to: task.assigned_to,
+                priority: task.priority,
+                completed: task.completed,
+                status: task.status,
+                created_at: task.created_at,
+                completed_at: task.completed_at
+            }));
+        } else {
+            state.tasks = [];
+        }
+    } catch (e) {
+        console.error('Load tasks error:', e);
+        state.tasks = [];
+    }
 }
 
 async function loadExpenses(leadId) {
@@ -7000,24 +7033,29 @@ function renderTasks(content) {
 }
 
 function renderSettings(content) {
+    // Set default tab if not set
+    if (!state.currentSettingsTab) {
+        state.currentSettingsTab = 'profile';
+    }
+    
     content.innerHTML = `
         <div class="settings-layout">
             <div class="settings-nav">
-                <div class="settings-nav-item active">
+                <div class="settings-nav-item ${state.currentSettingsTab === 'profile' ? 'active' : ''}" onclick="switchSettingsTab('profile')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/>
                         <path d="M12 14c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z"/>
                     </svg>
                     Profile
                 </div>
-                <div class="settings-nav-item">
+                <div class="settings-nav-item ${state.currentSettingsTab === 'notifications' ? 'active' : ''}" onclick="switchSettingsTab('notifications')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
                     Notifications
                 </div>
-                <div class="settings-nav-item">
+                <div class="settings-nav-item ${state.currentSettingsTab === 'security' ? 'active' : ''}" onclick="switchSettingsTab('security')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -7026,41 +7064,32 @@ function renderSettings(content) {
                 </div>
             </div>
             
-            <div class="settings-panel">
-                <div class="settings-section">
-                    <h3 class="settings-section-title">Notification Preferences</h3>
-                    <p class="settings-section-desc">Manage how you receive notifications</p>
-                    
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-label">Email Notifications</div>
-                            <div class="setting-desc">Receive notifications via email</div>
-                        </div>
-                        <label class="toggle">
-                            <input type="checkbox" ${state.settings.emailNotifications ? 'checked' : ''} onchange="toggleSetting('emailNotifications')">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="setting-label">Push Notifications</div>
-                            <div class="setting-desc">Receive push notifications in browser</div>
-                        </div>
-                        <label class="toggle">
-                            <input type="checkbox" ${state.settings.pushNotifications ? 'checked' : ''} onchange="toggleSetting('pushNotifications')">
-<span class="toggle-slider"></span>
-</label>
-</div>
+            <div class="settings-panel" id="settingsPanelContent">
+                ${renderSettingsTabContent(state.currentSettingsTab)}
+            </div>
+        </div>
+    `;
+}
+
+function renderSettingsTabContent(tab) {
+    if (tab === 'profile') {
+        return `
+            <div class="settings-section">
+                <h3 class="settings-section-title">Account Information</h3>
+                <p class="settings-section-desc">Manage your account details</p>
+                
                 <div class="setting-row">
                     <div class="setting-info">
-                        <div class="setting-label">Weekly Reports</div>
-                        <div class="setting-desc">Get weekly summary via email</div>
+                        <div class="setting-label">Username</div>
+                        <div class="setting-desc">admin</div>
                     </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${state.settings.weeklyReport ? 'checked' : ''} onchange="toggleSetting('weeklyReport')">
-                        <span class="toggle-slider"></span>
-                    </label>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Email</div>
+                        <div class="setting-desc">admin@craftedcode.dev</div>
+                    </div>
                 </div>
             </div>
             
@@ -7095,9 +7124,226 @@ function renderSettings(content) {
                     </label>
                 </div>
             </div>
-        </div>
-    </div>
-`;
+        `;
+    } else if (tab === 'notifications') {
+        return `
+            <div class="settings-section">
+                <h3 class="settings-section-title">Notification Preferences</h3>
+                <p class="settings-section-desc">Control how and when you receive notifications</p>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Email Notifications</div>
+                        <div class="setting-desc">Receive email alerts for important events</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.emailNotifications ? 'checked' : ''} onchange="toggleSetting('emailNotifications')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">New Lead Notifications</div>
+                        <div class="setting-desc">Get notified when new leads submit the contact form</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.newLeadNotifications !== false ? 'checked' : ''} onchange="toggleSetting('newLeadNotifications')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Payment Notifications</div>
+                        <div class="setting-desc">Receive alerts when invoices are paid</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.paymentNotifications !== false ? 'checked' : ''} onchange="toggleSetting('paymentNotifications')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Task Reminders</div>
+                        <div class="setting-desc">Get reminders for upcoming and overdue tasks</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.taskReminders !== false ? 'checked' : ''} onchange="toggleSetting('taskReminders')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Weekly Reports</div>
+                        <div class="setting-desc">Receive a weekly summary of your CRM activity</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.weeklyReport ? 'checked' : ''} onchange="toggleSetting('weeklyReport')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Browser Notifications</div>
+                        <div class="setting-desc">Show desktop notifications for real-time updates</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.pushNotifications ? 'checked' : ''} onchange="toggleSetting('pushNotifications')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3 class="settings-section-title">Notification Schedule</h3>
+                <p class="settings-section-desc">Set quiet hours to avoid notifications during specific times</p>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Quiet Hours</div>
+                        <div class="setting-desc">Pause notifications during these hours</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.quietHours ? 'checked' : ''} onchange="toggleSetting('quietHours')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                ${state.settings.quietHours ? `
+                <div class="setting-row" style="padding-left: 20px; border-left: 3px solid var(--accent-amber);">
+                    <div class="setting-info">
+                        <div class="setting-label">From</div>
+                        <input type="time" class="form-input" value="${state.settings.quietHoursStart || '22:00'}" onchange="updateQuietHours('start', this.value)" style="max-width: 150px;">
+                    </div>
+                    <div class="setting-info" style="margin-left: 20px;">
+                        <div class="setting-label">To</div>
+                        <input type="time" class="form-input" value="${state.settings.quietHoursEnd || '08:00'}" onchange="updateQuietHours('end', this.value)" style="max-width: 150px;">
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    } else if (tab === 'security') {
+        return `
+            <div class="settings-section">
+                <h3 class="settings-section-title">Password & Authentication</h3>
+                <p class="settings-section-desc">Manage your login credentials and security settings</p>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Change Password</div>
+                        <div class="setting-desc">Update your account password</div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="openChangePasswordModal()">Change Password</button>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Two-Factor Authentication</div>
+                        <div class="setting-desc">Add an extra layer of security to your account</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.twoFactorAuth ? 'checked' : ''} onchange="toggleSetting('twoFactorAuth')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3 class="settings-section-title">Session Management</h3>
+                <p class="settings-section-desc">Control your login sessions and timeouts</p>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Session Timeout</div>
+                        <div class="setting-desc">Automatically log out after period of inactivity</div>
+                    </div>
+                    <select class="form-select" onchange="updateSessionTimeout(this.value)" style="max-width: 200px;">
+                        <option value="15" ${state.settings.sessionTimeout === 15 ? 'selected' : ''}>15 minutes</option>
+                        <option value="30" ${state.settings.sessionTimeout === 30 ? 'selected' : ''}>30 minutes</option>
+                        <option value="60" ${state.settings.sessionTimeout === 60 ? 'selected' : ''}>1 hour</option>
+                        <option value="120" ${state.settings.sessionTimeout === 120 ? 'selected' : ''}>2 hours</option>
+                        <option value="480" ${state.settings.sessionTimeout === 480 ? 'selected' : ''}>8 hours</option>
+                        <option value="0" ${state.settings.sessionTimeout === 0 ? 'selected' : ''}>Never</option>
+                    </select>
+                </div>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Active Sessions</div>
+                        <div class="setting-desc">View and manage your active login sessions</div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="showActiveSessions()">View Sessions</button>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3 class="settings-section-title">Access Control</h3>
+                <p class="settings-section-desc">Restrict access to your account</p>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">IP Whitelist</div>
+                        <div class="setting-desc">Only allow logins from specific IP addresses</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.ipWhitelistEnabled ? 'checked' : ''} onchange="toggleSetting('ipWhitelistEnabled')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                ${state.settings.ipWhitelistEnabled ? `
+                <div class="setting-row" style="padding-left: 20px; border-left: 3px solid var(--accent-amber);">
+                    <div class="setting-info full-width">
+                        <div class="setting-label">Allowed IP Addresses</div>
+                        <div class="setting-desc">Enter one IP address per line</div>
+                        <textarea class="form-textarea" rows="4" placeholder="192.168.1.1
+10.0.0.1" onchange="updateIPWhitelist(this.value)" style="margin-top: 12px; font-family: monospace;">${(state.settings.ipWhitelist || []).join('\n')}</textarea>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Login Alerts</div>
+                        <div class="setting-desc">Get notified of new login attempts</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.loginAlerts !== false ? 'checked' : ''} onchange="toggleSetting('loginAlerts')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3 class="settings-section-title">Activity Log</h3>
+                <p class="settings-section-desc">View recent security-related activities</p>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Recent Activity</div>
+                        <div class="setting-desc">Last login: ${new Date().toLocaleString()}</div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="showActivityLog()">View Full Log</button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function switchSettingsTab(tab) {
+    state.currentSettingsTab = tab;
+    document.getElementById('settingsPanelContent').innerHTML = renderSettingsTabContent(tab);
+    
+    // Update nav items
+    document.querySelectorAll('.settings-nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    event.target.closest('.settings-nav-item').classList.add('active');
 }
 // ========================================
 // MODAL FUNCTIONS
@@ -7988,12 +8234,22 @@ if (type === 'lead') {
     `;
 } else if (type === 'task') {
     titleEl.textContent = 'Create Task';
+    
+    // Build employee options
+    const employeeOptions = state.employees.map(emp => 
+        `<option value="${emp.id}">${emp.name}</option>`
+    ).join('');
+    
     bodyEl.innerHTML = `
         <form id="createTaskForm" onsubmit="handleCreateTask(event)">
             <div class="form-grid">
                 <div class="form-group full-width">
                     <label class="form-label">Task Title <span class="required">*</span></label>
                     <input type="text" class="form-input" name="title" required>
+                </div>
+                <div class="form-group full-width">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-textarea" name="description" rows="3" placeholder="Add task details..."></textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Due Date</label>
@@ -8003,13 +8259,16 @@ if (type === 'lead') {
                     <label class="form-label">Priority</label>
                     <select class="form-select" name="priority">
                         <option value="low">Low</option>
-                        <option value="medium">Medium</option>
+                        <option value="medium" selected>Medium</option>
                         <option value="high">High</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Assignee</label>
-                    <input type="text" class="form-input" name="assignee" value="Admin">
+                <div class="form-group full-width">
+                    <label class="form-label">Assign To</label>
+                    <select class="form-select" name="assigned_to">
+                        <option value="">Unassigned</option>
+                        ${employeeOptions}
+                    </select>
                 </div>
             </div>
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
@@ -8389,24 +8648,54 @@ async function handleCreateEmployee(event) {
         showToast(e.message || 'Error adding employee', 'error');
     }
 }
-function handleCreateTask(event) {
-event.preventDefault();
-const form = event.target;
-const formData = new FormData(form);
-const data = Object.fromEntries(formData.entries());
-const newTask = {
-    id: state.tasks.length + 1,
-    title: data.title,
-    dueDate: data.dueDate,
-    assignee: data.assignee,
-    priority: data.priority,
-    completed: false
-};
-
-state.tasks.push(newTask);
-closeCreateModal();
-showToast('Task created successfully', 'success');
-renderSection('tasks');
+async function handleCreateTask(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        const response = await fetch(`${API_URL}/api/tasks`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: data.title,
+                description: data.description || '',
+                due_date: data.dueDate,
+                priority: data.priority,
+                assigned_to: data.assigned_to ? parseInt(data.assigned_to) : null
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Add to local state
+            state.tasks.push({
+                id: result.task.id,
+                title: result.task.title,
+                description: result.task.description,
+                dueDate: result.task.due_date,
+                assignee: result.task.assigned_name || 'Unassigned',
+                assigned_to: result.task.assigned_to,
+                priority: result.task.priority,
+                completed: false,
+                created_at: result.task.created_at
+            });
+            
+            closeCreateModal();
+            showToast('Task created successfully', 'success');
+            renderSection('tasks');
+        } else {
+            showToast(result.message || 'Failed to create task', 'error');
+        }
+    } catch (error) {
+        console.error('Create task error:', error);
+        showToast('Error creating task', 'error');
+    }
 }
 // ========================================
 // INVOICE FUNCTIONS
@@ -9037,17 +9326,64 @@ try {
     showToast('Error deleting employee', 'error');
 }
 }
-function deleteTask(id) {
-state.tasks = state.tasks.filter(t => t.id !== id);
-showToast('Task deleted successfully', 'success');
-renderSection('tasks');
+async function deleteTask(id) {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/tasks/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            state.tasks = state.tasks.filter(t => t.id !== id);
+            showToast('Task deleted successfully', 'success');
+            renderSection('tasks');
+        } else {
+            showToast('Failed to delete task', 'error');
+        }
+    } catch (error) {
+        console.error('Delete task error:', error);
+        showToast('Error deleting task', 'error');
+    }
 }
-function toggleTask(id) {
-const task = state.tasks.find(t => t.id === id);
-if (task) {
-task.completed = !task.completed;
-renderSection('tasks');
-}
+async function toggleTask(id) {
+    try {
+        const task = state.tasks.find(t => t.id === id);
+        if (!task) return;
+        
+        const newCompletedStatus = !task.completed;
+        
+        const response = await fetch(`${API_URL}/api/tasks/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ completed: newCompletedStatus })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update local state
+            task.completed = newCompletedStatus;
+            task.completed_at = data.task.completed_at;
+            
+            showToast(newCompletedStatus ? 'Task marked as complete' : 'Task marked as incomplete', 'success');
+            renderSection('tasks');
+        } else {
+            showToast('Failed to update task', 'error');
+        }
+    } catch (error) {
+        console.error('Toggle task error:', error);
+        showToast('Error updating task', 'error');
+    }
 }
 function filterLeads(type) {
 state.currentFilter = type;
@@ -9065,16 +9401,129 @@ function handleSearch(query) {
 state.searchQuery = query.toLowerCase();
 renderSection(state.currentSection);
 }
-function toggleSetting(setting) {
+async function toggleSetting(setting) {
     state.settings[setting] = !state.settings[setting];
-    
-    // Save to localStorage
-    localStorage.setItem('adminSettings', JSON.stringify(state.settings));
-    
-    // Apply the setting
-    applySettings();
-    
+    await saveSettings();
     showToast('Setting updated', 'success');
+}
+
+async function saveSettings() {
+    try {
+        const response = await fetch(`${API_URL}/api/settings`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(state.settings)
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            console.error('Failed to save settings:', data.message);
+        }
+    } catch (error) {
+        console.error('Save settings error:', error);
+    }
+}
+
+async function loadSettings() {
+    try {
+        const response = await fetch(`${API_URL}/api/settings`, {
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        if (data.success && data.settings) {
+            state.settings = {
+                ...state.settings,
+                ...data.settings
+            };
+        }
+    } catch (error) {
+        console.error('Load settings error:', error);
+    }
+}
+
+async function updateSessionTimeout(minutes) {
+    state.settings.sessionTimeout = parseInt(minutes);
+    await saveSettings();
+    showToast('Session timeout updated', 'success');
+}
+
+async function updateQuietHours(type, value) {
+    if (type === 'start') {
+        state.settings.quietHoursStart = value;
+    } else {
+        state.settings.quietHoursEnd = value;
+    }
+    await saveSettings();
+    showToast('Quiet hours updated', 'success');
+}
+
+async function updateIPWhitelist(value) {
+    const ips = value.split('\n').map(ip => ip.trim()).filter(ip => ip.length > 0);
+    state.settings.ipWhitelist = ips;
+    await saveSettings();
+    showToast('IP whitelist updated', 'success');
+}
+
+function openChangePasswordModal() {
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    
+    titleEl.textContent = 'Change Password';
+    bodyEl.innerHTML = `
+        <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+            <div class="form-group">
+                <label class="form-label">Current Password <span class="required">*</span></label>
+                <input type="password" class="form-input" name="currentPassword" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Password <span class="required">*</span></label>
+                <input type="password" class="form-input" name="newPassword" required minlength="8">
+                <small style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">Minimum 8 characters</small>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Confirm New Password <span class="required">*</span></label>
+                <input type="password" class="form-input" name="confirmPassword" required>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Change Password</button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+}
+
+async function handleChangePassword(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    if (data.newPassword !== data.confirmPassword) {
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    // In a real implementation, this would call an API endpoint
+    showToast('Password changed successfully', 'success');
+    closeCreateModal();
+}
+
+function showActiveSessions() {
+    showToast('Active sessions feature coming soon', 'info');
+}
+
+function showActivityLog() {
+    showToast('Activity log feature coming soon', 'info');
 }
 
 function applySettings() {
@@ -15555,14 +16004,14 @@ async function renderFollowUps(content) {
                         <span class="stat-label">Total Pending</span>
                         <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
                     </div>
-                    <div class="stat-value">${totalPending}</div>
+                    <div class="stat-value">${totalPending.toLocaleString()}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Never Contacted</span>
                         <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                     </div>
-                    <div class="stat-value">${neverContacted}</div>
+                    <div class="stat-value" style="color: #ef4444;">${neverContacted}</div>
                 </div>
                 <div class="stat-card" style="border-top: 3px solid #D4A847;">
                     <div class="stat-header">

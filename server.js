@@ -1436,33 +1436,42 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
         `);
         
         // Migration 5: Create admin_sessions table for session tracking
+        // Drop existing tables if they're corrupted
+        await client.query(`DROP TABLE IF EXISTS admin_sessions CASCADE`);
+        await client.query(`DROP TABLE IF EXISTS activity_log CASCADE`);
+        
+        // Create admin_sessions table
         await client.query(`
-            CREATE TABLE IF NOT EXISTS admin_sessions (
+            CREATE TABLE admin_sessions (
                 id SERIAL PRIMARY KEY,
-                user_email VARCHAR(255) REFERENCES admin_users(email) ON DELETE CASCADE,
+                user_email VARCHAR(255),
                 token VARCHAR(500) UNIQUE NOT NULL,
                 ip_address VARCHAR(50),
                 user_agent TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT TRUE
+                is_active BOOLEAN DEFAULT TRUE,
+                CONSTRAINT admin_sessions_user_email_fkey 
+                    FOREIGN KEY (user_email) 
+                    REFERENCES admin_users(email) 
+                    ON DELETE CASCADE
             )
         `);
         
         await client.query(`
-            CREATE INDEX IF NOT EXISTS idx_sessions_user_email ON admin_sessions(user_email)
+            CREATE INDEX idx_sessions_user_email ON admin_sessions(user_email)
         `);
         await client.query(`
-            CREATE INDEX IF NOT EXISTS idx_sessions_token ON admin_sessions(token)
+            CREATE INDEX idx_sessions_token ON admin_sessions(token)
         `);
         await client.query(`
-            CREATE INDEX IF NOT EXISTS idx_sessions_active ON admin_sessions(is_active)
+            CREATE INDEX idx_sessions_active ON admin_sessions(is_active)
         `);
         
         // Migration 6: Create activity_log table for audit trail
         await client.query(`
-            CREATE TABLE IF NOT EXISTS activity_log (
+            CREATE TABLE activity_log (
                 id SERIAL PRIMARY KEY,
                 user_email VARCHAR(255),
                 action VARCHAR(100) NOT NULL,

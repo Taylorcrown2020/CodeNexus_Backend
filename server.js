@@ -2499,6 +2499,60 @@ app.put('/api/settings', authenticateToken, async (req, res) => {
     }
 });
 
+// Change password endpoint
+app.post('/api/admin/change-password', authenticateToken, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Current password and new password are required.'
+            });
+        }
+        
+        // Get user's current password hash
+        const userResult = await pool.query(
+            'SELECT password_hash FROM admin_users WHERE email = $1',
+            [req.user.email]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found.'
+            });
+        }
+        
+        // Verify current password
+        const isValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+        
+        if (!isValid) {
+            return res.status(401).json({
+                success: false,
+                message: 'Current password is incorrect.'
+            });
+        }
+        
+        // Hash new password
+        const newPasswordHash = await bcrypt.hash(newPassword, 10);
+        
+        // Update password
+        await pool.query(
+            'UPDATE admin_users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2',
+            [newPasswordHash, req.user.email]
+        );
+        
+        res.json({
+            success: true,
+            message: 'Password changed successfully.'
+        });
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
 // Create new lead (PUBLIC - from contact form AND authenticated admin creation)
 app.post('/api/leads', async (req, res) => {
     try {

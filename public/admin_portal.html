@@ -747,7 +747,7 @@ body {
     height: 18px;
     transition: color 0.2s ease;
     pointer-events: none;
-    z-index: 3;
+    z-index: 100;
 }
 
 .search-box:focus-within .search-icon { color: var(--accent-amber); }
@@ -3463,7 +3463,7 @@ async function updateBadges() {
         if (res.ok) {
             const data = await res.json();
             const categories = data.categories || data || [];
-            const total = categories.reduce((sum, cat) => sum + (cat.count || 0), 0);
+            const total = categories.reduce((sum, cat) => sum + parseInt(cat.count || 0, 10), 0);
             const badge = document.getElementById('followupsBadge');
             if (badge) badge.textContent = total;
         }
@@ -9574,9 +9574,36 @@ async function handleChangePassword(event) {
         return;
     }
     
-    // In a real implementation, this would call an API endpoint
-    showToast('Password changed successfully', 'success');
-    closeCreateModal();
+    if (data.newPassword.length < 8) {
+        showToast('Password must be at least 8 characters', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/admin/change-password`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                currentPassword: data.currentPassword,
+                newPassword: data.newPassword
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Password changed successfully', 'success');
+            closeCreateModal();
+        } else {
+            showToast(result.message || 'Failed to change password', 'error');
+        }
+    } catch (error) {
+        console.error('Change password error:', error);
+        showToast('Error changing password', 'error');
+    }
 }
 
 function showActiveSessions() {

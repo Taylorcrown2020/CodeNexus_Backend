@@ -4807,6 +4807,21 @@ function renderEmployees(content) {
                             Delete
                         </button>
                     </div>
+                    <div class="employee-portal-controls" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-default);">
+                        ${emp.portal_access ? `
+                            <span style="background: #10b981; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; margin-right: 8px; display: inline-block; margin-bottom: 8px;">✓ Portal Active</span>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-sm btn-secondary" onclick="toggleEmployeePortal(${emp.id})">Disable Portal</button>
+                                <button class="btn btn-sm btn-secondary" onclick="resetEmployeePassword(${emp.id})">Reset Password</button>
+                                <button class="btn btn-sm btn-primary" onclick="editEmployeePermissions(${emp.id})">Manage Permissions</button>
+                            </div>
+                        ` : emp.password_hash ? `
+                            <span style="background: #6b7280; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; margin-right: 8px; display: inline-block; margin-bottom: 8px;">Portal Disabled</span>
+                            <button class="btn btn-sm btn-secondary" onclick="toggleEmployeePortal(${emp.id})">Enable Portal</button>
+                        ` : `
+                            <button class="btn btn-sm btn-primary" onclick="createEmployeePortal(${emp.id})">✨ Create Portal Access</button>
+                        `}
+                    </div>
                 </div>
             `).join('')}
         </div>
@@ -17068,7 +17083,7 @@ async function deleteJob(jobId) {
 
 
 // ========================================
-// EMPLOYEE PORTAL MANAGEMENT FUNCTIONS
+// EMPLOYEE PORTAL MANAGEMENT FUNCTIONS  
 // ========================================
 
 async function createEmployeePortal(employeeId) {
@@ -17085,7 +17100,7 @@ async function createEmployeePortal(employeeId) {
         });
         const data = await response.json();
         if (data.success) {
-            showToast('Portal created! Temporary password: ' + password, 'success');
+            showToast('Portal created successfully!', 'success');
             loadEmployees();
         } else {
             showToast(data.message || 'Failed to create portal', 'error');
@@ -17138,45 +17153,49 @@ async function toggleEmployeePortal(employeeId) {
 }
 
 async function editEmployeePermissions(employeeId) {
-    const response = await fetch(`${API_URL}/api/employees/${employeeId}/permissions`, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-    });
-    const data = await response.json();
-    const p = data.permissions;
-    const modal = document.getElementById('createModal');
-    const titleEl = document.getElementById('createModalTitle');
-    const bodyEl = document.getElementById('createModalBody');
-    titleEl.textContent = 'Employee Permissions';
-    bodyEl.innerHTML = `
-        <form id="permsForm" onsubmit="saveEmployeePermissions(event, ${employeeId})">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div><h4 style="margin-bottom: 12px;">Leads</h4>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_leads" ${p.can_view_leads ? 'checked' : ''}> View</label>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_create_leads" ${p.can_create_leads ? 'checked' : ''}> Create</label>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_edit_leads" ${p.can_edit_leads ? 'checked' : ''}> Edit</label>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_delete_leads" ${p.can_delete_leads ? 'checked' : ''}> Delete</label>
+    try {
+        const response = await fetch(`${API_URL}/api/employees/${employeeId}/permissions`, {
+            headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+        });
+        const data = await response.json();
+        const p = data.permissions;
+        const modal = document.getElementById('createModal');
+        const titleEl = document.getElementById('createModalTitle');
+        const bodyEl = document.getElementById('createModalBody');
+        titleEl.textContent = 'Employee Permissions';
+        bodyEl.innerHTML = `
+            <form id="permsForm" onsubmit="saveEmployeePermissions(event, ${employeeId})">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div><h4 style="margin-bottom: 12px;">Leads</h4>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_leads" ${p.can_view_leads ? 'checked' : ''}> View</label>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_create_leads" ${p.can_create_leads ? 'checked' : ''}> Create</label>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_edit_leads" ${p.can_edit_leads ? 'checked' : ''}> Edit</label>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_delete_leads" ${p.can_delete_leads ? 'checked' : ''}> Delete</label>
+                    </div>
+                    <div><h4 style="margin-bottom: 12px;">Customers</h4>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_customers" ${p.can_view_customers ? 'checked' : ''}> View</label>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_edit_customers" ${p.can_edit_customers ? 'checked' : ''}> Edit</label>
+                    </div>
+                    <div><h4 style="margin-bottom: 12px;">Invoices</h4>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_invoices" ${p.can_view_invoices ? 'checked' : ''}> View</label>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_create_invoices" ${p.can_create_invoices ? 'checked' : ''}> Create</label>
+                    </div>
+                    <div><h4 style="margin-bottom: 12px;">Other</h4>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_create_tasks" ${p.can_create_tasks ? 'checked' : ''}> Create Tasks</label>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_projects" ${p.can_view_projects ? 'checked' : ''}> View Projects</label>
+                        <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_access_client_portal" ${p.can_access_client_portal ? 'checked' : ''}> Client Portal</label>
+                    </div>
                 </div>
-                <div><h4 style="margin-bottom: 12px;">Customers</h4>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_customers" ${p.can_view_customers ? 'checked' : ''}> View</label>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_edit_customers" ${p.can_edit_customers ? 'checked' : ''}> Edit</label>
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Permissions</button>
                 </div>
-                <div><h4 style="margin-bottom: 12px;">Invoices</h4>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_invoices" ${p.can_view_invoices ? 'checked' : ''}> View</label>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_create_invoices" ${p.can_create_invoices ? 'checked' : ''}> Create</label>
-                </div>
-                <div><h4 style="margin-bottom: 12px;">Other</h4>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_create_tasks" ${p.can_create_tasks ? 'checked' : ''}> Create Tasks</label>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_projects" ${p.can_view_projects ? 'checked' : ''}> View Projects</label>
-                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_access_client_portal" ${p.can_access_client_portal ? 'checked' : ''}> Client Portal</label>
-                </div>
-            </div>
-            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save</button>
-            </div>
-        </form>
-    `;
-    modal.classList.add('active');
+            </form>
+        `;
+        modal.classList.add('active');
+    } catch (error) {
+        showToast('Error loading permissions', 'error');
+    }
 }
 
 async function saveEmployeePermissions(event, employeeId) {
@@ -17213,7 +17232,6 @@ async function saveEmployeePermissions(event, employeeId) {
         showToast('Error saving permissions', 'error');
     }
 }
-
 
 </script>
 </body>

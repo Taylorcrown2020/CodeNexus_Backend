@@ -13,41 +13,10 @@ const crypto = require('crypto');
 const path = require('path');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 require('dotenv').config();
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const speakeasy = require('speakeasy');
-const QRCode = require('qrcode');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || 'https://diamondbackcoding.com';
-
-const SECURITY_CONFIG = {
-    PASSWORD_MIN_LENGTH: 12,
-    PASSWORD_EXPIRY_DAYS: 90,
-    PASSWORD_HISTORY_COUNT: 5,
-    MAX_LOGIN_ATTEMPTS: 5,
-    LOCKOUT_DURATION_MINUTES: 30,
-    SESSION_TIMEOUT_MINUTES: 15,
-    BCRYPT_ROUNDS: 12,
-    MFA_ISSUER: 'Diamondback CRM'
-};
-
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:"]
-        }
-    },
-    hsts: { maxAge: 31536000 }
-}));
-
-const loginLimiter = rateLimit({ windowMs: 900000, max: 5 });
-app.use('/api/admin/login', loginLimiter);
-app.use('/api/employee/login', loginLimiter);
 
 // Service Packages Definition (same as frontend)
 const servicePackages = {
@@ -1471,7 +1440,7 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
         await client.query(`DROP TABLE IF EXISTS admin_sessions CASCADE`);
         await client.query(`DROP TABLE IF EXISTS activity_log CASCADE`);
         
-        // Create admin_sessions table (WITHOUT foreign key constraint to avoid issues)
+        // Create admin_sessions table
         await client.query(`
             CREATE TABLE admin_sessions (
                 id SERIAL PRIMARY KEY,
@@ -1482,7 +1451,11 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT TRUE
+                is_active BOOLEAN DEFAULT TRUE,
+                CONSTRAINT admin_sessions_user_email_fkey 
+                    FOREIGN KEY (user_email) 
+                    REFERENCES admin_users(email) 
+                    ON DELETE CASCADE
             )
         `);
         
@@ -1521,129 +1494,6 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             CREATE INDEX IF NOT EXISTS idx_activity_created_at ON activity_log(created_at)
         `);
         
-        
-        // Employee Portal Tables
-        await client.query(`
-            DO $$ BEGIN
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'password_hash') THEN
-                    ALTER TABLE employees ADD COLUMN password_hash VARCHAR(255);
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'portal_access') THEN
-                    ALTER TABLE employees ADD COLUMN portal_access BOOLEAN DEFAULT FALSE;
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'last_login') THEN
-                    ALTER TABLE employees ADD COLUMN last_login TIMESTAMP;
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'portal_created_at') THEN
-                    ALTER TABLE employees ADD COLUMN portal_created_at TIMESTAMP;
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'mfa_enabled') THEN
-                    ALTER TABLE employees ADD COLUMN mfa_enabled BOOLEAN DEFAULT FALSE;
-                END IF;
-            END $$;
-        `);
-
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS employee_permissions (
-                id SERIAL PRIMARY KEY,
-                employee_id INTEGER UNIQUE REFERENCES employees(id) ON DELETE CASCADE,
-                can_view_leads BOOLEAN DEFAULT TRUE,
-                can_edit_leads BOOLEAN DEFAULT TRUE,
-                can_delete_leads BOOLEAN DEFAULT FALSE,
-                can_create_leads BOOLEAN DEFAULT TRUE,
-                can_view_customers BOOLEAN DEFAULT TRUE,
-                can_edit_customers BOOLEAN DEFAULT TRUE,
-                can_view_invoices BOOLEAN DEFAULT TRUE,
-                can_create_invoices BOOLEAN DEFAULT FALSE,
-                can_view_tasks BOOLEAN DEFAULT TRUE,
-                can_create_tasks BOOLEAN DEFAULT TRUE,
-                can_view_projects BOOLEAN DEFAULT TRUE,
-                can_access_client_portal BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS employee_sessions (
-                id SERIAL PRIMARY KEY,
-                employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
-                token VARCHAR(500) UNIQUE NOT NULL,
-                ip_address VARCHAR(50),
-                user_agent TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT TRUE
-            )
-        `);
-
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS password_history (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                user_type VARCHAR(20) NOT NULL,
-                password_hash VARCHAR(255) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS failed_login_attempts (
-                id SERIAL PRIMARY KEY,
-                email VARCHAR(255) NOT NULL,
-                user_type VARCHAR(20),
-                ip_address VARCHAR(50),
-                attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                reason VARCHAR(255)
-            )
-        `);
-
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS account_lockouts (
-                id SERIAL PRIMARY KEY,
-                email VARCHAR(255) NOT NULL,
-                locked_until TIMESTAMP NOT NULL,
-                reason VARCHAR(255),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS mfa_settings (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                user_type VARCHAR(20) NOT NULL,
-                secret VARCHAR(255) NOT NULL,
-                backup_codes TEXT[],
-                enabled BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(user_id, user_type)
-            )
-        `);
-
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS security_events (
-                id SERIAL PRIMARY KEY,
-                event_type VARCHAR(100) NOT NULL,
-                severity VARCHAR(20) NOT NULL,
-                user_email VARCHAR(255),
-                ip_address VARCHAR(50),
-                description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await client.query(`
-            DO $$ BEGIN
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'mfa_enabled') THEN
-                    ALTER TABLE admin_users ADD COLUMN mfa_enabled BOOLEAN DEFAULT FALSE;
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_users' AND column_name = 'password_changed_at') THEN
-                    ALTER TABLE admin_users ADD COLUMN password_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-                END IF;
-            END $$;
-        `);
-
-
         console.log('✅ Database migrations completed');
 
         await client.query('COMMIT');
@@ -1658,15 +1508,14 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             
             await pool.query(
                 'INSERT INTO admin_users (username, email, password_hash) VALUES ($1, $2, $3)',
-                ['admin', 'admin@diamondbackcoding.com', hashedPassword]
+                ['admin', 'admin@CraftedCode Co..dev', hashedPassword]
             );
             
             console.log('');
             console.log('========================================');
             console.log('✅ Default admin user created');
             console.log('   Username: admin');
-            console.log('   Email: admin@diamondbackcoding.com');
-            console.log('   Password: Tango0401!');
+            console.log('   Password: Admin123!');
             console.log('   ⚠️  CHANGE THIS PASSWORD IMMEDIATELY!');
             console.log('========================================');
             console.log('');
@@ -1683,136 +1532,6 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
 // ========================================
 // ACTIVITY LOGGING HELPER
 // ========================================
-
-// ========================================
-// SOC 2 SECURITY FUNCTIONS
-// ========================================
-
-function validatePassword(password) {
-    const errors = [];
-    if (password.length < SECURITY_CONFIG.PASSWORD_MIN_LENGTH) {
-        errors.push(`Password must be at least ${SECURITY_CONFIG.PASSWORD_MIN_LENGTH} characters`);
-    }
-    if (!/[A-Z]/.test(password)) errors.push('Must contain uppercase letter');
-    if (!/[a-z]/.test(password)) errors.push('Must contain lowercase letter');
-    if (!/[0-9]/.test(password)) errors.push('Must contain number');
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('Must contain special character');
-    return { valid: errors.length === 0, errors };
-}
-
-async function checkPasswordHistory(userId, userType, newPassword) {
-    try {
-        const result = await pool.query(`
-            SELECT password_hash FROM password_history
-            WHERE user_id = $1 AND user_type = $2
-            ORDER BY created_at DESC LIMIT $3
-        `, [userId, userType, SECURITY_CONFIG.PASSWORD_HISTORY_COUNT]);
-        for (const row of result.rows) {
-            if (await bcrypt.compare(newPassword, row.password_hash)) return false;
-        }
-        return true;
-    } catch (error) {
-        return true;
-    }
-}
-
-async function savePasswordHistory(userId, userType, passwordHash) {
-    try {
-        await pool.query(`
-            INSERT INTO password_history (user_id, user_type, password_hash)
-            VALUES ($1, $2, $3)
-        `, [userId, userType, passwordHash]);
-        await pool.query(`
-            DELETE FROM password_history WHERE user_id = $1 AND user_type = $2
-            AND id NOT IN (
-                SELECT id FROM password_history WHERE user_id = $1 AND user_type = $2
-                ORDER BY created_at DESC LIMIT $3
-            )
-        `, [userId, userType, SECURITY_CONFIG.PASSWORD_HISTORY_COUNT]);
-    } catch (error) {
-        console.error('Save password history error:', error);
-    }
-}
-
-async function logFailedLogin(email, userType, req, reason) {
-    try {
-        const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        await pool.query(`
-            INSERT INTO failed_login_attempts (email, user_type, ip_address, reason)
-            VALUES ($1, $2, $3, $4)
-        `, [email, userType, ipAddress, reason]);
-    } catch (error) {
-        console.error('Log failed login error:', error);
-    }
-}
-
-async function isAccountLocked(email) {
-    try {
-        const result = await pool.query(`
-            SELECT locked_until FROM account_lockouts
-            WHERE email = $1 AND locked_until > NOW()
-            ORDER BY created_at DESC LIMIT 1
-        `, [email]);
-        if (result.rows.length > 0) {
-            return { locked: true, until: result.rows[0].locked_until };
-        }
-        return { locked: false };
-    } catch (error) {
-        return { locked: false };
-    }
-}
-
-async function checkAndLockAccount(email, userType, req) {
-    try {
-        const result = await pool.query(`
-            SELECT COUNT(*) as count FROM failed_login_attempts
-            WHERE email = $1 AND attempt_time > NOW() - INTERVAL '15 minutes'
-        `, [email]);
-        const failedAttempts = parseInt(result.rows[0].count);
-        if (failedAttempts >= SECURITY_CONFIG.MAX_LOGIN_ATTEMPTS) {
-            const lockedUntil = new Date(Date.now() + SECURITY_CONFIG.LOCKOUT_DURATION_MINUTES * 60 * 1000);
-            await pool.query(`
-                INSERT INTO account_lockouts (email, locked_until, reason)
-                VALUES ($1, $2, $3)
-            `, [email, lockedUntil, 'Too many failed login attempts']);
-            return true;
-        }
-        return false;
-    } catch (error) {
-        return false;
-    }
-}
-
-async function logSecurityEvent(eventType, severity, userEmail, req, description) {
-    try {
-        const ipAddress = req ? (req.headers['x-forwarded-for'] || req.connection.remoteAddress) : null;
-        await pool.query(`
-            INSERT INTO security_events (event_type, severity, user_email, ip_address, description)
-            VALUES ($1, $2, $3, $4, $5)
-        `, [eventType, severity, userEmail, ipAddress, description]);
-    } catch (error) {
-        console.error('Log security event error:', error);
-    }
-}
-
-function verifyMFAToken(secret, token) {
-    return speakeasy.totp.verify({
-        secret: secret,
-        encoding: 'base32',
-        token: token,
-        window: 2
-    });
-}
-
-function generateBackupCodes(count = 10) {
-    const codes = [];
-    for (let i = 0; i < count; i++) {
-        codes.push(crypto.randomBytes(4).toString('hex').toUpperCase());
-    }
-    return codes;
-}
-
-
 async function logActivity(userEmail, action, resourceType = null, resourceId = null, details = null, req = null) {
     try {
         const ipAddress = req ? (req.headers['x-forwarded-for'] || req.connection.remoteAddress) : null;
@@ -1904,27 +1623,18 @@ app.post('/api/admin/login', async (req, res) => {
             { expiresIn }
         );
         
-        // Create session record - wrapped in try/catch to not break login if it fails
-        try {
-            const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-            const userAgent = req.headers['user-agent'];
-            const expiresAt = new Date(Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
-            
-            await pool.query(`
-                INSERT INTO admin_sessions (user_email, token, ip_address, user_agent, expires_at)
-                VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (token) DO NOTHING
-            `, [user.email, token, ipAddress, userAgent, expiresAt]);
-        } catch (sessionError) {
-            console.error('Session creation error (non-fatal):', sessionError);
-        }
+        // Create session record
+        const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const userAgent = req.headers['user-agent'];
+        const expiresAt = new Date(Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
         
-        // Log activity - wrapped in try/catch to not break login if it fails
-        try {
-            await logActivity(user.email, 'LOGIN', 'session', null, { rememberMe }, req);
-        } catch (logError) {
-            console.error('Activity log error (non-fatal):', logError);
-        }
+        await pool.query(`
+            INSERT INTO admin_sessions (user_email, token, ip_address, user_agent, expires_at)
+            VALUES ($1, $2, $3, $4, $5)
+        `, [user.email, token, ipAddress, userAgent, expiresAt]);
+        
+        // Log activity
+        await logActivity(user.email, 'LOGIN', 'session', null, { rememberMe }, req);
 
         res.json({
             success: true,
@@ -1939,7 +1649,7 @@ app.post('/api/admin/login', async (req, res) => {
         console.error('Login error:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Internal server error'
+            message: 'Server error during login.' 
         });
     }
 });
@@ -3000,214 +2710,6 @@ app.get('/api/admin/activity-log', authenticateToken, async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
-
-
-// ========================================
-// EMPLOYEE PORTAL ENDPOINTS
-// ========================================
-
-// Employee Login
-app.post('/api/employee/login', async (req, res) => {
-    try {
-        const { email, password, rememberMe, mfaToken } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ success: false, message: 'Email and password required.' });
-        }
-        const lockStatus = await isAccountLocked(email);
-        if (lockStatus.locked) {
-            return res.status(403).json({ success: false, message: `Account locked until ${lockStatus.until.toLocaleString()}` });
-        }
-        const result = await pool.query(`
-            SELECT e.*, ep.* FROM employees e
-            LEFT JOIN employee_permissions ep ON e.id = ep.employee_id
-            WHERE e.email = $1 AND e.portal_access = true AND e.is_active = true
-        `, [email]);
-        if (result.rows.length === 0) {
-            await logFailedLogin(email, 'employee', req, 'User not found or no portal access');
-            await checkAndLockAccount(email, 'employee', req);
-            return res.status(401).json({ success: false, message: 'Invalid credentials or portal access not enabled.' });
-        }
-        const employee = result.rows[0];
-        if (!employee.password_hash) {
-            return res.status(401).json({ success: false, message: 'Portal not set up. Contact administrator.' });
-        }
-        const validPassword = await bcrypt.compare(password, employee.password_hash);
-        if (!validPassword) {
-            await logFailedLogin(employee.email, 'employee', req, 'Invalid password');
-            await checkAndLockAccount(employee.email, 'employee', req);
-            return res.status(401).json({ success: false, message: 'Invalid credentials.' });
-        }
-        if (employee.mfa_enabled && !mfaToken) {
-            return res.status(403).json({ success: false, message: 'MFA token required', requireMFA: true });
-        }
-        if (employee.mfa_enabled && mfaToken) {
-            const mfaResult = await pool.query('SELECT secret FROM mfa_settings WHERE user_id = $1 AND user_type = $2 AND enabled = true', [employee.id, 'employee']);
-            if (mfaResult.rows.length === 0 || !verifyMFAToken(mfaResult.rows[0].secret, mfaToken)) {
-                await logFailedLogin(employee.email, 'employee', req, 'Invalid MFA token');
-                return res.status(401).json({ success: false, message: 'Invalid MFA token' });
-            }
-        }
-        await pool.query('UPDATE employees SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [employee.id]);
-        const expiresIn = rememberMe ? '8h' : '15m';
-        const token = jwt.sign({
-            id: employee.id, email: employee.email, name: employee.name, role: 'employee',
-            permissions: {
-                can_view_leads: employee.can_view_leads !== false,
-                can_edit_leads: employee.can_edit_leads !== false,
-                can_delete_leads: employee.can_delete_leads === true,
-                can_create_leads: employee.can_create_leads !== false,
-                can_view_customers: employee.can_view_customers !== false,
-                can_edit_customers: employee.can_edit_customers !== false,
-                can_view_invoices: employee.can_view_invoices !== false,
-                can_create_invoices: employee.can_create_invoices === true,
-                can_view_tasks: employee.can_view_tasks !== false,
-                can_create_tasks: employee.can_create_tasks !== false,
-                can_view_projects: employee.can_view_projects !== false,
-                can_access_client_portal: employee.can_access_client_portal !== false
-            }
-        }, JWT_SECRET, { expiresIn });
-        const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        const userAgent = req.headers['user-agent'];
-        const expiresAt = new Date(Date.now() + (rememberMe ? 8 * 60 * 60 * 1000 : 15 * 60 * 1000));
-        await pool.query(`INSERT INTO employee_sessions (employee_id, token, ip_address, user_agent, expires_at) VALUES ($1, $2, $3, $4, $5)`, [employee.id, token, ipAddress, userAgent, expiresAt]);
-        await logSecurityEvent('LOGIN_SUCCESS', 'INFO', employee.email, req, 'Employee login successful');
-        res.json({ success: true, token: token, user: { id: employee.id, name: employee.name, email: employee.email, role: 'employee' } });
-    } catch (error) {
-        console.error('Employee login error:', error);
-        res.status(500).json({ success: false, message: 'Server error during login.' });
-    }
-});
-
-app.post('/api/employee/verify', authenticateToken, (req, res) => {
-    if (req.user.role !== 'employee') {
-        return res.status(403).json({ success: false, message: 'Not an employee account.' });
-    }
-    res.json({ success: true, user: req.user });
-});
-
-app.post('/api/employees/:id/create-portal', authenticateToken, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { temporaryPassword } = req.body;
-        if (!temporaryPassword || temporaryPassword.length < 8) {
-            return res.status(400).json({ success: false, message: 'Password must be at least 8 characters.' });
-        }
-        const hashedPassword = await bcrypt.hash(temporaryPassword, SECURITY_CONFIG.BCRYPT_ROUNDS);
-        await pool.query(`UPDATE employees SET password_hash = $1, portal_access = true, portal_created_at = CURRENT_TIMESTAMP WHERE id = $2`, [hashedPassword, id]);
-        await pool.query(`INSERT INTO employee_permissions (employee_id) VALUES ($1) ON CONFLICT (employee_id) DO NOTHING`, [id]);
-        res.json({ success: true, message: 'Portal access created successfully.' });
-    } catch (error) {
-        console.error('Create portal error:', error);
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-app.post('/api/employees/:id/reset-password', authenticateToken, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { newPassword } = req.body;
-        if (!newPassword || newPassword.length < 8) {
-            return res.status(400).json({ success: false, message: 'Password must be at least 8 characters.' });
-        }
-        const hashedPassword = await bcrypt.hash(newPassword, SECURITY_CONFIG.BCRYPT_ROUNDS);
-        await pool.query(`UPDATE employees SET password_hash = $1 WHERE id = $2`, [hashedPassword, id]);
-        res.json({ success: true, message: 'Password reset successfully.' });
-    } catch (error) {
-        console.error('Reset password error:', error);
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-app.patch('/api/employees/:id/toggle-portal', authenticateToken, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await pool.query(`UPDATE employees SET portal_access = NOT portal_access WHERE id = $1 RETURNING portal_access`, [id]);
-        res.json({ success: true, portal_access: result.rows[0].portal_access });
-    } catch (error) {
-        console.error('Toggle portal error:', error);
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-app.get('/api/employees/:id/permissions', authenticateToken, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await pool.query(`SELECT * FROM employee_permissions WHERE employee_id = $1`, [id]);
-        if (result.rows.length === 0) {
-            return res.json({ success: true, permissions: {
-                can_view_leads: true, can_edit_leads: true, can_delete_leads: false, can_create_leads: true,
-                can_view_customers: true, can_edit_customers: true, can_view_invoices: true, can_create_invoices: false,
-                can_view_tasks: true, can_create_tasks: true, can_view_projects: true, can_access_client_portal: true
-            }});
-        }
-        res.json({ success: true, permissions: result.rows[0] });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-app.put('/api/employees/:id/permissions', authenticateToken, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const p = req.body;
-        await pool.query(`
-            INSERT INTO employee_permissions (employee_id, can_view_leads, can_edit_leads, can_delete_leads, can_create_leads,
-                can_view_customers, can_edit_customers, can_view_invoices, can_create_invoices,
-                can_view_tasks, can_create_tasks, can_view_projects, can_access_client_portal)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            ON CONFLICT (employee_id) DO UPDATE SET
-                can_view_leads = $2, can_edit_leads = $3, can_delete_leads = $4, can_create_leads = $5,
-                can_view_customers = $6, can_edit_customers = $7, can_view_invoices = $8, can_create_invoices = $9,
-                can_view_tasks = $10, can_create_tasks = $11, can_view_projects = $12, can_access_client_portal = $13
-        `, [id, p.can_view_leads, p.can_edit_leads, p.can_delete_leads, p.can_create_leads,
-            p.can_view_customers, p.can_edit_customers, p.can_view_invoices, p.can_create_invoices,
-            p.can_view_tasks, p.can_create_tasks, p.can_view_projects, p.can_access_client_portal]);
-        res.json({ success: true, message: 'Permissions updated successfully.' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-app.post('/api/admin/mfa/setup', authenticateToken, async (req, res) => {
-    try {
-        const secret = speakeasy.generateSecret({ name: `${SECURITY_CONFIG.MFA_ISSUER} (${req.user.email})`, length: 32 });
-        const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
-        const backupCodes = generateBackupCodes();
-        await pool.query(`INSERT INTO mfa_settings (user_id, user_type, secret, backup_codes, enabled) VALUES ($1, $2, $3, $4, false) ON CONFLICT (user_id, user_type) DO UPDATE SET secret = $3, backup_codes = $4, enabled = false`, [req.user.id, 'admin', secret.base32, backupCodes]);
-        res.json({ success: true, secret: secret.base32, qrCode: qrCodeUrl, backupCodes });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-app.post('/api/admin/mfa/verify', authenticateToken, async (req, res) => {
-    try {
-        const { token } = req.body;
-        const result = await pool.query('SELECT secret FROM mfa_settings WHERE user_id = $1 AND user_type = $2', [req.user.id, 'admin']);
-        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'MFA not set up' });
-        if (!verifyMFAToken(result.rows[0].secret, token)) return res.status(401).json({ success: false, message: 'Invalid token' });
-        await pool.query(`UPDATE mfa_settings SET enabled = true WHERE user_id = $1 AND user_type = $2`, [req.user.id, 'admin']);
-        await pool.query(`UPDATE admin_users SET mfa_enabled = true WHERE id = $1`, [req.user.id]);
-        res.json({ success: true, message: 'MFA enabled successfully' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-app.post('/api/admin/mfa/disable', authenticateToken, async (req, res) => {
-    try {
-        const { password } = req.body;
-        const user = await pool.query('SELECT password_hash FROM admin_users WHERE id = $1', [req.user.id]);
-        const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
-        if (!validPassword) return res.status(401).json({ success: false, message: 'Invalid password' });
-        await pool.query(`UPDATE mfa_settings SET enabled = false WHERE user_id = $1 AND user_type = $2`, [req.user.id, 'admin']);
-        await pool.query(`UPDATE admin_users SET mfa_enabled = false WHERE id = $1`, [req.user.id]);
-        res.json({ success: true, message: 'MFA disabled' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
 
 // Create new lead (PUBLIC - from contact form AND authenticated admin creation)
 app.post('/api/leads', async (req, res) => {

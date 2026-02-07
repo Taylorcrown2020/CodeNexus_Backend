@@ -1471,7 +1471,7 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
         await client.query(`DROP TABLE IF EXISTS admin_sessions CASCADE`);
         await client.query(`DROP TABLE IF EXISTS activity_log CASCADE`);
         
-        // Create admin_sessions table
+        // Create admin_sessions table (WITHOUT foreign key constraint to avoid issues)
         await client.query(`
             CREATE TABLE admin_sessions (
                 id SERIAL PRIMARY KEY,
@@ -1482,11 +1482,7 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 expires_at TIMESTAMP,
-                is_active BOOLEAN DEFAULT TRUE,
-                CONSTRAINT admin_sessions_user_email_fkey 
-                    FOREIGN KEY (user_email) 
-                    REFERENCES admin_users(email) 
-                    ON DELETE CASCADE
+                is_active BOOLEAN DEFAULT TRUE
             )
         `);
         
@@ -1662,13 +1658,14 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             
             await pool.query(
                 'INSERT INTO admin_users (username, email, password_hash) VALUES ($1, $2, $3)',
-                ['admin', 'admin@CraftedCode Co..dev', hashedPassword]
+                ['admin', 'admin@diamondbackcoding.com', hashedPassword]
             );
             
             console.log('');
             console.log('========================================');
             console.log('✅ Default admin user created');
             console.log('   Username: admin');
+            console.log('   Email: admin@diamondbackcoding.com');
             console.log('   Password: Tango0401!');
             console.log('   ⚠️  CHANGE THIS PASSWORD IMMEDIATELY!');
             console.log('========================================');
@@ -1907,18 +1904,27 @@ app.post('/api/admin/login', async (req, res) => {
             { expiresIn }
         );
         
-        // Create session record
-        const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        const userAgent = req.headers['user-agent'];
-        const expiresAt = new Date(Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
+        // Create session record - wrapped in try/catch to not break login if it fails
+        try {
+            const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+            const userAgent = req.headers['user-agent'];
+            const expiresAt = new Date(Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
+            
+            await pool.query(`
+                INSERT INTO admin_sessions (user_email, token, ip_address, user_agent, expires_at)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (token) DO NOTHING
+            `, [user.email, token, ipAddress, userAgent, expiresAt]);
+        } catch (sessionError) {
+            console.error('Session creation error (non-fatal):', sessionError);
+        }
         
-        await pool.query(`
-            INSERT INTO admin_sessions (user_email, token, ip_address, user_agent, expires_at)
-            VALUES ($1, $2, $3, $4, $5)
-        `, [user.email, token, ipAddress, userAgent, expiresAt]);
-        
-        // Log activity
-        await logActivity(user.email, 'LOGIN', 'session', null, { rememberMe }, req);
+        // Log activity - wrapped in try/catch to not break login if it fails
+        try {
+            await logActivity(user.email, 'LOGIN', 'session', null, { rememberMe }, req);
+        } catch (logError) {
+            console.error('Activity log error (non-fatal):', logError);
+        }
 
         res.json({
             success: true,
@@ -1933,7 +1939,7 @@ app.post('/api/admin/login', async (req, res) => {
         console.error('Login error:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Server error during login.' 
+            message: 'Internal server error'
         });
     }
 });

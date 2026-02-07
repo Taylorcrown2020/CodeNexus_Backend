@@ -1435,6 +1435,56 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             END $$;
         `);
         
+        // Migration 5: Create admin_sessions table for session tracking
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS admin_sessions (
+                id SERIAL PRIMARY KEY,
+                user_email VARCHAR(255) REFERENCES admin_users(email) ON DELETE CASCADE,
+                token VARCHAR(500) UNIQUE NOT NULL,
+                ip_address VARCHAR(50),
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                is_active BOOLEAN DEFAULT TRUE
+            )
+        `);
+        
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_sessions_user_email ON admin_sessions(user_email)
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_sessions_token ON admin_sessions(token)
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_sessions_active ON admin_sessions(is_active)
+        `);
+        
+        // Migration 6: Create activity_log table for audit trail
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id SERIAL PRIMARY KEY,
+                user_email VARCHAR(255),
+                action VARCHAR(100) NOT NULL,
+                resource_type VARCHAR(50),
+                resource_id INTEGER,
+                details JSONB,
+                ip_address VARCHAR(50),
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_activity_user_email ON activity_log(user_email)
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_activity_action ON activity_log(action)
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_activity_created_at ON activity_log(created_at)
+        `);
+        
         console.log('✅ Database migrations completed');
 
         await client.query('COMMIT');
@@ -1467,6 +1517,24 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
         throw error;
     } finally {
         client.release();
+    }
+}
+
+// ========================================
+// ACTIVITY LOGGING HELPER
+// ========================================
+async function logActivity(userEmail, action, resourceType = null, resourceId = null, details = null, req = null) {
+    try {
+        const ipAddress = req ? (req.headers['x-forwarded-for'] || req.connection.remoteAddress) : null;
+        const userAgent = req ? req.headers['user-agent'] : null;
+        
+        await pool.query(`
+            INSERT INTO activity_log (user_email, action, resource_type, resource_id, details, ip_address, user_agent)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [userEmail, action, resourceType, resourceId, details ? JSON.stringify(details) : null, ipAddress, userAgent]);
+    } catch (error) {
+        console.error('Activity logging error:', error);
+        // Don't throw - logging shouldn't break the main operation
     }
 }
 
@@ -1545,6 +1613,19 @@ app.post('/api/admin/login', async (req, res) => {
             JWT_SECRET,
             { expiresIn }
         );
+        
+        // Create session record
+        const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const userAgent = req.headers['user-agent'];
+        const expiresAt = new Date(Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
+        
+        await pool.query(`
+            INSERT INTO admin_sessions (user_email, token, ip_address, user_agent, expires_at)
+            VALUES ($1, $2, $3, $4, $5)
+        `, [user.email, token, ipAddress, userAgent, expiresAt]);
+        
+        // Log activity
+        await logActivity(user.email, 'LOGIN', 'session', null, { rememberMe }, req);
 
         res.json({
             success: true,
@@ -2543,12 +2624,80 @@ app.post('/api/admin/change-password', authenticateToken, async (req, res) => {
             [newPasswordHash, req.user.email]
         );
         
+        // Log activity
+        await logActivity(req.user.email, 'PASSWORD_CHANGED', null, null, null, req);
+        
         res.json({
             success: true,
             message: 'Password changed successfully.'
         });
     } catch (error) {
         console.error('Change password error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get active sessions
+app.get('/api/admin/sessions', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT id, ip_address, user_agent, created_at, last_activity, expires_at
+            FROM admin_sessions
+            WHERE user_email = $1 AND is_active = true
+            ORDER BY last_activity DESC
+        `, [req.user.email]);
+        
+        res.json({
+            success: true,
+            sessions: result.rows
+        });
+    } catch (error) {
+        console.error('Get sessions error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Revoke a session
+app.delete('/api/admin/sessions/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        await pool.query(`
+            UPDATE admin_sessions 
+            SET is_active = false 
+            WHERE id = $1 AND user_email = $2
+        `, [id, req.user.email]);
+        
+        res.json({
+            success: true,
+            message: 'Session revoked successfully'
+        });
+    } catch (error) {
+        console.error('Revoke session error:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get activity log
+app.get('/api/admin/activity-log', authenticateToken, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = parseInt(req.query.offset) || 0;
+        
+        const result = await pool.query(`
+            SELECT id, action, resource_type, resource_id, details, ip_address, created_at
+            FROM activity_log
+            WHERE user_email = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+        `, [req.user.email, limit, offset]);
+        
+        res.json({
+            success: true,
+            activities: result.rows
+        });
+    } catch (error) {
+        console.error('Get activity log error:', error);
         res.status(500).json({ success: false, message: 'Server error.' });
     }
 });

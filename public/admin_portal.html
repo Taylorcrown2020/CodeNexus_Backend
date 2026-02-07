@@ -9606,12 +9606,162 @@ async function handleChangePassword(event) {
     }
 }
 
-function showActiveSessions() {
-    showToast('Active sessions feature coming soon', 'info');
+async function showActiveSessions() {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/sessions`, {
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            showToast('Failed to load sessions', 'error');
+            return;
+        }
+        
+        const modal = document.getElementById('createModal');
+        const titleEl = document.getElementById('createModalTitle');
+        const bodyEl = document.getElementById('createModalBody');
+        
+        titleEl.textContent = 'Active Sessions';
+        
+        const sessionsHtml = data.sessions.map((session, index) => {
+            const createdDate = new Date(session.created_at).toLocaleString();
+            const lastActivity = new Date(session.last_activity).toLocaleString();
+            const isCurrent = index === 0; // First one is usually current
+            
+            return `
+                <div class="session-item" style="padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: 12px; border: 1px solid var(--border-default);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                ${session.user_agent ? session.user_agent.substring(0, 60) : 'Unknown Device'}
+                                ${isCurrent ? '<span style="background: var(--accent-amber); color: #000; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-left: 8px;">CURRENT</span>' : ''}
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-muted);">
+                                IP: ${session.ip_address || 'Unknown'}
+                            </div>
+                        </div>
+                        ${!isCurrent ? `
+                            <button class="btn btn-danger" onclick="revokeSession(${session.id})" style="padding: 6px 12px; font-size: 12px;">
+                                Revoke
+                            </button>
+                        ` : ''}
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted); display: flex; gap: 20px;">
+                        <span>Created: ${createdDate}</span>
+                        <span>Last Activity: ${lastActivity}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        bodyEl.innerHTML = `
+            <div style="max-height: 500px; overflow-y: auto;">
+                ${sessionsHtml || '<p style="text-align: center; color: var(--text-muted); padding: 40px;">No active sessions found</p>'}
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-default);">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Close</button>
+            </div>
+        `;
+        
+        modal.classList.add('active');
+    } catch (error) {
+        console.error('Load sessions error:', error);
+        showToast('Error loading sessions', 'error');
+    }
 }
 
-function showActivityLog() {
-    showToast('Activity log feature coming soon', 'info');
+async function revokeSession(sessionId) {
+    if (!confirm('Are you sure you want to revoke this session?')) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/admin/sessions/${sessionId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Session revoked successfully', 'success');
+            showActiveSessions(); // Refresh the list
+        } else {
+            showToast('Failed to revoke session', 'error');
+        }
+    } catch (error) {
+        console.error('Revoke session error:', error);
+        showToast('Error revoking session', 'error');
+    }
+}
+
+async function showActivityLog() {
+    try {
+        const response = await fetch(`${API_URL}/api/admin/activity-log?limit=50`, {
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            showToast('Failed to load activity log', 'error');
+            return;
+        }
+        
+        const modal = document.getElementById('createModal');
+        const titleEl = document.getElementById('createModalTitle');
+        const bodyEl = document.getElementById('createModalBody');
+        
+        titleEl.textContent = 'Activity Log';
+        
+        const activitiesHtml = data.activities.map(activity => {
+            const timestamp = new Date(activity.created_at).toLocaleString();
+            const actionLabel = activity.action.replace(/_/g, ' ');
+            
+            let actionColor = 'var(--text-secondary)';
+            if (activity.action === 'LOGIN') actionColor = 'var(--status-success)';
+            if (activity.action === 'PASSWORD_CHANGED') actionColor = 'var(--status-pending)';
+            if (activity.action.includes('DELETE')) actionColor = 'var(--status-danger)';
+            
+            return `
+                <div class="activity-item" style="padding: 12px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: ${actionColor}; margin-bottom: 4px;">
+                            ${actionLabel}
+                            ${activity.resource_type ? `<span style="color: var(--text-muted); font-weight: 400;"> · ${activity.resource_type}</span>` : ''}
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-muted);">
+                            ${timestamp}
+                            ${activity.ip_address ? ` · IP: ${activity.ip_address}` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        bodyEl.innerHTML = `
+            <div style="max-height: 500px; overflow-y: auto;">
+                ${activitiesHtml || '<p style="text-align: center; color: var(--text-muted); padding: 40px;">No activity found</p>'}
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-default);">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Close</button>
+            </div>
+        `;
+        
+        modal.classList.add('active');
+    } catch (error) {
+        console.error('Load activity log error:', error);
+        showToast('Error loading activity log', 'error');
+    }
 }
 
 function applySettings() {

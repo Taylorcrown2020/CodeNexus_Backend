@@ -2840,6 +2840,520 @@ body.light-mode ::-webkit-scrollbar-thumb {
 body.light-mode ::-webkit-scrollbar-thumb:hover {
     background: var(--accent-amber);
 }
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   Add these styles to your existing <style> section
+======================================== */
+
+/* Mobile-specific CSS variables */
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 100%;
+        --topbar-height: 60px;
+    }
+}
+
+/* ========================================
+   MOBILE LAYOUT ADJUSTMENTS
+======================================== */
+
+/* Hamburger Menu Button */
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 10001;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 20px;
+    line-height: 1;
+    transition: var(--transition-fast);
+}
+
+.mobile-menu-toggle:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-accent);
+}
+
+/* Sidebar Mobile Adjustments */
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        display: block;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        width: 280px;
+        height: 100vh;
+        z-index: 10000;
+        transition: left var(--transition-base);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .sidebar.mobile-open {
+        left: 0;
+    }
+
+    /* Overlay for mobile sidebar */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    /* Main content adjustments */
+    .main-content {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        width: 100% !important;
+    }
+
+    .topbar {
+        left: 0 !important;
+        width: 100% !important;
+        padding: 12px 60px 12px 20px;
+    }
+
+    .content-wrapper {
+        padding: 80px 16px 20px 16px !important;
+    }
+}
+
+/* ========================================
+   RESPONSIVE GRID LAYOUTS
+======================================== */
+
+@media (max-width: 1200px) {
+    /* Stats grid: 2 columns on tablets */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Stats grid: 1 column on mobile */
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    /* Cards grid adjustments */
+    .cards-grid,
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    /* Form grids */
+    .form-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ========================================
+   TABLE RESPONSIVENESS
+======================================== */
+
+@media (max-width: 768px) {
+    /* Make tables horizontally scrollable */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -16px;
+        padding: 0 16px;
+    }
+
+    table {
+        min-width: 600px;
+        font-size: 13px;
+    }
+
+    table th,
+    table td {
+        padding: 10px 8px !important;
+        white-space: nowrap;
+    }
+
+    /* Alternative: Card-style table for very small screens */
+    @media (max-width: 480px) {
+        .table-responsive {
+            display: block;
+        }
+
+        .table-responsive thead {
+            display: none;
+        }
+
+        .table-responsive tbody,
+        .table-responsive tr,
+        .table-responsive td {
+            display: block;
+            width: 100%;
+        }
+
+        .table-responsive tr {
+            margin-bottom: 16px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            background: var(--bg-card);
+        }
+
+        .table-responsive td {
+            text-align: right;
+            padding: 8px 0 !important;
+            border: none !important;
+            position: relative;
+            padding-left: 50% !important;
+        }
+
+        .table-responsive td:before {
+            content: attr(data-label);
+            position: absolute;
+            left: 0;
+            width: 45%;
+            padding-right: 10px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+    }
+}
+
+/* ========================================
+   MODAL RESPONSIVENESS
+======================================== */
+
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95% !important;
+        max-width: 95% !important;
+        margin: 20px auto !important;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 16px !important;
+    }
+
+    .modal-body {
+        padding: 16px !important;
+    }
+
+    .modal-footer {
+        padding: 16px !important;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .modal-footer button {
+        width: 100%;
+    }
+}
+
+/* ========================================
+   FORM RESPONSIVENESS
+======================================== */
+
+@media (max-width: 768px) {
+    /* Stack form fields vertically */
+    .form-row {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    .form-group {
+        width: 100% !important;
+    }
+
+    /* Full width inputs */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+        width: 100% !important;
+        font-size: 16px !important; /* Prevents zoom on iOS */
+    }
+
+    /* Button groups */
+    .btn-group {
+        flex-direction: column !important;
+        width: 100%;
+    }
+
+    .btn-group button {
+        width: 100% !important;
+        margin: 4px 0 !important;
+    }
+}
+
+/* ========================================
+   CARD RESPONSIVENESS
+======================================== */
+
+@media (max-width: 768px) {
+    .card {
+        padding: 16px !important;
+    }
+
+    .card-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+
+    .card-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+/* ========================================
+   TYPOGRAPHY ADJUSTMENTS
+======================================== */
+
+@media (max-width: 768px) {
+    h1 { font-size: 24px !important; }
+    h2 { font-size: 20px !important; }
+    h3 { font-size: 18px !important; }
+    h4 { font-size: 16px !important; }
+    h5 { font-size: 14px !important; }
+    
+    body {
+        font-size: 14px !important;
+    }
+
+    .page-title {
+        font-size: 24px !important;
+    }
+
+    .page-subtitle {
+        font-size: 13px !important;
+    }
+}
+
+/* ========================================
+   DASHBOARD-SPECIFIC ADJUSTMENTS
+======================================== */
+
+@media (max-width: 768px) {
+    /* Chart containers */
+    .chart-container {
+        height: 250px !important;
+    }
+
+    /* Timeline items */
+    .timeline-item {
+        padding-left: 20px !important;
+    }
+
+    /* Activity feed */
+    .activity-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+
+    /* User avatar lists */
+    .avatar-group .avatar {
+        width: 32px !important;
+        height: 32px !important;
+    }
+}
+
+/* ========================================
+   UTILITY CLASSES FOR MOBILE
+======================================== */
+
+/* Hide on mobile */
+@media (max-width: 768px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+/* Show only on mobile */
+.show-mobile {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    .show-mobile {
+        display: block !important;
+    }
+}
+
+/* Text alignment on mobile */
+@media (max-width: 768px) {
+    .mobile-text-center {
+        text-align: center !important;
+    }
+
+    .mobile-text-left {
+        text-align: left !important;
+    }
+}
+
+/* ========================================
+   TOUCH-FRIENDLY IMPROVEMENTS
+======================================== */
+
+@media (max-width: 768px) {
+    /* Increase touch targets */
+    button,
+    .btn,
+    a.btn,
+    .clickable {
+        min-height: 44px;
+        padding: 12px 20px;
+    }
+
+    /* Better spacing for touch */
+    .action-buttons {
+        gap: 12px !important;
+    }
+
+    /* Larger checkboxes and radio buttons */
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* ========================================
+   ORIENTATION HANDLING
+======================================== */
+
+@media (max-width: 768px) and (orientation: landscape) {
+    .modal-content {
+        max-height: calc(100vh - 20px);
+    }
+
+    .sidebar {
+        width: 240px;
+    }
+}
+
+/* ========================================
+   QR CODE MOBILE ADJUSTMENTS
+======================================== */
+
+@media (max-width: 768px) {
+    .qr-code-section {
+        padding: 16px;
+    }
+
+    .qr-code-container {
+        padding: 15px;
+        max-width: 100%;
+    }
+
+    .qr-code-container canvas {
+        max-width: 100%;
+        height: auto !important;
+    }
+}
+
+/* ========================================
+   PAGINATION MOBILE
+======================================== */
+
+@media (max-width: 768px) {
+    .pagination {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .pagination button {
+        min-width: 36px;
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+}
+
+/* ========================================
+   FILTER/SEARCH BARS MOBILE
+======================================== */
+
+@media (max-width: 768px) {
+    .filters-row,
+    .search-bar-container {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    .search-input,
+    .filter-select {
+        width: 100% !important;
+    }
+}
+
+/* ========================================
+   TAB NAVIGATION MOBILE
+======================================== */
+
+@media (max-width: 768px) {
+    .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-button {
+        flex-shrink: 0;
+        white-space: nowrap;
+        font-size: 13px;
+        padding: 10px 16px;
+    }
+}
+
+/* ========================================
+   PROFILE/SETTINGS PAGES
+======================================== */
+
+@media (max-width: 768px) {
+    .profile-header {
+        flex-direction: column !important;
+        text-align: center;
+    }
+
+    .profile-avatar {
+        margin: 0 auto 16px !important;
+    }
+
+    .settings-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -3469,6 +3983,116 @@ async function updateBadges() {
         }
     } catch (e) { /* non-fatal */ }
 }
+
+/* ========================================
+   MOBILE MENU JAVASCRIPT
+   Add this to your existing <script> section
+======================================== */
+
+// Add this near the top of your JavaScript, after DOM content loads
+
+// Mobile menu functionality
+function initMobileMenu() {
+    // Create mobile menu toggle button if it doesn't exist
+    if (!document.querySelector('.mobile-menu-toggle')) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'mobile-menu-toggle';
+        toggleBtn.innerHTML = '☰';
+        toggleBtn.setAttribute('aria-label', 'Toggle menu');
+        document.body.appendChild(toggleBtn);
+
+        // Create overlay for mobile sidebar
+        const overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        document.body.appendChild(overlay);
+
+        // Toggle sidebar on button click
+        toggleBtn.addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+            
+            // Change icon
+            if (sidebar.classList.contains('mobile-open')) {
+                toggleBtn.innerHTML = '✕';
+            } else {
+                toggleBtn.innerHTML = '☰';
+            }
+        });
+
+        // Close sidebar when clicking overlay
+        overlay.addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            toggleBtn.innerHTML = '☰';
+        });
+
+        // Close sidebar when clicking a nav link (optional)
+        const navLinks = document.querySelectorAll('.sidebar a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    const sidebar = document.querySelector('.sidebar');
+                    const overlay = document.querySelector('.sidebar-overlay');
+                    sidebar.classList.remove('mobile-open');
+                    overlay.classList.remove('active');
+                    toggleBtn.innerHTML = '☰';
+                }
+            });
+        });
+    }
+}
+
+// Call this function when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initMobileMenu();
+    
+    // Handle window resize
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            // Close mobile menu if window is resized to desktop
+            if (window.innerWidth > 768) {
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.querySelector('.sidebar-overlay');
+                const toggleBtn = document.querySelector('.mobile-menu-toggle');
+                
+                if (sidebar) sidebar.classList.remove('mobile-open');
+                if (overlay) overlay.classList.remove('active');
+                if (toggleBtn) toggleBtn.innerHTML = '☰';
+            }
+        }, 250);
+    });
+});
+
+// Optional: Add data-label attributes to table cells for mobile card view
+function makeTablesResponsive() {
+    const tables = document.querySelectorAll('table');
+    
+    tables.forEach(table => {
+        const headers = table.querySelectorAll('th');
+        const rows = table.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach((cell, index) => {
+                if (headers[index]) {
+                    cell.setAttribute('data-label', headers[index].textContent);
+                }
+            });
+        });
+        
+        // Add responsive class
+        table.classList.add('table-responsive');
+    });
+}
+
+// Call this after tables are rendered
+// You can add this to your existing table rendering functions
 
 // ========================================
 // PROJECT TIMELINE / ORDER OF EVENTS SYSTEM

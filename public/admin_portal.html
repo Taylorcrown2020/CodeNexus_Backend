@@ -17065,6 +17065,156 @@ async function deleteJob(jobId) {
     } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
+
+
+// ========================================
+// EMPLOYEE PORTAL MANAGEMENT FUNCTIONS
+// ========================================
+
+async function createEmployeePortal(employeeId) {
+    const password = prompt('Enter temporary password for employee (min 8 characters):');
+    if (!password || password.length < 8) {
+        showToast('Password must be at least 8 characters', 'error');
+        return;
+    }
+    try {
+        const response = await fetch(`${API_URL}/api/employees/${employeeId}/create-portal`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ temporaryPassword: password })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast('Portal created! Temporary password: ' + password, 'success');
+            loadEmployees();
+        } else {
+            showToast(data.message || 'Failed to create portal', 'error');
+        }
+    } catch (error) {
+        showToast('Error creating portal', 'error');
+    }
+}
+
+async function resetEmployeePassword(employeeId) {
+    const password = prompt('Enter new password (min 8 characters):');
+    if (!password || password.length < 8) {
+        showToast('Password must be at least 8 characters', 'error');
+        return;
+    }
+    try {
+        const response = await fetch(`${API_URL}/api/employees/${employeeId}/reset-password`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ newPassword: password })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast('Password reset successfully', 'success');
+        } else {
+            showToast(data.message || 'Failed', 'error');
+        }
+    } catch (error) {
+        showToast('Error resetting password', 'error');
+    }
+}
+
+async function toggleEmployeePortal(employeeId) {
+    if (!confirm('Toggle portal access for this employee?')) return;
+    try {
+        const response = await fetch(`${API_URL}/api/employees/${employeeId}/toggle-portal`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast(data.portal_access ? 'Portal enabled' : 'Portal disabled', 'success');
+            loadEmployees();
+        } else {
+            showToast(data.message || 'Failed', 'error');
+        }
+    } catch (error) {
+        showToast('Error toggling portal', 'error');
+    }
+}
+
+async function editEmployeePermissions(employeeId) {
+    const response = await fetch(`${API_URL}/api/employees/${employeeId}/permissions`, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+    });
+    const data = await response.json();
+    const p = data.permissions;
+    const modal = document.getElementById('createModal');
+    const titleEl = document.getElementById('createModalTitle');
+    const bodyEl = document.getElementById('createModalBody');
+    titleEl.textContent = 'Employee Permissions';
+    bodyEl.innerHTML = `
+        <form id="permsForm" onsubmit="saveEmployeePermissions(event, ${employeeId})">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div><h4 style="margin-bottom: 12px;">Leads</h4>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_leads" ${p.can_view_leads ? 'checked' : ''}> View</label>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_create_leads" ${p.can_create_leads ? 'checked' : ''}> Create</label>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_edit_leads" ${p.can_edit_leads ? 'checked' : ''}> Edit</label>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_delete_leads" ${p.can_delete_leads ? 'checked' : ''}> Delete</label>
+                </div>
+                <div><h4 style="margin-bottom: 12px;">Customers</h4>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_customers" ${p.can_view_customers ? 'checked' : ''}> View</label>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_edit_customers" ${p.can_edit_customers ? 'checked' : ''}> Edit</label>
+                </div>
+                <div><h4 style="margin-bottom: 12px;">Invoices</h4>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_invoices" ${p.can_view_invoices ? 'checked' : ''}> View</label>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_create_invoices" ${p.can_create_invoices ? 'checked' : ''}> Create</label>
+                </div>
+                <div><h4 style="margin-bottom: 12px;">Other</h4>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_create_tasks" ${p.can_create_tasks ? 'checked' : ''}> Create Tasks</label>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_view_projects" ${p.can_view_projects ? 'checked' : ''}> View Projects</label>
+                    <label style="display: block; margin-bottom: 8px;"><input type="checkbox" name="can_access_client_portal" ${p.can_access_client_portal ? 'checked' : ''}> Client Portal</label>
+                </div>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    `;
+    modal.classList.add('active');
+}
+
+async function saveEmployeePermissions(event, employeeId) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const permissions = {
+        can_view_leads: formData.get('can_view_leads') === 'on',
+        can_create_leads: formData.get('can_create_leads') === 'on',
+        can_edit_leads: formData.get('can_edit_leads') === 'on',
+        can_delete_leads: formData.get('can_delete_leads') === 'on',
+        can_view_customers: formData.get('can_view_customers') === 'on',
+        can_edit_customers: formData.get('can_edit_customers') === 'on',
+        can_view_invoices: formData.get('can_view_invoices') === 'on',
+        can_create_invoices: formData.get('can_create_invoices') === 'on',
+        can_view_tasks: true,
+        can_create_tasks: formData.get('can_create_tasks') === 'on',
+        can_view_projects: formData.get('can_view_projects') === 'on',
+        can_access_client_portal: formData.get('can_access_client_portal') === 'on'
+    };
+    try {
+        const response = await fetch(`${API_URL}/api/employees/${employeeId}/permissions`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(permissions)
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast('Permissions updated!', 'success');
+            closeCreateModal();
+        } else {
+            showToast(data.message || 'Failed', 'error');
+        }
+    } catch (error) {
+        showToast('Error saving permissions', 'error');
+    }
+}
+
+
 </script>
 </body>
 </html>

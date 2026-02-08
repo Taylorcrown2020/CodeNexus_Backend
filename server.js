@@ -9235,7 +9235,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
             const year = new Date().getFullYear();
             
             
-            // Complete Valentine's Day promo email - standalone HTML
+            // Complete Valentine's Day promo email - EXACT HTML FROM DOCUMENT
             emailHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>

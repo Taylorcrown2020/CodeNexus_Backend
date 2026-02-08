@@ -9235,15 +9235,149 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
             const year = new Date().getFullYear();
             
             // Complete Valentine's Day promo email - standalone HTML
-            // NOTE: This is the FULL email from your design - do not wrap or modify
-            emailHTML = `<!-- COPY THE COMPLETE HTML FROM THE DOCUMENT HERE -->
-            <!-- For now I'll create a placeholder that tells you to paste it -->
-            <!-- The complete HTML should be pasted from the document you provided -->`;
+            emailHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valentine's Day Special - 14% Off - Diamondback Coding</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Helvetica, Arial, sans-serif; background-color: #f0efe9;">
+<div style="padding: 28px 0;" align="center">
+    <div style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); padding: 32px 36px 28px; position: relative;">
+            <div style="position: absolute; top: 10px; right: 30px; width: 40px; height: 40px; background: #D4A847; opacity: 0.15; border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: 10px; left: 40px; width: 35px; height: 35px; background: #00d4ff; opacity: 0.12; border-radius: 50%;"></div>
+            <div style="display: flex; align-items: center; gap: 10px; position: relative; z-index: 10;">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2L26 8.5V21.5L14 28L2 21.5V8.5L14 2Z" stroke="#D4A847" stroke-width="1.8" fill="none"/>
+                    <path d="M14 2L26 8.5L14 15L2 8.5L14 2Z" stroke="#D4A847" stroke-width="1.2" fill="none" opacity="0.5"/>
+                    <path d="M14 15V28" stroke="#D4A847" stroke-width="1.2" opacity="0.5"/>
+                </svg>
+                <span style="font-size: 18px; font-weight: 600; letter-spacing: 2.2px; text-transform: uppercase; color: #D4A847;">Diamondback Coding</span>
+            </div>
+        </div>
+        
+        <!-- PROMO CONTENT -->
+        <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); padding: 0; margin: 0; position: relative; overflow: hidden;">
             
-            // TODO: Replace the placeholder above with the complete Valentine's HTML from the uploaded document
-            // It should be the entire HTML from <!DOCTYPE html> to </html>
-            // Make sure to replace {leadName} placeholders with ${lead.name}
-            // And the unsubscribe link with ${unsubUrl}
+            <!-- Tech Icons Background -->
+            <div style="position: absolute; top: 60px; left: 20px; opacity: 0.18;"><svg width="40" height="40" viewBox="0 0 64 64" fill="none"><rect x="8" y="10" width="48" height="32" rx="2" stroke="#00FF88" stroke-width="3"/><line x1="32" y1="42" x2="32" y2="50" stroke="#00FF88" stroke-width="3"/></svg></div>
+            <div style="position: absolute; top: 80px; right: 25px; opacity: 0.16;"><svg width="45" height="45" viewBox="0 0 64 64" fill="none"><rect x="10" y="12" width="44" height="30" rx="2" stroke="#ff00ff" stroke-width="3"/></svg></div>
+            <div style="position: absolute; top: 200px; right: 40px; opacity: 0.18;"><svg width="40" height="40" viewBox="0 0 64 64" fill="none"><ellipse cx="32" cy="15" rx="20" ry="8" stroke="#D4A847" stroke-width="3"/><path d="M 12 15 L 12 35 C 12 39 20 45 32 45 C 44 45 52 39 52 35 L 52 15" stroke="#D4A847" stroke-width="3" fill="none"/></svg></div>
+            <div style="position: absolute; top: 50px; left: 30px; width: 80px; height: 80px; background: #D4A847; opacity: 0.15; border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: 100px; right: 40px; width: 100px; height: 100px; background: #00d4ff; opacity: 0.1; border-radius: 50%;"></div>
+            <div style="position: absolute; top: 200px; right: 60px; width: 60px; height: 60px; background: #ff00ff; opacity: 0.12; border-radius: 50%;"></div>
+            
+            <!-- Company Name -->
+            <div style="text-align: center; padding: 35px 0 20px 0; position: relative; z-index: 10;">
+                <div style="color: white; font-size: 26px; font-weight: 400; letter-spacing: 2px; font-family: Georgia, serif; font-style: italic;">
+                    Diamondback Coding<span style="font-size: 14px; vertical-align: super; font-style: normal;">®</span>
+                </div>
+            </div>
+            
+            <!-- Services Banner -->
+            <div style="text-align: center; margin: 20px auto 25px; position: relative; z-index: 10; max-width: 550px;">
+                <div style="background: linear-gradient(90deg, #00d4ff 0%, #D4A847 50%, #ff00ff 100%); padding: 3px; border-radius: 30px;">
+                    <div style="background: #0f3460; padding: 12px 30px; border-radius: 27px;">
+                        <div style="font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #D4A847;">
+                            Custom Web Development &amp; CRMs
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sale Badge -->
+            <div style="text-align: center; margin-bottom: 25px; position: relative; z-index: 10;">
+                <div style="display: inline-block; background: #A8D5E2; color: #1a4d7a; padding: 8px 28px; border-radius: 25px; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;">
+                    OUR BIGGEST SALE OF THE YEAR
+                </div>
+            </div>
+            
+            <!-- Main Discount Text -->
+            <div style="position: relative; text-align: center; padding: 0 30px; z-index: 10;">
+                <div style="margin-bottom: -15px;">
+                    <span style="color: white; font-size: 105px; font-weight: 900; line-height: 1; font-family: 'Arial Black', Arial, sans-serif; letter-spacing: -2px;">14%</span>
+                    <span style="color: white; font-size: 105px; font-weight: 900; line-height: 1; font-family: 'Arial Black', Arial, sans-serif; margin-left: 15px;">OFF</span>
+                </div>
+                <div style="margin-bottom: -15px;">
+                    <span style="color: transparent; font-size: 105px; font-weight: 900; line-height: 1; font-family: 'Arial Black', Arial, sans-serif; letter-spacing: -2px; -webkit-text-stroke: 2px white;">14%</span>
+                    <span style="color: transparent; font-size: 105px; font-weight: 900; line-height: 1; font-family: 'Arial Black', Arial, sans-serif; margin-left: 15px; -webkit-text-stroke: 2px white;">OFF</span>
+                </div>
+                <div style="margin-bottom: -15px;">
+                    <span style="color: transparent; font-size: 105px; font-weight: 900; line-height: 1; font-family: 'Arial Black', Arial, sans-serif; letter-spacing: -2px; -webkit-text-stroke: 2px white;">14%</span>
+                    <span style="color: transparent; font-size: 105px; font-weight: 900; line-height: 1; font-family: 'Arial Black', Arial, sans-serif; margin-left: 15px; -webkit-text-stroke: 2px white;">OFF</span>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <span style="color: transparent; font-size: 105px; font-weight: 900; line-height: 1; font-family: 'Arial Black', Arial, sans-serif; letter-spacing: -2px; -webkit-text-stroke: 2px white;">14%</span>
+                    <span style="color: transparent; font-size: 105px; font-weight: 900; line-height: 1; font-family: 'Arial Black', Arial, sans-serif; margin-left: 15px; -webkit-text-stroke: 2px white;">OFF</span>
+                </div>
+            </div>
+            
+            <!-- Main Message -->
+            <div style="text-align: center; padding: 30px 40px 20px; color: white; position: relative; z-index: 10;">
+                <div style="font-size: 24px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px;">
+                    EVERYTHING 14% OFF
+                </div>
+                <div style="font-size: 24px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">
+                    FOR VALENTINE'S DAY!
+                </div>
+                <div style="font-size: 15px; line-height: 1.6; margin-bottom: 5px;">
+                    Hi ${lead.name}, time to boost your business:
+                </div>
+                <div style="font-size: 15px; font-weight: 700; margin-bottom: 15px;">
+                    Our <strong>biggest sale of the year</strong> is here.
+                </div>
+                <div style="font-size: 14px; margin-top: 8px; color: #A8D5E2;">
+                    14% off your first month per user
+                </div>
+            </div>
+            
+            <!-- CTA Button -->
+            <div style="text-align: center; padding: 25px 0 40px 0; position: relative; z-index: 10;">
+                <a href="https://diamondbackcoding.com/contact.html" style="display: inline-block; background: linear-gradient(135deg, #ff1744 0%, #DC143C 50%, #c41230 100%); color: white; padding: 18px 70px; border-radius: 35px; font-size: 20px; font-weight: 900; text-decoration: none; text-transform: uppercase; letter-spacing: 2px; box-shadow: 0 0 25px rgba(220,20,60,0.6); border: 3px solid rgba(255,255,255,0.3);">
+                    START NOW
+                </a>
+            </div>
+            
+            <!-- Yellow Wave Bottom -->
+            <div style="background: #FFD700; position: relative; padding-top: 40px; z-index: 10;">
+                <div style="position: absolute; top: -30px; left: 0; right: 0; height: 40px; background: #FFD700; border-radius: 50% 50% 0 0;"></div>
+                <div style="text-align: center; padding: 20px 30px;">
+                    <div style="font-size: 9px; line-height: 1.4; color: #333;">
+                        14% off first month per user. Valid for Custom CRM or Custom Website. Offer expires 2/28/2026.
+                    </div>
+                </div>
+                <div style="text-align: center; padding-bottom: 15px;">
+                    <div style="font-size: 10px; color: #333;">
+                        <a href="${unsubUrl}" style="color: #333; text-decoration: underline;">Unsubscribe</a>
+                    </div>
+                    <div style="font-size: 9px; color: #555; margin-top: 5px;">
+                        Diamondback Coding · 15709 Spillman Ranch Loop · Austin, TX 78738
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); padding: 28px 36px 24px; position: relative;">
+            <div style="position: absolute; top: 15px; left: 35px; width: 35px; height: 35px; background: #ff00ff; opacity: 0.12; border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: 15px; right: 30px; width: 40px; height: 40px; background: #00FF88; opacity: 0.1; border-radius: 50%;"></div>
+            <table width="100%" cellpadding="0" cellspacing="0" style="position: relative; z-index: 10;">
+                <tr><td style="font-size: 13px; font-weight: 600; color: #D4A847; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px;">Diamondback Coding</td></tr>
+                <tr><td style="font-size: 12px; color: #A8D5E2; line-height: 1.7; margin-bottom: 14px; padding-top: 8px;">
+                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                    <a href="mailto:contact@diamondbackcoding.com" style="color:#A8D5E2;">contact@diamondbackcoding.com</a> · <a href="tel:+19402178680" style="color:#A8D5E2;">(940) 217-8680</a>
+                </td></tr>
+                <tr><td style="font-size: 11px; color: #777; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1);">&copy; ${year} Diamondback Coding. All rights reserved.</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>`;
             
         } else {
             // Use standard wrapper for other templates

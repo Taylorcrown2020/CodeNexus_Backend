@@ -9258,53 +9258,162 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:0;margin:0;position:relative;overflow:hidden">
 <div style="position:absolute;top:60px;left:20px;opacity:0.18"><svg width="40" height="40" viewBox="0 0 64 64" fill="none"><rect x="8" y="10" width="48" height="32" rx="2" stroke="#00FF88" stroke-width="3"/><line x1="32" y1="42" x2="32" y2="50" stroke="#00FF88" stroke-width="3"/><line x1="20" y1="50" x2="44" y2="50" stroke="#00FF88" stroke-width="3"/></svg></div>
 <div style="position:absolute;top:80px;right:25px;opacity:0.16"><svg width="45" height="45" viewBox="0 0 64 64" fill="none"><rect x="10" y="12" width="44" height="30" rx="2" stroke="#ff00ff" stroke-width="3"/><line x1="8" y1="42" x2="56" y2="42" stroke="#ff00ff" stroke-width="3"/></svg></div>
+<div style="position:absolute;top:100px;left:50%;transform:translateX(-50%);opacity:0.15"><svg width="40" height="30" viewBox="0 0 64 48" fill="none"><path d="M 8 20 Q 32 0, 56 20" stroke="#00d4ff" stroke-width="3" fill="none"/><path d="M 16 28 Q 32 16, 48 28" stroke="#00d4ff" stroke-width="3" fill="none"/><circle cx="32" cy="38" r="4" fill="#00d4ff"/></svg></div>
+<div style="position:absolute;top:180px;left:35px;opacity:0.14"><svg width="45" height="35" viewBox="0 0 64 48" fill="none"><path d="M 16 32 C 8 32 4 26 4 20 C 4 14 8 10 14 10 C 16 4 22 0 28 0 C 36 0 42 6 42 14 C 48 14 54 18 54 26 C 54 32 50 36 44 36 L 16 32 Z" stroke="#ff00ff" stroke-width="3" fill="none"/></svg></div>
+<div style="position:absolute;top:200px;right:40px;opacity:0.18"><svg width="40" height="40" viewBox="0 0 64 64" fill="none"><ellipse cx="32" cy="15" rx="20" ry="8" stroke="#D4A847" stroke-width="3"/><path d="M 12 15 L 12 35 C 12 39 20 45 32 45 C 44 45 52 39 52 35 L 52 15" stroke="#D4A847" stroke-width="3" fill="none"/></svg></div>
+<div style="position:absolute;top:160px;left:50%;transform:translateX(-50%);color:#00d4ff;font-size:45px;font-family:'Courier New',monospace;font-weight:700;opacity:0.2">&lt;/&gt;</div>
+<div style="position:absolute;top:280px;left:25px;opacity:0.17"><svg width="50" height="50" viewBox="0 0 64 64" fill="none"><rect x="8" y="8" width="48" height="48" rx="4" stroke="#00FF88" stroke-width="3"/><circle cx="14" cy="16" r="2" fill="#00FF88"/><circle cx="20" cy="16" r="2" fill="#00FF88"/><line x1="12" y1="28" x2="28" y2="28" stroke="#00FF88" stroke-width="2"/><line x1="16" y1="35" x2="35" y2="35" stroke="#00FF88" stroke-width="2"/></svg></div>
+<div style="position:absolute;top:300px;right:30px;opacity:0.16"><svg width="35" height="50" viewBox="0 0 48 80" fill="none"><rect x="8" y="4" width="32" height="72" rx="4" stroke="#ff00ff" stroke-width="3"/><rect x="12" y="10" width="24" height="50" fill="#ff00ff" opacity="0.2"/><circle cx="24" cy="68" r="3" fill="#ff00ff"/></svg></div>
+<div style="position:absolute;top:320px;left:50%;transform:translateX(-50%);opacity:0.15"><svg width="38" height="38" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="10" stroke="#D4A847" stroke-width="3"/><circle cx="32" cy="32" r="5" fill="#D4A847"/><line x1="32" y1="8" x2="32" y2="18" stroke="#D4A847" stroke-width="3"/><line x1="32" y1="46" x2="32" y2="56" stroke="#D4A847" stroke-width="3"/></svg></div>
+<div style="position:absolute;bottom:280px;left:45px;opacity:0.16"><svg width="38" height="50" viewBox="0 0 64 64" fill="none"><rect x="16" y="10" width="32" height="12" rx="2" stroke="#00d4ff" stroke-width="2.5"/><rect x="16" y="26" width="32" height="12" rx="2" stroke="#00d4ff" stroke-width="2.5"/><rect x="16" y="42" width="32" height="12" rx="2" stroke="#00d4ff" stroke-width="2.5"/><circle cx="22" cy="16" r="2" fill="#00d4ff"/></svg></div>
+<div style="position:absolute;bottom:300px;right:50px;opacity:0.18"><svg width="48" height="48" viewBox="0 0 64 64" fill="none"><rect x="8" y="12" width="48" height="40" rx="3" stroke="#00d4ff" stroke-width="2.5" fill="#0f3460"/><rect x="8" y="12" width="48" height="10" fill="#00d4ff" opacity="0.5"/><circle cx="14" cy="17" r="2" fill="#fff"/><circle cx="20" cy="17" r="2" fill="#fff"/></svg></div>
+<div style="position:absolute;bottom:180px;left:30px;opacity:0.15"><svg width="42" height="42" viewBox="0 0 64 64" fill="none"><rect x="4" y="4" width="56" height="56" rx="4" stroke="#D4A847" stroke-width="3" fill="#1a1a2e"/><rect x="8" y="8" width="20" height="20" rx="2" fill="#D4A847" opacity="0.6"/><rect x="32" y="8" width="24" height="9" rx="1" fill="#00d4ff" opacity="0.5"/></svg></div>
+<div style="position:absolute;bottom:160px;right:35px;opacity:0.17"><svg width="40" height="40" viewBox="0 0 64 64" fill="none"><rect x="8" y="10" width="48" height="32" rx="2" stroke="#00FF88" stroke-width="3" fill="#0f3460"/><rect x="10" y="13" width="44" height="26" fill="#00FF88" opacity="0.3"/></svg></div>
+<div style="position:absolute;bottom:220px;left:50%;transform:translateX(-50%);color:#ff00ff;font-size:40px;font-family:'Courier New',monospace;font-weight:700;opacity:0.18">{ }</div>
+<div style="position:absolute;top:140px;left:70px;opacity:0.14"><svg width="35" height="35" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="20" stroke="#00d4ff" stroke-width="3"/><path d="M 32 12 L 32 32 L 44 32" stroke="#00d4ff" stroke-width="3"/></svg></div>
+<div style="position:absolute;top:240px;right:65px;opacity:0.15"><svg width="38" height="38" viewBox="0 0 64 64" fill="none"><rect x="10" y="10" width="44" height="44" rx="4" stroke="#00FF88" stroke-width="3"/><path d="M 20 32 L 28 40 L 44 24" stroke="#00FF88" stroke-width="3" fill="none"/></svg></div>
+<div style="position:absolute;bottom:240px;left:60px;opacity:0.16"><svg width="36" height="36" viewBox="0 0 64 64" fill="none"><polygon points="32,8 56,56 8,56" stroke="#D4A847" stroke-width="3" fill="none"/><text x="32" y="42" font-size="24" fill="#D4A847" text-anchor="middle">!</text></svg></div>
 <div style="position:absolute;top:50px;left:30px;width:80px;height:80px;background:#D4A847;opacity:0.15;border-radius:50%"></div>
 <div style="position:absolute;bottom:100px;right:40px;width:100px;height:100px;background:#00d4ff;opacity:0.1;border-radius:50%"></div>
 <div style="position:absolute;top:200px;right:60px;width:60px;height:60px;background:#ff00ff;opacity:0.12;border-radius:50%"></div>
+<div style="position:absolute;bottom:250px;left:50px;width:70px;height:70px;background:#00ff88;opacity:0.1;border-radius:50%"></div>
+<div style="position:absolute;top:350px;left:40px;width:55px;height:55px;background:#00d4ff;opacity:0.12;border-radius:50%"></div>
+<div style="position:absolute;bottom:320px;right:45px;width:65px;height:65px;background:#D4A847;opacity:0.13;border-radius:50%"></div>
 <div style="text-align:center;padding:35px 0 20px 0;position:relative;z-index:10">
 <div style="color:white;font-size:26px;font-weight:400;letter-spacing:2px;font-family:Georgia,serif;font-style:italic">Diamondback Coding<span style="font-size:14px;vertical-align:super;font-style:normal">®</span></div>
 </div>
 <div style="text-align:center;margin:20px auto 25px;position:relative;z-index:10;max-width:550px">
-<div style="background:linear-gradient(90deg,#00d4ff 0%,#D4A847 50%,#ff00ff 100%);padding:3px;border-radius:30px">
+<div style="background:linear-gradient(90deg,#00d4ff 0%,#D4A847 50%,#ff00ff 100%);padding:3px;border-radius:30px;box-shadow:0 0 20px rgba(0,212,255,0.3)">
 <div style="background:#0f3460;padding:12px 30px;border-radius:27px">
-<div style="font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:2px;color:#D4A847">Custom Web Development & CRMs</div>
+<div style="font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:2px;background:linear-gradient(90deg,#00d4ff 0%,#D4A847 50%,#ff00ff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-family:Arial,sans-serif">Custom Web Development & CRMs</div>
 </div>
 </div>
 </div>
 <div style="text-align:center;margin-bottom:25px;position:relative;z-index:10">
-<div style="display:inline-block;background:#A8D5E2;color:#1a4d7a;padding:8px 28px;border-radius:25px;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0.5px">OUR BIGGEST SALE OF THE YEAR</div>
+<div style="display:inline-block;background:#A8D5E2;color:#1a4d7a;padding:8px 28px;border-radius:25px;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</div>
 </div>
 <div style="position:relative;text-align:center;padding:0 30px;z-index:10">
-<div style="margin-bottom:-15px"><span style="color:white;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px">14%</span><span style="color:white;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;margin-left:15px">OFF</span></div>
-<div style="margin-bottom:-15px"><span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px;-webkit-text-stroke:2px white">14%</span><span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;margin-left:15px;-webkit-text-stroke:2px white">OFF</span></div>
-<div style="margin-bottom:-15px"><span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px;-webkit-text-stroke:2px white">14%</span><span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;margin-left:15px;-webkit-text-stroke:2px white">OFF</span></div>
-<div style="margin-bottom:20px"><span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px;-webkit-text-stroke:2px white">14%</span><span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;margin-left:15px;-webkit-text-stroke:2px white">OFF</span></div>
+<div style="position:relative;margin-bottom:-15px">
+<div style="display:inline-block;position:relative">
+<span style="color:white;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px">14%</span>
+<span style="color:white;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;margin-left:15px">OFF</span>
+<div style="position:absolute;top:50%;right:-45px;transform:translateY(-50%);color:#00d4ff;font-size:60px;font-family:'Courier New',monospace;font-weight:700">{ }</div>
+</div>
+</div>
+<div style="position:relative;margin-bottom:-15px">
+<div style="display:inline-block;position:relative">
+<span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px;-webkit-text-stroke:2px white">14%</span>
+<span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;margin-left:15px;-webkit-text-stroke:2px white">OFF</span>
+</div>
+</div>
+<div style="position:relative;margin-bottom:-15px">
+<div style="display:inline-block;position:relative">
+<span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px;-webkit-text-stroke:2px white">14%</span>
+<span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;margin-left:15px;-webkit-text-stroke:2px white">OFF</span>
+<div style="position:absolute;top:50%;left:-70px;transform:translateY(-50%)">
+<svg width="55" height="55" viewBox="0 0 64 64" fill="none">
+<rect x="8" y="10" width="48" height="32" rx="2" stroke="#00FF88" stroke-width="3" fill="#0f3460"/>
+<rect x="10" y="13" width="44" height="26" fill="#00FF88" opacity="0.3"/>
+<line x1="32" y1="42" x2="32" y2="50" stroke="#00FF88" stroke-width="3"/>
+<line x1="20" y1="50" x2="44" y2="50" stroke="#00FF88" stroke-width="3"/>
+</svg>
+</div>
+</div>
+</div>
+<div style="position:relative;margin-bottom:20px">
+<div style="display:inline-block;position:relative">
+<span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px;-webkit-text-stroke:2px white">14%</span>
+<span style="color:transparent;font-size:105px;font-weight:900;line-height:1;font-family:'Arial Black',Arial,sans-serif;margin-left:15px;-webkit-text-stroke:2px white">OFF</span>
+<div style="position:absolute;top:50%;right:-105px;transform:translateY(-50%)">
+<svg width="60" height="60" viewBox="0 0 64 64" fill="none">
+<rect x="4" y="4" width="56" height="56" rx="4" stroke="#D4A847" stroke-width="3" fill="#1a1a2e"/>
+<rect x="8" y="8" width="20" height="20" rx="2" fill="#D4A847" opacity="0.6"/>
+<rect x="32" y="8" width="24" height="9" rx="1" fill="#00d4ff" opacity="0.5"/>
+<rect x="32" y="20" width="24" height="8" rx="1" fill="#00d4ff" opacity="0.5"/>
+<rect x="8" y="32" width="48" height="6" rx="1" fill="#00FF88" opacity="0.4"/>
+<rect x="8" y="42" width="48" height="6" rx="1" fill="#00FF88" opacity="0.4"/>
+<rect x="8" y="52" width="30" height="6" rx="1" fill="#00FF88" opacity="0.4"/>
+</svg>
+</div>
+<div style="position:absolute;bottom:-10px;left:-85px">
+<svg width="70" height="70" viewBox="0 0 64 64" fill="none">
+<rect x="10" y="12" width="44" height="30" rx="2" stroke="#ff00ff" stroke-width="3" fill="#16213e"/>
+<rect x="13" y="15" width="38" height="24" fill="#ff00ff" opacity="0.2"/>
+<line x1="8" y1="42" x2="56" y2="42" stroke="#ff00ff" stroke-width="3"/>
+<path d="M 6 42 L 58 42 L 54 48 L 10 48 Z" fill="#ff00ff" opacity="0.6"/>
+</svg>
+</div>
+<div style="position:absolute;bottom:-25px;left:-15px">
+<svg width="50" height="50" viewBox="0 0 64 64" fill="none">
+<rect x="8" y="12" width="48" height="40" rx="3" stroke="#00d4ff" stroke-width="2.5" fill="#0f3460"/>
+<rect x="8" y="12" width="48" height="10" fill="#00d4ff" opacity="0.5"/>
+<circle cx="14" cy="17" r="2" fill="#fff"/>
+<circle cx="20" cy="17" r="2" fill="#fff"/>
+<circle cx="26" cy="17" r="2" fill="#fff"/>
+<rect x="12" y="28" width="15" height="3" fill="#D4A847" opacity="0.6"/>
+<rect x="12" y="34" width="40" height="2" fill="#fff" opacity="0.4"/>
+<rect x="12" y="38" width="35" height="2" fill="#fff" opacity="0.4"/>
+<rect x="12" y="42" width="30" height="2" fill="#fff" opacity="0.4"/>
+</svg>
+</div>
+</div>
+</div>
 </div>
 <div style="text-align:center;padding:30px 40px 20px;color:white;position:relative;z-index:10">
-<div style="font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:15px">EVERYTHING 14% OFF</div>
-<div style="font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px">FOR VALENTINE'S DAY!</div>
-<div style="font-size:15px;line-height:1.6;margin-bottom:5px">Hi ${lead.name}, time to boost your business:</div>
-<div style="font-size:15px;font-weight:700;margin-bottom:15px">Our <strong>biggest sale of the year</strong> is here.</div>
-<div style="font-size:14px;margin-top:8px;color:#A8D5E2">14% off your first month per user</div>
+<div style="font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:15px;font-family:Arial,sans-serif">EVERYTHING 14% OFF</div>
+<div style="font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px;font-family:Arial,sans-serif">FOR VALENTINE'S DAY!</div>
+<div style="font-size:15px;line-height:1.6;margin-bottom:5px;font-family:Arial,sans-serif">Hi ${lead.name}, time to boost your business:</div>
+<div style="font-size:15px;font-weight:700;margin-bottom:15px;font-family:Arial,sans-serif">Our <strong>biggest sale of the year</strong> is here.</div>
+<div style="font-size:14px;margin-top:8px;font-family:Arial,sans-serif;color:#A8D5E2">14% off your first month per user</div>
 </div>
 <div style="text-align:center;padding:25px 0 40px 0;position:relative;z-index:10">
-<a href="https://diamondbackcoding.com/contact.html" style="display:inline-block;background:linear-gradient(135deg,#ff1744 0%,#DC143C 50%,#c41230 100%);color:white;padding:18px 70px;border-radius:35px;font-size:20px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2px;box-shadow:0 0 25px rgba(220,20,60,0.6);border:3px solid rgba(255,255,255,0.3)">START NOW</a>
+<a href="https://diamondbackcoding.com/contact.html" style="display:inline-block;background:linear-gradient(135deg,#ff1744 0%,#DC143C 50%,#c41230 100%);color:white;padding:18px 70px;border-radius:35px;font-size:20px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2px;box-shadow:0 0 25px rgba(220,20,60,0.6),0 0 50px rgba(220,20,60,0.4),0 10px 35px rgba(0,0,0,0.4);font-family:Arial,sans-serif;border:3px solid rgba(255,255,255,0.3);position:relative;overflow:hidden;transition:all 0.3s;animation:glow 2s ease-in-out infinite">
+<span style="position:relative;z-index:2;text-shadow:0 2px 4px rgba(0,0,0,0.3)">START NOW</span>
+<span style="position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(45deg,transparent 30%,rgba(255,255,255,0.3) 50%,transparent 70%);transform:rotate(45deg);animation:none"></span>
+</a>
 </div>
 <div style="background:#FFD700;position:relative;padding-top:40px;z-index:10">
 <div style="position:absolute;top:-30px;left:0;right:0;height:40px;background:#FFD700;border-radius:50% 50% 0 0"></div>
-<div style="text-align:center;padding:20px 30px">
-<div style="font-size:9px;line-height:1.4;color:#333">14% off first month per user. Valid for Custom CRM or Custom Website. Offer expires 2/28/2026.</div>
+<div style="text-align:center;padding:20px 0 15px 0">
+<a href="#" style="display:inline-block;margin:0 12px">
+<svg width="32" height="32" viewBox="0 0 24 24" fill="#000">
+<rect x="2" y="2" width="20" height="20" rx="5" stroke="#000" stroke-width="2" fill="none"/>
+<circle cx="12" cy="12" r="4" stroke="#000" stroke-width="2" fill="none"/>
+<circle cx="17.5" cy="6.5" r="1" fill="#000"/>
+</svg>
+</a>
+<a href="#" style="display:inline-block;margin:0 12px">
+<svg width="32" height="32" viewBox="0 0 24 24" fill="#000">
+<path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
+</svg>
+</a>
+<a href="#" style="display:inline-block;margin:0 12px">
+<svg width="32" height="32" viewBox="0 0 24 24" fill="#000">
+<path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
+</svg>
+</a>
+</div>
+<div style="text-align:center;padding:10px 30px 20px 30px">
+<div style="font-size:9px;line-height:1.4;color:#333;font-family:Arial,sans-serif">14% off first month per user. Valid for Custom CRM or Custom Website. Offer expires 2/28/2026.</div>
 </div>
 <div style="text-align:center;padding-bottom:15px">
-<div style="font-size:10px;color:#333"><a href="${unsubUrl}" style="color:#333;text-decoration:underline">Unsubscribe</a></div>
-<div style="font-size:9px;color:#555;margin-top:5px">Diamondback Coding · 15709 Spillman Ranch Loop · Austin, TX 78738</div>
+<div style="font-size:10px;color:#333;font-family:Arial,sans-serif"><a href="${unsubUrl}" style="color:#333;text-decoration:underline">Unsubscribe</a></div>
+<div style="font-size:9px;color:#555;margin-top:5px;font-family:Arial,sans-serif">Diamondback Coding · 15709 Spillman Ranch Loop · Austin, TX 78738</div>
 </div>
 </div>
 </div>
 <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:28px 36px 24px;position:relative">
+<div style="position:absolute;top:15px;left:35px;width:35px;height:35px;background:#ff00ff;opacity:0.12;border-radius:50%"></div>
+<div style="position:absolute;bottom:15px;right:30px;width:40px;height:40px;background:#00FF88;opacity:0.1;border-radius:50%"></div>
 <table width="100%" cellpadding="0" cellspacing="0" style="position:relative;z-index:10">
-<tr><td style="font-size:13px;font-weight:600;color:#D4A847;letter-spacing:1.5px;text-transform:uppercase">Diamondback Coding</td></tr>
-<tr><td style="font-size:12px;color:#A8D5E2;line-height:1.7;padding-top:8px">15709 Spillman Ranch Loop, Austin, TX 78738<br><a href="mailto:contact@diamondbackcoding.com" style="color:#A8D5E2">contact@diamondbackcoding.com</a> · <a href="tel:+19402178680" style="color:#A8D5E2">(940) 217-8680</a></td></tr>
+<tr><td style="font-size:13px;font-weight:600;color:#D4A847;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Diamondback Coding</td></tr>
+<tr><td style="font-size:12px;color:#A8D5E2;line-height:1.7;margin-bottom:14px;padding-top:8px">15709 Spillman Ranch Loop, Austin, TX 78738<br><a href="mailto:contact@diamondbackcoding.com" style="color:#A8D5E2">contact@diamondbackcoding.com</a> · <a href="tel:+19402178680" style="color:#A8D5E2">(940) 217-8680</a></td></tr>
+<tr><td style="font-size:11px;color:#888;margin-bottom:18px;padding-top:10px">
+<a href="https://diamondbackcoding.com" style="color:#A8D5E2;margin-right:14px;text-decoration:none">Website</a>
+<a href="https://diamondbackcoding.com/projects" style="color:#A8D5E2;margin-right:14px;text-decoration:none">Projects</a>
+<a href="https://diamondbackcoding.com/services" style="color:#A8D5E2;margin-right:14px;text-decoration:none">Services</a>
+<a href="https://diamondbackcoding.com/company" style="color:#A8D5E2;text-decoration:none">Company</a>
+</td></tr>
 <tr><td style="font-size:11px;color:#777;padding-top:14px;border-top:1px solid rgba(255,255,255,0.1)">&copy; ${year} Diamondback Coding. All rights reserved.</td></tr>
 </table>
 </div>

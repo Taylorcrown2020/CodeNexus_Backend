@@ -9175,69 +9175,6 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
         
         // Use template if provided
         if (template === 'initial') {
-            emailSubject = `Following up on your inquiry - ${lead.name}`;
-            emailBody = `
-                Hi ${lead.name},
-                
-                I wanted to follow up on your recent inquiry about ${lead.project_type || 'our services'}.
-                
-                We'd love to learn more about your project and discuss how we can help.
-                
-                Would you be available for a brief call this week?
-                
-                Best regards,
-                Diamondback Coding Team
-            `;
-        } else if (template === 'reminder') {
-            emailSubject = `Quick check-in - ${lead.name}`;
-            emailBody = `
-                Hi ${lead.name},
-                
-                Just checking in to see if you had any questions about ${lead.project_type || 'your project'}.
-                
-                We're here to help whenever you're ready.
-                
-                Best regards,
-                Diamondback Coding Team
-            `;
-        } else if (template === 'initial') {
-            emailSubject = `Welcome to Diamondback Coding - ${lead.name}`;
-            // Complete HTML will be generated below
-        } else if (template === 'valentinessale') {
-            emailSubject = `VALENTINE'S DAY: 25% OFF Everything for ${lead.name}`;
-            // Complete HTML will be generated below
-        } else if (template === 'springsale') {
-            emailSubject = `Spring Event: 25% OFF Everything for ${lead.name}`;
-            // Complete HTML will be generated below
-        } else if (template === 'blackfriday') {
-            emailSubject = `BLACK FRIDAY: 25% OFF Everything for ${lead.name}`;
-            // Complete HTML will be generated below
-        } else if (template === 'initialsale') {
-            emailSubject = `Spring Sale - 25% OFF All Services for ${lead.name}`;
-            // Complete HTML will be generated below
-        } else if (template === 'valentines14') {
-            emailSubject = `Valentine's Day Special - 14% Off for ${lead.name}`;
-            // Complete HTML will be generated below
-        }
-        
-        // Generate unsubscribe token
-        let unsubscribeUrl = null;
-        try {
-            let token = lead.unsubscribe_token;
-            if (!token) {
-                token = crypto.randomBytes(32).toString('hex');
-                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [token, leadId]);
-            }
-            unsubscribeUrl = `${BASE_URL}/api/unsubscribe/${token}`;
-        } catch (e) {
-            console.warn('[FOLLOW-UP] Could not generate unsubscribe token:', e.message);
-        }
-
-        // Build branded email
-        let emailHTML;
-        
-        // For initial (welcome) template, use complete standalone HTML
-        if (template === 'initial') {
             let unsubToken = lead.unsubscribe_token;
             if (!unsubToken) {
                 unsubToken = crypto.randomBytes(32).toString('hex');
@@ -9252,37 +9189,59 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Welcome to Diamondback Coding</title>
 </head>
-<body style="margin:0;padding:0;background-color:#F5F5F5">
+<body style="margin:0;padding:0;background-color:#F5F5F5;">
 
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F5F5">
 <tr><td align="center" style="padding:40px 20px">
 
-<table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;max-width:600px">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;max-width:600px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
 
-<tr><td style="background-color:#F59E0B;padding:50px 40px 80px 40px;text-align:center">
+<!-- Curved Header Section -->
+<tr><td style="background-color:#F59E0B;padding:0;position:relative">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:50px 40px 80px 40px;text-align:center">
 <span style="color:#ffffff;font-size:38px;font-weight:300;letter-spacing:2px;font-family:Georgia,serif;font-style:italic;display:block">Diamondback Coding</span>
 <div style="width:80px;height:2px;background-color:#ffffff;margin:20px auto"></div>
 <span style="color:#ffffff;font-size:13px;font-weight:400;letter-spacing:1.5px;font-family:Arial,sans-serif;text-transform:uppercase">Web Development • CRM Solutions</span>
 </td></tr>
+</table>
+</td></tr>
 
+<!-- White curve overlap -->
+<tr><td style="background-color:#F5F5F5;padding:0">
+<div style="background-color:#ffffff;border-radius:50% 50% 0 0 / 30px 30px 0 0;height:30px;margin-top:-30px"></div>
+</td></tr>
+
+<!-- About Us Section -->
 <tr><td style="background-color:#ffffff;padding:40px 50px 50px 50px">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr><td align="center" style="padding-bottom:25px">
-<span style="color:#2C3E50;font-size:32px;font-weight:700;font-family:Arial,sans-serif">About Us</span>
+<span style="color:#2C3E50;font-size:32px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:-0.5px">About Us</span>
 </td></tr>
 <tr><td align="center" style="padding-bottom:35px">
 <span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:480px;margin:0 auto">
 I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in your area dedicated to helping business owners like you with professional web development and customer management solutions.
 </span>
 </td></tr>
+
+<!-- Feature Cards in About Section -->
+<tr><td style="padding:20px 0">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="padding-bottom:15px">
+<span style="color:#F59E0B;font-size:14px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:0.5px;text-transform:uppercase;display:block;margin-bottom:8px">Our Focus</span>
+<span style="color:#2C3E50;font-size:18px;font-weight:600;font-family:Arial,sans-serif;display:block">Innovate Your Business</span>
+</td></tr>
 </table>
 
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px">
+<!-- Feature Row 1 -->
 <tr><td style="padding:12px 0">
 <table cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr>
 <td width="40" valign="top">
+<div style="width:32px;height:32px;background-color:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center">
 <span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+</div>
 </td>
 <td valign="middle" style="padding-left:15px">
 <span style="font-size:15px;color:#2C3E50;font-family:Arial,sans-serif;line-height:1.6">
@@ -9293,11 +9252,14 @@ I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in you
 </table>
 </td></tr>
 
+<!-- Feature Row 2 -->
 <tr><td style="padding:12px 0">
 <table cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr>
 <td width="40" valign="top">
+<div style="width:32px;height:32px;background-color:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center">
 <span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+</div>
 </td>
 <td valign="middle" style="padding-left:15px">
 <span style="font-size:15px;color:#2C3E50;font-family:Arial,sans-serif;line-height:1.6">
@@ -9308,11 +9270,14 @@ I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in you
 </table>
 </td></tr>
 
+<!-- Feature Row 3 -->
 <tr><td style="padding:12px 0">
 <table cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr>
 <td width="40" valign="top">
+<div style="width:32px;height:32px;background-color:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center">
 <span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+</div>
 </td>
 <td valign="middle" style="padding-left:15px">
 <span style="font-size:15px;color:#2C3E50;font-family:Arial,sans-serif;line-height:1.6">
@@ -9323,11 +9288,14 @@ I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in you
 </table>
 </td></tr>
 
+<!-- Feature Row 4 -->
 <tr><td style="padding:12px 0">
 <table cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr>
 <td width="40" valign="top">
+<div style="width:32px;height:32px;background-color:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center">
 <span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+</div>
 </td>
 <td valign="middle" style="padding-left:15px">
 <span style="font-size:15px;color:#2C3E50;font-family:Arial,sans-serif;line-height:1.6">
@@ -9340,40 +9308,69 @@ I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in you
 </table>
 
 </td></tr>
+</table>
+</td></tr>
 
+<!-- Curved transition to services -->
+<tr><td style="background-color:#ffffff;padding:0">
+<div style="background-color:#F5F5F5;border-radius:50% 50% 0 0 / 30px 30px 0 0;height:30px"></div>
+</td></tr>
+
+<!-- Our Services Section -->
 <tr><td style="background-color:#F5F5F5;padding:30px 50px 50px 50px">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr><td align="center" style="padding-bottom:40px">
-<span style="color:#2C3E50;font-size:32px;font-weight:700;font-family:Arial,sans-serif">Our Services</span>
+<span style="color:#2C3E50;font-size:32px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:-0.5px">Our Services</span>
 </td></tr>
 </table>
 
+<!-- Service Cards -->
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
+<!-- Service 1 -->
 <td width="33.33%" valign="top" style="padding:0 8px">
-<table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;width:100%">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;width:100%;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 <tr><td style="padding:30px 20px;text-align:center">
-<span style="font-size:50px;display:block;margin-bottom:15px">💻</span>
+<div style="width:70px;height:70px;background-color:#F3F4F6;border-radius:12px;margin:0 auto 20px auto;display:flex;align-items:center;justify-content:center">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="2" y="3" width="20" height="14" rx="2" stroke="#F59E0B" stroke-width="2"/>
+<line x1="2" y1="7" x2="22" y2="7" stroke="#F59E0B" stroke-width="2"/>
+</svg>
+</div>
 <span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:10px">Web Development</span>
 <span style="color:#6B7280;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;display:block">Custom websites and landing pages built to convert</span>
 </td></tr>
 </table>
 </td>
 
+<!-- Service 2 -->
 <td width="33.33%" valign="top" style="padding:0 8px">
-<table cellpadding="0" cellspacing="0" border="0" style="background-color:#F59E0B;border-radius:12px;width:100%">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#F59E0B;border-radius:12px;width:100%;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 <tr><td style="padding:30px 20px;text-align:center">
-<span style="font-size:50px;display:block;margin-bottom:15px">📊</span>
+<div style="width:70px;height:70px;background-color:#ffffff;border-radius:12px;margin:0 auto 20px auto;display:flex;align-items:center;justify-content:center">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="3" y="3" width="7" height="7" rx="1" stroke="#F59E0B" stroke-width="2"/>
+<rect x="3" y="14" width="7" height="7" rx="1" stroke="#F59E0B" stroke-width="2"/>
+<rect x="14" y="3" width="7" height="7" rx="1" stroke="#F59E0B" stroke-width="2"/>
+<rect x="14" y="14" width="7" height="7" rx="1" stroke="#F59E0B" stroke-width="2"/>
+</svg>
+</div>
 <span style="color:#ffffff;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:10px">CRM Solutions</span>
 <span style="color:#ffffff;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;display:block">Track leads and manage customer relationships</span>
 </td></tr>
 </table>
 </td>
 
+<!-- Service 3 -->
 <td width="33.33%" valign="top" style="padding:0 8px">
-<table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;width:100%">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;width:100%;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 <tr><td style="padding:30px 20px;text-align:center">
-<span style="font-size:50px;display:block;margin-bottom:15px">🚀</span>
+<div style="width:70px;height:70px;background-color:#F3F4F6;border-radius:12px;margin:0 auto 20px auto;display:flex;align-items:center;justify-content:center">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="12" cy="12" r="10" stroke="#F59E0B" stroke-width="2"/>
+<path d="M12 6v6l4 2" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
+</svg>
+</div>
 <span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:10px">SEO & Support</span>
 <span style="color:#6B7280;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;display:block">Rank higher and keep your site running smooth</span>
 </td></tr>
@@ -9384,6 +9381,7 @@ I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in you
 
 </td></tr>
 
+<!-- CTA Section -->
 <tr><td style="background-color:#F5F5F5;padding:40px 50px">
 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#2C3E50;border-radius:12px">
 <tr><td style="padding:40px 35px;text-align:center">
@@ -9398,6 +9396,7 @@ I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in you
 </table>
 </td></tr>
 
+<!-- Contact Info -->
 <tr><td style="background-color:#F5F5F5;padding:30px 50px 40px 50px">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px">
 <tr><td style="padding:30px;text-align:center">
@@ -9411,10 +9410,11 @@ I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in you
 </table>
 </td></tr>
 
+<!-- Footer -->
 <tr><td style="background-color:#2C3E50;padding:35px 40px">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr><td align="center" style="padding-bottom:20px">
-<table cellpadding="0" cellspacing="0" border="0">
+<table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
 <tr>
 <td style="padding:0 15px">
 <a href="https://instagram.com/diamondbackcoding" style="color:#F59E0B;font-size:13px;font-weight:600;text-decoration:none;font-family:Arial,sans-serif">Instagram</a>

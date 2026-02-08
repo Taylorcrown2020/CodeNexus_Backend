@@ -9200,6 +9200,15 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
                 Best regards,
                 Diamondback Coding Team
             `;
+        } else if (template === 'valentinessale') {
+            emailSubject = `VALENTINE'S DAY: 25% OFF Everything for ${lead.name}`;
+            // Complete HTML will be generated below
+        } else if (template === 'springsale') {
+            emailSubject = `Spring Event: 25% OFF Everything for ${lead.name}`;
+            // Complete HTML will be generated below
+        } else if (template === 'blackfriday') {
+            emailSubject = `BLACK FRIDAY: 25% OFF Everything for ${lead.name}`;
+            // Complete HTML will be generated below
         } else if (template === 'initialsale') {
             emailSubject = `Spring Sale - 25% OFF All Services for ${lead.name}`;
             // Complete HTML will be generated below
@@ -9224,10 +9233,460 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
         // Build branded email
         let emailHTML;
         
-        // For valentines template, use complete standalone HTML
+        // For blackfriday template, use complete standalone HTML
+        
+        // For valentinessale template (PINK), use complete standalone HTML
+        if (template === 'valentinessale') {
+            let unsubToken = lead.unsubscribe_token;
+            if (!unsubToken) {
+                unsubToken = crypto.randomBytes(32).toString('hex');
+                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsubToken, leadId]);
+            }
+            const unsubUrl = `${BASE_URL}/api/unsubscribe/${unsubToken}`;
+            
+            emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>25% OFF Valentine's Day Sale</title>
+</head>
+<body style="margin:0;padding:0;background-color:#FF6B9D">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FF6B9D">
+<tr><td align="center" style="padding:0">
+
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#FF6B9D;max-width:600px">
+
+<tr><td align="center" style="padding:20px 30px 10px 30px;background:#FF6B9D">
+<span style="color:#ffffff;font-size:28px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">Diamondback Coding®</span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 30px 15px 30px;background:#FF6B9D">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#FFD93D;border-radius:25px">
+<tr><td style="padding:10px 30px">
+<span style="color:#FF6B9D;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</span>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:15px 15px;background:#FF6B9D">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td width="12%" valign="top" style="padding-top:10px" align="center">
+<div style="width:30px;height:30px;background:#FFD93D;opacity:0.4;border-radius:50%"></div>
+</td>
+<td width="76%" align="center">
+<div style="font-size:90px;font-weight:900;font-family:Arial Black,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
+</td>
+<td width="12%" valign="top" style="padding-top:10px" align="center">
+<div style="width:30px;height:30px;background:#6BCFFF;opacity:0.4;border-radius:50%"></div>
+</td>
+</tr>
+<tr>
+<td width="12%" valign="middle" align="center">
+<div style="width:32px;height:32px;background:#A0E7E5;opacity:0.4;border-radius:50%"></div>
+</td>
+<td width="76%" align="center">
+<div style="font-size:90px;font-weight:900;font-family:Arial Black,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
+</td>
+<td width="12%" valign="middle" align="center">
+<div style="width:30px;height:30px;background:#FFABAB;opacity:0.4;border-radius:50%"></div>
+</td>
+</tr>
+<tr>
+<td width="12%" valign="middle" align="center">
+<div style="width:32px;height:32px;background:#FFD93D;opacity:0.35;border-radius:50%"></div>
+</td>
+<td width="76%" align="center">
+<div style="font-size:90px;font-weight:900;font-family:Arial Black,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
+</td>
+<td width="12%" valign="middle" align="center">
+<div style="width:32px;height:32px;background:#B4F8C8;opacity:0.4;border-radius:50%"></div>
+</td>
+</tr>
+<tr>
+<td width="12%" valign="bottom" style="padding-bottom:10px" align="center">
+<div style="width:34px;height:34px;background:#FFA8E2;opacity:0.4;border-radius:50%"></div>
+</td>
+<td width="76%" align="center">
+<div style="font-size:90px;font-weight:900;font-family:Arial Black,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
+</td>
+<td width="12%" valign="bottom" style="padding-bottom:10px" align="center">
+<div style="width:30px;height:30px;background:#6BCFFF;opacity:0.35;border-radius:50%"></div>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:20px 40px 12px 40px;background:#FF6B9D">
+<span style="color:#ffffff;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.2;text-align:center">EVERYTHING 25% OFF</span>
+<span style="color:#ffffff;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.2;text-align:center">FOR VALENTINE'S DAY!</span>
+</td></tr>
+
+<tr><td style="padding:0 40px 12px 40px;background:#FF6B9D">
+<span style="color:#ffffff;font-size:12px;font-family:Arial,sans-serif;display:block;line-height:1.4;text-align:center">Show your business some love:</span>
+<span style="color:#ffffff;font-size:12px;font-family:Arial,sans-serif;display:block;line-height:1.4;text-align:center">Our <strong style="font-weight:700">biggest sale of the year</strong> is here.</span>
+</td></tr>
+
+<tr><td style="padding:0 40px 15px 40px;background:#FF6B9D">
+<span style="color:#ffffff;font-size:12px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px;text-align:center;display:block">USE CODE <strong style="font-weight:900;font-size:14px;letter-spacing:1px">VALENTINE25</strong></span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 40px 30px 40px;background:#FF6B9D">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#FFD93D;border-radius:40px;border:3px solid #ffffff">
+<tr><td style="padding:14px 50px">
+<a href="https://diamondbackcoding.com/contact.html" style="color:#FF6B9D;font-size:15px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.3px;font-family:Arial Black,Arial,sans-serif;display:block">SHOP NOW</a>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:0;background:#6BCFFF;height:30px"></td></tr>
+
+<tr><td style="background:#6BCFFF;padding:25px 40px 30px 40px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+
+<tr><td align="center" style="font-size:11px;line-height:1.5;color:#ffffff;padding:0 0 18px 0;font-family:Arial,sans-serif">
+Not valid on subscribe & save orders. Offer applies 2/1 - 2/14, 2026 only.<br>
+New clients only. 25% discount applies to initial project quote.
+</td></tr>
+
+<tr><td align="center" style="padding:0 0 18px 0">
+<table cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="padding:0 15px">
+<a href="https://instagram.com/diamondbackcoding" style="color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;font-family:Arial,sans-serif">Instagram</a>
+</td>
+<td style="padding:0 15px;border-left:2px solid #ffffff">
+<a href="https://facebook.com/diamondbackcoding" style="color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;font-family:Arial,sans-serif">Facebook</a>
+</td>
+<td style="padding:0 15px;border-left:2px solid #ffffff">
+<a href="https://twitter.com/diamondbackcoding" style="color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;font-family:Arial,sans-serif">Twitter</a>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="font-size:10px;color:#ffffff;padding:0 0 6px 0;font-family:Arial,sans-serif">
+No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffffff;text-decoration:underline;font-weight:400">Unsubscribe</a>
+</td></tr>
+
+<tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.5">
+<strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
+<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
+</td></tr>
+
+</table>
+</td></tr>
+
+</table>
+
+</td></tr>
+</table>
+
+</body>
+</html>`;
+        // For springsale template, use complete standalone HTML
+        } else if (template === 'springsale') {
+            let unsubToken = lead.unsubscribe_token;
+            if (!unsubToken) {
+                unsubToken = crypto.randomBytes(32).toString('hex');
+                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsubToken, leadId]);
+            }
+            const unsubUrl = `${BASE_URL}/api/unsubscribe/${unsubToken}`;
+            
+            emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring Sale - 25% OFF</title>
+</head>
+<body style="margin:0;padding:0;background-color:#FFF8E7">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF8E7">
+<tr><td align="center" style="padding:0">
+
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#FFF8E7;max-width:600px">
+
+<tr><td align="center" style="padding:20px 30px 15px 30px;background:#FFF8E7">
+<span style="color:#2D5F5D;font-size:30px;font-weight:600;letter-spacing:2px;font-family:Georgia,serif;font-style:italic">Diamondback Coding®</span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 30px 18px 30px;background:#FFF8E7">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#2D5F5D;border-radius:25px">
+<tr><td style="padding:9px 28px">
+<span style="color:#FFD93D;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1.8px;font-family:Arial,sans-serif">✦ Spring Event ✦</span>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:10px 30px 18px 30px;background:#FFF8E7">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#98D8C8;border-radius:20px">
+<tr><td style="padding:25px 20px">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td width="15%" align="center" valign="middle">
+<span style="font-size:35px">🌸</span>
+</td>
+<td width="70%" align="center" valign="middle">
+<div style="text-align:center">
+<div style="font-size:72px;font-weight:900;font-family:Arial Black,Arial,sans-serif;letter-spacing:-3px;color:#2D5F5D;line-height:0.85;margin:0;padding:0">25%</div>
+<div style="font-size:44px;font-weight:900;font-family:Arial Black,Arial,sans-serif;letter-spacing:6px;color:#ffffff;line-height:1;margin:5px 0 0 0">OFF</div>
+</div>
+</td>
+<td width="15%" align="center" valign="middle">
+<span style="font-size:35px">🌺</span>
+</td>
+</tr>
+</table>
+
+<div style="margin:12px auto 10px auto;width:150px;height:2px;background:#ffffff;border-radius:2px;opacity:0.7"></div>
+
+<div style="text-align:center">
+<span style="font-size:14px;font-weight:700;color:#2D5F5D;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1.2px">Everything Spring</span>
+</div>
+
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:18px 40px 18px 40px;background:#FFF8E7">
+<span style="color:#2D5F5D;font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.3;margin-bottom:8px">Celebrate The Season!</span>
+<span style="color:#5A7C7A;font-size:14px;font-family:Arial,sans-serif;line-height:1.5;display:block">Fresh solutions are blooming! Enjoy <strong style="font-weight:700">25% off everything</strong> in our collection.</span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 30px 20px 30px;background:#FFF8E7">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border-radius:15px;width:90%">
+<tr><td style="padding:20px 25px">
+
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr><td align="center" style="padding-bottom:10px">
+<span style="color:#2D5F5D;font-size:13px;font-weight:900;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1.5px">🌸 Pick Your Solution Vibe 🌸</span>
+</td></tr>
+<tr>
+<td style="padding:8px 12px" align="center" width="25%">
+<div style="text-align:center">
+<span style="font-size:40px">🌺</span>
+<div style="margin-top:5px">
+<span style="font-size:11px;font-weight:700;color:#F7B5CA;font-family:Arial,sans-serif;text-transform:uppercase">Web Dev</span>
+</div>
+</div>
+</td>
+
+<td style="padding:8px 12px" align="center" width="25%">
+<div style="text-align:center">
+<span style="font-size:40px">🍋</span>
+<div style="margin-top:5px">
+<span style="font-size:11px;font-weight:700;color:#FFD93D;font-family:Arial,sans-serif;text-transform:uppercase">CRM</span>
+</div>
+</div>
+</td>
+
+<td style="padding:8px 12px" align="center" width="25%">
+<div style="text-align:center">
+<span style="font-size:40px">🌿</span>
+<div style="margin-top:5px">
+<span style="font-size:11px;font-weight:700;color:#98D8C8;font-family:Arial,sans-serif;text-transform:uppercase">Mobile</span>
+</div>
+</div>
+</td>
+
+<td style="padding:8px 12px" align="center" width="25%">
+<div style="text-align:center">
+<span style="font-size:40px">🌸</span>
+<div style="margin-top:5px">
+<span style="font-size:11px;font-weight:700;color:#E6B8D5;font-family:Arial,sans-serif;text-transform:uppercase">Speed</span>
+</div>
+</div>
+</td>
+</tr>
+</table>
+
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:0 40px 22px 40px;background:#FFF8E7">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#F7B5CA;border-radius:50px">
+<tr><td style="padding:15px 55px">
+<a href="https://diamondbackcoding.com/contact.html" style="color:#ffffff;font-size:15px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.8px;font-family:Arial Black,Arial,sans-serif;display:block">Shop Spring Sale</a>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="background:#98D8C8;padding:22px 35px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+
+<tr><td align="center" style="font-size:10px;line-height:1.5;color:#2D5F5D;padding:0 0 16px 0;font-family:Arial,sans-serif">
+Not valid on subscribe & save orders. Offer applies 3/1 - 4/15, 2026 only.<br>
+New clients only. 25% discount applies to initial project quote.
+</td></tr>
+
+<tr><td align="center" style="padding:0 0 16px 0">
+<table cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="padding:0 15px">
+<a href="https://instagram.com/diamondbackcoding" style="color:#2D5F5D;text-decoration:none;font-size:13px;font-weight:700;font-family:Arial,sans-serif">Instagram</a>
+</td>
+<td style="padding:0 15px;border-left:2px solid #2D5F5D">
+<a href="https://facebook.com/diamondbackcoding" style="color:#2D5F5D;text-decoration:none;font-size:13px;font-weight:700;font-family:Arial,sans-serif">Facebook</a>
+</td>
+<td style="padding:0 15px;border-left:2px solid #2D5F5D">
+<a href="https://twitter.com/diamondbackcoding" style="color:#2D5F5D;text-decoration:none;font-size:13px;font-weight:700;font-family:Arial,sans-serif">Twitter</a>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="font-size:10px;color:#2D5F5D;padding:0 0 6px 0;font-family:Arial,sans-serif">
+<a href="${unsubUrl}" style="color:#2D5F5D;text-decoration:underline;font-weight:600">Unsubscribe</a>
+</td></tr>
+
+<tr><td align="center" style="font-size:10px;color:#2D5F5D;padding:0;font-family:Arial,sans-serif;line-height:1.5">
+<strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
+<a href="tel:+19402178680" style="color:#2D5F5D;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#2D5F5D;text-decoration:none">hello@diamondbackcoding.com</a>
+</td></tr>
+
+</table>
+</td></tr>
+
+</table>
+
+</td></tr>
+</table>
+
+</body>
+</html>`;
+        
+        // For blackfriday template, use complete standalone HTML
+        } else if (template === 'blackfriday') {
+            let unsubToken = lead.unsubscribe_token;
+            if (!unsubToken) {
+                unsubToken = crypto.randomBytes(32).toString('hex');
+                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsubToken, leadId]);
+            }
+            const unsubUrl = `${BASE_URL}/api/unsubscribe/${unsubToken}`;
+            const year = new Date().getFullYear();
+            
+            emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>25% OFF Black Friday Sale</title>
+</head>
+<body style="margin:0;padding:0;background-color:#000000">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#000000">
+<tr><td align="center" style="padding:0">
+
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#000000;max-width:600px">
+
+<tr><td align="center" style="padding:40px 20px 20px 20px">
+<span style="color:#fff;font-size:36px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">Diamondback Coding®</span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 20px 30px 20px">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#DBEAFE;border-radius:35px">
+<tr><td style="padding:15px 45px">
+<span style="color:#1E40AF;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</span>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:20px 20px">
+<table cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center">
+<div style="text-align:center;line-height:0.85">
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:#fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:transparent;-webkit-text-stroke:3px #fff;-moz-text-stroke:3px #fff;text-stroke:3px #fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:transparent;-webkit-text-stroke:3px #fff;-moz-text-stroke:3px #fff;text-stroke:3px #fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:transparent;-webkit-text-stroke:3px #fff;-moz-text-stroke:3px #fff;text-stroke:3px #fff">25% OFF</div>
+</div>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:40px 30px 20px 30px">
+<span style="color:#fff;font-size:26px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.2">EVERYTHING 25% OFF</span>
+<span style="color:#fff;font-size:26px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.2">FOR BLACK FRIDAY!</span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 40px 20px 40px">
+<span style="color:#fff;font-size:14px;font-family:Arial,sans-serif;display:block;line-height:1.6">Time to upgrade your business:</span>
+<span style="color:#fff;font-size:14px;font-family:Arial,sans-serif;display:block;line-height:1.6">Our <strong style="font-weight:700">biggest sale of the year</strong> is here.</span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 0 25px 0">
+<span style="color:#fff;font-size:14px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px">USE CODE <strong style="font-weight:900;font-size:16px;letter-spacing:1.5px">BLACKFRIDAY25</strong></span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 0 60px 0">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:45px;border:5px solid #fff">
+<tr><td style="padding:16px 60px">
+<a href="https://diamondbackcoding.com/contact.html" style="color:#fff;font-size:18px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2px;font-family:'Arial Black',Arial,sans-serif">SHOP NOW</a>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:0;line-height:0;margin:0">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background:#000000;height:80px">
+<svg width="600" height="80" viewBox="0 0 600 80" preserveAspectRatio="none" style="display:block;width:100%">
+<path d="M 0,40 Q 150,10 300,40 Q 450,70 600,40 L 600,80 L 0,80 Z" fill="#FFEB3B"/>
+</svg>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="background:#FFEB3B;padding:35px 40px 40px 40px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+
+<tr><td align="center" style="font-size:13px;line-height:1.7;color:#000;padding:0 0 25px 0;font-family:Arial,sans-serif">
+Not valid on subscribe & save orders. Offer applies 11/20 - 12/3, 2026 only.<br>
+New clients only. 25% discount applies to initial project quote.
+</td></tr>
+
+<tr><td align="center" style="padding:0 0 20px 0">
+<table cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="padding:0 15px">
+<a href="https://instagram.com/diamondbackcoding" style="color:#000;text-decoration:none;font-size:14px;font-weight:700;font-family:Arial,sans-serif">Instagram</a>
+</td>
+<td style="padding:0 15px;border-left:2px solid #000">
+<a href="https://facebook.com/diamondbackcoding" style="color:#000;text-decoration:none;font-size:14px;font-weight:700;font-family:Arial,sans-serif">Facebook</a>
+</td>
+<td style="padding:0 15px;border-left:2px solid #000">
+<a href="https://twitter.com/diamondbackcoding" style="color:#000;text-decoration:none;font-size:14px;font-weight:700;font-family:Arial,sans-serif">Twitter</a>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="font-size:13px;color:#000;padding:0 0 8px 0;font-family:Arial,sans-serif">
+No longer want to receive these emails? <a href="${unsubUrl}" style="color:#000;text-decoration:underline;font-weight:700">Unsubscribe</a>
+</td></tr>
+
+<tr><td align="center" style="font-size:13px;color:#000;padding:0;font-family:Arial,sans-serif;line-height:1.6">
+<strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
+<a href="tel:+19402178680" style="color:#000;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#000;text-decoration:none">hello@diamondbackcoding.com</a>
+</td></tr>
+
+</table>
+</td></tr>
+
+</table>
+
+</td></tr>
+</table>
+
+</body>
+</html>`;
         
         // For initialsale template, use complete standalone HTML
-        if (template === 'initialsale') {
+        } else if (template === 'initialsale') {
             let unsubToken = lead.unsubscribe_token;
             if (!unsubToken) {
                 unsubToken = crypto.randomBytes(32).toString('hex');
@@ -9243,19 +9702,19 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spring Sale - 25% OFF All Services | Diamondback Coding</title>
 </head>
-<body style="margin:0;padding:0;background-color:#06B6D4;background-image:repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,0.05) 35px, rgba(255,255,255,0.05) 70px)">
+<body style="margin:0;padding:0;background-color:#06B6D4">
 
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:transparent">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#06B6D4">
 <tr><td align="center" style="padding:15px 0">
 
-<table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:transparent;max-width:600px">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#06B6D4;max-width:600px">
 
-<tr><td align="center" style="padding:30px 30px 15px 30px;background-color:transparent">
+<tr><td align="center" style="padding:30px 30px 15px 30px;background-color:#06B6D4">
 <span style="color:#ffffff;font-size:36px;font-weight:400;letter-spacing:1.5px;font-family:Georgia,serif;font-style:italic">Diamondback Coding®</span>
 </td></tr>
 
-<tr><td align="center" style="padding:0 30px 25px 30px;background-color:transparent">
-<table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
+<tr><td align="center" style="padding:0 30px 25px 30px;background-color:#06B6D4">
+<table cellpadding="0" cellspacing="0" border="0">
 <tr>
 <td style="padding-right:15px">
 <div style="width:100px;height:2px;background-color:#FEF3C7"></div>
@@ -9270,7 +9729,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 </table>
 </td></tr>
 
-<tr><td align="center" style="padding:0 30px 25px 30px;background-color:transparent">
+<tr><td align="center" style="padding:0 30px 25px 30px;background-color:#06B6D4">
 <table cellpadding="0" cellspacing="0" border="0" style="background-color:#EC4899;border-radius:35px;border:4px solid #FEF3C7">
 <tr><td style="padding:14px 40px">
 <span style="color:#FEF3C7;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:2.2px;font-family:Arial,sans-serif">Limited Time: Ends April 30</span>
@@ -9278,24 +9737,24 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 </table>
 </td></tr>
 
-<tr><td align="center" style="padding:25px 30px;background-color:transparent">
+<tr><td align="center" style="padding:25px 30px;background-color:#06B6D4">
 <div style="font-size:90px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:1;text-align:center;text-shadow:6px 6px 0px rgba(251,113,133,0.65)">25% OFF</div>
 </td></tr>
 
-<tr><td align="center" style="padding:20px 40px 10px 40px;background-color:transparent">
+<tr><td align="center" style="padding:20px 40px 10px 40px;background-color:#06B6D4">
 <span style="color:#ffffff;font-size:26px;font-weight:900;text-transform:uppercase;letter-spacing:1.4px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.4">Save Big on Premium Solutions</span>
 </td></tr>
 
-<tr><td align="center" style="padding:0 45px 15px 45px;background-color:transparent">
+<tr><td align="center" style="padding:0 45px 15px 45px;background-color:#06B6D4">
 <span style="color:#ffffff;font-size:15px;font-family:Arial,sans-serif;line-height:1.7;display:block">
 Transform your business with cutting-edge development and CRM solutions. <strong style="font-weight:900;color:#FEF3C7">Save 25% on all new projects</strong> started before April 30, 2026.
 </span>
 </td></tr>
 
-<tr><td align="center" style="padding:0 50px 30px 50px;background-color:transparent">
-<table cellpadding="0" cellspacing="0" border="0" style="background-color:rgba(255,255,255,0.2);border-radius:12px;width:100%;max-width:480px">
+<tr><td align="center" style="padding:0 50px 30px 50px;background-color:#06B6D4">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;width:100%;max-width:480px">
 <tr><td style="padding:15px 25px">
-<span style="color:#FEF3C7;font-size:11px;font-family:Arial,sans-serif;line-height:1.6;display:block;text-align:center">
+<span style="color:#1F2937;font-size:11px;font-family:Arial,sans-serif;line-height:1.6;display:block;text-align:center">
 <strong>Discount applies to one service:</strong><br>
 25% off per user for CRM Solution <em>OR</em> 25% off Website Development<br>
 Valid for all packages. Choose one option per customer.
@@ -9304,7 +9763,7 @@ Valid for all packages. Choose one option per customer.
 </table>
 </td></tr>
 
-<tr><td align="center" style="padding:0 30px 30px 30px;background-color:transparent">
+<tr><td align="center" style="padding:0 30px 30px 30px;background-color:#06B6D4">
 <table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:20px;width:100%;max-width:530px">
 <tr><td style="padding:30px 35px">
 
@@ -9319,9 +9778,7 @@ Valid for all packages. Choose one option per customer.
 <td width="70" valign="top" align="center">
 <table cellpadding="0" cellspacing="0" border="0" style="width:55px;height:55px;background-color:#A5F3FC;border-radius:50%">
 <tr><td align="center" valign="middle">
-<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M20 6L9 17L4 12" stroke="#0891B2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+<span style="font-size:28px;color:#0891B2">✓</span>
 </td></tr>
 </table>
 </td>
@@ -9339,9 +9796,7 @@ Valid for all packages. Choose one option per customer.
 <td width="70" valign="top" align="center">
 <table cellpadding="0" cellspacing="0" border="0" style="width:55px;height:55px;background-color:#FBCFE8;border-radius:50%">
 <tr><td align="center" valign="middle">
-<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M20 6L9 17L4 12" stroke="#BE185D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+<span style="font-size:28px;color:#BE185D">✓</span>
 </td></tr>
 </table>
 </td>
@@ -9359,9 +9814,7 @@ Valid for all packages. Choose one option per customer.
 <td width="70" valign="top" align="center">
 <table cellpadding="0" cellspacing="0" border="0" style="width:55px;height:55px;background-color:#FED7AA;border-radius:50%">
 <tr><td align="center" valign="middle">
-<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M20 6L9 17L4 12" stroke="#C2410C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+<span style="font-size:28px;color:#C2410C">✓</span>
 </td></tr>
 </table>
 </td>
@@ -9379,7 +9832,7 @@ Valid for all packages. Choose one option per customer.
 </table>
 </td></tr>
 
-<tr><td align="center" style="padding:0 30px 30px 30px;background-color:transparent">
+<tr><td align="center" style="padding:0 30px 30px 30px;background-color:#06B6D4">
 <table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:20px;width:100%;max-width:530px">
 <tr><td style="padding:30px 30px">
 
@@ -9391,12 +9844,7 @@ Valid for all packages. Choose one option per customer.
 <td style="padding:12px 15px" align="center" width="25%">
 <table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#A5F3FC;border-radius:16px">
 <tr><td align="center" valign="middle">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect x="2" y="3" width="20" height="14" rx="2" stroke="#0891B2" stroke-width="2" fill="none"/>
-<line x1="2" y1="7" x2="22" y2="7" stroke="#0891B2" stroke-width="2"/>
-<line x1="12" y1="17" x2="12" y2="21" stroke="#0891B2" stroke-width="2"/>
-<line x1="7" y1="21" x2="17" y2="21" stroke="#0891B2" stroke-width="2"/>
-</svg>
+<span style="font-size:32px">💻</span>
 </td></tr>
 </table>
 <div style="margin-top:12px">
@@ -9407,12 +9855,7 @@ Valid for all packages. Choose one option per customer.
 <td style="padding:12px 15px" align="center" width="25%">
 <table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#FBCFE8;border-radius:16px">
 <tr><td align="center" valign="middle">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect x="3" y="3" width="7" height="7" rx="1" stroke="#BE185D" stroke-width="2" fill="none"/>
-<rect x="3" y="14" width="7" height="7" rx="1" stroke="#BE185D" stroke-width="2" fill="none"/>
-<rect x="14" y="3" width="7" height="7" rx="1" stroke="#BE185D" stroke-width="2" fill="none"/>
-<rect x="14" y="14" width="7" height="7" rx="1" stroke="#BE185D" stroke-width="2" fill="none"/>
-</svg>
+<span style="font-size:32px">📊</span>
 </td></tr>
 </table>
 <div style="margin-top:12px">
@@ -9423,11 +9866,7 @@ Valid for all packages. Choose one option per customer.
 <td style="padding:12px 15px" align="center" width="25%">
 <table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#FED7AA;border-radius:16px">
 <tr><td align="center" valign="middle">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect x="6" y="2" width="12" height="20" rx="2" stroke="#C2410C" stroke-width="2" fill="none"/>
-<line x1="6" y1="18" x2="18" y2="18" stroke="#C2410C" stroke-width="2"/>
-<circle cx="12" cy="20" r="1" fill="#C2410C"/>
-</svg>
+<span style="font-size:32px">📱</span>
 </td></tr>
 </table>
 <div style="margin-top:12px">
@@ -9438,9 +9877,7 @@ Valid for all packages. Choose one option per customer.
 <td style="padding:12px 15px" align="center" width="25%">
 <table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#FEF9C3;border-radius:16px">
 <tr><td align="center" valign="middle">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<polygon points="12,2 15,10 24,10 17,15 20,23 12,18 4,23 7,15 0,10 9,10" fill="#CA8A04"/>
-</svg>
+<span style="font-size:32px">⚡</span>
 </td></tr>
 </table>
 <div style="margin-top:12px">
@@ -9454,7 +9891,7 @@ Valid for all packages. Choose one option per customer.
 </table>
 </td></tr>
 
-<tr><td align="center" style="padding:0 30px 25px 30px;background-color:transparent">
+<tr><td align="center" style="padding:0 30px 25px 30px;background-color:#06B6D4">
 <table cellpadding="0" cellspacing="0" border="0" style="background-color:#EC4899;border-radius:50px">
 <tr><td style="padding:22px 75px">
 <a href="https://diamondbackcoding.com/contact.html" style="color:#ffffff;font-size:18px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2.2px;font-family:'Arial Black',Arial,sans-serif;display:block">Claim Your 25% Discount</a>
@@ -9462,7 +9899,7 @@ Valid for all packages. Choose one option per customer.
 </table>
 </td></tr>
 
-<tr><td align="center" style="padding:0 40px 30px 40px;background-color:transparent">
+<tr><td align="center" style="padding:0 40px 30px 40px;background-color:#06B6D4">
 <span style="color:#ffffff;font-size:13px;font-family:Arial,sans-serif;line-height:1.6">
 Not ready yet? <a href="https://diamondbackcoding.com/contact.html" style="color:#FEF3C7;font-weight:700;text-decoration:underline">Schedule a free consultation</a>
 </span>
@@ -9477,22 +9914,16 @@ New clients only. 25% discount applies to initial project quote. Terms apply.
 </td></tr>
 
 <tr><td align="center" style="padding:0 0 25px 0">
-<table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
+<table cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td style="padding:0 12px">
-<a href="https://instagram.com/diamondbackcoding" style="display:block;width:52px;height:52px;background-color:#ffffff;border-radius:12px;text-align:center;line-height:52px;text-decoration:none">
-<img src="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='2' y='2' width='20' height='20' rx='5' stroke='%23FB923C' stroke-width='2' fill='none'/%3E%3Ccircle cx='12' cy='12' r='4' stroke='%23FB923C' stroke-width='2' fill='none'/%3E%3Ccircle cx='18' cy='6' r='1.5' fill='%23FB923C'/%3E%3C/svg%3E" width="32" height="32" alt="Instagram" style="display:inline-block;vertical-align:middle;border:none">
-</a>
+<td style="padding:0 15px">
+<a href="https://instagram.com/diamondbackcoding" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;font-family:Arial,sans-serif">Instagram</a>
 </td>
-<td style="padding:0 12px">
-<a href="https://facebook.com/diamondbackcoding" style="display:block;width:52px;height:52px;background-color:#ffffff;border-radius:12px;text-align:center;line-height:52px;text-decoration:none">
-<img src="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 24 24' fill='%23FB923C' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z'/%3E%3C/svg%3E" width="32" height="32" alt="Facebook" style="display:inline-block;vertical-align:middle;border:none">
-</a>
+<td style="padding:0 15px;border-left:2px solid #ffffff">
+<a href="https://facebook.com/diamondbackcoding" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;font-family:Arial,sans-serif">Facebook</a>
 </td>
-<td style="padding:0 12px">
-<a href="https://twitter.com/diamondbackcoding" style="display:block;width:52px;height:52px;background-color:#ffffff;border-radius:12px;text-align:center;line-height:52px;text-decoration:none">
-<img src="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 24 24' fill='%23FB923C' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z'/%3E%3C/svg%3E" width="32" height="32" alt="Twitter" style="display:inline-block;vertical-align:middle;border:none">
-</a>
+<td style="padding:0 15px;border-left:2px solid #ffffff">
+<a href="https://twitter.com/diamondbackcoding" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;font-family:Arial,sans-serif">Twitter</a>
 </td>
 </tr>
 </table>

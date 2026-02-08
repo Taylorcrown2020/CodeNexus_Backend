@@ -9200,11 +9200,12 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
                 Best regards,
                 Diamondback Coding Team
             `;
+        } else if (template === 'initialsale') {
+            emailSubject = `Spring Sale - 25% OFF All Services for ${lead.name}`;
+            // Complete HTML will be generated below
         } else if (template === 'valentines') {
             emailSubject = `Valentine's Day Special - 14% Off for ${lead.name}`;
-            
-            // For Valentine's, we skip setting emailBody since we'll create the complete HTML below
-            // The complete Valentine's email will be generated in the emailHTML section
+            // Complete HTML will be generated below
         }
         
         // Generate unsubscribe token
@@ -9224,7 +9225,300 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
         let emailHTML;
         
         // For valentines template, use complete standalone HTML
-        if (template === 'valentines') {
+        
+        // For initialsale template, use complete standalone HTML
+        if (template === 'initialsale') {
+            let unsubToken = lead.unsubscribe_token;
+            if (!unsubToken) {
+                unsubToken = crypto.randomBytes(32).toString('hex');
+                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsubToken, leadId]);
+            }
+            const unsubUrl = `${BASE_URL}/api/unsubscribe/${unsubToken}`;
+            const year = new Date().getFullYear();
+            
+            emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring Sale - 25% OFF All Services | Diamondback Coding</title>
+</head>
+<body style="margin:0;padding:0;background-color:#06B6D4;background-image:repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,0.05) 35px, rgba(255,255,255,0.05) 70px)">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:transparent">
+<tr><td align="center" style="padding:15px 0">
+
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:transparent;max-width:600px">
+
+<tr><td align="center" style="padding:30px 30px 15px 30px;background-color:transparent">
+<span style="color:#ffffff;font-size:36px;font-weight:400;letter-spacing:1.5px;font-family:Georgia,serif;font-style:italic">Diamondback Coding®</span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 30px 25px 30px;background-color:transparent">
+<table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
+<tr>
+<td style="padding-right:15px">
+<div style="width:100px;height:2px;background-color:#FEF3C7"></div>
+</td>
+<td>
+<span style="color:#ffffff;font-size:11px;font-weight:600;letter-spacing:2.5px;font-family:Arial,sans-serif;text-transform:uppercase">Web Development • CRM Solutions</span>
+</td>
+<td style="padding-left:15px">
+<div style="width:100px;height:2px;background-color:#FEF3C7"></div>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:0 30px 25px 30px;background-color:transparent">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#EC4899;border-radius:35px;border:4px solid #FEF3C7">
+<tr><td style="padding:14px 40px">
+<span style="color:#FEF3C7;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:2.2px;font-family:Arial,sans-serif">Limited Time: Ends April 30</span>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:25px 30px;background-color:transparent">
+<div style="font-size:90px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:1;text-align:center;text-shadow:6px 6px 0px rgba(251,113,133,0.65)">25% OFF</div>
+</td></tr>
+
+<tr><td align="center" style="padding:20px 40px 10px 40px;background-color:transparent">
+<span style="color:#ffffff;font-size:26px;font-weight:900;text-transform:uppercase;letter-spacing:1.4px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.4">Save Big on Premium Solutions</span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 45px 15px 45px;background-color:transparent">
+<span style="color:#ffffff;font-size:15px;font-family:Arial,sans-serif;line-height:1.7;display:block">
+Transform your business with cutting-edge development and CRM solutions. <strong style="font-weight:900;color:#FEF3C7">Save 25% on all new projects</strong> started before April 30, 2026.
+</span>
+</td></tr>
+
+<tr><td align="center" style="padding:0 50px 30px 50px;background-color:transparent">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:rgba(255,255,255,0.2);border-radius:12px;width:100%;max-width:480px">
+<tr><td style="padding:15px 25px">
+<span style="color:#FEF3C7;font-size:11px;font-family:Arial,sans-serif;line-height:1.6;display:block;text-align:center">
+<strong>Discount applies to one service:</strong><br>
+25% off per user for CRM Solution <em>OR</em> 25% off Website Development<br>
+Valid for all packages. Choose one option per customer.
+</span>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:0 30px 30px 30px;background-color:transparent">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:20px;width:100%;max-width:530px">
+<tr><td style="padding:30px 35px">
+
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr><td align="center" style="padding-bottom:22px">
+<span style="color:#EC4899;font-size:15px;font-weight:900;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:2px">Why Choose Us</span>
+</td></tr>
+
+<tr><td style="padding:15px 0">
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+<td width="70" valign="top" align="center">
+<table cellpadding="0" cellspacing="0" border="0" style="width:55px;height:55px;background-color:#A5F3FC;border-radius:50%">
+<tr><td align="center" valign="middle">
+<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M20 6L9 17L4 12" stroke="#0891B2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</td></tr>
+</table>
+</td>
+<td valign="middle" style="padding-left:18px">
+<span style="font-size:17px;font-weight:700;color:#1F2937;font-family:Arial,sans-serif;display:block;line-height:1.5">Fast Project Kickoff</span>
+<span style="font-size:14px;color:#6B7280;font-family:Arial,sans-serif;display:block;line-height:1.5;margin-top:5px">Get started with our streamlined onboarding process</span>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:15px 0">
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+<td width="70" valign="top" align="center">
+<table cellpadding="0" cellspacing="0" border="0" style="width:55px;height:55px;background-color:#FBCFE8;border-radius:50%">
+<tr><td align="center" valign="middle">
+<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M20 6L9 17L4 12" stroke="#BE185D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</td></tr>
+</table>
+</td>
+<td valign="middle" style="padding-left:18px">
+<span style="font-size:17px;font-weight:700;color:#1F2937;font-family:Arial,sans-serif;display:block;line-height:1.5">Dedicated Support Team</span>
+<span style="font-size:14px;color:#6B7280;font-family:Arial,sans-serif;display:block;line-height:1.5;margin-top:5px">Direct access to developers and account managers</span>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:15px 0">
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+<td width="70" valign="top" align="center">
+<table cellpadding="0" cellspacing="0" border="0" style="width:55px;height:55px;background-color:#FED7AA;border-radius:50%">
+<tr><td align="center" valign="middle">
+<svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M20 6L9 17L4 12" stroke="#C2410C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</td></tr>
+</table>
+</td>
+<td valign="middle" style="padding-left:18px">
+<span style="font-size:17px;font-weight:700;color:#1F2937;font-family:Arial,sans-serif;display:block;line-height:1.5">Professional Results</span>
+<span style="font-size:14px;color:#6B7280;font-family:Arial,sans-serif;display:block;line-height:1.5;margin-top:5px">Cutting-edge solutions built to scale with your business</span>
+</td>
+</tr>
+</table>
+</td></tr>
+
+</table>
+
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:0 30px 30px 30px;background-color:transparent">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:20px;width:100%;max-width:530px">
+<tr><td style="padding:30px 30px">
+
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr><td align="center" style="padding-bottom:22px" colspan="4">
+<span style="color:#EC4899;font-size:15px;font-weight:900;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:2px">All Services 25% Off</span>
+</td></tr>
+<tr>
+<td style="padding:12px 15px" align="center" width="25%">
+<table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#A5F3FC;border-radius:16px">
+<tr><td align="center" valign="middle">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="2" y="3" width="20" height="14" rx="2" stroke="#0891B2" stroke-width="2" fill="none"/>
+<line x1="2" y1="7" x2="22" y2="7" stroke="#0891B2" stroke-width="2"/>
+<line x1="12" y1="17" x2="12" y2="21" stroke="#0891B2" stroke-width="2"/>
+<line x1="7" y1="21" x2="17" y2="21" stroke="#0891B2" stroke-width="2"/>
+</svg>
+</td></tr>
+</table>
+<div style="margin-top:12px">
+<span style="font-size:11px;font-weight:700;color:#0891B2;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:0.6px">Web Dev</span>
+</div>
+</td>
+
+<td style="padding:12px 15px" align="center" width="25%">
+<table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#FBCFE8;border-radius:16px">
+<tr><td align="center" valign="middle">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="3" y="3" width="7" height="7" rx="1" stroke="#BE185D" stroke-width="2" fill="none"/>
+<rect x="3" y="14" width="7" height="7" rx="1" stroke="#BE185D" stroke-width="2" fill="none"/>
+<rect x="14" y="3" width="7" height="7" rx="1" stroke="#BE185D" stroke-width="2" fill="none"/>
+<rect x="14" y="14" width="7" height="7" rx="1" stroke="#BE185D" stroke-width="2" fill="none"/>
+</svg>
+</td></tr>
+</table>
+<div style="margin-top:12px">
+<span style="font-size:11px;font-weight:700;color:#BE185D;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:0.6px">CRM</span>
+</div>
+</td>
+
+<td style="padding:12px 15px" align="center" width="25%">
+<table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#FED7AA;border-radius:16px">
+<tr><td align="center" valign="middle">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="6" y="2" width="12" height="20" rx="2" stroke="#C2410C" stroke-width="2" fill="none"/>
+<line x1="6" y1="18" x2="18" y2="18" stroke="#C2410C" stroke-width="2"/>
+<circle cx="12" cy="20" r="1" fill="#C2410C"/>
+</svg>
+</td></tr>
+</table>
+<div style="margin-top:12px">
+<span style="font-size:11px;font-weight:700;color:#C2410C;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:0.6px">Mobile</span>
+</div>
+</td>
+
+<td style="padding:12px 15px" align="center" width="25%">
+<table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#FEF9C3;border-radius:16px">
+<tr><td align="center" valign="middle">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<polygon points="12,2 15,10 24,10 17,15 20,23 12,18 4,23 7,15 0,10 9,10" fill="#CA8A04"/>
+</svg>
+</td></tr>
+</table>
+<div style="margin-top:12px">
+<span style="font-size:11px;font-weight:700;color:#CA8A04;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:0.6px">Speed</span>
+</div>
+</td>
+</tr>
+</table>
+
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:0 30px 25px 30px;background-color:transparent">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#EC4899;border-radius:50px">
+<tr><td style="padding:22px 75px">
+<a href="https://diamondbackcoding.com/contact.html" style="color:#ffffff;font-size:18px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2.2px;font-family:'Arial Black',Arial,sans-serif;display:block">Claim Your 25% Discount</a>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="padding:0 40px 30px 40px;background-color:transparent">
+<span style="color:#ffffff;font-size:13px;font-family:Arial,sans-serif;line-height:1.6">
+Not ready yet? <a href="https://diamondbackcoding.com/contact.html" style="color:#FEF3C7;font-weight:700;text-decoration:underline">Schedule a free consultation</a>
+</span>
+</td></tr>
+
+<tr><td style="background-color:#FB923C;padding:35px 45px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+
+<tr><td align="center" style="font-size:11px;line-height:1.7;color:#ffffff;padding:0 0 25px 0;font-family:Arial,sans-serif;font-weight:600">
+Limited Time Offer: Valid February 9 - April 30, 2026<br>
+New clients only. 25% discount applies to initial project quote. Terms apply.
+</td></tr>
+
+<tr><td align="center" style="padding:0 0 25px 0">
+<table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
+<tr>
+<td style="padding:0 12px">
+<a href="https://instagram.com/diamondbackcoding" style="display:block;width:52px;height:52px;background-color:#ffffff;border-radius:12px;text-align:center;line-height:52px;text-decoration:none">
+<img src="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='2' y='2' width='20' height='20' rx='5' stroke='%23FB923C' stroke-width='2' fill='none'/%3E%3Ccircle cx='12' cy='12' r='4' stroke='%23FB923C' stroke-width='2' fill='none'/%3E%3Ccircle cx='18' cy='6' r='1.5' fill='%23FB923C'/%3E%3C/svg%3E" width="32" height="32" alt="Instagram" style="display:inline-block;vertical-align:middle;border:none">
+</a>
+</td>
+<td style="padding:0 12px">
+<a href="https://facebook.com/diamondbackcoding" style="display:block;width:52px;height:52px;background-color:#ffffff;border-radius:12px;text-align:center;line-height:52px;text-decoration:none">
+<img src="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 24 24' fill='%23FB923C' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z'/%3E%3C/svg%3E" width="32" height="32" alt="Facebook" style="display:inline-block;vertical-align:middle;border:none">
+</a>
+</td>
+<td style="padding:0 12px">
+<a href="https://twitter.com/diamondbackcoding" style="display:block;width:52px;height:52px;background-color:#ffffff;border-radius:12px;text-align:center;line-height:52px;text-decoration:none">
+<img src="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 24 24' fill='%23FB923C' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z'/%3E%3C/svg%3E" width="32" height="32" alt="Twitter" style="display:inline-block;vertical-align:middle;border:none">
+</a>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td align="center" style="font-size:10px;color:#ffffff;padding:0 0 12px 0;font-family:Arial,sans-serif">
+No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffffff;text-decoration:underline">Unsubscribe</a> | <a href="https://diamondbackcoding.com/preferences" style="color:#ffffff;text-decoration:underline">Update Preferences</a>
+</td></tr>
+
+<tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.7">
+<strong>Diamondback Coding</strong> · Web Development & CRM Solutions<br>
+15709 Spillman Ranch Loop · Austin, TX 78738<br>
+<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
+</td></tr>
+
+</table>
+</td></tr>
+
+</table>
+
+</td></tr>
+</table>
+
+</body>
+</html>`;
+        } else if (template === 'valentines') {
             // Generate unsubscribe token
             let unsubToken = lead.unsubscribe_token;
             if (!unsubToken) {

@@ -9287,11 +9287,28 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <table width="600" cellpadding="0" cellspacing="0" border="0" class="main-table" style="background:#10B981;max-width:600px">
 
 <!-- Wavy Top Border -->
-<tr><td style="padding:0;background:#10B981">
-<svg width="600" height="40" viewBox="0 0 600 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto">
+<tr><td style="padding:0;background:#10B981;position:relative">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<!-- Left decorative dots -->
+<td width="15%" style="padding:15px 0 0 20px" valign="top">
+<div class="side-dot" style="width:26px;height:26px;background:#FBBF24;opacity:0.6;border-radius:50%;margin:0 0 8px 10px"></div>
+<div class="side-dot" style="width:20px;height:20px;background:#EC4899;opacity:0.5;border-radius:50%;margin:0 0 0 25px"></div>
+</td>
+<!-- Center wave SVG -->
+<td width="70%" style="padding:0">
+<svg width="100%" height="40" viewBox="0 0 600 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto" preserveAspectRatio="none">
   <path d="M0 20C100 5 200 35 300 20C400 5 500 35 600 20V0H0V20Z" fill="#F59E0B"/>
   <path d="M0 30C100 15 200 40 300 28C400 16 500 40 600 30V0H0V30Z" fill="#EC4899" opacity="0.6"/>
 </svg>
+</td>
+<!-- Right decorative dots -->
+<td width="15%" style="padding:15px 20px 0 0" valign="top" align="right">
+<div class="side-dot" style="width:24px;height:24px;background:#3B82F6;opacity:0.6;border-radius:50%;margin:0 15px 8px 0"></div>
+<div class="side-dot" style="width:22px;height:22px;background:#F59E0B;opacity:0.5;border-radius:50%;margin:0 5px 0 0"></div>
+</td>
+</tr>
+</table>
 </td></tr>
 
 <!-- Brand Name with background dots -->
@@ -9577,21 +9594,21 @@ Offer valid March 1 - April 30, 2026. New clients only. Terms apply.
 <table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
 <tr>
 <!-- Instagram -->
-<td style="padding:0 6px">
-<a href="https://instagram.com/" style="display:block;text-decoration:none">
-<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHJ4PSI1IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS44Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iNCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuOCIvPjxjaXJjbGUgY3g9IjE4LjUiIGN5PSI1LjUiIHI9IjEuMiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==" width="32" height="32" border="0" style="display:block" alt="Instagram" />
+<td style="padding:0 8px">
+<a href="https://instagram.com/diamondbackcoding" style="display:block;text-decoration:none">
+<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHJ4PSI1IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS44Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iNCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuOCIvPjxjaXJjbGUgY3g9IjE4LjUiIGN5PSI1LjUiIHI9IjEuMiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==" width="36" height="36" border="0" style="display:block" alt="Instagram" />
 </a>
 </td>
 <!-- TikTok -->
-<td style="padding:0 6px">
-<a href="https://tiktok.com/" style="display:block;text-decoration:none">
-<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTkuNTkgNi42OWE0LjgzIDQuODMgMCAwIDEtMy43Ny00LjI1VjJoLTMuNDV2MTMuNjdhMi44OSAyLjg5IDAgMCAxLTUuMiAxLjc0IDIuODkgMi44OSAwIDAgMSAyLjMxLTQuNjQgMi45MyAyLjkzIDAgMCAxIC44OC4xM1Y5LjRhNi44NCA2Ljg0IDAgMCAwLTEtLjA1QTYuMzMgNi4zMyAwIDAgMCA1IDIwLjFhNi4zNCA2LjM0IDAgMCAwIDEwLjg2LTQuNDN2LTdhOC4xNiA4LjE2IDAgMCAwIDQuNzcgMS41MnYtMy40YTQuODUgNC44NSAwIDAgMS0xLS4xeiIvPjwvc3ZnPg==" width="32" height="32" border="0" style="display:block" alt="TikTok" />
+<td style="padding:0 8px">
+<a href="https://tiktok.com/@diamondbackcoding" style="display:block;text-decoration:none">
+<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTkuNTkgNi42OWE0LjgzIDQuODMgMCAwIDEtMy43Ny00LjI1VjJoLTMuNDV2MTMuNjdhMi44OSAyLjg5IDAgMCAxLTUuMiAxLjc0IDIuODkgMi44OSAwIDAgMSAyLjMxLTQuNjQgMi45MyAyLjkzIDAgMCAxIC44OC4xM1Y5LjRhNi44NCA2Ljg0IDAgMCAwLTEtLjA1QTYuMzMgNi4zMyAwIDAgMCA1IDIwLjFhNi4zNCA2LjM0IDAgMCAwIDEwLjg2LTQuNDN2LTdhOC4xNiA4LjE2IDAgMCAwIDQuNzcgMS41MnYtMy40YTQuODUgNC44NSAwIDAgMS0xLS4xeiIvPjwvc3ZnPg==" width="36" height="36" border="0" style="display:block" alt="TikTok" />
 </a>
 </td>
 <!-- Facebook -->
-<td style="padding:0 6px">
-<a href="https://facebook.com/" style="display:block;text-decoration:none">
-<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjQgMTIuMDczYzAtNi42MjctNS4zNzMtMTItMTItMTJzLTEyIDUuMzczLTEyIDEyYzAgNS45OSA0LjM4OCAxMC45NTQgMTAuMTI1IDExLjg1NHYtOC4zODVINy4wNzh2LTMuNDdoMy4wNDdWOS40M2MwLTMuMDA3IDEuNzkyLTQuNjY5IDQuNTMzLTQuNjY5IDEuMzEyIDAgMi42ODYuMjM1IDIuNjg2LjIzNXYyLjk1M0gxNS44M2MtMS40OTEgMC0xLjk1Ni45MjUtMS45NTYgMS44NzR2Mi4yNWgzLjMyOGwtLjUzMiAzLjQ3aC0yLjc5NnY4LjM4NUMxOS42MTIgMjMuMDI3IDI0IDE4LjA2MiAyNCAxMi4wNzN6Ii8+PC9zdmc+" width="32" height="32" border="0" style="display:block" alt="Facebook" />
+<td style="padding:0 8px">
+<a href="https://facebook.com/diamondbackcoding" style="display:block;text-decoration:none">
+<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjQgMTIuMDczYzAtNi42MjctNS4zNzMtMTItMTItMTJzLTEyIDUuMzczLTEyIDEyYzAgNS45OSA0LjM4OCAxMC45NTQgMTAuMTI1IDExLjg1NHYtOC4zODVINy4wNzh2LTMuNDdoMy4wNDdWOS40M2MwLTMuMDA3IDEuNzkyLTQuNjY5IDQuNTMzLTQuNjY5IDEuMzEyIDAgMi42ODYuMjM1IDIuNjg2LjIzNXYyLjk1M0gxNS44M2MtMS40OTEgMC0xLjk1Ni45MjUtMS45NTYgMS44NzR2Mi4yNWgzLjMyOGwtLjUzMiAzLjQ3aC0yLjc5NnY4LjM4NUMxOS42MTIgMjMuMDI3IDI0IDE4LjA2MiAyNCAxMi4wNzN6Ii8+PC9zdmc+" width="36" height="36" border="0" style="display:block" alt="Facebook" />
 </a>
 </td>
 </tr>

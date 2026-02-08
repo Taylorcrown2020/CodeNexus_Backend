@@ -17082,7 +17082,7 @@ function buildCategoryContent(category, categoryLabels) {
             const escapedLeadName = lead.name.replace(/'/g, "\\'");
             leadsHtml += `
                 <tr>
-                    <td>
+                    <td style="max-width: 220px; width: 220px;">
                         <div class="contact-cell">
                             <div class="contact-avatar">${'getInitials' in window ? getInitials(lead.name) : '?'}</div>
                             <div class="contact-info">
@@ -17091,13 +17091,13 @@ function buildCategoryContent(category, categoryLabels) {
                             </div>
                         </div>
                     </td>
-                    <td>${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
-                    <td>
+                    <td style="max-width: 110px; width: 110px;">${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
+                    <td style="max-width: 90px; width: 90px;">
                         <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
                             ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
                         </span>
                     </td>
-                    <td>
+                    <td style="min-width: 320px; width: 320px;">
                         <div class="action-buttons">
                             <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -17128,8 +17128,15 @@ function buildCategoryContent(category, categoryLabels) {
                 </button>
             </div>
             <div style="overflow-x: auto; margin-bottom: 24px;">
-                <table class="data-table">
-                    <thead><tr><th>Lead</th><th>Last Contact</th><th>Days Since</th><th>Actions</th></tr></thead>
+                <table class="data-table" style="min-width: 1000px;">
+                    <thead>
+                        <tr>
+                            <th style="max-width: 220px; width: 220px;">Lead</th>
+                            <th style="max-width: 110px; width: 110px;">Last Contact</th>
+                            <th style="max-width: 90px; width: 90px;">Days Since</th>
+                            <th style="min-width: 320px; width: 320px;">Actions</th>
+                        </tr>
+                    </thead>
                     <tbody>${leadsHtml}</tbody>
                 </table>
             </div>

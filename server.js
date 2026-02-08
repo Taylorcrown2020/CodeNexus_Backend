@@ -9265,130 +9265,16 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 </table>
 </td></tr>
 
-<!-- Large 25% OFF Text Section - Single vertical column -->
-<tr><td align="center" style="padding:0 20px;position:relative">
-<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;position:relative">
-<tr><td align="center" style="position:relative;line-height:0.85;padding:0">
+<!-- Large 25% OFF Text Section -->
+<tr><td align="center" style="padding:30px 20px">
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
+<tr><td align="center" style="line-height:0.9;padding:0">
 
-<!-- Background Tech Icons -->
-<div style="position:absolute;top:5%;left:8%;opacity:0.15">
-<svg width="60" height="60" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
-<path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
-</svg>
-</div>
-
-<div style="position:absolute;top:15%;right:12%;opacity:0.12">
-<svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
-<rect x="3" y="3" width="18" height="18" rx="2"/>
-<path d="M3 9h18M9 3v18"/>
-<circle cx="7.5" cy="6" r="0.5" fill="#fff"/>
-<circle cx="16.5" cy="6" r="0.5" fill="#fff"/>
-<circle cx="7.5" cy="15" r="0.5" fill="#fff"/>
-<circle cx="16.5" cy="15" r="0.5" fill="#fff"/>
-</svg>
-</div>
-
-<div style="position:absolute;top:45%;left:5%;opacity:0.1">
-<svg width="55" height="55" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
-<circle cx="12" cy="12" r="3"/>
-<path d="M12 1v6m0 6v10M23 12h-6m-6 0H1"/>
-</svg>
-</div>
-
-<div style="position:absolute;bottom:15%;right:8%;opacity:0.13">
-<svg width="65" height="65" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
-<rect x="2" y="6" width="20" height="12" rx="2"/>
-<circle cx="7" cy="12" r="2"/>
-<circle cx="17" cy="12" r="2"/>
-<path d="M11 12h2"/>
-</svg>
-</div>
-
-<div style="position:absolute;top:30%;right:25%;opacity:0.08">
-<svg width="50" height="50" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
-<path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/>
-</svg>
-</div>
-
-<div style="position:absolute;bottom:25%;left:15%;opacity:0.11">
-<svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
-<rect x="4" y="4" width="16" height="16" rx="1"/>
-<path d="M4 10h16M10 4v16"/>
-<circle cx="8" cy="7" r="0.8" fill="#fff"/>
-<circle cx="16" cy="7" r="0.8" fill="#fff"/>
-<circle cx="8" cy="17" r="0.8" fill="#fff"/>
-<circle cx="16" cy="17" r="0.8" fill="#fff"/>
-</svg>
-</div>
-
-<!-- BLACK FRI-YAY badge positioned absolutely -->
-<div style="position:absolute;top:8%;left:15%;transform:translate(-50%,-50%);z-index:10">
-<div style="background:#FF1493;border-radius:50px;padding:12px 22px;transform:rotate(-15deg);box-shadow:0 4px 8px rgba(0,0,0,0.3)">
-<span style="color:#fff;font-size:20px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2">BLACK<br/>FRI-YAY</span>
-</div>
-</div>
-
-<!-- Star on the upper right -->
-<div style="position:absolute;top:3%;right:8%;width:70px;height:70px;z-index:10">
-<svg viewBox="0 0 100 100" style="width:100%;height:100%">
-<polygon points="50,5 61,38 95,38 68,58 79,91 50,71 21,91 32,58 5,38 39,38" fill="#FFD700"/>
-</svg>
-</div>
-
-<!-- Green star on the left -->
-<div style="position:absolute;top:28%;left:5%;width:60px;height:60px;z-index:10">
-<svg viewBox="0 0 100 100" style="width:100%;height:100%">
-<polygon points="50,10 65,45 100,45 72,65 87,100 50,75 13,100 28,65 0,45 35,45" fill="#00FF00"/>
-<polygon points="50,35 58,55 78,55 62,67 70,87 50,73 30,87 38,67 22,55 42,55" fill="#00FF00"/>
-</svg>
-</div>
-
-<!-- Strawberry on the upper right -->
-<div style="position:absolute;top:25%;right:0%;width:90px;height:90px;z-index:10">
-<svg viewBox="0 0 100 100" style="width:100%;height:100%">
-<ellipse cx="50" cy="60" rx="35" ry="40" fill="#FF4444"/>
-<path d="M 35,25 Q 50,15 65,25" fill="#228B22"/>
-<circle cx="40" cy="50" r="3" fill="#FFFF00"/>
-<circle cx="50" cy="45" r="3" fill="#FFFF00"/>
-<circle cx="60" cy="50" r="3" fill="#FFFF00"/>
-<circle cx="45" cy="60" r="3" fill="#FFFF00"/>
-<circle cx="55" cy="60" r="3" fill="#FFFF00"/>
-<circle cx="50" cy="70" r="3" fill="#FFFF00"/>
-</svg>
-</div>
-
-<!-- STOCK UP & SAVE badge -->
-<div style="position:absolute;top:68%;right:8%;z-index:10">
-<div style="background:#FFEB3B;border-radius:50%;padding:20px;transform:rotate(15deg);box-shadow:0 4px 8px rgba(0,0,0,0.3);width:75px;height:75px;display:table">
-<div style="display:table-cell;vertical-align:middle;text-align:center">
-<span style="color:#000;font-size:13px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;text-transform:uppercase;line-height:1.1">STOCK<br/>UP &<br/>SAVE</span>
-</div>
-</div>
-</div>
-
-<!-- Large strawberry on the lower left -->
-<div style="position:absolute;bottom:5%;left:-5%;width:130px;height:130px;z-index:10">
-<svg viewBox="0 0 100 100" style="width:100%;height:100%">
-<ellipse cx="50" cy="55" rx="40" ry="45" fill="#FF4444"/>
-<path d="M 30,20 Q 50,10 70,20 L 65,30 Q 50,22 35,30 Z" fill="#228B22"/>
-<circle cx="35" cy="45" r="4" fill="#FFFF00"/>
-<circle cx="50" cy="40" r="4" fill="#FFFF00"/>
-<circle cx="65" cy="45" r="4" fill="#FFFF00"/>
-<circle cx="40" cy="55" r="4" fill="#FFFF00"/>
-<circle cx="60" cy="55" r="4" fill="#FFFF00"/>
-<circle cx="35" cy="65" r="4" fill="#FFFF00"/>
-<circle cx="50" cy="63" r="4" fill="#FFFF00"/>
-<circle cx="65" cy="65" r="4" fill="#FFFF00"/>
-<circle cx="50" cy="75" r="4" fill="#FFFF00"/>
-</svg>
-</div>
-
-<!-- Main stacked text - First row filled white, rest outlined -->
 <div style="text-align:center;line-height:0.85">
-<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:#fff">25% OFF</div>
-<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:transparent;-webkit-text-stroke:3px #fff">25% OFF</div>
-<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:transparent;-webkit-text-stroke:3px #fff">25% OFF</div>
-<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:transparent;-webkit-text-stroke:3px #fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;text-stroke:3px #fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;text-stroke:3px #fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;text-stroke:3px #fff">25% OFF</div>
 </div>
 
 </td></tr>
@@ -9414,7 +9300,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 
 <!-- Button -->
 <tr><td align="center" style="padding:0 0 60px 0">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:50px;border:4px solid #fff;display:inline-block;box-shadow:0 2px 4px rgba(0,0,0,0.2)">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:50px;border:4px solid #fff;display:inline-block">
 <tr><td style="padding:14px 55px">
 <a href="https://wildwonder.com" style="color:#fff;font-size:16px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;font-family:'Arial Black',Arial,sans-serif">SHOP NOW</a>
 </td></tr>
@@ -9423,9 +9309,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 
 <!-- Wave -->
 <tr><td style="padding:0;line-height:0;margin:0">
-<svg width="600" height="80" viewBox="0 0 600 80" preserveAspectRatio="none" style="display:block;width:100%">
-<path d="M 0,40 Q 150,10 300,40 Q 450,70 600,40 L 600,80 L 0,80 Z" fill="#FFEB3B"/>
-</svg>
+<img src="data:image/svg+xml,%3Csvg width='600' height='80' viewBox='0 0 600 80' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 0,40 Q 150,10 300,40 Q 450,70 600,40 L 600,80 L 0,80 Z' fill='%23FFEB3B'/%3E%3C/svg%3E" width="600" height="80" style="display:block;width:100%;border:0" alt="" />
 </td></tr>
 
 <!-- Yellow Footer -->
@@ -9441,48 +9325,28 @@ Not valid on subscribe & save orders or Shark Tank Bundle. Offer applies 11/20 -
 <table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
 <tr>
 <td style="padding:0 12px">
-<a href="https://instagram.com/wildwonder" style="display:block;text-decoration:none">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect x="2" y="2" width="20" height="20" rx="5" stroke="#000" stroke-width="1.8"/>
-<circle cx="12" cy="12" r="4" stroke="#000" stroke-width="1.8"/>
-<circle cx="18.5" cy="5.5" r="1.2" fill="#000"/>
-</svg>
+<a href="https://instagram.com/wildwonder" style="display:inline-block;text-decoration:none">
+<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='2' y='2' width='20' height='20' rx='5' stroke='%23000' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='12' r='4' stroke='%23000' stroke-width='1.8'/%3E%3Ccircle cx='18.5' cy='5.5' r='1.2' fill='%23000'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="Instagram" />
 </a>
 </td>
 <td style="padding:0 12px">
-<a href="https://tiktok.com/@wildwonder" style="display:block;text-decoration:none">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="#000" xmlns="http://www.w3.org/2000/svg">
-<path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-</svg>
+<a href="https://tiktok.com/@wildwonder" style="display:inline-block;text-decoration:none">
+<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 24 24' fill='%23000' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="TikTok" />
 </a>
 </td>
 <td style="padding:0 12px">
-<a href="https://facebook.com/wildwonder" style="display:block;text-decoration:none">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="#000" xmlns="http://www.w3.org/2000/svg">
-<path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-</svg>
+<a href="https://facebook.com/wildwonder" style="display:inline-block;text-decoration:none">
+<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 24 24' fill='%23000' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="Facebook" />
 </a>
 </td>
 <td style="padding:0 12px">
-<a href="https://amazon.com/wildwonder" style="display:block;text-decoration:none">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="#000" xmlns="http://www.w3.org/2000/svg">
-<path d="M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595l.315-.14c.138-.06.234-.1.293-.13.226-.088.39-.046.525.13.12.174.09.336-.12.48-.256.19-.6.41-1.006.654-1.244.73-2.594 1.217-4.05 1.46-2.47.42-4.827.24-7.069-.538-1.36-.466-2.674-1.146-3.944-2.05C3.898 18.435 2.18 17.36.65 16.04c-.1-.09-.164-.18-.192-.27-.028-.09-.01-.174.046-.25.11-.15.226-.15.398 0zm14.687-9.09c0 1.474-.04 2.51-.12 3.108-.08.596-.24 1.212-.48 1.846-.32.844-.77 1.5-1.35 1.97-.58.47-1.278.704-2.094.704-.56 0-1.004-.15-1.334-.45-.33-.3-.495-.674-.495-1.124 0-.72.33-1.29.99-1.71.66-.42 1.578-.8 2.754-1.14l1.35-.33v-.87c0-.9-.09-1.54-.27-1.92-.18-.38-.51-.57-.99-.57-.36 0-.66.12-.9.36-.24.24-.39.57-.45.99l-.06.6c-.04.22-.13.39-.27.51-.14.12-.33.18-.57.18h-1.8c-.24 0-.42-.06-.54-.18-.12-.12-.18-.3-.18-.54 0-.66.21-1.29.63-1.89.42-.6 1.02-1.08 1.8-1.44.78-.36 1.68-.54 2.7-.54 1.02 0 1.86.18 2.52.54.66.36 1.14.87 1.44 1.53.3.66.45 1.47.45 2.43zm-3.33 2.58c-.72.18-1.233.39-1.54.63-.305.24-.458.57-.458 1.005 0 .405.12.72.36.945.24.225.57.338 1.014.338.615 0 1.11-.24 1.485-.72.375-.48.563-1.125.563-1.935v-.495l-.78.18-.645.05z"/>
-</svg>
+<a href="https://amazon.com/wildwonder" style="display:inline-block;text-decoration:none">
+<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 24 24' fill='%23000' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595l.315-.14c.138-.06.234-.1.293-.13.226-.088.39-.046.525.13.12.174.09.336-.12.48-.256.19-.6.41-1.006.654-1.244.73-2.594 1.217-4.05 1.46-2.47.42-4.827.24-7.069-.538-1.36-.466-2.674-1.146-3.944-2.05C3.898 18.435 2.18 17.36.65 16.04c-.1-.09-.164-.18-.192-.27-.028-.09-.01-.174.046-.25.11-.15.226-.15.398 0zm14.687-9.09c0 1.474-.04 2.51-.12 3.108-.08.596-.24 1.212-.48 1.846-.32.844-.77 1.5-1.35 1.97-.58.47-1.278.704-2.094.704-.56 0-1.004-.15-1.334-.45-.33-.3-.495-.674-.495-1.124 0-.72.33-1.29.99-1.71.66-.42 1.578-.8 2.754-1.14l1.35-.33v-.87c0-.9-.09-1.54-.27-1.92-.18-.38-.51-.57-.99-.57-.36 0-.66.12-.9.36-.24.24-.39.57-.45.99l-.06.6c-.04.22-.13.39-.27.51-.14.12-.33.18-.57.18h-1.8c-.24 0-.42-.06-.54-.18-.12-.12-.18-.3-.18-.54 0-.66.21-1.29.63-1.89.42-.6 1.02-1.08 1.8-1.44.78-.36 1.68-.54 2.7-.54 1.02 0 1.86.18 2.52.54.66.36 1.14.87 1.44 1.53.3.66.45 1.47.45 2.43zm-3.33 2.58c-.72.18-1.233.39-1.54.63-.305.24-.458.57-.458 1.005 0 .405.12.72.36.945.24.225.57.338 1.014.338.615 0 1.11-.24 1.485-.72.375-.48.563-1.125.563-1.935v-.495l-.78.18-.645.05z'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="Amazon" />
 </a>
 </td>
 <td style="padding:0 12px">
-<a href="https://walmart.com/wildwonder" style="display:block;text-decoration:none">
-<svg width="36" height="36" viewBox="0 0 100 100" fill="#000" xmlns="http://www.w3.org/2000/svg">
-<circle cx="50" cy="50" r="6" fill="#000"/>
-<path d="M50 18 L52 44 L50 50 L48 44 Z" fill="#000"/>
-<path d="M82 50 L56 52 L50 50 L56 48 Z" fill="#000"/>
-<path d="M50 82 L48 56 L50 50 L52 56 Z" fill="#000"/>
-<path d="M18 50 L44 48 L50 50 L44 52 Z" fill="#000"/>
-<path d="M68 32 L48 48 L50 50 L52 48 Z" fill="#000"/>
-<path d="M68 68 L52 52 L50 50 L48 52 Z" fill="#000"/>
-<path d="M32 68 L48 52 L50 50 L52 52 Z" fill="#000"/>
-<path d="M32 32 L52 48 L50 50 L48 48 Z" fill="#000"/>
-</svg>
+<a href="https://walmart.com/wildwonder" style="display:inline-block;text-decoration:none">
+<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 100 100' fill='%23000' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='6' fill='%23000'/%3E%3Cpath d='M50 18 L52 44 L50 50 L48 44 Z' fill='%23000'/%3E%3Cpath d='M82 50 L56 52 L50 50 L56 48 Z' fill='%23000'/%3E%3Cpath d='M50 82 L48 56 L50 50 L52 56 Z' fill='%23000'/%3E%3Cpath d='M18 50 L44 48 L50 50 L44 52 Z' fill='%23000'/%3E%3Cpath d='M68 32 L48 48 L50 50 L52 48 Z' fill='%23000'/%3E%3Cpath d='M68 68 L52 52 L50 50 L48 52 Z' fill='%23000'/%3E%3Cpath d='M32 68 L48 52 L50 50 L52 52 Z' fill='%23000'/%3E%3Cpath d='M32 32 L52 48 L50 50 L48 48 Z' fill='%23000'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="Walmart" />
 </a>
 </td>
 </tr>

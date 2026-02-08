@@ -9212,7 +9212,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
         } else if (template === 'initialsale') {
             emailSubject = `Spring Sale - 25% OFF All Services for ${lead.name}`;
             // Complete HTML will be generated below
-        } else if (template === 'valentines') {
+        } else if (template === 'valentines14') {
             emailSubject = `Valentine's Day Special - 14% Off for ${lead.name}`;
             // Complete HTML will be generated below
         }
@@ -9949,7 +9949,9 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 
 </body>
 </html>`;
-        } else if (template === 'valentines') {
+        
+        // For valentines14 (original 14% promo) template
+        } else if (template === 'valentines14') {
             // Generate unsubscribe token
             let unsubToken = lead.unsubscribe_token;
             if (!unsubToken) {

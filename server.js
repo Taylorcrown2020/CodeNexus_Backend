@@ -9252,12 +9252,12 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#000000;max-width:600px">
 
 <!-- Brand Name -->
-<tr><td align="center" style="padding:40px 20px 20px 20px">
+<tr><td align="center" style="padding:40px 40px 20px 40px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'80\' cy=\'40\' r=\'20\' fill=\'%23FFD700\' opacity=\'0.12\'/%3E%3Ccircle cx=\'520\' cy=\'60\' r=\'18\' fill=\'%23FF69B4\' opacity=\'0.1\'/%3E%3Ccircle cx=\'200\' cy=\'30\' r=\'15\' fill=\'%2300CED1\' opacity=\'0.11\'/%3E%3Ccircle cx=\'420\' cy=\'50\' r=\'17\' fill=\'%23FFEB3B\' opacity=\'0.13\'/%3E%3Ccircle cx=\'300\' cy=\'70\' r=\'16\' fill=\'%23FF6347\' opacity=\'0.09\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
 <span style="color:#fff;font-size:36px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">wildwonder®</span>
 </td></tr>
 
 <!-- Badge -->
-<tr><td align="center" style="padding:0 20px 30px 20px">
+<tr><td align="center" style="padding:0 40px 30px 40px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'80\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'70\' cy=\'40\' r=\'18\' fill=\'%23FF1493\' opacity=\'0.11\'/%3E%3Ccircle cx=\'530\' cy=\'50\' r=\'16\' fill=\'%2300CED1\' opacity=\'0.1\'/%3E%3Ccircle cx=\'150\' cy=\'25\' r=\'14\' fill=\'%23FFD700\' opacity=\'0.12\'/%3E%3Ccircle cx=\'480\' cy=\'35\' r=\'15\' fill=\'%23FFEB3B\' opacity=\'0.09\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
 <table cellpadding="0" cellspacing="0" border="0" style="background:#DBEAFE;border-radius:35px;display:inline-block">
 <tr><td style="padding:15px 45px">
 <span style="color:#1E40AF;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</span>
@@ -9266,40 +9266,45 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 </td></tr>
 
 <!-- Large 25% OFF Text Section -->
-<tr><td align="center" style="padding:30px 20px">
+<tr><td align="center" style="padding:30px 40px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'600\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'80\' cy=\'100\' r=\'30\' fill=\'%23FFD700\' opacity=\'0.15\'/%3E%3Ccircle cx=\'520\' cy=\'80\' r=\'25\' fill=\'%2300CED1\' opacity=\'0.12\'/%3E%3Ccircle cx=\'100\' cy=\'300\' r=\'28\' fill=\'%23FF69B4\' opacity=\'0.13\'/%3E%3Ccircle cx=\'480\' cy=\'250\' r=\'32\' fill=\'%23FFEB3B\' opacity=\'0.14\'/%3E%3Ccircle cx=\'120\' cy=\'500\' r=\'26\' fill=\'%23FF6347\' opacity=\'0.11\'/%3E%3Ccircle cx=\'500\' cy=\'480\' r=\'29\' fill=\'%2300FF7F\' opacity=\'0.12\'/%3E%3Ccircle cx=\'300\' cy=\'120\' r=\'24\' fill=\'%23FF1493\' opacity=\'0.1\'/%3E%3Ccircle cx=\'200\' cy=\'400\' r=\'27\' fill=\'%239370DB\' opacity=\'0.13\'/%3E%3Ccircle cx=\'420\' cy=\'150\' r=\'23\' fill=\'%23FFD700\' opacity=\'0.11\'/%3E%3Ccircle cx=\'350\' cy=\'520\' r=\'31\' fill=\'%23FF69B4\' opacity=\'0.12\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
-<tr><td align="center" style="line-height:0.9;padding:0">
+<tr><td align="center" style="line-height:0.88;padding:0">
 
-<div style="text-align:center;line-height:0.85">
-<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#fff">25% OFF</div>
-<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;text-stroke:3px #fff">25% OFF</div>
-<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;text-stroke:3px #fff">25% OFF</div>
-<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;text-stroke:3px #fff">25% OFF</div>
-</div>
+<!-- Line 1: Filled "25% OFF" -->
+<div style="font-size:140px;font-weight:900;font-family:'Arial Black','Arial Bold',Arial,sans-serif;letter-spacing:-4px;color:#fff;line-height:0.88;white-space:nowrap">25% OFF</div>
+
+<!-- Line 2: Outlined "25% OFF" -->
+<div style="font-size:140px;font-weight:900;font-family:'Arial Black','Arial Bold',Arial,sans-serif;letter-spacing:-4px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;line-height:0.88;white-space:nowrap">25% OFF</div>
+
+<!-- Line 3: Outlined "25% OFF" -->
+<div style="font-size:140px;font-weight:900;font-family:'Arial Black','Arial Bold',Arial,sans-serif;letter-spacing:-4px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;line-height:0.88;white-space:nowrap">25% OFF</div>
+
+<!-- Line 4: Outlined "25% OFF" -->
+<div style="font-size:140px;font-weight:900;font-family:'Arial Black','Arial Bold',Arial,sans-serif;letter-spacing:-4px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;line-height:0.88;white-space:nowrap">25% OFF</div>
 
 </td></tr>
 </table>
 </td></tr>
 
 <!-- Headline -->
-<tr><td align="center" style="padding:35px 30px 18px 30px">
+<tr><td align="center" style="padding:35px 50px 18px 50px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'100\' cy=\'50\' r=\'19\' fill=\'%2300CED1\' opacity=\'0.11\'/%3E%3Ccircle cx=\'500\' cy=\'40\' r=\'17\' fill=\'%23FF69B4\' opacity=\'0.1\'/%3E%3Ccircle cx=\'250\' cy=\'70\' r=\'16\' fill=\'%23FFD700\' opacity=\'0.09\'/%3E%3Ccircle cx=\'400\' cy=\'30\' r=\'18\' fill=\'%23FFEB3B\' opacity=\'0.12\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
 <span style="color:#fff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.3">EVERYTHING 25% OFF</span>
 <span style="color:#fff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.3">FOR BLACK FRIDAY!</span>
 </td></tr>
 
 <!-- Subtext -->
-<tr><td align="center" style="padding:0 40px 18px 40px">
+<tr><td align="center" style="padding:0 50px 18px 50px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'80\' cy=\'30\' r=\'14\' fill=\'%23FF6347\' opacity=\'0.09\'/%3E%3Ccircle cx=\'520\' cy=\'40\' r=\'15\' fill=\'%2300FF7F\' opacity=\'0.08\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
 <span style="color:#fff;font-size:13px;font-family:Arial,sans-serif;display:block;line-height:1.5">Time to pack the fridge:</span>
 <span style="color:#fff;font-size:13px;font-family:Arial,sans-serif;display:block;line-height:1.5">Our <strong style="font-weight:700">biggest sale of the year</strong> is here.</span>
 </td></tr>
 
 <!-- Code -->
-<tr><td align="center" style="padding:0 0 20px 0">
+<tr><td align="center" style="padding:0 50px 20px 50px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'150\' cy=\'20\' r=\'13\' fill=\'%239370DB\' opacity=\'0.1\'/%3E%3Ccircle cx=\'450\' cy=\'25\' r=\'14\' fill=\'%23FFD700\' opacity=\'0.11\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
 <span style="color:#fff;font-size:13px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px">USE CODE <strong style="font-weight:900;font-size:15px;letter-spacing:1px">HOLIDAY25</strong></span>
 </td></tr>
 
 <!-- Button -->
-<tr><td align="center" style="padding:0 0 60px 0">
+<tr><td align="center" style="padding:0 50px 60px 50px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'120\' cy=\'50\' r=\'16\' fill=\'%2300CED1\' opacity=\'0.09\'/%3E%3Ccircle cx=\'480\' cy=\'60\' r=\'17\' fill=\'%23FF1493\' opacity=\'0.1\'/%3E%3Ccircle cx=\'280\' cy=\'30\' r=\'15\' fill=\'%23FFEB3B\' opacity=\'0.08\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
 <table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:50px;border:4px solid #fff;display:inline-block">
 <tr><td style="padding:14px 55px">
 <a href="https://wildwonder.com" style="color:#fff;font-size:16px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;font-family:'Arial Black',Arial,sans-serif">SHOP NOW</a>
@@ -9313,7 +9318,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 </td></tr>
 
 <!-- Yellow Footer -->
-<tr><td style="background:#FFEB3B;padding:35px 40px 40px 40px">
+<tr><td style="background:#FFEB3B;padding:35px 50px 40px 50px">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 
 <tr><td align="center" style="font-size:12px;line-height:1.6;color:#000;padding:0 0 25px 0;font-family:Arial,sans-serif">

@@ -9224,6 +9224,12 @@ I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in you
 </span>
 </td></tr>
 
+<tr><td align="center" style="padding-bottom:35px">
+<span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:480px;margin:0 auto">
+We are also a small and growing business, we love what we do, and we love adding value to support entrepreneurial endeavors. We want to be a valuable partner to support your growth by contributing world class website experiences, clear communications, and efficient transactions at an affordable price.
+</span>
+</td></tr>
+
 <!-- Feature Cards in About Section -->
 <tr><td style="padding:20px 0">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">

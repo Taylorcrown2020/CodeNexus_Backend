@@ -9251,72 +9251,154 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#000000;max-width:600px">
 
-<!-- Brand Name -->
-<tr><td align="center" style="padding:40px 20px 20px 20px;background:#000000">
-<span style="color:#ffffff;font-size:36px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">wildwonder®</span>
+<!-- Brand Name with dots background -->
+<tr><td align="center" style="padding:40px 40px 20px 40px;background:#000000;position:relative">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="position:absolute;top:0;left:0;right:0;bottom:0">
+<tr>
+<td width="80" style="padding:40px 0 0 80px"><div style="width:40px;height:40px;background:#FFD700;opacity:0.12;border-radius:50%"></div></td>
+<td width="120" style="padding:30px 0 0 120px"><div style="width:30px;height:30px;background:#00CED1;opacity:0.11;border-radius:50%"></div></td>
+<td width="120" style="padding:50px 0 0 120px"><div style="width:34px;height:34px;background:#FFEB3B;opacity:0.13;border-radius:50%"></div></td>
+<td width="100" style="padding:40px 80px 0 0"><div style="width:36px;height:36px;background:#FF69B4;opacity:0.1;border-radius:50%"></div></td>
+</tr>
+</table>
+<span style="color:#ffffff;font-size:36px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic;position:relative;z-index:1">wildwonder®</span>
 </td></tr>
 
-<!-- Badge -->
-<tr><td align="center" style="padding:0 20px 30px 20px;background:#000000">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#DBEAFE;border-radius:35px">
+<!-- Badge with dots background -->
+<tr><td align="center" style="padding:0 40px 30px 40px;background:#000000;position:relative">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="position:absolute;top:0;left:0;right:0;bottom:0">
+<tr>
+<td width="70" style="padding:40px 0 0 70px"><div style="width:36px;height:36px;background:#FF1493;opacity:0.11;border-radius:50%"></div></td>
+<td width="150" style="padding:25px 0 0 80px"><div style="width:28px;height:28px;background:#FFD700;opacity:0.12;border-radius:50%"></div></td>
+<td width="180" style="padding:35px 0 0 130px"><div style="width:30px;height:30px;background:#FFEB3B;opacity:0.09;border-radius:50%"></div></td>
+<td width="100" style="padding:50px 100px 0 0"><div style="width:32px;height:32px;background:#00CED1;opacity:0.1;border-radius:50%"></div></td>
+</tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="background:#DBEAFE;border-radius:35px;display:inline-block;position:relative;z-index:1">
 <tr><td style="padding:15px 45px">
 <span style="color:#1E40AF;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</span>
 </td></tr>
 </table>
 </td></tr>
 
-<!-- Large 25% OFF Text Section -->
-<tr><td align="center" style="padding:50px 20px;background:#000000">
-<table cellpadding="0" cellspacing="0" border="0">
-<tr><td align="center">
-<!-- Main large text -->
-<div style="font-size:100px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-2px;color:#ffffff;line-height:1;margin:0;padding:10px 0">25% OFF</div>
-<div style="font-size:100px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-2px;color:#ffffff;line-height:1;margin:0;padding:10px 0">25% OFF</div>
-<div style="font-size:100px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-2px;color:#ffffff;line-height:1;margin:0;padding:10px 0">25% OFF</div>
+<!-- Large 25% OFF Text Section with lots of dots -->
+<tr><td align="center" style="padding:30px 40px;background:#000000;position:relative">
+<!-- Decorative dots background -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="position:absolute;top:0;left:0;right:0;bottom:0">
+<tr>
+<td width="80" style="padding:100px 0 0 80px"><div style="width:60px;height:60px;background:#FFD700;opacity:0.15;border-radius:50%"></div></td>
+<td width="100" style="padding:300px 0 0 20px"><div style="width:56px;height:56px;background:#FF69B4;opacity:0.13;border-radius:50%"></div></td>
+<td width="120" style="padding:120px 0 0 80px"><div style="width:48px;height:48px;background:#FF1493;opacity:0.1;border-radius:50%"></div></td>
+<td width="100" style="padding:500px 0 0 20px"><div style="width:54px;height:54px;background:#9370DB;opacity:0.13;border-radius:50%"></div></td>
+<td width="100" style="padding:80px 100px 0 0"><div style="width:50px;height:50px;background:#00CED1;opacity:0.12;border-radius:50%"></div></td>
+</tr>
+<tr>
+<td colspan="2" width="120" style="padding:0 0 0 120px"><div style="width:52px;height:52px;background:#FF6347;opacity:0.11;border-radius:50%"></div></td>
+<td width="200" style="padding:50px 0 0 100px"><div style="width:46px;height:46px;background:#FFD700;opacity:0.11;border-radius:50%"></div></td>
+<td colspan="2" width="100" style="padding:20px 120px 0 0"><div style="width:58px;height:58px;background:#00FF7F;opacity:0.12;border-radius:50%"></div></td>
+</tr>
+<tr>
+<td colspan="2" width="200" style="padding:100px 0 0 200px"><div style="width:64px;height:64px;background:#FFEB3B;opacity:0.14;border-radius:50%"></div></td>
+<td width="120"></td>
+<td colspan="2" width="180" style="padding:80px 80px 0 0"><div style="width:62px;height:62px;background:#FF69B4;opacity:0.12;border-radius:50%"></div></td>
+</tr>
+</table>
+
+<!-- The actual 25% OFF text -->
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;position:relative;z-index:1">
+<tr><td align="center" style="line-height:0.88;padding:0">
+
+<!-- Line 1: FILLED WHITE TEXT -->
+<div style="font-size:140px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-4px;color:#ffffff;line-height:0.88;white-space:nowrap;margin:0;padding:0">25% OFF</div>
+
+<!-- Line 2: OUTLINED (using layered text trick) -->
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0">
+<tr><td align="center" style="position:relative;line-height:0.88">
+<div style="font-size:140px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-4px;color:#000000;line-height:0.88;white-space:nowrap;margin:0;padding:0;text-shadow:-3px -3px 0 #fff,3px -3px 0 #fff,-3px 3px 0 #fff,3px 3px 0 #fff,-4px 0 0 #fff,4px 0 0 #fff,0 -4px 0 #fff,0 4px 0 #fff">25% OFF</div>
+</td></tr>
+</table>
+
+<!-- Line 3: OUTLINED (using layered text trick) -->
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0">
+<tr><td align="center" style="position:relative;line-height:0.88">
+<div style="font-size:140px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-4px;color:#000000;line-height:0.88;white-space:nowrap;margin:0;padding:0;text-shadow:-3px -3px 0 #fff,3px -3px 0 #fff,-3px 3px 0 #fff,3px 3px 0 #fff,-4px 0 0 #fff,4px 0 0 #fff,0 -4px 0 #fff,0 4px 0 #fff">25% OFF</div>
+</td></tr>
+</table>
+
+<!-- Line 4: OUTLINED (using layered text trick) -->
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0">
+<tr><td align="center" style="position:relative;line-height:0.88">
+<div style="font-size:140px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-4px;color:#000000;line-height:0.88;white-space:nowrap;margin:0;padding:0;text-shadow:-3px -3px 0 #fff,3px -3px 0 #fff,-3px 3px 0 #fff,3px 3px 0 #fff,-4px 0 0 #fff,4px 0 0 #fff,0 -4px 0 #fff,0 4px 0 #fff">25% OFF</div>
+</td></tr>
+</table>
+
 </td></tr>
 </table>
 </td></tr>
 
-<!-- Headline -->
-<tr><td align="center" style="padding:20px 30px 18px 30px;background:#000000">
-<table cellpadding="0" cellspacing="0" border="0">
-<tr><td style="color:#ffffff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial,sans-serif;text-align:center;line-height:1.3">
-EVERYTHING 25% OFF<br>FOR BLACK FRIDAY!
+<!-- Headline with dots -->
+<tr><td align="center" style="padding:35px 50px 18px 50px;background:#000000;position:relative">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="position:absolute;top:0;left:0;right:0;bottom:0">
+<tr>
+<td width="100" style="padding:50px 0 0 100px"><div style="width:38px;height:38px;background:#00CED1;opacity:0.11;border-radius:50%"></div></td>
+<td width="250" style="padding:70px 0 0 150px"><div style="width:32px;height:32px;background:#FFD700;opacity:0.09;border-radius:50%"></div></td>
+<td width="150" style="padding:30px 100px 0 0"><div style="width:34px;height:34px;background:#FF69B4;opacity:0.1;border-radius:50%"></div></td>
+</tr>
+</table>
+<span style="color:#ffffff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.3;position:relative;z-index:1">EVERYTHING 25% OFF</span>
+<span style="color:#ffffff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.3;position:relative;z-index:1">FOR BLACK FRIDAY!</span>
+</td></tr>
+
+<!-- Subtext with dots -->
+<tr><td align="center" style="padding:0 50px 18px 50px;background:#000000;position:relative">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="position:absolute;top:0;left:0;right:0;bottom:0">
+<tr>
+<td width="80" style="padding:30px 0 0 80px"><div style="width:28px;height:28px;background:#FF6347;opacity:0.09;border-radius:50%"></div></td>
+<td width="420"></td>
+<td width="100" style="padding:40px 80px 0 0"><div style="width:30px;height:30px;background:#00FF7F;opacity:0.08;border-radius:50%"></div></td>
+</tr>
+</table>
+<span style="color:#ffffff;font-size:13px;font-family:Arial,sans-serif;display:block;line-height:1.5;position:relative;z-index:1">Time to pack the fridge:</span>
+<span style="color:#ffffff;font-size:13px;font-family:Arial,sans-serif;display:block;line-height:1.5;position:relative;z-index:1">Our <strong style="font-weight:700">biggest sale of the year</strong> is here.</span>
+</td></tr>
+
+<!-- Code with dots -->
+<tr><td align="center" style="padding:0 50px 20px 50px;background:#000000;position:relative">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="position:absolute;top:0;left:0;right:0;bottom:0">
+<tr>
+<td width="150" style="padding:20px 0 0 150px"><div style="width:26px;height:26px;background:#9370DB;opacity:0.1;border-radius:50%"></div></td>
+<td width="300"></td>
+<td width="150" style="padding:25px 150px 0 0"><div style="width:28px;height:28px;background:#FFD700;opacity:0.11;border-radius:50%"></div></td>
+</tr>
+</table>
+<span style="color:#ffffff;font-size:13px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px;position:relative;z-index:1">USE CODE <strong style="font-weight:900;font-size:15px;letter-spacing:1px">HOLIDAY25</strong></span>
+</td></tr>
+
+<!-- Button with dots -->
+<tr><td align="center" style="padding:0 50px 60px 50px;background:#000000;position:relative">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="position:absolute;top:0;left:0;right:0;bottom:0">
+<tr>
+<td width="120" style="padding:50px 0 0 120px"><div style="width:32px;height:32px;background:#00CED1;opacity:0.09;border-radius:50%"></div></td>
+<td width="280" style="padding:30px 0 0 100px"><div style="width:30px;height:30px;background:#FFEB3B;opacity:0.08;border-radius:50%"></div></td>
+<td width="100" style="padding:60px 100px 0 0"><div style="width:34px;height:34px;background:#FF1493;opacity:0.1;border-radius:50%"></div></td>
+</tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:50px;border:4px solid #ffffff;display:inline-block;position:relative;z-index:1">
+<tr><td style="padding:18px 60px">
+<a href="https://wildwonder.com" style="color:#ffffff;font-size:16px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial Black,Arial,sans-serif;display:block">SHOP NOW</a>
 </td></tr>
 </table>
 </td></tr>
 
-<!-- Subtext -->
-<tr><td align="center" style="padding:0 40px 18px 40px;background:#000000">
-<table cellpadding="0" cellspacing="0" border="0">
-<tr><td style="color:#ffffff;font-size:13px;font-family:Arial,sans-serif;text-align:center;line-height:1.5">
-Time to pack the fridge:<br>Our <strong style="font-weight:700">biggest sale of the year</strong> is here.
-</td></tr>
-</table>
-</td></tr>
-
-<!-- Code -->
-<tr><td align="center" style="padding:0 0 20px 0;background:#000000">
-<span style="color:#ffffff;font-size:13px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px">USE CODE <strong style="font-weight:900;font-size:15px;letter-spacing:1px">HOLIDAY25</strong></span>
-</td></tr>
-
-<!-- Button -->
-<tr><td align="center" style="padding:0 0 60px 0;background:#000000">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:50px;border:4px solid #ffffff">
-<tr><td style="padding:14px 55px">
-<a href="https://wildwonder.com" style="color:#ffffff;font-size:16px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif;display:block">SHOP NOW</a>
-</td></tr>
-</table>
-</td></tr>
-
-<!-- Wave transition -->
+<!-- Wave Separator (simplified as solid yellow transition) -->
 <tr><td style="padding:0;line-height:0;margin:0;background:#000000">
-<!-- REPLACE THIS URL with your hosted wave image -->
-<img src="https://your-domain.com/wave.png" width="600" height="80" style="display:block;width:100%;max-width:600px;height:auto;border:0" alt="" />
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background:#FFEB3B;height:40px;line-height:0;font-size:0">&nbsp;</td></tr>
+</table>
 </td></tr>
 
 <!-- Yellow Footer -->
-<tr><td style="background:#FFEB3B;padding:35px 40px 40px 40px">
+<tr><td style="background:#FFEB3B;padding:35px 50px 40px 50px">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 
 <tr><td align="center" style="font-size:12px;line-height:1.6;color:#000000;padding:0 0 25px 0;font-family:Arial,sans-serif">
@@ -9325,36 +9407,31 @@ Not valid on subscribe &amp; save orders or Shark Tank Bundle. Offer applies 11/
 
 <!-- Social Media Icons -->
 <tr><td align="center" style="padding:0 0 25px 0">
-<table cellpadding="0" cellspacing="0" border="0">
+<table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
 <tr>
-<td style="padding:0 8px">
-<a href="https://instagram.com/wildwonder" style="display:inline-block;text-decoration:none">
-<!-- REPLACE with your hosted Instagram icon -->
-<img src="https://your-domain.com/icons/instagram.png" width="36" height="36" border="0" style="display:block;border:0" alt="Instagram" />
+<td style="padding:0 12px">
+<a href="https://instagram.com/wildwonder" style="display:block;text-decoration:none">
+<img src="https://img.icons8.com/ios/50/000000/instagram-new--v1.png" width="36" height="36" border="0" style="display:block" alt="Instagram" />
 </a>
 </td>
-<td style="padding:0 8px">
-<a href="https://tiktok.com/@wildwonder" style="display:inline-block;text-decoration:none">
-<!-- REPLACE with your hosted TikTok icon -->
-<img src="https://your-domain.com/icons/tiktok.png" width="36" height="36" border="0" style="display:block;border:0" alt="TikTok" />
+<td style="padding:0 12px">
+<a href="https://tiktok.com/@wildwonder" style="display:block;text-decoration:none">
+<img src="https://img.icons8.com/ios-filled/50/000000/tiktok--v1.png" width="36" height="36" border="0" style="display:block" alt="TikTok" />
 </a>
 </td>
-<td style="padding:0 8px">
-<a href="https://facebook.com/wildwonder" style="display:inline-block;text-decoration:none">
-<!-- REPLACE with your hosted Facebook icon -->
-<img src="https://your-domain.com/icons/facebook.png" width="36" height="36" border="0" style="display:block;border:0" alt="Facebook" />
+<td style="padding:0 12px">
+<a href="https://facebook.com/wildwonder" style="display:block;text-decoration:none">
+<img src="https://img.icons8.com/ios-filled/50/000000/facebook-new.png" width="36" height="36" border="0" style="display:block" alt="Facebook" />
 </a>
 </td>
-<td style="padding:0 8px">
-<a href="https://amazon.com/wildwonder" style="display:inline-block;text-decoration:none">
-<!-- REPLACE with your hosted Amazon icon -->
-<img src="https://your-domain.com/icons/amazon.png" width="36" height="36" border="0" style="display:block;border:0" alt="Amazon" />
+<td style="padding:0 12px">
+<a href="https://amazon.com/wildwonder" style="display:block;text-decoration:none">
+<img src="https://img.icons8.com/ios-filled/50/000000/amazon.png" width="36" height="36" border="0" style="display:block" alt="Amazon" />
 </a>
 </td>
-<td style="padding:0 8px">
-<a href="https://walmart.com/wildwonder" style="display:inline-block;text-decoration:none">
-<!-- REPLACE with your hosted Walmart icon -->
-<img src="https://your-domain.com/icons/walmart.png" width="36" height="36" border="0" style="display:block;border:0" alt="Walmart" />
+<td style="padding:0 12px">
+<a href="https://walmart.com/wildwonder" style="display:block;text-decoration:none">
+<img src="https://img.icons8.com/ios-filled/50/000000/walmart.png" width="36" height="36" border="0" style="display:block" alt="Walmart" />
 </a>
 </td>
 </tr>

@@ -9206,7 +9206,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
             // Valentine's Promo - Full HTML email with tech theme
             emailBody = `
                 <!-- PROMO CONTENT - TONS OF TECH ICONS -->
-                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); padding: 0; margin: -36px -40px 32px -40px; position: relative; overflow: hidden; border-radius: 8px 8px 0 0;">
+                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); padding: 0; position: relative; overflow: hidden; border-radius: 8px 8px 0 0;">
                     
                     <!-- Tech Icons Background -->
                     <div style="position: absolute; top: 60px; left: 20px; opacity: 0.18;">
@@ -9338,14 +9338,63 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
         }
 
         // Build branded email
-        const emailHTML = buildEmailHTML(`
-            <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${emailBody.replace(/\n/g, '<br>').replace(/^ +/gm, '')}</div>
+        let emailHTML;
+        
+        // For valentines template, use raw HTML without wrapper (it has its own design)
+        if (template === 'valentines') {
+            // Generate unsubscribe token
+            let unsubToken = lead.unsubscribe_token;
+            if (!unsubToken) {
+                unsubToken = crypto.randomBytes(32).toString('hex');
+                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsubToken, leadId]);
+            }
+            const unsubUrl = `${BASE_URL}/api/unsubscribe/${unsubToken}`;
+            const year = new Date().getFullYear();
+            
+            // Standalone Valentine's email with footer
+            emailHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valentine's Day Special - Diamondback Coding</title>
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f0f0f0;">
+<div style="max-width:620px;margin:0 auto;background:#ffffff;">
+    ${emailBody}
+    
+    <!-- Footer -->
+    <div style="background:#1a1a1a;padding:28px 36px 24px;color:#999;font-size:12px;">
+        <div style="font-size:13px;font-weight:600;color:#D4A847;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">DIAMONDBACK CODING</div>
+        <div style="line-height:1.7;margin-bottom:14px;">
+            15709 Spillman Ranch Loop, Austin, TX 78738<br>
+            <a href="mailto:contact@diamondbackcoding.com" style="color:#999;text-decoration:none;">contact@diamondbackcoding.com</a> · 
+            <a href="tel:+19402178680" style="color:#999;text-decoration:none;">(940) 217-8680</a>
+        </div>
+        <div style="font-size:11px;margin-bottom:14px;">
+            <a href="https://diamondbackcoding.com" style="color:#999;text-decoration:none;margin-right:14px;">Website</a>
+            <a href="https://diamondbackcoding.com/projects" style="color:#999;text-decoration:none;margin-right:14px;">Projects</a>
+            <a href="https://diamondbackcoding.com/services" style="color:#999;text-decoration:none;">Services</a>
+        </div>
+        <div style="padding-top:12px;border-top:1px solid #2e2e2e;">
+            <a href="${unsubUrl}" style="color:#888;font-size:11px;text-decoration:none;display:block;margin-bottom:8px;">Unsubscribe from follow-up emails</a>
+            <div style="font-size:11px;color:#555;">© ${year} Diamondback Coding. All rights reserved.</div>
+        </div>
+    </div>
+</div>
+</body>
+</html>`;
+        } else {
+            // Use standard wrapper for other templates
+            emailHTML = buildEmailHTML(`
+                <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${emailBody.replace(/\n/g, '<br>').replace(/^ +/gm, '')}</div>
 
-            <div class="sign-off">
-                <p>Warm regards,</p>
-                <p class="team-name">The Diamondback Coding Team</p>
-            </div>
-        `, { unsubscribeUrl });
+                <div class="sign-off">
+                    <p>Warm regards,</p>
+                    <p class="team-name">The Diamondback Coding Team</p>
+                </div>
+            `, { unsubscribeUrl });
+        }
 
         await transporter.sendMail({
             from: `\"Diamondback Coding\" <${process.env.EMAIL_USER}>`,

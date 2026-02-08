@@ -9242,7 +9242,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>14% OFF Valentine's Day Sale</title>
+<title>Spring Sale - 25% OFF</title>
 <style type="text/css">
 /* Mobile Styles */
 @media only screen and (max-width: 600px) {
@@ -9250,7 +9250,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
     width: 100% !important;
   }
   .big-text {
-    font-size: 60px !important;
+    font-size: 56px !important;
     letter-spacing: -2px !important;
   }
   .headline {
@@ -9263,150 +9263,313 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
     font-size: 11px !important;
     padding: 8px 20px !important;
   }
-  .hide-mobile {
-    display: none !important;
-  }
   .mobile-padding {
     padding-left: 20px !important;
     padding-right: 20px !important;
   }
+  .service-icon {
+    width: 50px !important;
+    height: 50px !important;
+  }
+  /* Keep side dots visible on mobile */
+  .side-dot {
+    width: 20px !important;
+    height: 20px !important;
+  }
 }
 </style>
 </head>
-<body style="margin:0;padding:0;background-color:#FF6B9D">
+<body style="margin:0;padding:0;background-color:#10B981">
 
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FF6B9D">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#10B981">
 <tr><td align="center" style="padding:0">
 
-<table width="600" cellpadding="0" cellspacing="0" border="0" class="main-table" style="background:#FF6B9D;max-width:600px">
+<table width="600" cellpadding="0" cellspacing="0" border="0" class="main-table" style="background:#10B981;max-width:600px">
+
+<!-- Wavy Top Border -->
+<tr><td style="padding:0;background:#10B981">
+<svg width="600" height="40" viewBox="0 0 600 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto">
+  <path d="M0 20C100 5 200 35 300 20C400 5 500 35 600 20V0H0V20Z" fill="#F59E0B"/>
+  <path d="M0 30C100 15 200 40 300 28C400 16 500 40 600 30V0H0V30Z" fill="#EC4899" opacity="0.6"/>
+</svg>
+</td></tr>
 
 <!-- Brand Name with background dots -->
-<tr><td align="center" style="padding:20px 30px 10px 30px;background:#FF6B9D" class="mobile-padding">
+<tr><td align="center" style="padding:20px 30px 10px 30px;background:#10B981" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="20%"><div style="width:30px;height:30px;background:#FFD93D;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
+<td width="20%"><div class="side-dot" style="width:30px;height:30px;background:#FBBF24;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
 <td width="60%" align="center" valign="middle">
-<span class="brand" style="color:#ffffff;font-size:28px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">Diamondback Coding®</span>
+<span class="brand" style="color:#ffffff;font-size:30px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">Diamondbackcoding®</span>
 </td>
-<td width="20%"><div style="width:28px;height:28px;background:#6BCFFF;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
+<td width="20%"><div class="side-dot" style="width:28px;height:28px;background:#EC4899;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
-<!-- Badge -->
-<tr><td align="center" style="padding:0 30px 15px 30px;background:#FF6B9D" class="mobile-padding">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#FFD93D;border-radius:25px;display:inline-block">
-<tr><td class="badge-text" style="padding:10px 30px">
-<span style="color:#FF6B9D;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</span>
-</td></tr>
-</table>
-</td></tr>
-
-<!-- Large 25% OFF Text Section - COMPACT -->
-<tr><td style="padding:15px 15px;background:#FF6B9D" class="mobile-padding">
+<!-- Subtitle with dots -->
+<tr><td align="center" style="padding:0 30px 15px 30px;background:#10B981" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
-<!-- Row 1: Dots + Line 1 -->
 <tr>
-<td width="12%" valign="top" style="padding-top:10px"><div style="width:30px;height:30px;background:#FFD93D;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
-<td width="76%" align="center">
-<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">14% OFF</div>
+<td width="15%"><div class="side-dot" style="width:20px;height:20px;background:#3B82F6;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
+<td width="70%" align="center">
+<span style="color:#ffffff;font-size:11px;font-weight:600;letter-spacing:2px;font-family:Arial,sans-serif;text-transform:uppercase">Web Development • CRM Solutions</span>
 </td>
-<td width="12%" valign="top" style="padding-top:10px"><div style="width:30px;height:30px;background:#6BCFFF;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
+<td width="15%"><div class="side-dot" style="width:20px;height:20px;background:#F59E0B;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
 </tr>
-<!-- Row 2: Dots + Line 2 -->
+</table>
+</td></tr>
+
+<!-- Badge with dots -->
+<tr><td align="center" style="padding:0 30px 18px 30px;background:#10B981" class="mobile-padding">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="12%" valign="middle"><div style="width:32px;height:32px;background:#A0E7E5;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
-<td width="76%" align="center">
-<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">14% OFF</div>
+<td width="15%"><div class="side-dot" style="width:24px;height:24px;background:#EC4899;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
+<td width="70%" align="center">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#8B5CF6;border-radius:25px;display:inline-block">
+<tr><td class="badge-text" style="padding:9px 28px">
+<span style="color:#FDE047;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1.8px;font-family:Arial,sans-serif">✦ Spring Innovation ✦</span>
+</td></tr>
+</table>
 </td>
-<td width="12%" valign="middle"><div style="width:30px;height:30px;background:#FFABAB;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
+<td width="15%"><div class="side-dot" style="width:24px;height:24px;background:#FBBF24;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
 </tr>
-<!-- Row 3: Dots + Line 3 -->
+</table>
+</td></tr>
+
+<!-- Main 25% OFF Section - COMPACT with side dots -->
+<tr><td style="padding:15px 15px;background:#10B981" class="mobile-padding">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<!-- Row 1: Dots + 25% OFF -->
 <tr>
-<td width="12%" valign="middle"><div style="width:32px;height:32px;background:#FFD93D;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="top" style="padding-top:10px"><div class="side-dot" style="width:30px;height:30px;background:#FBBF24;opacity:0.6;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">14% OFF</div>
+<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0;text-shadow:4px 4px 0px rgba(139,92,246,0.4)">25% OFF</div>
 </td>
-<td width="12%" valign="middle"><div style="width:32px;height:32px;background:#B4F8C8;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="top" style="padding-top:10px"><div class="side-dot" style="width:30px;height:30px;background:#EC4899;opacity:0.6;border-radius:50%;margin:0 auto"></div></td>
 </tr>
-<!-- Row 4: Dots + Line 4 -->
+<!-- Row 2: Dots + 25% OFF -->
 <tr>
-<td width="12%" valign="bottom" style="padding-bottom:10px"><div style="width:34px;height:34px;background:#FFA8E2;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="middle"><div class="side-dot" style="width:32px;height:32px;background:#3B82F6;opacity:0.6;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">14% OFF</div>
+<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0;text-shadow:4px 4px 0px rgba(139,92,246,0.4)">25% OFF</div>
 </td>
-<td width="12%" valign="bottom" style="padding-bottom:10px"><div style="width:30px;height:30px;background:#6BCFFF;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="middle"><div class="side-dot" style="width:30px;height:30px;background:#F59E0B;opacity:0.6;border-radius:50%;margin:0 auto"></div></td>
+</tr>
+<!-- Row 3: Dots + 25% OFF -->
+<tr>
+<td width="12%" valign="middle"><div class="side-dot" style="width:32px;height:32px;background:#EC4899;opacity:0.55;border-radius:50%;margin:0 auto"></div></td>
+<td width="76%" align="center">
+<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0;text-shadow:4px 4px 0px rgba(139,92,246,0.4)">25% OFF</div>
+</td>
+<td width="12%" valign="middle"><div class="side-dot" style="width:32px;height:32px;background:#06B6D4;opacity:0.6;border-radius:50%;margin:0 auto"></div></td>
+</tr>
+<!-- Row 4: Dots + 25% OFF -->
+<tr>
+<td width="12%" valign="bottom" style="padding-bottom:10px"><div class="side-dot" style="width:34px;height:34px;background:#F59E0B;opacity:0.55;border-radius:50%;margin:0 auto"></div></td>
+<td width="76%" align="center">
+<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0;text-shadow:4px 4px 0px rgba(139,92,246,0.4)">25% OFF</div>
+</td>
+<td width="12%" valign="bottom" style="padding-bottom:10px"><div class="side-dot" style="width:30px;height:30px;background:#3B82F6;opacity:0.55;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
 <!-- Headline with dots -->
-<tr><td style="padding:20px 40px 12px 40px;background:#FF6B9D" class="mobile-padding">
+<tr><td style="padding:20px 40px 12px 40px;background:#10B981" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="12%"><div style="width:24px;height:24px;background:#6BCFFF;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%"><div class="side-dot" style="width:24px;height:24px;background:#F59E0B;opacity:0.6;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<span class="headline" style="color:#ffffff;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.2">EVERYTHING 14% OFF</span>
-<span class="headline" style="color:#ffffff;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.2">FOR VALENTINE'S DAY!</span>
+<span class="headline" style="color:#ffffff;font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.3;margin-bottom:8px">Spring Into Success!</span>
 </td>
-<td width="12%"><div style="width:24px;height:24px;background:#FFD93D;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%"><div class="side-dot" style="width:24px;height:24px;background:#EC4899;opacity:0.6;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
 <!-- Subtext with dots -->
-<tr><td style="padding:0 40px 12px 40px;background:#FF6B9D" class="mobile-padding">
+<tr><td style="padding:0 40px 18px 40px;background:#10B981" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="10%"><div style="width:20px;height:20px;background:#FFABAB;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
+<td width="10%"><div class="side-dot" style="width:20px;height:20px;background:#FBBF24;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
 <td width="80%" align="center">
-<span style="color:#ffffff;font-size:12px;font-family:Arial,sans-serif;display:block;line-height:1.4">Time to refresh your website:</span>
-<span style="color:#ffffff;font-size:12px;font-family:Arial,sans-serif;display:block;line-height:1.4">Our <strong style="font-weight:700">biggest sale of the year</strong> is here.</span>
+<span style="color:#ffffff;font-size:14px;font-family:Arial,sans-serif;line-height:1.5;display:block">Transform your business with cutting-edge solutions. Enjoy <strong style="font-weight:700">25% off everything</strong> this spring.</span>
 </td>
-<td width="10%"><div style="width:20px;height:20px;background:#B4F8C8;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
+<td width="10%"><div class="side-dot" style="width:20px;height:20px;background:#3B82F6;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
-<!-- Code with dots -->
-<tr><td style="padding:0 40px 15px 40px;background:#FF6B9D" class="mobile-padding">
+<!-- Service Icons Grid with dots -->
+<tr><td align="center" style="padding:0 30px 20px 30px;background:#10B981" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="18%"><div style="width:18px;height:18px;background:#A0E7E5;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
-<td width="64%" align="center">
-<span style="color:#ffffff;font-size:12px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px">VISIT OUR SITE <strong style="font-weight:900;font-size:14px;letter-spacing:1px">LIMITED TIME OFFER</strong></span>
+<td width="10%"><div class="side-dot" style="width:22px;height:22px;background:#EC4899;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
+<td width="80%" align="center">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border-radius:15px;box-shadow:0 6px 25px rgba(139,92,246,0.3);display:inline-block">
+<tr><td style="padding:20px 25px">
+
+<table cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="padding-bottom:10px" colspan="4">
+<span style="color:#8B5CF6;font-size:13px;font-weight:900;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1.5px">Our Solutions</span>
+</td></tr>
+<tr>
+<!-- Web Development -->
+<td style="padding:8px 12px" align="center">
+<div style="text-align:center">
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" class="service-icon">
+  <rect x="8" y="12" width="44" height="36" rx="3" fill="#A7F3D0" opacity="0.3"/>
+  <rect x="10" y="14" width="40" height="32" rx="2" fill="#14B8A6" opacity="0.6"/>
+  <rect x="12" y="16" width="36" height="28" rx="2" fill="#0F766E"/>
+  <path d="M20 26L24 30L20 34" stroke="#A7F3D0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="28" y1="26" x2="28" y2="34" stroke="#A7F3D0" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M32 30L40 30" stroke="#A7F3D0" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
+<div style="margin-top:5px">
+<span style="font-size:11px;font-weight:700;color:#0F766E;font-family:Arial,sans-serif;text-transform:uppercase">Web Dev</span>
+</div>
+</div>
 </td>
-<td width="18%"><div style="width:18px;height:18px;background:#FFD93D;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
+
+<!-- CRM Solutions -->
+<td style="padding:8px 12px" align="center">
+<div style="text-align:center">
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" class="service-icon">
+  <circle cx="30" cy="30" r="24" fill="#BFDBFE" opacity="0.3"/>
+  <circle cx="30" cy="30" r="18" fill="#60A5FA" opacity="0.5"/>
+  <rect x="18" y="20" width="24" height="20" rx="2" fill="#1E40AF"/>
+  <line x1="22" y1="26" x2="36" y2="26" stroke="#BFDBFE" stroke-width="2" stroke-linecap="round"/>
+  <line x1="22" y1="30" x2="36" y2="30" stroke="#BFDBFE" stroke-width="2" stroke-linecap="round"/>
+  <line x1="22" y1="34" x2="32" y2="34" stroke="#BFDBFE" stroke-width="2" stroke-linecap="round"/>
+</svg>
+<div style="margin-top:5px">
+<span style="font-size:11px;font-weight:700;color:#1E40AF;font-family:Arial,sans-serif;text-transform:uppercase">CRM</span>
+</div>
+</div>
+</td>
+
+<!-- Mobile Design -->
+<td style="padding:8px 12px" align="center">
+<div style="text-align:center">
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" class="service-icon">
+  <rect x="20" y="10" width="20" height="40" rx="3" fill="#FDE68A" opacity="0.3"/>
+  <rect x="21" y="11" width="18" height="38" rx="2.5" fill="#FBBF24" opacity="0.5"/>
+  <rect x="22" y="12" width="16" height="36" rx="2" fill="#D97706"/>
+  <rect x="24" y="16" width="12" height="24" rx="1" fill="#FEF3C7"/>
+  <circle cx="30" cy="43" r="1.5" fill="#FEF3C7"/>
+</svg>
+<div style="margin-top:5px">
+<span style="font-size:11px;font-weight:700;color:#D97706;font-family:Arial,sans-serif;text-transform:uppercase">Mobile</span>
+</div>
+</div>
+</td>
+
+<!-- Performance -->
+<td style="padding:8px 12px" align="center">
+<div style="text-align:center">
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg" class="service-icon">
+  <circle cx="30" cy="30" r="24" fill="#FBCFE8" opacity="0.3"/>
+  <circle cx="30" cy="30" r="18" fill="#F472B6" opacity="0.4"/>
+  <path d="M30 12L34 24L46 26L36 34L39 46L30 40L21 46L24 34L14 26L26 24L30 12Z" fill="#BE185D"/>
+  <circle cx="30" cy="30" r="6" fill="#FEF3C7"/>
+</svg>
+<div style="margin-top:5px">
+<span style="font-size:11px;font-weight:700;color:#BE185D;font-family:Arial,sans-serif;text-transform:uppercase">Speed</span>
+</div>
+</div>
+</td>
+</tr>
+</table>
+
+</td></tr>
+</table>
+</td>
+<td width="10%"><div class="side-dot" style="width:22px;height:22px;background:#FBBF24;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
 <!-- Button with dots -->
-<tr><td style="padding:0 40px 30px 40px;background:#FF6B9D" class="mobile-padding">
+<tr><td style="padding:0 40px 22px 40px;background:#10B981" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="12%"><div style="width:22px;height:22px;background:#6BCFFF;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%"><div class="side-dot" style="width:22px;height:22px;background:#F59E0B;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#FFD93D;border-radius:40px;border:3px solid #ffffff;display:inline-block;margin:0 auto">
-<tr><td style="padding:14px 50px">
-<a href="https://diamondbackcoding.com" style="color:#FF6B9D;font-size:15px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.3px;font-family:Arial Black,Arial,sans-serif;display:block">START NOW</a>
+<table cellpadding="0" cellspacing="0" border="0" style="background:#8B5CF6;border-radius:50px;box-shadow:0 8px 25px rgba(236,72,153,0.5);display:inline-block">
+<tr><td style="padding:15px 55px">
+<a href="https://diamondbackcoding.com" style="color:#ffffff;font-size:15px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.8px;font-family:Arial Black,Arial,sans-serif;display:block">Get Started Today</a>
 </td></tr>
 </table>
 </td>
-<td width="12%"><div style="width:22px;height:22px;background:#FFA8E2;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%"><div class="side-dot" style="width:22px;height:22px;background:#06B6D4;opacity:0.55;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
-<!-- Turquoise separator -->
-<tr><td style="padding:0;background:#6BCFFF;height:30px"></td></tr>
+<!-- Bottom Decorative Spring Icons with dots -->
+<tr><td align="center" style="padding:15px 40px 20px 40px;background:#10B981" class="mobile-padding">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td width="15%"><div class="side-dot" style="width:20px;height:20px;background:#EC4899;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
+<td width="70%" align="center">
+<table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
+<tr>
+<td style="padding:0 6px">
+<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M19 6C19 6 13 10 13 19C13 28 16 32 19 32V6Z" fill="#FBBF24" opacity="0.8"/>
+  <path d="M19 6C19 6 25 10 25 19C25 28 22 32 19 32V6Z" fill="#FBBF24" opacity="0.5"/>
+</svg>
+</td>
+<td style="padding:0 6px">
+<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="19" cy="19" r="17" stroke="#EC4899" stroke-width="2.5" opacity="0.8"/>
+  <circle cx="19" cy="19" r="10" fill="#FDE047" opacity="0.9"/>
+</svg>
+</td>
+<td style="padding:0 6px">
+<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="8" y="15.5" width="22" height="7" rx="3.5" fill="#3B82F6" opacity="0.7"/>
+  <rect x="15.5" y="8" width="7" height="22" rx="3.5" fill="#3B82F6" opacity="0.7"/>
+</svg>
+</td>
+<td style="padding:0 6px">
+<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="19" cy="10" r="4" fill="#EC4899" opacity="0.8"/>
+  <circle cx="28" cy="19" r="4" fill="#EC4899" opacity="0.8"/>
+  <circle cx="19" cy="28" r="4" fill="#EC4899" opacity="0.8"/>
+  <circle cx="10" cy="19" r="4" fill="#EC4899" opacity="0.8"/>
+  <circle cx="19" cy="19" r="5" fill="#FDE047" opacity="0.9"/>
+</svg>
+</td>
+<td style="padding:0 6px">
+<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M19 6C19 6 25 10 25 19C25 28 22 32 19 32V6Z" fill="#06B6D4" opacity="0.7"/>
+  <path d="M19 6C19 6 13 10 13 19C13 28 16 32 19 32V6Z" fill="#06B6D4" opacity="0.5"/>
+</svg>
+</td>
+</tr>
+</table>
+</td>
+<td width="15%"><div class="side-dot" style="width:20px;height:20px;background:#FBBF24;opacity:0.5;border-radius:50%;margin:0 auto"></div></td>
+</tr>
+</table>
+</td></tr>
 
-<!-- Turquoise Footer -->
-<tr><td style="background:#6BCFFF;padding:25px 40px 30px 40px" class="mobile-padding">
+<!-- Wavy Bottom Border -->
+<tr><td style="padding:0;background:#10B981">
+<svg width="600" height="35" viewBox="0 0 600 35" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto">
+  <path d="M0 10C100 3 200 18 300 10C400 3 500 18 600 10V35H0V10Z" fill="#F59E0B"/>
+  <path d="M0 3C100 10 200 0 300 7C400 14 500 3 600 10V35H0V3Z" fill="#EC4899" opacity="0.6"/>
+</svg>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="background:#F59E0B;padding:25px 40px 30px 40px" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 
 <tr><td align="center" style="font-size:11px;line-height:1.5;color:#ffffff;padding:0 0 18px 0;font-family:Arial,sans-serif">
-Not valid after 02/28/2026 &amp; save on Web Development & CRM solutions. Offer applies 02/09 - 02/28, 2026 only.
+Offer valid March 1 - April 30, 2026. New clients only. Terms apply.
 </td></tr>
 
 <!-- Social Media Icons - BASE64 EMBEDDED -->
@@ -9440,7 +9603,8 @@ No longer want to receive these emails? <a href="#" style="color:#ffffff;text-de
 </td></tr>
 
 <tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.5">
-<strong>Diamondback Coding</strong> 15709 Spillman Ranch Loop #216 Austin, TX 78738
+<strong>Diamondbackcoding</strong> · Web Development & CRM Solutions<br>
+Your Address · City, State ZIP
 </td></tr>
 
 </table>

@@ -9200,6 +9200,9 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
                 Best regards,
                 Diamondback Coding Team
             `;
+        } else if (template === 'initial') {
+            emailSubject = `Welcome to Diamondback Coding - ${lead.name}`;
+            // Complete HTML will be generated below
         } else if (template === 'valentinessale') {
             emailSubject = `VALENTINE'S DAY: 25% OFF Everything for ${lead.name}`;
             // Complete HTML will be generated below
@@ -9233,10 +9236,220 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
         // Build branded email
         let emailHTML;
         
-        // For blackfriday template, use complete standalone HTML
+        // For initial (welcome) template, use complete standalone HTML
+        if (template === 'initial') {
+            let unsubToken = lead.unsubscribe_token;
+            if (!unsubToken) {
+                unsubToken = crypto.randomBytes(32).toString('hex');
+                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsubToken, leadId]);
+            }
+            const unsubUrl = `${BASE_URL}/api/unsubscribe/${unsubToken}`;
+            
+            emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome to Diamondback Coding</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F5F5F5">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F5F5">
+<tr><td align="center" style="padding:40px 20px">
+
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;max-width:600px">
+
+<tr><td style="background-color:#F59E0B;padding:50px 40px 80px 40px;text-align:center">
+<span style="color:#ffffff;font-size:38px;font-weight:300;letter-spacing:2px;font-family:Georgia,serif;font-style:italic;display:block">Diamondback Coding</span>
+<div style="width:80px;height:2px;background-color:#ffffff;margin:20px auto"></div>
+<span style="color:#ffffff;font-size:13px;font-weight:400;letter-spacing:1.5px;font-family:Arial,sans-serif;text-transform:uppercase">Web Development • CRM Solutions</span>
+</td></tr>
+
+<tr><td style="background-color:#ffffff;padding:40px 50px 50px 50px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="padding-bottom:25px">
+<span style="color:#2C3E50;font-size:32px;font-weight:700;font-family:Arial,sans-serif">About Us</span>
+</td></tr>
+<tr><td align="center" style="padding-bottom:35px">
+<span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:480px;margin:0 auto">
+I'm Taylor C., founder of Diamondback Coding, LLC. We're a local business in your area dedicated to helping business owners like you with professional web development and customer management solutions.
+</span>
+</td></tr>
+</table>
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px">
+<tr><td style="padding:12px 0">
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+<td width="40" valign="top">
+<span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+</td>
+<td valign="middle" style="padding-left:15px">
+<span style="font-size:15px;color:#2C3E50;font-family:Arial,sans-serif;line-height:1.6">
+<strong>100% Ownership</strong> - You own your website and customer system with zero transaction fees
+</span>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:12px 0">
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+<td width="40" valign="top">
+<span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+</td>
+<td valign="middle" style="padding-left:15px">
+<span style="font-size:15px;color:#2C3E50;font-family:Arial,sans-serif;line-height:1.6">
+<strong>Custom Solutions</strong> - Built specifically for how your business operates
+</span>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:12px 0">
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+<td width="40" valign="top">
+<span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+</td>
+<td valign="middle" style="padding-left:15px">
+<span style="font-size:15px;color:#2C3E50;font-family:Arial,sans-serif;line-height:1.6">
+<strong>Local Support</strong> - We're right here in your area when you need us
+</span>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:12px 0">
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+<td width="40" valign="top">
+<span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+</td>
+<td valign="middle" style="padding-left:15px">
+<span style="font-size:15px;color:#2C3E50;font-family:Arial,sans-serif;line-height:1.6">
+<strong>No Transaction Fees</strong> - Stop losing up to 6% on every sale to your platform
+</span>
+</td>
+</tr>
+</table>
+</td></tr>
+</table>
+
+</td></tr>
+
+<tr><td style="background-color:#F5F5F5;padding:30px 50px 50px 50px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="padding-bottom:40px">
+<span style="color:#2C3E50;font-size:32px;font-weight:700;font-family:Arial,sans-serif">Our Services</span>
+</td></tr>
+</table>
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td width="33.33%" valign="top" style="padding:0 8px">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;width:100%">
+<tr><td style="padding:30px 20px;text-align:center">
+<span style="font-size:50px;display:block;margin-bottom:15px">💻</span>
+<span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:10px">Web Development</span>
+<span style="color:#6B7280;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;display:block">Custom websites and landing pages built to convert</span>
+</td></tr>
+</table>
+</td>
+
+<td width="33.33%" valign="top" style="padding:0 8px">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#F59E0B;border-radius:12px;width:100%">
+<tr><td style="padding:30px 20px;text-align:center">
+<span style="font-size:50px;display:block;margin-bottom:15px">📊</span>
+<span style="color:#ffffff;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:10px">CRM Solutions</span>
+<span style="color:#ffffff;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;display:block">Track leads and manage customer relationships</span>
+</td></tr>
+</table>
+</td>
+
+<td width="33.33%" valign="top" style="padding:0 8px">
+<table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;width:100%">
+<tr><td style="padding:30px 20px;text-align:center">
+<span style="font-size:50px;display:block;margin-bottom:15px">🚀</span>
+<span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:10px">SEO & Support</span>
+<span style="color:#6B7280;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;display:block">Rank higher and keep your site running smooth</span>
+</td></tr>
+</table>
+</td>
+</tr>
+</table>
+
+</td></tr>
+
+<tr><td style="background-color:#F5F5F5;padding:40px 50px">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#2C3E50;border-radius:12px">
+<tr><td style="padding:40px 35px;text-align:center">
+<span style="color:#ffffff;font-size:24px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:15px;line-height:1.3">Ready to Transform Your Business?</span>
+<span style="color:#E5E7EB;font-size:15px;font-family:Arial,sans-serif;display:block;margin-bottom:25px;line-height:1.6">Let's discuss how we can help you grow with a custom web solution</span>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
+<tr><td style="background-color:#F59E0B;border-radius:6px;padding:14px 40px">
+<a href="https://diamondbackcoding.com/contact.html" style="color:#000000;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,sans-serif;display:block">Get Started</a>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="background-color:#F5F5F5;padding:30px 50px 40px 50px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px">
+<tr><td style="padding:30px;text-align:center">
+<span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:15px">Contact Us</span>
+<span style="color:#6B7280;font-size:14px;font-family:Arial,sans-serif;line-height:2;display:block">
+<strong>Phone:</strong> <a href="tel:+19402178680" style="color:#F59E0B;text-decoration:none">940-217-8680</a><br>
+<strong>Email:</strong> <a href="mailto:contact@diamondbackcoding.com" style="color:#F59E0B;text-decoration:none">contact@diamondbackcoding.com</a><br>
+<strong>Web:</strong> <a href="https://www.diamondbackcoding.com" style="color:#F59E0B;text-decoration:none">www.diamondbackcoding.com</a>
+</span>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="background-color:#2C3E50;padding:35px 40px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="padding-bottom:20px">
+<table cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="padding:0 15px">
+<a href="https://instagram.com/diamondbackcoding" style="color:#F59E0B;font-size:13px;font-weight:600;text-decoration:none;font-family:Arial,sans-serif">Instagram</a>
+</td>
+<td style="padding:0 15px;color:#6B7280">|</td>
+<td style="padding:0 15px">
+<a href="https://facebook.com/diamondbackcoding" style="color:#F59E0B;font-size:13px;font-weight:600;text-decoration:none;font-family:Arial,sans-serif">Facebook</a>
+</td>
+<td style="padding:0 15px;color:#6B7280">|</td>
+<td style="padding:0 15px">
+<a href="https://twitter.com/diamondbackcoding" style="color:#F59E0B;font-size:13px;font-weight:600;text-decoration:none;font-family:Arial,sans-serif">Twitter</a>
+</td>
+</tr>
+</table>
+</td></tr>
+<tr><td align="center" style="font-size:11px;color:#9CA3AF;padding:0 0 12px 0;font-family:Arial,sans-serif">
+<a href="${unsubUrl}" style="color:#9CA3AF;text-decoration:underline">Unsubscribe</a> | <a href="https://diamondbackcoding.com/preferences" style="color:#9CA3AF;text-decoration:underline">Update Preferences</a>
+</td></tr>
+<tr><td align="center" style="font-size:11px;color:#E5E7EB;font-family:Arial,sans-serif;line-height:1.8">
+<strong>Diamondback Coding, LLC</strong><br>
+15709 Spillman Ranch Loop · Austin, TX 78738
+</td></tr>
+</table>
+</td></tr>
+
+</table>
+
+</td></tr>
+</table>
+
+</body>
+</html>`;
         
         // For valentinessale template (PINK), use complete standalone HTML
-        if (template === 'valentinessale') {
+        } else if (template === 'valentinessale') {
             let unsubToken = lead.unsubscribe_token;
             if (!unsubToken) {
                 unsubToken = crypto.randomBytes(32).toString('hex');

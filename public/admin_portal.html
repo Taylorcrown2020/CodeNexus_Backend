@@ -6633,6 +6633,16 @@ window.showEmailModal = function(leadId, leadName, leadEmail) {
                 </div>
                 <div style="padding: 20px;">
                     <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Email Template:</label>
+                        <select id="emailTemplate_${leadId}" onchange="loadEmailTemplate(${leadId}, '${leadName.replace(/'/g, "\\'")}', '${leadEmail}')" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: white; box-sizing: border-box; font-size: 14px;">
+                            <option value="">-- Select a Template --</option>
+                            <option value="valentines">💝 Valentine's Day Promo (14% Off)</option>
+                            <option value="initial">✉️ Initial Contact</option>
+                            <option value="followup">📧 Follow-Up</option>
+                            <option value="custom">✏️ Custom (blank)</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">To:</label>
                         <input type="email" value="${leadEmail}" readonly style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f3f4f6; box-sizing: border-box;">
                     </div>
@@ -6693,14 +6703,96 @@ window.showEmailModal = function(leadId, leadName, leadEmail) {
         });
     }
 
-    setTimeout(() => document.getElementById('emailSubject_' + leadId)?.focus(), 100);
+    setTimeout(() => document.getElementById('emailTemplate_' + leadId)?.focus(), 100);
 };
+
+// Load email template content
+window.loadEmailTemplate = function(leadId, leadName, leadEmail) {
+    const templateSelect = document.getElementById('emailTemplate_' + leadId);
+    const subjectField = document.getElementById('emailSubject_' + leadId);
+    const bodyField = document.getElementById('emailBody_' + leadId);
+    
+    const template = templateSelect.value;
+    
+    if (template === 'custom' || template === '') {
+        subjectField.value = '';
+        bodyField.value = '';
+        return;
+    }
+    
+    // Define template content
+    const templates = {
+        valentines: {
+            subject: `Valentine's Day Special - 14% Off for ${leadName}`,
+            body: `Hi ${leadName},
+
+We're running our BIGGEST SALE OF THE YEAR for Valentine's Day! 
+
+🎉 Get 14% OFF your first month 🎉
+
+This applies to:
+• Custom CRM Development
+• Custom Website Development
+• All new projects
+
+This is the perfect time to boost your business with a custom solution tailored to your needs.
+
+Click here to get started: https://diamondbackcoding.com/contact.html
+
+Offer valid until February 28, 2026.
+
+Warm regards,
+The Diamondback Coding Team`
+        },
+        initial: {
+            subject: `Quick Question About Your Business, ${leadName}`,
+            body: `Hi ${leadName},
+
+I wanted to reach out and see if you'd be interested in discussing how a custom CRM or website could help streamline your business operations.
+
+We specialize in building tailored solutions that help businesses like yours:
+• Automate lead tracking and follow-ups
+• Improve customer engagement
+• Increase operational efficiency
+
+Would you be open to a quick 15-minute call to explore what we could build for you?
+
+Best regards,
+Diamondback Coding Team`
+        },
+        followup: {
+            subject: `Following Up - ${leadName}`,
+            body: `Hi ${leadName},
+
+I wanted to follow up on my previous message about custom development solutions for your business.
+
+Are you still interested in exploring how we could help with:
+• Custom CRM systems
+• Professional website development
+• Business automation tools
+
+Let me know if you'd like to schedule a brief call to discuss your needs.
+
+Looking forward to hearing from you!
+
+Best regards,
+Diamondback Coding Team`
+        }
+    };
+    
+    if (templates[template]) {
+        subjectField.value = templates[template].subject;
+        bodyField.value = templates[template].body;
+    }
+};
+
 
 window.doSendEmail = async function(leadId, leadEmail) {
     console.log('[EMAIL] Starting send for lead:', leadId);
     
     const subject = document.getElementById('emailSubject_' + leadId)?.value;
     const body = document.getElementById('emailBody_' + leadId)?.value;
+    const template = document.getElementById('emailTemplate_' + leadId)?.value || 'custom';
     
     if (!subject || !body) {
         showToast('Please fill in both subject and message', 'error');
@@ -6726,14 +6818,14 @@ window.doSendEmail = async function(leadId, leadEmail) {
             response = await fetch(`${API_URL}/api/auto-campaigns`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ leadId, subject, body })
+                body: JSON.stringify({ leadId, subject, body, template })
             });
         } else {
             // Normal one-shot send
             response = await fetch(`${API_URL}/api/email/send-custom`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to: leadEmail, subject, body, leadId, isFollowUp: state.currentSection === 'followups' })
+                body: JSON.stringify({ to: leadEmail, subject, body, leadId, isFollowUp: state.currentSection === 'followups', template })
             });
         }
         

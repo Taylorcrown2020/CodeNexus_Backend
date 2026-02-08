@@ -797,6 +797,7 @@ body {
 .data-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: auto;
 }
 
 .data-table thead {
@@ -876,9 +877,12 @@ body {
 .action-buttons {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: nowrap;
-    justify-content: flex-end;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.action-buttons .btn {
+    flex-shrink: 0;
 }
 
 /* ========================================
@@ -17093,7 +17097,7 @@ function buildCategoryContent(category, categoryLabels) {
                             ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
                         </span>
                     </td>
-                    <td style="width: 280px; min-width: 280px;">
+                    <td>
                         <div class="action-buttons">
                             <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -17123,10 +17127,12 @@ function buildCategoryContent(category, categoryLabels) {
                     Email All
                 </button>
             </div>
-            <table class="data-table">
-                <thead><tr><th>Lead</th><th>Last Contact</th><th>Days Since</th><th style="width: 280px; min-width: 280px;">Actions</th></tr></thead>
-                <tbody>${leadsHtml}</tbody>
-            </table>
+            <div style="overflow-x: auto; margin-bottom: 24px;">
+                <table class="data-table">
+                    <thead><tr><th>Lead</th><th>Last Contact</th><th>Days Since</th><th>Actions</th></tr></thead>
+                    <tbody>${leadsHtml}</tbody>
+                </table>
+            </div>
         </div>`;
 }
 

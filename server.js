@@ -9235,81 +9235,95 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
             const year = new Date().getFullYear();
             
             
-            // Valentine's Day promo - SHORTENED to fit on one screen
+            // Valentine's Day email - EMAIL CLIENT COMPATIBLE
             emailHTML = `<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Valentine's Day Special - 14% Off</title>
-<style>body,td,th,div,p,a,ul,li,ol{margin:0;padding:0}img{border:none;display:block}body{font-family:'Segoe UI',Helvetica,Arial,sans-serif;background-color:#f0efe9;color:#2a2a2a;-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}.email-outer{max-width:620px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)}.logo-icon{width:28px;height:28px}</style>
 </head>
-<body>
-<div style="padding:20px 0" align="center">
-<div class="email-outer">
-<div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:20px 36px;position:relative">
-<div style="position:absolute;top:10px;right:30px;width:40px;height:40px;background:#D4A847;opacity:0.15;border-radius:50%"></div>
-<div style="position:absolute;bottom:10px;left:40px;width:35px;height:35px;background:#00d4ff;opacity:0.12;border-radius:50%"></div>
-<div style="display:flex;align-items:center;gap:10px;position:relative;z-index:10">
-<svg class="logo-icon" viewBox="0 0 28 28" fill="none"><path d="M14 2L26 8.5V21.5L14 28L2 21.5V8.5L14 2Z" stroke="#D4A847" stroke-width="1.8" fill="none"/><path d="M14 2L26 8.5L14 15L2 8.5L14 2Z" stroke="#D4A847" stroke-width="1.2" fill="none" opacity="0.5"/><path d="M14 15V28" stroke="#D4A847" stroke-width="1.2" opacity="0.5"/></svg>
-<span style="font-size:16px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#D4A847">Diamondback Coding</span>
-</div>
-</div>
-<div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:30px 20px;position:relative;overflow:hidden">
-<div style="position:absolute;top:20px;left:20px;width:60px;height:60px;background:#D4A847;opacity:0.15;border-radius:50%"></div>
-<div style="position:absolute;bottom:30px;right:25px;width:70px;height:70px;background:#00d4ff;opacity:0.1;border-radius:50%"></div>
-<div style="position:absolute;top:80px;right:40px;width:45px;height:45px;background:#ff00ff;opacity:0.12;border-radius:50%"></div>
-<div style="position:absolute;top:120px;left:50%;transform:translateX(-50%);color:#00d4ff;font-size:35px;font-family:'Courier New',monospace;font-weight:700;opacity:0.2">&lt;/&gt;</div>
-<div style="position:absolute;bottom:100px;left:50%;transform:translateX(-50%);color:#ff00ff;font-size:30px;font-family:'Courier New',monospace;font-weight:700;opacity:0.18">{ }</div>
-<div style="text-align:center;padding:15px 0 10px 0;position:relative;z-index:10">
-<div style="color:white;font-size:22px;font-weight:400;letter-spacing:2px;font-family:Georgia,serif;font-style:italic">Diamondback Coding<span style="font-size:12px;vertical-align:super;font-style:normal">®</span></div>
-</div>
-<div style="text-align:center;margin:12px auto 15px;position:relative;z-index:10;max-width:500px">
-<div style="background:linear-gradient(90deg,#00d4ff 0%,#D4A847 50%,#ff00ff 100%);padding:2px;border-radius:25px">
-<div style="background:#0f3460;padding:8px 20px;border-radius:23px">
-<div style="font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;color:#D4A847">CUSTOM WEB DEVELOPMENT & CRMS</div>
-</div>
-</div>
-</div>
-<div style="text-align:center;margin-bottom:15px;position:relative;z-index:10">
-<div style="display:inline-block;background:#A8D5E2;color:#1a4d7a;padding:6px 20px;border-radius:20px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.5px">OUR BIGGEST SALE OF THE YEAR</div>
-</div>
-<div style="text-align:center;position:relative;z-index:10;margin:15px 0">
-<div style="color:white;font-size:70px;font-weight:900;line-height:0.85;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px">14% OFF</div>
-</div>
-<div style="text-align:center;padding:15px 30px;color:white;position:relative;z-index:10">
-<div style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">EVERYTHING 14% OFF</div>
-<div style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">FOR VALENTINE'S DAY!</div>
-<div style="font-size:13px;margin-bottom:6px">Hi ${lead.name}, time to boost your business:</div>
-<div style="font-size:13px;font-weight:700;margin-bottom:8px">Our <strong>biggest sale of the year</strong> is here.</div>
-<div style="font-size:12px;color:#A8D5E2">14% off your first month per user</div>
-</div>
-<div style="text-align:center;padding:15px 0 25px 0;position:relative;z-index:10">
-<a href="https://diamondbackcoding.com/contact.html" style="display:inline-block;background:#DC143C;color:white;padding:14px 55px;border-radius:30px;font-size:17px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2px;box-shadow:0 4px 20px rgba(220,20,60,0.5)">START NOW</a>
-</div>
-<div style="background:#FFD700;padding:20px 30px 15px;position:relative;z-index:10">
-<div style="text-align:center;font-size:9px;line-height:1.3;color:#333;margin-bottom:10px">14% off first month per user. Valid for Custom CRM or Custom Website. Offer expires 2/28/2026.</div>
-<div style="text-align:center;font-size:9px;color:#333;margin-bottom:6px"><a href="${unsubUrl}" style="color:#333;text-decoration:underline">Unsubscribe</a></div>
-<div style="text-align:center;font-size:8px;color:#555">Diamondback Coding · 15709 Spillman Ranch Loop · Austin, TX 78738</div>
-</div>
-</div>
-<div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:20px 36px;position:relative">
-<div style="position:absolute;top:10px;left:30px;width:30px;height:30px;background:#ff00ff;opacity:0.12;border-radius:50%"></div>
-<div style="position:absolute;bottom:10px;right:25px;width:35px;height:35px;background:#00FF88;opacity:0.1;border-radius:50%"></div>
-<table width="100%" cellpadding="0" cellspacing="0" style="position:relative;z-index:10">
-<tr><td style="font-size:12px;font-weight:600;color:#D4A847;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">DIAMONDBACK CODING</td></tr>
-<tr><td style="font-size:11px;color:#A8D5E2;line-height:1.6;padding-top:6px">15709 Spillman Ranch Loop, Austin, TX 78738<br><a href="mailto:contact@diamondbackcoding.com" style="color:#A8D5E2">contact@diamondbackcoding.com</a> · <a href="tel:+19402178680" style="color:#A8D5E2">(940) 217-8680</a></td></tr>
-<tr><td style="font-size:10px;color:#888;padding-top:8px">
-<a href="https://diamondbackcoding.com" style="color:#A8D5E2;margin-right:12px;text-decoration:none">Website</a>
-<a href="https://diamondbackcoding.com/projects" style="color:#A8D5E2;margin-right:12px;text-decoration:none">Projects</a>
-<a href="https://diamondbackcoding.com/services" style="color:#A8D5E2;margin-right:12px;text-decoration:none">Services</a>
+<body style="margin:0;padding:0;background-color:#f0efe9">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0efe9">
+<tr><td align="center" style="padding:20px 0">
+<table width="620" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;max-width:620px">
+<tr><td style="background:#1a2740;padding:20px 30px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="color:#D4A847;font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif">DIAMONDBACK CODING</td></tr>
+</table>
+</td></tr>
+<tr><td style="background:#1a2740;padding:25px 20px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="padding:10px 0">
+<span style="color:#fff;font-size:22px;font-weight:400;letter-spacing:2px;font-family:Georgia,serif;font-style:italic">Diamondback Coding®</span>
+</td></tr>
+<tr><td align="center" style="padding:10px 0">
+<table cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(90deg,#00d4ff,#D4A847,#ff00ff);border-radius:25px;padding:2px">
+<tr><td style="background:#0f3460;padding:8px 20px;border-radius:23px">
+<span style="color:#D4A847;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif">CUSTOM WEB DEVELOPMENT & CRMS</span>
+</td></tr>
+</table>
+</td></tr>
+<tr><td align="center" style="padding:10px 0">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#A8D5E2;border-radius:20px">
+<tr><td style="color:#1a4d7a;padding:6px 20px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;font-family:Arial,sans-serif">
+OUR BIGGEST SALE OF THE YEAR
+</td></tr>
+</table>
+</td></tr>
+<tr><td align="center" style="padding:15px 0">
+<span style="color:#fff;font-size:70px;font-weight:900;line-height:0.9;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px">14% OFF</span>
+</td></tr>
+<tr><td align="center" style="padding:15px 20px;color:#fff">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:5px 0;font-family:Arial,sans-serif">EVERYTHING 14% OFF</td></tr>
+<tr><td align="center" style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:5px 0;font-family:Arial,sans-serif">FOR VALENTINE'S DAY!</td></tr>
+<tr><td align="center" style="font-size:13px;padding:8px 0;font-family:Arial,sans-serif">Hi ${lead.name}, time to boost your business:</td></tr>
+<tr><td align="center" style="font-size:13px;font-weight:700;padding:5px 0;font-family:Arial,sans-serif">Our biggest sale of the year is here.</td></tr>
+<tr><td align="center" style="font-size:12px;color:#A8D5E2;padding:5px 0;font-family:Arial,sans-serif">14% off your first month per user</td></tr>
+</table>
+</td></tr>
+<tr><td align="center" style="padding:15px 0 25px 0">
+<table cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background:#DC143C;border-radius:30px;padding:14px 55px">
+<a href="https://diamondbackcoding.com/contact.html" style="color:#fff;font-size:17px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2px;font-family:Arial,sans-serif">START NOW</a>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</td></tr>
+<tr><td style="background:#FFD700;padding:20px 25px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="font-size:9px;line-height:1.4;color:#333;padding:0 0 10px 0;font-family:Arial,sans-serif">
+14% off first month per user. Valid for Custom CRM or Custom Website. Offer expires 2/28/2026.
+</td></tr>
+<tr><td align="center" style="font-size:9px;color:#333;padding:5px 0;font-family:Arial,sans-serif">
+<a href="${unsubUrl}" style="color:#333;text-decoration:underline">Unsubscribe</a>
+</td></tr>
+<tr><td align="center" style="font-size:8px;color:#555;padding:5px 0;font-family:Arial,sans-serif">
+Diamondback Coding · 15709 Spillman Ranch Loop · Austin, TX 78738
+</td></tr>
+</table>
+</td></tr>
+<tr><td style="background:#1a2740;padding:20px 30px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="font-size:12px;font-weight:600;color:#D4A847;letter-spacing:1.5px;text-transform:uppercase;padding:0 0 8px 0;font-family:Arial,sans-serif">DIAMONDBACK CODING</td></tr>
+<tr><td style="font-size:11px;color:#A8D5E2;line-height:1.6;padding:5px 0;font-family:Arial,sans-serif">
+15709 Spillman Ranch Loop, Austin, TX 78738<br>
+<a href="mailto:contact@diamondbackcoding.com" style="color:#A8D5E2;text-decoration:none">contact@diamondbackcoding.com</a> · 
+<a href="tel:+19402178680" style="color:#A8D5E2;text-decoration:none">(940) 217-8680</a>
+</td></tr>
+<tr><td style="font-size:10px;color:#888;padding:8px 0;font-family:Arial,sans-serif">
+<a href="https://diamondbackcoding.com" style="color:#A8D5E2;text-decoration:none;padding-right:10px">Website</a>
+<a href="https://diamondbackcoding.com/projects" style="color:#A8D5E2;text-decoration:none;padding-right:10px">Projects</a>
+<a href="https://diamondbackcoding.com/services" style="color:#A8D5E2;text-decoration:none;padding-right:10px">Services</a>
 <a href="https://diamondbackcoding.com/company" style="color:#A8D5E2;text-decoration:none">Company</a>
 </td></tr>
-<tr><td style="font-size:10px;color:#777;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">&copy; ${year} Diamondback Coding. All rights reserved.</td></tr>
+<tr><td style="font-size:10px;color:#777;padding:10px 0 0 0;border-top:1px solid rgba(255,255,255,0.1);font-family:Arial,sans-serif">© ${year} Diamondback Coding. All rights reserved.</td></tr>
 </table>
-</div>
-</div>
-</div>
+</td></tr>
+</table>
+</td></tr>
+</table>
 </body>
 </html>`;
             

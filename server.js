@@ -9243,140 +9243,169 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>25% OFF Black Friday Sale</title>
+<style type="text/css">
+/* Mobile Styles */
+@media only screen and (max-width: 600px) {
+  .main-table {
+    width: 100% !important;
+  }
+  .big-text {
+    font-size: 60px !important;
+    letter-spacing: -2px !important;
+  }
+  .headline {
+    font-size: 18px !important;
+  }
+  .brand {
+    font-size: 24px !important;
+  }
+  .badge-text {
+    font-size: 11px !important;
+    padding: 8px 20px !important;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+  .mobile-padding {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}
+</style>
 </head>
-<body style="margin:0;padding:0;background-color:#000000">
+<body style="margin:0;padding:0;background-color:#FF6B9D">
 
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#000000">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FF6B9D">
 <tr><td align="center" style="padding:0">
 
-<table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#000000;max-width:600px">
+<table width="600" cellpadding="0" cellspacing="0" border="0" class="main-table" style="background:#FF6B9D;max-width:600px">
 
 <!-- Brand Name with background dots -->
-<tr><td align="center" style="padding:20px 30px 10px 30px;background:#000000">
+<tr><td align="center" style="padding:20px 30px 10px 30px;background:#FF6B9D" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="20%"><div style="width:30px;height:30px;background:#FFD700;opacity:0.12;border-radius:50%;margin:0 auto"></div></td>
+<td width="20%"><div style="width:30px;height:30px;background:#FFD93D;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
 <td width="60%" align="center" valign="middle">
-<span style="color:#ffffff;font-size:28px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">wildwonder®</span>
+<span class="brand" style="color:#ffffff;font-size:28px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">wildwonder®</span>
 </td>
-<td width="20%"><div style="width:28px;height:28px;background:#FF69B4;opacity:0.1;border-radius:50%;margin:0 auto"></div></td>
+<td width="20%"><div style="width:28px;height:28px;background:#6BCFFF;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
 <!-- Badge -->
-<tr><td align="center" style="padding:0 30px 15px 30px;background:#000000">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#DBEAFE;border-radius:25px;display:inline-block">
-<tr><td style="padding:10px 30px">
-<span style="color:#1E40AF;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</span>
+<tr><td align="center" style="padding:0 30px 15px 30px;background:#FF6B9D" class="mobile-padding">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#FFD93D;border-radius:25px;display:inline-block">
+<tr><td class="badge-text" style="padding:10px 30px">
+<span style="color:#FF6B9D;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</span>
 </td></tr>
 </table>
 </td></tr>
 
 <!-- Large 25% OFF Text Section - COMPACT -->
-<tr><td style="padding:15px 15px;background:#000000">
+<tr><td style="padding:15px 15px;background:#FF6B9D" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <!-- Row 1: Dots + Line 1 -->
 <tr>
-<td width="12%" valign="top" style="padding-top:10px"><div style="width:35px;height:35px;background:#FFD700;opacity:0.15;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="top" style="padding-top:10px"><div style="width:30px;height:30px;background:#FFD93D;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<div style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
+<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
 </td>
-<td width="12%" valign="top" style="padding-top:10px"><div style="width:35px;height:35px;background:#00CED1;opacity:0.12;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="top" style="padding-top:10px"><div style="width:30px;height:30px;background:#6BCFFF;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 <!-- Row 2: Dots + Line 2 -->
 <tr>
-<td width="12%" valign="middle"><div style="width:38px;height:38px;background:#FF69B4;opacity:0.13;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="middle"><div style="width:32px;height:32px;background:#A0E7E5;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<div style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
+<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
 </td>
-<td width="12%" valign="middle"><div style="width:34px;height:34px;background:#FF1493;opacity:0.1;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="middle"><div style="width:30px;height:30px;background:#FFABAB;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 <!-- Row 3: Dots + Line 3 -->
 <tr>
-<td width="12%" valign="middle"><div style="width:36px;height:36px;background:#FFEB3B;opacity:0.14;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="middle"><div style="width:32px;height:32px;background:#FFD93D;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<div style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
+<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
 </td>
-<td width="12%" valign="middle"><div style="width:37px;height:37px;background:#9370DB;opacity:0.13;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="middle"><div style="width:32px;height:32px;background:#B4F8C8;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 <!-- Row 4: Dots + Line 4 -->
 <tr>
-<td width="12%" valign="bottom" style="padding-bottom:10px"><div style="width:40px;height:40px;background:#00FF7F;opacity:0.12;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="bottom" style="padding-bottom:10px"><div style="width:34px;height:34px;background:#FFA8E2;opacity:0.4;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<div style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
+<div class="big-text" style="font-size:90px;font-weight:900;font-family:Arial Black,Arial Bold,Arial,sans-serif;letter-spacing:-3px;color:#ffffff;line-height:0.85;text-align:center;margin:0;padding:0">25% OFF</div>
 </td>
-<td width="12%" valign="bottom" style="padding-bottom:10px"><div style="width:32px;height:32px;background:#FFD700;opacity:0.11;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%" valign="bottom" style="padding-bottom:10px"><div style="width:30px;height:30px;background:#6BCFFF;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
 <!-- Headline with dots -->
-<tr><td style="padding:20px 40px 12px 40px;background:#000000">
+<tr><td style="padding:20px 40px 12px 40px;background:#FF6B9D" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="12%"><div style="width:28px;height:28px;background:#00CED1;opacity:0.11;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%"><div style="width:24px;height:24px;background:#6BCFFF;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<span style="color:#ffffff;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.2">EVERYTHING 25% OFF</span>
-<span style="color:#ffffff;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.2">FOR BLACK FRIDAY!</span>
+<span class="headline" style="color:#ffffff;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.2">EVERYTHING 25% OFF</span>
+<span class="headline" style="color:#ffffff;font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;font-family:Arial Black,Arial,sans-serif;display:block;line-height:1.2">FOR BLACK FRIDAY!</span>
 </td>
-<td width="12%"><div style="width:26px;height:26px;background:#FF69B4;opacity:0.1;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%"><div style="width:24px;height:24px;background:#FFD93D;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
 <!-- Subtext with dots -->
-<tr><td style="padding:0 40px 12px 40px;background:#000000">
+<tr><td style="padding:0 40px 12px 40px;background:#FF6B9D" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="10%"><div style="width:22px;height:22px;background:#FF6347;opacity:0.09;border-radius:50%;margin:0 auto"></div></td>
+<td width="10%"><div style="width:20px;height:20px;background:#FFABAB;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
 <td width="80%" align="center">
 <span style="color:#ffffff;font-size:12px;font-family:Arial,sans-serif;display:block;line-height:1.4">Time to pack the fridge:</span>
 <span style="color:#ffffff;font-size:12px;font-family:Arial,sans-serif;display:block;line-height:1.4">Our <strong style="font-weight:700">biggest sale of the year</strong> is here.</span>
 </td>
-<td width="10%"><div style="width:24px;height:24px;background:#00FF7F;opacity:0.08;border-radius:50%;margin:0 auto"></div></td>
+<td width="10%"><div style="width:20px;height:20px;background:#B4F8C8;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
 <!-- Code with dots -->
-<tr><td style="padding:0 40px 15px 40px;background:#000000">
+<tr><td style="padding:0 40px 15px 40px;background:#FF6B9D" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="18%"><div style="width:20px;height:20px;background:#9370DB;opacity:0.1;border-radius:50%;margin:0 auto"></div></td>
+<td width="18%"><div style="width:18px;height:18px;background:#A0E7E5;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
 <td width="64%" align="center">
 <span style="color:#ffffff;font-size:12px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px">USE CODE <strong style="font-weight:900;font-size:14px;letter-spacing:1px">HOLIDAY25</strong></span>
 </td>
-<td width="18%"><div style="width:22px;height:22px;background:#FFD700;opacity:0.11;border-radius:50%;margin:0 auto"></div></td>
+<td width="18%"><div style="width:18px;height:18px;background:#FFD93D;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
 <!-- Button with dots -->
-<tr><td style="padding:0 40px 30px 40px;background:#000000">
+<tr><td style="padding:0 40px 30px 40px;background:#FF6B9D" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td width="12%"><div style="width:26px;height:26px;background:#00CED1;opacity:0.09;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%"><div style="width:22px;height:22px;background:#6BCFFF;opacity:0.3;border-radius:50%;margin:0 auto"></div></td>
 <td width="76%" align="center">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:40px;border:3px solid #ffffff;display:inline-block;margin:0 auto">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#FFD93D;border-radius:40px;border:3px solid #ffffff;display:inline-block;margin:0 auto">
 <tr><td style="padding:14px 50px">
-<a href="https://wildwonder.com" style="color:#ffffff;font-size:15px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.3px;font-family:Arial Black,Arial,sans-serif;display:block">SHOP NOW</a>
+<a href="https://wildwonder.com" style="color:#FF6B9D;font-size:15px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.3px;font-family:Arial Black,Arial,sans-serif;display:block">SHOP NOW</a>
 </td></tr>
 </table>
 </td>
-<td width="12%"><div style="width:28px;height:28px;background:#FF1493;opacity:0.1;border-radius:50%;margin:0 auto"></div></td>
+<td width="12%"><div style="width:22px;height:22px;background:#FFA8E2;opacity:0.35;border-radius:50%;margin:0 auto"></div></td>
 </tr>
 </table>
 </td></tr>
 
-<!-- Yellow separator -->
-<tr><td style="padding:0;background:#FFEB3B;height:30px"></td></tr>
+<!-- Turquoise separator -->
+<tr><td style="padding:0;background:#6BCFFF;height:30px"></td></tr>
 
-<!-- Yellow Footer -->
-<tr><td style="background:#FFEB3B;padding:25px 40px 30px 40px">
+<!-- Turquoise Footer -->
+<tr><td style="background:#6BCFFF;padding:25px 40px 30px 40px" class="mobile-padding">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 
-<tr><td align="center" style="font-size:11px;line-height:1.5;color:#000000;padding:0 0 18px 0;font-family:Arial,sans-serif">
+<tr><td align="center" style="font-size:11px;line-height:1.5;color:#ffffff;padding:0 0 18px 0;font-family:Arial,sans-serif">
 Not valid on subscribe &amp; save orders or Shark Tank Bundle. Offer applies 11/20 - 12/3, 2023 only.
 </td></tr>
 
@@ -9387,42 +9416,42 @@ Not valid on subscribe &amp; save orders or Shark Tank Bundle. Offer applies 11/
 <!-- Instagram -->
 <td style="padding:0 6px">
 <a href="https://instagram.com/wildwonder" style="display:block;text-decoration:none">
-<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHJ4PSI1IiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS44Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iNCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuOCIvPjxjaXJjbGUgY3g9IjE4LjUiIGN5PSI1LjUiIHI9IjEuMiIgZmlsbD0iIzAwMCIvPjwvc3ZnPg==" width="32" height="32" border="0" style="display:block" alt="Instagram" />
+<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHJ4PSI1IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS44Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iNCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuOCIvPjxjaXJjbGUgY3g9IjE4LjUiIGN5PSI1LjUiIHI9IjEuMiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==" width="32" height="32" border="0" style="display:block" alt="Instagram" />
 </a>
 </td>
 <!-- TikTok -->
 <td style="padding:0 6px">
 <a href="https://tiktok.com/@wildwonder" style="display:block;text-decoration:none">
-<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTkuNTkgNi42OWE0LjgzIDQuODMgMCAwIDEtMy43Ny00LjI1VjJoLTMuNDV2MTMuNjdhMi44OSAyLjg5IDAgMCAxLTUuMiAxLjc0IDIuODkgMi44OSAwIDAgMSAyLjMxLTQuNjQgMi45MyAyLjkzIDAgMCAxIC44OC4xM1Y5LjRhNi44NCA2Ljg0IDAgMCAwLTEtLjA1QTYuMzMgNi4zMyAwIDAgMCA1IDIwLjFhNi4zNCA2LjM0IDAgMCAwIDEwLjg2LTQuNDN2LTdhOC4xNiA4LjE2IDAgMCAwIDQuNzcgMS41MnYtMy40YTQuODUgNC44NSAwIDAgMS0xLS4xeiIvPjwvc3ZnPg==" width="32" height="32" border="0" style="display:block" alt="TikTok" />
+<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTkuNTkgNi42OWE0LjgzIDQuODMgMCAwIDEtMy43Ny00LjI1VjJoLTMuNDV2MTMuNjdhMi44OSAyLjg5IDAgMCAxLTUuMiAxLjc0IDIuODkgMi44OSAwIDAgMSAyLjMxLTQuNjQgMi45MyAyLjkzIDAgMCAxIC44OC4xM1Y5LjRhNi44NCA2Ljg0IDAgMCAwLTEtLjA1QTYuMzMgNi4zMyAwIDAgMCA1IDIwLjFhNi4zNCA2LjM0IDAgMCAwIDEwLjg2LTQuNDN2LTdhOC4xNiA4LjE2IDAgMCAwIDQuNzcgMS41MnYtMy40YTQuODUgNC44NSAwIDAgMS0xLS4xeiIvPjwvc3ZnPg==" width="32" height="32" border="0" style="display:block" alt="TikTok" />
 </a>
 </td>
 <!-- Facebook -->
 <td style="padding:0 6px">
 <a href="https://facebook.com/wildwonder" style="display:block;text-decoration:none">
-<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjQgMTIuMDczYzAtNi42MjctNS4zNzMtMTItMTItMTJzLTEyIDUuMzczLTEyIDEyYzAgNS45OSA0LjM4OCAxMC45NTQgMTAuMTI1IDExLjg1NHYtOC4zODVINy4wNzh2LTMuNDdoMy4wNDdWOS40M2MwLTMuMDA3IDEuNzkyLTQuNjY5IDQuNTMzLTQuNjY5IDEuMzEyIDAgMi42ODYuMjM1IDIuNjg2LjIzNXYyLjk1M0gxNS44M2MtMS40OTEgMC0xLjk1Ni45MjUtMS45NTYgMS44NzR2Mi4yNWgzLjMyOGwtLjUzMiAzLjQ3aC0yLjc5NnY4LjM4NUMxOS42MTIgMjMuMDI3IDI0IDE4LjA2MiAyNCAxMi4wNzN6Ii8+PC9zdmc+" width="32" height="32" border="0" style="display:block" alt="Facebook" />
+<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjQgMTIuMDczYzAtNi42MjctNS4zNzMtMTItMTItMTJzLTEyIDUuMzczLTEyIDEyYzAgNS45OSA0LjM4OCAxMC45NTQgMTAuMTI1IDExLjg1NHYtOC4zODVINy4wNzh2LTMuNDdoMy4wNDdWOS40M2MwLTMuMDA3IDEuNzkyLTQuNjY5IDQuNTMzLTQuNjY5IDEuMzEyIDAgMi42ODYuMjM1IDIuNjg2LjIzNXYyLjk1M0gxNS44M2MtMS40OTEgMC0xLjk1Ni45MjUtMS45NTYgMS44NzR2Mi4yNWgzLjMyOGwtLjUzMiAzLjQ3aC0yLjc5NnY4LjM4NUMxOS42MTIgMjMuMDI3IDI0IDE4LjA2MiAyNCAxMi4wNzN6Ii8+PC9zdmc+" width="32" height="32" border="0" style="display:block" alt="Facebook" />
 </a>
 </td>
 <!-- Amazon -->
 <td style="padding:0 6px">
 <a href="https://amazon.com/wildwonder" style="display:block;text-decoration:none">
-<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzAwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNLjA0NSAxOC4wMmMuMDcyLS4xMTYuMTg3LS4xMjQuMzQ4LS4wMjIgMy42MzYgMi4xMSA3LjU5NCAzLjE2NiAxMS44NyAzLjE2NiAyLjg1MiAwIDUuNjY4LS41MzMgOC40NDctMS41OTVsLjMxNS0uMTRjLjEzOC0uMDYuMjM0LS4xLjI5My0uMTMuMjI2LS4wODguMzktLjA0Ni41MjUuMTMuMTIuMTc0LjA5LjMzNi0uMTIuNDgtLjI1Ni4xOS0uNi40MS0xLjAwNi42NTQtMS4yNDQuNzMtMi41OTQgMS4yMTctNC4wNSAxLjQ2LTIuNDcuNDItNC44MjcuMjQtNy4wNjktLjUzOC0xLjM2LS40NjYtMi42NzQtMS4xNDYtMy45NDQtMi4wNUMzLjg5OCAxOC40MzUgMi4xOCAxNy4zNi42NSAxNi4wNGMtLjEtLjA5LS4xNjQtLjE4LS4xOTItLjI3LS4wMjgtLjA5LS4wMS0uMTc0LjA0Ni0uMjUuMTEtLjE1LjIyNi0uMTUuMzk4IDB6bTE0LjY4Ny05LjA5YzAgMS40NzQtLjA0IDIuNTEtLjEyIDMuMTA4LS4wOC41OTYtLjI0IDEuMjEyLS40OCAxLjg0Ni0uMzIuODQ0LS43NyAxLjUtMS4zNSAxLjk3LS41OC40Ny0xLjI3OC43MDQtMi4wOTQuNzA0LS41NiAwLTEuMDA0LS4xNS0xLjMzNC0uNDUtLjMzLS4zLS40OTUtLjY3NC0uNDk1LTEuMTI0IDAtLjcyLjMzLTEuMjkuOTktMS43MS42Ni0uNDIgMS41NzgtLjggMi43NTQtMS4xNGwxLjM1LS4zM3YtLjg3YzAtLjktLjA5LTEuNTQtLjI3LTEuOTItLjE4LS4zOC0uNTEtLjU3LS45OS0uNTctLjM2IDAtLjY2LjEyLS45LjM2LS4yNC4yNC0uMzkuNTctLjQ1Ljk5bC0uMDYuNmMtLjA0LjIyLS4xMy4zOS0uMjcuNTEtLjE0LjEyLS4zMy4xOC0uNTcuMThoLTEuOGMtLjI0IDAtLjQyLS4wNi0uNTQtLjE4LS4xMi0uMTItLjE4LS4zLS4xOC0uNTQgMC0uNjYuMjEtMS4yOS42My0xLjg5LjQyLS42IDEuMDItMS4wOCAxLjgtMS40NC43OC0uMzYgMS42OC0uNTQgMi43LS41NCAxLjAyIDAgMS44Ni4xOCAyLjUyLjU0LjY2LjM2IDEuMTQuODcgMS40NCAxLjUzLjMuNjYuNDUgMS40Ny40NSAyLjQzem0tMy4zMyAyLjU4Yy0uNzIuMTgtMS4yMzMuMzktMS41NC42My0uMzA1LjI0LS40NTguNTctLjQ1OCAxLjAwNSAwIC40MDUuMTIuNzIuMzYuOTQ1LjI0LjIyNS41Ny4zMzggMS4wMTQuMzM4LjYxNSAwIDEuMTEtLjI0IDEuNDg1LS43Mi4zNzUtLjQ4LjU2My0xLjEyNS41NjMtMS45MzV2LS40OTVsLS43OC4xOC0uNjQ1LjA1eiIvPjwvc3ZnPg==" width="32" height="32" border="0" style="display:block" alt="Amazon" />
+<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2ZmZiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNLjA0NSAxOC4wMmMuMDcyLS4xMTYuMTg3LS4xMjQuMzQ4LS4wMjIgMy42MzYgMi4xMSA3LjU5NCAzLjE2NiAxMS44NyAzLjE2NiAyLjg1MiAwIDUuNjY4LS41MzMgOC40NDctMS41OTVsLjMxNS0uMTRjLjEzOC0uMDYuMjM0LS4xLjI5My0uMTMuMjI2LS4wODguMzktLjA0Ni41MjUuMTMuMTIuMTc0LjA5LjMzNi0uMTIuNDgtLjI1Ni4xOS0uNi40MS0xLjAwNi42NTQtMS4yNDQuNzMtMi41OTQgMS4yMTctNC4wNSAxLjQ2LTIuNDcuNDItNC44MjcuMjQtNy4wNjktLjUzOC0xLjM2LS40NjYtMi42NzQtMS4xNDYtMy45NDQtMi4wNUMzLjg5OCAxOC40MzUgMi4xOCAxNy4zNi42NSAxNi4wNGMtLjEtLjA5LS4xNjQtLjE4LS4xOTItLjI3LS4wMjgtLjA5LS4wMS0uMTc0LjA0Ni0uMjUuMTEtLjE1LjIyNi0uMTUuMzk4IDB6bTE0LjY4Ny05LjA5YzAgMS40NzQtLjA0IDIuNTEtLjEyIDMuMTA4LS4wOC41OTYtLjI0IDEuMjEyLS40OCAxLjg0Ni0uMzIuODQ0LS43NyAxLjUtMS4zNSAxLjk3LS41OC40Ny0xLjI3OC43MDQtMi4wOTQuNzA0LS41NiAwLTEuMDA0LS4xNS0xLjMzNC0uNDUtLjMzLS4zLS40OTUtLjY3NC0uNDk1LTEuMTI0IDAtLjcyLjMzLTEuMjkuOTktMS43MS42Ni0uNDIgMS41NzgtLjggMi43NTQtMS4xNGwxLjM1LS4zM3YtLjg3YzAtLjktLjA5LTEuNTQtLjI3LTEuOTItLjE4LS4zOC0uNTEtLjU3LS45OS0uNTctLjM2IDAtLjY2LjEyLS45LjM2LS4yNC4yNC0uMzkuNTctLjQ1Ljk5bC0uMDYuNmMtLjA0LjIyLS4xMy4zOS0uMjcuNTEtLjE0LjEyLS4zMy4xOC0uNTcuMThoLTEuOGMtLjI0IDAtLjQyLS4wNi0uNTQtLjE4LS4xMi0uMTItLjE4LS4zLS4xOC0uNTQgMC0uNjYuMjEtMS4yOS42My0xLjg5LjQyLS42IDEuMDItMS4wOCAxLjgtMS40NC43OC0uMzYgMS42OC0uNTQgMi43LS41NCAxLjAyIDAgMS44Ni4xOCAyLjUyLjU0LjY2LjM2IDEuMTQuODcgMS40NCAxLjUzLjMuNjYuNDUgMS40Ny40NSAyLjQzem0tMy4zMyAyLjU4Yy0uNzIuMTgtMS4yMzMuMzktMS41NC42My0uMzA1LjI0LS40NTguNTctLjQ1OCAxLjAwNSAwIC40MDUuMTIuNzIuMzYuOTQ1LjI0LjIyNS41Ny4zMzggMS4wMTQuMzM4LjYxNSAwIDEuMTEtLjI0IDEuNDg1LS43Mi4zNzUtLjQ4LjU2My0xLjEyNS41NjMtMS45MzV2LS40OTVsLS43OC4xOC0uNjQ1LjA1eiIvPjwvc3ZnPg==" width="32" height="32" border="0" style="display:block" alt="Amazon" />
 </a>
 </td>
 <!-- Walmart -->
 <td style="padding:0 6px">
 <a href="https://walmart.com/wildwonder" style="display:block;text-decoration:none">
-<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSIjMDAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjYiIGZpbGw9IiMwMDAiLz48cGF0aCBkPSJNNTAgMTggTDUyIDQ0IEw1MCA1MCBMNDggNDQgWiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik04MiA1MCBMNTYgNTIgTDUwIDUwIEw1NiA0OCBaIiBmaWxsPSIjMDAwIi8+PHBhdGggZD0iTTUwIDgyIEw0OCA1NiBMNTAgNTAgTDUyIDU2IFoiIGZpbGw9IiMwMDAiLz48cGF0aCBkPSJNMTggNTAgTDQ0IDQ4IEw1MCA1MCBMNDQgNTIgWiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik02OCAzMiBMNDggNDggTDUwIDUwIEw1MiA0OCBaIiBmaWxsPSIjMDAwIi8+PHBhdGggZD0iTTY4IDY4IEw1MiA1MiBMNTAgNTAgTDQ4IDUyIFoiIGZpbGw9IiMwMDAiLz48cGF0aCBkPSJNMzIgNjggTDQ4IDUyIEw1MCA1MCBMNTIgNTIgWiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0zMiAzMiBMNTIgNDggTDUwIDUwIEw0OCA0OCBaIiBmaWxsPSIjMDAwIi8+PC9zdmc+" width="32" height="32" border="0" style="display:block" alt="Walmart" />
+<img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSIjZmZmIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjYiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNNTAgMTggTDUyIDQ0IEw1MCA1MCBMNDggNDQgWiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik04MiA1MCBMNTYgNTIgTDUwIDUwIEw1NiA0OCBaIiBmaWxsPSIjZmZmIi8+PHBhdGggZD0iTTUwIDgyIEw0OCA1NiBMNTAgNTAgTDUyIDU2IFoiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMTggNTAgTDQ0IDQ4IEw1MCA1MCBMNDQgNTIgWiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik02OCAzMiBMNDggNDggTDUwIDUwIEw1MiA0OCBaIiBmaWxsPSIjZmZmIi8+PHBhdGggZD0iTTY4IDY4IEw1MiA1MiBMNTAgNTAgTDQ4IDUyIFoiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMzIgNjggTDQ4IDUyIEw1MCA1MCBMNTIgNTIgWiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0zMiAzMiBMNTIgNDggTDUwIDUwIEw0OCA0OCBaIiBmaWxsPSIjZmZmIi8+PC9zdmc+" width="32" height="32" border="0" style="display:block" alt="Walmart" />
 </a>
 </td>
 </tr>
 </table>
 </td></tr>
 
-<tr><td align="center" style="font-size:10px;color:#000000;padding:0 0 6px 0;font-family:Arial,sans-serif">
-No longer want to receive these emails? <a href="#" style="color:#000000;text-decoration:underline;font-weight:400">Unsubscribe</a>.
+<tr><td align="center" style="font-size:10px;color:#ffffff;padding:0 0 6px 0;font-family:Arial,sans-serif">
+No longer want to receive these emails? <a href="#" style="color:#ffffff;text-decoration:underline;font-weight:400">Unsubscribe</a>.
 </td></tr>
 
-<tr><td align="center" style="font-size:10px;color:#000000;padding:0;font-family:Arial,sans-serif;line-height:1.5">
+<tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.5">
 <strong>wildwonder</strong> 139 Mitchell Avenue #216 South San Francisco, CA 94080
 </td></tr>
 

@@ -9236,178 +9236,275 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
             
             
             // Valentine's Day email - WITH WAVE FOOTER + GLOWING BUTTON
-            emailHTML = `<!DOCTYPE html>
+            emailHTML = `
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>25% OFF Black Friday Sale</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f0efe9">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0efe9">
-<tr><td align="center" style="padding:20px 0">
-<table width="620" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;max-width:620px">
-<tr><td style="background:#1a2740;padding:20px 30px">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td style="color:#D4A847;font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif">DIAMONDBACK CODING</td></tr>
-</table>
+<body style="margin:0;padding:0;background-color:#000000">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#000000">
+<tr><td align="center" style="padding:0">
+
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#000000;max-width:600px">
+
+<!-- Brand Name -->
+<tr><td align="center" style="padding:40px 20px 20px 20px">
+<span style="color:#fff;font-size:36px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">wildwonder®</span>
 </td></tr>
-<tr><td style="background:#1a2740;padding:25px 20px;position:relative">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td align="center" style="padding:10px 0">
-<span style="color:#fff;font-size:22px;font-weight:400;letter-spacing:2px;font-family:Georgia,serif;font-style:italic">Diamondback Coding®</span>
-</td></tr>
-<tr><td align="center" style="padding:10px 0">
-<table cellpadding="0" cellspacing="0" border="0" style="border:2px solid #D4A847;border-radius:25px;background:#0f3460">
-<tr><td style="padding:8px 20px">
-<span style="color:#D4A847;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif">CUSTOM WEB DEVELOPMENT & CRMS</span>
-</td></tr>
-</table>
-</td></tr>
-<tr><td align="center" style="padding:10px 0">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#A8D5E2;border-radius:20px">
-<tr><td style="color:#1a4d7a;padding:6px 20px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.5px;font-family:Arial,sans-serif">
-OUR BIGGEST SALE OF THE YEAR
+
+<!-- Badge -->
+<tr><td align="center" style="padding:0 20px 30px 20px">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#DBEAFE;border-radius:35px;display:inline-block">
+<tr><td style="padding:15px 45px">
+<span style="color:#1E40AF;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</span>
 </td></tr>
 </table>
 </td></tr>
-<tr><td align="center" style="padding:8px 0">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td align="center">
-<span style="color:#fff;font-size:65px;font-weight:900;line-height:0.9;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px">14% OFF</span>
-</td></tr>
-<tr><td align="right" style="padding-right:30px">
-<span style="color:#00d4ff;font-size:35px;font-family:'Courier New',monospace;font-weight:700">{ }</span>
-</td></tr>
-</table>
-</td></tr>
-<tr><td align="center" style="padding:5px 0">
-<span style="color:transparent;font-size:65px;font-weight:900;line-height:0.9;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px;-webkit-text-stroke:2px #fff">14% OFF</span>
-</td></tr>
-<tr><td align="center" style="padding:5px 0">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr>
-<td width="15%" align="right" valign="middle">
-<svg width="40" height="40" viewBox="0 0 64 64" fill="none">
-<rect x="8" y="10" width="48" height="32" rx="2" stroke="#00FF88" stroke-width="3" fill="#0f3460"/>
-<rect x="10" y="13" width="44" height="26" fill="#00FF88" opacity="0.3"/>
-<line x1="32" y1="42" x2="32" y2="50" stroke="#00FF88" stroke-width="3"/>
+
+<!-- Large 25% OFF Text Section - Single vertical column -->
+<tr><td align="center" style="padding:0 20px;position:relative">
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;position:relative">
+<tr><td align="center" style="position:relative;line-height:0.85;padding:0">
+
+<!-- Background Tech Icons -->
+<div style="position:absolute;top:5%;left:8%;opacity:0.15">
+<svg width="60" height="60" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+<path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
 </svg>
+</div>
+
+<div style="position:absolute;top:15%;right:12%;opacity:0.12">
+<svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
+<rect x="3" y="3" width="18" height="18" rx="2"/>
+<path d="M3 9h18M9 3v18"/>
+<circle cx="7.5" cy="6" r="0.5" fill="#fff"/>
+<circle cx="16.5" cy="6" r="0.5" fill="#fff"/>
+<circle cx="7.5" cy="15" r="0.5" fill="#fff"/>
+<circle cx="16.5" cy="15" r="0.5" fill="#fff"/>
+</svg>
+</div>
+
+<div style="position:absolute;top:45%;left:5%;opacity:0.1">
+<svg width="55" height="55" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+<circle cx="12" cy="12" r="3"/>
+<path d="M12 1v6m0 6v10M23 12h-6m-6 0H1"/>
+</svg>
+</div>
+
+<div style="position:absolute;bottom:15%;right:8%;opacity:0.13">
+<svg width="65" height="65" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
+<rect x="2" y="6" width="20" height="12" rx="2"/>
+<circle cx="7" cy="12" r="2"/>
+<circle cx="17" cy="12" r="2"/>
+<path d="M11 12h2"/>
+</svg>
+</div>
+
+<div style="position:absolute;top:30%;right:25%;opacity:0.08">
+<svg width="50" height="50" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+<path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/>
+</svg>
+</div>
+
+<div style="position:absolute;bottom:25%;left:15%;opacity:0.11">
+<svg width="58" height="58" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
+<rect x="4" y="4" width="16" height="16" rx="1"/>
+<path d="M4 10h16M10 4v16"/>
+<circle cx="8" cy="7" r="0.8" fill="#fff"/>
+<circle cx="16" cy="7" r="0.8" fill="#fff"/>
+<circle cx="8" cy="17" r="0.8" fill="#fff"/>
+<circle cx="16" cy="17" r="0.8" fill="#fff"/>
+</svg>
+</div>
+
+<!-- BLACK FRI-YAY badge positioned absolutely -->
+<div style="position:absolute;top:8%;left:15%;transform:translate(-50%,-50%);z-index:10">
+<div style="background:#FF1493;border-radius:50px;padding:12px 22px;transform:rotate(-15deg);box-shadow:0 4px 8px rgba(0,0,0,0.3)">
+<span style="color:#fff;font-size:20px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;text-transform:uppercase;letter-spacing:0.5px;line-height:1.2">BLACK<br/>FRI-YAY</span>
+</div>
+</div>
+
+<!-- Star on the upper right -->
+<div style="position:absolute;top:3%;right:8%;width:70px;height:70px;z-index:10">
+<svg viewBox="0 0 100 100" style="width:100%;height:100%">
+<polygon points="50,5 61,38 95,38 68,58 79,91 50,71 21,91 32,58 5,38 39,38" fill="#FFD700"/>
+</svg>
+</div>
+
+<!-- Green star on the left -->
+<div style="position:absolute;top:28%;left:5%;width:60px;height:60px;z-index:10">
+<svg viewBox="0 0 100 100" style="width:100%;height:100%">
+<polygon points="50,10 65,45 100,45 72,65 87,100 50,75 13,100 28,65 0,45 35,45" fill="#00FF00"/>
+<polygon points="50,35 58,55 78,55 62,67 70,87 50,73 30,87 38,67 22,55 42,55" fill="#00FF00"/>
+</svg>
+</div>
+
+<!-- Strawberry on the upper right -->
+<div style="position:absolute;top:25%;right:0%;width:90px;height:90px;z-index:10">
+<svg viewBox="0 0 100 100" style="width:100%;height:100%">
+<ellipse cx="50" cy="60" rx="35" ry="40" fill="#FF4444"/>
+<path d="M 35,25 Q 50,15 65,25" fill="#228B22"/>
+<circle cx="40" cy="50" r="3" fill="#FFFF00"/>
+<circle cx="50" cy="45" r="3" fill="#FFFF00"/>
+<circle cx="60" cy="50" r="3" fill="#FFFF00"/>
+<circle cx="45" cy="60" r="3" fill="#FFFF00"/>
+<circle cx="55" cy="60" r="3" fill="#FFFF00"/>
+<circle cx="50" cy="70" r="3" fill="#FFFF00"/>
+</svg>
+</div>
+
+<!-- STOCK UP & SAVE badge -->
+<div style="position:absolute;top:68%;right:8%;z-index:10">
+<div style="background:#FFEB3B;border-radius:50%;padding:20px;transform:rotate(15deg);box-shadow:0 4px 8px rgba(0,0,0,0.3);width:75px;height:75px;display:table">
+<div style="display:table-cell;vertical-align:middle;text-align:center">
+<span style="color:#000;font-size:13px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;text-transform:uppercase;line-height:1.1">STOCK<br/>UP &<br/>SAVE</span>
+</div>
+</div>
+</div>
+
+<!-- Large strawberry on the lower left -->
+<div style="position:absolute;bottom:5%;left:-5%;width:130px;height:130px;z-index:10">
+<svg viewBox="0 0 100 100" style="width:100%;height:100%">
+<ellipse cx="50" cy="55" rx="40" ry="45" fill="#FF4444"/>
+<path d="M 30,20 Q 50,10 70,20 L 65,30 Q 50,22 35,30 Z" fill="#228B22"/>
+<circle cx="35" cy="45" r="4" fill="#FFFF00"/>
+<circle cx="50" cy="40" r="4" fill="#FFFF00"/>
+<circle cx="65" cy="45" r="4" fill="#FFFF00"/>
+<circle cx="40" cy="55" r="4" fill="#FFFF00"/>
+<circle cx="60" cy="55" r="4" fill="#FFFF00"/>
+<circle cx="35" cy="65" r="4" fill="#FFFF00"/>
+<circle cx="50" cy="63" r="4" fill="#FFFF00"/>
+<circle cx="65" cy="65" r="4" fill="#FFFF00"/>
+<circle cx="50" cy="75" r="4" fill="#FFFF00"/>
+</svg>
+</div>
+
+<!-- Main stacked text - First row filled white, rest outlined -->
+<div style="text-align:center;line-height:0.85">
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:#fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:transparent;-webkit-text-stroke:3px #fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:transparent;-webkit-text-stroke:3px #fff">25% OFF</div>
+<div style="font-size:130px;font-weight:900;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-3px;white-space:nowrap;color:transparent;-webkit-text-stroke:3px #fff">25% OFF</div>
+</div>
+
+</td></tr>
+</table>
+</td></tr>
+
+<!-- Headline -->
+<tr><td align="center" style="padding:35px 30px 18px 30px">
+<span style="color:#fff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.3">EVERYTHING 25% OFF</span>
+<span style="color:#fff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.3">FOR BLACK FRIDAY!</span>
+</td></tr>
+
+<!-- Subtext -->
+<tr><td align="center" style="padding:0 40px 18px 40px">
+<span style="color:#fff;font-size:13px;font-family:Arial,sans-serif;display:block;line-height:1.5">Time to pack the fridge:</span>
+<span style="color:#fff;font-size:13px;font-family:Arial,sans-serif;display:block;line-height:1.5">Our <strong style="font-weight:700">biggest sale of the year</strong> is here.</span>
+</td></tr>
+
+<!-- Code -->
+<tr><td align="center" style="padding:0 0 20px 0">
+<span style="color:#fff;font-size:13px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px">USE CODE <strong style="font-weight:900;font-size:15px;letter-spacing:1px">HOLIDAY25</strong></span>
+</td></tr>
+
+<!-- Button -->
+<tr><td align="center" style="padding:0 0 60px 0">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:50px;border:4px solid #fff;display:inline-block;box-shadow:0 2px 4px rgba(0,0,0,0.2)">
+<tr><td style="padding:14px 55px">
+<a href="https://wildwonder.com" style="color:#fff;font-size:16px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;font-family:'Arial Black',Arial,sans-serif">SHOP NOW</a>
+</td></tr>
+</table>
+</td></tr>
+
+<!-- Wave -->
+<tr><td style="padding:0;line-height:0;margin:0">
+<svg width="600" height="80" viewBox="0 0 600 80" preserveAspectRatio="none" style="display:block;width:100%">
+<path d="M 0,40 Q 150,10 300,40 Q 450,70 600,40 L 600,80 L 0,80 Z" fill="#FFEB3B"/>
+</svg>
+</td></tr>
+
+<!-- Yellow Footer -->
+<tr><td style="background:#FFEB3B;padding:35px 40px 40px 40px">
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+
+<tr><td align="center" style="font-size:12px;line-height:1.6;color:#000;padding:0 0 25px 0;font-family:Arial,sans-serif">
+Not valid on subscribe & save orders or Shark Tank Bundle. Offer applies 11/20 - 12/3, 2023 only.
+</td></tr>
+
+<!-- Social Media Icons -->
+<tr><td align="center" style="padding:0 0 25px 0">
+<table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
+<tr>
+<td style="padding:0 12px">
+<a href="https://instagram.com/wildwonder" style="display:block;text-decoration:none">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="2" y="2" width="20" height="20" rx="5" stroke="#000" stroke-width="1.8"/>
+<circle cx="12" cy="12" r="4" stroke="#000" stroke-width="1.8"/>
+<circle cx="18.5" cy="5.5" r="1.2" fill="#000"/>
+</svg>
+</a>
 </td>
-<td align="center">
-<span style="color:transparent;font-size:65px;font-weight:900;line-height:0.9;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px;-webkit-text-stroke:2px #fff">14% OFF</span>
+<td style="padding:0 12px">
+<a href="https://tiktok.com/@wildwonder" style="display:block;text-decoration:none">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="#000" xmlns="http://www.w3.org/2000/svg">
+<path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+</svg>
+</a>
 </td>
-<td width="15%"></td>
+<td style="padding:0 12px">
+<a href="https://facebook.com/wildwonder" style="display:block;text-decoration:none">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="#000" xmlns="http://www.w3.org/2000/svg">
+<path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+</svg>
+</a>
+</td>
+<td style="padding:0 12px">
+<a href="https://amazon.com/wildwonder" style="display:block;text-decoration:none">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="#000" xmlns="http://www.w3.org/2000/svg">
+<path d="M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595l.315-.14c.138-.06.234-.1.293-.13.226-.088.39-.046.525.13.12.174.09.336-.12.48-.256.19-.6.41-1.006.654-1.244.73-2.594 1.217-4.05 1.46-2.47.42-4.827.24-7.069-.538-1.36-.466-2.674-1.146-3.944-2.05C3.898 18.435 2.18 17.36.65 16.04c-.1-.09-.164-.18-.192-.27-.028-.09-.01-.174.046-.25.11-.15.226-.15.398 0zm14.687-9.09c0 1.474-.04 2.51-.12 3.108-.08.596-.24 1.212-.48 1.846-.32.844-.77 1.5-1.35 1.97-.58.47-1.278.704-2.094.704-.56 0-1.004-.15-1.334-.45-.33-.3-.495-.674-.495-1.124 0-.72.33-1.29.99-1.71.66-.42 1.578-.8 2.754-1.14l1.35-.33v-.87c0-.9-.09-1.54-.27-1.92-.18-.38-.51-.57-.99-.57-.36 0-.66.12-.9.36-.24.24-.39.57-.45.99l-.06.6c-.04.22-.13.39-.27.51-.14.12-.33.18-.57.18h-1.8c-.24 0-.42-.06-.54-.18-.12-.12-.18-.3-.18-.54 0-.66.21-1.29.63-1.89.42-.6 1.02-1.08 1.8-1.44.78-.36 1.68-.54 2.7-.54 1.02 0 1.86.18 2.52.54.66.36 1.14.87 1.44 1.53.3.66.45 1.47.45 2.43zm-3.33 2.58c-.72.18-1.233.39-1.54.63-.305.24-.458.57-.458 1.005 0 .405.12.72.36.945.24.225.57.338 1.014.338.615 0 1.11-.24 1.485-.72.375-.48.563-1.125.563-1.935v-.495l-.78.18-.645.05z"/>
+</svg>
+</a>
+</td>
+<td style="padding:0 12px">
+<a href="https://walmart.com/wildwonder" style="display:block;text-decoration:none">
+<svg width="36" height="36" viewBox="0 0 100 100" fill="#000" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="50" r="6" fill="#000"/>
+<path d="M50 18 L52 44 L50 50 L48 44 Z" fill="#000"/>
+<path d="M82 50 L56 52 L50 50 L56 48 Z" fill="#000"/>
+<path d="M50 82 L48 56 L50 50 L52 56 Z" fill="#000"/>
+<path d="M18 50 L44 48 L50 50 L44 52 Z" fill="#000"/>
+<path d="M68 32 L48 48 L50 50 L52 48 Z" fill="#000"/>
+<path d="M68 68 L52 52 L50 50 L48 52 Z" fill="#000"/>
+<path d="M32 68 L48 52 L50 50 L52 52 Z" fill="#000"/>
+<path d="M32 32 L52 48 L50 50 L48 48 Z" fill="#000"/>
+</svg>
+</a>
+</td>
 </tr>
 </table>
 </td></tr>
-<tr><td align="center" style="padding:5px 0">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr>
-<td width="15%" align="right" valign="middle">
-<svg width="45" height="45" viewBox="0 0 64 64" fill="none">
-<rect x="10" y="12" width="44" height="30" rx="2" stroke="#ff00ff" stroke-width="3" fill="#16213e"/>
-<line x1="8" y1="42" x2="56" y2="42" stroke="#ff00ff" stroke-width="3"/>
-</svg>
-</td>
-<td align="center">
-<span style="color:transparent;font-size:65px;font-weight:900;line-height:0.9;font-family:'Arial Black',Arial,sans-serif;letter-spacing:-2px;-webkit-text-stroke:2px #fff">14% OFF</span>
-</td>
-<td width="15%" align="left" valign="middle">
-<svg width="45" height="45" viewBox="0 0 64 64" fill="none">
-<rect x="4" y="4" width="56" height="56" rx="4" stroke="#D4A847" stroke-width="3" fill="#1a1a2e"/>
-<rect x="8" y="8" width="20" height="20" rx="2" fill="#D4A847" opacity="0.6"/>
-</svg>
-</td>
-</tr>
+
+<tr><td align="center" style="font-size:12px;color:#000;padding:0 0 8px 0;font-family:Arial,sans-serif">
+No longer want to receive these emails? <a href="#" style="color:#000;text-decoration:underline;font-weight:400">Unsubscribe</a>.
+</td></tr>
+
+<tr><td align="center" style="font-size:12px;color:#000;padding:0;font-family:Arial,sans-serif;line-height:1.6">
+<strong>wildwonder</strong> 139 Mitchell Avenue #216 South San Francisco, CA 94080
+</td></tr>
+
 </table>
 </td></tr>
-<tr><td align="left" style="padding:10px 30px">
-<span style="color:#00d4ff;font-size:30px;font-family:'Courier New',monospace;font-weight:700">&lt;/&gt;</span>
-</td></tr>
-<tr><td align="right" style="padding:5px 40px">
-<span style="color:#ff00ff;font-size:28px;font-family:'Courier New',monospace;font-weight:700">{ }</span>
-</td></tr>
-<tr><td align="center" style="padding:15px 20px;color:#fff">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td align="center" style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:5px 0;font-family:Arial,sans-serif">EVERYTHING 14% OFF</td></tr>
-<tr><td align="center" style="font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:5px 0;font-family:Arial,sans-serif">FOR VALENTINE'S DAY!</td></tr>
-<tr><td align="center" style="font-size:13px;padding:8px 0;font-family:Arial,sans-serif">Hi ${lead.name}, time to boost your business:</td></tr>
-<tr><td align="center" style="font-size:13px;font-weight:700;padding:5px 0;font-family:Arial,sans-serif">Our biggest sale of the year is here.</td></tr>
-<tr><td align="center" style="font-size:12px;color:#A8D5E2;padding:5px 0;font-family:Arial,sans-serif">14% off your first month per user</td></tr>
+
 </table>
-</td></tr>
-<tr><td align="center" style="padding:15px 0 30px 0">
-<table cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#ff1744 0%,#DC143C 50%,#c41230 100%);border-radius:35px;box-shadow:0 0 25px rgba(220,20,60,0.7),0 0 50px rgba(220,20,60,0.5),0 8px 30px rgba(0,0,0,0.3);border:3px solid rgba(255,255,255,0.3)">
-<tr><td style="padding:16px 60px">
-<a href="https://diamondbackcoding.com/contact.html" style="color:#fff;font-size:18px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2px;font-family:Arial,sans-serif;text-shadow:0 2px 4px rgba(0,0,0,0.3)">START NOW</a>
+
 </td></tr>
 </table>
-</td></tr>
-</table>
-</td></tr>
-<tr><td style="background:#FFD700;padding:0">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td style="background:#1a2740;height:40px">
-<svg width="620" height="40" viewBox="0 0 620 40" preserveAspectRatio="none" style="display:block">
-<path d="M 0,40 Q 155,0 310,20 T 620,40 L 620,40 L 0,40 Z" fill="#FFD700"/>
-</svg>
-</td></tr>
-</table>
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td align="center" style="padding:20px 0 15px 0">
-<table cellpadding="0" cellspacing="0" border="0">
-<tr>
-<td style="padding:0 12px">
-<svg width="32" height="32" viewBox="0 0 24 24" fill="#000">
-<rect x="2" y="2" width="20" height="20" rx="5" stroke="#000" stroke-width="2" fill="none"/>
-<circle cx="12" cy="12" r="4" stroke="#000" stroke-width="2" fill="none"/>
-<circle cx="17.5" cy="6.5" r="1" fill="#000"/>
-</svg>
-</td>
-<td style="padding:0 12px">
-<svg width="32" height="32" viewBox="0 0 24 24" fill="#000">
-<path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
-</svg>
-</td>
-<td style="padding:0 12px">
-<svg width="32" height="32" viewBox="0 0 24 24" fill="#000">
-<path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
-</svg>
-</td>
-</tr>
-</table>
-</td></tr>
-<tr><td align="center" style="font-size:9px;line-height:1.4;color:#333;padding:0 25px 12px 25px;font-family:Arial,sans-serif">
-14% off first month per user. Valid for Custom CRM or Custom Website. Offer expires 2/28/2026.
-</td></tr>
-<tr><td align="center" style="font-size:9px;color:#333;padding:5px 0;font-family:Arial,sans-serif">
-No longer want to receive these emails? <a href="${unsubUrl}" style="color:#333;text-decoration:underline">Unsubscribe</a>
-</td></tr>
-<tr><td align="center" style="font-size:8px;color:#555;padding:5px 0 15px 0;font-family:Arial,sans-serif">
-Diamondback Coding · 15709 Spillman Ranch Loop · Austin, TX 78738
-</td></tr>
-</table>
-</td></tr>
-<tr><td style="background:#1a2740;padding:20px 30px">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td style="font-size:12px;font-weight:600;color:#D4A847;letter-spacing:1.5px;text-transform:uppercase;padding:0 0 8px 0;font-family:Arial,sans-serif">DIAMONDBACK CODING</td></tr>
-<tr><td style="font-size:11px;color:#A8D5E2;line-height:1.6;padding:5px 0;font-family:Arial,sans-serif">
-15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="mailto:contact@diamondbackcoding.com" style="color:#A8D5E2;text-decoration:none">contact@diamondbackcoding.com</a> · 
-<a href="tel:+19402178680" style="color:#A8D5E2;text-decoration:none">(940) 217-8680</a>
-</td></tr>
-<tr><td style="font-size:10px;color:#888;padding:8px 0;font-family:Arial,sans-serif">
-<a href="https://diamondbackcoding.com" style="color:#A8D5E2;text-decoration:none;padding-right:10px">Website</a>
-<a href="https://diamondbackcoding.com/projects" style="color:#A8D5E2;text-decoration:none;padding-right:10px">Projects</a>
-<a href="https://diamondbackcoding.com/services" style="color:#A8D5E2;text-decoration:none;padding-right:10px">Services</a>
-<a href="https://diamondbackcoding.com/company" style="color:#A8D5E2;text-decoration:none">Company</a>
-</td></tr>
-<tr><td style="font-size:10px;color:#777;padding:10px 0 0 0;border-top:1px solid rgba(255,255,255,0.1);font-family:Arial,sans-serif">© ${year} Diamondback Coding. All rights reserved.</td></tr>
-</table>
-</td></tr>
-</table>
-</td></tr>
-</table>
+
 </body>
 </html>`;
             

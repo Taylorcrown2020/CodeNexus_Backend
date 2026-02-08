@@ -9252,13 +9252,13 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#000000;max-width:600px">
 
 <!-- Brand Name -->
-<tr><td align="center" style="padding:40px 40px 20px 40px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'80\' cy=\'40\' r=\'20\' fill=\'%23FFD700\' opacity=\'0.12\'/%3E%3Ccircle cx=\'520\' cy=\'60\' r=\'18\' fill=\'%23FF69B4\' opacity=\'0.1\'/%3E%3Ccircle cx=\'200\' cy=\'30\' r=\'15\' fill=\'%2300CED1\' opacity=\'0.11\'/%3E%3Ccircle cx=\'420\' cy=\'50\' r=\'17\' fill=\'%23FFEB3B\' opacity=\'0.13\'/%3E%3Ccircle cx=\'300\' cy=\'70\' r=\'16\' fill=\'%23FF6347\' opacity=\'0.09\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
-<span style="color:#fff;font-size:36px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">wildwonder®</span>
+<tr><td align="center" style="padding:40px 20px 20px 20px;background:#000000">
+<span style="color:#ffffff;font-size:36px;font-weight:400;letter-spacing:1px;font-family:Georgia,serif;font-style:italic">wildwonder®</span>
 </td></tr>
 
 <!-- Badge -->
-<tr><td align="center" style="padding:0 40px 30px 40px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'80\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'70\' cy=\'40\' r=\'18\' fill=\'%23FF1493\' opacity=\'0.11\'/%3E%3Ccircle cx=\'530\' cy=\'50\' r=\'16\' fill=\'%2300CED1\' opacity=\'0.1\'/%3E%3Ccircle cx=\'150\' cy=\'25\' r=\'14\' fill=\'%23FFD700\' opacity=\'0.12\'/%3E%3Ccircle cx=\'480\' cy=\'35\' r=\'15\' fill=\'%23FFEB3B\' opacity=\'0.09\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#DBEAFE;border-radius:35px;display:inline-block">
+<tr><td align="center" style="padding:0 20px 30px 20px;background:#000000">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#DBEAFE;border-radius:35px">
 <tr><td style="padding:15px 45px">
 <span style="color:#1E40AF;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif">OUR BIGGEST SALE OF THE YEAR</span>
 </td></tr>
@@ -9266,103 +9266,106 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 </td></tr>
 
 <!-- Large 25% OFF Text Section -->
-<tr><td align="center" style="padding:30px 40px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'600\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'80\' cy=\'100\' r=\'30\' fill=\'%23FFD700\' opacity=\'0.15\'/%3E%3Ccircle cx=\'520\' cy=\'80\' r=\'25\' fill=\'%2300CED1\' opacity=\'0.12\'/%3E%3Ccircle cx=\'100\' cy=\'300\' r=\'28\' fill=\'%23FF69B4\' opacity=\'0.13\'/%3E%3Ccircle cx=\'480\' cy=\'250\' r=\'32\' fill=\'%23FFEB3B\' opacity=\'0.14\'/%3E%3Ccircle cx=\'120\' cy=\'500\' r=\'26\' fill=\'%23FF6347\' opacity=\'0.11\'/%3E%3Ccircle cx=\'500\' cy=\'480\' r=\'29\' fill=\'%2300FF7F\' opacity=\'0.12\'/%3E%3Ccircle cx=\'300\' cy=\'120\' r=\'24\' fill=\'%23FF1493\' opacity=\'0.1\'/%3E%3Ccircle cx=\'200\' cy=\'400\' r=\'27\' fill=\'%239370DB\' opacity=\'0.13\'/%3E%3Ccircle cx=\'420\' cy=\'150\' r=\'23\' fill=\'%23FFD700\' opacity=\'0.11\'/%3E%3Ccircle cx=\'350\' cy=\'520\' r=\'31\' fill=\'%23FF69B4\' opacity=\'0.12\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
-<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
-<tr><td align="center" style="line-height:0.88;padding:0">
-
-<!-- Line 1: Filled "25% OFF" -->
-<div style="font-size:140px;font-weight:900;font-family:'Arial Black','Arial Bold',Arial,sans-serif;letter-spacing:-4px;color:#fff;line-height:0.88;white-space:nowrap">25% OFF</div>
-
-<!-- Line 2: Outlined "25% OFF" -->
-<div style="font-size:140px;font-weight:900;font-family:'Arial Black','Arial Bold',Arial,sans-serif;letter-spacing:-4px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;line-height:0.88;white-space:nowrap">25% OFF</div>
-
-<!-- Line 3: Outlined "25% OFF" -->
-<div style="font-size:140px;font-weight:900;font-family:'Arial Black','Arial Bold',Arial,sans-serif;letter-spacing:-4px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;line-height:0.88;white-space:nowrap">25% OFF</div>
-
-<!-- Line 4: Outlined "25% OFF" -->
-<div style="font-size:140px;font-weight:900;font-family:'Arial Black','Arial Bold',Arial,sans-serif;letter-spacing:-4px;color:#000;-webkit-text-fill-color:transparent;-webkit-text-stroke-width:3px;-webkit-text-stroke-color:#fff;line-height:0.88;white-space:nowrap">25% OFF</div>
-
+<tr><td align="center" style="padding:50px 20px;background:#000000">
+<table cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center">
+<!-- Main large text -->
+<div style="font-size:100px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-2px;color:#ffffff;line-height:1;margin:0;padding:10px 0">25% OFF</div>
+<div style="font-size:100px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-2px;color:#ffffff;line-height:1;margin:0;padding:10px 0">25% OFF</div>
+<div style="font-size:100px;font-weight:900;font-family:Arial,Helvetica,sans-serif;letter-spacing:-2px;color:#ffffff;line-height:1;margin:0;padding:10px 0">25% OFF</div>
 </td></tr>
 </table>
 </td></tr>
 
 <!-- Headline -->
-<tr><td align="center" style="padding:35px 50px 18px 50px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'100\' cy=\'50\' r=\'19\' fill=\'%2300CED1\' opacity=\'0.11\'/%3E%3Ccircle cx=\'500\' cy=\'40\' r=\'17\' fill=\'%23FF69B4\' opacity=\'0.1\'/%3E%3Ccircle cx=\'250\' cy=\'70\' r=\'16\' fill=\'%23FFD700\' opacity=\'0.09\'/%3E%3Ccircle cx=\'400\' cy=\'30\' r=\'18\' fill=\'%23FFEB3B\' opacity=\'0.12\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
-<span style="color:#fff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.3">EVERYTHING 25% OFF</span>
-<span style="color:#fff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:'Arial Black',Arial,sans-serif;display:block;line-height:1.3">FOR BLACK FRIDAY!</span>
-</td></tr>
-
-<!-- Subtext -->
-<tr><td align="center" style="padding:0 50px 18px 50px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'80\' cy=\'30\' r=\'14\' fill=\'%23FF6347\' opacity=\'0.09\'/%3E%3Ccircle cx=\'520\' cy=\'40\' r=\'15\' fill=\'%2300FF7F\' opacity=\'0.08\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
-<span style="color:#fff;font-size:13px;font-family:Arial,sans-serif;display:block;line-height:1.5">Time to pack the fridge:</span>
-<span style="color:#fff;font-size:13px;font-family:Arial,sans-serif;display:block;line-height:1.5">Our <strong style="font-weight:700">biggest sale of the year</strong> is here.</span>
-</td></tr>
-
-<!-- Code -->
-<tr><td align="center" style="padding:0 50px 20px 50px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'150\' cy=\'20\' r=\'13\' fill=\'%239370DB\' opacity=\'0.1\'/%3E%3Ccircle cx=\'450\' cy=\'25\' r=\'14\' fill=\'%23FFD700\' opacity=\'0.11\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
-<span style="color:#fff;font-size:13px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px">USE CODE <strong style="font-weight:900;font-size:15px;letter-spacing:1px">HOLIDAY25</strong></span>
-</td></tr>
-
-<!-- Button -->
-<tr><td align="center" style="padding:0 50px 60px 50px;background-image:url('data:image/svg+xml,%3Csvg width=\'600\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'120\' cy=\'50\' r=\'16\' fill=\'%2300CED1\' opacity=\'0.09\'/%3E%3Ccircle cx=\'480\' cy=\'60\' r=\'17\' fill=\'%23FF1493\' opacity=\'0.1\'/%3E%3Ccircle cx=\'280\' cy=\'30\' r=\'15\' fill=\'%23FFEB3B\' opacity=\'0.08\'/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:center">
-<table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:50px;border:4px solid #fff;display:inline-block">
-<tr><td style="padding:14px 55px">
-<a href="https://wildwonder.com" style="color:#fff;font-size:16px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;font-family:'Arial Black',Arial,sans-serif">SHOP NOW</a>
+<tr><td align="center" style="padding:20px 30px 18px 30px;background:#000000">
+<table cellpadding="0" cellspacing="0" border="0">
+<tr><td style="color:#ffffff;font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;font-family:Arial,sans-serif;text-align:center;line-height:1.3">
+EVERYTHING 25% OFF<br>FOR BLACK FRIDAY!
 </td></tr>
 </table>
 </td></tr>
 
-<!-- Wave -->
-<tr><td style="padding:0;line-height:0;margin:0">
-<img src="data:image/svg+xml,%3Csvg width='600' height='80' viewBox='0 0 600 80' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 0,40 Q 150,10 300,40 Q 450,70 600,40 L 600,80 L 0,80 Z' fill='%23FFEB3B'/%3E%3C/svg%3E" width="600" height="80" style="display:block;width:100%;border:0" alt="" />
+<!-- Subtext -->
+<tr><td align="center" style="padding:0 40px 18px 40px;background:#000000">
+<table cellpadding="0" cellspacing="0" border="0">
+<tr><td style="color:#ffffff;font-size:13px;font-family:Arial,sans-serif;text-align:center;line-height:1.5">
+Time to pack the fridge:<br>Our <strong style="font-weight:700">biggest sale of the year</strong> is here.
+</td></tr>
+</table>
+</td></tr>
+
+<!-- Code -->
+<tr><td align="center" style="padding:0 0 20px 0;background:#000000">
+<span style="color:#ffffff;font-size:13px;font-weight:400;font-family:Arial,sans-serif;letter-spacing:0.5px">USE CODE <strong style="font-weight:900;font-size:15px;letter-spacing:1px">HOLIDAY25</strong></span>
+</td></tr>
+
+<!-- Button -->
+<tr><td align="center" style="padding:0 0 60px 0;background:#000000">
+<table cellpadding="0" cellspacing="0" border="0" style="background:#FF4057;border-radius:50px;border:4px solid #ffffff">
+<tr><td style="padding:14px 55px">
+<a href="https://wildwonder.com" style="color:#ffffff;font-size:16px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;font-family:Arial,sans-serif;display:block">SHOP NOW</a>
+</td></tr>
+</table>
+</td></tr>
+
+<!-- Wave transition -->
+<tr><td style="padding:0;line-height:0;margin:0;background:#000000">
+<!-- REPLACE THIS URL with your hosted wave image -->
+<img src="https://your-domain.com/wave.png" width="600" height="80" style="display:block;width:100%;max-width:600px;height:auto;border:0" alt="" />
 </td></tr>
 
 <!-- Yellow Footer -->
-<tr><td style="background:#FFEB3B;padding:35px 50px 40px 50px">
+<tr><td style="background:#FFEB3B;padding:35px 40px 40px 40px">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 
-<tr><td align="center" style="font-size:12px;line-height:1.6;color:#000;padding:0 0 25px 0;font-family:Arial,sans-serif">
-Not valid on subscribe & save orders or Shark Tank Bundle. Offer applies 11/20 - 12/3, 2023 only.
+<tr><td align="center" style="font-size:12px;line-height:1.6;color:#000000;padding:0 0 25px 0;font-family:Arial,sans-serif">
+Not valid on subscribe &amp; save orders or Shark Tank Bundle. Offer applies 11/20 - 12/3, 2023 only.
 </td></tr>
 
 <!-- Social Media Icons -->
 <tr><td align="center" style="padding:0 0 25px 0">
-<table cellpadding="0" cellspacing="0" border="0" style="display:inline-block">
+<table cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td style="padding:0 12px">
+<td style="padding:0 8px">
 <a href="https://instagram.com/wildwonder" style="display:inline-block;text-decoration:none">
-<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='2' y='2' width='20' height='20' rx='5' stroke='%23000' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='12' r='4' stroke='%23000' stroke-width='1.8'/%3E%3Ccircle cx='18.5' cy='5.5' r='1.2' fill='%23000'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="Instagram" />
+<!-- REPLACE with your hosted Instagram icon -->
+<img src="https://your-domain.com/icons/instagram.png" width="36" height="36" border="0" style="display:block;border:0" alt="Instagram" />
 </a>
 </td>
-<td style="padding:0 12px">
+<td style="padding:0 8px">
 <a href="https://tiktok.com/@wildwonder" style="display:inline-block;text-decoration:none">
-<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 24 24' fill='%23000' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="TikTok" />
+<!-- REPLACE with your hosted TikTok icon -->
+<img src="https://your-domain.com/icons/tiktok.png" width="36" height="36" border="0" style="display:block;border:0" alt="TikTok" />
 </a>
 </td>
-<td style="padding:0 12px">
+<td style="padding:0 8px">
 <a href="https://facebook.com/wildwonder" style="display:inline-block;text-decoration:none">
-<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 24 24' fill='%23000' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="Facebook" />
+<!-- REPLACE with your hosted Facebook icon -->
+<img src="https://your-domain.com/icons/facebook.png" width="36" height="36" border="0" style="display:block;border:0" alt="Facebook" />
 </a>
 </td>
-<td style="padding:0 12px">
+<td style="padding:0 8px">
 <a href="https://amazon.com/wildwonder" style="display:inline-block;text-decoration:none">
-<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 24 24' fill='%23000' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M.045 18.02c.072-.116.187-.124.348-.022 3.636 2.11 7.594 3.166 11.87 3.166 2.852 0 5.668-.533 8.447-1.595l.315-.14c.138-.06.234-.1.293-.13.226-.088.39-.046.525.13.12.174.09.336-.12.48-.256.19-.6.41-1.006.654-1.244.73-2.594 1.217-4.05 1.46-2.47.42-4.827.24-7.069-.538-1.36-.466-2.674-1.146-3.944-2.05C3.898 18.435 2.18 17.36.65 16.04c-.1-.09-.164-.18-.192-.27-.028-.09-.01-.174.046-.25.11-.15.226-.15.398 0zm14.687-9.09c0 1.474-.04 2.51-.12 3.108-.08.596-.24 1.212-.48 1.846-.32.844-.77 1.5-1.35 1.97-.58.47-1.278.704-2.094.704-.56 0-1.004-.15-1.334-.45-.33-.3-.495-.674-.495-1.124 0-.72.33-1.29.99-1.71.66-.42 1.578-.8 2.754-1.14l1.35-.33v-.87c0-.9-.09-1.54-.27-1.92-.18-.38-.51-.57-.99-.57-.36 0-.66.12-.9.36-.24.24-.39.57-.45.99l-.06.6c-.04.22-.13.39-.27.51-.14.12-.33.18-.57.18h-1.8c-.24 0-.42-.06-.54-.18-.12-.12-.18-.3-.18-.54 0-.66.21-1.29.63-1.89.42-.6 1.02-1.08 1.8-1.44.78-.36 1.68-.54 2.7-.54 1.02 0 1.86.18 2.52.54.66.36 1.14.87 1.44 1.53.3.66.45 1.47.45 2.43zm-3.33 2.58c-.72.18-1.233.39-1.54.63-.305.24-.458.57-.458 1.005 0 .405.12.72.36.945.24.225.57.338 1.014.338.615 0 1.11-.24 1.485-.72.375-.48.563-1.125.563-1.935v-.495l-.78.18-.645.05z'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="Amazon" />
+<!-- REPLACE with your hosted Amazon icon -->
+<img src="https://your-domain.com/icons/amazon.png" width="36" height="36" border="0" style="display:block;border:0" alt="Amazon" />
 </a>
 </td>
-<td style="padding:0 12px">
+<td style="padding:0 8px">
 <a href="https://walmart.com/wildwonder" style="display:inline-block;text-decoration:none">
-<img src="data:image/svg+xml,%3Csvg width='36' height='36' viewBox='0 0 100 100' fill='%23000' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='50' cy='50' r='6' fill='%23000'/%3E%3Cpath d='M50 18 L52 44 L50 50 L48 44 Z' fill='%23000'/%3E%3Cpath d='M82 50 L56 52 L50 50 L56 48 Z' fill='%23000'/%3E%3Cpath d='M50 82 L48 56 L50 50 L52 56 Z' fill='%23000'/%3E%3Cpath d='M18 50 L44 48 L50 50 L44 52 Z' fill='%23000'/%3E%3Cpath d='M68 32 L48 48 L50 50 L52 48 Z' fill='%23000'/%3E%3Cpath d='M68 68 L52 52 L50 50 L48 52 Z' fill='%23000'/%3E%3Cpath d='M32 68 L48 52 L50 50 L52 52 Z' fill='%23000'/%3E%3Cpath d='M32 32 L52 48 L50 50 L48 48 Z' fill='%23000'/%3E%3C/svg%3E" width="36" height="36" border="0" style="display:block" alt="Walmart" />
+<!-- REPLACE with your hosted Walmart icon -->
+<img src="https://your-domain.com/icons/walmart.png" width="36" height="36" border="0" style="display:block;border:0" alt="Walmart" />
 </a>
 </td>
 </tr>
 </table>
 </td></tr>
 
-<tr><td align="center" style="font-size:12px;color:#000;padding:0 0 8px 0;font-family:Arial,sans-serif">
-No longer want to receive these emails? <a href="#" style="color:#000;text-decoration:underline;font-weight:400">Unsubscribe</a>.
+<tr><td align="center" style="font-size:12px;color:#000000;padding:0 0 8px 0;font-family:Arial,sans-serif">
+No longer want to receive these emails? <a href="#" style="color:#000000;text-decoration:underline;font-weight:400">Unsubscribe</a>.
 </td></tr>
 
-<tr><td align="center" style="font-size:12px;color:#000;padding:0;font-family:Arial,sans-serif;line-height:1.6">
+<tr><td align="center" style="font-size:12px;color:#000000;padding:0;font-family:Arial,sans-serif;line-height:1.6">
 <strong>wildwonder</strong> 139 Mitchell Avenue #216 South San Francisco, CA 94080
 </td></tr>
 

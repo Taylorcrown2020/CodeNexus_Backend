@@ -7109,21 +7109,14 @@ async function sendFinalEmail(leadId) {
             closeCreateModal();
             showToast('Email sent successfully to ' + lead.email, 'success');
             
-            // Add note to lead
-            const notes = lead.notes ? JSON.parse(lead.notes) : [];
-            notes.push({
-                text: `Email sent: "${subject}"`,
-                author: 'System',
-                date: new Date().toISOString()
-            });
-            
-            await fetch(`${API_URL}/api/leads/${leadId}`, {
-                method: 'PUT',
+            // Add note to lead using the proper API
+            await fetch(`${API_URL}/api/leads/${leadId}/notes`, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${authToken}`
                 },
-                body: JSON.stringify({ notes: JSON.stringify(notes) })
+                body: JSON.stringify({ noteText: `Email sent: "${subject}"` })
             });
         } else {
             showToast('Failed to send email: ' + result.message, 'error');
@@ -8398,7 +8391,21 @@ async function openDetailModal(type, id) {
         
         state.currentLead = lead;
         const expenses = await loadExpenses(id);
-        const notes = lead.notes ? JSON.parse(lead.notes) : [];
+        
+        // Fetch notes from the API (lead_notes table)
+        let notes = [];
+        try {
+            const notesResponse = await fetch(`${API_URL}/api/leads/${id}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (notesResponse.ok) {
+                const data = await notesResponse.json();
+                notes = data.notes || [];
+            }
+        } catch (err) {
+            console.error('Error fetching notes:', err);
+        }
+        
         const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
         
         titleEl.textContent = `${lead.is_customer ? 'Customer' : 'Lead'} Details`;
@@ -8635,10 +8642,10 @@ async function openDetailModal(type, id) {
                     ${notes.length > 0 ? notes.map(note => `
                         <div class="note-item">
                             <div class="note-header">
-                                <span class="note-author">${note.author || 'Admin'}</span>
-                                <span class="note-date">${formatDate(note.date)}</span>
+                                <span class="note-author">${note.created_by ? `Admin User #${note.created_by}` : 'System'}</span>
+                                <span class="note-date">${formatDate(note.created_at)}</span>
                             </div>
-                            <div class="note-text">${note.text}</div>
+                            <div class="note-text">${note.note_text}</div>
                         </div>
                     `).join('') : '<div class="note-empty">No notes yet</div>'}
                 </div>
@@ -9938,35 +9945,28 @@ if (state.selectedExpenses.includes(expenseId)) {
 openDetailModal('lead', state.currentLead.id);
 }
 async function addNote(leadId) {
-const text = document.getElementById('newNote').value.trim();
-if (!text) return;
-const lead = [...state.leads, ...state.customers].find(l => l.id === leadId);
-const notes = lead.notes ? JSON.parse(lead.notes) : [];
+    const text = document.getElementById('newNote').value.trim();
+    if (!text) return;
 
-notes.push({
-    text,
-    author: 'Admin',
-    date: new Date().toISOString()
-});
-
-try {
-    const r = await fetch(`${API_URL}/api/leads/${leadId}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({ notes: JSON.stringify(notes) })
-    });
-    
-    if (!r.ok) throw new Error('Failed to add note');
-    
-    await loadLeads();
-    showToast('Note added successfully', 'success');
-    openDetailModal('lead', leadId);
-} catch (e) {
-    showToast('Error adding note', 'error');
-}
+    try {
+        const r = await fetch(`${API_URL}/api/leads/${leadId}/notes`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ noteText: text })
+        });
+        
+        if (!r.ok) throw new Error('Failed to add note');
+        
+        await loadLeads();
+        showToast('Note added successfully', 'success');
+        openDetailModal('lead', leadId);
+    } catch (e) {
+        console.error('Error adding note:', e);
+        showToast('Error adding note', 'error');
+    }
 }
 
 // ========================================

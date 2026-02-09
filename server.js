@@ -2711,7 +2711,7 @@ app.get('/api/admin/activity-log', authenticateToken, async (req, res) => {
     }
 });
 
-// Create new lead (PUBLIC - from contact form AND authenticated admin creation)
+// Create new lead OR update existing (PUBLIC - from contact form AND authenticated admin creation)
 app.post('/api/leads', async (req, res) => {
     try {
         const { 
@@ -2739,30 +2739,152 @@ app.post('/api/leads', async (req, res) => {
 
         // Check if email already exists in the system
         const existingLead = await pool.query(
-            'SELECT id, name, email FROM leads WHERE LOWER(email) = LOWER($1)',
+            'SELECT id, name, email, status, is_customer FROM leads WHERE LOWER(email) = LOWER($1)',
             [email]
         );
 
-        if (existingLead.rows.length > 0) {
-            console.log('❌ Duplicate email attempt:', email);
+        const isAuthenticated = req.headers.authorization;
+
+        // If lead exists and this is from the contact form (not authenticated admin)
+        if (existingLead.rows.length > 0 && !isAuthenticated) {
+            const existing = existingLead.rows[0];
+            
+            console.log('📧 Existing lead re-engaged via contact form:', email);
+            
+            // Update the existing lead with new information
+            const updateResult = await pool.query(
+                `UPDATE leads 
+                 SET 
+                    phone = COALESCE($1, phone),
+                    company = COALESCE($2, company),
+                    project_type = COALESCE($3, project_type),
+                    message = CASE 
+                        WHEN $4 IS NOT NULL THEN 
+                            COALESCE(message || E'\n\n--- New Form Submission ---\n' || $4, $4)
+                        ELSE message 
+                    END,
+                    budget = COALESCE($5, budget),
+                    timeline = COALESCE($6, timeline),
+                    last_contact_date = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP,
+                    -- If they were closed/lost, move them back to contacted
+                    status = CASE 
+                        WHEN status IN ('closed', 'lost') THEN 'contacted'
+                        WHEN status = 'new' THEN 'contacted'
+                        ELSE status 
+                    END
+                 WHERE id = $7
+                 RETURNING *`,
+                [
+                    phone || null,
+                    company || null,
+                    project_type || service || null,
+                    message || details || null,
+                    budget || null,
+                    timeline || null,
+                    existing.id
+                ]
+            );
+
+            // Create an activity/note to track this re-engagement
+            await pool.query(
+                `INSERT INTO lead_notes (lead_id, note_text, created_at)
+                 VALUES ($1, $2, CURRENT_TIMESTAMP)`,
+                [existing.id, `Lead re-engaged via contact form. New message: ${message || details || 'No message provided'}`]
+            );
+
+            // Send notification email to admin about re-engagement
+            try {
+                const notificationHTML = buildEmailHTML(`
+                    <h2 style="color: #D4A847; margin-bottom: 20px;">🔔 Existing Lead Re-Engaged!</h2>
+                    
+                    <p style="font-size: 16px; color: #333; margin-bottom: 24px;">
+                        An existing lead has filled out your contact form again. Here are the details:
+                    </p>
+
+                    <div style="background: #f8f9fa; border-left: 4px solid #D4A847; padding: 20px; margin: 24px 0; border-radius: 4px;">
+                        <p style="margin: 0 0 12px 0;"><strong>Name:</strong> ${fullName}</p>
+                        <p style="margin: 0 0 12px 0;"><strong>Email:</strong> ${email}</p>
+                        ${phone ? `<p style="margin: 0 0 12px 0;"><strong>Phone:</strong> ${phone}</p>` : ''}
+                        ${company ? `<p style="margin: 0 0 12px 0;"><strong>Company:</strong> ${company}</p>` : ''}
+                        ${project_type || service ? `<p style="margin: 0 0 12px 0;"><strong>Project Type:</strong> ${project_type || service}</p>` : ''}
+                        ${budget ? `<p style="margin: 0 0 12px 0;"><strong>Budget:</strong> ${budget}</p>` : ''}
+                        ${timeline ? `<p style="margin: 0 0 12px 0;"><strong>Timeline:</strong> ${timeline}</p>` : ''}
+                        <p style="margin: 0 0 12px 0;"><strong>Previous Status:</strong> ${existing.status}</p>
+                    </div>
+
+                    ${message || details ? `
+                        <div style="background: #fff; border: 1px solid #e0e0e0; padding: 20px; margin: 24px 0; border-radius: 4px;">
+                            <p style="font-weight: 600; margin-bottom: 12px; color: #333;">New Message:</p>
+                            <p style="color: #555; line-height: 1.6; white-space: pre-wrap;">${message || details}</p>
+                        </div>
+                    ` : ''}
+
+                    <div style="margin-top: 32px; padding: 20px; background: #f0f7ff; border-radius: 4px;">
+                        <p style="margin: 0 0 12px 0; color: #0066cc;">
+                            <strong>👉 Action Required:</strong> This lead has already been in your system and is now reaching out again.
+                        </p>
+                        <p style="margin: 0; color: #555;">
+                            Their status has been updated to "contacted" and their information has been merged with any new details they provided.
+                        </p>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 32px;">
+                        <a href="${BASE_URL}/admin-portal" 
+                           style="display: inline-block; background: #D4A847; color: #fff; padding: 14px 32px; 
+                                  text-decoration: none; border-radius: 4px; font-weight: 600;">
+                            View Lead in CRM
+                        </a>
+                    </div>
+
+                    <div class="sign-off" style="margin-top: 32px;">
+                        <p>This is an automated notification from your CRM system.</p>
+                    </div>
+                `);
+
+                const mailOptions = {
+                    from: `"Diamondback Coding CRM" <${process.env.EMAIL_USER}>`,
+                    to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
+                    subject: `🔔 Lead Re-Engaged: ${fullName} submitted contact form again`,
+                    html: notificationHTML
+                };
+
+                await transporter.sendMail(mailOptions);
+                console.log('📧 Re-engagement notification email sent to admin');
+            } catch (emailError) {
+                console.error('⚠️ Failed to send re-engagement notification email:', emailError);
+                // Don't fail the request if email fails
+            }
+
+            console.log('✅ Existing lead updated with new contact form data:', existing.email);
+
+            return res.json({
+                success: true,
+                message: 'Thank you for contacting us! We\'ll get back to you within 24 hours.',
+                lead: updateResult.rows[0],
+                updated: true  // Flag to indicate this was an update
+            });
+        }
+
+        // If lead exists but this is from authenticated admin, reject duplicate
+        if (existingLead.rows.length > 0 && isAuthenticated) {
+            console.log('❌ Admin attempted duplicate lead creation:', email);
             return res.status(409).json({
                 success: false,
                 message: `A lead with email ${email} already exists in the system (${existingLead.rows[0].name}). Please use a different email or update the existing lead.`
             });
         }
 
-        const isAuthenticated = req.headers.authorization;
-
-        // Log the incoming data for debugging
+        // No existing lead - create new one
         console.log('📝 New lead submission:', { name: fullName, email, phone, company, project_type, message });
 
         const result = await pool.query(
             `INSERT INTO leads (
                 name, email, phone, company, project_type, message, 
                 budget, timeline, priority, status, 
-                is_customer, customer_status, assigned_to
+                is_customer, customer_status, assigned_to, last_contact_date
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
             RETURNING *`,
             [
                 fullName,
@@ -2786,7 +2908,8 @@ app.post('/api/leads', async (req, res) => {
         res.json({
             success: true,
             message: isAuthenticated ? 'Lead created successfully.' : 'Thank you for contacting us! We\'ll get back to you within 24 hours.',
-            lead: result.rows[0]
+            lead: result.rows[0],
+            updated: false  // Flag to indicate this was a new creation
         });
     } catch (error) {
         console.error('❌ Create lead error:', error);

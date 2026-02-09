@@ -2759,8 +2759,8 @@ app.post('/api/leads', async (req, res) => {
                     company = COALESCE($2, company),
                     project_type = COALESCE($3, project_type),
                     message = CASE 
-                        WHEN $4 IS NOT NULL THEN 
-                            COALESCE(message || E'\n\n--- New Form Submission ---\n' || $4, $4)
+                        WHEN $4::TEXT IS NOT NULL THEN 
+                            COALESCE(message || E'\n\n--- New Form Submission ---\n' || $4::TEXT, $4::TEXT)
                         ELSE message 
                     END,
                     budget = COALESCE($5, budget),
@@ -2787,11 +2787,16 @@ app.post('/api/leads', async (req, res) => {
             );
 
             // Create an activity/note to track this re-engagement
-            await pool.query(
-                `INSERT INTO lead_notes (lead_id, note_text, created_at)
-                 VALUES ($1, $2, CURRENT_TIMESTAMP)`,
-                [existing.id, `Lead re-engaged via contact form. New message: ${message || details || 'No message provided'}`]
-            );
+            try {
+                await pool.query(
+                    `INSERT INTO lead_notes (lead_id, note_text, created_at)
+                     VALUES ($1, $2, CURRENT_TIMESTAMP)`,
+                    [existing.id, `Lead re-engaged via contact form. New message: ${message || details || 'No message provided'}`]
+                );
+            } catch (noteError) {
+                console.error('⚠️ Failed to create note (non-critical):', noteError);
+                // Continue anyway - this is not critical to the lead update
+            }
 
             // Send notification email to admin about re-engagement
             try {

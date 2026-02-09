@@ -9216,12 +9216,12 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 </td></tr>
 <tr><td align="center" style="padding-bottom:20px">
 <span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:520px;margin:0 auto">
-My name is Taylor Crownover and I am the founder of Diamondback Coding, LLC, offering business solutions for website development, custom CRM (Customer Relationship Management) platforms, and internet optimization to enhance online business communications and customer relationships.
+My name is Taylor and I am the founder of Diamondback Coding, LLC, offering business solutions for custom website development, custom CRM (Customer Relationship Management) platforms, and search optimization to enhance online business communications and customer relationships.
 </span>
 </td></tr>
 <tr><td align="center" style="padding-bottom:20px">
 <span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:520px;margin:0 auto">
-Our areas of focus include standardized packages and custom programming for websites, landing pages, internal tools such as CRMs, SEO (Search Engine Optimization), and monthly maintenance programs within a cloud-based environment.
+Our areas of focus include standardized packages and custom programming for websites, landing pages, CRMs, SEO (Search Engine Optimization), and monthly maintenance programs within a cloud-based environment.
 </span>
 </td></tr>
 <tr><td align="center" style="padding-bottom:35px">

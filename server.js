@@ -517,7 +517,7 @@ function buildEmailHTML(bodyHTML, opts = {}) {
                 <tr><td class="footer-address">
                     15709 Spillman Ranch Loop, Austin, TX 78738<br>
                     <a href="mailto:contact@diamondbackcoding.com" style="color:#999;">contact@diamondbackcoding.com</a> &nbsp;\u00b7&nbsp;
-                    <a href="tel:+19402178680" style="color:#999;">(940) 217-8680</a>
+                    <a href="tel:+19402178680" style="color:#999;">(512) 980-0393</a>
                 </td></tr>
                 <tr><td class="footer-nav">
                     <a href="https://diamondbackcoding.com">Website</a>
@@ -9107,7 +9107,7 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
                         <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
                         <p>
                             <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | 
-                            <a href="tel:+19402178680">(940) 217-8680</a>
+                            <a href="tel:+19402178680">(512) 980-0393</a>
                         </p>
                         <p class="footer-copy">
                             &copy; ${new Date().getFullYear()} Diamondback Coding. All rights reserved.
@@ -9391,7 +9391,7 @@ This is the Diamondback Coding team. We are also a small and growing business, w
 <tr><td style="padding:30px;text-align:center">
 <span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:15px">Contact Us</span>
 <span style="color:#6B7280;font-size:14px;font-family:Arial,sans-serif;line-height:2;display:block">
-<strong>Phone:</strong> <a href="tel:+19402178680" style="color:#F59E0B;text-decoration:none">940-217-8680</a><br>
+<strong>Phone:</strong> <a href="tel:+19402178680" style="color:#F59E0B;text-decoration:none">(512) 980-0393</a><br>
 <strong>Email:</strong> <a href="mailto:contact@diamondbackcoding.com" style="color:#F59E0B;text-decoration:none">contact@diamondbackcoding.com</a><br>
 <strong>Web:</strong> <a href="https://www.diamondbackcoding.com" style="color:#F59E0B;text-decoration:none">www.diamondbackcoding.com</a>
 </span>
@@ -9575,7 +9575,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 
 <tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.5">
 <strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
+<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -9748,7 +9748,7 @@ New clients only. 25% discount applies to initial project quote.
 
 <tr><td align="center" style="font-size:10px;color:#2D5F5D;padding:0;font-family:Arial,sans-serif;line-height:1.5">
 <strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#2D5F5D;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#2D5F5D;text-decoration:none">hello@diamondbackcoding.com</a>
+<a href="tel:+19402178680" style="color:#2D5F5D;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#2D5F5D;text-decoration:none">hello@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -9873,7 +9873,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#000;
 
 <tr><td align="center" style="font-size:13px;color:#000;padding:0;font-family:Arial,sans-serif;line-height:1.6">
 <strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#000;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#000;text-decoration:none">hello@diamondbackcoding.com</a>
+<a href="tel:+19402178680" style="color:#000;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#000;text-decoration:none">hello@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -10138,7 +10138,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 <tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.7">
 <strong>Diamondback Coding</strong> · Web Development & CRM Solutions<br>
 15709 Spillman Ranch Loop · Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
+<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
 </td></tr>
 
 </table>

@@ -517,7 +517,7 @@ function buildEmailHTML(bodyHTML, opts = {}) {
                 <tr><td class="footer-address">
                     15709 Spillman Ranch Loop, Austin, TX 78738<br>
                     <a href="mailto:contact@diamondbackcoding.com" style="color:#999;">contact@diamondbackcoding.com</a> &nbsp;\u00b7&nbsp;
-                    <a href="tel:+19402178680" style="color:#999;">(512) 980-0393</a>
+                    <a href="tel:+19402178680" style="color:#999;">(940) 217-8680</a>
                 </td></tr>
                 <tr><td class="footer-nav">
                     <a href="https://diamondbackcoding.com">Website</a>
@@ -9107,7 +9107,7 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
                         <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
                         <p>
                             <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | 
-                            <a href="tel:+19402178680">(512) 980-0393</a>
+                            <a href="tel:+19402178680">(940) 217-8680</a>
                         </p>
                         <p class="footer-copy">
                             &copy; ${new Date().getFullYear()} Diamondback Coding. All rights reserved.
@@ -9331,11 +9331,8 @@ This is the Diamondback Coding team. We are also a small and growing business, w
 <td width="33.33%" valign="top" style="padding:0 8px">
 <table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;width:100%;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 <tr><td style="padding:30px 20px;text-align:center">
-<div style="width:70px;height:70px;background-color:#F3F4F6;border-radius:12px;margin:0 auto 20px auto;display:flex;align-items:center;justify-content:center">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect x="2" y="3" width="20" height="14" rx="2" stroke="#F59E0B" stroke-width="2"/>
-<line x1="2" y1="7" x2="22" y2="7" stroke="#F59E0B" stroke-width="2"/>
-</svg>
+<div style="width:70px;height:70px;background-color:#F3F4F6;border-radius:12px;margin:0 auto 20px auto;line-height:70px;text-align:center">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA2klEQVR4nO3YMQ6CQBCF4X8TKy/gBbyCN/AEegJP4A28gVfwBHoBSqO1lRVhMYYQSAwJu8z7kqGBZL6wDJsAERERERERERH5PzNgDxyAM3AFnsAbuAE34Aw8gBtwB+7AA7gCZ+AGPIE7cAfuwB24A3fgDtyBO3AH7sAduAN34A7cgTtwB+7AHbgDd+AO3IE7cAfuwB24A3fgDtyBO3AH7sAduAN34A7cgTtwB+7AHbgDd+AO3IE7cAfuwB24A3fgDtyBO3AH7sAduAN34A7cgTtwB+7AHbgDd+AO3AH4AYWvNUOXN+YjAAAAAElFTkSuQmCC" width="36" height="36" alt="Web Development" style="display:inline-block" />
 </div>
 <span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:10px">Web Development</span>
 <span style="color:#6B7280;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;display:block">Custom websites and landing pages built to convert</span>
@@ -9347,13 +9344,8 @@ This is the Diamondback Coding team. We are also a small and growing business, w
 <td width="33.33%" valign="top" style="padding:0 8px">
 <table cellpadding="0" cellspacing="0" border="0" style="background-color:#F59E0B;border-radius:12px;width:100%;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 <tr><td style="padding:30px 20px;text-align:center">
-<div style="width:70px;height:70px;background-color:#ffffff;border-radius:12px;margin:0 auto 20px auto;display:flex;align-items:center;justify-content:center">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect x="3" y="3" width="7" height="7" rx="1" stroke="#F59E0B" stroke-width="2"/>
-<rect x="3" y="14" width="7" height="7" rx="1" stroke="#F59E0B" stroke-width="2"/>
-<rect x="14" y="3" width="7" height="7" rx="1" stroke="#F59E0B" stroke-width="2"/>
-<rect x="14" y="14" width="7" height="7" rx="1" stroke="#F59E0B" stroke-width="2"/>
-</svg>
+<div style="width:70px;height:70px;background-color:#ffffff;border-radius:12px;margin:0 auto 20px auto;line-height:70px;text-align:center">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA3UlEQVR4nO3YMQrCQBCF4X8TLb2AF/AKXsATeBJP4Am8gTfwCp7AK3gCT+ANvII38AreQGsrK0MIJoYEEnaZ9yVDg+Yjs5tNREREREREREREZP/MgQNwAs7AFbgBN+AKnIEzcAVuwA24ATfgBtyAG3ADbsANuAE34AbcgBtwA27ADbgBN+AG3IAbcANuwA24ATfgBtyAG3ADbsANuAE34AbcgBtwA27ADbgBN+AG3IAbcANuwA24ATfgBtyAG3ADbsANuAE34AbcgBtwA27ADbgBN+AG3IAbcANuwA34AYiuNUL/N+YjAAAAAElFTkSuQmCC" width="36" height="36" alt="CRM Solutions" style="display:inline-block" />
 </div>
 <span style="color:#ffffff;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:10px">CRM Solutions</span>
 <span style="color:#ffffff;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;display:block">Track leads and manage customer relationships</span>
@@ -9365,11 +9357,8 @@ This is the Diamondback Coding team. We are also a small and growing business, w
 <td width="33.33%" valign="top" style="padding:0 8px">
 <table cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;width:100%;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
 <tr><td style="padding:30px 20px;text-align:center">
-<div style="width:70px;height:70px;background-color:#F3F4F6;border-radius:12px;margin:0 auto 20px auto;display:flex;align-items:center;justify-content:center">
-<svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="12" cy="12" r="10" stroke="#F59E0B" stroke-width="2"/>
-<path d="M12 6v6l4 2" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
-</svg>
+<div style="width:70px;height:70px;background-color:#F3F4F6;border-radius:12px;margin:0 auto 20px auto;line-height:70px;text-align:center">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA2klEQVR4nO3YsQ3CMBiE4f8tKBkAiQkYgBEYgQkYgRGYgBEYgQkYgRGYgBGYgBEYgRGYgAEoKFKTKEIKSoKjO+krlLi/z7GdSJIkSZIkSZIkSf5HC2AHHIEzcAEuwBW4AmfgClyAK3AFrsAVuAJX4ApcgStwBa7AFbgCV+AKXIErcAWuwBW4AlfgClyBK3AFrsAVuAJX4ApcgStwBa7AFbgCV+AKXIErcAWuwBW4AlfgClyBK3AFrsAVuAJX4ApcgStwBa7AFbgCV+AKXIErcAWuwBW4AlfgClyBK3AF/gEXNzVA8zfmIwAAAABJRU5ErkJggg==" width="36" height="36" alt="SEO & Support" style="display:inline-block" />
 </div>
 <span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:10px">SEO & Support</span>
 <span style="color:#6B7280;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;display:block">Rank higher and keep your site running smooth</span>
@@ -9402,7 +9391,7 @@ This is the Diamondback Coding team. We are also a small and growing business, w
 <tr><td style="padding:30px;text-align:center">
 <span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:15px">Contact Us</span>
 <span style="color:#6B7280;font-size:14px;font-family:Arial,sans-serif;line-height:2;display:block">
-<strong>Phone:</strong> <a href="tel:+19402178680" style="color:#F59E0B;text-decoration:none">(512) 980-0393</a><br>
+<strong>Phone:</strong> <a href="tel:+19402178680" style="color:#F59E0B;text-decoration:none">940-217-8680</a><br>
 <strong>Email:</strong> <a href="mailto:contact@diamondbackcoding.com" style="color:#F59E0B;text-decoration:none">contact@diamondbackcoding.com</a><br>
 <strong>Web:</strong> <a href="https://www.diamondbackcoding.com" style="color:#F59E0B;text-decoration:none">www.diamondbackcoding.com</a>
 </span>
@@ -9586,7 +9575,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 
 <tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.5">
 <strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
+<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -9759,7 +9748,7 @@ New clients only. 25% discount applies to initial project quote.
 
 <tr><td align="center" style="font-size:10px;color:#2D5F5D;padding:0;font-family:Arial,sans-serif;line-height:1.5">
 <strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#2D5F5D;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#2D5F5D;text-decoration:none">hello@diamondbackcoding.com</a>
+<a href="tel:+19402178680" style="color:#2D5F5D;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#2D5F5D;text-decoration:none">hello@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -9884,7 +9873,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#000;
 
 <tr><td align="center" style="font-size:13px;color:#000;padding:0;font-family:Arial,sans-serif;line-height:1.6">
 <strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#000;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#000;text-decoration:none">hello@diamondbackcoding.com</a>
+<a href="tel:+19402178680" style="color:#000;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#000;text-decoration:none">hello@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -10149,7 +10138,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 <tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.7">
 <strong>Diamondback Coding</strong> · Web Development & CRM Solutions<br>
 15709 Spillman Ranch Loop · Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
+<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">940-217-8680</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
 </td></tr>
 
 </table>

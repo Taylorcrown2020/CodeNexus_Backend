@@ -9214,9 +9214,19 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <tr><td align="center" style="padding-bottom:25px">
 <span style="color:#2C3E50;font-size:32px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:-0.5px">Dear ${lead.name},</span>
 </td></tr>
+<tr><td align="center" style="padding-bottom:20px">
+<span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:520px;margin:0 auto">
+My name is Taylor Crownover and I am the founder of Diamondback Coding, LLC, offering business solutions for website development, custom CRM (Customer Relationship Management) platforms, and internet optimization to enhance online business communications and customer relationships.
+</span>
+</td></tr>
+<tr><td align="center" style="padding-bottom:20px">
+<span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:520px;margin:0 auto">
+Our areas of focus include standardized packages and custom programming for websites, landing pages, internal tools such as CRMs, SEO (Search Engine Optimization), and monthly maintenance programs within a cloud-based environment.
+</span>
+</td></tr>
 <tr><td align="center" style="padding-bottom:35px">
-<span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:480px;margin:0 auto">
-This is the Diamondback Coding team. We are also a small and growing business, we love what we do, and we love adding value to support entrepreneurial endeavors. We want to be a valuable partner to support your growth by contributing world class website experiences, clear communications, and efficient transactions at an affordable price.
+<span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:520px;margin:0 auto">
+Our objective is to provide businesses with the best and most cost-effective website presentations to communicate your business services and/or products to grow your business, as well as CRM systems to manage customer leads and relationships.
 </span>
 </td></tr>
 

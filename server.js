@@ -515,7 +515,7 @@ function buildEmailHTML(bodyHTML, opts = {}) {
             <table width="100%" cellpadding="0" cellspacing="0">
                 <tr><td class="footer-brand">Diamondback Coding</td></tr>
                 <tr><td class="footer-address">
-                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
+                    5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746<br>
                     <a href="mailto:contact@diamondbackcoding.com" style="color:#999;">contact@diamondbackcoding.com</a> &nbsp;\u00b7&nbsp;
                     <a href="tel:+19402178680" style="color:#999;">(512) 980-0393</a>
                 </td></tr>
@@ -4032,10 +4032,10 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
         doc.fontSize(10)
            .font('Helvetica')
            .fillColor('#666666')
-           .text('15709 Spillman Ranch Loop', leftCol, colTop + 32)
+           .text('5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746', leftCol, colTop + 32)
            .text('Austin, TX 78738', leftCol, colTop + 46)
            .text('contact@diamondbackcoding.com', leftCol, colTop + 60)
-           .text('(940) 217-8680', leftCol, colTop + 74);
+           .text('(512) 980-0393', leftCol, colTop + 74);
 
         // Client (right column)
         doc.fontSize(9)
@@ -9104,7 +9104,7 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
                     
                     <div class="footer">
                         <p><strong>Diamondback Coding</strong></p>
-                        <p>15709 Spillman Ranch Loop, Austin, TX 78738</p>
+                        <p>5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746</p>
                         <p>
                             <a href="mailto:contact@diamondbackcoding.com">contact@diamondbackcoding.com</a> | 
                             <a href="tel:+19402178680">(512) 980-0393</a>
@@ -9424,7 +9424,7 @@ This is the Diamondback Coding team. We are also a small and growing business, w
 </td></tr>
 <tr><td align="center" style="font-size:11px;color:#E5E7EB;font-family:Arial,sans-serif;line-height:1.8">
 <strong>Diamondback Coding, LLC</strong><br>
-15709 Spillman Ranch Loop · Austin, TX 78738
+5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746<br>
 </td></tr>
 </table>
 </td></tr>
@@ -9574,8 +9574,8 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 </td></tr>
 
 <tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.5">
-<strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
+<strong>Diamondback Coding</strong> · 5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746<br>
+<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">(512) 980-0393</a> | <a href="mailto:contact@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">contact@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -9747,8 +9747,8 @@ New clients only. 25% discount applies to initial project quote.
 </td></tr>
 
 <tr><td align="center" style="font-size:10px;color:#2D5F5D;padding:0;font-family:Arial,sans-serif;line-height:1.5">
-<strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#2D5F5D;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#2D5F5D;text-decoration:none">hello@diamondbackcoding.com</a>
+<strong>Diamondback Coding</strong> · 5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746<br>
+<a href="tel:+19402178680" style="color:#2D5F5D;text-decoration:none">(512) 980-0393</a> | <a href="mailto:contact@diamondbackcoding.com" style="color:#2D5F5D;text-decoration:none">contact@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -9872,8 +9872,8 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#000;
 </td></tr>
 
 <tr><td align="center" style="font-size:13px;color:#000;padding:0;font-family:Arial,sans-serif;line-height:1.6">
-<strong>Diamondback Coding</strong> · 15709 Spillman Ranch Loop, Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#000;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#000;text-decoration:none">hello@diamondbackcoding.com</a>
+<strong>Diamondback Coding</strong> · 5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746<br>
+<a href="tel:+19402178680" style="color:#000;text-decoration:none">(512) 980-0393</a> | <a href="mailto:contact@diamondbackcoding.com" style="color:#000;text-decoration:none">contact@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -10137,8 +10137,8 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 
 <tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.7">
 <strong>Diamondback Coding</strong> · Web Development & CRM Solutions<br>
-15709 Spillman Ranch Loop · Austin, TX 78738<br>
-<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">(512) 980-0393</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
+5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746<br>
+<a href="tel:+19402178680" style="color:#ffffff;text-decoration:none">(512) 980-0393</a> | <a href="mailto:contact@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">contact@diamondbackcoding.com</a>
 </td></tr>
 
 </table>
@@ -10791,8 +10791,8 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
 <!-- Company Info -->
 <tr><td align="center" style="font-size:10px;color:#ffffff;padding:0;font-family:Arial,sans-serif;line-height:1.5">
 <strong>Diamondbackcoding</strong> · Web Development & CRM Solutions<br>
-15709 Spillman Ranch Loop · Austin, TX 78738<br>
-<a href="tel:+15125121234" style="color:#ffffff;text-decoration:none">512-512-1234</a> | <a href="mailto:hello@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">hello@diamondbackcoding.com</a>
+5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746<br>
+<a href="tel:+15125121234" style="color:#ffffff;text-decoration:none">(512) 980-0393</a> | <a href="mailto:contact@diamondbackcoding.com" style="color:#ffffff;text-decoration:none">contact@diamondbackcoding.com</a>
 </td></tr>
 
 </table>

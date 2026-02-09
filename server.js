@@ -9216,7 +9216,7 @@ app.post('/api/follow-ups/:leadId/send-email', authenticateToken, async (req, re
 <tr><td style="background-color:#ffffff;padding:40px 50px 50px 50px">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr><td align="center" style="padding-bottom:25px">
-<span style="color:#2C3E50;font-size:32px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:-0.5px">About Us</span>
+<span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:480px;margin:0 auto">Dear, ${name}</span>
 </td></tr>
 <tr><td align="center" style="padding-bottom:35px">
 <span style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;display:block;max-width:480px;margin:0 auto">
@@ -9441,7 +9441,7 @@ We are also a small and growing business, we love what we do, and are always com
 </td></tr>
 <tr><td align="center" style="font-size:11px;color:#E5E7EB;font-family:Arial,sans-serif;line-height:1.8">
 <strong>Diamondback Coding, LLC</strong><br>
-15709 Spillman Ranch Loop · Austin, TX 78738
+Your Address · City, State & Zipcode
 </td></tr>
 </table>
 </td></tr>

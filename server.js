@@ -2931,9 +2931,9 @@ app.post('/api/leads', async (req, res) => {
             `INSERT INTO leads (
                 name, email, phone, company, project_type, message, 
                 budget, timeline, priority, status, 
-                is_customer, customer_status, assigned_to, last_contact_date
+                is_customer, customer_status, assigned_to
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             RETURNING *`,
             [
                 fullName,

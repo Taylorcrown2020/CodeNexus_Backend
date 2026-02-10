@@ -17062,10 +17062,13 @@ async function renderFollowUps(content) {
     
     if (useTemperatureSystem) {
         try {
+            console.log('[FOLLOW-UPS] Attempting temperature system...');
             await renderFollowUpsByTemperature(content);
+            console.log('[FOLLOW-UPS] ✅ Temperature system loaded successfully');
             return;
         } catch (error) {
-            console.error('[FOLLOW-UPS] Temperature system failed, falling back to original:', error);
+            console.error('[FOLLOW-UPS] ❌ Temperature system failed:', error);
+            console.error('[FOLLOW-UPS] Error details:', error.message, error.stack);
             // Fall through to original system below
         }
     }
@@ -18072,7 +18075,50 @@ async function deleteJob(jobId) {
 }
 
 // ========================================
-// HOT/COLD TEMPERATURE SYSTEM
+// HOT/COLD TEMPERATURE SYSTEM - HELPER FUNCTIONS
+// ========================================
+
+function renderTempLeadsList(leads, temperature) {
+    if (leads.length === 0) {
+        return `<div class="empty-state"><p>No ${temperature} leads</p></div>`;
+    }
+    return leads.map(lead => renderTempLeadCard(lead, temperature)).join('');
+}
+
+function renderTempLeadCard(lead, temp) {
+    const history = JSON.parse(lead.engagement_history || '[]');
+    return `
+        <div class="lead-card ${temp}">
+            <div class="lead-card-header">
+                <div>
+                    <div class="lead-card-title">${lead.name}</div>
+                    <div class="lead-card-email">${lead.email}</div>
+                </div>
+                <div class="lead-card-badges">
+                    <span class="lead-badge ${temp}">${temp === 'hot' ? 'Hot' : 'Cold'}</span>
+                    ${lead.days_since_contact < 999 ? `<span class="lead-badge days">${lead.days_since_contact} days</span>` : '<span class="lead-badge days">Never contacted</span>'}
+                </div>
+            </div>
+            ${temp === 'hot' && history.length > 0 ? `
+                <div class="engagement-history">
+                    <div class="engagement-title">Recent Activity</div>
+                    ${history.slice(-2).reverse().map(e => `<div class="engagement-item">${e.type}: ${e.details || ''}</div>`).join('')}
+                    <div class="engagement-score">Score: ${lead.engagement_score || 0}
+                        <div class="score-bar"><div class="score-bar-fill" style="width: ${Math.min(lead.engagement_score || 0, 100)}%"></div></div>
+                    </div>
+                </div>
+            ` : ''}
+            <div class="lead-card-actions">
+                <button class="action-btn action-btn-primary" onclick="openEmailModal(${lead.id})">Send Email</button>
+                <button class="action-btn" onclick="openDetailModal('lead', ${lead.id})">View</button>
+                <button class="action-btn" onclick="markAsContacted(${lead.id})">Mark Contacted</button>
+            </div>
+        </div>
+    `;
+}
+
+// ========================================
+// HOT/COLD TEMPERATURE SYSTEM - MAIN RENDER
 // ========================================
 
 async function renderFollowUpsByTemperature(content) {
@@ -18380,45 +18426,6 @@ async function renderFollowUpsByTemperature(content) {
                 </button>
             </div>
             <div id="coldLeadsList">${renderTempLeadsList(cold, 'cold')}</div>
-        </div>
-    `;
-}
-
-function renderTempLeadsList(leads, temperature) {
-    if (leads.length === 0) {
-        return `<div class="empty-state"><p>No ${temperature} leads</p></div>`;
-    }
-    return leads.map(lead => renderTempLeadCard(lead, temperature)).join('');
-}
-
-function renderTempLeadCard(lead, temp) {
-    const history = JSON.parse(lead.engagement_history || '[]');
-    return `
-        <div class="lead-card ${temp}">
-            <div class="lead-card-header">
-                <div>
-                    <div class="lead-card-title">${lead.name}</div>
-                    <div class="lead-card-email">${lead.email}</div>
-                </div>
-                <div class="lead-card-badges">
-                    <span class="lead-badge ${temp}">${temp === 'hot' ? 'Hot' : 'Cold'}</span>
-                    ${lead.days_since_contact < 999 ? `<span class="lead-badge days">${lead.days_since_contact} days</span>` : '<span class="lead-badge days">Never contacted</span>'}
-                </div>
-            </div>
-            ${temp === 'hot' && history.length > 0 ? `
-                <div class="engagement-history">
-                    <div class="engagement-title">Recent Activity</div>
-                    ${history.slice(-2).reverse().map(e => `<div class="engagement-item">${e.type}: ${e.details || ''}</div>`).join('')}
-                    <div class="engagement-score">Score: ${lead.engagement_score || 0}
-                        <div class="score-bar"><div class="score-bar-fill" style="width: ${Math.min(lead.engagement_score || 0, 100)}%"></div></div>
-                    </div>
-                </div>
-            ` : ''}
-            <div class="lead-card-actions">
-                <button class="action-btn action-btn-primary" onclick="openEmailModal(${lead.id})">Send Email</button>
-                <button class="action-btn" onclick="openDetailModal('lead', ${lead.id})">View</button>
-                <button class="action-btn" onclick="markAsContacted(${lead.id})">Mark Contacted</button>
-            </div>
         </div>
     `;
 }

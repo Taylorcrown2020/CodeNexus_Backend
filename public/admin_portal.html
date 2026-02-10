@@ -7109,21 +7109,14 @@ async function sendFinalEmail(leadId) {
             closeCreateModal();
             showToast('Email sent successfully to ' + lead.email, 'success');
             
-            // Add note to lead
-            const notes = lead.notes ? JSON.parse(lead.notes) : [];
-            notes.push({
-                text: `Email sent: "${subject}"`,
-                author: 'System',
-                date: new Date().toISOString()
-            });
-            
-            await fetch(`${API_URL}/api/leads/${leadId}`, {
-                method: 'PUT',
+            // Add note to lead using the proper API
+            await fetch(`${API_URL}/api/leads/${leadId}/notes`, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${authToken}`
                 },
-                body: JSON.stringify({ notes: JSON.stringify(notes) })
+                body: JSON.stringify({ noteText: `Email sent: "${subject}"` })
             });
         } else {
             showToast('Failed to send email: ' + result.message, 'error');
@@ -8398,7 +8391,21 @@ async function openDetailModal(type, id) {
         
         state.currentLead = lead;
         const expenses = await loadExpenses(id);
-        const notes = lead.notes ? JSON.parse(lead.notes) : [];
+        
+        // Fetch notes from the API (lead_notes table)
+        let notes = [];
+        try {
+            const notesResponse = await fetch(`${API_URL}/api/leads/${id}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (notesResponse.ok) {
+                const data = await notesResponse.json();
+                notes = data.notes || [];
+            }
+        } catch (err) {
+            console.error('Error fetching notes:', err);
+        }
+        
         const leadInvoices = state.invoices.filter(inv => inv.lead_id === id);
         
         titleEl.textContent = `${lead.is_customer ? 'Customer' : 'Lead'} Details`;
@@ -8635,10 +8642,10 @@ async function openDetailModal(type, id) {
                     ${notes.length > 0 ? notes.map(note => `
                         <div class="note-item">
                             <div class="note-header">
-                                <span class="note-author">${note.author || 'Admin'}</span>
-                                <span class="note-date">${formatDate(note.date)}</span>
+                                <span class="note-author">${note.created_by ? `Admin User #${note.created_by}` : 'System'}</span>
+                                <span class="note-date">${formatDate(note.created_at)}</span>
                             </div>
-                            <div class="note-text">${note.text}</div>
+                            <div class="note-text">${note.note_text}</div>
                         </div>
                     `).join('') : '<div class="note-empty">No notes yet</div>'}
                 </div>
@@ -9938,35 +9945,28 @@ if (state.selectedExpenses.includes(expenseId)) {
 openDetailModal('lead', state.currentLead.id);
 }
 async function addNote(leadId) {
-const text = document.getElementById('newNote').value.trim();
-if (!text) return;
-const lead = [...state.leads, ...state.customers].find(l => l.id === leadId);
-const notes = lead.notes ? JSON.parse(lead.notes) : [];
+    const text = document.getElementById('newNote').value.trim();
+    if (!text) return;
 
-notes.push({
-    text,
-    author: 'Admin',
-    date: new Date().toISOString()
-});
-
-try {
-    const r = await fetch(`${API_URL}/api/leads/${leadId}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({ notes: JSON.stringify(notes) })
-    });
-    
-    if (!r.ok) throw new Error('Failed to add note');
-    
-    await loadLeads();
-    showToast('Note added successfully', 'success');
-    openDetailModal('lead', leadId);
-} catch (e) {
-    showToast('Error adding note', 'error');
-}
+    try {
+        const r = await fetch(`${API_URL}/api/leads/${leadId}/notes`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ noteText: text })
+        });
+        
+        if (!r.ok) throw new Error('Failed to add note');
+        
+        await loadLeads();
+        showToast('Note added successfully', 'success');
+        openDetailModal('lead', leadId);
+    } catch (e) {
+        console.error('Error adding note:', e);
+        showToast('Error adding note', 'error');
+    }
 }
 
 // ========================================
@@ -18056,250 +18056,6 @@ async function deleteJob(jobId) {
         } else showToast('Failed to delete', 'error');
     } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
-
-// ================================================
-// TEMPERATURE TABS SYSTEM - ADDED FEATURE
-// This adds Hot/Cold lead separation to Follow-Ups
-// ================================================
-
-// Store original renderFollowUps
-const originalRenderFollowUps = renderFollowUps;
-
-// NEW: Temperature-based render function
-async function renderFollowUpsWithTemperature(content) {
-    try {
-        content.innerHTML = '<div style="text-align:center;padding:40px;">Loading follow-ups...</div>';
-        
-        const token = state.authToken || localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/api/follow-ups/by-temperature`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (!response.ok) {
-            console.log('[TEMP] API failed, using original system');
-            return await originalRenderFollowUps(content);
-        }
-        
-        const result = await response.json();
-        const hot = result.data.hot || [];
-        const cold = result.data.cold || [];
-        
-        state.temperatureLeads = { hot, cold };
-        state.activeTempTab = state.activeTempTab || 'cold';
-        
-        content.innerHTML = `
-            <style>
-            .temp-tab-bar{display:flex;gap:12px;margin-bottom:24px;border-bottom:2px solid var(--border-default);}
-            .temp-tab-btn{padding:14px 28px;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:15px;font-weight:600;color:var(--text-muted);transition:all .2s;display:flex;align-items:center;gap:10px;}
-            .temp-tab-btn:hover{color:var(--text-primary);background:var(--bg-hover);}
-            .temp-tab-btn.active{color:var(--text-primary);border-bottom-color:#D4A847;}
-            .temp-tab-btn.hot-active{border-bottom-color:#ef4444 !important;}
-            .temp-badge{background:var(--bg-secondary);color:var(--text-secondary);padding:4px 10px;border-radius:12px;font-size:13px;font-weight:700;}
-            .temp-tab-btn.active .temp-badge{background:#D4A847;color:white;}
-            .temp-tab-btn.hot-active .temp-badge{background:#ef4444 !important;color:white;}
-            .temp-panel{display:none;}
-            .temp-panel.active{display:block;}
-            .temp-lead-card{background:var(--bg-primary);border:1px solid var(--border-default);border-radius:8px;padding:18px;margin-bottom:14px;transition:all .2s;}
-            .temp-lead-card:hover{border-color:#D4A847;box-shadow:0 2px 8px rgba(212,168,71,.15);}
-            .temp-lead-card.hot{border-left:4px solid #ef4444;}
-            .temp-lead-card.cold{border-left:4px solid #3b82f6;}
-            .temp-lead-name{font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:4px;}
-            .temp-lead-email{font-size:14px;color:var(--text-secondary);}
-            .temp-badges{display:flex;gap:8px;margin:12px 0;}
-            .temp-badge-pill{padding:5px 12px;border-radius:14px;font-size:12px;font-weight:600;}
-            .temp-badge-hot{background:#fee2e2;color:#991b1b;}
-            .temp-badge-cold{background:#dbeafe;color:#1e40af;}
-            .temp-badge-days{background:var(--bg-secondary);color:var(--text-secondary);}
-            .temp-actions{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-subtle);}
-            </style>
-            
-            <div class="stats-grid" style="margin-bottom:32px;">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background:#ef4444;">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-                        </svg>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Hot Leads</div>
-                        <div class="stat-value" style="color:#ef4444;">${hot.length}</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background:#3b82f6;">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2v20M17 7l-5-5-5 5M17 17l-5 5-5-5"/>
-                            <path d="M5 9h14M5 15h14"/>
-                        </svg>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Cold Leads</div>
-                        <div class="stat-value" style="color:#3b82f6;">${cold.length}</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background:#8b5cf6;">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Total Leads</div>
-                        <div class="stat-value">${hot.length + cold.length}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="temp-tab-bar">
-                <button class="temp-tab-btn ${state.activeTempTab==='hot'?'active hot-active':''}" onclick="switchTemperatureTab('hot')">
-                    <svg style="width:20px;height:20px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-                    </svg>
-                    Hot Leads
-                    <span class="temp-badge">${hot.length}</span>
-                </button>
-                <button class="temp-tab-btn ${state.activeTempTab==='cold'?'active':''}" onclick="switchTemperatureTab('cold')">
-                    <svg style="width:20px;height:20px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2v20M17 7l-5-5-5 5M17 17l-5 5-5-5"/>
-                        <path d="M5 9h14M5 15h14"/>
-                    </svg>
-                    Cold Leads
-                    <span class="temp-badge">${cold.length}</span>
-                </button>
-            </div>
-
-            <div id="hotPanel" class="temp-panel ${state.activeTempTab==='hot'?'active':''}">
-                <div style="margin-bottom:20px;">
-                    <button class="btn btn-primary" onclick="emailAllTemperatureLeads('hot')">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                            <polyline points="22,6 12,13 2,6"/>
-                        </svg>
-                        Email All Hot Leads (${hot.length})
-                    </button>
-                </div>
-                ${hot.length === 0 ? '<p style="text-align:center;padding:60px;color:var(--text-muted);">No hot leads yet. Leads become hot when they fill out your contact form or engage with your emails.</p>' : hot.map(lead => `
-                    <div class="temp-lead-card hot">
-                        <div class="temp-lead-name">${lead.name}</div>
-                        <div class="temp-lead-email">${lead.email}</div>
-                        <div class="temp-badges">
-                            <span class="temp-badge-pill temp-badge-hot">🔥 Hot Lead</span>
-                            ${lead.days_since_contact < 999 ? `<span class="temp-badge-pill temp-badge-days">⏱️ ${lead.days_since_contact} days</span>` : '<span class="temp-badge-pill temp-badge-days">Never contacted</span>'}
-                            ${lead.engagement_score ? `<span class="temp-badge-pill temp-badge-days">📊 Score: ${lead.engagement_score}</span>` : ''}
-                        </div>
-                        ${lead.engagement_history && JSON.parse(lead.engagement_history).length > 0 ? `
-                            <div style="background:var(--bg-secondary);padding:12px;border-radius:6px;margin:12px 0;font-size:13px;">
-                                <strong>Recent Activity:</strong><br>
-                                ${JSON.parse(lead.engagement_history).slice(-2).reverse().map(e => `• ${e.type}: ${e.details || ''} <span style="color:var(--text-muted)">(${new Date(e.timestamp).toLocaleDateString()})</span>`).join('<br>')}
-                            </div>
-                        ` : ''}
-                        <div class="temp-actions">
-                            <button class="btn btn-sm btn-primary" onclick="openEmailModal(${lead.id})">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                    <polyline points="22,6 12,13 2,6"/>
-                                </svg>
-                                Send Email
-                            </button>
-                            <button class="btn btn-sm btn-secondary" onclick="openDetailModal('lead', ${lead.id})">View Details</button>
-                            <button class="btn btn-sm btn-secondary" onclick="markLeadContacted(${lead.id})">Mark Contacted</button>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-
-            <div id="coldPanel" class="temp-panel ${state.activeTempTab==='cold'?'active':''}">
-                <div style="margin-bottom:20px;">
-                    <button class="btn btn-primary" onclick="emailAllTemperatureLeads('cold')">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                            <polyline points="22,6 12,13 2,6"/>
-                        </svg>
-                        Email All Cold Leads (${cold.length})
-                    </button>
-                </div>
-                ${cold.length === 0 ? '<p style="text-align:center;padding:60px;color:var(--text-muted);">No cold leads.</p>' : cold.map(lead => `
-                    <div class="temp-lead-card cold">
-                        <div class="temp-lead-name">${lead.name}</div>
-                        <div class="temp-lead-email">${lead.email}</div>
-                        <div class="temp-badges">
-                            <span class="temp-badge-pill temp-badge-cold">❄️ Cold Lead</span>
-                            ${lead.days_since_contact < 999 ? `<span class="temp-badge-pill temp-badge-days">⏱️ ${lead.days_since_contact} days</span>` : '<span class="temp-badge-pill temp-badge-days">Never contacted</span>'}
-                        </div>
-                        <div class="temp-actions">
-                            <button class="btn btn-sm btn-primary" onclick="openEmailModal(${lead.id})">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                    <polyline points="22,6 12,13 2,6"/>
-                                </svg>
-                                Send Email
-                            </button>
-                            <button class="btn btn-sm btn-secondary" onclick="openDetailModal('lead', ${lead.id})">View Details</button>
-                            <button class="btn btn-sm btn-secondary" onclick="markLeadContacted(${lead.id})">Mark Contacted</button>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        
-    } catch (error) {
-        console.error('[TEMP] Error loading temperature system:', error);
-        return await originalRenderFollowUps(content);
-    }
-}
-
-// Tab switching
-window.switchTemperatureTab = function(tab) {
-    state.activeTempTab = tab;
-    document.querySelectorAll('.temp-tab-btn').forEach(btn => {
-        btn.classList.remove('active', 'hot-active');
-    });
-    document.querySelectorAll('.temp-panel').forEach(panel => {
-        panel.classList.remove('active');
-    });
-    
-    if (tab === 'hot') {
-        document.querySelectorAll('.temp-tab-btn')[0].classList.add('active', 'hot-active');
-        document.getElementById('hotPanel').classList.add('active');
-    } else {
-        document.querySelectorAll('.temp-tab-btn')[1].classList.add('active');
-        document.getElementById('coldPanel').classList.add('active');
-    }
-};
-
-// Email all function
-window.emailAllTemperatureLeads = function(temperature) {
-    const leads = state.temperatureLeads[temperature] || [];
-    if (leads.length === 0) {
-        showToast(`No ${temperature} leads to email`, 'info');
-        return;
-    }
-    showToast(`Bulk email for ${leads.length} ${temperature} leads - feature coming soon`, 'info');
-};
-
-// Mark contacted
-window.markLeadContacted = async function(leadId) {
-    try {
-        const response = await fetch(`${API_URL}/api/leads/${leadId}/contacted`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        if (!response.ok) throw new Error('Failed');
-        showToast('Lead marked as contacted', 'success');
-        await renderFollowUpsWithTemperature(document.getElementById('contentArea'));
-    } catch (error) {
-        showToast('Error updating lead', 'error');
-    }
-};
-
-// Override renderFollowUps to use temperature system
-renderFollowUps = renderFollowUpsWithTemperature;
 
 </script>
 </body>

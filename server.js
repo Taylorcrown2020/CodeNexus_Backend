@@ -595,6 +595,47 @@ await client.query(`
             ALTER TABLE leads ADD COLUMN last_contact_date DATE;
             RAISE NOTICE 'Added last_contact_date column to leads table';
         END IF;
+        
+        -- Add lead temperature tracking columns
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='leads' AND column_name='lead_temperature'
+        ) THEN
+            ALTER TABLE leads ADD COLUMN lead_temperature VARCHAR(20) DEFAULT 'cold';
+            RAISE NOTICE 'Added lead_temperature column to leads table';
+        END IF;
+        
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='leads' AND column_name='became_hot_at'
+        ) THEN
+            ALTER TABLE leads ADD COLUMN became_hot_at TIMESTAMP;
+            RAISE NOTICE 'Added became_hot_at column to leads table';
+        END IF;
+        
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='leads' AND column_name='last_engagement_at'
+        ) THEN
+            ALTER TABLE leads ADD COLUMN last_engagement_at TIMESTAMP;
+            RAISE NOTICE 'Added last_engagement_at column to leads table';
+        END IF;
+        
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='leads' AND column_name='engagement_score'
+        ) THEN
+            ALTER TABLE leads ADD COLUMN engagement_score INTEGER DEFAULT 0;
+            RAISE NOTICE 'Added engagement_score column to leads table';
+        END IF;
+        
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='leads' AND column_name='engagement_history'
+        ) THEN
+            ALTER TABLE leads ADD COLUMN engagement_history JSONB DEFAULT '[]'::jsonb;
+            RAISE NOTICE 'Added engagement_history column to leads table';
+        END IF;
     END $$;
 `);
 
@@ -2751,6 +2792,9 @@ app.post('/api/leads', async (req, res) => {
             
             console.log('📧 Existing lead re-engaged via contact form:', email);
             
+            // Track this engagement (will automatically make them hot)
+            await trackEngagement(existing.id, 'form_fill', 'Submitted contact form again');
+            
             // Update the existing lead with new information
             const updateResult = await pool.query(
                 `UPDATE leads 
@@ -2909,6 +2953,11 @@ app.post('/api/leads', async (req, res) => {
         );
 
         console.log('✅ New lead created:', result.rows[0].email);
+        
+        // If this is from the contact form (not admin), track engagement and make them hot
+        if (!isAuthenticated) {
+            await trackEngagement(result.rows[0].id, 'form_fill', 'Initial contact form submission');
+        }
 
         res.json({
             success: true,
@@ -6617,6 +6666,63 @@ app.post('/api/automation/generate-followup-reminders', authenticateToken, async
 // Place them with your other email routes
 // ========================================
 
+// Get follow-ups separated by temperature (hot/cold)
+app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) => {
+    try {
+        console.log('[FOLLOW-UPS] Getting leads by temperature');
+        
+        // First, check and demote stale hot leads
+        await checkAndDemoteStaleHotLeads();
+        
+        const result = await pool.query(`
+            SELECT 
+                l.*,
+                COALESCE(EXTRACT(DAY FROM CURRENT_DATE - l.last_contact_date)::INTEGER, 999) as days_since_contact,
+                COALESCE(EXTRACT(DAY FROM CURRENT_DATE - l.last_engagement_at)::INTEGER, 999) as days_since_engagement
+            FROM leads l
+            WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
+            AND l.is_customer = FALSE
+            AND l.unsubscribed = FALSE
+            AND NOT EXISTS (
+                SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
+            )
+            ORDER BY 
+                CASE l.lead_temperature
+                    WHEN 'hot' THEN 1
+                    WHEN 'warm' THEN 2
+                    WHEN 'cold' THEN 3
+                END,
+                l.last_contact_date ASC NULLS FIRST
+        `);
+        
+        // Separate into hot and cold
+        const hotLeads = result.rows.filter(lead => lead.lead_temperature === 'hot');
+        const coldLeads = result.rows.filter(lead => lead.lead_temperature === 'cold' || lead.lead_temperature === 'warm' || !lead.lead_temperature);
+        
+        console.log(`[FOLLOW-UPS] ✅ Found ${hotLeads.length} hot leads, ${coldLeads.length} cold leads`);
+        
+        res.json({
+            success: true,
+            data: {
+                hot: hotLeads,
+                cold: coldLeads,
+                stats: {
+                    total: result.rows.length,
+                    hot: hotLeads.length,
+                    cold: coldLeads.length
+                }
+            }
+        });
+    } catch (error) {
+        console.error('[FOLLOW-UPS] Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching follow-ups by temperature',
+            error: error.message
+        });
+    }
+});
+
 // Get follow-ups grouped by category with leads and notes
 app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
     try {
@@ -8670,6 +8776,141 @@ function authenticateClient(req, res, next) {
 }
 
 // Mark a lead as contacted (updates last_contact_date)
+// ========================================
+// LEAD TEMPERATURE & ENGAGEMENT TRACKING
+// ========================================
+
+// Function to calculate next follow-up date based on temperature
+function calculateNextFollowUpDate(lastContactDate, leadTemperature) {
+    if (!lastContactDate) {
+        return new Date(); // If never contacted, follow up immediately
+    }
+    
+    const last = new Date(lastContactDate);
+    const daysSinceContact = Math.floor((new Date() - last) / (1000 * 60 * 60 * 24));
+    
+    if (leadTemperature === 'hot') {
+        // Hot leads: Days 0, 1, 3, 7, then every 3.5 days
+        if (daysSinceContact === 0) return new Date(last.getTime() + 1 * 24 * 60 * 60 * 1000); // Next day
+        if (daysSinceContact === 1) return new Date(last.getTime() + 3 * 24 * 60 * 60 * 1000); // Day 3
+        if (daysSinceContact === 3) return new Date(last.getTime() + 7 * 24 * 60 * 60 * 1000); // Day 7
+        // After day 7: every 3.5 days (twice per week)
+        return new Date(last.getTime() + 3.5 * 24 * 60 * 60 * 1000);
+    } else {
+        // Cold leads: Days 0, 3, 7, then weekly
+        if (daysSinceContact === 0) return new Date(last.getTime() + 3 * 24 * 60 * 60 * 1000); // Day 3
+        if (daysSinceContact === 3) return new Date(last.getTime() + 7 * 24 * 60 * 60 * 1000); // Day 7
+        // After day 7: weekly
+        return new Date(last.getTime() + 7 * 24 * 60 * 60 * 1000);
+    }
+}
+
+// Function to add engagement event to lead
+async function trackEngagement(leadId, engagementType, details = '') {
+    try {
+        const engagementEvent = {
+            type: engagementType, // 'form_fill', 'email_click', 'email_reply', 'website_visit'
+            details: details,
+            timestamp: new Date().toISOString()
+        };
+        
+        // Get current engagement history
+        const leadResult = await pool.query(
+            'SELECT engagement_history, engagement_score, lead_temperature FROM leads WHERE id = $1',
+            [leadId]
+        );
+        
+        if (leadResult.rows.length === 0) return;
+        
+        const lead = leadResult.rows[0];
+        let history = lead.engagement_history || [];
+        let score = lead.engagement_score || 0;
+        
+        // Add new event to history
+        history.push(engagementEvent);
+        
+        // Update engagement score based on type
+        const scoreMap = {
+            'form_fill': 30,
+            'email_click': 10,
+            'email_reply': 25,
+            'website_visit': 15
+        };
+        score += scoreMap[engagementType] || 5;
+        
+        // Determine if lead should be hot
+        const shouldBeHot = score >= 20 || engagementType === 'form_fill' || engagementType === 'email_reply';
+        const newTemperature = shouldBeHot ? 'hot' : 'cold';
+        const becameHotAt = (newTemperature === 'hot' && lead.lead_temperature !== 'hot') ? new Date() : lead.became_hot_at;
+        
+        // Update lead
+        await pool.query(
+            `UPDATE leads 
+             SET engagement_history = $1,
+                 engagement_score = $2,
+                 lead_temperature = $3,
+                 became_hot_at = $4,
+                 last_engagement_at = CURRENT_TIMESTAMP
+             WHERE id = $5`,
+            [JSON.stringify(history), score, newTemperature, becameHotAt, leadId]
+        );
+        
+        console.log(`[ENGAGEMENT] ✅ Tracked ${engagementType} for lead ${leadId} | Score: ${score} | Temp: ${newTemperature}`);
+        
+        return { success: true, temperature: newTemperature, score };
+    } catch (error) {
+        console.error('[ENGAGEMENT] Error tracking engagement:', error);
+        return { success: false };
+    }
+}
+
+// Function to check and demote hot leads that haven't engaged in 90 days
+async function checkAndDemoteStaleHotLeads() {
+    try {
+        const result = await pool.query(
+            `UPDATE leads 
+             SET lead_temperature = 'cold',
+                 became_hot_at = NULL
+             WHERE lead_temperature = 'hot'
+             AND last_engagement_at < CURRENT_TIMESTAMP - INTERVAL '90 days'
+             RETURNING id, name, email`
+        );
+        
+        if (result.rows.length > 0) {
+            console.log(`[TEMPERATURE] ❄️ Demoted ${result.rows.length} stale hot leads to cold`);
+            result.rows.forEach(lead => {
+                console.log(`   - ${lead.name} (${lead.email})`);
+            });
+        }
+        
+        return result.rows.length;
+    } catch (error) {
+        console.error('[TEMPERATURE] Error checking stale hot leads:', error);
+        return 0;
+    }
+}
+
+// Run the stale lead check every 6 hours
+setInterval(checkAndDemoteStaleHotLeads, 6 * 60 * 60 * 1000);
+
+// Track email link clicks
+app.get('/api/track/click/:leadId', async (req, res) => {
+    try {
+        const leadId = req.params.leadId;
+        const { url } = req.query;
+        
+        // Track the click engagement
+        await trackEngagement(leadId, 'email_click', `Clicked link: ${url || 'unknown'}`);
+        
+        // Redirect to the actual URL
+        const redirectUrl = url || BASE_URL;
+        res.redirect(redirectUrl);
+    } catch (error) {
+        console.error('[TRACKING] Error tracking click:', error);
+        res.redirect(BASE_URL);
+    }
+});
+
 // ========================================
 // FOLLOW-UP SYSTEM ROUTES
 // ========================================
@@ -12145,6 +12386,38 @@ clientRoutes.forEach(route => {
 console.log('');
 
 // ========================================
+// MIGRATION: Temperature System for Existing Leads
+// ========================================
+async function migrateExistingLeadsToTemperature() {
+    console.log('[MIGRATION] Checking for leads needing temperature migration...');
+    
+    try {
+        // Set all existing leads to 'cold' if they don't have a temperature
+        const result = await pool.query(`
+            UPDATE leads 
+            SET lead_temperature = 'cold',
+                engagement_score = 0,
+                engagement_history = '[]'::jsonb
+            WHERE lead_temperature IS NULL OR lead_temperature = ''
+            RETURNING id, name, email
+        `);
+        
+        if (result.rows.length > 0) {
+            console.log(`[MIGRATION] ✅ Updated ${result.rows.length} leads to 'cold' temperature`);
+        } else {
+            console.log('[MIGRATION] ℹ️  All leads already have temperature values');
+        }
+        
+        return { success: true, migrated: result.rows.length };
+        
+    } catch (error) {
+        console.error('[MIGRATION] ⚠️  Migration error (non-critical):', error.message);
+        // Don't fail startup if migration has issues
+        return { success: false, error: error.message };
+    }
+}
+
+// ========================================
 // SERVER STARTUP
 // ========================================
 async function startServer() {
@@ -12152,6 +12425,9 @@ async function startServer() {
         await initializeDatabase(pool);
         await initializeExpenseTables();
         await addLeadSourceTracking();
+        
+        // Migrate existing leads to temperature system
+        await migrateExistingLeadsToTemperature();
         
         // ✅ THIS LINE MUST BE HERE
         const emailConfigured = await verifyEmailConfig();

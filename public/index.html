@@ -991,22 +991,33 @@ window.addEventListener('load', function() {
             
             /* BRAND-BUILDING SECTION MOBILE CAROUSEL */
             .brand-building-section {
-                padding: 60px 20px;
+                padding: 30px 15px 20px; /* Much smaller padding */
+                min-height: 100vh; /* Fit in viewport */
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            
+            .brand-building-section .section-title {
+                font-size: 28px !important; /* Smaller title */
+                margin-bottom: 20px !important; /* Less spacing */
+                line-height: 1.2;
             }
             
             .brand-tabs {
-                display: none;
+                display: none; /* Hide tabs on mobile */
             }
             
             .brand-content-wrapper {
                 position: relative;
                 overflow: hidden;
+                flex: 1;
             }
             
             .brand-content {
                 display: flex !important;
                 flex-direction: column;
-                min-height: 600px;
+                min-height: auto; /* Remove fixed height */
                 opacity: 0;
                 position: absolute;
                 top: 0;
@@ -1022,66 +1033,55 @@ window.addEventListener('load', function() {
                 transform: translateX(0);
             }
             
+            /* HIDE text descriptions on mobile */
             .brand-text-side {
-                order: 2;
-                text-align: center;
-                padding: 0 20px;
-                padding-right: 0;
+                display: none !important;
             }
             
             .brand-visual-side {
                 order: 1;
-                margin-bottom: 32px;
+                margin-bottom: 0; /* Remove bottom margin */
             }
             
-            .brand-content-title {
-                font-size: 32px;
+            /* HIDE laptops on mobile, show only phone */
+            .device-laptop,
+            .laptop-mockup-large {
+                display: none !important;
             }
             
-            .brand-content-description {
-                font-size: 16px;
-            }
-            
+            /* Center and enlarge phone mockup */
             .device-mockups {
-                height: 400px;
-                padding: 20px;
-            }
-            
-            .device-laptop .device-frame {
-                width: 100%;
-                max-width: 350px;
-            }
-            
-            .device-laptop .device-frame img {
-                height: 220px;
+                height: auto;
+                padding: 10px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
             }
             
             .device-phone {
-                left: 10px;
-                bottom: 20px;
+                position: static; /* Remove absolute positioning */
+                margin: 0 auto;
             }
             
             .device-phone .device-frame {
-                width: 140px;
+                width: 200px; /* Larger since it's the only thing shown */
             }
             
             .crm-laptop-showcase {
-                padding: 20px;
-                min-height: 400px;
-            }
-            
-            .laptop-screen img {
-                max-width: 100%;
-                height: 250px;
+                padding: 10px;
+                height: auto;
+                display: flex;
+                justify-content: center;
+                align-items: center;
             }
             
             .phone-mockup-overlay {
-                left: 10px;
-                bottom: 20px;
+                position: static; /* Remove absolute positioning */
+                margin: 0 auto;
             }
             
             .phone-frame {
-                width: 140px;
+                width: 200px; /* Larger since it's the only thing shown */
             }
         }
         
@@ -1089,14 +1089,14 @@ window.addEventListener('load', function() {
         .mobile-carousel-controls {
             display: none;
             justify-content: center;
-            gap: 16px;
-            margin-top: 40px;
-            padding: 0 20px;
+            gap: 12px; /* Smaller gap */
+            margin-top: 15px; /* Less spacing */
+            padding: 0 15px;
         }
         
         .mobile-carousel-arrow {
-            width: 48px;
-            height: 48px;
+            width: 40px; /* Smaller buttons */
+            height: 40px;
             border-radius: 50%;
             background: #1a1a1a;
             border: none;
@@ -1131,7 +1131,7 @@ window.addEventListener('load', function() {
             display: none;
             justify-content: center;
             gap: 8px;
-            margin-top: 24px;
+            margin-top: 10px; /* Much smaller */
         }
         
         .carousel-dot {
@@ -1161,6 +1161,71 @@ window.addEventListener('load', function() {
             padding: 60px 20px;
             background: #0a0a0a;
             display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .crm-card-carousel {
+                padding: 30px 15px 20px; /* Much smaller */
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+            
+            .crm-carousel-header {
+                margin-bottom: 20px; /* Less spacing */
+            }
+            
+            .crm-carousel-title {
+                font-size: 24px; /* Much smaller */
+                margin-bottom: 10px;
+            }
+            
+            .crm-carousel-card-image {
+                height: 180px; /* Smaller */
+            }
+            
+            .crm-carousel-card-content {
+                padding: 20px 16px; /* Smaller */
+            }
+            
+            .crm-carousel-card-title {
+                font-size: 18px; /* Smaller */
+                margin-bottom: 12px;
+            }
+            
+            .crm-carousel-card-metric {
+                font-size: 32px; /* Smaller */
+                margin-bottom: 6px;
+            }
+            
+            .crm-carousel-card-description {
+                font-size: 13px; /* Smaller */
+                line-height: 1.5;
+                margin-bottom: 16px;
+            }
+            
+            .crm-carousel-card-author {
+                padding-top: 12px;
+            }
+            
+            .crm-carousel-author-name {
+                font-size: 14px;
+            }
+            
+            .crm-carousel-author-company {
+                font-size: 12px;
+            }
+            
+            .crm-carousel-controls {
+                margin-top: 15px; /* Less spacing */
+                gap: 12px;
+            }
+            
+            .crm-carousel-arrow {
+                width: 40px; /* Smaller */
+                height: 40px;
+            }
         }
         
         .crm-carousel-header {
@@ -1697,41 +1762,79 @@ window.addEventListener('load', function() {
 
         @media (max-width: 768px) {
             .crm-showcase-section {
-                padding: 60px 24px;
+                padding: 25px 15px 15px; /* Smaller padding */
+                min-height: auto; /* Don't force 100vh */
+            }
+            
+            .crm-showcase-content {
+                gap: 15px; /* Much smaller gap */
+                margin-bottom: 20px; /* Less spacing */
             }
 
             .crm-features-grid {
                 grid-template-columns: 1fr;
+                gap: 15px; /* Smaller gap */
+            }
+            
+            .crm-text-side {
+                padding-right: 0;
             }
 
             .crm-main-title {
-                font-size: 32px;
+                font-size: 20px; /* Smaller */
+                margin-bottom: 8px;
+                line-height: 1.2;
+            }
+            
+            .crm-main-description {
+                font-size: 13px; /* Smaller */
+                line-height: 1.4;
+                margin-bottom: 0;
             }
 
             .crm-feature-card {
-                padding: 32px 24px;
+                padding: 15px 12px; /* Much smaller */
+            }
+            
+            .crm-card-title {
+                font-size: 16px;
+            }
+            
+            .crm-card-description {
+                font-size: 12px;
+                line-height: 1.4;
             }
 
-            /* Fix device mockups for mobile */
+            /* Hide laptop, show only phone mockup centered */
+            .crm-laptop-device {
+                display: none !important;
+            }
+            
             .crm-device-showcase {
-                min-height: 350px;
-                padding: 20px 20px 20px 80px; /* Adjusted padding for mobile */
-            }
-
-            .crm-laptop-frame {
-                max-width: 280px; /* Reduced for mobile */
-                padding: 8px 8px 0;
+                min-height: auto;
+                padding: 10px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
             }
 
             .crm-phone-device {
-                left: 0;
-                bottom: 20px;
-                transform: scale(0.65); /* Smaller scale for mobile */
-                transform-origin: bottom left;
+                position: static; /* Remove absolute positioning */
+                transform: scale(1); /* Normal size */
+                transform-origin: center;
+                margin: 0 auto;
             }
 
             .crm-phone-frame {
-                width: 120px; /* Smaller for mobile */
+                width: 180px; /* Good size for mobile */
+            }
+            
+            .crm-image-card {
+                margin-bottom: 0;
+            }
+            
+            .crm-card-image {
+                height: 140px; /* Smaller */
             }
         }
 
@@ -2484,7 +2587,7 @@ window.addEventListener('load', function() {
     justify-content: center;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 9999;
+    z-index: 10001; /* Higher than nav (10000) */
     transition: all 0.3s ease;
     border: none;
 }
@@ -2552,7 +2655,7 @@ window.addEventListener('load', function() {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     display: none;
     flex-direction: column;
-    z-index: 9998;
+    z-index: 10001; /* Higher than nav (10000) */
     overflow: hidden;
 }
 
@@ -2794,9 +2897,10 @@ window.addEventListener('load', function() {
 @media (max-width: 768px) {
     .chatbot-window {
         width: calc(100% - 32px);
-        height: calc(100% - 140px);
+        height: calc(100vh - 180px); /* Account for nav + announcement banner + spacing */
         right: 16px;
         bottom: 90px;
+        top: 120px; /* Start below nav (40px banner + 73px nav + spacing) */
         border-radius: 12px;
     }
 }
@@ -5312,34 +5416,74 @@ nav {
 
 @media (max-width: 768px) {
     .iphone-portfolio-section {
-        padding: 80px 30px;
-    }
-    
-    /* Hide text content on mobile, show only iPhone */
-    .iphone-text-content {
-        display: none;
+        padding: 10px 15px; /* Minimal padding */
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     .iphone-portfolio-container {
         display: flex;
+        flex-direction: column;
+        align-items: center;
         justify-content: center;
+        width: 100%;
+    }
+    
+    /* Show title, hide everything else on mobile */
+    .iphone-text-content {
+        display: block;
+        text-align: center;
+        margin-bottom: 15px; /* Small gap to iPhone */
+    }
+    
+    .iphone-section-title {
+        font-size: 24px;
+        margin-bottom: 0;
+        line-height: 1.2;
+    }
+    
+    /* Hide description, features, and button on mobile */
+    .iphone-section-description,
+    .iphone-features-list,
+    .iphone-cta-btn {
+        display: none;
     }
     
     .iphone-device-showcase {
         width: 100%;
-        max-width: 450px;
+        max-width: 300px; /* Smaller container */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
     
-    .iphone-section-title {
-        font-size: 36px;
-    }
-    
-    .iphone-section-description {
-        font-size: 16px;
+    .iphone-wrapper {
+        margin-bottom: 15px; /* Gap between iPhone and buttons */
     }
     
     .iphone {
-        transform: scale(0.8);
+        transform: scale(0.55); /* Smaller iPhone */
+        margin: -50px 0; /* Negative margins to reduce excess space */
+    }
+    
+    .iphone-color-selector {
+        margin-top: 0;
+    }
+    
+    .color-selector-label {
+        font-size: 11px;
+        margin-bottom: 8px;
+    }
+    
+    .color-dots-wrapper {
+        gap: 10px;
+    }
+    
+    .iphone-color-dot {
+        width: 45px;
+        height: 45px;
     }
 }
 

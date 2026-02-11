@@ -3,228 +3,1118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Token Diagnostic</title>
+    <title>iPhone - Portfolio Showcase</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Libre+Baskerville:wght@400;700&family=Montserrat:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
         body {
-            font-family: 'Courier New', monospace;
-            background: #1a1a1a;
-            color: #00ff00;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
+            background: #000000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }
-        h1 {
-            color: #00ff00;
-            border-bottom: 2px solid #00ff00;
-            padding-bottom: 10px;
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 45px;
         }
-        .section {
-            background: #2a2a2a;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 8px;
-            border: 1px solid #00ff00;
+
+        .iphone-wrapper {
+            position: relative;
+            filter: drop-shadow(0 40px 80px rgba(0, 0, 0, 0.9));
         }
-        .key {
-            color: #ffff00;
-            font-weight: bold;
+
+        .iphone {
+            position: relative;
+            width: 393px;
+            height: 852px;
+            border-radius: 55px;
+            background: #000000;
+            overflow: visible;
         }
-        .value {
-            color: #00ff00;
-            word-break: break-all;
-            margin-left: 20px;
-            display: block;
+
+        .frame {
+            position: absolute;
+            inset: -6px;
+            border-radius: 61px;
+            background: 
+                linear-gradient(135deg,
+                    rgba(110, 110, 115, 1) 0%,
+                    rgba(90, 90, 95, 1) 25%,
+                    rgba(75, 75, 80, 1) 50%,
+                    rgba(90, 90, 95, 1) 75%,
+                    rgba(110, 110, 115, 1) 100%);
+            z-index: -1;
+            box-shadow: 
+                inset 0 1px 1px rgba(255, 255, 255, 0.2),
+                inset 0 -1px 1px rgba(0, 0, 0, 0.3);
         }
-        .found {
-            color: #00ff00;
-            font-weight: bold;
+
+        .frame::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 61px;
+            background: linear-gradient(150deg,
+                rgba(255, 255, 255, 0.15) 0%,
+                transparent 18%,
+                transparent 82%,
+                rgba(255, 255, 255, 0.05) 100%);
+            pointer-events: none;
         }
-        .not-found {
-            color: #ff0000;
+
+        .frame-inner {
+            position: absolute;
+            inset: 0;
+            border-radius: 55px;
+            background: #000000;
+            box-shadow: 0 0 0 0.5px rgba(80, 80, 85, 0.3);
         }
-        button {
-            background: #00ff00;
-            color: #1a1a1a;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            font-weight: bold;
+
+        .button-left {
+            position: absolute;
+            left: -8px;
+            top: 118px;
+            width: 5px;
+            height: 34px;
+            background: linear-gradient(90deg,
+                rgba(75, 75, 80, 1) 0%,
+                rgba(95, 95, 100, 1) 50%,
+                rgba(75, 75, 80, 1) 100%);
+            border-radius: 2px 0 0 2px;
+            box-shadow: 
+                inset 1px 0 0.5px rgba(255, 255, 255, 0.2),
+                inset -1px 0 1px rgba(0, 0, 0, 0.4),
+                -1px 2px 3px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+
+        .button-left-2 {
+            position: absolute;
+            left: -8px;
+            top: 198px;
+            width: 5px;
+            height: 64px;
+            background: linear-gradient(90deg,
+                rgba(75, 75, 80, 1) 0%,
+                rgba(95, 95, 100, 1) 50%,
+                rgba(75, 75, 80, 1) 100%);
+            border-radius: 2px 0 0 2px;
+            box-shadow: 
+                inset 1px 0 0.5px rgba(255, 255, 255, 0.2),
+                inset -1px 0 1px rgba(0, 0, 0, 0.4),
+                -1px 2px 3px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+
+        .button-left-3 {
+            position: absolute;
+            left: -8px;
+            top: 270px;
+            width: 5px;
+            height: 64px;
+            background: linear-gradient(90deg,
+                rgba(75, 75, 80, 1) 0%,
+                rgba(95, 95, 80, 1) 50%,
+                rgba(75, 75, 80, 1) 100%);
+            border-radius: 2px 0 0 2px;
+            box-shadow: 
+                inset 1px 0 0.5px rgba(255, 255, 255, 0.2),
+                inset -1px 0 1px rgba(0, 0, 0, 0.4),
+                -1px 2px 3px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+
+        .button-right {
+            position: absolute;
+            right: -8px;
+            top: 218px;
+            width: 5px;
+            height: 97px;
+            background: linear-gradient(270deg,
+                rgba(75, 75, 80, 1) 0%,
+                rgba(95, 95, 100, 1) 50%,
+                rgba(75, 75, 80, 1) 100%);
+            border-radius: 0 2px 2px 0;
+            box-shadow: 
+                inset -1px 0 0.5px rgba(255, 255, 255, 0.2),
+                inset 1px 0 1px rgba(0, 0, 0, 0.4),
+                1px 2px 3px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+
+        .dynamic-island {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 126px;
+            height: 37px;
+            background: #000000;
+            border-radius: 19px;
+            z-index: 100;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.9);
+        }
+
+        .camera-lens {
+            position: absolute;
+            top: 50%;
+            left: 19px;
+            transform: translateY(-50%);
+            width: 11px;
+            height: 11px;
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(30, 30, 50, 0.8) 0%, 
+                rgba(10, 10, 20, 0.9) 50%, 
+                #000000 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 0 0.5px rgba(50, 50, 80, 0.5);
+        }
+
+        .screen {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000000;
+            overflow: hidden;
+            border-radius: 52px;
+        }
+
+        .website-page {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .website-page.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Site 1: Editorial Magazine - National Geographic Style */
+        .site1 {
+            background: #ffffff;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .site1 .header {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 10;
+        }
+
+        .site1 .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .site1 .logo-mark {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+            color: #000000;
+        }
+
+        .site1 .logo-text {
+            font-size: 13px;
+            font-weight: 700;
+            color: #000000;
+            letter-spacing: -0.3px;
+        }
+
+        .site1 .nav-menu {
+            display: flex;
+            gap: 4px;
+        }
+
+        .site1 .menu-dot {
+            width: 4px;
+            height: 4px;
+            background: #000000;
+            border-radius: 50%;
+        }
+
+        .site1 .nav-bar {
+            position: absolute;
+            top: 116px;
+            left: 0;
+            right: 0;
+            padding: 0 24px;
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            padding-bottom: 12px;
+        }
+
+        .site1 .nav-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .site1 .nav-link {
+            font-size: 13px;
+            font-weight: 500;
+            color: #666666;
+            white-space: nowrap;
             cursor: pointer;
-            border-radius: 5px;
-            margin: 10px 5px;
+            transition: color 0.3s ease;
         }
-        button:hover {
-            background: #00cc00;
+
+        .site1 .nav-link:first-child {
+            color: #000000;
+            font-weight: 600;
         }
-        .copy-btn {
-            background: #ffff00;
-            color: #1a1a1a;
+
+        .site1 .hero-image {
+            position: absolute;
+            top: 168px;
+            left: 0;
+            right: 0;
+            height: 380px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            overflow: hidden;
+        }
+
+        .site1 .hero-image::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(circle at 30% 40%, rgba(255, 140, 0, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 70% 60%, rgba(139, 69, 19, 0.1) 0%, transparent 50%);
+        }
+
+        .site1 .image-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 24px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+        }
+
+        .site1 .category-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .site1 .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.2;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .site1 .hero-subtitle {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.5;
+            font-weight: 400;
+        }
+
+        .site1 .content-section {
+            position: absolute;
+            top: 568px;
+            left: 24px;
+            right: 24px;
+            bottom: 80px;
+        }
+
+        .site1 .section-title {
             font-size: 12px;
-            padding: 5px 10px;
+            font-weight: 700;
+            color: #000000;
+            letter-spacing: 1.5px;
+            margin-bottom: 16px;
+        }
+
+        .site1 .article-card {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .site1 .article-thumbnail {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #e0e0e0 0%, #f0f0f0 100%);
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .site1 .article-content {
+            flex: 1;
+        }
+
+        .site1 .article-tag {
+            font-size: 9px;
+            font-weight: 600;
+            color: #FF6B00;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .site1 .article-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: #000000;
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+
+        .site1 .article-meta {
+            font-size: 11px;
+            color: #999999;
+            font-weight: 400;
+        }
+
+        /* Site 2: Luxury Hotel - Elegant */
+        .site2 {
+            background: #0a0a0a;
+            font-family: 'Libre Baskerville', serif;
+        }
+
+        .site2 .top-bar {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .site2 .hotel-logo {
+            text-align: center;
+        }
+
+        .site2 .logo-symbol {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 400;
+            color: #D4AF37;
+            letter-spacing: 2px;
+            font-style: italic;
+        }
+
+        .site2 .logo-year {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 2px;
+            margin-top: 2px;
+        }
+
+        .site2 .menu-toggle {
+            position: absolute;
+            right: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            letter-spacing: 2px;
+            cursor: pointer;
+        }
+
+        .site2 .hero-section {
+            position: absolute;
+            top: 120px;
+            left: 0;
+            right: 0;
+            height: 500px;
+            background: linear-gradient(135deg, #1a1410 0%, #2a241e 100%);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .site2 .hero-section::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(circle at 50% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 60%),
+                linear-gradient(to bottom, transparent 0%, rgba(10, 10, 10, 0.6) 100%);
+        }
+
+        .site2 .hero-content {
+            position: absolute;
+            bottom: 40px;
+            left: 28px;
+            right: 28px;
+            text-align: center;
+        }
+
+        .site2 .tagline {
+            font-size: 13px;
+            color: #D4AF37;
+            letter-spacing: 3px;
+            margin-bottom: 16px;
+            font-weight: 400;
+        }
+
+        .site2 .main-heading {
+            font-size: 42px;
+            font-weight: 400;
+            color: #ffffff;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+        }
+
+        .site2 .subheading {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            font-family: 'Inter', sans-serif;
+            font-weight: 300;
+            margin-bottom: 28px;
+        }
+
+        .site2 .reserve-btn {
+            display: inline-block;
+            padding: 14px 40px;
+            background: transparent;
+            border: 1px solid #D4AF37;
+            color: #D4AF37;
+            font-size: 11px;
+            letter-spacing: 2px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s ease;
+        }
+
+        .site2 .amenities {
+            position: absolute;
+            bottom: 60px;
+            left: 28px;
+            right: 28px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .site2 .amenity {
+            text-align: center;
+        }
+
+        .site2 .amenity-icon {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 10px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #D4AF37;
+            font-size: 16px;
+        }
+
+        .site2 .amenity-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        /* Site 3: Fashion E-commerce - Modern Clean */
+        .site3 {
+            background: #fafafa;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .site3 .store-header {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .site3 .store-logo {
+            font-size: 18px;
+            font-weight: 700;
+            color: #000000;
+            letter-spacing: -0.5px;
+        }
+
+        .site3 .header-icons {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .site3 .icon {
+            width: 20px;
+            height: 20px;
+            background: #000000;
+            border-radius: 2px;
+        }
+
+        .site3 .promo-banner {
+            position: absolute;
+            top: 116px;
+            left: 0;
+            right: 0;
+            height: 36px;
+            background: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #ffffff;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        .site3 .product-hero {
+            position: absolute;
+            top: 152px;
+            left: 0;
+            right: 0;
+            height: 420px;
+            background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+            position: relative;
+        }
+
+        .site3 .product-hero::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.02) 0%, transparent 70%);
+        }
+
+        .site3 .product-badge {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background: #ffffff;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .site3 .product-info {
+            position: absolute;
+            top: 592px;
+            left: 24px;
+            right: 24px;
+        }
+
+        .site3 .product-category {
+            font-size: 11px;
+            color: #999999;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .site3 .product-name {
+            font-size: 26px;
+            font-weight: 700;
+            color: #000000;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .site3 .product-price {
+            font-size: 20px;
+            font-weight: 600;
+            color: #000000;
+            margin-bottom: 20px;
+        }
+
+        .site3 .color-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .site3 .color-option {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #e8e8e8;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .site3 .color-option:first-child {
+            background: #1a1a1a;
+        }
+
+        .site3 .color-option:nth-child(2) {
+            background: #f5f5f5;
+        }
+
+        .site3 .color-option:nth-child(3) {
+            background: #c9a992;
+        }
+
+        .site3 .add-to-cart {
+            width: 100%;
+            padding: 16px;
+            background: #000000;
+            color: #ffffff;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        /* Site 4: Minimal Portfolio - Swiss Design */
+        .site4 {
+            background: #ffffff;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .site4 .portfolio-nav {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            border-bottom: 0.5px solid #000000;
+        }
+
+        .site4 .designer-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #000000;
+            letter-spacing: -0.3px;
+        }
+
+        .site4 .menu-text {
+            font-size: 12px;
+            font-weight: 500;
+            color: #000000;
+            letter-spacing: 0.5px;
+        }
+
+        .site4 .grid-layout {
+            position: absolute;
+            top: 132px;
+            left: 28px;
+            right: 28px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .site4 .project-card {
+            aspect-ratio: 1;
+            background: #f8f8f8;
+            border: 0.5px solid #e0e0e0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .site4 .project-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.02) 100%);
+        }
+
+        .site4 .project-number {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #666666;
+            font-family: 'Montserrat', monospace;
+        }
+
+        .site4 .featured-project {
+            position: absolute;
+            top: 488px;
+            left: 28px;
+            right: 28px;
+            bottom: 100px;
+        }
+
+        .site4 .featured-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #000000;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+
+        .site4 .project-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #000000;
+            line-height: 1.2;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        .site4 .project-description {
+            font-size: 14px;
+            color: #666666;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .site4 .view-project {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #000000;
+        }
+
+        .site4 .arrow {
+            width: 24px;
+            height: 1px;
+            background: #000000;
+            position: relative;
+        }
+
+        .site4 .arrow::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%) rotate(45deg);
+            width: 6px;
+            height: 6px;
+            border-right: 1px solid #000000;
+            border-top: 1px solid #000000;
+        }
+
+        /* Screen effects */
+        .screen-glass {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(155deg,
+                rgba(255, 255, 255, 0.02) 0%,
+                transparent 15%,
+                transparent 85%,
+                rgba(255, 255, 255, 0.01) 100%);
+            pointer-events: none;
+            z-index: 100;
+            border-radius: 52px;
+            mix-blend-mode: overlay;
+        }
+
+        .home-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 140px;
+            height: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+            z-index: 101;
+        }
+
+        /* Color selector */
+        .color-selector {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .color-dot {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .color-dot::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .color-dot.active::before {
+            border-color: rgba(255, 255, 255, 0.8);
+            opacity: 1;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+        }
+
+        .color-dot:hover {
+            transform: scale(1.1);
+        }
+
+        .color-dot-1 {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+        }
+
+        .color-dot-2 {
+            background: linear-gradient(135deg, #D4AF37 0%, #8B7355 100%);
+        }
+
+        .color-dot-3 {
+            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+        }
+
+        .color-dot-4 {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
         }
     </style>
 </head>
 <body>
-    <h1>🔍 TOKEN DIAGNOSTIC TOOL</h1>
-    
-    <div class="section">
-        <h2>📋 All LocalStorage Keys:</h2>
-        <div id="localStorageKeys"></div>
-    </div>
+    <div class="main-container">
+        <div class="iphone-wrapper">
+            <div class="iphone">
+                <div class="frame"></div>
+                <div class="frame-inner"></div>
+                <div class="button-left"></div>
+                <div class="button-left-2"></div>
+                <div class="button-left-3"></div>
+                <div class="button-right"></div>
+                <div class="dynamic-island">
+                    <div class="camera-lens"></div>
+                </div>
+                <div class="screen">
+                    <!-- Site 1: Editorial Magazine -->
+                    <div class="website-page site1 active">
+                        <div class="header">
+                            <div class="logo">
+                                <div class="logo-mark">N</div>
+                                <div class="logo-text">DISCOVERY</div>
+                            </div>
+                            <div class="nav-menu">
+                                <div class="menu-dot"></div>
+                                <div class="menu-dot"></div>
+                                <div class="menu-dot"></div>
+                            </div>
+                        </div>
+                        <div class="nav-bar">
+                            <div class="nav-link">Explore</div>
+                            <div class="nav-link">Wildlife</div>
+                            <div class="nav-link">Culture</div>
+                            <div class="nav-link">Science</div>
+                            <div class="nav-link">Travel</div>
+                        </div>
+                        <div class="hero-image">
+                            <div class="image-overlay">
+                                <div class="category-badge">ARCHAEOLOGY</div>
+                                <div class="hero-title">Ancient Civilizations Revealed</div>
+                                <div class="hero-subtitle">Uncovering the mysteries of lost empires through groundbreaking excavations</div>
+                            </div>
+                        </div>
+                        <div class="content-section">
+                            <div class="section-title">LATEST STORIES</div>
+                            <div class="article-card">
+                                <div class="article-thumbnail"></div>
+                                <div class="article-content">
+                                    <div class="article-tag">NATURE</div>
+                                    <div class="article-title">The Hidden Life of Deep Ocean Creatures</div>
+                                    <div class="article-meta">By James Morrison • 8 min read</div>
+                                </div>
+                            </div>
+                            <div class="article-card">
+                                <div class="article-thumbnail"></div>
+                                <div class="article-content">
+                                    <div class="article-tag">CULTURE</div>
+                                    <div class="article-title">Preserving Indigenous Languages</div>
+                                    <div class="article-meta">By Sarah Chen • 12 min read</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <div class="section">
-        <h2>📋 All SessionStorage Keys:</h2>
-        <div id="sessionStorageKeys"></div>
-    </div>
+                    <!-- Site 2: Luxury Hotel -->
+                    <div class="website-page site2">
+                        <div class="top-bar">
+                            <div class="hotel-logo">
+                                <div class="logo-symbol">Maison</div>
+                                <div class="logo-year">EST. 1834</div>
+                            </div>
+                            <div class="menu-toggle">MENU</div>
+                        </div>
+                        <div class="hero-section">
+                            <div class="hero-content">
+                                <div class="tagline">CELEBRATE BEAUTIFULLY</div>
+                                <div class="main-heading">Experience Timeless Elegance</div>
+                                <div class="subheading">Where historic grandeur meets contemporary luxury in the heart of the city</div>
+                                <button class="reserve-btn">RESERVE NOW</button>
+                            </div>
+                        </div>
+                        <div class="amenities">
+                            <div class="amenity">
+                                <div class="amenity-icon">★</div>
+                                <div class="amenity-label">5-STAR</div>
+                            </div>
+                            <div class="amenity">
+                                <div class="amenity-icon">◆</div>
+                                <div class="amenity-label">MICHELIN</div>
+                            </div>
+                            <div class="amenity">
+                                <div class="amenity-icon">○</div>
+                                <div class="amenity-label">SPA</div>
+                            </div>
+                        </div>
+                    </div>
 
-    <div class="section">
-        <h2>🔑 Token Check (Common Names):</h2>
-        <div id="tokenCheck"></div>
-    </div>
+                    <!-- Site 3: Fashion E-commerce -->
+                    <div class="website-page site3">
+                        <div class="store-header">
+                            <div class="store-logo">AVENUE</div>
+                            <div class="header-icons">
+                                <div class="icon"></div>
+                                <div class="icon"></div>
+                            </div>
+                        </div>
+                        <div class="promo-banner">
+                            FREE SHIPPING ON ORDERS OVER $150
+                        </div>
+                        <div class="product-hero">
+                            <div class="product-badge">NEW ARRIVAL</div>
+                        </div>
+                        <div class="product-info">
+                            <div class="product-category">PREMIUM COLLECTION</div>
+                            <div class="product-name">Merino Wool Sweater</div>
+                            <div class="product-price">$285</div>
+                            <div class="color-selector">
+                                <div class="color-option"></div>
+                                <div class="color-option"></div>
+                                <div class="color-option"></div>
+                            </div>
+                            <button class="add-to-cart">ADD TO CART</button>
+                        </div>
+                    </div>
 
-    <div class="section">
-        <h2>✅ getAuthToken() Result:</h2>
-        <div id="getAuthTokenResult"></div>
-    </div>
+                    <!-- Site 4: Portfolio -->
+                    <div class="website-page site4">
+                        <div class="portfolio-nav">
+                            <div class="designer-name">Alex Martinez</div>
+                            <div class="menu-text">Work</div>
+                        </div>
+                        <div class="grid-layout">
+                            <div class="project-card">
+                                <div class="project-number">01</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-number">02</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-number">03</div>
+                            </div>
+                            <div class="project-card">
+                                <div class="project-number">04</div>
+                            </div>
+                        </div>
+                        <div class="featured-project">
+                            <div class="featured-label">FEATURED PROJECT</div>
+                            <div class="project-title">Brand Identity System</div>
+                            <div class="project-description">A comprehensive visual identity for a sustainable fashion startup, including logo, typography, and digital guidelines.</div>
+                            <div class="view-project">
+                                <span>View Case Study</span>
+                                <div class="arrow"></div>
+                            </div>
+                        </div>
+                    </div>
 
-    <div class="section">
-        <h2>🎯 Recommendation:</h2>
-        <div id="recommendation"></div>
+                    <div class="screen-glass"></div>
+                    <div class="home-indicator"></div>
+                </div>
+            </div>
+        </div>
+        <div class="color-selector">
+            <div class="color-dot color-dot-1 active" data-site="1"></div>
+            <div class="color-dot color-dot-2" data-site="2"></div>
+            <div class="color-dot color-dot-3" data-site="3"></div>
+            <div class="color-dot color-dot-4" data-site="4"></div>
+        </div>
     </div>
-
-    <button onclick="refreshDiagnostic()">🔄 Refresh Diagnostic</button>
-    <button onclick="window.location.href='admin_portal.html'">Go to Admin Portal</button>
 
     <script>
-        // Helper function to get the current auth token
-        function getAuthToken() {
-            return localStorage.getItem('adminToken') || 
-                   sessionStorage.getItem('adminToken') || 
-                   localStorage.getItem('token') || 
-                   sessionStorage.getItem('token');
-        }
+        const colorDots = document.querySelectorAll('.color-dot');
+        const websitePages = document.querySelectorAll('.website-page');
 
-        function runDiagnostic() {
-            // Check all localStorage keys
-            const localStorageDiv = document.getElementById('localStorageKeys');
-            let localHTML = '';
-            if (localStorage.length === 0) {
-                localHTML = '<span class="not-found">❌ No items in localStorage</span>';
-            } else {
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    const value = localStorage.getItem(key);
-                    const isLong = value.length > 100;
-                    const displayValue = isLong ? value.substring(0, 100) + '... (truncated)' : value;
-                    localHTML += `<div style="margin: 10px 0;">
-                        <span class="key">${key}:</span>
-                        <span class="value">${displayValue}</span>
-                        ${isLong ? '<button class="copy-btn" onclick="copyToClipboard(\'' + key + '\', \'local\')">Copy Full Value</button>' : ''}
-                    </div>`;
-                }
-            }
-            localStorageDiv.innerHTML = localHTML;
-
-            // Check all sessionStorage keys
-            const sessionStorageDiv = document.getElementById('sessionStorageKeys');
-            let sessionHTML = '';
-            if (sessionStorage.length === 0) {
-                sessionHTML = '<span class="not-found">❌ No items in sessionStorage</span>';
-            } else {
-                for (let i = 0; i < sessionStorage.length; i++) {
-                    const key = sessionStorage.key(i);
-                    const value = sessionStorage.getItem(key);
-                    const isLong = value.length > 100;
-                    const displayValue = isLong ? value.substring(0, 100) + '... (truncated)' : value;
-                    sessionHTML += `<div style="margin: 10px 0;">
-                        <span class="key">${key}:</span>
-                        <span class="value">${displayValue}</span>
-                        ${isLong ? '<button class="copy-btn" onclick="copyToClipboard(\'' + key + '\', \'session\')">Copy Full Value</button>' : ''}
-                    </div>`;
-                }
-            }
-            sessionStorageDiv.innerHTML = sessionHTML;
-
-            // Check common token names
-            const tokenCheckDiv = document.getElementById('tokenCheck');
-            const commonNames = ['adminToken', 'token', 'authToken', 'jwt', 'access_token', 'auth_token'];
-            let tokenHTML = '';
-            let foundToken = null;
-            let foundLocation = null;
-
-            commonNames.forEach(name => {
-                const localValue = localStorage.getItem(name);
-                const sessionValue = sessionStorage.getItem(name);
+        colorDots.forEach((dot) => {
+            dot.addEventListener('click', function() {
+                const siteNumber = this.getAttribute('data-site');
                 
-                if (localValue) {
-                    tokenHTML += `<div><span class="found">✅ ${name} (localStorage): FOUND</span></div>`;
-                    if (!foundToken) {
-                        foundToken = localValue;
-                        foundLocation = `localStorage.getItem('${name}')`;
-                    }
-                } else if (sessionValue) {
-                    tokenHTML += `<div><span class="found">✅ ${name} (sessionStorage): FOUND</span></div>`;
-                    if (!foundToken) {
-                        foundToken = sessionValue;
-                        foundLocation = `sessionStorage.getItem('${name}')`;
-                    }
-                } else {
-                    tokenHTML += `<div><span class="not-found">❌ ${name}: not found</span></div>`;
-                }
+                websitePages.forEach(page => page.classList.remove('active'));
+                colorDots.forEach(d => d.classList.remove('active'));
+                
+                document.querySelector(`.site${siteNumber}`).classList.add('active');
+                this.classList.add('active');
             });
-            tokenCheckDiv.innerHTML = tokenHTML;
-
-            // Check getAuthToken() result
-            const getAuthTokenDiv = document.getElementById('getAuthTokenResult');
-            const authToken = getAuthToken();
-            if (authToken) {
-                getAuthTokenDiv.innerHTML = `<span class="found">✅ Token Found!</span><br><span class="value">${authToken.substring(0, 50)}...</span>`;
-            } else {
-                getAuthTokenDiv.innerHTML = `<span class="not-found">❌ No token found by getAuthToken()</span>`;
-            }
-
-            // Recommendation
-            const recommendationDiv = document.getElementById('recommendation');
-            if (foundToken) {
-                recommendationDiv.innerHTML = `
-                    <span class="found">✅ SOLUTION FOUND!</span><br><br>
-                    Your token is stored at: <span class="key">${foundLocation}</span><br><br>
-                    <strong>What to do:</strong><br>
-                    1. Take a screenshot of this page<br>
-                    2. Share it with me<br>
-                    3. I'll update getAuthToken() to check this location<br>
-                    4. Milestones will work!
-                `;
-            } else {
-                recommendationDiv.innerHTML = `
-                    <span class="not-found">❌ NO TOKEN FOUND</span><br><br>
-                    <strong>This means:</strong><br>
-                    - You're not logged in, OR<br>
-                    - Your login isn't storing the token properly<br><br>
-                    <strong>What to do:</strong><br>
-                    1. Go to your admin-login.html page<br>
-                    2. Login with your credentials<br>
-                    3. Come back to this diagnostic page<br>
-                    4. The token should appear
-                `;
-            }
-        }
-
-        function copyToClipboard(key, storage) {
-            const value = storage === 'local' ? localStorage.getItem(key) : sessionStorage.getItem(key);
-            navigator.clipboard.writeText(value).then(() => {
-                alert('Copied to clipboard!');
-            }).catch(err => {
-                alert('Failed to copy: ' + err);
-            });
-        }
-
-        function refreshDiagnostic() {
-            runDiagnostic();
-        }
-
-        // Run on load
-        runDiagnostic();
+        });
     </script>
 </body>
 </html>

@@ -1548,6 +1548,7 @@ window.addEventListener('load', function() {
         }
 
         .crm-main-title {
+            font-family: 'Playfair Display', Georgia, serif;
             font-size: 48px;
             font-weight: 600;
             line-height: 1.2;
@@ -1705,6 +1706,7 @@ window.addEventListener('load', function() {
         }
 
         .crm-card-title {
+            font-family: 'Playfair Display', Georgia, serif;
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 16px;
@@ -1830,6 +1832,636 @@ window.addEventListener('load', function() {
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
 
+        /* =============================================
+           DESKTOP MONITOR SHOWCASE
+        ============================================= */
+        .desktop-showcase-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        /* Monitor outer shell */
+        .desktop-monitor {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            filter: drop-shadow(0 24px 48px rgba(0,0,0,0.2));
+        }
+
+        .monitor-outer {
+            background: linear-gradient(160deg, #2c2c2e 0%, #1c1c1e 60%, #111 100%);
+            border-radius: 14px 14px 0 0;
+            padding: 10px 10px 0;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .monitor-bezel {
+            background: #0a0a0a;
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+            width: 580px;
+        }
+
+        /* Chrome browser bar */
+        .monitor-chrome {
+            background: #e8e8e8;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .monitor-chrome-dots {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .chrome-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+        }
+
+        .chrome-dot-red { background: #ff5f57; }
+        .chrome-dot-yellow { background: #febc2e; }
+        .chrome-dot-green { background: #28c840; }
+
+        .monitor-chrome-bar {
+            flex: 1;
+        }
+
+        .monitor-address-bar {
+            background: white;
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 11px;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .address-lock { font-size: 9px; }
+
+        /* Screen content area */
+        .monitor-screen {
+            width: 580px;
+            height: 360px;
+            background: #fff;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Monitor stand */
+        .monitor-neck {
+            width: 40px;
+            height: 28px;
+            background: linear-gradient(to bottom, #2a2a2c, #1c1c1e);
+            margin: 0 auto;
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+        }
+
+        .monitor-base {
+            width: 160px;
+            height: 12px;
+            background: linear-gradient(to bottom, #2c2c2e, #1c1c1e);
+            border-radius: 0 0 8px 8px;
+            margin: 0 auto;
+        }
+
+        /* =============================================
+           ALL DESKTOP WEBSITE DESIGNS
+        ============================================= */
+        .desktop-site {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .desktop-active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* --- SITE 1: Agency --- */
+        .ds-1 { background: #f8f7f4; }
+
+        .ds-nav {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            background: white;
+        }
+
+        .ds-logo-mark { font-size: 18px; color: #f4c87e; }
+        .ds-logo-text { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #1a1a1a; }
+
+        .ds-nav-links {
+            display: flex;
+            gap: 14px;
+            margin-left: auto;
+            font-size: 10px;
+            color: #555;
+        }
+
+        .ds-nav-cta {
+            background: #1a1a1a;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .ds-hero {
+            padding: 24px 20px 16px;
+        }
+
+        .ds-hero-tag {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: #f4c87e;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .ds-hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.15;
+            color: #1a1a1a;
+            letter-spacing: -0.5px;
+            margin-bottom: 10px;
+        }
+
+        .ds-hero-title em { font-style: italic; color: #f4c87e; }
+
+        .ds-hero-sub {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.5;
+            max-width: 300px;
+            margin-bottom: 16px;
+        }
+
+        .ds-hero-btns {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .ds-btn-primary {
+            background: #1a1a1a;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .ds-btn-ghost {
+            font-size: 10px;
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+
+        .ds-cards-row {
+            display: flex;
+            gap: 8px;
+            padding: 0 20px;
+            margin-top: 16px;
+        }
+
+        .ds-mini-card {
+            flex: 1;
+            border-radius: 10px;
+            padding: 12px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .ds-card-dark { background: #1a1a1a; }
+        .ds-card-gold { background: #f4c87e; }
+        .ds-card-light { background: #f0f0ea; border: 1px solid #e0e0d8; }
+
+        .ds-card-num {
+            font-size: 9px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.5);
+        }
+        .ds-card-gold .ds-card-num { color: rgba(0,0,0,0.4); }
+        .ds-card-light .ds-card-num { color: rgba(0,0,0,0.3); }
+
+        .ds-card-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+        }
+        .ds-card-gold .ds-card-label { color: #1a1a1a; }
+        .ds-card-light .ds-card-label { color: #1a1a1a; }
+
+        /* --- SITE 2: E-Commerce --- */
+        .ds-2 { background: #fff; }
+
+        .ds2-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            gap: 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .ds2-logo {
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: #1a1a1a;
+            flex-shrink: 0;
+        }
+
+        .ds2-nav {
+            display: flex;
+            gap: 14px;
+            font-size: 10px;
+            color: #555;
+            margin-left: auto;
+        }
+
+        .ds2-icons { font-size: 11px; color: #555; }
+
+        .ds2-banner {
+            background: #1a1a1a;
+            color: #f4c87e;
+            text-align: center;
+            padding: 4px;
+            font-size: 9px;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .ds2-hero-split {
+            display: flex;
+            height: calc(360px - 60px);
+        }
+
+        .ds2-hero-text {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .ds2-season {
+            font-size: 8px;
+            letter-spacing: 2px;
+            color: #999;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .ds2-headline {
+            font-family: 'Playfair Display', serif;
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .ds2-sub { font-size: 10px; color: #888; margin-bottom: 14px; }
+
+        .ds2-shop-btn {
+            background: #1a1a1a;
+            color: white;
+            padding: 8px 16px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            display: inline-block;
+            align-self: flex-start;
+        }
+
+        .ds2-product-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            padding: 4px;
+        }
+
+        .ds2-prod {
+            border-radius: 4px;
+        }
+
+        .ds2-prod-1 { background: linear-gradient(135deg, #d4b896, #c4a882); }
+        .ds2-prod-2 { background: linear-gradient(135deg, #b8c4d0, #98a8b8); }
+        .ds2-prod-3 { background: linear-gradient(135deg, #c8d4c0, #a8b898); }
+        .ds2-prod-4 { background: linear-gradient(135deg, #d0c4b8, #c0b0a0); }
+
+        /* --- SITE 3: Law Firm --- */
+        .ds-3 { background: white; }
+
+        .ds3-topbar {
+            background: #1a1a1a;
+            color: #ccc;
+            padding: 4px 20px;
+            font-size: 9px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .ds3-nav {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            gap: 20px;
+            border-bottom: 2px solid #c9a96e;
+        }
+
+        .ds3-logo {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: #1a1a1a;
+            line-height: 1.2;
+        }
+
+        .ds3-logo small { font-size: 8px; font-weight: 400; letter-spacing: 2px; color: #888; }
+
+        .ds3-links {
+            display: flex;
+            gap: 14px;
+            font-size: 10px;
+            color: #444;
+            margin-left: auto;
+        }
+
+        .ds3-hero {
+            position: relative;
+            height: 160px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .ds3-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to right, rgba(0,0,0,0.7) 0%, transparent 70%);
+        }
+
+        .ds3-hero-content {
+            position: relative;
+            z-index: 2;
+            padding: 0 20px;
+        }
+
+        .ds3-tagline {
+            font-size: 7px;
+            letter-spacing: 2px;
+            color: #c9a96e;
+            margin-bottom: 6px;
+        }
+
+        .ds3-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: white;
+            line-height: 1.2;
+            margin-bottom: 6px;
+        }
+
+        .ds3-sub { font-size: 10px; color: rgba(255,255,255,0.7); margin-bottom: 10px; }
+
+        .ds3-cta {
+            background: #c9a96e;
+            color: #1a1a1a;
+            padding: 7px 14px;
+            font-size: 10px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .ds3-stats {
+            display: flex;
+            background: #f8f6f0;
+            border-top: 3px solid #c9a96e;
+        }
+
+        .ds3-stat {
+            flex: 1;
+            padding: 14px;
+            text-align: center;
+            border-right: 1px solid #e0dbd0;
+        }
+
+        .ds3-stat:last-child { border-right: none; }
+
+        .ds3-num {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1a1a1a;
+            letter-spacing: -0.5px;
+        }
+
+        .ds3-lbl { font-size: 9px; color: #888; margin-top: 2px; }
+
+        /* --- SITE 4: Restaurant --- */
+        .ds-4 { background: #faf6f0; }
+
+        .ds4-nav {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            background: rgba(255,255,255,0.9);
+        }
+
+        .ds4-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #2c1810;
+            line-height: 1.1;
+        }
+
+        .ds4-logo em { font-style: italic; color: #c0652a; }
+
+        .ds4-links {
+            display: flex;
+            gap: 14px;
+            font-size: 10px;
+            color: #555;
+            margin-left: auto;
+            margin-right: 14px;
+        }
+
+        .ds4-reserve {
+            background: #c0652a;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .ds4-hero {
+            display: flex;
+            gap: 0;
+            height: calc(360px - 50px);
+        }
+
+        .ds4-hero-text {
+            flex: 1;
+            padding: 22px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .ds4-tag {
+            font-size: 8px;
+            letter-spacing: 1.5px;
+            color: #c0652a;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .ds4-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #2c1810;
+            margin-bottom: 10px;
+        }
+
+        .ds4-sub { font-size: 10px; color: #888; line-height: 1.5; margin-bottom: 16px; }
+
+        .ds4-btns { display: flex; gap: 10px; }
+
+        .ds4-btn-dark {
+            background: #2c1810;
+            color: white;
+            padding: 8px 14px;
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 4px;
+        }
+
+        .ds4-btn-out {
+            border: 1px solid #2c1810;
+            color: #2c1810;
+            padding: 8px 14px;
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 4px;
+        }
+
+        .ds4-dishes {
+            flex: 1;
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 6px;
+            padding: 12px;
+        }
+
+        .ds4-dish { border-radius: 10px; }
+        .ds4-dish-1 { background: linear-gradient(135deg, #c8855a 0%, #a0552a 100%); }
+        .ds4-dish-2 { background: linear-gradient(135deg, #e0c090 0%, #c8a070 100%); }
+
+        /* =============================================
+           SITE SWITCHER DOTS
+        ============================================= */
+        .desktop-site-switcher {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .desktop-switcher-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .desktop-switcher-dots {
+            display: flex;
+            gap: 14px;
+        }
+
+        .desktop-dot {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            position: relative;
+        }
+
+        .desktop-dot:nth-child(1) { background: linear-gradient(135deg, #1a1a1a 0%, #3a3a3a 100%); }
+        .desktop-dot:nth-child(2) { background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%); }
+        .desktop-dot:nth-child(3) { background: linear-gradient(135deg, #1a2a4a 0%, #0f3460 100%); }
+        .desktop-dot:nth-child(4) { background: linear-gradient(135deg, #c0652a 0%, #8a3510 100%); }
+
+        .desktop-dot:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+
+        .desktop-dot-active { border-color: #1a1a1a; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+
+        .desktop-dot-tooltip {
+            position: absolute;
+            top: -32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .desktop-dot:hover .desktop-dot-tooltip { opacity: 1; }
+
+        /* Mobile: scale monitor down */
+        @media (max-width: 768px) {
+            .monitor-bezel,
+            .monitor-screen { width: 100%; }
+            .desktop-showcase-wrapper { width: 100%; }
+            .monitor-bezel { width: calc(100vw - 40px); max-width: 480px; }
+            .monitor-screen { width: 100%; height: 260px; }
+        }
+
         @media (max-width: 1024px) {
             .crm-showcase-content {
                 grid-template-columns: 1fr;
@@ -1939,6 +2571,7 @@ window.addEventListener('load', function() {
         }
 
         .blog-title {
+            font-family: 'Playfair Display', Georgia, serif;
             font-size: 48px;
             font-weight: 600;
             line-height: 1.2;
@@ -2000,6 +2633,7 @@ window.addEventListener('load', function() {
         }
 
         .blog-card-title {
+            font-family: 'Playfair Display', Georgia, serif;
             font-size: 22px;
             font-weight: 600;
             line-height: 1.3;
@@ -2110,6 +2744,7 @@ window.addEventListener('load', function() {
         }
         
         .service-name {
+            font-family: 'Playfair Display', Georgia, serif;
             font-size: 22px;
             font-weight: 500;
             letter-spacing: -0.4px;
@@ -2240,6 +2875,7 @@ window.addEventListener('load', function() {
 }
 
 .footer-cta-text h2 {
+    font-family: 'Playfair Display', Georgia, serif;
     font-size: 56px;
     font-weight: 400;
     line-height: 1.2;
@@ -3028,6 +3664,7 @@ window.addEventListener('load', function() {
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    min-height: 220px;
 }
 
 .growth-feature-card:hover {
@@ -3049,9 +3686,13 @@ window.addEventListener('load', function() {
 }
 
 .growth-feature-card img {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
 }
 
 /* Desktop: bottom 3 cards in 3-column layout */
@@ -4440,17 +5081,19 @@ nav {
 }
 
 .iphone-portfolio-container {
-    max-width: 1400px;
+    max-width: 1300px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 1fr 1.2fr;
-    gap: 80px;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
     align-items: center;
+    justify-items: center;
 }
 
 /* Text Content Side */
 .iphone-text-content {
-    padding-right: 40px;
+    padding-right: 0;
+    width: 100%;
 }
 
 .iphone-section-title {
@@ -4543,12 +5186,15 @@ nav {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 32px;
+    gap: 20px;
 }
 
 .iphone-wrapper {
     position: relative;
     filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.25));
+    transform: scale(0.75);
+    transform-origin: top center;
+    margin-bottom: -200px;
 }
 
 .iphone {
@@ -5687,6 +6333,49 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<script>
+// Desktop Monitor Showcase Interaction with Auto-Rotation
+const desktopAddressMap = {
+    1: 'axiom-agency.com',
+    2: 'aurumstore.com',
+    3: 'harringtonlaw.com',
+    4: 'trattoriabella.com'
+};
+
+let currentDesktopSite = 1;
+let desktopAutoInterval;
+
+function switchDesktopSite(siteNumber) {
+    // Hide all sites
+    document.querySelectorAll('.desktop-site').forEach(s => s.classList.remove('desktop-active'));
+    document.querySelectorAll('.desktop-dot').forEach(d => d.classList.remove('desktop-dot-active'));
+
+    // Show selected
+    const target = document.querySelector('.ds-' + siteNumber);
+    const dot = document.querySelector('.desktop-dot[data-site="' + siteNumber + '"]');
+    if (target) target.classList.add('desktop-active');
+    if (dot) dot.classList.add('desktop-dot-active');
+
+    // Update address bar
+    const addressEl = document.getElementById('desktopAddressText');
+    if (addressEl) addressEl.textContent = desktopAddressMap[siteNumber] || 'diamondbackcoding.com';
+
+    currentDesktopSite = siteNumber;
+
+    // Restart timer
+    clearInterval(desktopAutoInterval);
+    desktopAutoInterval = setInterval(desktopAutoRotate, 5000);
+}
+
+function desktopAutoRotate() {
+    const next = currentDesktopSite >= 4 ? 1 : currentDesktopSite + 1;
+    switchDesktopSite(next);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    desktopAutoInterval = setInterval(desktopAutoRotate, 5000);
+});
+
 <!-- MOBILE CARD CAROUSEL: Web Development (Mobile Only) -->
 <section class="crm-card-carousel" id="webDevCardCarousel">
     <div class="crm-carousel-header">
@@ -5774,16 +6463,157 @@ document.addEventListener('DOMContentLoaded', function() {
                 </p>
             </div>
             <div class="crm-visual-side">
-                <div class="crm-device-showcase">
-                    <div class="crm-laptop-device">
-                        <div class="crm-laptop-frame">
-                            <img src="https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=1200&q=80" alt="Web Development Dashboard">
+                <div class="desktop-showcase-wrapper">
+                    <!-- Desktop Monitor Mockup -->
+                    <div class="desktop-monitor">
+                        <div class="monitor-outer">
+                            <div class="monitor-bezel">
+                                <div class="monitor-chrome">
+                                    <div class="monitor-chrome-dots">
+                                        <span class="chrome-dot chrome-dot-red"></span>
+                                        <span class="chrome-dot chrome-dot-yellow"></span>
+                                        <span class="chrome-dot chrome-dot-green"></span>
+                                    </div>
+                                    <div class="monitor-chrome-bar">
+                                        <div class="monitor-address-bar">
+                                            <span class="address-lock">🔒</span>
+                                            <span class="address-text" id="desktopAddressText">diamondbackcoding.com</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="monitor-screen">
+                                    <!-- Site 1: Agency -->
+                                    <div class="desktop-site ds-1 desktop-active">
+                                        <div class="ds-nav">
+                                            <div class="ds-logo-mark">⬡</div>
+                                            <div class="ds-logo-text">AXIOM</div>
+                                            <div class="ds-nav-links">
+                                                <span>Work</span><span>Services</span><span>About</span><span>Contact</span>
+                                            </div>
+                                            <div class="ds-nav-cta">Get Started</div>
+                                        </div>
+                                        <div class="ds-hero">
+                                            <div class="ds-hero-tag">DIGITAL AGENCY</div>
+                                            <div class="ds-hero-title">We Build<br><em>Digital Futures</em></div>
+                                            <div class="ds-hero-sub">Strategy, design & development for brands that lead their market</div>
+                                            <div class="ds-hero-btns">
+                                                <div class="ds-btn-primary">View Our Work</div>
+                                                <div class="ds-btn-ghost">Learn More →</div>
+                                            </div>
+                                        </div>
+                                        <div class="ds-cards-row">
+                                            <div class="ds-mini-card ds-card-dark">
+                                                <div class="ds-card-num">01</div>
+                                                <div class="ds-card-label">Branding</div>
+                                            </div>
+                                            <div class="ds-mini-card ds-card-gold">
+                                                <div class="ds-card-num">02</div>
+                                                <div class="ds-card-label">Web Dev</div>
+                                            </div>
+                                            <div class="ds-mini-card ds-card-light">
+                                                <div class="ds-card-num">03</div>
+                                                <div class="ds-card-label">Marketing</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Site 2: E-Commerce -->
+                                    <div class="desktop-site ds-2">
+                                        <div class="ds2-header">
+                                            <div class="ds2-logo">AURUM STORE</div>
+                                            <div class="ds2-nav"><span>New In</span><span>Collections</span><span>Sale</span></div>
+                                            <div class="ds2-icons">🔍 🛒 👤</div>
+                                        </div>
+                                        <div class="ds2-banner">FREE SHIPPING ON ORDERS OVER $75 · USE CODE WELCOME10</div>
+                                        <div class="ds2-hero-split">
+                                            <div class="ds2-hero-text">
+                                                <div class="ds2-season">SS 2025 COLLECTION</div>
+                                                <div class="ds2-headline">Crafted for the<br>Modern Life</div>
+                                                <div class="ds2-sub">Premium essentials built to last</div>
+                                                <div class="ds2-shop-btn">SHOP NOW</div>
+                                            </div>
+                                            <div class="ds2-product-grid">
+                                                <div class="ds2-prod ds2-prod-1"></div>
+                                                <div class="ds2-prod ds2-prod-2"></div>
+                                                <div class="ds2-prod ds2-prod-3"></div>
+                                                <div class="ds2-prod ds2-prod-4"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Site 3: Law Firm / Professional -->
+                                    <div class="desktop-site ds-3">
+                                        <div class="ds3-topbar">
+                                            <span>📞 (940) 217-8680</span>
+                                            <span>|</span>
+                                            <span>Schedule a Consultation</span>
+                                        </div>
+                                        <div class="ds3-nav">
+                                            <div class="ds3-logo">HARRINGTON<br><small>LAW GROUP</small></div>
+                                            <div class="ds3-links"><span>Practice Areas</span><span>Our Team</span><span>Results</span><span>Contact</span></div>
+                                        </div>
+                                        <div class="ds3-hero">
+                                            <div class="ds3-overlay"></div>
+                                            <div class="ds3-hero-content">
+                                                <div class="ds3-tagline">TRUSTED · EXPERIENCED · RESULTS-DRIVEN</div>
+                                                <div class="ds3-title">Fighting For<br>Your Rights</div>
+                                                <div class="ds3-sub">Over 20 years of winning results for our clients</div>
+                                                <div class="ds3-cta">Free Consultation</div>
+                                            </div>
+                                        </div>
+                                        <div class="ds3-stats">
+                                            <div class="ds3-stat"><div class="ds3-num">$50M+</div><div class="ds3-lbl">Recovered</div></div>
+                                            <div class="ds3-stat"><div class="ds3-num">98%</div><div class="ds3-lbl">Success Rate</div></div>
+                                            <div class="ds3-stat"><div class="ds3-num">500+</div><div class="ds3-lbl">Cases Won</div></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Site 4: Restaurant -->
+                                    <div class="desktop-site ds-4">
+                                        <div class="ds4-nav">
+                                            <div class="ds4-logo">Trattoria<br><em>Bella</em></div>
+                                            <div class="ds4-links"><span>Menu</span><span>Reservations</span><span>Events</span><span>About</span></div>
+                                            <div class="ds4-reserve">Reserve a Table</div>
+                                        </div>
+                                        <div class="ds4-hero">
+                                            <div class="ds4-hero-text">
+                                                <div class="ds4-tag">EST. 1987 · ITALIAN CUISINE</div>
+                                                <div class="ds4-title">Where Every<br>Meal is a<br>Memory</div>
+                                                <div class="ds4-sub">Authentic recipes passed down through generations</div>
+                                                <div class="ds4-btns">
+                                                    <div class="ds4-btn-dark">View Menu</div>
+                                                    <div class="ds4-btn-out">Book Now</div>
+                                                </div>
+                                            </div>
+                                            <div class="ds4-dishes">
+                                                <div class="ds4-dish ds4-dish-1"></div>
+                                                <div class="ds4-dish ds4-dish-2"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="crm-laptop-bottom"></div>
+                        <div class="monitor-neck"></div>
+                        <div class="monitor-base"></div>
                     </div>
-                    <div class="crm-phone-device">
-                        <div class="crm-phone-frame">
-                            <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400&q=80" alt="Mobile Web Design">
+
+                    <!-- Site Switcher Dots -->
+                    <div class="desktop-site-switcher">
+                        <div class="desktop-switcher-label">Switch designs</div>
+                        <div class="desktop-switcher-dots">
+                            <div class="desktop-dot desktop-dot-active" data-site="1" onclick="switchDesktopSite(1)">
+                                <span class="desktop-dot-tooltip">Agency</span>
+                            </div>
+                            <div class="desktop-dot" data-site="2" onclick="switchDesktopSite(2)">
+                                <span class="desktop-dot-tooltip">E-Commerce</span>
+                            </div>
+                            <div class="desktop-dot" data-site="3" onclick="switchDesktopSite(3)">
+                                <span class="desktop-dot-tooltip">Law Firm</span>
+                            </div>
+                            <div class="desktop-dot" data-site="4" onclick="switchDesktopSite(4)">
+                                <span class="desktop-dot-tooltip">Restaurant</span>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -6666,6 +6666,134 @@ app.post('/api/automation/generate-followup-reminders', authenticateToken, async
 // Place them with your other email routes
 // ========================================
 
+// ========================================
+// GET DEAD LEADS (unsubscribed)
+// ========================================
+app.get('/api/follow-ups/dead-leads', authenticateToken, async (req, res) => {
+    try {
+        console.log('[DEAD-LEADS] Fetching unsubscribed leads');
+        const result = await pool.query(`
+            SELECT 
+                l.*,
+                COALESCE(EXTRACT(DAY FROM CURRENT_DATE - l.last_contact_date)::INTEGER, 999) as days_since_contact
+            FROM leads l
+            WHERE l.unsubscribed = TRUE
+            AND l.is_customer = FALSE
+            ORDER BY l.updated_at DESC NULLS LAST
+        `);
+        console.log(`[DEAD-LEADS] Found ${result.rows.length} unsubscribed leads`);
+        res.json({ success: true, leads: result.rows, total: result.rows.length });
+    } catch (error) {
+        console.error('[DEAD-LEADS] Error:', error);
+        res.status(500).json({ success: false, message: 'Error fetching dead leads', error: error.message });
+    }
+});
+
+// ========================================
+// EMAIL OPEN TRACKING PIXEL
+// ========================================
+app.get('/api/track/open/:emailLogId', async (req, res) => {
+    try {
+        const { emailLogId } = req.params;
+        // Update opened_at only on first open
+        await pool.query(
+            `UPDATE email_log SET opened_at = CURRENT_TIMESTAMP, status = 'opened'
+             WHERE id = $1 AND opened_at IS NULL`,
+            [emailLogId]
+        );
+        // Also track engagement on the lead so they can become hot
+        const logRow = await pool.query('SELECT lead_id FROM email_log WHERE id = $1', [emailLogId]);
+        if (logRow.rows.length > 0) {
+            const leadId = logRow.rows[0].lead_id;
+            await trackEngagement(leadId, 'email_open', 5);
+        }
+    } catch (e) {
+        // Silently swallow - never break pixel delivery
+    }
+    // Return 1×1 transparent GIF
+    const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+    res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
+    res.end(pixel);
+});
+
+// ========================================
+// ANALYTICS: Email Open Report
+// ========================================
+app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
+    try {
+        // Overall stats
+        const statsResult = await pool.query(`
+            SELECT
+                COUNT(*) FILTER (WHERE sent_at IS NOT NULL) as total_sent,
+                COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as total_opened,
+                COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as total_clicked,
+                ROUND(
+                    COUNT(*) FILTER (WHERE opened_at IS NOT NULL)::NUMERIC /
+                    NULLIF(COUNT(*) FILTER (WHERE sent_at IS NOT NULL), 0) * 100, 1
+                ) as open_rate,
+                ROUND(
+                    COUNT(*) FILTER (WHERE clicked_at IS NOT NULL)::NUMERIC /
+                    NULLIF(COUNT(*) FILTER (WHERE sent_at IS NOT NULL), 0) * 100, 1
+                ) as click_rate
+            FROM email_log
+        `);
+
+        // Leads that opened and became hot
+        const hotConversionsResult = await pool.query(`
+            SELECT COUNT(DISTINCT el.lead_id) as opened_and_became_hot
+            FROM email_log el
+            JOIN leads l ON el.lead_id = l.id
+            WHERE el.opened_at IS NOT NULL
+            AND l.lead_temperature = 'hot'
+        `);
+
+        // Recent opens with lead info (last 50)
+        const recentOpensResult = await pool.query(`
+            SELECT
+                el.id,
+                el.subject,
+                el.sent_at,
+                el.opened_at,
+                el.clicked_at,
+                el.status,
+                l.name as lead_name,
+                l.email as lead_email,
+                l.lead_temperature,
+                l.company
+            FROM email_log el
+            LEFT JOIN leads l ON el.lead_id = l.id
+            WHERE el.sent_at IS NOT NULL
+            ORDER BY el.sent_at DESC
+            LIMIT 100
+        `);
+
+        // Opens per day (last 30 days)
+        const trendsResult = await pool.query(`
+            SELECT
+                DATE(sent_at) as date,
+                COUNT(*) as sent,
+                COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened
+            FROM email_log
+            WHERE sent_at >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY DATE(sent_at)
+            ORDER BY date DESC
+        `);
+
+        res.json({
+            success: true,
+            stats: {
+                ...statsResult.rows[0],
+                opened_and_became_hot: hotConversionsResult.rows[0]?.opened_and_became_hot || 0
+            },
+            recent_opens: recentOpensResult.rows,
+            daily_trends: trendsResult.rows
+        });
+    } catch (error) {
+        console.error('[ANALYTICS] Email opens error:', error);
+        res.status(500).json({ success: false, message: 'Error fetching email analytics', error: error.message });
+    }
+});
+
 // Get follow-ups separated by temperature (hot/cold)
 app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) => {
     try {
@@ -11170,6 +11298,19 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
                     <p class="team-name">The Diamondback Coding Team</p>
                 </div>
             `, { unsubscribeUrl });
+        }
+
+        // Create email_log entry BEFORE sending so we have the ID for the tracking pixel
+        const emailLogResult = await pool.query(
+            `INSERT INTO email_log (lead_id, subject, sent_at, status) VALUES ($1, $2, CURRENT_TIMESTAMP, 'sent') RETURNING id`,
+            [leadId, emailSubject]
+        );
+        const emailLogId = emailLogResult.rows[0]?.id;
+
+        // Inject open-tracking pixel into emailHTML (1×1 transparent image)
+        if (emailLogId) {
+            const trackingPixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
+            emailHTML = emailHTML.replace('</body>', `${trackingPixel}</body>`);
         }
 
         await transporter.sendMail({

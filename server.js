@@ -555,6 +555,42 @@ pool.connect((err, client, release) => {
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 // ========================================
+// SHARED: Tracked email sender
+// Logs to email_log, injects open-tracking pixel, then sends.
+// Use this for ALL follow-up / outreach sends so the analytics report is accurate.
+// ========================================
+async function sendTrackedEmail({ leadId, to, subject, html }) {
+    // 1. Create email_log row BEFORE sending so we have the ID
+    let emailLogId = null;
+    try {
+        const logRow = await pool.query(
+            `INSERT INTO email_log (lead_id, subject, sent_at, status) VALUES ($1, $2, CURRENT_TIMESTAMP, 'sent') RETURNING id`,
+            [leadId || null, subject]
+        );
+        emailLogId = logRow.rows[0]?.id;
+    } catch (e) {
+        console.warn('[TRACKED-EMAIL] Could not insert email_log row:', e.message);
+    }
+
+    // 2. Inject 1×1 open-tracking pixel
+    if (emailLogId) {
+        const pixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
+        html = html.replace(/<\/body>/i, `${pixel}</body>`);
+        if (!html.includes(pixel)) html += pixel; // fallback if no </body>
+    }
+
+    // 3. Send
+    await transporter.sendMail({
+        from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+        to,
+        subject,
+        html
+    });
+
+    return emailLogId;
+}
+
+// ========================================
 // DATABASE INITIALIZATION
 // ========================================
 async function initializeDatabase(){
@@ -6973,18 +7009,10 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
             </div>
         `, { unsubscribeUrl });
         
-        // Send the email using Nodemailer
+        // Send via tracked helper (logs to email_log + injects open pixel)
         try {
-            const info = await transporter.sendMail({
-                from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
-                to: to,
-                subject: subject,
-                html: emailHTML
-            });
-            
+            await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML });
             console.log('[EMAIL API] ✅ Email sent successfully to:', to);
-            console.log('[EMAIL API] Message ID:', info.messageId);
-            
         } catch (emailError) {
             console.error('[EMAIL API] ❌ Email send error:', emailError);
             return res.status(500).json({
@@ -11300,25 +11328,8 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
             `, { unsubscribeUrl });
         }
 
-        // Create email_log entry BEFORE sending so we have the ID for the tracking pixel
-        const emailLogResult = await pool.query(
-            `INSERT INTO email_log (lead_id, subject, sent_at, status) VALUES ($1, $2, CURRENT_TIMESTAMP, 'sent') RETURNING id`,
-            [leadId, emailSubject]
-        );
-        const emailLogId = emailLogResult.rows[0]?.id;
-
-        // Inject open-tracking pixel into emailHTML (1×1 transparent image)
-        if (emailLogId) {
-            const trackingPixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
-            emailHTML = emailHTML.replace('</body>', `${trackingPixel}</body>`);
-        }
-
-        await transporter.sendMail({
-            from: `\"Diamondback Coding\" <${process.env.EMAIL_USER}>`,
-            to: lead.email,
-            subject: emailSubject,
-            html: emailHTML
-        });
+        // Create email_log entry and send with tracking pixel
+        await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML });
         
         // Update last_contact_date
         await pool.query(
@@ -11444,12 +11455,7 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
                     </div>
                 `, { unsubscribeUrl });
 
-                await transporter.sendMail({
-                    from: `\"Diamondback Coding\" <${process.env.EMAIL_USER}>`,
-                    to: lead.email,
-                    subject: emailSubject,
-                    html: emailHTML
-                });
+                await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML });
                 
                 // Update lead
                 await pool.query(
@@ -11580,12 +11586,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
                     </div>
                 `, { unsubscribeUrl });
 
-                await transporter.sendMail({
-                    from: `\"Diamondback Coding\" <${process.env.EMAIL_USER}>`,
-                    to: lead.email,
-                    subject: subject,
-                    html: emailHTML
-                });
+                await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML });
                 
                 // Update last_contact_date
                 await pool.query(
@@ -11746,12 +11747,7 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
                     </div>
                 `, { unsubscribeUrl });
 
-                await transporter.sendMail({
-                    from: `\"Diamondback Coding\" <${process.env.EMAIL_USER}>`,
-                    to: lead.email,
-                    subject: subject,
-                    html: emailHTML
-                });
+                await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML });
 
                 // Update last_contact_date and status
                 await pool.query(
@@ -11864,18 +11860,13 @@ app.post('/api/auto-campaigns', authenticateToken, async (req, res) => {
         }
         const unsubscribeUrl = `${BASE_URL}/api/unsubscribe/${unsub}`;
 
-        // Send first email
+        // Send first email with tracking
         const emailHTML = buildEmailHTML(`
             <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${personalizedBody.replace(/\n/g, '<br>')}</div>
             <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
         `, { unsubscribeUrl });
 
-        await transporter.sendMail({
-            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
-            to: lead.email,
-            subject: subject,
-            html: emailHTML
-        });
+        await sendTrackedEmail({ leadId, to: lead.email, subject, html: emailHTML });
 
         // Insert campaign row
         const ins = await pool.query(`
@@ -11981,12 +11972,7 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
                     <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
                 `, { unsubscribeUrl: `${BASE_URL}/api/unsubscribe/${unsub}` });
 
-                await transporter.sendMail({
-                    from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
-                    to: c.lead_email,
-                    subject: c.subject,
-                    html: emailHTML
-                });
+                await sendTrackedEmail({ leadId: c.lead_id, to: c.lead_email, subject: c.subject, html: emailHTML });
 
                 await pool.query('UPDATE auto_campaigns SET last_sent_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=$1', [c.id]);
                 await pool.query(`UPDATE leads SET last_contact_date=CURRENT_TIMESTAMP, status=CASE WHEN status='new' THEN 'contacted' ELSE status END, updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [c.lead_id]);
@@ -12014,6 +12000,46 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
 // ========================================
 // PUBLIC UNSUBSCRIBE ENDPOINT (no auth required)
 // ========================================
+
+// Alias: frontend sendTemperatureBulkEmail calls /api/send-email
+// Route to send-custom logic so those emails are also tracked
+app.post('/api/send-email', authenticateToken, async (req, res) => {
+    const { to, subject, body, leadId } = req.body;
+    if (!to || !subject || !body) {
+        return res.status(400).json({ success: false, message: 'Missing required fields: to, subject, body' });
+    }
+    let unsubscribeUrl = null;
+    if (leadId) {
+        try {
+            const leadRow = await pool.query('SELECT unsubscribe_token, unsubscribed FROM leads WHERE id = $1', [leadId]);
+            const lead = leadRow.rows[0];
+            if (lead?.unsubscribed) {
+                return res.status(400).json({ success: false, message: 'Lead has unsubscribed' });
+            }
+            let token = lead?.unsubscribe_token;
+            if (!token) {
+                token = crypto.randomBytes(32).toString('hex');
+                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [token, leadId]);
+            }
+            unsubscribeUrl = `${BASE_URL}/api/unsubscribe/${token}`;
+        } catch (e) {}
+    }
+    const emailHTML = buildEmailHTML(`
+        <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${body.replace(/\n/g, '<br>')}</div>
+        <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
+    `, { unsubscribeUrl });
+    try {
+        await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML });
+        if (leadId) {
+            await pool.query(`UPDATE leads SET last_contact_date = CURRENT_DATE, status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [leadId]);
+        }
+        res.json({ success: true, message: 'Email sent successfully' });
+    } catch (err) {
+        console.error('[SEND-EMAIL] Error:', err);
+        res.status(500).json({ success: false, message: 'Failed to send: ' + err.message });
+    }
+});
+
 app.get('/api/unsubscribe/:token', async (req, res) => {
     try {
         const { token } = req.params;

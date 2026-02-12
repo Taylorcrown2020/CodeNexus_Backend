@@ -7787,7 +7787,13 @@ function renderAnalytics(content) {
             <div id="emailOpenReport" style="margin-top: 28px;">
                 <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 4px 0 0 0; overflow: hidden;">
                     <div style="padding: 20px 24px 16px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
-                        <h3 style="font-size: 16px; font-weight: 700; margin: 0;">📬 Email Open Rate Report</h3>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;color:var(--text-secondary);">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Email Open Rate Report</h3>
+                        </div>
                         <span style="font-size: 12px; color: var(--text-muted);">Follow-up emails sent through the system</span>
                     </div>
                     <div id="emailOpenReportContent" style="padding: 24px;">
@@ -7840,7 +7846,7 @@ async function loadEmailOpenReport() {
                         : `<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">—</span>`
                     }
                 </td>
-                <td>${isHot ? '<span style="background:#fef2f2;color:#ef4444;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">🔥 Hot</span>' : '<span style="color:var(--text-muted);font-size:12px;">Cold</span>'}</td>
+                <td>${isHot ? '<span style="background:#fef2f2;color:#ef4444;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">HOT</span>' : '<span style="color:var(--text-muted);font-size:12px;">Cold</span>'}</td>
             </tr>`;
         }).join('');
 
@@ -7860,7 +7866,7 @@ async function loadEmailOpenReport() {
                 </div>
                 <div style="background:#fef9f0;border-radius:8px;padding:16px;text-align:center;">
                     <div style="font-size:28px;font-weight:800;color:#d97706;">${hotConversions.toLocaleString()}</div>
-                    <div style="font-size:12px;color:#d97706;margin-top:4px;">Opened → Became Hot 🔥</div>
+                    <div style="font-size:12px;color:#d97706;margin-top:4px;">Opened — Became Hot</div>
                 </div>
             </div>
             ${sent === 0 ? `<div style="text-align:center;padding:40px;color:var(--text-muted);">No emails logged yet. Open tracking will populate as follow-up emails are sent.</div>` : `
@@ -17217,7 +17223,7 @@ async function renderFollowUps(content) {
                     style="padding: 12px 24px; background: ${state.currentFollowUpTab === 'dead' ? 'var(--bg-hover)' : 'transparent'}; 
                            border: none; border-bottom: 3px solid ${state.currentFollowUpTab === 'dead' ? '#6b7280' : 'transparent'}; 
                            color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-                    ⛔ Dead Leads
+                    Dead Leads
                     <span style="display: inline-block; margin-left: 8px; background: #6b7280; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${deadLeads.length}</span>
                 </button>
             </div>
@@ -17244,11 +17250,14 @@ async function renderFollowUps(content) {
 function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
     deadLeads = deadLeads || state.deadLeads || [];
 
-    // Dead Leads tab
+    // ── DEAD LEADS TAB ─────────────────────────────────────────────
     if (tab === 'dead') {
         if (deadLeads.length === 0) {
             return `
                 <div style="text-align: center; padding: 60px; background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin:0 auto 16px;color:#6b7280;">
+                        <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                    </svg>
                     <div style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">No Dead Leads</div>
                     <div style="color: var(--text-muted);">No leads have unsubscribed yet. They will appear here when they opt out.</div>
                 </div>
@@ -17263,7 +17272,9 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                         <div class="contact-cell">
                             <div class="contact-avatar" style="opacity:0.5;">${getInitials(lead.name || '?')}</div>
                             <div class="contact-info">
-                                <div class="contact-name" style="color: var(--text-secondary);">${lead.name || 'Unknown'} <span style="font-size:10px;background:#6b7280;color:white;padding:2px 6px;border-radius:10px;margin-left:6px;font-weight:700;">UNSUBSCRIBED</span></div>
+                                <div class="contact-name" style="color: var(--text-secondary);">${lead.name || 'Unknown'}
+                                    <span style="font-size:10px;background:#6b7280;color:white;padding:2px 6px;border-radius:10px;margin-left:6px;font-weight:700;letter-spacing:0.5px;">UNSUBSCRIBED</span>
+                                </div>
                                 <div class="contact-email">${lead.email || ''}</div>
                             </div>
                         </div>
@@ -17280,20 +17291,18 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         return `
             <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 28px;">
                 <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid var(--border-subtle);">
-                    <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">⛔ Dead Leads — Unsubscribed</h3>
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;color:#6b7280;flex-shrink:0;">
+                            <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                        </svg>
+                        <h3 style="font-size: 18px; font-weight: 700; margin: 0;">Dead Leads — Unsubscribed</h3>
+                    </div>
                     <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">These leads have opted out of follow-up emails. They will not receive any future outreach.</p>
                     <p style="font-size: 13px; color: var(--text-primary); margin-top: 8px; font-weight: 600;">${deadLeads.length} ${deadLeads.length === 1 ? 'lead has' : 'leads have'} unsubscribed</p>
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="data-table" style="min-width: 700px;">
-                        <thead>
-                            <tr>
-                                <th>Lead</th>
-                                <th>Company</th>
-                                <th>Last Contacted</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Lead</th><th>Company</th><th>Last Contacted</th><th>Actions</th></tr></thead>
                         <tbody>${deadHtml}</tbody>
                     </table>
                 </div>
@@ -17301,31 +17310,70 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         `;
     }
 
+    // ── HOT / COLD TABS with day-bucket sub-tabs ────────────────────
     const leads = tab === 'hot' ? hotLeads : coldLeads;
-    const isCold = tab === 'cold';
     const isHot = tab === 'hot';
-    
+    const accentColor = isHot ? '#ef4444' : '#3b82f6';
+
+    // Day bucket definitions
+    const buckets = [
+        { key: 'never',  label: 'Never Contacted', filter: l => !l.last_contact_date || parseInt(l.days_since_contact) === 999 },
+        { key: '3day',   label: '3–6 Days',        filter: l => { const d = parseInt(l.days_since_contact); return d >= 3 && d < 7; } },
+        { key: '7day',   label: '7–13 Days',       filter: l => { const d = parseInt(l.days_since_contact); return d >= 7 && d < 14; } },
+        { key: '14day',  label: '14+ Days',        filter: l => { const d = parseInt(l.days_since_contact); return d >= 14; } },
+    ];
+
+    // Build bucketed lead sets
+    const bucketed = buckets.map(b => ({ ...b, leads: leads.filter(b.filter) }));
+    const nonEmpty = bucketed.filter(b => b.leads.length > 0);
+
+    // Use state to track the active day sub-tab
+    const stateKey = `currentDaySubTab_${tab}`;
+    if (!state[stateKey] || !bucketed.find(b => b.key === state[stateKey] && b.leads.length > 0)) {
+        state[stateKey] = (nonEmpty[0]?.key) || 'never';
+    }
+    const activeDayKey = state[stateKey];
+    const activeBucket = bucketed.find(b => b.key === activeDayKey) || bucketed[0];
+
     if (leads.length === 0) {
         return `
             <div style="text-align: center; padding: 60px; background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);">
-                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px; color: ${isHot ? '#ef4444' : '#3b82f6'};">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin:0 auto 16px;color:${accentColor};">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
                 </svg>
                 <div style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">No ${isHot ? 'Hot' : 'Cold'} Leads</div>
                 <div style="color: var(--text-muted);">
-                    ${isHot 
-                        ? 'Hot leads appear here when they engage with your emails or fill out contact forms.' 
-                        : 'All your leads are either hot or don\'t need follow-up right now!'}
+                    ${isHot ? 'Hot leads appear here when they engage with your emails or fill out contact forms.' : 'All your leads are either hot or do not need follow-up right now.'}
                 </div>
             </div>
         `;
     }
-    
-    const leadsHtml = leads.map(lead => {
+
+    // Build day sub-tab nav
+    const daySubTabNav = `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+            ${bucketed.map(b => {
+                const isActive = b.key === activeDayKey;
+                const isEmpty = b.leads.length === 0;
+                return `
+                    <button onclick="switchDaySubTab('${tab}','${b.key}')"
+                        style="padding:7px 14px; border-radius:20px; border: 1.5px solid ${isActive ? accentColor : 'var(--border-subtle)'};
+                               background: ${isActive ? accentColor : 'transparent'}; color: ${isActive ? 'white' : isEmpty ? 'var(--text-muted)' : 'var(--text-primary)'};
+                               font-size:12px; font-weight:600; cursor:${isEmpty ? 'default' : 'pointer'}; opacity:${isEmpty ? 0.45 : 1}; transition:all 0.15s;
+                               pointer-events:${isEmpty ? 'none' : 'auto'};">
+                        ${b.label}
+                        <span style="margin-left:5px; background:${isActive ? 'rgba(255,255,255,0.25)' : 'var(--bg-hover)'}; color:${isActive ? 'white' : 'var(--text-muted)'}; padding:1px 7px; border-radius:10px; font-size:11px;">${b.leads.length}</span>
+                    </button>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    // Build lead rows for the active bucket
+    const buildRows = (rowLeads) => rowLeads.map(lead => {
         const escapedName = (lead.name || 'Unknown').replace(/'/g, "\\'");
-        const daysSince = lead.days_since_contact === 999 ? 'Never' : `${lead.days_since_contact} days`;
+        const daysSince = (!lead.last_contact_date || parseInt(lead.days_since_contact) === 999) ? 'Never' : `${lead.days_since_contact} days`;
         const lastContactDisplay = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
-        
         return `
             <tr>
                 <td>
@@ -17333,7 +17381,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                         <div class="contact-avatar">${getInitials(lead.name || '?')}</div>
                         <div class="contact-info">
                             <div class="contact-name">${lead.name || 'Unknown'}
-                                ${isHot ? '<span style="font-size:9px;background:#ef4444;color:white;padding:2px 6px;border-radius:10px;margin-left:6px;font-weight:700;">HOT</span>' : ''}
+                                ${isHot ? `<span style="font-size:9px;background:#ef4444;color:white;padding:2px 6px;border-radius:10px;margin-left:6px;font-weight:700;letter-spacing:0.4px;">HOT</span>` : ''}
                             </div>
                             <div class="contact-email">${lead.email || ''}</div>
                         </div>
@@ -17341,7 +17389,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                 </td>
                 <td>${lastContactDisplay}</td>
                 <td>
-                    <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
+                    <span style="color: ${parseInt(lead.days_since_contact) > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
                         ${daysSince}
                     </span>
                 </td>
@@ -17365,19 +17413,22 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
             </tr>
         `;
     }).join('');
-    
-    const description = isHot 
-        ? 'These leads have engaged with you (clicked links, filled forms, replied). They receive follow-ups every 3.5 days (twice per week).'
-        : 'These leads haven\'t engaged yet. They follow your standard follow-up cadence.';
-    
+
+    const description = isHot
+        ? 'These leads have engaged with you (clicked links, filled forms, replied). They receive follow-ups every 3.5 days.'
+        : "These leads haven't engaged yet. They follow your standard follow-up cadence.";
+
+    const activeBucketLeads = activeBucket?.leads || [];
+
     return `
         <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 28px;">
-            <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid var(--border-subtle);">
+            <!-- Header -->
+            <div style="margin-bottom: 20px; padding-bottom: 18px; border-bottom: 2px solid var(--border-subtle);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
-                        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">${isHot ? 'Hot Leads' : 'Cold Leads'}</h3>
-                        <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">${description}</p>
-                        <p style="font-size: 13px; color: var(--text-primary); margin-top: 8px; font-weight: 600;">${leads.length} ${leads.length === 1 ? 'lead' : 'leads'} need follow-up</p>
+                        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">${isHot ? 'Hot Leads' : 'Cold Leads'}</h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 6px;">${description}</p>
+                        <p style="font-size: 13px; color: var(--text-primary); font-weight: 600;">${leads.length} ${leads.length === 1 ? 'lead' : 'leads'} need follow-up</p>
                     </div>
                     <button class="btn btn-primary btn-sm" onclick="openTemperatureEmailModal('${tab}', '${isHot ? 'Hot Leads' : 'Cold Leads'}', ${leads.length})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
@@ -17388,22 +17439,46 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                     </button>
                 </div>
             </div>
-            
-            <div style="overflow-x: auto;">
-                <table class="data-table" style="min-width: 850px;">
-                    <thead>
-                        <tr>
-                            <th style="width: 250px;">Lead</th>
-                            <th style="width: 150px;">Last Contact</th>
-                            <th style="width: 120px;">Days Since</th>
-                            <th style="min-width: 300px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>${leadsHtml}</tbody>
-                </table>
+
+            <!-- Day bucket sub-tabs -->
+            ${daySubTabNav}
+
+            <!-- Active bucket heading -->
+            <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:13px;font-weight:600;color:var(--text-secondary);">${activeBucketLeads.length} lead${activeBucketLeads.length !== 1 ? 's' : ''} — ${activeBucket?.label || ''}</span>
+            </div>
+
+            <!-- Lead table -->
+            <div style="overflow-x: auto;" id="dayBucketTable_${tab}">
+                ${activeBucketLeads.length === 0 ? `
+                    <div style="text-align:center;padding:40px;color:var(--text-muted);">No leads in this time bucket.</div>
+                ` : `
+                    <table class="data-table" style="min-width: 850px;">
+                        <thead>
+                            <tr>
+                                <th style="width:250px;">Lead</th>
+                                <th style="width:150px;">Last Contact</th>
+                                <th style="width:120px;">Days Since</th>
+                                <th style="min-width:280px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>${buildRows(activeBucketLeads)}</tbody>
+                    </table>
+                `}
             </div>
         </div>
     `;
+}
+
+// Switch day sub-tab within a temperature tab
+function switchDaySubTab(temperatureTab, dayKey) {
+    const stateKey = `currentDaySubTab_${temperatureTab}`;
+    state[stateKey] = dayKey;
+    // Re-render only the tab content (no full API refetch)
+    const content = document.getElementById('followUpTabContent');
+    if (content) {
+        content.innerHTML = buildFollowUpTabContent(temperatureTab, state.hotLeads, state.coldLeads, state.deadLeads);
+    }
 }
 
 // Tab switcher function

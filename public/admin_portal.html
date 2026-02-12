@@ -17280,6 +17280,8 @@ async function renderFollowUps(content) {
         const deadLeads = deadResponse.ok ? ((await deadResponse.json()).leads || []) : [];
         
         console.log(`[FOLLOW-UPS] ✅ Loaded ${hotLeads.length} hot, ${coldLeads.length} cold, ${deadLeads.length} dead leads`);
+        console.log(`[FOLLOW-UPS] 🔥 HOT LEADS:`, hotLeads.map(l => ({ id: l.id, name: l.name, temp: l.lead_temperature, score: l.engagement_score, lastContact: l.last_contact_date })));
+        console.log(`[FOLLOW-UPS] ❄️  COLD LEADS:`, coldLeads.map(l => ({ id: l.id, name: l.name, temp: l.lead_temperature, score: l.engagement_score, lastContact: l.last_contact_date })));
         
         // Store in state for tab switching
         state.hotLeads = hotLeads;
@@ -17415,14 +17417,14 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
     const buckets = isHot ? [
         // HOT LEADS: Never Contacted, 3.5 Days, 7 Days
         { key: 'never',  label: 'Never Contacted', filter: l => !l.last_contact_date || parseInt(l.days_since_contact) === 999 },
-        { key: '3.5day', label: '3.5 Days',        filter: l => { const d = parseInt(l.days_since_contact); const fc = parseInt(l.follow_up_count || 0); return d >= 3 && (fc === 0 || (fc >= 2 && fc % 2 === 0)); } },
-        { key: '7day',   label: '7 Days',          filter: l => { const d = parseInt(l.days_since_contact); const fc = parseInt(l.follow_up_count || 0); return d >= 7 && fc >= 1 && fc % 2 === 1; } },
+        { key: '3.5day', label: '3.5 Days',        filter: l => { const d = parseInt(l.days_since_contact); const fc = parseInt(l.follow_up_count || 0); return d >= 3 && d < 999 && (fc === 0 || (fc >= 2 && fc % 2 === 0)); } },
+        { key: '7day',   label: '7 Days',          filter: l => { const d = parseInt(l.days_since_contact); const fc = parseInt(l.follow_up_count || 0); return d >= 7 && d < 999 && fc >= 1 && fc % 2 === 1; } },
     ] : [
         // COLD LEADS: Never Contacted, 3 Days, 5 Days, 7 Days
         { key: 'never',  label: 'Never Contacted', filter: l => !l.last_contact_date || parseInt(l.days_since_contact) === 999 },
-        { key: '3day',   label: '3 Days',          filter: l => { const d = parseInt(l.days_since_contact); return d >= 3 && parseInt(l.follow_up_count || 0) === 0; } },
-        { key: '5day',   label: '5 Days',          filter: l => { const d = parseInt(l.days_since_contact); return d >= 5 && parseInt(l.follow_up_count || 0) === 1; } },
-        { key: '7day',   label: '7 Days',          filter: l => { const d = parseInt(l.days_since_contact); return d >= 7 && parseInt(l.follow_up_count || 0) >= 2; } },
+        { key: '3day',   label: '3 Days',          filter: l => { const d = parseInt(l.days_since_contact); return d >= 3 && d < 999 && parseInt(l.follow_up_count || 0) === 0; } },
+        { key: '5day',   label: '5 Days',          filter: l => { const d = parseInt(l.days_since_contact); return d >= 5 && d < 999 && parseInt(l.follow_up_count || 0) === 1; } },
+        { key: '7day',   label: '7 Days',          filter: l => { const d = parseInt(l.days_since_contact); return d >= 7 && d < 999 && parseInt(l.follow_up_count || 0) >= 2; } },
     ];
 
     // Build bucketed lead sets

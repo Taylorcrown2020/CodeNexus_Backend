@@ -1377,6 +1377,12 @@ await client.query(`
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'auto_campaigns' AND column_name = 'last_sent_at') THEN
             ALTER TABLE auto_campaigns ADD COLUMN last_sent_at TIMESTAMP;
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'auto_campaigns' AND column_name = 'stopped_at') THEN
+            ALTER TABLE auto_campaigns ADD COLUMN stopped_at TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'auto_campaigns' AND column_name = 'stop_reason') THEN
+            ALTER TABLE auto_campaigns ADD COLUMN stop_reason TEXT;
+        END IF;
     END $$;
 `);
 await client.query(`CREATE INDEX IF NOT EXISTS idx_auto_campaigns_lead ON auto_campaigns(lead_id)`);

@@ -6929,16 +6929,14 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
             )
             AND (
                 -- HOT LEADS TIMELINE:
-                -- Never contacted: show immediately
-                -- 1st follow-up: 3.5 days
-                -- 2nd follow-up: 7 days  
-                -- 3rd+ follow-ups: alternates between 3.5 and 7 days
+                -- Show immediately when they become hot (last_contact_date reset to NULL in trackEngagement)
+                -- After first contact on hot lead: 3.5 days
+                -- After 2nd contact: 7 days  
+                -- After 3rd+ contacts: alternates between 3.5 and 7 days
                 (l.lead_temperature = 'hot' AND (
                     l.last_contact_date IS NULL 
-                    OR (l.follow_up_count = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days')
-                    OR (l.follow_up_count = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
-                    OR (l.follow_up_count >= 2 AND l.follow_up_count % 2 = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days')
-                    OR (l.follow_up_count >= 2 AND l.follow_up_count % 2 = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
+                    OR (l.follow_up_count >= 1 AND l.follow_up_count % 2 = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days')
+                    OR (l.follow_up_count >= 2 AND l.follow_up_count % 2 = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
                 ))
                 OR
                 -- COLD LEADS TIMELINE:
@@ -9130,23 +9128,24 @@ async function trackEngagement(leadId, engagementType, details = '') {
             console.log(`[ENGAGEMENT] ✅ Lead ${leadId} reset to hot timeline | Auto-campaigns cancelled`);
         } else {
             // Normal update (not becoming hot)
-            // Only update became_hot_at if it doesn't already have a value and the temperature is already hot
-            const becameHotAtValue = (newTemperature === 'hot' && !lead.became_hot_at) ? 'CURRENT_TIMESTAMP' : lead.became_hot_at;
-            
-            if (newTemperature === 'hot' && !lead.became_hot_at) {
-                // Lead is already hot but doesn't have a became_hot_at timestamp
+            // For hot leads, reset timeline on ANY engagement to show them immediately
+            if (newTemperature === 'hot') {
+                // Hot lead engaged - reset their follow-up timeline
                 await pool.query(
                     `UPDATE leads 
                      SET engagement_history = $1,
                          engagement_score = $2,
                          lead_temperature = $3,
-                         became_hot_at = CURRENT_TIMESTAMP,
-                         last_engagement_at = CURRENT_TIMESTAMP
+                         became_hot_at = COALESCE(became_hot_at, CURRENT_TIMESTAMP),
+                         last_engagement_at = CURRENT_TIMESTAMP,
+                         last_contact_date = NULL,
+                         follow_up_count = 0
                      WHERE id = $4`,
                     [JSON.stringify(history), score, newTemperature, leadId]
                 );
+                console.log(`[ENGAGEMENT] 🔥 Hot lead ${leadId} re-engaged - timeline reset to show immediately`);
             } else {
-                // Standard update
+                // Cold lead - standard update
                 await pool.query(
                     `UPDATE leads 
                      SET engagement_history = $1,

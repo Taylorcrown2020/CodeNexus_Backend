@@ -6904,13 +6904,12 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
     try {
         console.log('[FOLLOW-UPS] Getting leads by temperature');
         
-        // Hot leads stay hot forever, no demotion needed
-        
         const result = await pool.query(`
             SELECT 
                 l.*,
                 COALESCE(EXTRACT(DAY FROM CURRENT_DATE - l.last_contact_date)::INTEGER, 999) as days_since_contact,
-                COALESCE(EXTRACT(DAY FROM CURRENT_DATE - l.last_engagement_at)::INTEGER, 999) as days_since_engagement
+                COALESCE(EXTRACT(DAY FROM CURRENT_DATE - l.last_engagement_at)::INTEGER, 999) as days_since_engagement,
+                COALESCE(l.follow_up_count, 0) as follow_up_count
             FROM leads l
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
@@ -6919,23 +6918,38 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
             AND (
-                -- Hot leads: show immediately if they just became hot (within last hour) OR if last contact was 3.5+ days ago
+                -- HOT LEADS TIMELINE:
+                -- Never contacted: show immediately
+                -- 1st follow-up: 3.5 days
+                -- 2nd follow-up: 7 days  
+                -- 3rd+ follow-ups: alternates between 3.5 and 7 days
                 (l.lead_temperature = 'hot' AND (
-                    l.became_hot_at >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
-                    OR l.last_contact_date IS NULL 
-                    OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days'
+                    l.last_contact_date IS NULL 
+                    OR (l.follow_up_count = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days')
+                    OR (l.follow_up_count = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
+                    OR (l.follow_up_count >= 2 AND l.follow_up_count % 2 = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days')
+                    OR (l.follow_up_count >= 2 AND l.follow_up_count % 2 = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
                 ))
                 OR
-                -- Cold leads: need follow-up if last contact was 3+ days ago
-                (COALESCE(l.lead_temperature, 'cold') != 'hot' AND (l.last_contact_date IS NULL OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days'))
+                -- COLD LEADS TIMELINE:
+                -- Never contacted: show immediately
+                -- 1st follow-up: 3 days
+                -- 2nd follow-up: 5 days
+                -- 3rd+ follow-ups: every 7 days
+                (COALESCE(l.lead_temperature, 'cold') != 'hot' AND (
+                    l.last_contact_date IS NULL
+                    OR (l.follow_up_count = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days')
+                    OR (l.follow_up_count = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '5 days')
+                    OR (l.follow_up_count >= 2 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
+                ))
             )
             ORDER BY 
                 CASE l.lead_temperature
                     WHEN 'hot' THEN 1
                     ELSE 2
                 END,
-                l.became_hot_at DESC NULLS LAST,
-                l.last_contact_date ASC NULLS FIRST
+                l.last_contact_date ASC NULLS FIRST,
+                l.became_hot_at DESC NULLS LAST
         `);
         
         // Separate into hot and cold
@@ -9047,7 +9061,7 @@ async function trackEngagement(leadId, engagementType, details = '') {
         
         // Get current engagement history
         const leadResult = await pool.query(
-            'SELECT engagement_history, engagement_score, lead_temperature FROM leads WHERE id = $1',
+            'SELECT engagement_history, engagement_score, lead_temperature, follow_up_count FROM leads WHERE id = $1',
             [leadId]
         );
         
@@ -9065,7 +9079,8 @@ async function trackEngagement(leadId, engagementType, details = '') {
             'form_fill': 30,
             'email_click': 10,
             'email_reply': 25,
-            'website_visit': 15
+            'website_visit': 15,
+            'email_open': 5
         };
         score += scoreMap[engagementType] || 5;
         
@@ -9074,17 +9089,48 @@ async function trackEngagement(leadId, engagementType, details = '') {
         const newTemperature = shouldBeHot ? 'hot' : 'cold';
         const becameHotAt = (newTemperature === 'hot' && lead.lead_temperature !== 'hot') ? new Date() : lead.became_hot_at;
         
-        // Update lead
-        await pool.query(
-            `UPDATE leads 
-             SET engagement_history = $1,
-                 engagement_score = $2,
-                 lead_temperature = $3,
-                 became_hot_at = $4,
-                 last_engagement_at = CURRENT_TIMESTAMP
-             WHERE id = $5`,
-            [JSON.stringify(history), score, newTemperature, becameHotAt, leadId]
-        );
+        // If lead just became hot (cold -> hot transition)
+        if (newTemperature === 'hot' && lead.lead_temperature !== 'hot') {
+            console.log(`[ENGAGEMENT] 🔥 Lead ${leadId} became HOT! Cancelling auto-campaigns and resetting timeline...`);
+            
+            // Cancel any active auto-campaigns for this lead
+            await pool.query(
+                `UPDATE auto_campaigns 
+                 SET is_active = FALSE, 
+                     stopped_at = CURRENT_TIMESTAMP,
+                     stop_reason = 'Lead became hot - engagement detected'
+                 WHERE lead_id = $1 AND is_active = TRUE`,
+                [leadId]
+            );
+            
+            // Reset follow-up timeline (set last_contact_date to NULL so they show as "Never Contacted" in hot leads)
+            await pool.query(
+                `UPDATE leads 
+                 SET engagement_history = $1,
+                     engagement_score = $2,
+                     lead_temperature = $3,
+                     became_hot_at = $4,
+                     last_engagement_at = CURRENT_TIMESTAMP,
+                     last_contact_date = NULL,
+                     follow_up_count = 0
+                 WHERE id = $5`,
+                [JSON.stringify(history), score, newTemperature, becameHotAt, leadId]
+            );
+            
+            console.log(`[ENGAGEMENT] ✅ Lead ${leadId} reset to hot timeline | Auto-campaigns cancelled`);
+        } else {
+            // Normal update (not becoming hot)
+            await pool.query(
+                `UPDATE leads 
+                 SET engagement_history = $1,
+                     engagement_score = $2,
+                     lead_temperature = $3,
+                     became_hot_at = $4,
+                     last_engagement_at = CURRENT_TIMESTAMP
+                 WHERE id = $5`,
+                [JSON.stringify(history), score, newTemperature, becameHotAt, leadId]
+            );
+        }
         
         console.log(`[ENGAGEMENT] ✅ Tracked ${engagementType} for lead ${leadId} | Score: ${score} | Temp: ${newTemperature}`);
         
@@ -9137,6 +9183,7 @@ app.post('/api/leads/:id/contacted', authenticateToken, async (req, res) => {
         const result = await pool.query(
             `UPDATE leads 
              SET last_contact_date = CURRENT_DATE,
+                 follow_up_count = COALESCE(follow_up_count, 0) + 1,
                  status = CASE 
                      WHEN status = 'new' THEN 'contacted'
                      ELSE status
@@ -9154,7 +9201,7 @@ app.post('/api/leads/:id/contacted', authenticateToken, async (req, res) => {
             });
         }
         
-        console.log(`[FOLLOW-UP] ✅ Lead ${leadId} marked as contacted`);
+        console.log(`[FOLLOW-UP] ✅ Lead ${leadId} marked as contacted (follow-up count: ${result.rows[0].follow_up_count})`);
         
         res.json({
             success: true,

@@ -17412,11 +17412,17 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
     const accentColor = isHot ? '#ef4444' : '#3b82f6';
 
     // Day bucket definitions
-    const buckets = [
+    const buckets = isHot ? [
+        // HOT LEADS: Never Contacted, 3.5 Days, 7 Days
         { key: 'never',  label: 'Never Contacted', filter: l => !l.last_contact_date || parseInt(l.days_since_contact) === 999 },
-        { key: '3day',   label: '3–6 Days',        filter: l => { const d = parseInt(l.days_since_contact); return d >= 3 && d < 7; } },
-        { key: '7day',   label: '7–13 Days',       filter: l => { const d = parseInt(l.days_since_contact); return d >= 7 && d < 14; } },
-        { key: '14day',  label: '14+ Days',        filter: l => { const d = parseInt(l.days_since_contact); return d >= 14; } },
+        { key: '3.5day', label: '3.5 Days',        filter: l => { const d = parseInt(l.days_since_contact); const fc = parseInt(l.follow_up_count || 0); return d >= 3 && (fc === 0 || (fc >= 2 && fc % 2 === 0)); } },
+        { key: '7day',   label: '7 Days',          filter: l => { const d = parseInt(l.days_since_contact); const fc = parseInt(l.follow_up_count || 0); return d >= 7 && fc >= 1 && fc % 2 === 1; } },
+    ] : [
+        // COLD LEADS: Never Contacted, 3 Days, 5 Days, 7 Days
+        { key: 'never',  label: 'Never Contacted', filter: l => !l.last_contact_date || parseInt(l.days_since_contact) === 999 },
+        { key: '3day',   label: '3 Days',          filter: l => { const d = parseInt(l.days_since_contact); return d >= 3 && parseInt(l.follow_up_count || 0) === 0; } },
+        { key: '5day',   label: '5 Days',          filter: l => { const d = parseInt(l.days_since_contact); return d >= 5 && parseInt(l.follow_up_count || 0) === 1; } },
+        { key: '7day',   label: '7 Days',          filter: l => { const d = parseInt(l.days_since_contact); return d >= 7 && parseInt(l.follow_up_count || 0) >= 2; } },
     ];
 
     // Build bucketed lead sets

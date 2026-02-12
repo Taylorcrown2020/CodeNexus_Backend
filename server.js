@@ -612,11 +612,16 @@ async function sendTrackedEmail({ leadId, to, subject, html }) {
         if (!html.includes(pixel)) html += pixel; // fallback if no </body>
     }
 
-    // 3. Wrap contact.html links with tracking (makes leads hot when clicked)
+    // 3. Wrap ALL diamondbackcoding.com links with tracking (makes leads hot when clicked)
     if (leadId) {
-        // Replace all contact.html links with tracked versions
-        const contactUrlPattern = /(https?:\/\/[^"'\s]*\/contact\.html)/gi;
-        html = html.replace(contactUrlPattern, (match) => {
+        // Replace all diamondbackcoding.com links with tracked versions
+        // This includes contact.html, services pages, project pages, etc.
+        const websiteUrlPattern = /(https?:\/\/(?:www\.)?diamondbackcoding\.com[^"'\s]*)/gi;
+        html = html.replace(websiteUrlPattern, (match) => {
+            // Don't wrap if already wrapped with our tracking URL
+            if (match.includes('/api/track/click/')) {
+                return match;
+            }
             return `${BASE_URL}/api/track/click/${leadId}?url=${encodeURIComponent(match)}`;
         });
     }

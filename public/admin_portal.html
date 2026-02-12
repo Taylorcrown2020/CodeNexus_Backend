@@ -17095,7 +17095,7 @@ async function renderFollowUps(content) {
                     style="padding: 12px 24px; background: ${state.currentFollowUpTab === 'cold' ? 'var(--bg-hover)' : 'transparent'}; 
                            border: none; border-bottom: 3px solid ${state.currentFollowUpTab === 'cold' ? '#3b82f6' : 'transparent'}; 
                            color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-                    ❄️ Cold Leads
+                    Cold Leads
                     <span style="display: inline-block; margin-left: 8px; background: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${coldLeads.length}</span>
                 </button>
                 <button id="tabHot" onclick="switchFollowUpTemperatureTab('hot')" 
@@ -17103,7 +17103,7 @@ async function renderFollowUps(content) {
                     style="padding: 12px 24px; background: ${state.currentFollowUpTab === 'hot' ? 'var(--bg-hover)' : 'transparent'}; 
                            border: none; border-bottom: 3px solid ${state.currentFollowUpTab === 'hot' ? '#ef4444' : 'transparent'}; 
                            color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-                    🔥 Hot Leads
+                    Hot Leads
                     <span style="display: inline-block; margin-left: 8px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${hotLeads.length}</span>
                 </button>
             </div>
@@ -17200,9 +17200,20 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads) {
     return `
         <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 28px;">
             <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid var(--border-subtle);">
-                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">${isHot ? '🔥 Hot Leads' : '❄️ Cold Leads'}</h3>
-                <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">${description}</p>
-                <p style="font-size: 13px; color: var(--text-primary); margin-top: 8px; font-weight: 600;">${leads.length} ${leads.length === 1 ? 'lead' : 'leads'} need follow-up</p>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">${isHot ? 'Hot Leads' : 'Cold Leads'}</h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">${description}</p>
+                        <p style="font-size: 13px; color: var(--text-primary); margin-top: 8px; font-weight: 600;">${leads.length} ${leads.length === 1 ? 'lead' : 'leads'} need follow-up</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openTemperatureEmailModal('${tab}', '${isHot ? 'Hot Leads' : 'Cold Leads'}', ${leads.length})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        Email All
+                    </button>
+                </div>
             </div>
             
             <div style="overflow-x: auto;">
@@ -17236,12 +17247,293 @@ function switchFollowUpTemperatureTab(tab) {
     document.getElementById('followUpTabContent').innerHTML = buildFollowUpTabContent(tab, state.hotLeads, state.coldLeads);
 }
 
+// Open email modal for temperature-based leads (hot/cold)
+function openTemperatureEmailModal(temperature, temperatureLabel, count) {
+    console.log('[BULK EMAIL] Opening modal for:', temperature, temperatureLabel, count);
+    
+    const existingModal = document.getElementById('bulkEmailModal');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `
+        <div class="modal-overlay" id="bulkEmailModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+            <div class="modal" style="background: white; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow: auto;" onclick="event.stopPropagation()">
+                <div style="padding: 20px; border-bottom: 1px solid #e5e7eb;">
+                    <h3 style="margin: 0; color: #111;">Email All - ${temperatureLabel}</h3>
+                </div>
+                <div style="padding: 20px;">
+                    <p style="margin-bottom: 20px; color: #666; padding: 12px; background: #f3f4f6; border-radius: 6px;">
+                        This will send an email to <strong>${count} leads</strong> in this category.
+                    </p>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #111;">Template:</label>
+                        <select id="bulkEmailTemplate" onchange="loadEmailTemplate()" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; background: white; color: #111;">
+                            <option value="">-- Select a template (optional) --</option>
+                            <option value="followUp">Follow Up</option>
+                            <option value="blackFriday">Black Friday Sale - 25% Off</option>
+                            <option value="initialSale">Initial Sale - 25% Off Spring Promo</option>
+                            <option value="valentinesSale">Valentine's Day Sale - 25% Off</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #111;">Subject:</label>
+                        <input type="text" id="bulkEmailSubject" placeholder="Email subject" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; color: #111;">
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #111;">Message:</label>
+                        <textarea id="bulkEmailBody" rows="10" placeholder="Type your message here..." style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; font-family: inherit; box-sizing: border-box; color: #111;"></textarea>
+                    </div>
+                </div>
+                <div style="padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+                    <button class="btn btn-secondary" onclick="closeBulkEmailModal()">Cancel</button>
+                    <button class="btn btn-primary" id="sendBulkEmailBtn" onclick="sendTemperatureBulkEmail('${temperature}', ${count})">
+                        Send to ${count} Leads
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    document.getElementById('bulkEmailModal').addEventListener('click', function(e) {
+        if (e.target.id === 'bulkEmailModal') closeBulkEmailModal();
+    });
+    
+    setTimeout(() => { document.getElementById('bulkEmailSubject')?.focus(); }, 100);
+}
+
+// Load email template into the modal
+function loadEmailTemplate() {
+    const templateSelect = document.getElementById('bulkEmailTemplate');
+    const templateKey = templateSelect.value;
+    
+    if (!templateKey || !emailTemplates[templateKey]) {
+        return;
+    }
+    
+    const template = emailTemplates[templateKey];
+    document.getElementById('bulkEmailSubject').value = template.subject;
+    document.getElementById('bulkEmailBody').value = template.body;
+}
+
+function closeBulkEmailModal() {
+    const modal = document.getElementById('bulkEmailModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function sendTemperatureBulkEmail(temperature, count) {
+    console.log('[BULK EMAIL] Sending to temperature:', temperature);
+    
+    const subject = document.getElementById('bulkEmailSubject')?.value;
+    const body = document.getElementById('bulkEmailBody')?.value;
+    
+    if (!subject || !body) {
+        showToast('Please fill in subject and message', 'error');
+        return;
+    }
+    
+    const sendBtn = document.getElementById('sendBulkEmailBtn');
+    if (!sendBtn) return;
+    const originalText = sendBtn.innerHTML;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = 'Sending...';
+    
+    try {
+        const token = getAuthToken();
+        
+        // Get the leads for this temperature
+        const leads = temperature === 'hot' ? state.hotLeads : state.coldLeads;
+        
+        if (!leads || leads.length === 0) {
+            showToast('No leads found in this category', 'error');
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = originalText;
+            return;
+        }
+        
+        // Send emails to all leads in this temperature category
+        let sent = 0;
+        let failed = 0;
+        
+        for (const lead of leads) {
+            try {
+                const response = await fetch(`${API_URL}/api/send-email`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`, 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify({ 
+                        to: lead.email, 
+                        subject, 
+                        body, 
+                        leadId: lead.id,
+                        isFollowUp: true
+                    })
+                });
+                
+                if (response.ok) {
+                    sent++;
+                    // Update last contact date
+                    await fetch(`${API_URL}/api/leads/${lead.id}`, {
+                        method: 'PUT',
+                        headers: { 
+                            'Authorization': `Bearer ${token}`, 
+                            'Content-Type': 'application/json' 
+                        },
+                        body: JSON.stringify({ 
+                            last_contact_date: new Date().toISOString(),
+                            status: 'contacted'
+                        })
+                    });
+                } else {
+                    failed++;
+                }
+            } catch (e) {
+                console.error('Error sending to', lead.email, e);
+                failed++;
+            }
+        }
+        
+        showToast(`Successfully sent ${sent} emails${failed > 0 ? ` (${failed} failed)` : ''}`, 'success');
+        closeBulkEmailModal();
+        
+        updateBadges();
+        const contentArea = document.getElementById('contentArea');
+        if (contentArea) await renderFollowUps(contentArea);
+        
+    } catch (error) {
+        console.error('[BULK EMAIL] Error:', error);
+        showToast('Failed: ' + error.message, 'error');
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = originalText;
+    }
+}
+
 // Helper function to build category content - REMOVED (no longer needed)
 // function buildCategoryContent() { ... }
 
 // Switch between follow-up category tabs - REMOVED (no longer needed)  
 // function switchFollowupTab() { ... }
 
+async function markFollowedUp(leadId) {
+    try {
+        console.log('[FOLLOW-UP] Marking lead as followed up:', leadId);
+        
+        const token = state.authToken || localStorage.getItem('token');
+        
+        if (!token) {
+            console.error('[FOLLOW-UP] ❌ No authentication token found');
+            showToast('Authentication error: Please refresh and log in again', 'error');
+            return;
+        }
+        
+        const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                status: 'contacted',
+                last_contact_date: new Date().toISOString()
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to update lead');
+        }
+        
+        const result = await response.json();
+        console.log('[FOLLOW-UP] ✅ Lead updated successfully:', result);
+        
+        showToast('✓ Marked as contacted', 'success');
+        
+        updateBadges();
+        const contentArea = document.getElementById('contentArea');
+        if (contentArea) {
+            await renderFollowUps(contentArea);
+        }
+        
+    } catch (error) {
+        console.error('[FOLLOW-UP] ❌ Error:', error);
+        showToast('Failed to mark as contacted: ' + error.message, 'error');
+    }
+}
+
+// ---- AUTO-CAMPAIGN ACTION HANDLERS ----
+
+function openCampaignEdit(id) {
+    const row = document.getElementById('campEdit_' + id);
+    if (row) row.style.display = 'table-row';
+}
+function closeCampaignEdit(id) {
+    const row = document.getElementById('campEdit_' + id);
+    if (row) row.style.display = 'none';
+}
+
+async function saveCampaignEdit(id) {
+    const subject = document.getElementById('campEditSubj_' + id)?.value;
+    const body = document.getElementById('campEditBody_' + id)?.value;
+    if (!subject || !body) { showToast('Subject and message are required', 'error'); return; }
+
+    try {
+        const res = await fetch(`${API_URL}/api/auto-campaigns/${id}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, body })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('Campaign updated', 'success');
+            closeCampaignEdit(id);
+            await renderFollowUps(document.getElementById('contentArea'));
+        } else {
+            showToast('Failed: ' + (data.message || 'Unknown error'), 'error');
+        }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function toggleCampaign(id, currentlyActive) {
+    try {
+        const res = await fetch(`${API_URL}/api/auto-campaigns/${id}/toggle`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(currentlyActive ? 'Campaign paused — lead will reappear in normal follow-ups' : 'Campaign resumed', currentlyActive ? 'warning' : 'success');
+            await renderFollowUps(document.getElementById('contentArea'));
+        } else {
+            showToast('Failed: ' + (data.message||''), 'error');
+        }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function removeCampaign(id) {
+    if (!confirm('Remove this auto-campaign? The lead will reappear in the normal follow-up list on their next due date.')) return;
+    try {
+        const res = await fetch(`${API_URL}/api/auto-campaigns/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('Campaign removed', 'success');
+            await renderFollowUps(document.getElementById('contentArea'));
+        } else {
+            showToast('Failed: ' + (data.message||''), 'error');
+        }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// Mark lead as contacted
 async function markFollowedUp(leadId) {
     try {
         console.log('[FOLLOW-UP] Marking lead as followed up:', leadId);

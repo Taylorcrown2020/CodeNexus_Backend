@@ -3788,7 +3788,11 @@ const state = {
         sessionTimeout: 30,
         twoFactorAuth: false,
         ipWhitelistEnabled: false,
-        ipWhitelist: []
+        ipWhitelist: [],
+        useBrevo: false,
+        brevoApiKey: '',
+        brevoSenderEmail: '',
+        brevoSenderName: 'Diamondback Coding'
     }
 };
 
@@ -6733,6 +6737,10 @@ window.loadEmailTemplate = function(leadId, leadName, leadEmail) {
     if (template === 'custom' || template === '') {
         subjectField.value = '';
         bodyField.value = '';
+        // Enable editing for custom emails
+        bodyField.disabled = false;
+        bodyField.style.opacity = '1';
+        bodyField.style.cursor = 'text';
         return;
     }
     
@@ -8260,6 +8268,50 @@ function renderSettingsTabContent(tab) {
                         <input type="checkbox" ${state.settings.autoAssign ? 'checked' : ''} onchange="toggleSetting('autoAssign')">
                         <span class="toggle-slider"></span>
                     </label>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3 class="settings-section-title">Email Service</h3>
+                <p class="settings-section-desc">Configure email delivery service</p>
+                
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="setting-label">Use Brevo (Sendinblue)</div>
+                        <div class="setting-desc">Send emails through Brevo instead of default SMTP</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${state.settings.useBrevo ? 'checked' : ''} onchange="toggleBrevoSetting()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                
+                <div id="brevoConfigSection" style="display: ${state.settings.useBrevo ? 'block' : 'none'}; margin-top: 20px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 13px;">Brevo API Key</label>
+                        <input type="text" id="brevoApiKey" value="${state.settings.brevoApiKey || ''}" placeholder="xkeysib-..." style="width: 100%; padding: 10px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary); font-family: var(--font-mono); font-size: 12px;">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Get your API key from <a href="https://app.brevo.com/settings/keys/api" target="_blank" style="color: var(--accent-amber);">Brevo Settings</a></div>
+                    </div>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 13px;">Sender Email</label>
+                        <input type="email" id="brevoSenderEmail" value="${state.settings.brevoSenderEmail || ''}" placeholder="contact@yourdomain.com" style="width: 100%; padding: 10px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px;">
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Must be verified in your Brevo account</div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 13px;">Sender Name</label>
+                        <input type="text" id="brevoSenderName" value="${state.settings.brevoSenderName || 'Diamondback Coding'}" placeholder="Your Company Name" style="width: 100%; padding: 10px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px;">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="saveBrevoConfig()" style="width: 100%;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Save Brevo Configuration
+                    </button>
                 </div>
             </div>
         `;
@@ -10619,6 +10671,50 @@ async function updateIPWhitelist(value) {
     state.settings.ipWhitelist = ips;
     await saveSettings();
     showToast('IP whitelist updated', 'success');
+}
+
+// Brevo email service functions
+async function toggleBrevoSetting() {
+    state.settings.useBrevo = !state.settings.useBrevo;
+    await saveSettings();
+    
+    // Show/hide Brevo config section
+    const brevoSection = document.getElementById('brevoConfigSection');
+    if (brevoSection) {
+        brevoSection.style.display = state.settings.useBrevo ? 'block' : 'none';
+    }
+    
+    showToast(state.settings.useBrevo ? 'Brevo enabled - configure settings below' : 'Brevo disabled', 'success');
+}
+
+async function saveBrevoConfig() {
+    const apiKey = document.getElementById('brevoApiKey')?.value.trim();
+    const senderEmail = document.getElementById('brevoSenderEmail')?.value.trim();
+    const senderName = document.getElementById('brevoSenderName')?.value.trim();
+    
+    if (!apiKey) {
+        showToast('Please enter your Brevo API key', 'error');
+        return;
+    }
+    
+    if (!senderEmail) {
+        showToast('Please enter a sender email address', 'error');
+        return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(senderEmail)) {
+        showToast('Please enter a valid email address', 'error');
+        return;
+    }
+    
+    state.settings.brevoApiKey = apiKey;
+    state.settings.brevoSenderEmail = senderEmail;
+    state.settings.brevoSenderName = senderName || 'Diamondback Coding';
+    
+    await saveSettings();
+    showToast('Brevo configuration saved successfully', 'success');
 }
 
 function openChangePasswordModal() {
@@ -17526,6 +17622,10 @@ function openTemperatureEmailModal(temperature, temperatureLabel, count) {
                             <option value="blackFriday">Black Friday Sale - 25% Off</option>
                             <option value="initialSale">Initial Sale - 25% Off Spring Promo</option>
                             <option value="valentinesSale">Valentine's Day Sale - 25% Off</option>
+                            <option value="springSale">Spring Sale - 25% Off Spring Event</option>
+                            <option value="valentines14Promo">Valentine's 14% Promo (Original)</option>
+                            <option value="proposal">Send Proposal</option>
+                            <option value="thankYou">Thank You</option>
                         </select>
                     </div>
                     

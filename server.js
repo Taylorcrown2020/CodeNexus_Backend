@@ -12,6 +12,7 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const path = require('path');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const SibApiV3Sdk = require('@getbrevo/brevo');
 require('dotenv').config();
 
 const app = express();
@@ -559,6 +560,38 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 // Logs to email_log, injects open-tracking pixel, then sends.
 // Use this for ALL follow-up / outreach sends so the analytics report is accurate.
 // ========================================
+// ========================================
+// EMAIL SENDING HELPERS
+// ========================================
+
+// Send email via Brevo
+async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, html) {
+    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+    apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, brevoApiKey);
+    
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    sendSmtpEmail.sender = { email: senderEmail, name: senderName || 'Diamondback Coding' };
+    sendSmtpEmail.to = [{ email: to }];
+    sendSmtpEmail.subject = subject;
+    sendSmtpEmail.htmlContent = html;
+    
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+}
+
+// Get current email settings
+async function getEmailSettings() {
+    try {
+        const result = await pool.query('SELECT settings FROM admin_users LIMIT 1');
+        if (result.rows.length > 0 && result.rows[0].settings) {
+            return result.rows[0].settings;
+        }
+        return { useBrevo: false };
+    } catch (error) {
+        console.error('[EMAIL SETTINGS] Error fetching settings:', error);
+        return { useBrevo: false };
+    }
+}
+
 async function sendTrackedEmail({ leadId, to, subject, html }) {
     // 1. Create email_log row BEFORE sending so we have the ID
     let emailLogId = null;
@@ -579,13 +612,45 @@ async function sendTrackedEmail({ leadId, to, subject, html }) {
         if (!html.includes(pixel)) html += pixel; // fallback if no </body>
     }
 
-    // 3. Send
-    await transporter.sendMail({
-        from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
-        to,
-        subject,
-        html
-    });
+    // 3. Wrap contact.html links with tracking (makes leads hot when clicked)
+    if (leadId) {
+        // Replace all contact.html links with tracked versions
+        const contactUrlPattern = /(https?:\/\/[^"'\s]*\/contact\.html)/gi;
+        html = html.replace(contactUrlPattern, (match) => {
+            return `${BASE_URL}/api/track/click/${leadId}?url=${encodeURIComponent(match)}`;
+        });
+    }
+
+    // 4. Get email settings to check if Brevo is enabled
+    const emailSettings = await getEmailSettings();
+    
+    // 5. Send via Brevo or Nodemailer
+    try {
+        if (emailSettings.useBrevo && emailSettings.brevoApiKey) {
+            console.log('[EMAIL] Sending via Brevo...');
+            await sendViaBrevo(
+                emailSettings.brevoApiKey,
+                emailSettings.brevoSenderEmail || process.env.EMAIL_USER,
+                emailSettings.brevoSenderName || 'Diamondback Coding',
+                to,
+                subject,
+                html
+            );
+            console.log('[EMAIL] ✅ Sent via Brevo');
+        } else {
+            console.log('[EMAIL] Sending via Nodemailer...');
+            await transporter.sendMail({
+                from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                to,
+                subject,
+                html
+            });
+            console.log('[EMAIL] ✅ Sent via Nodemailer');
+        }
+    } catch (error) {
+        console.error('[EMAIL] ❌ Send failed:', error);
+        throw error;
+    }
 
     return emailLogId;
 }
@@ -2629,7 +2694,11 @@ app.get('/api/settings', authenticateToken, async (req, res) => {
                     autoAssign: false,
                     twoFactorAuth: false,
                     sessionTimeout: 30,
-                    ipWhitelist: []
+                    ipWhitelist: [],
+                    useBrevo: false,
+                    brevoApiKey: '',
+                    brevoSenderEmail: '',
+                    brevoSenderName: ''
                 }
             });
         }
@@ -6850,8 +6919,12 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
             AND (
-                -- Hot leads: need follow-up if last contact was 3.5+ days ago
-                (l.lead_temperature = 'hot' AND (l.last_contact_date IS NULL OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days'))
+                -- Hot leads: show immediately if they just became hot (within last hour) OR if last contact was 3.5+ days ago
+                (l.lead_temperature = 'hot' AND (
+                    l.became_hot_at >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
+                    OR l.last_contact_date IS NULL 
+                    OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days'
+                ))
                 OR
                 -- Cold leads: need follow-up if last contact was 3+ days ago
                 (COALESCE(l.lead_temperature, 'cold') != 'hot' AND (l.last_contact_date IS NULL OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days'))
@@ -6861,6 +6934,7 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
                     WHEN 'hot' THEN 1
                     ELSE 2
                 END,
+                l.became_hot_at DESC NULLS LAST,
                 l.last_contact_date ASC NULLS FIRST
         `);
         
@@ -9033,8 +9107,12 @@ app.get('/api/track/click/:leadId', async (req, res) => {
         const leadId = req.params.leadId;
         const { url } = req.query;
         
-        // Track the click engagement
+        console.log(`[TRACKING] Link clicked by lead ${leadId}: ${url}`);
+        
+        // Track the click engagement - this makes them hot
         await trackEngagement(leadId, 'email_click', `Clicked link: ${url || 'unknown'}`);
+        
+        console.log(`[TRACKING] ✅ Lead ${leadId} engagement tracked, redirecting to: ${url || BASE_URL}`);
         
         // Redirect to the actual URL
         const redirectUrl = url || BASE_URL;

@@ -737,6 +737,14 @@ await client.query(`
             ALTER TABLE leads ADD COLUMN engagement_history JSONB DEFAULT '[]'::jsonb;
             RAISE NOTICE 'Added engagement_history column to leads table';
         END IF;
+        
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='leads' AND column_name='follow_up_count'
+        ) THEN
+            ALTER TABLE leads ADD COLUMN follow_up_count INTEGER DEFAULT 0;
+            RAISE NOTICE 'Added follow_up_count column to leads table';
+        END IF;
     END $$;
 `);
 

@@ -6671,8 +6671,7 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
     try {
         console.log('[FOLLOW-UPS] Getting leads by temperature');
         
-        // First, check and demote stale hot leads
-        await checkAndDemoteStaleHotLeads();
+        // Hot leads stay hot forever, no demotion needed
         
         const result = await pool.query(`
             SELECT 
@@ -6686,18 +6685,24 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
             AND NOT EXISTS (
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
+            AND (
+                -- Hot leads: need follow-up if last contact was 3.5+ days ago
+                (l.lead_temperature = 'hot' AND (l.last_contact_date IS NULL OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days'))
+                OR
+                -- Cold leads: need follow-up if last contact was 3+ days ago
+                (COALESCE(l.lead_temperature, 'cold') != 'hot' AND (l.last_contact_date IS NULL OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days'))
+            )
             ORDER BY 
                 CASE l.lead_temperature
                     WHEN 'hot' THEN 1
-                    WHEN 'warm' THEN 2
-                    WHEN 'cold' THEN 3
+                    ELSE 2
                 END,
                 l.last_contact_date ASC NULLS FIRST
         `);
         
         // Separate into hot and cold
         const hotLeads = result.rows.filter(lead => lead.lead_temperature === 'hot');
-        const coldLeads = result.rows.filter(lead => lead.lead_temperature === 'cold' || lead.lead_temperature === 'warm' || !lead.lead_temperature);
+        const coldLeads = result.rows.filter(lead => lead.lead_temperature !== 'hot' || !lead.lead_temperature);
         
         console.log(`[FOLLOW-UPS] ✅ Found ${hotLeads.length} hot leads, ${coldLeads.length} cold leads`);
         
@@ -8790,11 +8795,7 @@ function calculateNextFollowUpDate(lastContactDate, leadTemperature) {
     const daysSinceContact = Math.floor((new Date() - last) / (1000 * 60 * 60 * 24));
     
     if (leadTemperature === 'hot') {
-        // Hot leads: Days 0, 1, 3, 7, then every 3.5 days
-        if (daysSinceContact === 0) return new Date(last.getTime() + 1 * 24 * 60 * 60 * 1000); // Next day
-        if (daysSinceContact === 1) return new Date(last.getTime() + 3 * 24 * 60 * 60 * 1000); // Day 3
-        if (daysSinceContact === 3) return new Date(last.getTime() + 7 * 24 * 60 * 60 * 1000); // Day 7
-        // After day 7: every 3.5 days (twice per week)
+        // Hot leads: Fixed 3.5 day intervals (twice per week)
         return new Date(last.getTime() + 3.5 * 24 * 60 * 60 * 1000);
     } else {
         // Cold leads: Days 0, 3, 7, then weekly
@@ -8838,8 +8839,8 @@ async function trackEngagement(leadId, engagementType, details = '') {
         };
         score += scoreMap[engagementType] || 5;
         
-        // Determine if lead should be hot
-        const shouldBeHot = score >= 20 || engagementType === 'form_fill' || engagementType === 'email_reply';
+        // MODIFIED: Once a lead becomes hot, they stay hot forever
+        const shouldBeHot = lead.lead_temperature === 'hot' || score >= 20 || engagementType === 'form_fill' || engagementType === 'email_reply' || engagementType === 'email_click';
         const newTemperature = shouldBeHot ? 'hot' : 'cold';
         const becameHotAt = (newTemperature === 'hot' && lead.lead_temperature !== 'hot') ? new Date() : lead.became_hot_at;
         
@@ -8864,34 +8865,11 @@ async function trackEngagement(leadId, engagementType, details = '') {
     }
 }
 
-// Function to check and demote hot leads that haven't engaged in 90 days
-async function checkAndDemoteStaleHotLeads() {
-    try {
-        const result = await pool.query(
-            `UPDATE leads 
-             SET lead_temperature = 'cold',
-                 became_hot_at = NULL
-             WHERE lead_temperature = 'hot'
-             AND last_engagement_at < CURRENT_TIMESTAMP - INTERVAL '90 days'
-             RETURNING id, name, email`
-        );
-        
-        if (result.rows.length > 0) {
-            console.log(`[TEMPERATURE] ❄️ Demoted ${result.rows.length} stale hot leads to cold`);
-            result.rows.forEach(lead => {
-                console.log(`   - ${lead.name} (${lead.email})`);
-            });
-        }
-        
-        return result.rows.length;
-    } catch (error) {
-        console.error('[TEMPERATURE] Error checking stale hot leads:', error);
-        return 0;
-    }
-}
+// Function removed - hot leads stay hot forever
+// Once a lead becomes hot through any engagement, they remain hot permanently
 
-// Run the stale lead check every 6 hours
-setInterval(checkAndDemoteStaleHotLeads, 6 * 60 * 60 * 1000);
+// Run the stale lead check every 6 hours - DISABLED since hot leads stay hot forever
+// setInterval(checkAndDemoteStaleHotLeads, 6 * 60 * 60 * 1000);
 
 // Track email link clicks
 app.get('/api/track/click/:leadId', async (req, res) => {

@@ -17055,7 +17055,7 @@ function toggleNotes(button) {
 // ==================== FOLLOW-UPS SYSTEM ====================
 
 async function renderFollowUps(content) {
-    console.log('[FOLLOW-UPS] Starting render...');
+    console.log('[FOLLOW-UPS] Starting render with HOT/COLD system...');
     
     try {
         content.innerHTML = '<div style="text-align: center; padding: 40px;">Loading follow-ups...</div>';
@@ -17063,210 +17063,56 @@ async function renderFollowUps(content) {
         const token = state.authToken || localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-        // Fire run-due in background so any due auto-campaigns get sent
-        fetch(`${API_URL}/api/auto-campaigns/run-due`, { method: 'POST', headers })
-            .then(r => r.json())
-            .then(d => { if (d.sent_count > 0) console.log(`[AUTO] run-due sent ${d.sent_count}`); })
-            .catch(e => console.warn('[AUTO] run-due:', e.message));
-
-        // Fetch stats, categories, AND campaigns in parallel
-        const [statsRes, categoriesRes, campaignsRes] = await Promise.all([
-            fetch(`${API_URL}/api/follow-ups/stats`, { headers }),
-            fetch(`${API_URL}/api/follow-ups/categorized`, { headers }),
-            fetch(`${API_URL}/api/auto-campaigns`, { headers })
-        ]);
-
-        if (!statsRes.ok) throw new Error(`Stats API: ${statsRes.status}`);
-        if (!categoriesRes.ok) throw new Error(`Categories API: ${categoriesRes.status}`);
-
-        const statsData = await statsRes.json();
-        const categoriesData = await categoriesRes.json();
-        const campaignsData = campaignsRes.ok ? await campaignsRes.json() : { campaigns: [] };
-
-        const categories = categoriesData.categories || [];
-        const allCampaigns = campaignsData.campaigns || [];
-        const activeCampaigns = allCampaigns.filter(c => c.is_active);
-        const pausedCampaigns = allCampaigns.filter(c => !c.is_active);
-
-        const categoryLabels = {
-            'never_contacted': 'Never Contacted',
-            '1_day': '1-Day Follow-Up',
-            '3_day': '3-Day Follow-Up',
-            '7_day': '7-Day Follow-Up',
-            '14_day': '14+ Day Follow-Up'
-        };
-
-        const totalPending = categories.reduce((sum, cat) => sum + parseInt(cat.count || 0, 10), 0);
-        const neverContacted = categories.find(c => c.follow_up_category === 'never_contacted')?.count || 0;
-
-        // Build campaign rows HTML
-        let campaignRowsHtml = '';
-        for (const c of allCampaigns) {
-            const escapedSubject = c.subject.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-            const escapedBody = c.body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            const escapedName = (c.lead_name||'').replace(/'/g,"\\'");
-            campaignRowsHtml += `
-                <tr id="campRow_${c.id}" style="${!c.is_active ? 'opacity:0.5;' : ''}">
-                    <td>
-                        <div class="contact-cell">
-                            <div class="contact-avatar">${'getInitials' in window ? getInitials(c.lead_name||'?') : '?'}</div>
-                            <div class="contact-info">
-                                <div class="contact-name">${c.lead_name||'Unknown'} ${!c.is_active ? '<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:10px;margin-left:4px;">Paused</span>' : ''}</div>
-                                <div class="contact-email">${c.lead_email||''}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td style="font-size:13px;color:var(--text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapedSubject}</td>
-                    <td style="font-size:13px;color:var(--text-muted);">${c.last_sent_at ? formatDate(c.last_sent_at) : 'Pending'}</td>
-                    <td>
-                        <div class="action-buttons" style="gap:6px;flex-wrap:wrap;">
-                            <button class="btn btn-sm btn-secondary" onclick="openCampaignEdit(${c.id})" style="font-size:11px;padding:4px 8px;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                Edit
-                            </button>
-                            <button class="btn btn-sm btn-secondary" onclick="toggleCampaign(${c.id}, ${c.is_active})" style="font-size:11px;padding:4px 8px;">
-                                ${c.is_active
-                                    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause'
-                                    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polygon points="5 3 19 12 5 21 5 3"/></svg> Resume'}
-                            </button>
-                            <button class="btn btn-sm" onclick="removeCampaign(${c.id})" style="font-size:11px;padding:4px 8px;background:#fef2f2;color:#dc2626;border-color:#fecaca;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                Remove
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <!-- Inline edit form -->
-                <tr id="campEdit_${c.id}" style="display:none;">
-                    <td colspan="4" style="padding:16px;background:var(--bg-secondary);border-top:1px solid var(--border-subtle);">
-                        <div style="max-width:520px;">
-                            <div style="margin-bottom:10px;">
-                                <label style="display:block;font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Subject</label>
-                                <input type="text" id="campEditSubj_${c.id}" value="${escapedSubject}" style="width:100%;padding:8px 10px;border:1px solid var(--border-default);border-radius:6px;font-size:13px;background:var(--bg-primary);color:var(--text-primary);box-sizing:border-box;">
-                            </div>
-                            <div style="margin-bottom:12px;">
-                                <label style="display:block;font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Message</label>
-                                <textarea id="campEditBody_${c.id}" rows="5" style="width:100%;padding:8px 10px;border:1px solid var(--border-default);border-radius:6px;font-size:13px;background:var(--bg-primary);color:var(--text-primary);resize:vertical;font-family:inherit;box-sizing:border-box;">${escapedBody}</textarea>
-                            </div>
-                            <div style="display:flex;gap:8px;">
-                                <button class="btn btn-primary btn-sm" onclick="saveCampaignEdit(${c.id})" style="font-size:12px;">Save Changes</button>
-                                <button class="btn btn-secondary btn-sm" onclick="closeCampaignEdit(${c.id})" style="font-size:12px;">Cancel</button>
-                            </div>
-                        </div>
-                    </td>
-                </tr>`;
-        }
-
-        // Build category sections HTML with TABBED UI
-        let categorySectionsHtml = '';
-        if (categories.length > 0) {
-            // Store categories in state for tab switching
-            state.followupCategories = categories;
-            
-            // Build tabs HTML
-            let tabsHTML = '';
-            categories.forEach((cat, idx) => {
-                const catTitle = categoryLabels[cat.follow_up_category] || cat.follow_up_category;
-                const urgencyColors = {
-                    'never_contacted': '#ef4444',
-                    '1_day': '#f59e0b',
-                    '3_day': '#D4A574',
-                    '7_day': '#3b82f6',
-                    '14_day': '#6b7280'
-                };
-                const color = urgencyColors[cat.follow_up_category] || '#6b7280';
-                
-                tabsHTML += `
-                    <div class="followup-tab ${idx === 0 ? 'active' : ''}" 
-                         data-category="${cat.follow_up_category}"
-                         onclick="switchFollowupTab('${cat.follow_up_category}')"
-                         style="padding: 12px 14px; margin-bottom: 6px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; border-left: 3px solid ${color}; background: ${idx === 0 ? 'var(--bg-hover)' : 'transparent'};">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">${catTitle}</span>
-                            <span style="background: ${color}; color: white; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700;">${cat.count}</span>
-                        </div>
-                    </div>`;
-            });
-            
-            // Build first category content
-            const firstCategory = categories[0];
-            const firstCategoryContent = buildCategoryContent(firstCategory, categoryLabels);
-            
-            categorySectionsHtml = `
-                <div style="display: grid; grid-template-columns: 240px 1fr; gap: 24px; margin-top: 24px;">
-                    <!-- Sidebar with category tabs -->
-                    <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 12px; height: fit-content; position: sticky; top: 100px;">
-                        <div style="padding: 12px 8px 16px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 12px;">
-                            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Categories</div>
-                        </div>
-                        ${tabsHTML}
-                    </div>
-                    
-                    <!-- Main content area -->
-                    <div id="followupContent" style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 28px; min-height: 600px;">
-                        ${firstCategoryContent}
-                    </div>
-                </div>`;
-        } else {
-            categorySectionsHtml = `
-                <div style="text-align: center; padding: 60px; color: var(--text-muted);">
-                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    <div class="empty-title" style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">All Caught Up!</div>
-                    <div class="empty-description" style="color: var(--text-muted);">No follow-ups needed right now</div>
-                </div>`;
-        }
-
-        content.innerHTML = `
-            <!-- Stats Cards -->
-            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Total Pending</span>
-                        <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-                    </div>
-                    <div class="stat-value">${totalPending}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Never Contacted</span>
-                        <div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-                    </div>
-                    <div class="stat-value" style="color: #ef4444;">${neverContacted}</div>
-                </div>
-                <div class="stat-card" style="border-top: 3px solid #D4A847;">
-                    <div class="stat-header">
-                        <span class="stat-label">On Auto-Send</span>
-                        <div class="stat-icon" style="background:rgba(212,168,71,0.1);color:#D4A847;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
-                    </div>
-                    <div class="stat-value" style="color:#D4A847;">${activeCampaigns.length}</div>
-                    ${pausedCampaigns.length > 0 ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${pausedCampaigns.length} paused</div>` : ''}
-                </div>
-            </div>
-
-            <!-- ON AUTO-SEND BUCKET -->
-            ${allCampaigns.length > 0 ? `
-            <div class="table-container" style="margin-bottom: 28px; border: 1px solid #D4A847; border-radius: 8px; overflow: hidden;">
-                <div style="padding: 16px 18px; background: linear-gradient(135deg, #fdfbf5 0%, #fff8e6 100%); border-bottom: 1px solid #e8dcc8; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#D4A847" stroke-width="2.5" style="width:20px;height:20px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                        <div>
-                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 2px; color: #111;">On Auto-Send</h3>
-                            <p style="font-size: 12px; color: #8a7d5a; margin: 0;">${activeCampaigns.length} active — emails fire automatically each follow-up cycle</p>
-                        </div>
-                    </div>
-                </div>
-                <table class="data-table">
-                    <thead><tr><th>Lead</th><th>Subject</th><th>Last Sent</th><th style="width:220px;">Actions</th></tr></thead>
-                    <tbody>${campaignRowsHtml}</tbody>
-                </table>
-            </div>
-            ` : ''}
-
-            <!-- NORMAL FOLLOW-UP CATEGORIES -->
-            ${categorySectionsHtml}
-        `;
+        // Fetch hot and cold leads separately
+        const response = await fetch(`${API_URL}/api/follow-ups/by-temperature`, { headers });
         
-        console.log('[FOLLOW-UPS] ✅ Render complete');
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        
+        const data = await response.json();
+        const hotLeads = data.data.hot || [];
+        const coldLeads = data.data.cold || [];
+        
+        console.log(`[FOLLOW-UPS] ✅ Loaded ${hotLeads.length} hot leads, ${coldLeads.length} cold leads`);
+        
+        // Store in state for tab switching
+        state.hotLeads = hotLeads;
+        state.coldLeads = coldLeads;
+        state.currentFollowUpTab = state.currentFollowUpTab || 'cold';
+        
+        // Build the page HTML with tabs
+        content.innerHTML = `
+            <div class="page-header" style="margin-bottom: 24px;">
+                <div>
+                    <h2>Follow Ups</h2>
+                    <p class="section-subtitle">Manage leads by engagement level</p>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid var(--border-subtle); padding-bottom: 0;">
+                <button id="tabCold" onclick="switchFollowUpTemperatureTab('cold')" 
+                    class="temperature-tab ${state.currentFollowUpTab === 'cold' ? 'active' : ''}"
+                    style="padding: 12px 24px; background: ${state.currentFollowUpTab === 'cold' ? 'var(--bg-hover)' : 'transparent'}; 
+                           border: none; border-bottom: 3px solid ${state.currentFollowUpTab === 'cold' ? '#3b82f6' : 'transparent'}; 
+                           color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                    ❄️ Cold Leads
+                    <span style="display: inline-block; margin-left: 8px; background: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${coldLeads.length}</span>
+                </button>
+                <button id="tabHot" onclick="switchFollowUpTemperatureTab('hot')" 
+                    class="temperature-tab ${state.currentFollowUpTab === 'hot' ? 'active' : ''}"
+                    style="padding: 12px 24px; background: ${state.currentFollowUpTab === 'hot' ? 'var(--bg-hover)' : 'transparent'}; 
+                           border: none; border-bottom: 3px solid ${state.currentFollowUpTab === 'hot' ? '#ef4444' : 'transparent'}; 
+                           color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                    🔥 Hot Leads
+                    <span style="display: inline-block; margin-left: 8px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${hotLeads.length}</span>
+                </button>
+            </div>
+
+            <!-- Tab Content Container -->
+            <div id="followUpTabContent">
+                ${buildFollowUpTabContent(state.currentFollowUpTab, hotLeads, coldLeads)}
+            </div>
+        `;
         
     } catch (error) {
         console.error('[FOLLOW-UPS] ❌ Error:', error);
@@ -17280,171 +17126,122 @@ async function renderFollowUps(content) {
     }
 }
 
-// Helper function to build category content
-function buildCategoryContent(category, categoryLabels) {
-    const categoryTitle = categoryLabels[category.follow_up_category] || category.follow_up_category;
-    const escapedTitle = categoryTitle.replace(/'/g, '&#39;');
+// Helper function to build tab content
+function buildFollowUpTabContent(tab, hotLeads, coldLeads) {
+    const leads = tab === 'hot' ? hotLeads : coldLeads;
+    const isCold = tab === 'cold';
+    const isHot = tab === 'hot';
     
-    let leadsHtml = '';
-    if (category.leads && category.leads.length > 0) {
-        for (const lead of category.leads) {
-            const escapedLeadName = lead.name.replace(/'/g, "\\'");
-            leadsHtml += `
-                <tr>
-                    <td style="max-width: 220px; width: 220px;">
-                        <div class="contact-cell">
-                            <div class="contact-avatar">${'getInitials' in window ? getInitials(lead.name) : '?'}</div>
-                            <div class="contact-info">
-                                <div class="contact-name">${lead.name}</div>
-                                <div class="contact-email">${lead.email}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td style="max-width: 110px; width: 110px;">${lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never'}</td>
-                    <td style="max-width: 90px; width: 90px;">
-                        <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
-                            ${lead.days_since_contact === 999 ? 'Never' : lead.days_since_contact + ' days'}
-                        </span>
-                    </td>
-                    <td style="min-width: 320px; width: 320px;">
-                        <div class="action-buttons">
-                            <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                Mark Contacted
-                            </button>
-                            <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${escapedLeadName}', '${lead.email}')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                                Email
-                            </button>
-                        </div>
-                    </td>
-                </tr>`;
-        }
-    } else {
-        leadsHtml = '<tr><td colspan="4" style="text-align:center;padding:20px;">No leads in this category</td></tr>';
+    if (leads.length === 0) {
+        return `
+            <div style="text-align: center; padding: 60px; background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);">
+                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px; margin: 0 auto 16px; color: ${isHot ? '#ef4444' : '#3b82f6'};">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                <div style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">No ${isHot ? 'Hot' : 'Cold'} Leads</div>
+                <div style="color: var(--text-muted);">
+                    ${isHot 
+                        ? 'Hot leads appear here when they engage with your emails or fill out contact forms.' 
+                        : 'All your leads are either hot or don\'t need follow-up right now!'}
+                </div>
+            </div>
+        `;
     }
     
+    const leadsHtml = leads.map(lead => {
+        const escapedName = (lead.name || 'Unknown').replace(/'/g, "\\'");
+        const daysSince = lead.days_since_contact === 999 ? 'Never' : `${lead.days_since_contact} days`;
+        const lastContactDisplay = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
+        
+        return `
+            <tr>
+                <td>
+                    <div class="contact-cell">
+                        <div class="contact-avatar">${getInitials(lead.name || '?')}</div>
+                        <div class="contact-info">
+                            <div class="contact-name">${lead.name || 'Unknown'}
+                                ${isHot ? '<span style="font-size:9px;background:#ef4444;color:white;padding:2px 6px;border-radius:10px;margin-left:6px;font-weight:700;">HOT</span>' : ''}
+                            </div>
+                            <div class="contact-email">${lead.email || ''}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>${lastContactDisplay}</td>
+                <td>
+                    <span style="color: ${lead.days_since_contact > 7 ? 'var(--status-lost)' : 'var(--text-secondary)'}">
+                        ${daysSince}
+                    </span>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            Mark Contacted
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${escapedName}', '${lead.email}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            Email
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    const description = isHot 
+        ? 'These leads have engaged with you (clicked links, filled forms, replied). They receive follow-ups every 3.5 days (twice per week).'
+        : 'These leads haven\'t engaged yet. They follow your standard follow-up cadence.';
+    
     return `
-        <div>
-            <div style="padding-bottom: 20px; border-bottom: 2px solid var(--border-subtle); margin-bottom: 24px;">
-                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">${categoryTitle}</h3>
-                <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">${category.count} leads need follow-up</p>
+        <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 28px;">
+            <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid var(--border-subtle);">
+                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">${isHot ? '🔥 Hot Leads' : '❄️ Cold Leads'}</h3>
+                <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">${description}</p>
+                <p style="font-size: 13px; color: var(--text-primary); margin-top: 8px; font-weight: 600;">${leads.length} ${leads.length === 1 ? 'lead' : 'leads'} need follow-up</p>
             </div>
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
-                <button class="btn btn-primary btn-sm" onclick="openCategoryEmailModal('${category.follow_up_category}', '${escapedTitle}', ${category.count})">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                    Email All
-                </button>
-            </div>
-            <div style="overflow-x: auto; margin-bottom: 24px;">
-            <div style="overflow-x: auto; margin-bottom: 24px;">
+            
+            <div style="overflow-x: auto;">
                 <table class="data-table" style="min-width: 850px;">
                     <thead>
                         <tr>
-                            <th style="max-width: 200px; width: 200px;">Lead</th>
-                            <th style="max-width: 110px; width: 110px;">Last Contact</th>
-                            <th style="max-width: 90px; width: 90px;">Days Since</th>
-                            <th style="min-width: 300px; width: 300px;">Actions</th>
+                            <th style="width: 250px;">Lead</th>
+                            <th style="width: 150px;">Last Contact</th>
+                            <th style="width: 120px;">Days Since</th>
+                            <th style="min-width: 300px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>${leadsHtml}</tbody>
                 </table>
             </div>
-        </div>`;
+        </div>
+    `;
 }
 
-// Switch between follow-up category tabs
-function switchFollowupTab(categoryName) {
-    // Update tab styling
-    document.querySelectorAll('.followup-tab').forEach(tab => {
-        if (tab.dataset.category === categoryName) {
-            tab.style.background = 'var(--bg-hover)';
-        } else {
-            tab.style.background = 'transparent';
-        }
-    });
+// Tab switcher function
+function switchFollowUpTemperatureTab(tab) {
+    state.currentFollowUpTab = tab;
     
-    // Find and render the selected category
-    const category = state.followupCategories.find(c => c.follow_up_category === categoryName);
-    if (category) {
-        const categoryLabels = {
-            'never_contacted': 'Never Contacted',
-            '1_day': '1-Day Follow-Up',
-            '3_day': '3-Day Follow-Up',
-            '7_day': '7-Day Follow-Up',
-            '14_day': '14+ Day Follow-Up'
-        };
-        document.getElementById('followupContent').innerHTML = buildCategoryContent(category, categoryLabels);
-    }
+    // Update tab styling
+    document.getElementById('tabCold').style.background = tab === 'cold' ? 'var(--bg-hover)' : 'transparent';
+    document.getElementById('tabCold').style.borderBottom = `3px solid ${tab === 'cold' ? '#3b82f6' : 'transparent'}`;
+    document.getElementById('tabHot').style.background = tab === 'hot' ? 'var(--bg-hover)' : 'transparent';
+    document.getElementById('tabHot').style.borderBottom = `3px solid ${tab === 'hot' ? '#ef4444' : 'transparent'}`;
+    
+    // Update content
+    document.getElementById('followUpTabContent').innerHTML = buildFollowUpTabContent(tab, state.hotLeads, state.coldLeads);
 }
 
-// ---- AUTO-CAMPAIGN ACTION HANDLERS ----
+// Helper function to build category content - REMOVED (no longer needed)
+// function buildCategoryContent() { ... }
 
-function openCampaignEdit(id) {
-    const row = document.getElementById('campEdit_' + id);
-    if (row) row.style.display = 'table-row';
-}
-function closeCampaignEdit(id) {
-    const row = document.getElementById('campEdit_' + id);
-    if (row) row.style.display = 'none';
-}
+// Switch between follow-up category tabs - REMOVED (no longer needed)  
+// function switchFollowupTab() { ... }
 
-async function saveCampaignEdit(id) {
-    const subject = document.getElementById('campEditSubj_' + id)?.value;
-    const body = document.getElementById('campEditBody_' + id)?.value;
-    if (!subject || !body) { showToast('Subject and message are required', 'error'); return; }
-
-    try {
-        const res = await fetch(`${API_URL}/api/auto-campaigns/${id}`, {
-            method: 'PUT',
-            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subject, body })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            showToast('Campaign updated', 'success');
-            closeCampaignEdit(id);
-            await renderFollowUps(document.getElementById('contentArea'));
-        } else {
-            showToast('Failed: ' + (data.message || 'Unknown error'), 'error');
-        }
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-async function toggleCampaign(id, currentlyActive) {
-    try {
-        const res = await fetch(`${API_URL}/api/auto-campaigns/${id}/toggle`, {
-            method: 'PATCH',
-            headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' }
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            showToast(currentlyActive ? 'Campaign paused — lead will reappear in normal follow-ups' : 'Campaign resumed', currentlyActive ? 'warning' : 'success');
-            await renderFollowUps(document.getElementById('contentArea'));
-        } else {
-            showToast('Failed: ' + (data.message||''), 'error');
-        }
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-async function removeCampaign(id) {
-    if (!confirm('Remove this auto-campaign? The lead will reappear in the normal follow-up list on their next due date.')) return;
-    try {
-        const res = await fetch(`${API_URL}/api/auto-campaigns/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            showToast('Campaign removed', 'success');
-            await renderFollowUps(document.getElementById('contentArea'));
-        } else {
-            showToast('Failed: ' + (data.message||''), 'error');
-        }
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-// Mark lead as contacted
 async function markFollowedUp(leadId) {
     try {
         console.log('[FOLLOW-UP] Marking lead as followed up:', leadId);

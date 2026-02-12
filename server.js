@@ -11511,6 +11511,319 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
 </body>
 </html>`;
             
+        } else if (template === 'zerotransactionfees') {
+            // Generate unsubscribe token
+            let unsubToken = lead.unsubscribe_token;
+            if (!unsubToken) {
+                unsubToken = crypto.randomBytes(32).toString('hex');
+                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsubToken, leadId]);
+            }
+            const unsubUrl = `${BASE_URL}/api/unsubscribe/${unsubToken}`;
+            
+            emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Transaction Fees | Diamondback Coding</title>
+<style>
+@media only screen and (max-width: 620px) {
+  .wrap { width: 100% !important; }
+  .hero-num { font-size: 64px !important; }
+  .hero-label { font-size: 10px !important; }
+  .stat-cell { padding: 22px 8px !important; }
+  .section-pad { padding: 36px 24px !important; }
+  .diff-icon-cell { display: none !important; }
+  .diff-text { padding-left: 0 !important; }
+  .cta-btn a { font-size: 15px !important; padding: 16px 28px !important; }
+  .brand-size { font-size: 14px !important; letter-spacing: 2px !important; }
+  .compare-col { display: block !important; width: 100% !important; }
+  .compare-vs { display: none !important; }
+  .save-amount { font-size: 36px !important; }
+  .row-revenue { font-size: 18px !important; }
+}
+</style>
+</head>
+<body style="margin:0;padding:0;background:#EDECEA;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#EDECEA;">
+<tr><td align="center" style="padding:32px 16px 48px;">
+
+<table class="wrap" width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
+
+<!-- HEADER -->
+<tr><td style="background:#FFFFFF;border-radius:3px 3px 0 0;padding:26px 40px 22px;" class="section-pad">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td valign="middle">
+      <span class="brand-size" style="font-size:12px;font-weight:800;letter-spacing:4px;text-transform:uppercase;color:#111111;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">DIAMONDBACK CODING</span>
+    </td>
+    <td align="right" valign="middle">
+      <table cellpadding="0" cellspacing="0" border="0" style="background:#111111;border-radius:2px;">
+      <tr><td style="padding:6px 14px;">
+        <span style="color:#FFFFFF;font-size:9px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">AUSTIN, TX</span>
+      </td></tr>
+      </table>
+    </td>
+  </tr>
+  </table>
+</td></tr>
+
+<!-- HERO -->
+<tr><td style="background:#111111;padding:64px 40px 56px;" class="section-pad">
+  <p style="margin:0 0 18px;font-size:10px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:#D4A847;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">A message for business owners</p>
+  <p style="margin:0 0 22px;font-size:48px;font-weight:800;color:#FFFFFF;line-height:1.02;letter-spacing:-1.8px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Every sale you make,<br>they take a cut.</p>
+  <p style="margin:0;font-size:16px;font-weight:400;color:#888888;line-height:1.7;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Shopify. Squarespace. Wix. They all charge 2–5% on every transaction you process. On $200K in annual sales, that's up to <span style="color:#FFFFFF;font-weight:600;">$10,000 quietly disappearing</span> every single year. We don't do that.</p>
+</td></tr>
+
+<!-- STAT BAR -->
+<tr><td style="background:#D4A847;padding:0;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td class="stat-cell" width="33%" align="center" style="padding:30px 16px;border-right:1px solid rgba(0,0,0,0.15);">
+      <p class="hero-num" style="margin:0;font-size:48px;font-weight:900;color:#111111;line-height:1;letter-spacing:-2px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">$0</p>
+      <p class="hero-label" style="margin:7px 0 0;font-size:9px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#7A5C00;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Transaction Fees</p>
+    </td>
+    <td class="stat-cell" width="33%" align="center" style="padding:30px 16px;border-right:1px solid rgba(0,0,0,0.15);">
+      <p class="hero-num" style="margin:0;font-size:48px;font-weight:900;color:#111111;line-height:1;letter-spacing:-2px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">0%</p>
+      <p class="hero-label" style="margin:7px 0 0;font-size:9px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#7A5C00;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Revenue Cut</p>
+    </td>
+    <td class="stat-cell" width="33%" align="center" style="padding:30px 16px;">
+      <p class="hero-num" style="margin:0;font-size:48px;font-weight:900;color:#111111;line-height:1;letter-spacing:-2px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">100%</p>
+      <p class="hero-label" style="margin:7px 0 0;font-size:9px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#7A5C00;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Stays Yours</p>
+    </td>
+  </tr>
+  </table>
+</td></tr>
+
+<!-- SAVINGS COMPARISON -->
+<tr><td style="background:#FFFFFF;padding:52px 40px 48px;" class="section-pad">
+
+  <p style="margin:0 0 4px;font-size:10px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:#D4A847;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Run the numbers</p>
+  <p style="margin:0 0 10px;font-size:30px;font-weight:800;color:#111111;letter-spacing:-1px;line-height:1.1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Here's what you're<br>handing over every year</p>
+  <p style="margin:0 0 36px;font-size:14px;color:#888888;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Based on a 3% platform transaction fee — many charge more.</p>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+  <tr>
+    <td width="34%" style="padding-bottom:10px;font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#AAAAAA;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Your Sales</td>
+    <td width="33%" align="center" style="padding-bottom:10px;font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#CC2222;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Other Platforms</td>
+    <td width="33%" align="center" style="padding-bottom:10px;font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#1A7A3A;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Diamondback</td>
+  </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;">
+  <tr>
+    <td width="34%" valign="middle" style="padding:20px 16px 20px 0;">
+      <p class="row-revenue" style="margin:0;font-size:20px;font-weight:800;color:#111111;letter-spacing:-0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">$75K<span style="font-size:13px;font-weight:500;color:#AAAAAA;letter-spacing:0;">/yr</span></p>
+    </td>
+    <td width="33%" valign="middle" align="center" style="padding:4px;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FFF0F0;border:1.5px solid #FFCCCC;border-radius:4px;">
+      <tr><td align="center" style="padding:16px 8px;">
+        <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#CC2222;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">You Lose</p>
+        <p style="margin:4px 0 0;font-size:26px;font-weight:900;color:#CC2222;letter-spacing:-1px;line-height:1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">−$2,250</p>
+      </td></tr>
+      </table>
+    </td>
+    <td width="33%" valign="middle" align="center" style="padding:4px;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F0FAF3;border:1.5px solid #AADCBB;border-radius:4px;">
+      <tr><td align="center" style="padding:16px 8px;">
+        <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#1A7A3A;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">You Keep</p>
+        <p style="margin:4px 0 0;font-size:26px;font-weight:900;color:#1A7A3A;letter-spacing:-1px;line-height:1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">$2,250</p>
+      </td></tr>
+      </table>
+    </td>
+  </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;">
+  <tr>
+    <td width="34%" valign="middle" style="padding:20px 16px 20px 0;">
+      <p class="row-revenue" style="margin:0;font-size:20px;font-weight:800;color:#111111;letter-spacing:-0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">$200K<span style="font-size:13px;font-weight:500;color:#AAAAAA;letter-spacing:0;">/yr</span></p>
+    </td>
+    <td width="33%" valign="middle" align="center" style="padding:4px;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FFF0F0;border:1.5px solid #FFCCCC;border-radius:4px;">
+      <tr><td align="center" style="padding:16px 8px;">
+        <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#CC2222;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">You Lose</p>
+        <p style="margin:4px 0 0;font-size:26px;font-weight:900;color:#CC2222;letter-spacing:-1px;line-height:1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">−$6,000</p>
+      </td></tr>
+      </table>
+    </td>
+    <td width="33%" valign="middle" align="center" style="padding:4px;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F0FAF3;border:1.5px solid #AADCBB;border-radius:4px;">
+      <tr><td align="center" style="padding:16px 8px;">
+        <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#1A7A3A;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">You Keep</p>
+        <p style="margin:4px 0 0;font-size:26px;font-weight:900;color:#1A7A3A;letter-spacing:-1px;line-height:1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">$6,000</p>
+      </td></tr>
+      </table>
+    </td>
+  </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;background:#FAFAFA;border-radius:4px;">
+  <tr>
+    <td width="34%" valign="middle" style="padding:22px 16px;">
+      <p class="row-revenue" style="margin:0 0 2px;font-size:20px;font-weight:800;color:#111111;letter-spacing:-0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">$500K<span style="font-size:13px;font-weight:500;color:#AAAAAA;letter-spacing:0;">/yr</span></p>
+      <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#D4A847;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Biggest impact</p>
+    </td>
+    <td width="33%" valign="middle" align="center" style="padding:4px 4px 4px 0;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FFF0F0;border:2px solid #FF9999;border-radius:4px;">
+      <tr><td align="center" style="padding:18px 8px;">
+        <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#CC2222;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">You Lose</p>
+        <p class="save-amount" style="margin:4px 0 0;font-size:32px;font-weight:900;color:#CC2222;letter-spacing:-1px;line-height:1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">−$15,000</p>
+      </td></tr>
+      </table>
+    </td>
+    <td width="33%" valign="middle" align="center" style="padding:4px 0 4px 4px;">
+      <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#1A7A3A;border:2px solid #1A7A3A;border-radius:4px;">
+      <tr><td align="center" style="padding:18px 8px;">
+        <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#7ADDA0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">You Keep</p>
+        <p class="save-amount" style="margin:4px 0 0;font-size:32px;font-weight:900;color:#FFFFFF;letter-spacing:-1px;line-height:1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">$15,000</p>
+      </td></tr>
+      </table>
+    </td>
+  </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111111;border-radius:3px;">
+  <tr><td style="padding:18px 24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td valign="middle">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle;margin-right:10px;">
+          <circle cx="10" cy="10" r="9" stroke="#D4A847" stroke-width="1.5"/>
+          <polyline points="5.5,10.5 8.5,13.5 14.5,7.5" stroke="#D4A847" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span style="font-size:14px;font-weight:600;color:#FFFFFF;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;vertical-align:middle;">With Diamondback, every dollar in that green column stays in your pocket.</span>
+      </td>
+    </tr>
+    </table>
+  </td></tr>
+  </table>
+
+</td></tr>
+
+<!-- WHY WE'RE DIFFERENT -->
+<tr><td style="background:#EDECEA;padding:48px 40px 44px;" class="section-pad">
+  <p style="margin:0 0 4px;font-size:10px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:#D4A847;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">What sets us apart</p>
+  <p style="margin:0 0 32px;font-size:30px;font-weight:800;color:#111111;letter-spacing:-1px;line-height:1.1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Built different.<br>For businesses like yours.</p>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFFFFF;border-radius:3px;margin-bottom:10px;">
+  <tr>
+    <td class="diff-icon-cell" width="64" valign="top" style="padding:24px 0 24px 24px;">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="14" cy="11" r="4" stroke="#D4A847" stroke-width="1.8"/>
+        <path d="M14 3C8.477 3 4 7.477 4 13c0 6.5 10 15 10 15s10-8.5 10-15C24 7.477 19.523 3 14 3z" stroke="#D4A847" stroke-width="1.8" fill="none"/>
+      </svg>
+    </td>
+    <td class="diff-text" valign="middle" style="padding:22px 22px 22px 14px;">
+      <p style="margin:0 0 3px;font-size:14px;font-weight:700;color:#111111;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">We're local — Austin, TX</p>
+      <p style="margin:0;font-size:13px;color:#777777;line-height:1.65;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Real people, real conversations. No support tickets. Just a local team that picks up the phone.</p>
+    </td>
+  </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFFFFF;border-radius:3px;margin-bottom:10px;">
+  <tr>
+    <td class="diff-icon-cell" width="64" valign="top" style="padding:24px 0 24px 24px;">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="9,9 3,14 9,19" stroke="#D4A847" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="19,9 25,14 19,19" stroke="#D4A847" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="17" y1="6" x2="11" y2="22" stroke="#D4A847" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </td>
+    <td class="diff-text" valign="middle" style="padding:22px 22px 22px 14px;">
+      <p style="margin:0 0 3px;font-size:14px;font-weight:700;color:#111111;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Custom-built, not templated</p>
+      <p style="margin:0;font-size:13px;color:#777777;line-height:1.65;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Your business isn't generic. Your site shouldn't be either. Every build starts from scratch — not a $12 theme 10,000 others are using.</p>
+    </td>
+  </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111111;border-radius:3px;margin-bottom:10px;">
+  <tr>
+    <td class="diff-icon-cell" width="64" valign="top" style="padding:24px 0 24px 24px;">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="8" width="18" height="13" rx="2" stroke="#D4A847" stroke-width="1.8"/>
+        <line x1="5" y1="13" x2="23" y2="13" stroke="#D4A847" stroke-width="1.8"/>
+        <line x1="10" y1="17.5" x2="14" y2="17.5" stroke="#D4A847" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="14" cy="5" r="2" stroke="#D4A847" stroke-width="1.5"/>
+        <line x1="14" y1="7" x2="14" y2="8" stroke="#D4A847" stroke-width="1.5"/>
+        <line x1="8" y1="5" x2="5" y2="5" stroke="#D4A847" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="20" y1="5" x2="23" y2="5" stroke="#D4A847" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </td>
+    <td class="diff-text" valign="middle" style="padding:22px 22px 22px 14px;">
+      <p style="margin:0 0 3px;font-size:14px;font-weight:700;color:#FFFFFF;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Zero transaction fees — ever</p>
+      <p style="margin:0;font-size:13px;color:#888888;line-height:1.65;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">We charge once for the work. After that, every dollar you earn is yours — not split with a platform that didn't do anything.</p>
+    </td>
+  </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFFFFF;border-radius:3px;">
+  <tr>
+    <td class="diff-icon-cell" width="64" valign="top" style="padding:24px 0 24px 24px;">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="14,3 25,8.5 25,19.5 14,25 3,19.5 3,8.5" stroke="#D4A847" stroke-width="1.8" stroke-linejoin="round" fill="none"/>
+        <circle cx="14" cy="14" r="4" stroke="#D4A847" stroke-width="1.8"/>
+      </svg>
+    </td>
+    <td class="diff-text" valign="middle" style="padding:22px 22px 22px 14px;">
+      <p style="margin:0 0 3px;font-size:14px;font-weight:700;color:#111111;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Website + CRM + SEO — one team</p>
+      <p style="margin:0;font-size:13px;color:#777777;line-height:1.65;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Stop managing three different vendors. We handle your full digital stack — built to work together from day one.</p>
+    </td>
+  </tr>
+  </table>
+
+</td></tr>
+
+<!-- CTA -->
+<tr><td style="background:#D4A847;padding:56px 40px;" class="section-pad">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr><td align="center">
+    <p style="margin:0 0 6px;font-size:10px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:#7A5C00;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">No obligation. No pitch deck.</p>
+    <p style="margin:0 0 28px;font-size:36px;font-weight:800;color:#111111;line-height:1.05;letter-spacing:-1.2px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">15 minutes.<br>Find out what you're losing.</p>
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;" class="cta-btn">
+    <tr><td style="background:#111111;border-radius:2px;">
+      <a href="https://diamondbackcoding.com/contact.html" style="display:block;padding:18px 52px;font-size:15px;font-weight:800;color:#FFFFFF;text-decoration:none;letter-spacing:1px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Schedule a Call</a>
+    </td></tr>
+    </table>
+    <p style="margin:20px 0 0;font-size:13px;color:#7A5C00;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Or call us directly: <a href="tel:+15129800393" style="color:#111111;font-weight:700;text-decoration:none;">(512) 980-0393</a></p>
+  </td></tr>
+  </table>
+</td></tr>
+
+<!-- FOOTER -->
+<tr><td style="background:#111111;padding:32px 40px;border-radius:0 0 3px 3px;" class="section-pad">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td valign="top">
+      <p style="margin:0 0 6px;font-size:11px;font-weight:800;color:#FFFFFF;letter-spacing:2.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Diamondback Coding</p>
+      <p style="margin:0;font-size:12px;color:#555555;line-height:1.8;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+        5000 Plaza on the Lake, Suite 100 PMB 2017<br>
+        Austin, TX 78746<br>
+        <a href="tel:+15129800393" style="color:#D4A847;text-decoration:none;">(512) 980-0393</a>
+      </p>
+    </td>
+    <td align="right" valign="top">
+      <p style="margin:0 0 8px;"><a href="https://diamondbackcoding.com" style="color:#555555;font-size:11px;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Website</a></p>
+      <p style="margin:0;"><a href="https://instagram.com/diamondbackcoding" style="color:#555555;font-size:11px;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Instagram</a></p>
+    </td>
+  </tr>
+  <tr><td colspan="2" style="padding-top:22px;border-top:1px solid #222222;">
+    <p style="margin:0;font-size:11px;color:#444444;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+      You received this because you previously connected with Diamondback Coding. &nbsp;
+      <a href="${unsubUrl}" style="color:#666666;text-decoration:underline;">Unsubscribe</a>
+    </p>
+  </td></tr>
+  </table>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+
+</body>
+</html>`;
+            
         } else {
             // Use standard wrapper for other templates
             emailHTML = buildEmailHTML(`

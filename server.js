@@ -9097,7 +9097,7 @@ async function trackEngagement(leadId, engagementType, details = '') {
         // MODIFIED: Once a lead becomes hot, they stay hot forever
         const shouldBeHot = lead.lead_temperature === 'hot' || score >= 20 || engagementType === 'form_fill' || engagementType === 'email_reply' || engagementType === 'email_click';
         const newTemperature = shouldBeHot ? 'hot' : 'cold';
-        const becameHotAt = (newTemperature === 'hot' && lead.lead_temperature !== 'hot') ? new Date() : lead.became_hot_at;
+        const becameHotAt = (newTemperature === 'hot' && lead.lead_temperature !== 'hot') ? 'CURRENT_TIMESTAMP' : lead.became_hot_at;
         
         // If lead just became hot (cold -> hot transition)
         if (newTemperature === 'hot' && lead.lead_temperature !== 'hot') {
@@ -9119,27 +9119,44 @@ async function trackEngagement(leadId, engagementType, details = '') {
                  SET engagement_history = $1,
                      engagement_score = $2,
                      lead_temperature = $3,
-                     became_hot_at = $4,
+                     became_hot_at = CURRENT_TIMESTAMP,
                      last_engagement_at = CURRENT_TIMESTAMP,
                      last_contact_date = NULL,
                      follow_up_count = 0
-                 WHERE id = $5`,
-                [JSON.stringify(history), score, newTemperature, becameHotAt, leadId]
+                 WHERE id = $4`,
+                [JSON.stringify(history), score, newTemperature, leadId]
             );
             
             console.log(`[ENGAGEMENT] ✅ Lead ${leadId} reset to hot timeline | Auto-campaigns cancelled`);
         } else {
             // Normal update (not becoming hot)
-            await pool.query(
-                `UPDATE leads 
-                 SET engagement_history = $1,
-                     engagement_score = $2,
-                     lead_temperature = $3,
-                     became_hot_at = $4,
-                     last_engagement_at = CURRENT_TIMESTAMP
-                 WHERE id = $5`,
-                [JSON.stringify(history), score, newTemperature, becameHotAt, leadId]
-            );
+            // Only update became_hot_at if it doesn't already have a value and the temperature is already hot
+            const becameHotAtValue = (newTemperature === 'hot' && !lead.became_hot_at) ? 'CURRENT_TIMESTAMP' : lead.became_hot_at;
+            
+            if (newTemperature === 'hot' && !lead.became_hot_at) {
+                // Lead is already hot but doesn't have a became_hot_at timestamp
+                await pool.query(
+                    `UPDATE leads 
+                     SET engagement_history = $1,
+                         engagement_score = $2,
+                         lead_temperature = $3,
+                         became_hot_at = CURRENT_TIMESTAMP,
+                         last_engagement_at = CURRENT_TIMESTAMP
+                     WHERE id = $4`,
+                    [JSON.stringify(history), score, newTemperature, leadId]
+                );
+            } else {
+                // Standard update
+                await pool.query(
+                    `UPDATE leads 
+                     SET engagement_history = $1,
+                         engagement_score = $2,
+                         lead_temperature = $3,
+                         last_engagement_at = CURRENT_TIMESTAMP
+                     WHERE id = $4`,
+                    [JSON.stringify(history), score, newTemperature, leadId]
+                );
+            }
         }
         
         console.log(`[ENGAGEMENT] ✅ Tracked ${engagementType} for lead ${leadId} | Score: ${score} | Temp: ${newTemperature}`);

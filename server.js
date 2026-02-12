@@ -9165,22 +9165,40 @@ async function trackEngagement(leadId, engagementType, details = '') {
             console.log(`[ENGAGEMENT] ✅ Lead ${leadId} reset to hot timeline | Auto-campaigns cancelled`);
         } else {
             // Normal update (not becoming hot)
-            // For hot leads, reset timeline on ANY engagement to show them immediately
+            // For hot leads, only reset timeline if they've NEVER been contacted before
+            // Once contacted, they stay in the normal hot lead follow-up cycle
             if (newTemperature === 'hot') {
-                // Hot lead engaged - reset their follow-up timeline
-                await pool.query(
-                    `UPDATE leads 
-                     SET engagement_history = $1,
-                         engagement_score = $2,
-                         lead_temperature = $3,
-                         became_hot_at = COALESCE(became_hot_at, CURRENT_TIMESTAMP),
-                         last_engagement_at = CURRENT_TIMESTAMP,
-                         last_contact_date = NULL,
-                         follow_up_count = 0
-                     WHERE id = $4`,
-                    [JSON.stringify(history), score, newTemperature, leadId]
-                );
-                console.log(`[ENGAGEMENT] 🔥 Hot lead ${leadId} re-engaged - timeline reset to show immediately`);
+                // Check if this hot lead has been contacted before
+                if (lead.follow_up_count === 0 || lead.last_contact_date === null) {
+                    // Never contacted - reset timeline to show them immediately
+                    await pool.query(
+                        `UPDATE leads 
+                         SET engagement_history = $1,
+                             engagement_score = $2,
+                             lead_temperature = $3,
+                             became_hot_at = COALESCE(became_hot_at, CURRENT_TIMESTAMP),
+                             last_engagement_at = CURRENT_TIMESTAMP,
+                             last_contact_date = NULL,
+                             follow_up_count = 0
+                         WHERE id = $4`,
+                        [JSON.stringify(history), score, newTemperature, leadId]
+                    );
+                    console.log(`[ENGAGEMENT] 🔥 Hot lead ${leadId} engaged (never contacted) - showing in queue`);
+                } else {
+                    // Already contacted - DO NOT reset timeline
+                    // Just update engagement data, keep their follow-up schedule intact
+                    await pool.query(
+                        `UPDATE leads 
+                         SET engagement_history = $1,
+                             engagement_score = $2,
+                             lead_temperature = $3,
+                             became_hot_at = COALESCE(became_hot_at, CURRENT_TIMESTAMP),
+                             last_engagement_at = CURRENT_TIMESTAMP
+                         WHERE id = $4`,
+                        [JSON.stringify(history), score, newTemperature, leadId]
+                    );
+                    console.log(`[ENGAGEMENT] 🔥 Hot lead ${leadId} engaged (already contacted) - maintaining follow-up schedule`);
+                }
             } else {
                 // Cold lead - standard update
                 await pool.query(

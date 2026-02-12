@@ -2908,7 +2908,9 @@ app.post('/api/leads', async (req, res) => {
             console.log('📧 Existing lead re-engaged via contact form:', email);
             
             // Track this engagement (will automatically make them hot)
-            await trackEngagement(existing.id, 'form_fill', 'Submitted contact form again');
+            console.log(`[CONTACT FORM] 📝 Tracking re-engagement for existing lead ${existing.id}`);
+            const trackResult = await trackEngagement(existing.id, 'form_fill', 'Submitted contact form again');
+            console.log(`[CONTACT FORM] Track result:`, trackResult);
             
             // Update the existing lead with new information
             const updateResult = await pool.query(
@@ -3071,7 +3073,9 @@ app.post('/api/leads', async (req, res) => {
         
         // If this is from the contact form (not admin), track engagement and make them hot
         if (!isAuthenticated) {
-            await trackEngagement(result.rows[0].id, 'form_fill', 'Initial contact form submission');
+            console.log(`[CONTACT FORM] 📝 Tracking engagement for new lead ${result.rows[0].id}`);
+            const trackResult = await trackEngagement(result.rows[0].id, 'form_fill', 'Initial contact form submission');
+            console.log(`[CONTACT FORM] Track result:`, trackResult);
         }
 
         res.json({
@@ -9061,6 +9065,13 @@ function calculateNextFollowUpDate(lastContactDate, leadTemperature) {
 // Function to add engagement event to lead
 async function trackEngagement(leadId, engagementType, details = '') {
     try {
+        console.log(`\n========================================`);
+        console.log(`[ENGAGEMENT] 🔍 TRACKING ENGAGEMENT`);
+        console.log(`[ENGAGEMENT] Lead ID: ${leadId}`);
+        console.log(`[ENGAGEMENT] Type: ${engagementType}`);
+        console.log(`[ENGAGEMENT] Details: ${details}`);
+        console.log(`========================================\n`);
+        
         const engagementEvent = {
             type: engagementType, // 'form_fill', 'email_click', 'email_reply', 'website_visit'
             details: details,
@@ -9069,11 +9080,23 @@ async function trackEngagement(leadId, engagementType, details = '') {
         
         // Get current engagement history
         const leadResult = await pool.query(
-            'SELECT engagement_history, engagement_score, lead_temperature, follow_up_count FROM leads WHERE id = $1',
+            'SELECT id, name, email, engagement_history, engagement_score, lead_temperature, follow_up_count, last_contact_date FROM leads WHERE id = $1',
             [leadId]
         );
         
-        if (leadResult.rows.length === 0) return;
+        if (leadResult.rows.length === 0) {
+            console.log(`[ENGAGEMENT] ❌ ERROR: Lead ${leadId} not found!`);
+            return;
+        }
+        
+        console.log(`[ENGAGEMENT] 📊 CURRENT STATE:`, {
+            name: leadResult.rows[0].name,
+            email: leadResult.rows[0].email,
+            temperature: leadResult.rows[0].lead_temperature,
+            score: leadResult.rows[0].engagement_score,
+            followUpCount: leadResult.rows[0].follow_up_count,
+            lastContactDate: leadResult.rows[0].last_contact_date
+        });
         
         const lead = leadResult.rows[0];
         let history = lead.engagement_history || [];
@@ -9092,10 +9115,18 @@ async function trackEngagement(leadId, engagementType, details = '') {
         };
         score += scoreMap[engagementType] || 5;
         
+        console.log(`[ENGAGEMENT] 💯 NEW SCORE: ${score} (added ${scoreMap[engagementType] || 5} points for ${engagementType})`);
+        
         // MODIFIED: Once a lead becomes hot, they stay hot forever
         const shouldBeHot = lead.lead_temperature === 'hot' || score >= 20 || engagementType === 'form_fill' || engagementType === 'email_reply' || engagementType === 'email_click';
         const newTemperature = shouldBeHot ? 'hot' : 'cold';
         const becameHotAt = (newTemperature === 'hot' && lead.lead_temperature !== 'hot') ? 'CURRENT_TIMESTAMP' : lead.became_hot_at;
+        
+        console.log(`[ENGAGEMENT] 🌡️  TEMPERATURE DECISION:`);
+        console.log(`   - Current: ${lead.lead_temperature || 'null'}`);
+        console.log(`   - New: ${newTemperature}`);
+        console.log(`   - Should be hot? ${shouldBeHot}`);
+        console.log(`   - Reasons: score >= 20? ${score >= 20}, form_fill? ${engagementType === 'form_fill'}, email_click? ${engagementType === 'email_click'}`);
         
         // If lead just became hot (cold -> hot transition)
         if (newTemperature === 'hot' && lead.lead_temperature !== 'hot') {
@@ -9158,7 +9189,9 @@ async function trackEngagement(leadId, engagementType, details = '') {
             }
         }
         
-        console.log(`[ENGAGEMENT] ✅ Tracked ${engagementType} for lead ${leadId} | Score: ${score} | Temp: ${newTemperature}`);
+        console.log(`[ENGAGEMENT] ✅ Tracked ${engagementType} for lead ${leadId}`);
+        console.log(`[ENGAGEMENT] 📊 FINAL STATE: Score: ${score} | Temp: ${newTemperature}`);
+        console.log(`========================================\n`);
         
         return { success: true, temperature: newTemperature, score };
     } catch (error) {
@@ -9179,12 +9212,17 @@ app.get('/api/track/click/:leadId', async (req, res) => {
         const leadId = req.params.leadId;
         const { url } = req.query;
         
-        console.log(`[TRACKING] Link clicked by lead ${leadId}: ${url}`);
+        console.log(`\n========================================`);
+        console.log(`[TRACKING] 🖱️  LINK CLICKED!`);
+        console.log(`[TRACKING] Lead ID: ${leadId}`);
+        console.log(`[TRACKING] URL: ${url}`);
+        console.log(`========================================\n`);
         
         // Track the click engagement - this makes them hot
-        await trackEngagement(leadId, 'email_click', `Clicked link: ${url || 'unknown'}`);
+        const trackResult = await trackEngagement(leadId, 'email_click', `Clicked link: ${url || 'unknown'}`);
+        console.log(`[TRACKING] Track result:`, trackResult);
         
-        console.log(`[TRACKING] ✅ Lead ${leadId} engagement tracked, redirecting to: ${url || BASE_URL}`);
+        console.log(`[TRACKING] ✅ Lead ${leadId} engagement tracked, redirecting to: ${url || BASE_URL}\n`);
         
         // Redirect to the actual URL
         const redirectUrl = url || BASE_URL;

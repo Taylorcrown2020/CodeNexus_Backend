@@ -575,7 +575,23 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
     sendSmtpEmail.subject = subject;
     sendSmtpEmail.htmlContent = html;
     
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    try {
+        const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+        console.log('[BREVO] ✅ Email accepted by Brevo:', response);
+        return response;
+    } catch (error) {
+        // Extract detailed error information from Brevo API
+        const errorMessage = error.response?.body?.message || error.message || 'Unknown Brevo error';
+        const errorCode = error.response?.body?.code || error.statusCode;
+        console.error('[BREVO] ❌ Failed to send email:', {
+            to,
+            subject,
+            error: errorMessage,
+            code: errorCode
+        });
+        // Re-throw with more context so sendTrackedEmail can catch it
+        throw new Error(`Brevo send failed: ${errorMessage}`);
+    }
 }
 
 // Get current email settings
@@ -601,6 +617,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
             [leadId || null, subject]
         );
         emailLogId = logRow.rows[0]?.id;
+        console.log(`[EMAIL] Created email_log entry ${emailLogId} for ${to} - Status: pending`);
     } catch (e) {
         console.warn('[TRACKED-EMAIL] Could not insert email_log row:', e.message);
     }
@@ -628,6 +645,8 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
     
     // 5. Send via Brevo or Nodemailer
     try {
+        console.log(`[EMAIL] Attempting to send to: ${to} | Subject: ${subject} | Method: ${emailSettings.useBrevo ? 'Brevo' : 'Nodemailer'}`);
+        
         if (emailSettings.useBrevo && emailSettings.brevoApiKey) {
             console.log('[EMAIL] Sending via Brevo...');
             await sendViaBrevo(
@@ -638,7 +657,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 subject,
                 html
             );
-            console.log('[EMAIL] ✅ Sent via Brevo');
+            console.log(`[EMAIL] ✅ Successfully sent via Brevo to ${to}`);
         } else {
             console.log('[EMAIL] Sending via Nodemailer...');
             await transporter.sendMail({
@@ -647,7 +666,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 subject,
                 html
             });
-            console.log('[EMAIL] ✅ Sent via Nodemailer');
+            console.log(`[EMAIL] ✅ Successfully sent via Nodemailer to ${to}`);
         }
         
         // 6. Mark as successfully sent ONLY after send succeeds
@@ -656,6 +675,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 `UPDATE email_log SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE id = $1`,
                 [emailLogId]
             );
+            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as SENT`);
         }
         
         // 7. Update follow-up tracking ONLY if email sent successfully AND NOT a marketing blast
@@ -672,7 +692,11 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         }
         
     } catch (error) {
-        console.error('[EMAIL] ❌ Send failed:', error);
+        console.error(`[EMAIL] ❌❌❌ SEND FAILED ❌❌❌`);
+        console.error(`[EMAIL] To: ${to}`);
+        console.error(`[EMAIL] Subject: ${subject}`);
+        console.error(`[EMAIL] Error: ${error.message}`);
+        console.error(`[EMAIL] Full error:`, error);
         
         // Mark as failed - DO NOT update follow_up_count or last_contact_date
         if (emailLogId) {
@@ -680,6 +704,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 `UPDATE email_log SET status = 'failed', sent_at = CURRENT_TIMESTAMP, error_message = $2 WHERE id = $1`,
                 [emailLogId, error.message]
             );
+            console.log(`[EMAIL] ❌ Email_log ${emailLogId} marked as FAILED`);
         }
         
         console.log(`[FOLLOW-UP] ❌ Lead ${leadId} NOT advanced - email failed to send`);
@@ -6948,24 +6973,34 @@ app.get('/api/follow-ups/dead-leads', authenticateToken, async (req, res) => {
 app.get('/api/track/open/:emailLogId', async (req, res) => {
     try {
         const { emailLogId } = req.params;
-        // Update opened_at only on first open AND only if email was successfully sent
+        
+        // STRICT VALIDATION: Only track opens for emails that were actually sent
         const result = await pool.query(
-            `UPDATE email_log SET opened_at = CURRENT_TIMESTAMP, status = 'opened'
-             WHERE id = $1 AND status = 'sent' AND opened_at IS NULL
+            `UPDATE email_log 
+             SET opened_at = CURRENT_TIMESTAMP, status = 'opened'
+             WHERE id = $1 
+             AND status = 'sent'  -- CRITICAL: Only count opens for successfully sent emails
+             AND opened_at IS NULL  -- Only track first open
              RETURNING lead_id`,
             [emailLogId]
         );
-        // Also track engagement on the lead so they can become hot (only if we actually updated a row)
+        
+        // Track engagement ONLY if we actually updated a row (meaning email was sent)
         if (result.rows.length > 0) {
             const leadId = result.rows[0].lead_id;
             if (leadId) {
+                console.log(`[TRACKING] ✅ Email ${emailLogId} opened by lead ${leadId}`);
                 await trackEngagement(leadId, 'email_open', 5);
             }
+        } else {
+            // This means the email was never sent or already opened
+            console.log(`[TRACKING] ⚠️ Pixel request for email ${emailLogId} but email was not in 'sent' status`);
         }
     } catch (e) {
+        console.error('[TRACKING] Error tracking email open:', e);
         // Silently swallow - never break pixel delivery
     }
-    // Return 1×1 transparent GIF
+    // Return 1×1 transparent GIF regardless of success/failure
     const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
     res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
     res.end(pixel);

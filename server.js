@@ -7078,6 +7078,32 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
     try {
         const { emailLogId } = req.params;
         
+        // ✅ FIX: Get the recipient email to check if it's your own email
+        const emailInfo = await pool.query(
+            `SELECT l.email, el.status FROM email_log el
+             LEFT JOIN leads l ON el.lead_id = l.id
+             WHERE el.id = $1`,
+            [emailLogId]
+        );
+        
+        if (emailInfo.rows.length === 0) {
+            console.log(`[TRACKING] ⚠️  Email log ${emailLogId} not found`);
+            const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+            res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
+            return res.end(pixel);
+        }
+        
+        const recipientEmail = emailInfo.rows[0]?.email;
+        const yourEmail = process.env.EMAIL_USER; // Your sending email address
+        
+        // ✅ FIX: Skip tracking if this is YOUR email (prevents false opens when you test)
+        if (recipientEmail && yourEmail && recipientEmail.toLowerCase() === yourEmail.toLowerCase()) {
+            console.log(`[TRACKING] ⏭️  SKIPPED - This is your own email (${recipientEmail}), not counting as opened`);
+            const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+            res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
+            return res.end(pixel);
+        }
+        
         // CRITICAL: When email is opened, this confirms delivery
         // Update status from 'queued' → 'opened' OR 'sent' → 'opened'
         const result = await pool.query(
@@ -9553,11 +9579,12 @@ app.post('/api/admin/reset-cold-leads', authenticateToken, async (req, res) => {
             `UPDATE leads 
              SET follow_up_count = 0,
                  last_contact_date = NULL,
+                 status = 'new',
                  updated_at = CURRENT_TIMESTAMP
              WHERE is_customer = FALSE
              AND COALESCE(lead_temperature, 'cold') != 'hot'
              AND status NOT IN ('dead', 'closed', 'lost')
-             RETURNING id, name, email`,
+             RETURNING id, name, email, status`,
             []
         );
         
@@ -9624,10 +9651,11 @@ app.post('/api/admin/reset-all-leads', authenticateToken, async (req, res) => {
                  became_hot_at = NULL,
                  engagement_score = 0,
                  engagement_history = '[]'::jsonb,
+                 status = 'new',
                  updated_at = CURRENT_TIMESTAMP
              WHERE is_customer = FALSE
              AND status NOT IN ('dead', 'closed', 'lost')
-             RETURNING id, name, email, lead_temperature`,
+             RETURNING id, name, email, lead_temperature, status`,
             []
         );
         
@@ -12367,6 +12395,17 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
 
         // Create email_log entry and send with tracking pixel
         await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML });
+        
+        // ✅ FIX: Mark lead as "contacted" immediately when email is sent
+        await pool.query(
+            `UPDATE leads 
+             SET status = 'contacted',
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1
+             AND status = 'new'`,  // Only update if currently "new"
+            [leadId]
+        );
+        console.log(`[FOLLOW-UP] ✅ Lead ${leadId} marked as "contacted" immediately after sending`);
         
         // ✅ CRITICAL: Do NOT update last_contact_date here!
         // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:

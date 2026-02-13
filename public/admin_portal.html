@@ -11458,7 +11458,9 @@ function openExportModal() {
         <div class="form-group">
             <label class="form-label">What would you like to export?</label>
             <select class="form-select" id="exportType">
-                <option value="leads">All Leads</option>
+                <option value="all_leads">All Leads (Complete Database)</option>
+                <option value="followup_leads">Follow-Up Leads (All in Follow-Up Process)</option>
+                <option value="leads">Current Leads (Non-Customers)</option>
                 <option value="customers">All Customers</option>
                 <option value="invoices">All Invoices</option>
                 <option value="employees">All Employees</option>
@@ -11568,6 +11570,92 @@ async function performExport() {
         
         // Handle other export types with proper formatting
         switch (exportType) {
+            case 'all_leads':
+                // Export ALL leads - every lead in the entire database (no filters)
+                const response1 = await fetch(`${API_URL}/api/leads/all-complete`, {
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response1.ok) {
+                    throw new Error('Failed to fetch all leads');
+                }
+                
+                const allLeadsData = await response1.json();
+                const allLeads = allLeadsData.leads || [];
+                
+                data = allLeads.map(lead => ({
+                    'Name': lead.name || '',
+                    'Email': lead.email || '',
+                    'Phone': lead.phone || '',
+                    'Company': lead.company || '',
+                    'Project Type': lead.project_type || '',
+                    'Budget': lead.budget || '',
+                    'Status': lead.status || '',
+                    'Temperature': lead.lead_temperature || 'cold',
+                    'Is Customer': lead.is_customer ? 'Yes' : 'No',
+                    'Customer Status': lead.customer_status || 'N/A',
+                    'Unsubscribed (Dead Lead)': lead.unsubscribed ? 'Yes' : 'No',
+                    'Follow Up Count': lead.follow_up_count || 0,
+                    'Last Contact Date': lead.last_contact_date ? new Date(lead.last_contact_date).toLocaleDateString() : 'Never',
+                    'Last Engagement': lead.last_engagement_at ? new Date(lead.last_engagement_at).toLocaleDateString() : 'Never',
+                    'Became Hot At': lead.became_hot_at ? new Date(lead.became_hot_at).toLocaleDateString() : 'N/A',
+                    'Engagement Score': lead.engagement_score || 0,
+                    'Lifetime Value': lead.lifetime_value ? `$${parseFloat(lead.lifetime_value).toFixed(2)}` : '$0.00',
+                    'Last Payment Date': lead.last_payment_date ? new Date(lead.last_payment_date).toLocaleDateString() : 'N/A',
+                    'Assigned To': lead.employee_name || 'Unassigned',
+                    'Source': lead.source || '',
+                    'Created At': lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '',
+                    'Updated At': lead.updated_at ? new Date(lead.updated_at).toLocaleDateString() : ''
+                }));
+                filename = 'all_leads_complete';
+                break;
+                
+            case 'followup_leads':
+                // Export ALL leads in follow-up process (whether waiting or already followed up)
+                const response2 = await fetch(`${API_URL}/api/leads/followup-all`, {
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response2.ok) {
+                    throw new Error('Failed to fetch follow-up leads');
+                }
+                
+                const followupData = await response2.json();
+                const followupLeads = followupData.leads || [];
+                
+                data = followupLeads.map(lead => ({
+                    'Name': lead.name || '',
+                    'Email': lead.email || '',
+                    'Phone': lead.phone || '',
+                    'Company': lead.company || '',
+                    'Project Type': lead.project_type || '',
+                    'Budget': lead.budget || '',
+                    'Status': lead.status || '',
+                    'Temperature': lead.lead_temperature || 'cold',
+                    'Is Customer': lead.is_customer ? 'Yes' : 'No',
+                    'Unsubscribed (Dead Lead)': lead.unsubscribed ? 'Yes' : 'No',
+                    'Follow Up Count': lead.follow_up_count || 0,
+                    'Last Contact Date': lead.last_contact_date ? new Date(lead.last_contact_date).toLocaleDateString() : 'Never',
+                    'Last Engagement': lead.last_engagement_at ? new Date(lead.last_engagement_at).toLocaleDateString() : 'Never',
+                    'Days Since Contact': lead.days_since_contact || 'N/A',
+                    'In Follow Up Queue': lead.in_followup_queue ? 'Yes' : 'No',
+                    'Became Hot At': lead.became_hot_at ? new Date(lead.became_hot_at).toLocaleDateString() : 'N/A',
+                    'Engagement Score': lead.engagement_score || 0,
+                    'Lifetime Value': lead.lifetime_value ? `$${parseFloat(lead.lifetime_value).toFixed(2)}` : '$0.00',
+                    'Assigned To': lead.employee_name || 'Unassigned',
+                    'Source': lead.source || '',
+                    'Created At': lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '',
+                    'Updated At': lead.updated_at ? new Date(lead.updated_at).toLocaleDateString() : ''
+                }));
+                filename = 'followup_leads';
+                break;
+                
             case 'leads':
                 // Format leads data with all relevant fields
                 data = state.leads.map(lead => ({

@@ -1912,6 +1912,83 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
     }
 });
 
+// Export ALL leads - complete database with no filters
+app.get('/api/leads/all-complete', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT l.*, 
+                   e.name as employee_name,
+                   e.email as employee_email
+            FROM leads l
+            LEFT JOIN employees e ON l.assigned_to = e.id
+            ORDER BY l.created_at DESC
+        `);
+
+        res.json({
+            success: true,
+            leads: result.rows,
+            total: result.rows.length
+        });
+    } catch (error) {
+        console.error('Export all leads error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to export all leads.' 
+        });
+    }
+});
+
+// Export ALL leads in follow-up process (whether in queue or already followed up)
+app.get('/api/leads/followup-all', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                l.*,
+                e.name as employee_name,
+                e.email as employee_email,
+                COALESCE(EXTRACT(DAY FROM CURRENT_DATE - l.last_contact_date)::INTEGER, 999) as days_since_contact,
+                CASE 
+                    WHEN l.last_contact_date IS NULL THEN true
+                    WHEN (l.lead_temperature = 'hot' AND (
+                        l.last_contact_date IS NULL 
+                        OR (l.follow_up_count >= 1 AND l.follow_up_count % 2 = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days')
+                        OR (l.follow_up_count >= 2 AND l.follow_up_count % 2 = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
+                    )) THEN true
+                    WHEN (COALESCE(l.lead_temperature, 'cold') != 'hot' AND (
+                        l.last_contact_date IS NULL
+                        OR (l.follow_up_count = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days')
+                        OR (l.follow_up_count = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '5 days')
+                        OR (l.follow_up_count >= 2 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
+                    )) THEN true
+                    ELSE false
+                END as in_followup_queue
+            FROM leads l
+            LEFT JOIN employees e ON l.assigned_to = e.id
+            WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
+            AND l.is_customer = FALSE
+            AND l.unsubscribed = FALSE
+            AND NOT EXISTS (
+                SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
+            )
+            ORDER BY l.last_contact_date ASC NULLS FIRST, l.created_at DESC
+        `);
+
+        res.json({
+            success: true,
+            leads: result.rows,
+            total: result.rows.length,
+            in_queue: result.rows.filter(l => l.in_followup_queue).length,
+            already_followed_up: result.rows.filter(l => !l.in_followup_queue).length
+        });
+    } catch (error) {
+        console.error('Export follow-up leads error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to export follow-up leads.' 
+        });
+    }
+});
+
 // ========================================
 // LEAD MANAGEMENT ROUTES
 // ========================================

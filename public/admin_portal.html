@@ -3646,6 +3646,12 @@ body.graffiti-mode .sidebar::after {
                 Follow Ups
                 <span class="nav-badge" id="followupsBadge">0</span>
             </div>
+            <div class="nav-item" data-section="marketing">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+                Marketing
+            </div>
             <div class="nav-item" data-section="pipeline">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -5325,6 +5331,10 @@ case 'client-portal':
         case 'followups':
             await renderFollowUps(content);
             break;
+
+        case 'marketing':
+            await renderMarketing(content);
+            break;
             
         default:
             content.innerHTML = `
@@ -6860,21 +6870,35 @@ window.showEmailModal = function(leadId, leadName, leadEmail) {
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Email Template:</label>
                         <select id="emailTemplate_${leadId}" onchange="loadEmailTemplate(${leadId}, '${leadName.replace(/'/g, "\\'")}', '${leadEmail}')" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: white; box-sizing: border-box; font-size: 14px;">
                             <option value="">-- Select a Template --</option>
-                            <option value="valentinessale">Valentine's Day Sale (25% Off)</option>
-                            <option value="springsale">Spring Sale (25% Off)</option>
-                            <option value="blackfriday">Black Friday Sale (25% Off)</option>
-                            <option value="initialsale">Initial Sale (25% Off Spring)</option>
-                            <option value="valentines14">Valentine's 14% Promo (Original)</option>
-                            <option value="zerotransactionfees">Zero Transaction Fees</option>
-                            <option value="followup">Follow-Up</option>
-                            <option value="proposal">Send Proposal</option>
-                            <option value="thankyou">Thank You</option>
-                            <option value="projectupdate">Project Update</option>
-                            <option value="invoicereminder">Invoice Reminder</option>
-                            <option value="projectcomplete">Project Complete</option>
-                            <option value="checkin">Client Check-in</option>
-                            <option value="referralrequest">Request Referral</option>
-                            <option value="custom">Custom (blank)</option>
+                            <optgroup label="── Follow-Up Sequence ──">
+                                <option value="followup1">1 · Initial Follow-Up</option>
+                                <option value="followup2">2 · Second Follow-Up</option>
+                                <option value="followup3">3 · Third Follow-Up</option>
+                                <option value="followupindefinite">∞ · Indefinite Follow-Up</option>
+                            </optgroup>
+                            <optgroup label="── Outreach ──">
+                                <option value="initial">Initial Outreach</option>
+                                <option value="zerotransactionfees">Zero Transaction Fees</option>
+                                <option value="proposal">Send Proposal</option>
+                            </optgroup>
+                            <optgroup label="── Promos ──">
+                                <option value="valentinessale">Valentine's Day Sale (25% Off)</option>
+                                <option value="springsale">Spring Sale (25% Off)</option>
+                                <option value="blackfriday">Black Friday Sale (25% Off)</option>
+                                <option value="initialsale">Initial Sale (25% Off Spring)</option>
+                                <option value="valentines14">Valentine's 14% Promo (Original)</option>
+                            </optgroup>
+                            <optgroup label="── Client ──">
+                                <option value="thankyou">Thank You</option>
+                                <option value="projectupdate">Project Update</option>
+                                <option value="invoicereminder">Invoice Reminder</option>
+                                <option value="projectcomplete">Project Complete</option>
+                                <option value="checkin">Client Check-in</option>
+                                <option value="referralrequest">Request Referral</option>
+                            </optgroup>
+                            <optgroup label="── Other ──">
+                                <option value="custom">Custom (blank)</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div style="margin-bottom: 16px;">
@@ -6952,154 +6976,106 @@ window.loadEmailTemplate = function(leadId, leadName, leadEmail) {
     if (template === 'custom' || template === '') {
         subjectField.value = '';
         bodyField.value = '';
-        // Enable editing for custom emails
         bodyField.disabled = false;
         bodyField.style.opacity = '1';
         bodyField.style.cursor = 'text';
+        bodyField.placeholder = 'Type your message here...';
         return;
     }
     
-    // Define template content
-    const templates = {
+    // HTML templates — server generates the full design
+    const htmlTemplates = {
         valentinessale: {
             subject: `VALENTINE'S DAY: 25% OFF Everything for ${leadName}`,
-            body: `[FULL HTML EMAIL WILL BE GENERATED BY SERVER]
-
-This is a beautifully designed HTML email with:
-• Pink background with colorful dots
-• 4 stacked "25% OFF" rows
-• "SHOP NOW" call-to-action button
-• Professional branding and styling
-
-The server will automatically generate the complete HTML email when you send this.
-
-You can edit the subject line above, but the body will use the pre-designed template.`
+            preview: `[HTML EMAIL] Valentine's Day Sale — 25% off banner with pink design, shop-now CTA, Diamondback branding. Subject is editable.`
         },
         springsale: {
             subject: `Spring Event: 25% OFF Everything for ${leadName}`,
-            body: `[FULL HTML EMAIL WILL BE GENERATED BY SERVER]
-
-This is a beautifully designed HTML email with:
-• Fresh spring colors with pastel background
-• "Spring Event" badge
-• Flower emoji decorations
-• "Shop Spring Sale" button
-• Professional branding and styling
-
-The server will automatically generate the complete HTML email when you send this.
-
-You can edit the subject line above, but the body will use the pre-designed template.`
+            preview: `[HTML EMAIL] Spring Sale — pastel background, flower accents, spring CTA. Subject is editable.`
         },
         blackfriday: {
             subject: `BLACK FRIDAY: 25% OFF Everything for ${leadName}`,
-            body: `[FULL HTML EMAIL WILL BE GENERATED BY SERVER]
-
-This is a beautifully designed HTML email with:
-• Black background with dramatic styling
-• 4 stacked "25% OFF" rows (filled + outlined)
-• "SHOP NOW" call-to-action button
-• Yellow wavy footer
-• Professional branding and styling
-
-The server will automatically generate the complete HTML email when you send this.
-
-You can edit the subject line above, but the body will use the pre-designed template.`
+            preview: `[HTML EMAIL] Black Friday — dark background, dramatic 4-row discount display, yellow footer. Subject is editable.`
         },
         initialsale: {
-            subject: `Spring Sale - 25% OFF All Services for ${leadName}`,
-            body: `[FULL HTML EMAIL WILL BE GENERATED BY SERVER]
-
-This is a beautifully designed HTML email with:
-• Cyan background with subtle pattern
-• "25% OFF" headline
-• Benefits showcase section
-• Service icons grid
-• Professional branding and styling
-
-The server will automatically generate the complete HTML email when you send this.
-
-You can edit the subject line above, but the body will use the pre-designed template.`
+            subject: `Spring Event: 25% OFF Everything — Limited Time`,
+            preview: `[HTML EMAIL] Initial Sale — spring promo variant with 25% off. Subject is editable.`
         },
         valentines14: {
-            subject: `Valentine's Day Special - 14% Off for ${leadName}`,
-            body: `[FULL HTML EMAIL WILL BE GENERATED BY SERVER]
-
-This is a beautifully designed HTML email with:
-• Blue gradient background with tech icons
-• Large "14% OFF" graphics
-• "START NOW" call-to-action button
-• Professional branding and styling
-
-The server will automatically generate the complete HTML email when you send this.
-
-You can edit the subject line above, but the body will use the pre-designed template.`
-        },
-        initial: {
-            subject: `Welcome to Diamondback Coding - ${leadName}`,
-            body: `[FULL HTML EMAIL WILL BE GENERATED BY SERVER]
-
-This is a beautifully designed HTML welcome email with:
-• Curved header with company branding
-• About Us section with feature highlights
-• Service cards (Web Dev, CRM, SEO)
-• Professional contact information
-• Orange accent colors (#F59E0B)
-
-The server will automatically generate the complete HTML email when you send this.
-
-You can edit the subject line above, but the body will use the pre-designed template.`
-        },
-        followup: {
-            subject: `Following Up - ${leadName}`,
-            body: `Hi ${leadName},
-
-I wanted to follow up on my previous message about custom development solutions for your business.
-
-Are you still interested in exploring how we could help with:
-• Custom CRM systems
-• Professional website development
-• Business automation tools
-
-Let me know if you'd like to schedule a brief call to discuss your needs.
-
-Looking forward to hearing from you!
-
-Best regards,
-Diamondback Coding Team`
+            subject: `Valentine's Special: 14% Off Just for You`,
+            preview: `[HTML EMAIL] Valentine's 14% original promo template. Subject is editable.`
         },
         zerotransactionfees: {
             subject: `Zero Transaction Fees | Diamondback Coding`,
-            body: `[FULL HTML EMAIL WILL BE GENERATED BY SERVER]
-
-This is a beautifully designed HTML email with:
-• Professional comparison tables
-• Cost savings breakdown ($75K, $200K, $500K examples)
-• "What sets us apart" section with icons
-• Call-to-action for consultation
-• Company branding and styling
-
-The server will automatically generate the complete HTML email when you send this.
-
-You can edit the subject line above, but the body will use the pre-designed template.`
+            preview: `[HTML EMAIL] Zero Transaction Fees — comparison tables, savings breakdown ($75K/$200K/$500K), "What sets us apart" section, CTA. Subject is editable.`
+        },
+        initial: {
+            subject: `Your Vision, Our Code — Diamondback Coding`,
+            preview: `[HTML EMAIL] Initial outreach — curved header, About Us, service cards (Web Dev, CRM, SEO), Get Started CTA. Subject is editable.`
+        },
+        followup1: {
+            subject: `Quick follow-up — ${leadName}`,
+            preview: `[HTML EMAIL] Initial Follow-Up — warm personal check-in, references your previous message, light CTA to schedule a call.`
+        },
+        followup2: {
+            subject: `Still thinking it over? — ${leadName}`,
+            preview: `[HTML EMAIL] Second Follow-Up — acknowledges they may be busy, highlights a key differentiator (ownership, zero fees), softer close.`
+        },
+        followup3: {
+            subject: `One last thing, ${leadName}`,
+            preview: `[HTML EMAIL] Third Follow-Up — brief, value-focused, makes it easy to say yes or no. Includes social proof hook.`
+        },
+        followupindefinite: {
+            subject: `Checking in — ${leadName}`,
+            preview: `[HTML EMAIL] Indefinite Follow-Up — short re-engagement nudge, no pressure. Used for long-term nurturing cadence.`
+        },
+        proposal: {
+            subject: `Your Custom Proposal — Diamondback Coding`,
+            preview: `[HTML EMAIL] Proposal — professional proposal framing with services overview and next-step CTA.`
+        },
+        thankyou: {
+            subject: `Thank You, ${leadName}!`,
+            preview: `[HTML EMAIL] Thank You — warm gratitude note, recap of what's next, invitation to reach out.`
+        },
+        projectupdate: {
+            subject: `Project Update — Diamondback Coding`,
+            preview: `[HTML EMAIL] Project Update — milestone summary format, progress notes section, next steps.`
+        },
+        invoicereminder: {
+            subject: `Invoice Reminder — Action Required`,
+            preview: `[HTML EMAIL] Invoice Reminder — polite payment nudge with invoice reference and payment link.`
+        },
+        projectcomplete: {
+            subject: `Your Project is Complete! 🎉`,
+            preview: `[HTML EMAIL] Project Complete — celebration note, summary of deliverables, referral ask.`
+        },
+        checkin: {
+            subject: `Checking In — ${leadName}`,
+            preview: `[HTML EMAIL] Client Check-In — brief how-are-things-going note, offer to support or upgrade.`
+        },
+        referralrequest: {
+            subject: `Know Someone Who Could Use Us?`,
+            preview: `[HTML EMAIL] Referral Request — grateful tone, simple ask, explains what you do in one sentence.`
         }
     };
     
-    if (templates[template]) {
-        subjectField.value = templates[template].subject;
-        bodyField.value = templates[template].body;
-        
-        // For HTML templates, disable the body field since server generates it
-        if (['valentinessale', 'springsale', 'blackfriday', 'initialsale', 'valentines14', 'initial', 'zerotransactionfees'].includes(template)) {
-            bodyField.disabled = true;
-            bodyField.style.opacity = '0.6';
-            bodyField.style.cursor = 'not-allowed';
-        } else {
-            bodyField.disabled = false;
-            bodyField.style.opacity = '1';
-            bodyField.style.cursor = 'text';
-        }
+    const t = htmlTemplates[template];
+    if (t) {
+        subjectField.value = t.subject;
+        bodyField.value = t.preview;
+        bodyField.disabled = true;
+        bodyField.style.opacity = '0.6';
+        bodyField.style.cursor = 'not-allowed';
+        bodyField.placeholder = '';
+    } else {
+        subjectField.value = '';
+        bodyField.value = '';
+        bodyField.disabled = false;
+        bodyField.style.opacity = '1';
+        bodyField.style.cursor = 'text';
     }
 };
+
 
 
 window.doSendEmail = async function(leadId, leadEmail) {
@@ -17859,63 +17835,6 @@ function toggleNotes(button) {
     button.textContent = content.style.display === 'block' ? 'Hide Notes' : 'View Notes';
 }
 
-// ==================== LEAD RESET SYSTEM ====================
-
-function confirmResetLeads() {
-    // Step 1: First confirmation
-    const step1 = confirm(
-        '⚠️  RESET LEADS — READ CAREFULLY\n\n' +
-        'This will reset ALL leads to "Never Contacted" status EXCEPT:\n' +
-        '  • Hot Leads (lead_temperature = hot)\n' +
-        '  • Dead/Unsubscribed Leads\n\n' +
-        'For all other leads, this will:\n' +
-        '  • Clear their last contact date\n' +
-        '  • Reset their follow-up count to 0\n' +
-        '  • Reset their status to "new"\n' +
-        '  • Reset their lead temperature to "cold"\n\n' +
-        'This CANNOT be undone. Click OK to continue to the second confirmation.'
-    );
-    if (!step1) return;
-
-    // Step 2: Type confirmation
-    const typed = prompt(
-        'FINAL WARNING: This action is irreversible.\n\n' +
-        'Type exactly  RESET LEADS  to confirm (case sensitive):'
-    );
-    if (typed === null) return; // cancelled
-    if (typed.trim() !== 'RESET LEADS') {
-        showToast('Reset cancelled — text did not match.', 'error');
-        return;
-    }
-
-    // Proceed
-    executeLeadReset();
-}
-
-async function executeLeadReset() {
-    const token = state.authToken || localStorage.getItem('token');
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-
-    try {
-        showToast('Resetting leads...', 'warning');
-        const res = await fetch(`${API_URL}/api/admin/leads/reset-to-never-contacted`, {
-            method: 'POST',
-            headers
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            showToast(`✅ Reset complete — ${data.resetCount} leads reset to Never Contacted.`, 'success');
-            // Refresh the follow-ups view
-            await renderFollowUps(document.getElementById('contentArea'));
-        } else {
-            showToast('Reset failed: ' + (data.message || 'Unknown error'), 'error');
-        }
-    } catch (err) {
-        console.error('[RESET LEADS] Error:', err);
-        showToast('Reset failed: ' + err.message, 'error');
-    }
-}
-
 // ==================== FOLLOW-UPS SYSTEM ====================
 
 async function renderFollowUps(content) {
@@ -17953,18 +17872,9 @@ async function renderFollowUps(content) {
         // Build the page HTML with tabs
         content.innerHTML = `
             <div class="page-header" style="margin-bottom: 24px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
-                    <div>
-                        <h2>Follow Ups</h2>
-                        <p class="section-subtitle">Manage leads by engagement level</p>
-                    </div>
-                    <button class="btn btn-secondary" onclick="confirmResetLeads()"
-                        style="border: 1px solid rgba(239,68,68,0.4); color: #ef4444; font-size: 12px; padding: 8px 14px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
-                        </svg>
-                        Reset Leads
-                    </button>
+                <div>
+                    <h2>Follow Ups</h2>
+                    <p class="section-subtitle">Manage leads by engagement level</p>
                 </div>
             </div>
 
@@ -18035,7 +17945,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         const deadHtml = deadLeads.map(lead => {
             const lastContact = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
             return `
-                <tr style="cursor:pointer;" onclick="openDetailModal('lead', ${lead.id})">
+                <tr>
                     <td>
                         <div class="contact-cell">
                             <div class="contact-avatar" style="opacity:0.5;">${getInitials(lead.name || '?')}</div>
@@ -18049,8 +17959,8 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                     </td>
                     <td style="color: var(--text-secondary);">${lead.company || '—'}</td>
                     <td style="color: var(--text-secondary);">${lastContact}</td>
-                    <td onclick="event.stopPropagation()">
-                        <a href="#" onclick="event.preventDefault(); openDetailModal('lead', ${lead.id})" style="font-size:12px; color: var(--text-muted); text-decoration: underline;">View Lead</a>
+                    <td>
+                        <a href="#" onclick="event.preventDefault(); openLeadModal(${lead.id})" style="font-size:12px; color: var(--text-muted); text-decoration: underline;">View Lead</a>
                     </td>
                 </tr>
             `;
@@ -18149,7 +18059,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         const daysSince = (!lead.last_contact_date || parseInt(lead.days_since_contact) === 999) ? 'Never' : `${lead.days_since_contact} days`;
         const lastContactDisplay = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
         return `
-            <tr style="cursor:pointer;" onclick="openDetailModal('lead', ${lead.id})">
+            <tr>
                 <td>
                     <div class="contact-cell">
                         <div class="contact-avatar">${getInitials(lead.name || '?')}</div>
@@ -18167,7 +18077,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                         ${daysSince}
                     </span>
                 </td>
-                <td onclick="event.stopPropagation()">
+                <td>
                     <div class="action-buttons">
                         <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
@@ -19195,6 +19105,214 @@ async function deleteJob(jobId) {
             renderRecruitmentUI(document.getElementById('contentArea'));
         } else showToast('Failed to delete', 'error');
     } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ==================== MARKETING BLAST SYSTEM ====================
+
+async function renderMarketing(content) {
+    content.innerHTML = '<div style="text-align:center;padding:40px;">Loading...</div>';
+
+    const token = state.authToken || localStorage.getItem('token');
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+    // Fetch lead counts for audience preview
+    let allLeads = [], allCustomers = [], hotLeads = [], coldLeads = [];
+    try {
+        const [leadsRes, tempRes] = await Promise.all([
+            fetch(`${API_URL}/api/leads`, { headers }),
+            fetch(`${API_URL}/api/follow-ups/by-temperature`, { headers })
+        ]);
+        if (leadsRes.ok) {
+            const d = await leadsRes.json();
+            allLeads = (d.leads || []).filter(l => !l.is_customer && !l.unsubscribed);
+            allCustomers = (d.leads || []).filter(l => l.is_customer && !l.unsubscribed);
+        }
+        if (tempRes.ok) {
+            const d = await tempRes.json();
+            hotLeads = d.data?.hot || [];
+            coldLeads = d.data?.cold || [];
+        }
+    } catch(e) { console.error('[MARKETING] fetch error', e); }
+
+    const allCombined = [...new Map([...allLeads, ...allCustomers].map(l => [l.id, l])).values()];
+
+    const audiences = [
+        { key: 'all_leads',      label: 'All Leads',           count: allLeads.length,      desc: 'Every non-customer lead (excl. unsubscribed)' },
+        { key: 'hot_leads',      label: 'Hot Leads',           count: hotLeads.length,       desc: 'Leads that have engaged — opened, clicked, or filled a form' },
+        { key: 'cold_leads',     label: 'Cold Leads',          count: coldLeads.length,      desc: 'Leads that have not yet engaged' },
+        { key: 'all_customers',  label: 'All Customers',       count: allCustomers.length,   desc: 'Converted clients (excl. unsubscribed)' },
+        { key: 'everyone',       label: 'Everyone',            count: allCombined.length,    desc: 'All leads + all customers combined' },
+    ];
+
+    const mktTemplates = [
+        { value: '',                   label: '-- Select a Template --' },
+        { value: 'zerotransactionfees', label: 'Zero Transaction Fees' },
+        { value: 'initial',            label: 'Initial Outreach' },
+        { value: 'valentinessale',     label: "Valentine's Day Sale (25% Off)" },
+        { value: 'springsale',         label: 'Spring Sale (25% Off)' },
+        { value: 'blackfriday',        label: 'Black Friday Sale (25% Off)' },
+        { value: 'initialsale',        label: 'Initial Sale (25% Off Spring)' },
+        { value: 'valentines14',       label: "Valentine's 14% Promo" },
+        { value: 'checkin',            label: 'Client Check-in' },
+        { value: 'referralrequest',    label: 'Request Referral' },
+        { value: 'custom',             label: 'Custom (blank)' },
+    ];
+
+    content.innerHTML = `
+        <div style="max-width:860px;">
+            <!-- Header -->
+            <div style="margin-bottom:32px;">
+                <h2 style="font-size:24px;font-weight:800;margin:0 0 6px;">Marketing Blasts</h2>
+                <p style="color:var(--text-secondary);font-size:14px;margin:0;">Send promotional or outreach emails to any audience group. These do <strong>not</strong> count toward the follow-up cadence — but link clicks will still promote cold leads to hot.</p>
+            </div>
+
+            <!-- Audience selector -->
+            <div style="background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:28px;margin-bottom:24px;">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:16px;">1 · Choose Audience</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;" id="mktAudienceGrid">
+                    ${audiences.map(a => `
+                        <div class="mkt-audience-card" data-key="${a.key}"
+                            onclick="selectMktAudience('${a.key}')"
+                            style="padding:16px;border-radius:var(--radius-md);border:2px solid var(--border-subtle);cursor:pointer;transition:all 0.15s;background:var(--bg-secondary);">
+                            <div style="font-size:22px;font-weight:900;font-family:var(--font-mono);color:var(--accent-amber);margin-bottom:4px;">${a.count}</div>
+                            <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">${a.label}</div>
+                            <div style="font-size:11px;color:var(--text-muted);line-height:1.4;">${a.desc}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- Template + compose -->
+            <div style="background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:28px;margin-bottom:24px;">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:16px;">2 · Compose</div>
+
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Template</label>
+                    <select id="mktTemplate" onchange="onMktTemplateChange()" style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;">
+                        ${mktTemplates.map(t => `<option value="${t.value}">${t.label}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Subject Line</label>
+                    <input type="text" id="mktSubject" placeholder="Email subject..." style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;box-sizing:border-box;">
+                </div>
+
+                <div id="mktCustomBodyWrap" style="margin-bottom:16px;display:none;">
+                    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Message Body</label>
+                    <textarea id="mktBody" rows="10" placeholder="Write your message here..." style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--bg-tertiary);color:var(--text-primary);font-size:14px;font-family:var(--font-display);resize:vertical;box-sizing:border-box;"></textarea>
+                </div>
+
+                <div id="mktTemplateNote" style="display:none;padding:12px 14px;background:var(--accent-amber-dim);border-radius:var(--radius-sm);border-left:3px solid var(--accent-amber);font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+                    ✦ A full HTML email will be generated by the server. You only need to set the subject line.
+                </div>
+            </div>
+
+            <!-- Send -->
+            <div style="background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:28px;">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:16px;">3 · Send</div>
+                <div id="mktSendSummary" style="font-size:14px;color:var(--text-secondary);margin-bottom:18px;">Select an audience above to see a send summary.</div>
+                <button class="btn btn-primary" id="mktSendBtn" onclick="sendMarketingBlast()" style="min-width:180px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                    Send Marketing Blast
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Store data in state for use in send
+    state.mktAudiences = audiences;
+    state.mktSelectedAudience = null;
+}
+
+function selectMktAudience(key) {
+    state.mktSelectedAudience = key;
+    // Update card styles
+    document.querySelectorAll('.mkt-audience-card').forEach(card => {
+        const isActive = card.dataset.key === key;
+        card.style.borderColor = isActive ? 'var(--accent-amber)' : 'var(--border-subtle)';
+        card.style.background = isActive ? 'var(--accent-amber-dim)' : 'var(--bg-secondary)';
+    });
+    // Update summary
+    const a = state.mktAudiences.find(x => x.key === key);
+    const summaryEl = document.getElementById('mktSendSummary');
+    if (summaryEl && a) {
+        summaryEl.innerHTML = `Ready to send to <strong style="color:var(--text-primary);">${a.count} recipient${a.count !== 1 ? 's' : ''}</strong> — ${a.label}. Each recipient receives an individual personalized email.`;
+    }
+}
+
+function onMktTemplateChange() {
+    const val = document.getElementById('mktTemplate')?.value;
+    const customWrap = document.getElementById('mktCustomBodyWrap');
+    const note = document.getElementById('mktTemplateNote');
+    const subjectEl = document.getElementById('mktSubject');
+
+    const htmlTemplates = {
+        zerotransactionfees: 'Zero Transaction Fees | Diamondback Coding',
+        initial: 'Your Vision, Our Code — Diamondback Coding',
+        valentinessale: "VALENTINE'S DAY: 25% OFF — Diamondback Coding",
+        springsale: 'Spring Event: 25% OFF — Diamondback Coding',
+        blackfriday: 'BLACK FRIDAY: 25% OFF — Diamondback Coding',
+        initialsale: 'Spring Sale: 25% OFF All Services',
+        valentines14: "Valentine's Special: 14% Off",
+        checkin: 'Checking In — Diamondback Coding',
+        referralrequest: 'Know Someone Who Could Use Us?',
+    };
+
+    if (val === 'custom') {
+        customWrap.style.display = 'block';
+        note.style.display = 'none';
+        subjectEl.value = '';
+    } else if (val && htmlTemplates[val]) {
+        customWrap.style.display = 'none';
+        note.style.display = 'block';
+        subjectEl.value = htmlTemplates[val];
+    } else {
+        customWrap.style.display = 'none';
+        note.style.display = 'none';
+        subjectEl.value = '';
+    }
+}
+
+async function sendMarketingBlast() {
+    const audience = state.mktSelectedAudience;
+    const template = document.getElementById('mktTemplate')?.value;
+    const subject = document.getElementById('mktSubject')?.value?.trim();
+    const body = document.getElementById('mktBody')?.value?.trim();
+
+    if (!audience) { showToast('Please select an audience first.', 'error'); return; }
+    if (!template) { showToast('Please select a template.', 'error'); return; }
+    if (!subject) { showToast('Please enter a subject line.', 'error'); return; }
+    if (template === 'custom' && !body) { showToast('Please write a message body.', 'error'); return; }
+
+    const a = state.mktAudiences.find(x => x.key === audience);
+    if (!confirm(`Send to ${a?.count || '?'} recipients (${a?.label})?\n\nThis will send immediately. Cannot be undone.`)) return;
+
+    const btn = document.getElementById('mktSendBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+
+    try {
+        const token = state.authToken || localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/api/marketing/blast`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audience, template, subject, body: body || '' })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`✅ Sent to ${data.sent} recipients. ${data.skipped ? data.skipped + ' skipped (unsubscribed).' : ''}`, 'success');
+            // Reset form
+            if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Marketing Blast'; }
+        } else {
+            showToast('Failed: ' + (data.message || 'Unknown error'), 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Send Marketing Blast'; }
+        }
+    } catch(err) {
+        showToast('Error: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Send Marketing Blast'; }
+    }
 }
 
 </script>

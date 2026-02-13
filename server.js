@@ -6869,7 +6869,6 @@ app.post('/api/automation/generate-followup-reminders', authenticateToken, async
 // ========================================
 
 // ========================================
-// ========================================
 // GET DEAD LEADS (unsubscribed)
 // ========================================
 app.get('/api/follow-ups/dead-leads', authenticateToken, async (req, res) => {
@@ -6889,45 +6888,6 @@ app.get('/api/follow-ups/dead-leads', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('[DEAD-LEADS] Error:', error);
         res.status(500).json({ success: false, message: 'Error fetching dead leads', error: error.message });
-    }
-});
-
-// ========================================
-// ADMIN: RESET LEADS TO NEVER CONTACTED
-// Resets all leads EXCEPT:
-//   - unsubscribed = TRUE  (dead leads)
-//   - lead_temperature = 'hot' (hot leads)
-// ========================================
-app.post('/api/admin/leads/reset-to-never-contacted', authenticateToken, async (req, res) => {
-    try {
-        console.log('[RESET-LEADS] Starting lead reset — preserving hot and dead leads');
-
-        const result = await pool.query(`
-            UPDATE leads
-            SET
-                last_contact_date  = NULL,
-                follow_up_count    = 0,
-                status             = 'new',
-                lead_temperature   = 'cold',
-                updated_at         = CURRENT_TIMESTAMP
-            WHERE
-                unsubscribed    = FALSE
-                AND COALESCE(lead_temperature, 'cold') != 'hot'
-                AND is_customer = FALSE
-            RETURNING id
-        `);
-
-        const resetCount = result.rowCount;
-        console.log(`[RESET-LEADS] ✅ Reset ${resetCount} leads to never-contacted state`);
-
-        res.json({
-            success: true,
-            message: `Successfully reset ${resetCount} leads to never contacted.`,
-            resetCount
-        });
-    } catch (error) {
-        console.error('[RESET-LEADS] ❌ Error:', error);
-        res.status(500).json({ success: false, message: 'Error resetting leads', error: error.message });
     }
 });
 
@@ -11962,6 +11922,168 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
 </body>
 </html>`;
             
+        } else if (template === 'followup1' || template === 'followup2' || template === 'followup3' || template === 'followupindefinite') {
+            // ── FOLLOW-UP SEQUENCE TEMPLATES ──────────────────────────────
+            // All share the same clean design language as Zero Transaction Fees
+            // but with follow-up-specific headlines and CTAs.
+
+            let unsubToken = lead.unsubscribe_token;
+            if (!unsubToken) {
+                unsubToken = crypto.randomBytes(32).toString('hex');
+                await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsubToken, leadId]);
+            }
+            const unsubUrl = `${BASE_URL}/api/unsubscribe/${unsubToken}`;
+
+            const followupContent = {
+                followup1: {
+                    eyebrow: 'Just a quick note',
+                    headline: 'Still thinking it over?',
+                    subhead: `Hi ${lead.name || 'there'} — I wanted to check in on my previous message.`,
+                    body: `We help businesses like yours build custom websites and CRM platforms — owned by you, no subscriptions, no transaction fees. If you haven't had a chance to look us over, I'd love just five minutes of your time.`,
+                    ctaLabel: 'Schedule a Quick Call',
+                    ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                    accentColor: '#FF6B35',
+                    tagline: 'YOUR VISION. OUR CODE.',
+                },
+                followup2: {
+                    eyebrow: 'Following up again',
+                    headline: 'You keep 100% of your revenue.',
+                    subhead: `Hi ${lead.name || 'there'} — just circling back one more time.`,
+                    body: `Platforms like Shopify and Squarespace quietly take 2–5% of every sale you make. With a custom Diamondback site, that money stays in your pocket — forever. For a business doing $200K/year, that's up to $10,000 back in your pocket annually.`,
+                    ctaLabel: 'See How Much You Could Save',
+                    ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                    accentColor: '#1A7A3A',
+                    tagline: 'ZERO TRANSACTION FEES.',
+                },
+                followup3: {
+                    eyebrow: 'One last thing',
+                    headline: 'No pressure — just wanted you to have this.',
+                    subhead: `Hi ${lead.name || 'there'},`,
+                    body: `I won't keep filling your inbox. But before I go, I'd love for you to know that our clients get custom-built websites they fully own, CRM systems tailored to how they work, and real human support. No templates. No platform lock-in. If the timing ever makes sense, we'll be here.`,
+                    ctaLabel: 'Take a Look When You\'re Ready',
+                    ctaUrl: 'https://diamondbackcoding.com',
+                    accentColor: '#2D3142',
+                    tagline: 'BUILT FOR YOUR BUSINESS.',
+                },
+                followupindefinite: {
+                    eyebrow: 'Checking in',
+                    headline: 'We\'re still here when you\'re ready.',
+                    subhead: `Hi ${lead.name || 'there'} — hope things are going well.`,
+                    body: `We know timing isn't always right. When it is, we'd love to talk about how a custom website or CRM can take work off your plate and keep more revenue in your business. No obligation — just a conversation.`,
+                    ctaLabel: 'Let\'s Talk',
+                    ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                    accentColor: '#FF6B35',
+                    tagline: 'DIAMONDBACK CODING.',
+                },
+            };
+
+            const fc = followupContent[template];
+
+            emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${emailSubject}</title>
+<style>
+@media only screen and (max-width: 620px) {
+  .wrap { width: 100% !important; }
+  .section-pad { padding: 36px 24px !important; }
+  .headline { font-size: 32px !important; }
+  .cta-btn a { font-size: 15px !important; padding: 16px 28px !important; }
+}
+</style>
+</head>
+<body style="margin:0;padding:0;background:#F7F9FB;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F9FB;">
+<tr><td align="center" style="padding:32px 16px 48px;">
+
+<table class="wrap" width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
+
+<!-- HEADER -->
+<tr><td style="background:#FFFFFF;border-radius:3px 3px 0 0;padding:26px 40px;" class="section-pad">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td valign="middle">
+      <span style="font-size:12px;font-weight:800;letter-spacing:4px;text-transform:uppercase;color:#111111;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">DIAMONDBACK CODING</span>
+    </td>
+    <td align="right" valign="middle">
+      <table cellpadding="0" cellspacing="0" border="0" style="background:${fc.accentColor};border-radius:2px;">
+      <tr><td style="padding:6px 14px;">
+        <span style="color:#FFFFFF;font-size:9px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${fc.tagline}</span>
+      </td></tr>
+      </table>
+    </td>
+  </tr>
+  </table>
+</td></tr>
+
+<!-- SEPARATOR -->
+<tr><td style="background:#FFFFFF;height:1px;padding:0;"></td></tr>
+
+<!-- HERO -->
+<tr><td style="background:#FFFFFF;padding:48px 40px 56px;" class="section-pad">
+  <p style="margin:0 0 18px;font-size:10px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:${fc.accentColor};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${fc.eyebrow}</p>
+  <p class="headline" style="margin:0 0 22px;font-size:42px;font-weight:800;color:#2D3142;line-height:1.08;letter-spacing:-1.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${fc.headline}</p>
+  <p style="margin:0 0 16px;font-size:16px;font-weight:500;color:#444444;line-height:1.6;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${fc.subhead}</p>
+  <p style="margin:0;font-size:15px;font-weight:400;color:#666666;line-height:1.75;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${fc.body}</p>
+</td></tr>
+
+<!-- CTA -->
+<tr><td style="background:#F7F9FB;padding:40px 40px 48px;" class="section-pad">
+  <table cellpadding="0" cellspacing="0" border="0">
+  <tr class="cta-btn"><td style="background:${fc.accentColor};border-radius:3px;">
+    <a href="${fc.ctaUrl}" style="display:block;padding:18px 40px;font-size:16px;font-weight:800;color:#FFFFFF;text-decoration:none;letter-spacing:0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${fc.ctaLabel}</a>
+  </td></tr>
+  </table>
+  <p style="margin:20px 0 0;font-size:13px;color:#999999;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Or reply directly to this email — we read every one.</p>
+</td></tr>
+
+<!-- FOOTER -->
+<tr><td style="background:#2D3142;padding:32px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td valign="top">
+      <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#FFFFFF;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Diamondback Coding</p>
+      <p style="margin:0;font-size:11px;color:#B8B8B8;line-height:1.6;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+        Web Development &amp; CRM Solutions<br>
+        Austin, TX 78746<br>
+        <a href="tel:+15129800393" style="color:${fc.accentColor};text-decoration:none;">(512) 980-0393</a>
+      </p>
+    </td>
+    <td align="right" valign="top">
+      <p style="margin:0 0 8px;"><a href="https://diamondbackcoding.com" style="color:#B8B8B8;font-size:11px;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Website</a></p>
+      <p style="margin:0;"><a href="https://instagram.com/diamondbackcoding" style="color:#B8B8B8;font-size:11px;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Instagram</a></p>
+    </td>
+  </tr>
+  <tr><td colspan="2" style="padding-top:22px;border-top:1px solid #454B5F;">
+    <p style="margin:0;font-size:11px;color:#7A7F8F;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+      You received this because you previously connected with Diamondback Coding. &nbsp;
+      <a href="${unsubUrl}" style="color:#7A7F8F;text-decoration:underline;">Unsubscribe</a>
+    </p>
+  </td></tr>
+  </table>
+</td></tr>
+
+</table>
+
+</td></tr>
+</table>
+
+</body>
+</html>`;
+
+        } else if (template === 'checkin' || template === 'referralrequest' || template === 'thankyou' || template === 'proposal' || template === 'projectupdate' || template === 'invoicereminder' || template === 'projectcomplete') {
+            // These use the branded buildEmailHTML wrapper with plain-text body
+            emailHTML = buildEmailHTML(`
+                <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${emailBody.replace(/\n/g, '<br>').replace(/^ +/gm, '')}</div>
+                <div class="sign-off">
+                    <p>Warm regards,</p>
+                    <p class="team-name">The Diamondback Coding Team</p>
+                </div>
+            `, { unsubscribeUrl });
+
         } else {
             // Use standard wrapper for other templates
             emailHTML = buildEmailHTML(`
@@ -13280,6 +13402,156 @@ async function startServer() {
         console.error('Failed to start server:', error);
         process.exit(1);
     }
+}
+
+// ========================================
+// MARKETING BLAST
+// Sends a bulk promotional email to a chosen audience group.
+// Does NOT update last_contact_date or follow_up_count.
+// Link clicks still fire the engagement tracker → cold leads can go hot.
+// ========================================
+app.post('/api/marketing/blast', authenticateToken, async (req, res) => {
+    try {
+        const { audience, template, subject, body } = req.body;
+
+        if (!audience || !template || !subject) {
+            return res.status(400).json({ success: false, message: 'audience, template, and subject are required' });
+        }
+
+        console.log(`[MARKETING] Blast — audience=${audience} template=${template}`);
+
+        // Resolve recipient list based on audience key
+        let recipientQuery = '';
+        if (audience === 'all_leads') {
+            recipientQuery = `SELECT id, name, email, unsubscribe_token FROM leads WHERE is_customer = FALSE AND COALESCE(unsubscribed, FALSE) = FALSE AND email IS NOT NULL`;
+        } else if (audience === 'hot_leads') {
+            recipientQuery = `SELECT id, name, email, unsubscribe_token FROM leads WHERE lead_temperature = 'hot' AND is_customer = FALSE AND COALESCE(unsubscribed, FALSE) = FALSE AND email IS NOT NULL`;
+        } else if (audience === 'cold_leads') {
+            recipientQuery = `SELECT id, name, email, unsubscribe_token FROM leads WHERE COALESCE(lead_temperature, 'cold') != 'hot' AND is_customer = FALSE AND COALESCE(unsubscribed, FALSE) = FALSE AND email IS NOT NULL`;
+        } else if (audience === 'all_customers') {
+            recipientQuery = `SELECT id, name, email, unsubscribe_token FROM leads WHERE is_customer = TRUE AND COALESCE(unsubscribed, FALSE) = FALSE AND email IS NOT NULL`;
+        } else if (audience === 'everyone') {
+            recipientQuery = `SELECT id, name, email, unsubscribe_token FROM leads WHERE COALESCE(unsubscribed, FALSE) = FALSE AND email IS NOT NULL`;
+        } else {
+            return res.status(400).json({ success: false, message: `Unknown audience: ${audience}` });
+        }
+
+        const recipientsResult = await pool.query(recipientQuery);
+        const recipients = recipientsResult.rows;
+
+        console.log(`[MARKETING] Sending to ${recipients.length} recipients`);
+
+        let sent = 0;
+        let skipped = 0;
+        const errors = [];
+
+        for (const lead of recipients) {
+            try {
+                // Ensure unsubscribe token exists
+                let unsubToken = lead.unsubscribe_token;
+                if (!unsubToken) {
+                    unsubToken = crypto.randomBytes(32).toString('hex');
+                    await pool.query('UPDATE leads SET unsubscribe_token = $1 WHERE id = $2', [unsubToken, lead.id]);
+                }
+                const unsubUrl = `${BASE_URL}/api/unsubscribe/${unsubToken}`;
+
+                // Build HTML for this lead using the same template system
+                let emailHTML = '';
+                const name = lead.name || 'there';
+
+                if (template === 'zerotransactionfees') {
+                    // Reuse the zero transaction fees template (inline version)
+                    emailHTML = await buildMarketingTemplateHTML(template, name, subject, body, unsubUrl, BASE_URL);
+                } else if (['initial', 'valentinessale', 'springsale', 'blackfriday', 'initialsale', 'valentines14'].includes(template)) {
+                    emailHTML = await buildMarketingTemplateHTML(template, name, subject, body, unsubUrl, BASE_URL);
+                } else {
+                    // Custom or simple text template
+                    const personalizedBody = (body || '').replace(/{{name}}/g, name).replace(/{{Name}}/g, name);
+                    emailHTML = buildEmailHTML(`
+                        <p>Hi ${name},</p>
+                        <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${personalizedBody.replace(/\n/g, '<br>')}</div>
+                        <div class="sign-off">
+                            <p>Warm regards,</p>
+                            <p class="team-name">The Diamondback Coding Team</p>
+                        </div>
+                    `, { unsubscribeUrl: unsubUrl });
+                }
+
+                // Send — tracked. isMarketing = true means we do NOT update follow_up_count or last_contact_date
+                await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML, isMarketing: true });
+                sent++;
+
+                // Small delay to avoid rate limits
+                await new Promise(r => setTimeout(r, 120));
+
+            } catch (err) {
+                console.error(`[MARKETING] Failed for ${lead.email}:`, err.message);
+                errors.push(lead.email);
+                skipped++;
+            }
+        }
+
+        console.log(`[MARKETING] ✅ Done — sent=${sent} skipped=${skipped}`);
+        res.json({ success: true, sent, skipped, errors: errors.slice(0, 10) });
+
+    } catch (error) {
+        console.error('[MARKETING] Blast error:', error);
+        res.status(500).json({ success: false, message: 'Marketing blast failed', error: error.message });
+    }
+});
+
+// Helper: build HTML for a marketing template by name
+// Calls the same server-side template logic used by follow-ups
+async function buildMarketingTemplateHTML(template, name, subject, bodyText, unsubUrl, baseUrl) {
+    // For HTML templates: delegate to inline generation matching the follow-up handler
+    // We generate a minimal stub — the main template bodies are defined in /api/follow-ups/:leadId/send-email
+    // For marketing blasts we use the buildEmailHTML wrapper with a branded personalised message,
+    // unless it's one of the full-design templates. Full-design templates use a helper req to the
+    // same code path. For simplicity, we inline the "clean" versions here:
+    const accentColor = '#FF6B35';
+
+    if (template === 'zerotransactionfees') {
+        // Return a concise but branded version referencing the zero-fee pitch
+        return buildEmailHTML(`
+            <p>Hi ${name},</p>
+            <h2 style="font-size:24px;color:#2D3142;letter-spacing:-0.5px;">Every sale you make, they take a cut.</h2>
+            <p>Shopify, Squarespace, and Wix charge 2–5% on every transaction. On $200K in annual sales, that's up to <strong>$10,000 quietly disappearing</strong> every year.</p>
+            <p>At Diamondback Coding, we charge <strong>zero transaction fees</strong> — ever. You get a fully custom website you own outright, with no platform dependencies and no revenue leaks.</p>
+            <div style="background:#FFF8F0;border-left:3px solid #FF6B35;padding:18px 20px;border-radius:4px;margin:20px 0;">
+                <strong>What $200K/yr looks like:</strong><br>
+                Other platforms: <span style="color:#CC2222;font-weight:700;">−$6,000/yr</span> in fees &nbsp;|&nbsp; Diamondback: <span style="color:#1A7A3A;font-weight:700;">$0</span>
+            </div>
+            <p>Ready to stop losing revenue to your own platform?</p>
+            <div style="margin:28px 0;">
+                <a href="${baseUrl}/contact.html" style="background:#FF6B35;color:#fff;padding:14px 32px;border-radius:3px;font-weight:700;text-decoration:none;font-size:15px;">Get a Free Consultation</a>
+            </div>
+            <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
+        `, { unsubscribeUrl: unsubUrl });
+    }
+
+    // For promo and other HTML templates: personalized intro + promo body
+    const promoDetails = {
+        initial: { headline: 'Your Vision. Our Code.', body: `We build custom websites and CRM systems for businesses like yours — no templates, no transaction fees, full ownership.` },
+        valentinessale: { headline: "Valentine's Day: 25% OFF Everything", body: `This Valentine's Day, treat your business to a custom website or CRM at 25% off. Offer ends soon.` },
+        springsale: { headline: 'Spring Sale: 25% OFF All Services', body: `Spring is here — and so is our biggest sale of the season. 25% off custom web development and CRM solutions.` },
+        blackfriday: { headline: 'BLACK FRIDAY: 25% OFF Everything', body: `Our biggest deal of the year. 25% off all custom development packages — today only.` },
+        initialsale: { headline: 'Spring Event: 25% OFF — Limited Time', body: `Kick off spring with a custom website or CRM at 25% off. Spots are filling fast.` },
+        valentines14: { headline: "Valentine's Special: 14% Off", body: `Show your business some love this Valentine's season with 14% off our custom web solutions.` },
+        checkin: { headline: `Checking In, ${name}`, body: `We wanted to take a moment to check in. How is everything going? If there's anything we can help with — updates, new features, SEO — just say the word.` },
+        referralrequest: { headline: 'Know Someone Who Could Use Us?', body: `If you know a business owner looking for a custom website or CRM, we'd love an introduction. We take care of your referrals like they're our own.` },
+    };
+
+    const pd = promoDetails[template] || { headline: 'Diamondback Coding', body: bodyText || '' };
+
+    return buildEmailHTML(`
+        <p>Hi ${name},</p>
+        <h2 style="font-size:24px;color:#2D3142;letter-spacing:-0.5px;margin-bottom:12px;">${pd.headline}</h2>
+        <p>${pd.body}</p>
+        <div style="margin:28px 0;">
+            <a href="${baseUrl}/contact.html" style="background:${accentColor};color:#fff;padding:14px 32px;border-radius:3px;font-weight:700;text-decoration:none;font-size:15px;">Learn More</a>
+        </div>
+        <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
+    `, { unsubscribeUrl: unsubUrl });
 }
 
 startServer();

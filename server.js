@@ -11570,7 +11570,7 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
 <table class="wrap" width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
 
 <!-- HEADER -->
-<tr><td style="background:#FFFFFF;border-radius:3px 3px 0 0;padding:26px 40px 22px;" class="section-pad">
+<tr><td style="background:#FFFFFF;border-radius:3px 3px 0 0;padding:26px 40px 26px;" class="section-pad">
   <table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
     <td valign="middle">
@@ -11587,8 +11587,11 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
   </table>
 </td></tr>
 
+<!-- SEPARATOR -->
+<tr><td style="background:#FFFFFF;padding:0;height:1px;"></td></tr>
+
 <!-- HERO -->
-<tr><td style="background:#FFFFFF;padding:64px 40px 56px;" class="section-pad">
+<tr><td style="background:#FFFFFF;padding:48px 40px 56px;" class="section-pad">
   <p style="margin:0 0 18px;font-size:10px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:#FF6B35;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">A message for business owners nationwide</p>
   <p style="margin:0 0 22px;font-size:48px;font-weight:800;color:#2D3142;line-height:1.02;letter-spacing:-1.8px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Every sale you make,<br>they take a cut.</p>
   <p style="margin:0;font-size:16px;font-weight:400;color:#666666;line-height:1.7;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Shopify. Squarespace. Wix. They all charge 2–5% on every transaction you process. On $200K in annual sales, that's up to <span style="color:#2D3142;font-weight:600;">$10,000 quietly disappearing</span> every single year. We don't do that.</p>
@@ -11721,19 +11724,19 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
 </td></tr>
 
 <!-- WHY WE'RE DIFFERENT -->
-<tr><td style="background:#EDECEA;padding:48px 40px 44px;" class="section-pad">
-  <p style="margin:0 0 4px;font-size:10px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:#D4A847;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">What sets us apart</p>
+<tr><td style="background:#F8F8F8;padding:52px 40px 48px;" class="section-pad">
+  <p style="margin:0 0 4px;font-size:10px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:#FF6B35;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">What sets us apart</p>
   <p style="margin:0 0 32px;font-size:30px;font-weight:800;color:#111111;letter-spacing:-1px;line-height:1.1;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Built different.<br>For businesses like yours.</p>
 
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFFFFF;border-radius:3px;margin-bottom:10px;">
   <tr>
-    <td class="diff-icon-cell" width="64" valign="top" style="padding:24px 0 24px 24px;">
+    <td class="diff-icon-cell" width="64" valign="top" style="padding:28px 0 28px 28px;">
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="14" cy="11" r="4" stroke="#D4A847" stroke-width="1.8"/>
-        <path d="M14 3C8.477 3 4 7.477 4 13c0 6.5 10 15 10 15s10-8.5 10-15C24 7.477 19.523 3 14 3z" stroke="#D4A847" stroke-width="1.8" fill="none"/>
+        <circle cx="14" cy="11" r="4" stroke="#FFC15E" stroke-width="1.8"/>
+        <path d="M14 3C8.477 3 4 7.477 4 13c0 6.5 10 15 10 15s10-8.5 10-15C24 7.477 19.523 3 14 3z" stroke="#FFC15E" stroke-width="1.8" fill="none"/>
       </svg>
     </td>
-    <td class="diff-text" valign="middle" style="padding:22px 22px 22px 14px;">
+    <td class="diff-text" valign="middle" style="padding:26px 26px 26px 16px;">
       <p style="margin:0 0 3px;font-size:14px;font-weight:700;color:#111111;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Serving businesses nationwide</p>
       <p style="margin:0;font-size:13px;color:#777777;line-height:1.65;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Real people, real conversations. No support tickets. Just a dedicated team that picks up the phone wherever you are.</p>
     </td>

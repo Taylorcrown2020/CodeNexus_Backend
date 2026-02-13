@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const path = require('path');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const SibApiV3Sdk = require('@getbrevo/brevo');
+const dns = require('dns').promises;
 require('dotenv').config();
 
 const app = express();
@@ -594,6 +595,62 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
     }
 }
 
+// Validate email domain has mail servers BEFORE sending
+async function validateEmailDomain(email) {
+    try {
+        // Basic format check
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return { valid: false, reason: 'Invalid email format' };
+        }
+
+        // Extract domain
+        const domain = email.split('@')[1].toLowerCase();
+        
+        // Common typo detection
+        const commonTypos = {
+            'gmial.com': 'gmail.com',
+            'gmai.com': 'gmail.com',
+            'yahooo.com': 'yahoo.com',
+            'yaho.com': 'yahoo.com',
+            'hotmial.com': 'hotmail.com',
+            'outlok.com': 'outlook.com',
+            'outloo.com': 'outlook.com'
+        };
+        
+        if (commonTypos[domain]) {
+            return { 
+                valid: false, 
+                reason: `Possible typo detected. Did you mean ${commonTypos[domain]}?`,
+                suggestion: email.replace(domain, commonTypos[domain])
+            };
+        }
+        
+        // Check if domain has MX records (mail servers)
+        try {
+            const mxRecords = await dns.resolveMx(domain);
+            if (!mxRecords || mxRecords.length === 0) {
+                return { valid: false, reason: 'Domain has no mail servers (no MX records)' };
+            }
+            
+            console.log(`[EMAIL-VALIDATION] ✅ Domain ${domain} has ${mxRecords.length} mail server(s)`);
+            return { valid: true, mxRecords };
+            
+        } catch (dnsError) {
+            if (dnsError.code === 'ENOTFOUND' || dnsError.code === 'ENODATA') {
+                return { valid: false, reason: `Domain '${domain}' does not exist` };
+            }
+            // DNS lookup failed for other reasons - log but assume valid to avoid false negatives
+            console.warn(`[EMAIL-VALIDATION] ⚠️  Could not verify domain ${domain}:`, dnsError.message);
+            return { valid: true, warning: `Could not verify domain: ${dnsError.message}` };
+        }
+    } catch (error) {
+        console.error('[EMAIL-VALIDATION] Error validating email:', error);
+        // On unexpected errors, assume valid to avoid blocking legitimate emails
+        return { valid: true, warning: `Validation error: ${error.message}` };
+    }
+}
+
 // Get current email settings
 async function getEmailSettings() {
     try {
@@ -622,14 +679,50 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         console.warn('[TRACKED-EMAIL] Could not insert email_log row:', e.message);
     }
 
-    // 2. Inject 1×1 open-tracking pixel
+    // 2. VALIDATE EMAIL DOMAIN BEFORE SENDING - Catch typos early!
+    console.log(`[EMAIL] Validating email address: ${to}`);
+    const validation = await validateEmailDomain(to);
+    
+    if (!validation.valid) {
+        console.error(`\n========================================`);
+        console.error(`[EMAIL] ❌❌❌ EMAIL VALIDATION FAILED ❌❌❌`);
+        console.error(`[EMAIL] To: ${to}`);
+        console.error(`[EMAIL] Reason: ${validation.reason}`);
+        if (validation.suggestion) {
+            console.error(`[EMAIL] Suggestion: ${validation.suggestion}`);
+        }
+        console.error(`========================================\n`);
+        
+        // Mark as failed BEFORE attempting to send
+        if (emailLogId) {
+            await pool.query(
+                `UPDATE email_log 
+                 SET status = 'failed', 
+                     error_message = $2,
+                     sent_at = CURRENT_TIMESTAMP 
+                 WHERE id = $1`,
+                [emailLogId, `Email validation failed: ${validation.reason}`]
+            );
+            console.log(`[EMAIL] ❌ Email_log ${emailLogId} marked as FAILED (validation failed)`);
+        }
+        
+        console.log(`[FOLLOW-UP] ❌ Lead ${leadId} NOT advanced - email validation failed\n`);
+        throw new Error(`Email validation failed: ${validation.reason}`);
+    }
+    
+    console.log(`[EMAIL] ✅ Email validation passed for ${to}`);
+    if (validation.warning) {
+        console.warn(`[EMAIL] ⚠️  Warning: ${validation.warning}`);
+    }
+
+    // 3. Inject 1×1 open-tracking pixel
     if (emailLogId) {
         const pixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
         html = html.replace(/<\/body>/i, `${pixel}</body>`);
         if (!html.includes(pixel)) html += pixel; // fallback if no </body>
     }
 
-    // 3. Wrap ALL diamondbackcoding.com links with tracking (makes leads hot when clicked)
+    // 4. Wrap ALL diamondbackcoding.com links with tracking (makes leads hot when clicked)
     if (leadId) {
         // Replace all diamondbackcoding.com links with tracked versions
         const websiteUrlPattern = /(https?:\/\/(?:www\.)?diamondbackcoding\.com[^"'\s]*)/gi;
@@ -640,10 +733,10 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         });
     }
 
-    // 4. Get email settings to check if Brevo is enabled
+    // 5. Get email settings to check if Brevo is enabled
     const emailSettings = await getEmailSettings();
     
-    // 5. Send via Brevo or Nodemailer
+    // 6. Send via Brevo or Nodemailer
     try {
         console.log(`[EMAIL] Attempting to send to: ${to} | Subject: ${subject} | Method: ${emailSettings.useBrevo ? 'Brevo' : 'Nodemailer'}`);
         
@@ -657,46 +750,56 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 subject,
                 html
             );
-            console.log(`[EMAIL] ✅ Successfully sent via Brevo to ${to}`);
+            console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to}`);
         } else {
             console.log('[EMAIL] Sending via Nodemailer...');
-            await transporter.sendMail({
+            const info = await transporter.sendMail({
                 from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
                 to,
                 subject,
                 html
             });
-            console.log(`[EMAIL] ✅ Successfully sent via Nodemailer to ${to}`);
+            
+            console.log(`[EMAIL] Nodemailer messageId: ${info.messageId}`);
+            console.log(`[EMAIL] Nodemailer response: ${info.response}`);
+            
+            // Check if email was rejected by the mail server
+            if (info.rejected && info.rejected.length > 0) {
+                throw new Error(`Email rejected by mail server: ${info.rejected.join(', ')}`);
+            }
+            
+            console.log(`[EMAIL] ✅ Email accepted by mail server for ${to}`);
         }
         
-        // 6. Mark as successfully sent ONLY after send succeeds
+        // 7. CRITICAL CHANGE: Keep status as 'queued' (not 'sent') until delivery confirmation
+        // Status will change to 'sent' only when:
+        // - Bounce tracking confirms delivery, OR
+        // - User opens the email (tracking pixel fires), OR  
+        // - After 24 hours with no bounce (assumed delivered)
         if (emailLogId) {
             await pool.query(
-                `UPDATE email_log SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                `UPDATE email_log 
+                 SET status = 'queued', 
+                     sent_at = CURRENT_TIMESTAMP 
+                 WHERE id = $1`,
                 [emailLogId]
             );
-            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as SENT`);
+            console.log(`[EMAIL] ⏳ Email_log ${emailLogId} marked as QUEUED (awaiting delivery confirmation)`);
         }
         
-        // 7. Update follow-up tracking ONLY if email sent successfully AND NOT a marketing blast
-        if (leadId && !isMarketing) {
-            await pool.query(
-                `UPDATE leads 
-                 SET last_contact_date = CURRENT_DATE, 
-                     follow_up_count = COALESCE(follow_up_count, 0) + 1,
-                     updated_at = CURRENT_TIMESTAMP
-                 WHERE id = $1`,
-                [leadId]
-            );
-            console.log(`[FOLLOW-UP] ✅ Lead ${leadId} advanced: follow_up_count incremented, last_contact_date updated`);
-        }
+        // 8. DO NOT update follow-up tracking yet - wait for actual delivery
+        // We'll update this when:
+        // - Email is opened (status becomes 'opened')
+        // - 24 hours pass with no bounce (background job marks as 'sent')
+        console.log(`[FOLLOW-UP] ⏳ Lead ${leadId} follow-up pending - waiting for delivery confirmation`);
         
     } catch (error) {
+        console.error(`\n========================================`);
         console.error(`[EMAIL] ❌❌❌ SEND FAILED ❌❌❌`);
         console.error(`[EMAIL] To: ${to}`);
         console.error(`[EMAIL] Subject: ${subject}`);
         console.error(`[EMAIL] Error: ${error.message}`);
-        console.error(`[EMAIL] Full error:`, error);
+        console.error(`========================================\n`);
         
         // Mark as failed - DO NOT update follow_up_count or last_contact_date
         if (emailLogId) {
@@ -707,7 +810,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
             console.log(`[EMAIL] ❌ Email_log ${emailLogId} marked as FAILED`);
         }
         
-        console.log(`[FOLLOW-UP] ❌ Lead ${leadId} NOT advanced - email failed to send`);
+        console.log(`[FOLLOW-UP] ❌ Lead ${leadId} NOT advanced - email failed to send\n`);
         
         throw error;
     }
@@ -6974,27 +7077,45 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
     try {
         const { emailLogId } = req.params;
         
-        // STRICT VALIDATION: Only track opens for emails that were actually sent
+        // CRITICAL: When email is opened, this confirms delivery
+        // Update status from 'queued' → 'opened' OR 'sent' → 'opened'
         const result = await pool.query(
             `UPDATE email_log 
-             SET opened_at = CURRENT_TIMESTAMP, status = 'opened'
+             SET opened_at = CURRENT_TIMESTAMP, 
+                 status = 'opened'
              WHERE id = $1 
-             AND status = 'sent'  -- CRITICAL: Only count opens for successfully sent emails
+             AND status IN ('queued', 'sent')  -- Accept both queued and sent
              AND opened_at IS NULL  -- Only track first open
-             RETURNING lead_id`,
+             RETURNING lead_id, status`,
             [emailLogId]
         );
         
-        // Track engagement ONLY if we actually updated a row (meaning email was sent)
+        // If we updated a row, this means the email was actually delivered and opened
         if (result.rows.length > 0) {
             const leadId = result.rows[0].lead_id;
+            const previousStatus = result.rows[0].status;
+            
+            console.log(`[TRACKING] ✅ Email ${emailLogId} OPENED by lead ${leadId} (was: ${previousStatus})`);
+            
             if (leadId) {
-                console.log(`[TRACKING] ✅ Email ${emailLogId} opened by lead ${leadId}`);
+                // NOW we can confidently advance the lead since we have proof of delivery
+                await pool.query(
+                    `UPDATE leads 
+                     SET last_contact_date = CURRENT_DATE, 
+                         follow_up_count = COALESCE(follow_up_count, 0) + 1,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $1
+                     AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
+                    [leadId]
+                );
+                console.log(`[FOLLOW-UP] ✅ Lead ${leadId} advanced - email was ACTUALLY DELIVERED and opened`);
+                
+                // Track engagement to make them hot
                 await trackEngagement(leadId, 'email_open', 5);
             }
         } else {
-            // This means the email was never sent or already opened
-            console.log(`[TRACKING] ⚠️ Pixel request for email ${emailLogId} but email was not in 'sent' status`);
+            // Email wasn't in queued/sent status - either already opened, failed, or doesn't exist
+            console.log(`[TRACKING] ⚠️  Pixel request for email ${emailLogId} but email was not in 'queued' or 'sent' status`);
         }
     } catch (e) {
         console.error('[TRACKING] Error tracking email open:', e);
@@ -7011,26 +7132,27 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
 // ========================================
 app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
     try {
-        // Overall stats - FIXED to only count actually sent emails
+        // Overall stats - Updated to show queued separately
         const statsResult = await pool.query(`
             SELECT
                 COUNT(*) as total_emails,
                 COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened') as total_sent,
+                COUNT(*) FILTER (WHERE status = 'queued') as total_queued,
                 COUNT(*) FILTER (WHERE status = 'failed') as total_failed,
                 COUNT(*) FILTER (WHERE status = 'pending') as total_pending,
                 COUNT(*) FILTER (WHERE status = 'opened') as total_opened,
                 COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as total_clicked,
                 ROUND(
-                    COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened')::NUMERIC /
+                    COUNT(*) FILTER (WHERE status IN ('sent', 'opened', 'queued'))::NUMERIC /
                     NULLIF(COUNT(*), 0) * 100, 1
                 ) as delivery_rate,
                 ROUND(
                     COUNT(*) FILTER (WHERE status = 'opened')::NUMERIC /
-                    NULLIF(COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened'), 0) * 100, 1
+                    NULLIF(COUNT(*) FILTER (WHERE status IN ('sent', 'opened', 'queued')), 0) * 100, 1
                 ) as open_rate,
                 ROUND(
                     COUNT(*) FILTER (WHERE clicked_at IS NOT NULL)::NUMERIC /
-                    NULLIF(COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened'), 0) * 100, 1
+                    NULLIF(COUNT(*) FILTER (WHERE status IN ('sent', 'opened', 'queued')), 0) * 100, 1
                 ) as click_rate
             FROM email_log
         `);
@@ -7064,12 +7186,13 @@ app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
             LIMIT 100
         `);
 
-        // Email trends per day (last 30 days) - show sent, opened, and failed
+        // Email trends per day (last 30 days) - show sent, queued, opened, and failed
         const trendsResult = await pool.query(`
             SELECT
                 DATE(COALESCE(sent_at, created_at)) as date,
                 COUNT(*) as total,
                 COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened') as sent,
+                COUNT(*) FILTER (WHERE status = 'queued') as queued,
                 COUNT(*) FILTER (WHERE status = 'opened') as opened,
                 COUNT(*) FILTER (WHERE status = 'failed') as failed
             FROM email_log
@@ -13435,6 +13558,70 @@ async function migrateExistingLeadsToTemperature() {
 // ========================================
 // SERVER STARTUP
 // ========================================
+// ========================================
+// BACKGROUND JOB: Auto-confirm email deliveries
+// ========================================
+// Emails stay 'queued' until we have proof they were delivered.
+// After 24 hours with no bounce, we assume delivery and:
+// 1. Mark email as 'sent' 
+// 2. Advance the lead (increment follow_up_count, update last_contact_date)
+function startEmailConfirmationJob() {
+    // Run every hour
+    const INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
+    
+    async function confirmQueuedEmails() {
+        try {
+            console.log('[EMAIL-CONFIRM] Running background job to confirm queued emails...');
+            
+            // Find emails that have been queued for 24+ hours with no bounce
+            const result = await pool.query(`
+                UPDATE email_log 
+                SET status = 'sent'
+                WHERE status = 'queued' 
+                AND sent_at < NOW() - INTERVAL '24 hours'
+                AND opened_at IS NULL
+                RETURNING id, lead_id, subject, sent_at
+            `);
+            
+            if (result.rows.length > 0) {
+                console.log(`[EMAIL-CONFIRM] ✅ Confirmed ${result.rows.length} emails as delivered (no bounce after 24hrs)`);
+                
+                // Now advance the leads for these confirmed emails
+                for (const email of result.rows) {
+                    if (email.lead_id) {
+                        try {
+                            await pool.query(
+                                `UPDATE leads 
+                                 SET last_contact_date = CURRENT_DATE, 
+                                     follow_up_count = COALESCE(follow_up_count, 0) + 1,
+                                     updated_at = CURRENT_TIMESTAMP
+                                 WHERE id = $1
+                                 AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
+                                [email.lead_id]
+                            );
+                            console.log(`[EMAIL-CONFIRM] ✅ Advanced lead ${email.lead_id} after confirming email ${email.id}`);
+                        } catch (err) {
+                            console.error(`[EMAIL-CONFIRM] Error advancing lead ${email.lead_id}:`, err);
+                        }
+                    }
+                }
+            } else {
+                console.log('[EMAIL-CONFIRM] No queued emails to confirm at this time');
+            }
+        } catch (error) {
+            console.error('[EMAIL-CONFIRM] Error in confirmation job:', error);
+        }
+    }
+    
+    // Run immediately on startup
+    confirmQueuedEmails();
+    
+    // Then run every hour
+    setInterval(confirmQueuedEmails, INTERVAL);
+    
+    console.log('[EMAIL-CONFIRM] ✅ Background job started - will auto-confirm emails every hour');
+}
+
 async function startServer() {
     try {
         await initializeDatabase(pool);
@@ -13449,6 +13636,9 @@ async function startServer() {
         if (!emailConfigured) {
             console.warn('⚠️  Email functionality may not work properly');
         }
+        
+        // Start background job to auto-confirm email deliveries
+        startEmailConfirmationJob();
         
         app.listen(PORT, () => {
             console.log('');

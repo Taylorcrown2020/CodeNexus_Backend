@@ -8095,28 +8095,37 @@ async function loadEmailOpenReport() {
         if (!res.ok) throw new Error('Failed to load');
         const data = await res.json();
         const s = data.stats || {};
+        
+        // Use the NEW field names from backend
+        const totalEmails = parseInt(s.total_emails) || 0;
         const sent = parseInt(s.total_sent) || 0;
+        const failed = parseInt(s.total_failed) || 0;
+        const pending = parseInt(s.total_pending) || 0;
         const opened = parseInt(s.total_opened) || 0;
         const clicked = parseInt(s.total_clicked) || 0;
-        const openRate = sent > 0 ? ((opened / sent) * 100).toFixed(1) : '0.0';
-        const clickRate = sent > 0 ? ((clicked / sent) * 100).toFixed(1) : '0.0';
+        const deliveryRate = parseFloat(s.delivery_rate) || 0;
+        const openRate = parseFloat(s.open_rate) || 0;
+        const clickRate = parseFloat(s.click_rate) || 0;
         const hotConversions = parseInt(s.opened_and_became_hot) || 0;
 
-        const recentRows = (data.recent_opens || []).slice(0, 20).map(e => {
-            const isOpened = !!e.opened_at;
+        // Use recent_emails instead of recent_opens (new field name)
+        const recentRows = (data.recent_emails || []).slice(0, 20).map(e => {
+            const statusBadge = {
+                'opened': '<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Opened</span>',
+                'sent': '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Sent</span>',
+                'failed': '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Failed</span>',
+                'pending': '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Pending</span>'
+            }[e.status] || '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">Unknown</span>';
+            
             const isClicked = !!e.clicked_at;
             const isHot = e.lead_temperature === 'hot';
+            
             return `<tr>
                 <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${e.lead_name || '—'}</td>
                 <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted); font-size:12px;">${e.lead_email || '—'}</td>
                 <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${e.subject || '—'}</td>
-                <td>${e.sent_at ? formatDate(e.sent_at) : '—'}</td>
-                <td>
-                    ${isOpened
-                        ? `<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Opened</span>`
-                        : `<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">Not opened</span>`
-                    }
-                </td>
+                <td>${e.sent_at ? formatDate(e.sent_at) : (e.status === 'pending' ? 'Pending' : '—')}</td>
+                <td>${statusBadge}</td>
                 <td>
                     ${isClicked
                         ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Clicked</span>`
@@ -8124,43 +8133,49 @@ async function loadEmailOpenReport() {
                     }
                 </td>
                 <td>${isHot ? '<span style="background:#fef2f2;color:#ef4444;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">HOT</span>' : '<span style="color:var(--text-muted);font-size:12px;">Cold</span>'}</td>
+                ${e.status === 'failed' && e.error_message ? `<td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#dc2626; font-size:11px;">${e.error_message}</td>` : '<td>—</td>'}
             </tr>`;
         }).join('');
 
         container.innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px;">
                 <div style="background:var(--bg-secondary);border-radius:8px;padding:16px;text-align:center;">
-                    <div style="font-size:28px;font-weight:800;color:var(--text-primary);">${sent.toLocaleString()}</div>
-                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Emails Sent</div>
+                    <div style="font-size:28px;font-weight:800;color:var(--text-primary);">${totalEmails.toLocaleString()}</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Total Emails</div>
                 </div>
                 <div style="background:#f0fdf4;border-radius:8px;padding:16px;text-align:center;">
-                    <div style="font-size:28px;font-weight:800;color:#16a34a;">${openRate}%</div>
-                    <div style="font-size:12px;color:#16a34a;margin-top:4px;">Open Rate <span style="color:var(--text-muted);">(${opened.toLocaleString()} opens)</span></div>
+                    <div style="font-size:28px;font-weight:800;color:#16a34a;">${deliveryRate.toFixed(1)}%</div>
+                    <div style="font-size:12px;color:#16a34a;margin-top:4px;">Delivery Rate <span style="color:var(--text-muted);">(${sent.toLocaleString()} sent)</span></div>
                 </div>
                 <div style="background:#eff6ff;border-radius:8px;padding:16px;text-align:center;">
-                    <div style="font-size:28px;font-weight:800;color:#1d4ed8;">${clickRate}%</div>
-                    <div style="font-size:12px;color:#1d4ed8;margin-top:4px;">Click Rate <span style="color:var(--text-muted);">(${clicked.toLocaleString()} clicks)</span></div>
+                    <div style="font-size:28px;font-weight:800;color:#1d4ed8;">${openRate.toFixed(1)}%</div>
+                    <div style="font-size:12px;color:#1d4ed8;margin-top:4px;">Open Rate <span style="color:var(--text-muted);">(${opened.toLocaleString()} opens)</span></div>
+                </div>
+                <div style="background:#fef2f2;border-radius:8px;padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:#dc2626;">${failed.toLocaleString()}</div>
+                    <div style="font-size:12px;color:#dc2626;margin-top:4px;">Failed Sends</div>
                 </div>
                 <div style="background:#fef9f0;border-radius:8px;padding:16px;text-align:center;">
                     <div style="font-size:28px;font-weight:800;color:#d97706;">${hotConversions.toLocaleString()}</div>
-                    <div style="font-size:12px;color:#d97706;margin-top:4px;">Opened — Became Hot</div>
+                    <div style="font-size:12px;color:#d97706;margin-top:4px;">Opened → Hot</div>
                 </div>
             </div>
-            ${sent === 0 ? `<div style="text-align:center;padding:40px;color:var(--text-muted);">No emails logged yet. Open tracking will populate as follow-up emails are sent.</div>` : `
+            ${totalEmails === 0 ? `<div style="text-align:center;padding:40px;color:var(--text-muted);">No emails logged yet. Tracking will populate as follow-up emails are sent.</div>` : `
             <div style="overflow-x:auto;">
-                <table class="data-table" style="min-width:800px;">
+                <table class="data-table" style="min-width:900px;">
                     <thead>
                         <tr>
                             <th>Lead</th>
                             <th>Email</th>
                             <th>Subject</th>
                             <th>Sent</th>
-                            <th>Opened</th>
+                            <th>Status</th>
                             <th>Clicked</th>
                             <th>Temp</th>
+                            <th>Error</th>
                         </tr>
                     </thead>
-                    <tbody>${recentRows || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No emails recorded yet</td></tr>'}</tbody>
+                    <tbody>${recentRows || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">No emails recorded yet</td></tr>'}</tbody>
                 </table>
             </div>
             `}

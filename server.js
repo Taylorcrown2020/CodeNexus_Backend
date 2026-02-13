@@ -7468,39 +7468,6 @@ app.get('/api/analytics/lead-sources', authenticateToken, async (req, res) => {
 });
 
 // Get conversion funnel data
-app.get('/api/analytics/funnel', authenticateToken, async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT 
-                COUNT(*) FILTER (WHERE is_customer = FALSE) as total_leads,
-                COUNT(*) FILTER (WHERE status = 'contacted' AND is_customer = FALSE) as contacted,
-                COUNT(*) FILTER (WHERE status = 'closed' OR is_customer = TRUE) as closed,
-                COUNT(*) FILTER (WHERE is_customer = TRUE) as customers,
-                ROUND(AVG(
-                    EXTRACT(EPOCH FROM (
-                        CASE 
-                            WHEN is_customer THEN 
-                                COALESCE(last_payment_date, updated_at) - created_at
-                            ELSE NULL
-                        END
-                    )) / 86400
-                ), 1) as avg_days_to_convert
-            FROM leads
-        `);
-        
-        res.json({
-            success: true,
-            funnel: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Get funnel error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-});
-
 // Get revenue analytics
 app.get('/api/analytics/revenue', authenticateToken, async (req, res) => {
     try {

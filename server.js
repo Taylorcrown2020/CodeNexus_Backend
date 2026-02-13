@@ -592,12 +592,12 @@ async function getEmailSettings() {
     }
 }
 
-async function sendTrackedEmail({ leadId, to, subject, html }) {
-    // 1. Create email_log row BEFORE sending so we have the ID
+async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false }) {
+    // 1. Create email_log row with 'pending' status BEFORE sending so we have the ID
     let emailLogId = null;
     try {
         const logRow = await pool.query(
-            `INSERT INTO email_log (lead_id, subject, sent_at, status) VALUES ($1, $2, CURRENT_TIMESTAMP, 'sent') RETURNING id`,
+            `INSERT INTO email_log (lead_id, subject, status) VALUES ($1, $2, 'pending') RETURNING id`,
             [leadId || null, subject]
         );
         emailLogId = logRow.rows[0]?.id;
@@ -649,8 +649,41 @@ async function sendTrackedEmail({ leadId, to, subject, html }) {
             });
             console.log('[EMAIL] ✅ Sent via Nodemailer');
         }
+        
+        // 6. Mark as successfully sent ONLY after send succeeds
+        if (emailLogId) {
+            await pool.query(
+                `UPDATE email_log SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                [emailLogId]
+            );
+        }
+        
+        // 7. Update follow-up tracking ONLY if email sent successfully AND NOT a marketing blast
+        if (leadId && !isMarketing) {
+            await pool.query(
+                `UPDATE leads 
+                 SET last_contact_date = CURRENT_DATE, 
+                     follow_up_count = COALESCE(follow_up_count, 0) + 1,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $1`,
+                [leadId]
+            );
+            console.log(`[FOLLOW-UP] ✅ Lead ${leadId} advanced: follow_up_count incremented, last_contact_date updated`);
+        }
+        
     } catch (error) {
         console.error('[EMAIL] ❌ Send failed:', error);
+        
+        // Mark as failed - DO NOT update follow_up_count or last_contact_date
+        if (emailLogId) {
+            await pool.query(
+                `UPDATE email_log SET status = 'failed', sent_at = CURRENT_TIMESTAMP, error_message = $2 WHERE id = $1`,
+                [emailLogId, error.message]
+            );
+        }
+        
+        console.log(`[FOLLOW-UP] ❌ Lead ${leadId} NOT advanced - email failed to send`);
+        
         throw error;
     }
 
@@ -746,6 +779,25 @@ await client.query(`
         ) THEN
             ALTER TABLE leads ADD COLUMN follow_up_count INTEGER DEFAULT 0;
             RAISE NOTICE 'Added follow_up_count column to leads table';
+        END IF;
+        
+        -- Add email_log tracking columns for better analytics
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='email_log' AND column_name='error_message'
+        ) THEN
+            ALTER TABLE email_log ADD COLUMN error_message TEXT;
+            RAISE NOTICE 'Added error_message column to email_log table';
+        END IF;
+        
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='email_log' AND column_name='created_at'
+        ) THEN
+            ALTER TABLE email_log ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+            -- Set created_at for existing rows
+            UPDATE email_log SET created_at = COALESCE(sent_at, CURRENT_TIMESTAMP) WHERE created_at IS NULL;
+            RAISE NOTICE 'Added created_at column to email_log table';
         END IF;
     END $$;
 `);
@@ -6897,17 +6949,19 @@ app.get('/api/follow-ups/dead-leads', authenticateToken, async (req, res) => {
 app.get('/api/track/open/:emailLogId', async (req, res) => {
     try {
         const { emailLogId } = req.params;
-        // Update opened_at only on first open
-        await pool.query(
+        // Update opened_at only on first open AND only if email was successfully sent
+        const result = await pool.query(
             `UPDATE email_log SET opened_at = CURRENT_TIMESTAMP, status = 'opened'
-             WHERE id = $1 AND opened_at IS NULL`,
+             WHERE id = $1 AND status = 'sent' AND opened_at IS NULL
+             RETURNING lead_id`,
             [emailLogId]
         );
-        // Also track engagement on the lead so they can become hot
-        const logRow = await pool.query('SELECT lead_id FROM email_log WHERE id = $1', [emailLogId]);
-        if (logRow.rows.length > 0) {
-            const leadId = logRow.rows[0].lead_id;
-            await trackEngagement(leadId, 'email_open', 5);
+        // Also track engagement on the lead so they can become hot (only if we actually updated a row)
+        if (result.rows.length > 0) {
+            const leadId = result.rows[0].lead_id;
+            if (leadId) {
+                await trackEngagement(leadId, 'email_open', 5);
+            }
         }
     } catch (e) {
         // Silently swallow - never break pixel delivery
@@ -6923,19 +6977,26 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
 // ========================================
 app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
     try {
-        // Overall stats
+        // Overall stats - FIXED to only count actually sent emails
         const statsResult = await pool.query(`
             SELECT
-                COUNT(*) FILTER (WHERE sent_at IS NOT NULL) as total_sent,
-                COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as total_opened,
+                COUNT(*) as total_emails,
+                COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened') as total_sent,
+                COUNT(*) FILTER (WHERE status = 'failed') as total_failed,
+                COUNT(*) FILTER (WHERE status = 'pending') as total_pending,
+                COUNT(*) FILTER (WHERE status = 'opened') as total_opened,
                 COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as total_clicked,
                 ROUND(
-                    COUNT(*) FILTER (WHERE opened_at IS NOT NULL)::NUMERIC /
-                    NULLIF(COUNT(*) FILTER (WHERE sent_at IS NOT NULL), 0) * 100, 1
+                    COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened')::NUMERIC /
+                    NULLIF(COUNT(*), 0) * 100, 1
+                ) as delivery_rate,
+                ROUND(
+                    COUNT(*) FILTER (WHERE status = 'opened')::NUMERIC /
+                    NULLIF(COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened'), 0) * 100, 1
                 ) as open_rate,
                 ROUND(
                     COUNT(*) FILTER (WHERE clicked_at IS NOT NULL)::NUMERIC /
-                    NULLIF(COUNT(*) FILTER (WHERE sent_at IS NOT NULL), 0) * 100, 1
+                    NULLIF(COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened'), 0) * 100, 1
                 ) as click_rate
             FROM email_log
         `);
@@ -6945,12 +7006,12 @@ app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
             SELECT COUNT(DISTINCT el.lead_id) as opened_and_became_hot
             FROM email_log el
             JOIN leads l ON el.lead_id = l.id
-            WHERE el.opened_at IS NOT NULL
+            WHERE el.status = 'opened'
             AND l.lead_temperature = 'hot'
         `);
 
-        // Recent opens with lead info (last 50)
-        const recentOpensResult = await pool.query(`
+        // Recent emails with lead info (last 100) - show all statuses
+        const recentEmailsResult = await pool.query(`
             SELECT
                 el.id,
                 el.subject,
@@ -6958,26 +7019,28 @@ app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
                 el.opened_at,
                 el.clicked_at,
                 el.status,
+                el.error_message,
                 l.name as lead_name,
                 l.email as lead_email,
                 l.lead_temperature,
                 l.company
             FROM email_log el
             LEFT JOIN leads l ON el.lead_id = l.id
-            WHERE el.sent_at IS NOT NULL
-            ORDER BY el.sent_at DESC
+            ORDER BY el.sent_at DESC NULLS LAST, el.id DESC
             LIMIT 100
         `);
 
-        // Opens per day (last 30 days)
+        // Email trends per day (last 30 days) - show sent, opened, and failed
         const trendsResult = await pool.query(`
             SELECT
-                DATE(sent_at) as date,
-                COUNT(*) as sent,
-                COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened
+                DATE(COALESCE(sent_at, created_at)) as date,
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened') as sent,
+                COUNT(*) FILTER (WHERE status = 'opened') as opened,
+                COUNT(*) FILTER (WHERE status = 'failed') as failed
             FROM email_log
-            WHERE sent_at >= CURRENT_DATE - INTERVAL '30 days'
-            GROUP BY DATE(sent_at)
+            WHERE COALESCE(sent_at, created_at) >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY DATE(COALESCE(sent_at, created_at))
             ORDER BY date DESC
         `);
 
@@ -6987,11 +7050,11 @@ app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
                 ...statsResult.rows[0],
                 opened_and_became_hot: hotConversionsResult.rows[0]?.opened_and_became_hot || 0
             },
-            recent_opens: recentOpensResult.rows,
+            recent_emails: recentEmailsResult.rows,
             daily_trends: trendsResult.rows
         });
     } catch (error) {
-        console.error('[ANALYTICS] Email opens error:', error);
+        console.error('[ANALYTICS] Email analytics error:', error);
         res.status(500).json({ success: false, message: 'Error fetching email analytics', error: error.message });
     }
 });

@@ -17945,7 +17945,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         const deadHtml = deadLeads.map(lead => {
             const lastContact = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
             return `
-                <tr>
+                <tr onclick="selectLead(${lead.id})" style="cursor: pointer;">
                     <td>
                         <div class="contact-cell">
                             <div class="contact-avatar" style="opacity:0.5;">${getInitials(lead.name || '?')}</div>
@@ -17960,7 +17960,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                     <td style="color: var(--text-secondary);">${lead.company || '—'}</td>
                     <td style="color: var(--text-secondary);">${lastContact}</td>
                     <td>
-                        <a href="#" onclick="event.preventDefault(); openLeadModal(${lead.id})" style="font-size:12px; color: var(--text-muted); text-decoration: underline;">View Lead</a>
+                        <a href="#" onclick="event.preventDefault(); event.stopPropagation(); openLeadModal(${lead.id})" style="font-size:12px; color: var(--text-muted); text-decoration: underline;">View Lead</a>
                     </td>
                 </tr>
             `;
@@ -18059,7 +18059,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         const daysSince = (!lead.last_contact_date || parseInt(lead.days_since_contact) === 999) ? 'Never' : `${lead.days_since_contact} days`;
         const lastContactDisplay = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
         return `
-            <tr>
+            <tr onclick="selectLead(${lead.id})" style="cursor: pointer;">
                 <td>
                     <div class="contact-cell">
                         <div class="contact-avatar">${getInitials(lead.name || '?')}</div>
@@ -18079,13 +18079,13 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
+                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); markFollowedUp(${lead.id})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
                             </svg>
                             Mark Contacted
                         </button>
-                        <button class="btn btn-sm btn-secondary" onclick="showEmailModal(${lead.id}, '${escapedName}', '${lead.email}')">
+                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); showEmailModal(${lead.id}, '${escapedName}', '${lead.email}')">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                 <polyline points="22,6 12,13 2,6"/>

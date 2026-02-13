@@ -3854,6 +3854,9 @@ body.graffiti-mode .sidebar::after {
             <button class="btn-danger" onclick="resetColdLeadsToNeverContacted()" style="margin-left: 10px;">
                 <i class="fas fa-undo"></i> Reset Cold Leads
             </button>
+            <button class="btn-danger" onclick="resetAllLeadsToNeverContacted()" style="margin-left: 10px; background: #dc2626;">
+                <i class="fas fa-exclamation-triangle"></i> Reset ALL Leads (Hot + Cold)
+            </button>
         </div>
     </div>
     
@@ -17577,6 +17580,39 @@ async function resetColdLeadsToNeverContacted() {
     }
 }
 
+async function resetAllLeadsToNeverContacted() {
+    if (!confirm('🚨 CRITICAL WARNING 🚨\n\nThis will reset ALL LEADS (both HOT and COLD) back to "Never Contacted" state.\n\nThis means:\n- follow_up_count will be set to 0\n- last_contact_date will be cleared\n- lead_temperature will be reset to cold\n- ALL leads except Dead/Closed will be affected\n\nTHIS CANNOT BE UNDONE!\n\nAre you ABSOLUTELY SURE you want to continue?')) {
+        return;
+    }
+    
+    // Double confirmation for this destructive action
+    if (!confirm('⚠️ FINAL CONFIRMATION ⚠️\n\nYou are about to reset ALL leads including HOT leads.\n\nType "RESET ALL" in your mind and click OK to proceed, or Cancel to abort.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/admin/reset-all-leads`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`✅ Reset ${data.count} leads to "Never Contacted" (including ${data.hotCount} hot leads)`, 'success');
+            refreshFollowUps(); // Reload the follow-ups tab
+        } else {
+            showToast(`❌ Error: ${data.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error resetting all leads:', error);
+        showToast('❌ Failed to reset all leads', 'error');
+    }
+}
+
 function viewLead(leadId) {
     showSection('customers');
     setTimeout(() => {
@@ -17928,10 +17964,21 @@ async function renderFollowUps(content) {
         
         // Build the page HTML with tabs - use TOTAL counts in badges
         content.innerHTML = `
-            <div class="page-header" style="margin-bottom: 24px;">
+            <div class="page-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <h2>Follow Ups</h2>
                     <p class="section-subtitle">Manage leads by engagement level - showing leads due for follow-up</p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-secondary" onclick="renderFollowUps(document.getElementById('contentArea'))" style="padding: 10px 20px;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn-danger" onclick="resetColdLeadsToNeverContacted()" style="padding: 10px 20px;">
+                        <i class="fas fa-undo"></i> Reset Cold Leads
+                    </button>
+                    <button class="btn-danger" onclick="resetAllLeadsToNeverContacted()" style="padding: 10px 20px; background: #dc2626;">
+                        <i class="fas fa-exclamation-triangle"></i> Reset ALL Leads
+                    </button>
                 </div>
             </div>
 
@@ -18398,18 +18445,11 @@ async function sendTemperatureBulkEmail(temperature, count) {
                 
                 if (response.ok) {
                     sent++;
-                    // Update last contact date
-                    await fetch(`${API_URL}/api/leads/${lead.id}`, {
-                        method: 'PUT',
-                        headers: { 
-                            'Authorization': `Bearer ${token}`, 
-                            'Content-Type': 'application/json' 
-                        },
-                        body: JSON.stringify({ 
-                            last_contact_date: new Date().toISOString(),
-                            status: 'contacted'
-                        })
-                    });
+                    // ✅ CRITICAL: Do NOT update last_contact_date here!
+                    // The server's sendTrackedEmail and tracking pixel handle this correctly:
+                    // - Email opens → lead advances
+                    // - 24 hours without bounce → lead advances
+                    // This was causing FALSE HOT LEADS!
                 } else {
                     failed++;
                 }

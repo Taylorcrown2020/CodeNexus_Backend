@@ -7424,68 +7424,17 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
             });
         }
         
-        // 🔥 UPDATE: Update last_contact_date in database
-        if (leadId) {
-            try {
-                const updateResult = await pool.query(
-                    `UPDATE leads 
-                     SET last_contact_date = CURRENT_TIMESTAMP,
-                         status = CASE 
-                             WHEN status = 'new' THEN 'contacted'
-                             ELSE status 
-                         END,
-                         updated_at = CURRENT_TIMESTAMP
-                     WHERE id = $1
-                     RETURNING id, name, email, status, last_contact_date`,
-                    [leadId]
-                );
-                
-                if (updateResult.rows.length > 0) {
-                    console.log('[EMAIL API] ✅ Updated last_contact_date for lead:', leadId);
-                    console.log('[EMAIL API] Lead data:', updateResult.rows[0]);
-                    
-                    // Optional: Add a note to the lead's notes
-                    const notesResult = await pool.query(
-                        'SELECT notes FROM leads WHERE id = $1',
-                        [leadId]
-                    );
-                    
-                    let notes = [];
-                    if (notesResult.rows[0]?.notes) {
-                        try {
-                            notes = JSON.parse(notesResult.rows[0].notes);
-                        } catch (e) {
-                            notes = [];
-                        }
-                    }
-                    
-                    notes.push({
-                        text: `Email sent: "${subject}"`,
-                        author: req.user.username || 'Admin',
-                        date: new Date().toISOString()
-                    });
-                    
-                    await pool.query(
-                        'UPDATE leads SET notes = $1 WHERE id = $2',
-                        [JSON.stringify(notes), leadId]
-                    );
-                    
-                    console.log('[EMAIL API] ✅ Added email note to lead');
-                } else {
-                    console.warn('[EMAIL API] ⚠️ Lead not found for ID:', leadId);
-                }
-                
-            } catch (dbError) {
-                console.error('[EMAIL API] ❌ Database update error:', dbError);
-                // Don't fail the request if DB update fails, email was still sent
-            }
-        }
+        // ✅ CRITICAL: Do NOT update last_contact_date here!
+        // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:
+        // - Email opens → status becomes 'opened' → lead advances
+        // - 24 hours without bounce → status becomes 'sent' → lead advances
+        // This was the 7th instance of the immediate update bug!
         
         // Return success response
         res.json({ 
             success: true, 
-            message: 'Email sent successfully and lead updated',
-            messageId: info?.messageId
+            message: 'Email queued - awaiting delivery confirmation (will confirm within 24 hours or when opened)',
+            status: 'queued'
         });
         
     } catch (error) {
@@ -9387,15 +9336,22 @@ async function trackEngagement(leadId, engagementType, details = '') {
         
         console.log(`[ENGAGEMENT] 💯 NEW SCORE: ${score} (added ${scoreMap[engagementType] || 5} points for ${engagementType})`);
         
-        // MODIFIED: Once a lead becomes hot, they stay hot forever
-        const shouldBeHot = lead.lead_temperature === 'hot' || score >= 20 || engagementType === 'form_fill' || engagementType === 'email_reply' || engagementType === 'email_click';
+        // CRITICAL FIX: Leads should ONLY become hot through:
+        // 1. Accumulating 20+ engagement points naturally
+        // 2. Filling out a form (form_fill)
+        // 3. Replying to an email (email_reply)
+        // 
+        // Email opens (5pts each) and link clicks (10pts each) should NOT instantly make leads hot
+        // They need to accumulate points OR do a meaningful action
+        const shouldBeHot = lead.lead_temperature === 'hot' || score >= 20 || engagementType === 'form_fill' || engagementType === 'email_reply';
         const newTemperature = shouldBeHot ? 'hot' : 'cold';
         
         console.log(`[ENGAGEMENT] 🌡️  TEMPERATURE DECISION:`);
         console.log(`   - Current: ${lead.lead_temperature || 'null'}`);
         console.log(`   - New: ${newTemperature}`);
         console.log(`   - Should be hot? ${shouldBeHot}`);
-        console.log(`   - Reasons: score >= 20? ${score >= 20}, form_fill? ${engagementType === 'form_fill'}, email_click? ${engagementType === 'email_click'}`);
+        console.log(`   - Reasons: score >= 20? ${score >= 20}, form_fill? ${engagementType === 'form_fill'}, email_reply? ${engagementType === 'email_reply'}`);
+        console.log(`   - Note: email_click and email_open do NOT instantly make leads hot - they accumulate points`);
         
         // If lead just became hot (cold -> hot transition)
         if (newTemperature === 'hot' && lead.lead_temperature !== 'hot') {
@@ -9617,6 +9573,56 @@ app.post('/api/admin/reset-cold-leads', authenticateToken, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error resetting cold leads',
+            error: error.message
+        });
+    }
+});
+
+// Reset ALL leads (hot + cold) to "Never Contacted" - DESTRUCTIVE ACTION
+app.post('/api/admin/reset-all-leads', authenticateToken, async (req, res) => {
+    try {
+        console.log('[ADMIN] 🚨 RESETTING ALL LEADS (HOT + COLD) TO "NEVER CONTACTED" STATE 🚨');
+        
+        // First, count how many hot leads will be affected
+        const hotCountResult = await pool.query(
+            `SELECT COUNT(*) as hot_count
+             FROM leads 
+             WHERE is_customer = FALSE
+             AND lead_temperature = 'hot'
+             AND status NOT IN ('dead', 'closed', 'lost')`,
+            []
+        );
+        
+        const hotCount = parseInt(hotCountResult.rows[0].hot_count);
+        
+        // Reset ALL leads (hot + cold) but NOT dead/closed leads
+        const result = await pool.query(
+            `UPDATE leads 
+             SET follow_up_count = 0,
+                 last_contact_date = NULL,
+                 lead_temperature = 'cold',
+                 became_hot_at = NULL,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE is_customer = FALSE
+             AND status NOT IN ('dead', 'closed', 'lost')
+             RETURNING id, name, email, lead_temperature`,
+            []
+        );
+        
+        console.log(`[ADMIN] ✅ Reset ${result.rows.length} leads to "Never Contacted" (including ${hotCount} hot leads)`);
+        
+        res.json({
+            success: true,
+            message: `Successfully reset ${result.rows.length} leads (including ${hotCount} hot leads)`,
+            count: result.rows.length,
+            hotCount: hotCount,
+            leads: result.rows
+        });
+    } catch (error) {
+        console.error('[ADMIN] Error resetting all leads:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error resetting all leads',
             error: error.message
         });
     }
@@ -12338,15 +12344,11 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
         // Create email_log entry and send with tracking pixel
         await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML });
         
-        // Update last_contact_date
-        await pool.query(
-            `UPDATE leads 
-             SET last_contact_date = CURRENT_DATE,
-                 status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
-                 updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $1`,
-            [leadId]
-        );
+        // ✅ CRITICAL: Do NOT update last_contact_date here!
+        // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:
+        // - Email opens → status becomes 'opened' → lead advances
+        // - 24 hours without bounce → status becomes 'sent' → lead advances
+        // Updating immediately here was causing false hot leads!
         
         // Add note to lead
         let notes = [];
@@ -12590,17 +12592,11 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
 
                 await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML });
                 
-                // Update last_contact_date
-                await pool.query(
-                    `UPDATE leads 
-                     SET last_contact_date = CURRENT_DATE,
-                         status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
-                         updated_at = CURRENT_TIMESTAMP 
-                     WHERE id = $1`,
-                    [lead.id]
-                );
+                // ✅ CRITICAL: Do NOT update last_contact_date here!
+                // The sendTrackedEmail function and tracking pixel endpoint handle this correctly
+                // This was the 8th instance of the immediate update bug!
                 
-                // Add note to lead (NEW: Mirror single send logic)
+                // Add note to lead (without updating last_contact_date)
                 let notes = [];
                 try {
                     if (lead.notes) {
@@ -12751,17 +12747,11 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
 
                 await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML });
 
-                // Update last_contact_date and status
-                await pool.query(
-                    `UPDATE leads 
-                     SET last_contact_date = CURRENT_DATE,
-                         status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END,
-                         updated_at = CURRENT_TIMESTAMP 
-                     WHERE id = $1`,
-                    [lead.id]
-                );
+                // ✅ CRITICAL: Do NOT update last_contact_date here!
+                // The sendTrackedEmail function and tracking pixel endpoint handle this correctly
+                // This was the 9th instance of the immediate update bug!
 
-                // Append note to lead
+                // Append note to lead (without updating last_contact_date)
                 let notes = [];
                 try {
                     if (lead.notes) notes = JSON.parse(lead.notes);
@@ -12876,8 +12866,9 @@ app.post('/api/auto-campaigns', authenticateToken, async (req, res) => {
             VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP) RETURNING *
         `, [leadId, subject, body]);
 
-        // Update lead
-        await pool.query(`UPDATE leads SET last_contact_date = CURRENT_TIMESTAMP, status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [leadId]);
+        // ✅ CRITICAL: Do NOT update last_contact_date here!
+        // The sendTrackedEmail function and tracking pixel endpoint handle this correctly
+        // This was ANOTHER instance of the immediate update bug!
 
         // Log note
         let notes = [];
@@ -12990,41 +12981,176 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
         const errors = [];
         for (const c of due.rows) {
             try {
-                const pBody = c.body
-                    .replace(/\{\{name\}\}/g, c.lead_name || 'there')
-                    .replace(/\{\{project_type\}\}/g, c.lead_project_type || 'your project');
+                const isHotLead = c.lead_temperature === 'hot';
+                const followUpCount = parseInt(c.follow_up_count) || 0;
+                
+                let emailSubject, emailHTML;
+                
+                if (isHotLead) {
+                    // ✅ HOT LEADS: Use the original subject/body that was saved when auto-campaign was created
+                    // Hot leads just repeat the same message on their schedule (3.5/7 day alternating)
+                    console.log(`[AUTO-CAMPAIGNS] HOT Lead ${c.lead_id} (${c.lead_email}): Using saved message, follow_up_count=${followUpCount}`);
+                    
+                    const personalizedBody = c.body
+                        .replace(/\{\{name\}\}/g, c.lead_name || 'there')
+                        .replace(/\{\{project_type\}\}/g, c.lead_project_type || 'your project');
+                    
+                    emailSubject = c.subject;
+                    
+                    let unsub = c.unsubscribe_token;
+                    if (!unsub) {
+                        unsub = crypto.randomBytes(32).toString('hex');
+                        await pool.query('UPDATE leads SET unsubscribe_token=$1 WHERE id=$2', [unsub, c.lead_id]);
+                    }
+                    
+                    emailHTML = buildEmailHTML(`
+                        <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${personalizedBody.replace(/\n/g, '<br>')}</div>
+                        <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
+                    `, { unsubscribeUrl: `${BASE_URL}/api/unsubscribe/${unsub}` });
+                    
+                } else {
+                    // ✅ COLD LEADS: Follow the template sequence based on follow_up_count
+                    // followup2 → followup3 → followupindefinite (repeating)
+                    let templateName;
+                    
+                    if (followUpCount === 0) {
+                        // Day 3: Second Follow-Up (first was manual)
+                        templateName = 'followup2';
+                    } else if (followUpCount === 1) {
+                        // Day 5: Third Follow-Up
+                        templateName = 'followup3';
+                    } else {
+                        // Day 7+: Indefinite Follow-Up (repeats every 7 days)
+                        templateName = 'followupindefinite';
+                    }
+                    
+                    console.log(`[AUTO-CAMPAIGNS] COLD Lead ${c.lead_id} (${c.lead_email}): follow_up_count=${followUpCount}, using template="${templateName}"`);
+                    
+                    // Get template content
+                    const followupContent = {
+                        followup2: {
+                            subject: 'Following up again',
+                            eyebrow: 'Following up again',
+                            headline: 'You keep 100% of your revenue.',
+                            subhead: `Hi ${c.lead_name || 'there'} — just circling back one more time.`,
+                            body: `Platforms like Shopify and Squarespace quietly take 2–5% of every sale you make. With a custom Diamondback site, that money stays in your pocket — forever. For a business doing $200K/year, that's up to $10,000 back in your pocket annually.`,
+                            ctaLabel: 'See How Much You Could Save',
+                            ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                            accentColor: '#1A7A3A',
+                            tagline: 'ZERO TRANSACTION FEES.',
+                        },
+                        followup3: {
+                            subject: 'One last thing',
+                            eyebrow: 'One last thing',
+                            headline: 'No pressure — just wanted you to have this.',
+                            subhead: `Hi ${c.lead_name || 'there'},`,
+                            body: `I won't keep filling your inbox. But before I go, I'd love for you to know that our clients get custom-built websites they fully own, CRM systems tailored to how they work, and real human support. No templates. No platform lock-in. If the timing ever makes sense, we'll be here.`,
+                            ctaLabel: 'Take a Look When You\'re Ready',
+                            ctaUrl: 'https://diamondbackcoding.com',
+                            accentColor: '#2D3142',
+                            tagline: 'BUILT FOR YOUR BUSINESS.',
+                        },
+                        followupindefinite: {
+                            subject: 'Checking in',
+                            eyebrow: 'Checking in',
+                            headline: 'We\'re still here when you\'re ready.',
+                            subhead: `Hi ${c.lead_name || 'there'} — hope things are going well.`,
+                            body: `We know timing isn't always right. When it is, we'd love to talk about how a custom website or CRM can take work off your plate and keep more revenue in your business. No obligation — just a conversation.`,
+                            ctaLabel: 'Let\'s Talk',
+                            ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                            accentColor: '#FF6B35',
+                            tagline: 'DIAMONDBACK CODING.',
+                        },
+                    };
+                    
+                    const fc = followupContent[templateName];
+                    emailSubject = fc.subject;
+                    
+                    // Build the follow-up email HTML using the selected template
+                    let unsub = c.unsubscribe_token;
+                    if (!unsub) {
+                        unsub = crypto.randomBytes(32).toString('hex');
+                        await pool.query('UPDATE leads SET unsubscribe_token=$1 WHERE id=$2', [unsub, c.lead_id]);
+                    }
 
-                let unsub = c.unsubscribe_token;
-                if (!unsub) {
-                    unsub = crypto.randomBytes(32).toString('hex');
-                    await pool.query('UPDATE leads SET unsubscribe_token=$1 WHERE id=$2', [unsub, c.lead_id]);
+                    emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${fc.headline}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f5f5;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f5f5">
+<tr><td align="center" style="padding:40px 20px">
+
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;max-width:600px;box-shadow:0 2px 8px rgba(0,0,0,0.08);border-radius:8px;overflow:hidden">
+
+<!-- Header -->
+<tr><td style="background:linear-gradient(135deg, ${fc.accentColor} 0%, ${fc.accentColor}dd 100%);padding:40px 40px 35px 40px;text-align:center">
+<span style="color:#ffffff;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:16px;opacity:0.9">${fc.eyebrow}</span>
+<span style="color:#ffffff;font-size:28px;font-weight:700;letter-spacing:-0.5px;display:block;line-height:1.2">${fc.headline}</span>
+</td></tr>
+
+<!-- Body -->
+<tr><td style="padding:40px 45px">
+<p style="font-size:16px;line-height:1.6;color:#333;margin:0 0 20px">${fc.subhead}</p>
+<p style="font-size:15px;line-height:1.75;color:#555;margin:0 0 30px">${fc.body}</p>
+
+<!-- CTA Button -->
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
+<tr><td style="background-color:${fc.accentColor};border-radius:6px;text-align:center">
+<a href="${fc.ctaUrl}" style="display:inline-block;padding:16px 32px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;letter-spacing:0.5px">${fc.ctaLabel}</a>
+</td></tr>
+</table>
+
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="background-color:#f9f9f9;padding:30px 40px;text-align:center;border-top:1px solid #e5e5e5">
+<p style="font-size:12px;color:#888;margin:0 0 8px;letter-spacing:1px">${fc.tagline}</p>
+<p style="font-size:13px;color:#666;margin:0 0 12px;font-weight:600">Diamondback Coding</p>
+<p style="font-size:11px;color:#999;margin:0">
+<a href="tel:+19402178680" style="color:#999;text-decoration:none">940-217-8680</a> | 
+<a href="mailto:hello@diamondbackcoding.com" style="color:#999;text-decoration:none">hello@diamondbackcoding.com</a>
+</p>
+<p style="font-size:10px;color:#aaa;margin:12px 0 0">
+<a href="${BASE_URL}/api/unsubscribe/${unsub}" style="color:#aaa;text-decoration:underline">Unsubscribe</a>
+</p>
+</td></tr>
+
+</table>
+
+</td></tr>
+</table>
+
+</body>
+</html>`;
                 }
 
-                const emailHTML = buildEmailHTML(`
-                    <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${pBody.replace(/\n/g, '<br>')}</div>
-                    <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
-                `, { unsubscribeUrl: `${BASE_URL}/api/unsubscribe/${unsub}` });
-
-                await sendTrackedEmail({ leadId: c.lead_id, to: c.lead_email, subject: c.subject, html: emailHTML });
+                // Send the email (same for both hot and cold)
+                await sendTrackedEmail({ leadId: c.lead_id, to: c.lead_email, subject: emailSubject, html: emailHTML });
 
                 await pool.query('UPDATE auto_campaigns SET last_sent_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=$1', [c.id]);
-                await pool.query(`
-                    UPDATE leads 
-                    SET last_contact_date=CURRENT_TIMESTAMP, 
-                        follow_up_count = COALESCE(follow_up_count, 0) + 1,
-                        status=CASE WHEN status='new' THEN 'contacted' ELSE status END, 
-                        updated_at=CURRENT_TIMESTAMP 
-                    WHERE id=$1
-                `, [c.lead_id]);
+                
+                // ✅ CRITICAL: Do NOT update last_contact_date here!
+                // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:
+                // - Email opens → lead advances
+                // - 24 hours without bounce → lead advances
+                // This was another instance of the same bug!
 
                 // Note
                 let notes = [];
                 try { if (c.lead_notes) notes = JSON.parse(c.lead_notes); } catch(e) {}
-                notes.push({ text: `[Auto-Campaign] Email sent automatically: "${c.subject}"`, author: 'System', date: new Date().toISOString() });
+                const noteText = isHotLead 
+                    ? `[Auto-Campaign] HOT lead email sent: "${emailSubject}"`
+                    : `[Auto-Campaign] COLD lead email sent: "${emailSubject}" (${templateName || 'saved template'})`;
+                notes.push({ text: noteText, author: 'System', date: new Date().toISOString() });
                 await pool.query('UPDATE leads SET notes=$1 WHERE id=$2', [JSON.stringify(notes), c.lead_id]);
 
                 sent++;
-                console.log(`[AUTO-CAMPAIGNS] ✅ Sent to ${c.lead_email}`);
+                console.log(`[AUTO-CAMPAIGNS] ✅ Sent to ${c.lead_email} (${isHotLead ? 'HOT' : 'COLD'})`);
             } catch (e) {
                 console.error(`[AUTO-CAMPAIGNS] ❌ Campaign ${c.id}:`, e.message);
                 errors.push({ id: c.id, error: e.message });
@@ -13070,9 +13196,13 @@ app.post('/api/send-email', authenticateToken, async (req, res) => {
     `, { unsubscribeUrl });
     try {
         await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML });
-        if (leadId) {
-            await pool.query(`UPDATE leads SET last_contact_date = CURRENT_DATE, status = CASE WHEN status = 'new' THEN 'contacted' ELSE status END, updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [leadId]);
-        }
+        
+        // ✅ CRITICAL: Do NOT update last_contact_date here!
+        // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:
+        // - Email opens → status becomes 'opened' → lead advances
+        // - 24 hours without bounce → status becomes 'sent' → lead advances
+        // This was the MAIN BUG causing false hot leads!
+        
         res.json({ success: true, message: 'Email sent successfully' });
     } catch (err) {
         console.error('[SEND-EMAIL] Error:', err);

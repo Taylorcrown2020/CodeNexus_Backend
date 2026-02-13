@@ -9570,6 +9570,42 @@ app.post('/api/leads/:id/contacted', authenticateToken, async (req, res) => {
     }
 });
 
+// Reset all COLD leads back to "Never Contacted" state
+app.post('/api/admin/reset-cold-leads', authenticateToken, async (req, res) => {
+    try {
+        console.log('[ADMIN] Resetting all COLD leads to "Never Contacted" state...');
+        
+        // Reset ONLY cold leads (not hot, not dead/closed)
+        const result = await pool.query(
+            `UPDATE leads 
+             SET follow_up_count = 0,
+                 last_contact_date = NULL,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE is_customer = FALSE
+             AND COALESCE(lead_temperature, 'cold') != 'hot'
+             AND status NOT IN ('dead', 'closed', 'lost')
+             RETURNING id, name, email`,
+            []
+        );
+        
+        console.log(`[ADMIN] ✅ Reset ${result.rows.length} cold leads to "Never Contacted"`);
+        
+        res.json({
+            success: true,
+            message: `Successfully reset ${result.rows.length} cold leads`,
+            count: result.rows.length,
+            leads: result.rows
+        });
+    } catch (error) {
+        console.error('[ADMIN] Error resetting cold leads:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error resetting cold leads',
+            error: error.message
+        });
+    }
+});
+
 // Get follow-up statistics
 app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
     try {
@@ -12317,11 +12353,12 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
             [JSON.stringify(notes), leadId]
         );
         
-        console.log(`[FOLLOW-UP] ✅ Email sent to ${lead.email}`);
+        console.log(`[FOLLOW-UP] ⏳ Email queued for ${lead.email} - awaiting delivery confirmation`);
         
         res.json({
             success: true,
-            message: 'Follow-up email sent successfully'
+            message: 'Email queued - awaiting delivery confirmation (will confirm within 24 hours or when opened)',
+            status: 'queued'
         });
         
     } catch (error) {
@@ -12412,14 +12449,8 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
 
                 await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML });
                 
-                // Update lead
-                await pool.query(
-                    `UPDATE leads 
-                     SET last_contact_date = CURRENT_DATE,
-                         updated_at = CURRENT_TIMESTAMP 
-                     WHERE id = $1`,
-                    [leadId]
-                );
+                // DO NOT update last_contact_date here - it will be updated when email is confirmed
+                // The sendTrackedEmail function handles this correctly now
                 
                 successCount++;
                 
@@ -12430,12 +12461,12 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
             }
         }
         
-        console.log(`[BULK FOLLOW-UP] ✅ Sent: ${successCount}, ❌ Failed: ${failCount}`);
+        console.log(`[BULK FOLLOW-UP] ⏳ Queued: ${successCount}, ❌ Failed: ${failCount}`);
         
         res.json({
             success: true,
-            message: `Sent ${successCount} emails, ${failCount} failed`,
-            successCount,
+            message: `Queued ${successCount} emails (awaiting confirmation), ${failCount} failed`,
+            queuedCount: successCount,
             failCount,
             errors: errors.length > 0 ? errors : undefined
         });

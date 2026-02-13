@@ -12469,13 +12469,44 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
     try {
         console.log('[AUTO-CAMPAIGNS] Checking for due campaigns...');
         const due = await pool.query(`
-            SELECT ac.*, l.name as lead_name, l.email as lead_email, l.project_type as lead_project_type, l.unsubscribe_token, l.notes as lead_notes
+            SELECT ac.*, 
+                   l.name as lead_name, 
+                   l.email as lead_email, 
+                   l.project_type as lead_project_type, 
+                   l.unsubscribe_token, 
+                   l.notes as lead_notes,
+                   l.lead_temperature,
+                   l.last_contact_date,
+                   COALESCE(l.follow_up_count, 0) as follow_up_count
             FROM auto_campaigns ac
             JOIN leads l ON l.id = ac.lead_id
             WHERE ac.is_active = TRUE
               AND l.unsubscribed = FALSE
               AND l.email IS NOT NULL
-              AND (ac.last_sent_at IS NULL OR ac.last_sent_at <= CURRENT_TIMESTAMP - INTERVAL '1 day')
+              AND (
+                -- HOT LEADS TIMELINE (reset when they become hot):
+                -- Never contacted (when they first become hot): send immediately
+                -- After first contact on hot lead: 3.5 days
+                -- After 2nd contact: 7 days  
+                -- After 3rd+ contacts: alternates between 3.5 and 7 days
+                (l.lead_temperature = 'hot' AND (
+                    l.last_contact_date IS NULL 
+                    OR (l.follow_up_count >= 1 AND l.follow_up_count % 2 = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3.5 days')
+                    OR (l.follow_up_count >= 2 AND l.follow_up_count % 2 = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
+                ))
+                OR
+                -- COLD LEADS TIMELINE:
+                -- Never contacted: send immediately
+                -- 1st follow-up: 3 days
+                -- 2nd follow-up: 5 days
+                -- 3rd+ follow-ups: every 7 days
+                (COALESCE(l.lead_temperature, 'cold') != 'hot' AND (
+                    l.last_contact_date IS NULL
+                    OR (l.follow_up_count = 0 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days')
+                    OR (l.follow_up_count = 1 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '5 days')
+                    OR (l.follow_up_count >= 2 AND l.last_contact_date <= CURRENT_DATE - INTERVAL '7 days')
+                ))
+              )
         `);
         console.log(`[AUTO-CAMPAIGNS] ${due.rows.length} due`);
 
@@ -12501,7 +12532,14 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
                 await sendTrackedEmail({ leadId: c.lead_id, to: c.lead_email, subject: c.subject, html: emailHTML });
 
                 await pool.query('UPDATE auto_campaigns SET last_sent_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=$1', [c.id]);
-                await pool.query(`UPDATE leads SET last_contact_date=CURRENT_TIMESTAMP, status=CASE WHEN status='new' THEN 'contacted' ELSE status END, updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [c.lead_id]);
+                await pool.query(`
+                    UPDATE leads 
+                    SET last_contact_date=CURRENT_TIMESTAMP, 
+                        follow_up_count = COALESCE(follow_up_count, 0) + 1,
+                        status=CASE WHEN status='new' THEN 'contacted' ELSE status END, 
+                        updated_at=CURRENT_TIMESTAMP 
+                    WHERE id=$1
+                `, [c.lead_id]);
 
                 // Note
                 let notes = [];

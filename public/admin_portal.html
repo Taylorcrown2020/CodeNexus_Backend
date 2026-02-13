@@ -17859,6 +17859,63 @@ function toggleNotes(button) {
     button.textContent = content.style.display === 'block' ? 'Hide Notes' : 'View Notes';
 }
 
+// ==================== LEAD RESET SYSTEM ====================
+
+function confirmResetLeads() {
+    // Step 1: First confirmation
+    const step1 = confirm(
+        '⚠️  RESET LEADS — READ CAREFULLY\n\n' +
+        'This will reset ALL leads to "Never Contacted" status EXCEPT:\n' +
+        '  • Hot Leads (lead_temperature = hot)\n' +
+        '  • Dead/Unsubscribed Leads\n\n' +
+        'For all other leads, this will:\n' +
+        '  • Clear their last contact date\n' +
+        '  • Reset their follow-up count to 0\n' +
+        '  • Reset their status to "new"\n' +
+        '  • Reset their lead temperature to "cold"\n\n' +
+        'This CANNOT be undone. Click OK to continue to the second confirmation.'
+    );
+    if (!step1) return;
+
+    // Step 2: Type confirmation
+    const typed = prompt(
+        'FINAL WARNING: This action is irreversible.\n\n' +
+        'Type exactly  RESET LEADS  to confirm (case sensitive):'
+    );
+    if (typed === null) return; // cancelled
+    if (typed.trim() !== 'RESET LEADS') {
+        showToast('Reset cancelled — text did not match.', 'error');
+        return;
+    }
+
+    // Proceed
+    executeLeadReset();
+}
+
+async function executeLeadReset() {
+    const token = state.authToken || localStorage.getItem('token');
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+    try {
+        showToast('Resetting leads...', 'warning');
+        const res = await fetch(`${API_URL}/api/admin/leads/reset-to-never-contacted`, {
+            method: 'POST',
+            headers
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`✅ Reset complete — ${data.resetCount} leads reset to Never Contacted.`, 'success');
+            // Refresh the follow-ups view
+            await renderFollowUps(document.getElementById('contentArea'));
+        } else {
+            showToast('Reset failed: ' + (data.message || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        console.error('[RESET LEADS] Error:', err);
+        showToast('Reset failed: ' + err.message, 'error');
+    }
+}
+
 // ==================== FOLLOW-UPS SYSTEM ====================
 
 async function renderFollowUps(content) {
@@ -17896,9 +17953,18 @@ async function renderFollowUps(content) {
         // Build the page HTML with tabs
         content.innerHTML = `
             <div class="page-header" style="margin-bottom: 24px;">
-                <div>
-                    <h2>Follow Ups</h2>
-                    <p class="section-subtitle">Manage leads by engagement level</p>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+                    <div>
+                        <h2>Follow Ups</h2>
+                        <p class="section-subtitle">Manage leads by engagement level</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="confirmResetLeads()"
+                        style="border: 1px solid rgba(239,68,68,0.4); color: #ef4444; font-size: 12px; padding: 8px 14px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                        </svg>
+                        Reset Leads
+                    </button>
                 </div>
             </div>
 
@@ -17969,7 +18035,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         const deadHtml = deadLeads.map(lead => {
             const lastContact = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
             return `
-                <tr>
+                <tr style="cursor:pointer;" onclick="openDetailModal('lead', ${lead.id})">
                     <td>
                         <div class="contact-cell">
                             <div class="contact-avatar" style="opacity:0.5;">${getInitials(lead.name || '?')}</div>
@@ -17983,8 +18049,8 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                     </td>
                     <td style="color: var(--text-secondary);">${lead.company || '—'}</td>
                     <td style="color: var(--text-secondary);">${lastContact}</td>
-                    <td>
-                        <a href="#" onclick="event.preventDefault(); openLeadModal(${lead.id})" style="font-size:12px; color: var(--text-muted); text-decoration: underline;">View Lead</a>
+                    <td onclick="event.stopPropagation()">
+                        <a href="#" onclick="event.preventDefault(); openDetailModal('lead', ${lead.id})" style="font-size:12px; color: var(--text-muted); text-decoration: underline;">View Lead</a>
                     </td>
                 </tr>
             `;
@@ -18083,7 +18149,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         const daysSince = (!lead.last_contact_date || parseInt(lead.days_since_contact) === 999) ? 'Never' : `${lead.days_since_contact} days`;
         const lastContactDisplay = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
         return `
-            <tr>
+            <tr style="cursor:pointer;" onclick="openDetailModal('lead', ${lead.id})">
                 <td>
                     <div class="contact-cell">
                         <div class="contact-avatar">${getInitials(lead.name || '?')}</div>
@@ -18101,7 +18167,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
                         ${daysSince}
                     </span>
                 </td>
-                <td>
+                <td onclick="event.stopPropagation()">
                     <div class="action-buttons">
                         <button class="btn btn-sm btn-primary" onclick="markFollowedUp(${lead.id})">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">

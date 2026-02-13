@@ -6869,6 +6869,7 @@ app.post('/api/automation/generate-followup-reminders', authenticateToken, async
 // ========================================
 
 // ========================================
+// ========================================
 // GET DEAD LEADS (unsubscribed)
 // ========================================
 app.get('/api/follow-ups/dead-leads', authenticateToken, async (req, res) => {
@@ -6888,6 +6889,45 @@ app.get('/api/follow-ups/dead-leads', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('[DEAD-LEADS] Error:', error);
         res.status(500).json({ success: false, message: 'Error fetching dead leads', error: error.message });
+    }
+});
+
+// ========================================
+// ADMIN: RESET LEADS TO NEVER CONTACTED
+// Resets all leads EXCEPT:
+//   - unsubscribed = TRUE  (dead leads)
+//   - lead_temperature = 'hot' (hot leads)
+// ========================================
+app.post('/api/admin/leads/reset-to-never-contacted', authenticateToken, async (req, res) => {
+    try {
+        console.log('[RESET-LEADS] Starting lead reset — preserving hot and dead leads');
+
+        const result = await pool.query(`
+            UPDATE leads
+            SET
+                last_contact_date  = NULL,
+                follow_up_count    = 0,
+                status             = 'new',
+                lead_temperature   = 'cold',
+                updated_at         = CURRENT_TIMESTAMP
+            WHERE
+                unsubscribed    = FALSE
+                AND COALESCE(lead_temperature, 'cold') != 'hot'
+                AND is_customer = FALSE
+            RETURNING id
+        `);
+
+        const resetCount = result.rowCount;
+        console.log(`[RESET-LEADS] ✅ Reset ${resetCount} leads to never-contacted state`);
+
+        res.json({
+            success: true,
+            message: `Successfully reset ${resetCount} leads to never contacted.`,
+            resetCount
+        });
+    } catch (error) {
+        console.error('[RESET-LEADS] ❌ Error:', error);
+        res.status(500).json({ success: false, message: 'Error resetting leads', error: error.message });
     }
 });
 

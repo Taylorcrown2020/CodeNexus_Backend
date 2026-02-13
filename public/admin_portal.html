@@ -17960,7 +17960,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         const deadHtml = deadLeads.map(lead => {
             const lastContact = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
             return `
-                <tr onclick="selectLead(${lead.id})" style="cursor: pointer;">
+                <tr onclick="openDetailModal('lead', ${lead.id})" style="cursor: pointer;">
                     <td>
                         <div class="contact-cell">
                             <div class="contact-avatar" style="opacity:0.5;">${getInitials(lead.name || '?')}</div>
@@ -18074,7 +18074,7 @@ function buildFollowUpTabContent(tab, hotLeads, coldLeads, deadLeads) {
         const daysSince = (!lead.last_contact_date || parseInt(lead.days_since_contact) === 999) ? 'Never' : `${lead.days_since_contact} days`;
         const lastContactDisplay = lead.last_contact_date ? formatDate(lead.last_contact_date) : 'Never';
         return `
-            <tr onclick="selectLead(${lead.id})" style="cursor: pointer;">
+            <tr onclick="openDetailModal('lead', ${lead.id})" style="cursor: pointer;">
                 <td>
                     <div class="contact-cell">
                         <div class="contact-avatar">${getInitials(lead.name || '?')}</div>
@@ -19130,22 +19130,25 @@ async function renderMarketing(content) {
     const token = state.authToken || localStorage.getItem('token');
     const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-    // Fetch lead counts for audience preview
+    // Fetch ALL leads and calculate audience counts
     let allLeads = [], allCustomers = [], hotLeads = [], coldLeads = [];
     try {
-        const [leadsRes, tempRes] = await Promise.all([
-            fetch(`${API_URL}/api/leads`, { headers }),
-            fetch(`${API_URL}/api/follow-ups/by-temperature`, { headers })
-        ]);
+        const leadsRes = await fetch(`${API_URL}/api/leads`, { headers });
         if (leadsRes.ok) {
             const d = await leadsRes.json();
-            allLeads = (d.leads || []).filter(l => !l.is_customer && !l.unsubscribed);
-            allCustomers = (d.leads || []).filter(l => l.is_customer && !l.unsubscribed);
-        }
-        if (tempRes.ok) {
-            const d = await tempRes.json();
-            hotLeads = d.data?.hot || [];
-            coldLeads = d.data?.cold || [];
+            const leads = d.leads || [];
+            
+            // All non-customer leads (not unsubscribed)
+            allLeads = leads.filter(l => !l.is_customer && !l.unsubscribed);
+            
+            // All customers (not unsubscribed)
+            allCustomers = leads.filter(l => l.is_customer && !l.unsubscribed);
+            
+            // Hot leads = non-customers with hot temperature
+            hotLeads = leads.filter(l => !l.is_customer && !l.unsubscribed && l.lead_temperature === 'hot');
+            
+            // Cold leads = non-customers that are NOT hot (includes null/cold/warm)
+            coldLeads = leads.filter(l => !l.is_customer && !l.unsubscribed && l.lead_temperature !== 'hot');
         }
     } catch(e) { console.error('[MARKETING] fetch error', e); }
 

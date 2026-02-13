@@ -3372,10 +3372,9 @@ body.light-mode ::-webkit-scrollbar-thumb:hover {
 ======================================== */
 
 body.graffiti-mode {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #ffd876 100%) !important;
-    background-size: 400% 400% !important;
-    animation: graffitiGradient 15s ease infinite !important;
+    background-color: #f0f0f0 !important;
     position: relative;
+    overflow-x: hidden;
 }
 
 body.graffiti-mode::before {
@@ -3385,76 +3384,145 @@ body.graffiti-mode::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background-image: 
-        repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px),
-        repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(0,0,0,.03) 35px, rgba(0,0,0,.03) 70px);
+    background: 
+        /* Graffiti bubble letters and street art style */
+        radial-gradient(circle at 15% 20%, rgba(255, 107, 107, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 85% 15%, rgba(72, 219, 251, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 50% 80%, rgba(253, 203, 110, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 25% 60%, rgba(162, 155, 254, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 75% 70%, rgba(255, 107, 129, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 10% 85%, rgba(119, 221, 119, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 90% 85%, rgba(255, 159, 64, 0.4) 0%, transparent 50%);
+    background-size: 100% 100%;
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
+    opacity: 0.6;
 }
 
+/* Add spray paint drips effect */
+body.graffiti-mode::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        /* Vertical drips */
+        linear-gradient(90deg, transparent 48%, rgba(255, 107, 107, 0.15) 48%, rgba(255, 107, 107, 0.15) 52%, transparent 52%),
+        linear-gradient(90deg, transparent 18%, rgba(72, 219, 251, 0.15) 18%, rgba(72, 219, 251, 0.15) 22%, transparent 22%),
+        linear-gradient(90deg, transparent 68%, rgba(253, 203, 110, 0.15) 68%, rgba(253, 203, 110, 0.15) 72%, transparent 72%),
+        linear-gradient(90deg, transparent 88%, rgba(162, 155, 254, 0.15) 88%, rgba(162, 155, 254, 0.15) 92%, transparent 92%);
+    background-size: 100% 120%;
+    background-position: 0 -20%;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.3;
+}
+
+/* Graffiti text shadows and effects */
+body.graffiti-mode .logo-text,
+body.graffiti-mode h1,
+body.graffiti-mode h2 {
+    text-shadow: 
+        2px 2px 0px rgba(255, 107, 107, 0.3),
+        4px 4px 0px rgba(72, 219, 251, 0.2),
+        6px 6px 0px rgba(253, 203, 110, 0.1);
+}
+
+/* Keep UI elements clean and above the graffiti */
 body.graffiti-mode .admin-container {
-    background: rgba(255, 255, 255, 0.95) !important;
-    backdrop-filter: blur(10px) !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+    position: relative;
+    z-index: 1;
 }
 
 body.graffiti-mode .sidebar {
-    background: rgba(17, 17, 17, 0.95) !important;
-    backdrop-filter: blur(10px) !important;
-    border-right: 2px solid rgba(255, 255, 255, 0.1) !important;
+    position: relative;
+    z-index: 2;
 }
 
 body.graffiti-mode .header {
-    background: rgba(255, 255, 255, 0.98) !important;
-    backdrop-filter: blur(10px) !important;
-    border-bottom: 2px solid rgba(102, 126, 234, 0.3) !important;
+    position: relative;
+    z-index: 3;
 }
 
 body.graffiti-mode .stat-card,
 body.graffiti-mode .card,
 body.graffiti-mode .content-box {
-    background: rgba(255, 255, 255, 0.9) !important;
-    backdrop-filter: blur(8px) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
-    border: 1px solid rgba(102, 126, 234, 0.2) !important;
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.8) !important;
+    box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
+/* Add some graffiti-style accents to buttons */
 body.graffiti-mode .btn-primary,
 body.graffiti-mode .action-btn.primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%) !important;
     border: none !important;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+    box-shadow: 
+        0 4px 12px rgba(255, 107, 107, 0.4),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 body.graffiti-mode .btn-primary:hover,
 body.graffiti-mode .action-btn.primary:hover {
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+    background: linear-gradient(135deg, #ff8787 0%, #ff6b6b 100%) !important;
     transform: translateY(-2px) !important;
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5) !important;
+    box-shadow: 
+        0 6px 16px rgba(255, 107, 107, 0.5),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-@keyframes graffitiGradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+/* Colorful nav badges in graffiti mode */
+body.graffiti-mode .nav-badge {
+    background: linear-gradient(135deg, #fdcb6e 0%, #ff7675 100%) !important;
+    box-shadow: 0 2px 8px rgba(253, 203, 110, 0.4);
 }
 
-/* Add some spray paint splatter effects */
-body.graffiti-mode::after {
-    content: '🎨';
+/* Add graffiti-style decorative elements in corners */
+body.graffiti-mode .content-area {
+    position: relative;
+}
+
+body.graffiti-mode .content-area::before {
+    content: '★';
     position: fixed;
-    font-size: 120px;
-    opacity: 0.05;
-    bottom: 20px;
-    right: 20px;
+    font-size: 80px;
+    color: rgba(255, 107, 107, 0.08);
+    bottom: 30px;
+    right: 30px;
     pointer-events: none;
     z-index: 0;
+    transform: rotate(-15deg);
+    animation: float 6s ease-in-out infinite;
+}
+
+body.graffiti-mode .sidebar::after {
+    content: '◆';
+    position: absolute;
+    font-size: 60px;
+    color: rgba(72, 219, 251, 0.08);
+    top: 50%;
+    right: 10px;
+    pointer-events: none;
+    transform: rotate(45deg);
     animation: pulse 4s ease-in-out infinite;
 }
 
+@keyframes float {
+    0%, 100% { transform: rotate(-15deg) translateY(0px); }
+    50% { transform: rotate(-15deg) translateY(-20px); }
+}
+
 @keyframes pulse {
-    0%, 100% { opacity: 0.03; transform: scale(1); }
-    50% { opacity: 0.08; transform: scale(1.1); }
+    0%, 100% { opacity: 0.08; transform: rotate(45deg) scale(1); }
+    50% { opacity: 0.12; transform: rotate(45deg) scale(1.1); }
 }
     </style>
 </head>
@@ -5228,8 +5296,8 @@ case 'client-portal':
 
 function showInvoiceLeadSelector() {
 console.log('🔍 showInvoiceLeadSelector called');
-    console.log('📊 State leads:', state.leads.length);
-    console.log('📊 State customers:', state.customers.length);
+    console.log('State leads:', state.leads.length);
+    console.log('State customers:', state.customers.length);
     
     const modal = document.getElementById('createModal');
     const titleEl = document.getElementById('createModalTitle');
@@ -6253,7 +6321,12 @@ function renderClientUploads() {
 
     grid.innerHTML = state.clientUploads.slice(0, 12).map(upload => `
         <div class="file-card" onclick="downloadClientFile(${upload.id})">
-            <div class="file-icon">📄</div>
+            <div class="file-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 32px; height: 32px;">
+                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                    <polyline points="13 2 13 9 20 9"/>
+                </svg>
+            </div>
             <div class="file-name">${upload.filename}</div>
             <div class="file-meta">
                 <span>${upload.client_name}</span>
@@ -6745,21 +6818,21 @@ window.showEmailModal = function(leadId, leadName, leadEmail) {
                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Email Template:</label>
                         <select id="emailTemplate_${leadId}" onchange="loadEmailTemplate(${leadId}, '${leadName.replace(/'/g, "\\'")}', '${leadEmail}')" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background: white; box-sizing: border-box; font-size: 14px;">
                             <option value="">-- Select a Template --</option>
-                            <option value="valentinessale">💕 Valentine's Day Sale (25% Off)</option>
-                            <option value="springsale">🌸 Spring Sale (25% Off)</option>
-                            <option value="blackfriday">🖤 Black Friday Sale (25% Off)</option>
-                            <option value="initialsale">🎉 Initial Sale (25% Off Spring)</option>
-                            <option value="valentines14">💝 Valentine's 14% Promo (Original)</option>
-                            <option value="zerotransactionfees">💳 Zero Transaction Fees</option>
-                            <option value="followup">📧 Follow-Up</option>
-                            <option value="proposal">📄 Send Proposal</option>
-                            <option value="thankyou">🙏 Thank You</option>
-                            <option value="projectupdate">📊 Project Update</option>
-                            <option value="invoicereminder">💰 Invoice Reminder</option>
-                            <option value="projectcomplete">🎉 Project Complete</option>
-                            <option value="checkin">👋 Client Check-in</option>
-                            <option value="referralrequest">⭐ Request Referral</option>
-                            <option value="custom">✏️ Custom (blank)</option>
+                            <option value="valentinessale">Valentine's Day Sale (25% Off)</option>
+                            <option value="springsale">Spring Sale (25% Off)</option>
+                            <option value="blackfriday">Black Friday Sale (25% Off)</option>
+                            <option value="initialsale">Initial Sale (25% Off Spring)</option>
+                            <option value="valentines14">Valentine's 14% Promo (Original)</option>
+                            <option value="zerotransactionfees">Zero Transaction Fees</option>
+                            <option value="followup">Follow-Up</option>
+                            <option value="proposal">Send Proposal</option>
+                            <option value="thankyou">Thank You</option>
+                            <option value="projectupdate">Project Update</option>
+                            <option value="invoicereminder">Invoice Reminder</option>
+                            <option value="projectcomplete">Project Complete</option>
+                            <option value="checkin">Client Check-in</option>
+                            <option value="referralrequest">Request Referral</option>
+                            <option value="custom">Custom (blank)</option>
                         </select>
                     </div>
                     <div style="margin-bottom: 16px;">
@@ -6866,7 +6939,7 @@ You can edit the subject line above, but the body will use the pre-designed temp
 
 This is a beautifully designed HTML email with:
 • Fresh spring colors with pastel background
-• "✦ Spring Event ✦" badge
+• "Spring Event" badge
 • Flower emoji decorations
 • "Shop Spring Sale" button
 • Professional branding and styling
@@ -7373,9 +7446,9 @@ Transform your business with cutting-edge development and CRM solutions. Save 25
 • Choose one option per customer
 
 WHY CHOOSE US:
-✓ Fast Project Kickoff - Get started with our streamlined onboarding process
-✓ Dedicated Support Team - Direct access to developers and account managers  
-✓ Professional Results - Cutting-edge solutions built to scale with your business
+✔ Fast Project Kickoff - Get started with our streamlined onboarding process
+✔ Dedicated Support Team - Direct access to developers and account managers  
+✔ Professional Results - Cutting-edge solutions built to scale with your business
 
 ALL SERVICES 25% OFF:
 • Web Development
@@ -7445,13 +7518,13 @@ Celebrate the season with us!
 
 Fresh solutions are blooming! Enjoy 25% off everything in our collection.
 
-✦ Spring Event ✦
+— Spring Event —
 
 PICK YOUR SOLUTION VIBE:
-🌸 Custom Web Development - Modern & Fresh
-🍋 CRM Solutions - Streamlined & Efficient
-🌿 Mobile Design - Clean & Professional
-🌺 Performance Optimization - Fast & Reliable
+• Custom Web Development - Modern & Fresh
+• CRM Solutions - Streamlined & Efficient
+• Mobile Design - Clean & Professional
+• Performance Optimization - Fast & Reliable
 
 All services 25% off during our Spring Event!
 
@@ -7585,7 +7658,7 @@ DIAMONDBACK`
     projectComplete: {
         id: 'project-complete',
         name: 'Project Complete',
-        subject: '🎉 Your Project is Complete!',
+        subject: 'Your Project is Complete!',
         category: 'project',
         body: `Hi {{clientName}},
 
@@ -7675,7 +7748,7 @@ $500K/yr in sales:
   Other Platforms: You lose -$15,000
   Diamondback: You keep $15,000
 
-✓ With Diamondback, every dollar in that green column stays in your pocket.
+✔ With Diamondback, every dollar in that green column stays in your pocket.
 
 WHAT SETS US APART:
 
@@ -7685,7 +7758,7 @@ Real people, real conversations. No support tickets. Just a local team that pick
 💻 Custom-built, not templated
 Your business isn't generic. Your site shouldn't be either. Every build starts from scratch — not a $12 theme 10,000 others are using.
 
-💳 Zero transaction fees — ever
+Zero transaction fees — ever
 We charge once for the work. After that, every dollar you earn is yours — not split with a platform that didn't do anything.
 
 🔒 Website + CRM + SEO — one team
@@ -8022,13 +8095,13 @@ async function loadEmailOpenReport() {
                 <td>${e.sent_at ? formatDate(e.sent_at) : '—'}</td>
                 <td>
                     ${isOpened
-                        ? `<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">✓ Opened</span>`
+                        ? `<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Opened</span>`
                         : `<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">Not opened</span>`
                     }
                 </td>
                 <td>
                     ${isClicked
-                        ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">✓ Clicked</span>`
+                        ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Clicked</span>`
                         : `<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">—</span>`
                     }
                 </td>
@@ -8265,11 +8338,11 @@ async function openInvoiceDetail(invoiceId) {
     try {
         // CRITICAL: Ensure invoices are loaded first
         if (!state.invoices || state.invoices.length === 0) {
-            console.log('📊 [INVOICE DETAIL] Invoices not in state, loading...');
+            console.log('[INVOICE DETAIL] Invoices not in state, loading...');
             await loadInvoices();
         }
         
-        console.log('📊 [INVOICE DETAIL] Total invoices in state:', state.invoices?.length);
+        console.log('[INVOICE DETAIL] Total invoices in state:', state.invoices?.length);
         console.log('🎯 [INVOICE DETAIL] Looking for invoice ID:', invoiceId, 'Type:', typeof invoiceId);
         
         // Find invoice - try both as number and string
@@ -8434,7 +8507,7 @@ function renderSettingsTabContent(tab) {
                 
                 <div class="setting-row">
                     <div class="setting-info">
-                        <div class="setting-label">🎨 Graffiti Mode</div>
+                        <div class="setting-label">Graffiti Mode</div>
                         <div class="setting-desc">Add a fun, vibrant graffiti background to the CRM</div>
                     </div>
                     <label class="toggle">
@@ -9088,7 +9161,7 @@ async function openDetailModal(type, id) {
         modal.classList.add('active');
         
     } else if (type === 'invoice') {
-        console.log('📄 Opening invoice modal for ID:', id);
+        console.log('Opening invoice modal for ID:', id);
         const invoice = state.invoices.find(i => i.id === id);
         if (!invoice) {
             console.error('❌ Invoice not found:', id);
@@ -9396,7 +9469,7 @@ ${invoice.status !== 'paid' ? `
                 ` : `
                     <div style="background: rgba(16,185,129,0.15); padding: 20px; border-radius: var(--radius-md); border: 2px solid var(--status-contacted); text-align: center; margin-top: 20px;">
                         <div style="font-size: 16px; font-weight: 700; color: var(--status-contacted); margin-bottom: 6px;">
-                            ✓ Invoice Paid
+                            Invoice Paid
                         </div>
                         <div style="font-size: 13px; color: var(--text-secondary);">
                             Paid on ${invoice.paid_at ? formatDate(invoice.paid_at) : 'N/A'}
@@ -11347,6 +11420,7 @@ function openExportModal() {
                 <option value="customers">All Customers</option>
                 <option value="invoices">All Invoices</option>
                 <option value="employees">All Employees</option>
+                <option value="email_analytics">Email Open Rates & Analytics</option>
                 <option value="all">Everything</option>
             </select>
         </div>
@@ -11373,57 +11447,239 @@ function openExportModal() {
     modal.classList.add('active');
 }
 
-function performExport() {
+async function performExport() {
     const exportType = document.getElementById('exportType').value;
     const exportFormat = document.getElementById('exportFormat').value;
     
-    let data = [];
-    let filename = '';
+    // Show loading state
+    const exportBtn = event.target;
+    const originalText = exportBtn.innerHTML;
+    exportBtn.disabled = true;
+    exportBtn.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;">Exporting...</span>';
     
-    switch (exportType) {
-        case 'leads':
-            data = state.leads;
-            filename = 'leads';
-            break;
-        case 'customers':
-            data = state.customers;
-            filename = 'customers';
-            break;
-        case 'invoices':
-            data = state.invoices;
-            filename = 'invoices';
-            break;
-        case 'employees':
-            data = state.employees;
-            filename = 'employees';
-            break;
-        case 'all':
-            data = {
-                leads: state.leads,
-                customers: state.customers,
-                invoices: state.invoices,
-                employees: state.employees
-            };
-            filename = 'all_data';
-            break;
-    }
-    
-    if (exportFormat === 'csv') {
-        if (exportType === 'all') {
-            // Export each type as separate CSV
-            downloadCSV(state.leads, 'leads');
-            downloadCSV(state.customers, 'customers');
-            downloadCSV(state.invoices, 'invoices');
-            downloadCSV(state.employees, 'employees');
-        } else {
-            downloadCSV(data, filename);
+    try {
+        let data = [];
+        let filename = '';
+        
+        if (exportType === 'email_analytics') {
+            // Fetch email analytics data from API
+            const response = await fetch(`${API_URL}/api/analytics/email-opens`, {
+                headers: {
+                    'Authorization': `Bearer ${getAuthToken()}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch email analytics');
+            }
+            
+            const analyticsData = await response.json();
+            
+            if (exportFormat === 'csv') {
+                // Export summary stats
+                const summaryData = [{
+                    'Total Emails Sent': analyticsData.stats.total_sent || 0,
+                    'Total Opened': analyticsData.stats.total_opened || 0,
+                    'Total Clicked': analyticsData.stats.total_clicked || 0,
+                    'Open Rate (%)': analyticsData.stats.open_rate || 0,
+                    'Click Rate (%)': analyticsData.stats.click_rate || 0,
+                    'Leads That Became Hot After Opening': analyticsData.stats.opened_and_became_hot || 0
+                }];
+                downloadCSV(summaryData, 'email_analytics_summary');
+                
+                // Export detailed email log
+                const detailedData = analyticsData.recent_opens.map(email => ({
+                    'Lead Name': email.lead_name || 'N/A',
+                    'Lead Email': email.lead_email || 'N/A',
+                    'Company': email.company || 'N/A',
+                    'Lead Temperature': email.lead_temperature || 'cold',
+                    'Email Subject': email.subject || 'N/A',
+                    'Sent At': email.sent_at ? new Date(email.sent_at).toLocaleString() : 'N/A',
+                    'Opened At': email.opened_at ? new Date(email.opened_at).toLocaleString() : 'Not Opened',
+                    'Clicked At': email.clicked_at ? new Date(email.clicked_at).toLocaleString() : 'Not Clicked',
+                    'Status': email.status || 'sent'
+                }));
+                downloadCSV(detailedData, 'email_analytics_detailed');
+                
+                // Export daily trends
+                const trendsData = analyticsData.daily_trends.map(day => ({
+                    'Date': day.date,
+                    'Emails Sent': day.sent || 0,
+                    'Emails Opened': day.opened || 0,
+                    'Open Rate (%)': day.sent > 0 ? ((day.opened / day.sent) * 100).toFixed(1) : 0
+                }));
+                downloadCSV(trendsData, 'email_analytics_daily_trends');
+                
+                showToast('Email analytics exported (3 files)', 'success');
+            } else {
+                // JSON export - include everything
+                downloadJSON(analyticsData, 'email_analytics_complete');
+                showToast('Email analytics exported', 'success');
+            }
+            
+            closeCreateModal();
+            exportBtn.disabled = false;
+            exportBtn.innerHTML = originalText;
+            return;
         }
-    } else {
-        downloadJSON(data, filename);
+        
+        // Handle other export types with proper formatting
+        switch (exportType) {
+            case 'leads':
+                // Format leads data with all relevant fields
+                data = state.leads.map(lead => ({
+                    'Name': lead.name || '',
+                    'Email': lead.email || '',
+                    'Phone': lead.phone || '',
+                    'Company': lead.company || '',
+                    'Project Type': lead.project_type || '',
+                    'Budget': lead.budget || '',
+                    'Status': lead.status || '',
+                    'Temperature': lead.lead_temperature || 'cold',
+                    'Is Customer': lead.is_customer ? 'Yes' : 'No',
+                    'Customer Status': lead.customer_status || 'N/A',
+                    'Unsubscribed (Dead Lead)': lead.unsubscribed ? 'Yes' : 'No',
+                    'Follow Up Count': lead.follow_up_count || 0,
+                    'Last Contact Date': lead.last_contact_date ? new Date(lead.last_contact_date).toLocaleDateString() : 'Never',
+                    'Last Engagement': lead.last_engagement_at ? new Date(lead.last_engagement_at).toLocaleDateString() : 'Never',
+                    'Became Hot At': lead.became_hot_at ? new Date(lead.became_hot_at).toLocaleDateString() : 'N/A',
+                    'Engagement Score': lead.engagement_score || 0,
+                    'Lifetime Value': lead.lifetime_value ? `$${parseFloat(lead.lifetime_value).toFixed(2)}` : '$0.00',
+                    'Last Payment Date': lead.last_payment_date ? new Date(lead.last_payment_date).toLocaleDateString() : 'N/A',
+                    'Assigned To': lead.employee_name || 'Unassigned',
+                    'Source': lead.source || '',
+                    'Created At': lead.created_at ? new Date(lead.created_at).toLocaleDateString() : '',
+                    'Updated At': lead.updated_at ? new Date(lead.updated_at).toLocaleDateString() : ''
+                }));
+                filename = 'leads';
+                break;
+            case 'customers':
+                // Format customers data with all relevant fields
+                data = state.customers.map(customer => ({
+                    'Name': customer.name || '',
+                    'Email': customer.email || '',
+                    'Phone': customer.phone || '',
+                    'Company': customer.company || '',
+                    'Customer Status': customer.customer_status || 'active',
+                    'Lifetime Value': customer.lifetime_value ? `$${parseFloat(customer.lifetime_value).toFixed(2)}` : '$0.00',
+                    'Last Payment Date': customer.last_payment_date ? new Date(customer.last_payment_date).toLocaleDateString() : 'N/A',
+                    'Project Type': customer.project_type || '',
+                    'Assigned To': customer.employee_name || 'Unassigned',
+                    'Created At': customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '',
+                    'Updated At': customer.updated_at ? new Date(customer.updated_at).toLocaleDateString() : ''
+                }));
+                filename = 'customers';
+                break;
+            case 'invoices':
+                // Format invoices data with all relevant fields
+                data = state.invoices.map(invoice => ({
+                    'Invoice Number': invoice.invoice_number || '',
+                    'Lead/Customer Name': invoice.lead_name || '',
+                    'Email': invoice.lead_email || '',
+                    'Status': invoice.status || '',
+                    'Total Amount': invoice.total_amount ? `$${parseFloat(invoice.total_amount).toFixed(2)}` : '$0.00',
+                    'Paid Amount': invoice.paid_amount ? `$${parseFloat(invoice.paid_amount).toFixed(2)}` : '$0.00',
+                    'Balance Due': invoice.total_amount && invoice.paid_amount ? 
+                        `$${(parseFloat(invoice.total_amount) - parseFloat(invoice.paid_amount)).toFixed(2)}` : '$0.00',
+                    'Payment Method': invoice.payment_method || 'N/A',
+                    'Payment Reference': invoice.payment_reference || 'N/A',
+                    'Due Date': invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '',
+                    'Issued At': invoice.issued_at ? new Date(invoice.issued_at).toLocaleDateString() : '',
+                    'Paid At': invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString() : 'Not Paid',
+                    'Notes': invoice.notes || ''
+                }));
+                filename = 'invoices';
+                break;
+            case 'employees':
+                // Format employees data with all relevant fields
+                data = state.employees.map(employee => ({
+                    'Name': employee.name || '',
+                    'Email': employee.email || '',
+                    'Role': employee.role || '',
+                    'Department': employee.department || '',
+                    'Active': employee.is_active ? 'Yes' : 'No',
+                    'Created At': employee.created_at ? new Date(employee.created_at).toLocaleDateString() : ''
+                }));
+                filename = 'employees';
+                break;
+            case 'all':
+                // Format all data for comprehensive export
+                if (exportFormat === 'csv') {
+                    // Export each type as separate CSV with formatted data
+                    const formattedLeads = state.leads.map(lead => ({
+                        'Name': lead.name || '',
+                        'Email': lead.email || '',
+                        'Phone': lead.phone || '',
+                        'Company': lead.company || '',
+                        'Project Type': lead.project_type || '',
+                        'Status': lead.status || '',
+                        'Temperature': lead.lead_temperature || 'cold',
+                        'Is Customer': lead.is_customer ? 'Yes' : 'No',
+                        'Unsubscribed': lead.unsubscribed ? 'Yes' : 'No',
+                        'Follow Up Count': lead.follow_up_count || 0,
+                        'Last Contact': lead.last_contact_date ? new Date(lead.last_contact_date).toLocaleDateString() : 'Never',
+                        'Lifetime Value': lead.lifetime_value ? `$${parseFloat(lead.lifetime_value).toFixed(2)}` : '$0.00'
+                    }));
+                    
+                    const formattedCustomers = state.customers.map(customer => ({
+                        'Name': customer.name || '',
+                        'Email': customer.email || '',
+                        'Company': customer.company || '',
+                        'Lifetime Value': customer.lifetime_value ? `$${parseFloat(customer.lifetime_value).toFixed(2)}` : '$0.00',
+                        'Status': customer.customer_status || 'active'
+                    }));
+                    
+                    const formattedInvoices = state.invoices.map(invoice => ({
+                        'Invoice Number': invoice.invoice_number || '',
+                        'Customer': invoice.lead_name || '',
+                        'Status': invoice.status || '',
+                        'Amount': invoice.total_amount ? `$${parseFloat(invoice.total_amount).toFixed(2)}` : '$0.00',
+                        'Paid': invoice.paid_at ? 'Yes' : 'No'
+                    }));
+                    
+                    const formattedEmployees = state.employees.map(employee => ({
+                        'Name': employee.name || '',
+                        'Email': employee.email || '',
+                        'Role': employee.role || ''
+                    }));
+                    
+                    downloadCSV(formattedLeads, 'leads');
+                    downloadCSV(formattedCustomers, 'customers');
+                    downloadCSV(formattedInvoices, 'invoices');
+                    downloadCSV(formattedEmployees, 'employees');
+                    
+                    closeCreateModal();
+                    showToast('Export completed successfully (4 files)', 'success');
+                    return;
+                } else {
+                    // JSON export - include everything
+                    data = {
+                        leads: state.leads,
+                        customers: state.customers,
+                        invoices: state.invoices,
+                        employees: state.employees
+                    };
+                    filename = 'all_data';
+                }
+                break;
+        }
+        
+        if (exportFormat === 'csv') {
+            downloadCSV(data, filename);
+        } else {
+            downloadJSON(data, filename);
+        }
+        
+        closeCreateModal();
+        showToast('Export completed successfully', 'success');
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast('Export failed: ' + error.message, 'error');
+    } finally {
+        exportBtn.disabled = false;
+        exportBtn.innerHTML = originalText;
     }
-    
-    closeCreateModal();
-    showToast('Export completed successfully', 'success');
 }
 
 function downloadCSV(data, filename) {
@@ -11712,7 +11968,7 @@ async function emailInvoiceToClient() {
         
         if (result.success) {
             // ✅ Success notification
-            showToast(`✓ Invoice successfully sent to ${invoice.customer_email}`, 'success');
+            showToast(`Invoice successfully sent to ${invoice.customer_email}`, 'success');
         } else {
             throw new Error(result.message || 'Failed to send email');
         }
@@ -11933,7 +12189,7 @@ function renderProjects(content) {
     
     try {
         const savedTimelines = JSON.parse(localStorage.getItem('projectTimelines') || '[]');
-        console.log('📊 Found timelines:', savedTimelines);
+        console.log('Found timelines:', savedTimelines);
         console.log('📦 servicePackages available:', typeof servicePackages, Object.keys(servicePackages).length);
         
         const htmlContent = `
@@ -12387,7 +12643,7 @@ function updatePackagesSummary() {
     
     if (hasPaidPackage) {
         summaryHtml += '<div style="font-size: 16px; font-weight: 700; color: var(--accent-amber);">Total Investment: $' + total.toLocaleString() + '</div>';
-        summaryHtml += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">💳 Payment due upon project completion</div>';
+        summaryHtml += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Payment due upon project completion</div>';
     } else if (hasFreePackage) {
         summaryHtml += '<div style="font-size: 16px; font-weight: 700; color: var(--status-contacted);">Total: FREE</div>';
         summaryHtml += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">🎁 No payment required for free packages</div>';
@@ -12969,7 +13225,7 @@ function openTimelinePreviewModal(timeline) {
                     <ul style="list-style: none; padding: 0; margin: 0;">
                         ${phase.tasks.map(task => `
                             <li style="padding: 6px 0; padding-left: 20px; position: relative; font-size: 13px; color: var(--text-secondary);">
-                                <span style="position: absolute; left: 0; top: 6px; color: var(--accent-amber);">✓</span>
+                                
                                 ${task}
                             </li>
                         `).join('')}
@@ -13083,7 +13339,7 @@ async function emailTimelineToClient() {
         const result = await response.json();
         
         if (response.ok && result.success) {
-            showToast(`✓ SLA emailed successfully to ${timeline.clientEmail}`, 'success');
+            showToast(`SLA emailed successfully to ${timeline.clientEmail}`, 'success');
         } else {
             throw new Error(result.message || 'Failed to send email');
         }
@@ -13207,7 +13463,7 @@ function generateTimelineHTML(timeline) {
         maintenanceHtml += '<div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-amber); margin-bottom: 12px;">Maintenance & Support Terms</div>';
         
         if (timeline.maintenanceIncluded === 'free') {
-            maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: var(--status-contacted); margin-bottom: 12px;">✓ FREE Maintenance';
+            maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: var(--status-contacted); margin-bottom: 12px;">FREE Maintenance';
             if (longestSupportPeriod > 0) {
                 maintenanceHtml += ' During ' + longestSupportPeriod + '-Day Support Period';
             }
@@ -13507,7 +13763,7 @@ function exportTimelineAsPDF() {
             
             phase.tasks.forEach(function(task) {
                 standardPhasesHtml += '<li style="padding: 8px 0; padding-left: 28px; position: relative; font-size: 12px; color: #333; line-height: 1.6;">';
-                standardPhasesHtml += '<span style="position: absolute; left: 8px; top: 8px; color: #D4A574; font-weight: bold;">✓</span>';
+                standardPhasesHtml += '';
                 standardPhasesHtml += task + '</li>';
             });
             
@@ -13599,7 +13855,7 @@ function exportTimelineAsPDF() {
             maintenanceHtml += '<div style="font-size: 13px; font-weight: 700; color: #D4A574; margin-bottom: 12px; text-transform: uppercase;">Maintenance & Support Terms</div>';
             
             if (timeline.maintenanceIncluded === 'free') {
-                maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: #000; margin-bottom: 10px;">✓ FREE Maintenance';
+                maintenanceHtml += '<div style="font-size: 14px; font-weight: 600; color: #000; margin-bottom: 10px;">FREE Maintenance';
                 if (longestSupportPeriod > 0) {
                     maintenanceHtml += ' During ' + longestSupportPeriod + '-Day Support Period';
                 }
@@ -16947,7 +17203,7 @@ function openCategoryEmailModal(category, categoryLabel, count) {
                 </div>
                 <div style="padding: 20px;">
                     <p style="margin-bottom: 20px; color: #666; padding: 12px; background: #f3f4f6; border-radius: 6px;">
-                        📧 This will send an email to <strong>${count} leads</strong> in this category.
+                        This will send an email to <strong>${count} leads</strong> in this category.
                     </p>
                     
                     <div style="margin-bottom: 16px;">
@@ -16960,7 +17216,7 @@ function openCategoryEmailModal(category, categoryLabel, count) {
                             <option value="valentinesSale">Valentine's Day Sale - 25% Off</option>
                             <option value="springSale">Spring Sale - 25% Off Spring Event</option>
                             <option value="valentines14Promo">Valentine's 14% Promo (Original)</option>
-                            <option value="zeroTransactionFees">💳 Zero Transaction Fees</option>
+                            <option value="zeroTransactionFees">Zero Transaction Fees</option>
                             <option value="proposal">Send Proposal</option>
                             <option value="thankYou">Thank You</option>
                             <option value="projectUpdate">Project Update</option>
@@ -17232,7 +17488,7 @@ function viewProjectTimeline(index) {
                     <ul style="list-style: none; padding: 0; margin: 0;">
                         ${phase.tasks.map(task => `
                             <li style="padding: 6px 0; padding-left: 20px; position: relative; font-size: 13px; color: var(--text-secondary);">
-                                <span style="position: absolute; left: 0; top: 6px; color: var(--accent-amber);">✓</span>
+                                
                                 ${task}
                             </li>
                         `).join('')}
@@ -17850,7 +18106,7 @@ function openTemperatureEmailModal(temperature, temperatureLabel, count) {
                             <option value="valentinesSale">Valentine's Day Sale - 25% Off</option>
                             <option value="springSale">Spring Sale - 25% Off Spring Event</option>
                             <option value="valentines14Promo">Valentine's 14% Promo (Original)</option>
-                            <option value="zeroTransactionFees">💳 Zero Transaction Fees</option>
+                            <option value="zeroTransactionFees">Zero Transaction Fees</option>
                             <option value="proposal">Send Proposal</option>
                             <option value="thankYou">Thank You</option>
                             <option value="projectUpdate">Project Update</option>
@@ -18052,7 +18308,7 @@ async function markFollowedUp(leadId) {
         const result = await response.json();
         console.log('[FOLLOW-UP] ✅ Lead updated successfully:', result);
         
-        showToast('✓ Marked as contacted', 'success');
+        showToast('Marked as contacted', 'success');
         
         updateBadges();
         const contentArea = document.getElementById('contentArea');
@@ -18165,7 +18421,7 @@ async function markFollowedUp(leadId) {
         const result = await response.json();
         console.log('[FOLLOW-UP] ✅ Lead updated successfully:', result);
         
-        showToast('✓ Marked as contacted', 'success');
+        showToast('Marked as contacted', 'success');
         
         updateBadges();
         const contentArea = document.getElementById('contentArea');

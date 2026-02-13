@@ -7078,27 +7078,31 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
     try {
         const { emailLogId } = req.params;
         
-        // ✅ FIX: Get the recipient email to check if it's your own email
-        const emailInfo = await pool.query(
-            `SELECT l.email, el.status FROM email_log el
+        // ✅ CRITICAL FIX: Check if this is YOUR email before tracking
+        const emailCheckResult = await pool.query(
+            `SELECT l.email as recipient_email, el.status as current_status
+             FROM email_log el
              LEFT JOIN leads l ON el.lead_id = l.id
              WHERE el.id = $1`,
             [emailLogId]
         );
         
-        if (emailInfo.rows.length === 0) {
+        if (emailCheckResult.rows.length === 0) {
             console.log(`[TRACKING] ⚠️  Email log ${emailLogId} not found`);
             const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
             res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
             return res.end(pixel);
         }
         
-        const recipientEmail = emailInfo.rows[0]?.email;
-        const yourEmail = process.env.EMAIL_USER; // Your sending email address
+        const recipientEmail = emailCheckResult.rows[0].recipient_email;
+        const yourSendingEmail = process.env.EMAIL_USER;
         
-        // ✅ FIX: Skip tracking if this is YOUR email (prevents false opens when you test)
-        if (recipientEmail && yourEmail && recipientEmail.toLowerCase() === yourEmail.toLowerCase()) {
-            console.log(`[TRACKING] ⏭️  SKIPPED - This is your own email (${recipientEmail}), not counting as opened`);
+        // ✅ CRITICAL: If this is YOUR email, DO NOT track it as opened!
+        // This prevents false opens when you test by emailing yourself
+        if (recipientEmail && yourSendingEmail && 
+            recipientEmail.toLowerCase().trim() === yourSendingEmail.toLowerCase().trim()) {
+            console.log(`[TRACKING] 🚫 BLOCKED - Not tracking your own email: ${recipientEmail}`);
+            console.log(`[TRACKING] This prevents false "opened" status when you test emails to yourself`);
             const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
             res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
             return res.end(pixel);
@@ -12396,16 +12400,17 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
         // Create email_log entry and send with tracking pixel
         await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML });
         
-        // ✅ FIX: Mark lead as "contacted" immediately when email is sent
+        // ✅ FIX: Mark lead as "contacted" IMMEDIATELY after sending email
+        // This makes the lead show up in the "Contacted" section right away
         await pool.query(
             `UPDATE leads 
              SET status = 'contacted',
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $1
-             AND status = 'new'`,  // Only update if currently "new"
+             AND status NOT IN ('dead', 'closed', 'lost')`,
             [leadId]
         );
-        console.log(`[FOLLOW-UP] ✅ Lead ${leadId} marked as "contacted" immediately after sending`);
+        console.log(`[FOLLOW-UP] ✅ Lead ${leadId} marked as "contacted" immediately`);
         
         // ✅ CRITICAL: Do NOT update last_contact_date here!
         // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:

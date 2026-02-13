@@ -8118,9 +8118,10 @@ async function loadEmailOpenReport() {
         const recentRows = (data.recent_emails || []).slice(0, 20).map(e => {
             const statusBadge = {
                 'opened': '<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Opened</span>',
+                'queued': '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Queued</span>',
                 'sent': '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Sent</span>',
                 'failed': '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Failed</span>',
-                'pending': '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Pending</span>'
+                'pending': '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Pending</span>'
             }[e.status] || '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">Unknown</span>';
             
             const isClicked = !!e.clicked_at;

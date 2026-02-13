@@ -727,8 +727,9 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         // Replace all diamondbackcoding.com links with tracked versions
         const websiteUrlPattern = /(https?:\/\/(?:www\.)?diamondbackcoding\.com[^"'\s]*)/gi;
         html = html.replace(websiteUrlPattern, (match) => {
-            // Don't double-wrap
+            // Don't double-wrap or wrap tracking URLs
             if (match.includes('/api/track/click/')) return match;
+            if (match.includes('/api/track/open/')) return match; // ← CRITICAL FIX: Don't wrap tracking pixels!
             return `${BASE_URL}/api/track/click/${leadId}?url=${encodeURIComponent(match)}`;
         });
     }
@@ -9595,6 +9596,25 @@ app.post('/api/admin/reset-all-leads', authenticateToken, async (req, res) => {
         
         const hotCount = parseInt(hotCountResult.rows[0].hot_count);
         
+        // Get list of lead IDs that will be reset
+        const leadIdsResult = await pool.query(
+            `SELECT id FROM leads 
+             WHERE is_customer = FALSE
+             AND status NOT IN ('dead', 'closed', 'lost')`,
+            []
+        );
+        
+        const leadIds = leadIdsResult.rows.map(r => r.id);
+        
+        // DELETE all email_log entries for these leads (so analytics reset too)
+        if (leadIds.length > 0) {
+            const deleteResult = await pool.query(
+                `DELETE FROM email_log WHERE lead_id = ANY($1::int[])`,
+                [leadIds]
+            );
+            console.log(`[ADMIN] 🗑️  Deleted ${deleteResult.rowCount} email_log records`);
+        }
+        
         // Reset ALL leads (hot + cold) but NOT dead/closed leads
         const result = await pool.query(
             `UPDATE leads 
@@ -9602,6 +9622,8 @@ app.post('/api/admin/reset-all-leads', authenticateToken, async (req, res) => {
                  last_contact_date = NULL,
                  lead_temperature = 'cold',
                  became_hot_at = NULL,
+                 engagement_score = 0,
+                 engagement_history = '[]'::jsonb,
                  updated_at = CURRENT_TIMESTAMP
              WHERE is_customer = FALSE
              AND status NOT IN ('dead', 'closed', 'lost')
@@ -9610,12 +9632,14 @@ app.post('/api/admin/reset-all-leads', authenticateToken, async (req, res) => {
         );
         
         console.log(`[ADMIN] ✅ Reset ${result.rows.length} leads to "Never Contacted" (including ${hotCount} hot leads)`);
+        console.log(`[ADMIN] ✅ Cleared all engagement scores and email history`);
         
         res.json({
             success: true,
-            message: `Successfully reset ${result.rows.length} leads (including ${hotCount} hot leads)`,
+            message: `Successfully reset ${result.rows.length} leads (including ${hotCount} hot leads) and cleared all email analytics`,
             count: result.rows.length,
             hotCount: hotCount,
+            emailsDeleted: leadIds.length > 0 ? true : false,
             leads: result.rows
         });
     } catch (error) {

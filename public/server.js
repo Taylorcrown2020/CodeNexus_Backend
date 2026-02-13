@@ -7078,7 +7078,7 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
     try {
         const { emailLogId } = req.params;
         
-        // ✅ CRITICAL FIX: Check if this is YOUR email before tracking
+        // Check if this is YOUR email (to prevent false tracking)
         const emailCheckResult = await pool.query(
             `SELECT l.email as recipient_email, el.status as current_status
              FROM email_log el
@@ -7088,7 +7088,7 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         );
         
         if (emailCheckResult.rows.length === 0) {
-            console.log(`[TRACKING] ⚠️  Email log ${emailLogId} not found`);
+            console.log(`[TRACKING] Email log ${emailLogId} not found`);
             const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
             res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
             return res.end(pixel);
@@ -7097,39 +7097,36 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         const recipientEmail = emailCheckResult.rows[0].recipient_email;
         const yourSendingEmail = process.env.EMAIL_USER;
         
-        // ✅ CRITICAL: If this is YOUR email, DO NOT track it as opened!
-        // This prevents false opens when you test by emailing yourself
+        // CRITICAL: Block tracking of your own email to prevent false opens
         if (recipientEmail && yourSendingEmail && 
             recipientEmail.toLowerCase().trim() === yourSendingEmail.toLowerCase().trim()) {
-            console.log(`[TRACKING] 🚫 BLOCKED - Not tracking your own email: ${recipientEmail}`);
-            console.log(`[TRACKING] This prevents false "opened" status when you test emails to yourself`);
+            console.log(`[TRACKING] BLOCKED - Your own email (${recipientEmail}), not tracking`);
             const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
             res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
             return res.end(pixel);
         }
         
-        // CRITICAL: When email is opened, this confirms delivery
-        // Update status from 'queued' → 'opened' OR 'sent' → 'opened'
+        // CRITICAL FIX: Set opened_at but DO NOT change status
+        // Status tracks delivery (sent/failed/queued)
+        // opened_at tracks if recipient opened it
         const result = await pool.query(
             `UPDATE email_log 
-             SET opened_at = CURRENT_TIMESTAMP, 
-                 status = 'opened'
+             SET opened_at = CURRENT_TIMESTAMP
              WHERE id = $1 
-             AND status IN ('queued', 'sent')  -- Accept both queued and sent
              AND opened_at IS NULL  -- Only track first open
              RETURNING lead_id, status`,
             [emailLogId]
         );
         
-        // If we updated a row, this means the email was actually delivered and opened
+        // If we updated a row, this means the email was opened
         if (result.rows.length > 0) {
             const leadId = result.rows[0].lead_id;
-            const previousStatus = result.rows[0].status;
+            const deliveryStatus = result.rows[0].status;
             
-            console.log(`[TRACKING] ✅ Email ${emailLogId} OPENED by lead ${leadId} (was: ${previousStatus})`);
+            console.log(`[TRACKING] ✅ Email ${emailLogId} OPENED by lead ${leadId} (delivery status: ${deliveryStatus})`);
             
             if (leadId) {
-                // NOW we can confidently advance the lead since we have proof of delivery
+                // Advance the lead since they opened the email
                 await pool.query(
                     `UPDATE leads 
                      SET last_contact_date = CURRENT_DATE, 
@@ -7139,14 +7136,13 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
                      AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
                     [leadId]
                 );
-                console.log(`[FOLLOW-UP] ✅ Lead ${leadId} advanced - email was ACTUALLY DELIVERED and opened`);
+                console.log(`[FOLLOW-UP] ✅ Lead ${leadId} advanced - email opened`);
                 
                 // Track engagement to make them hot
                 await trackEngagement(leadId, 'email_open', 5);
             }
         } else {
-            // Email wasn't in queued/sent status - either already opened, failed, or doesn't exist
-            console.log(`[TRACKING] ⚠️  Pixel request for email ${emailLogId} but email was not in 'queued' or 'sent' status`);
+            console.log(`[TRACKING] Email ${emailLogId} already tracked or not found`);
         }
     } catch (e) {
         console.error('[TRACKING] Error tracking email open:', e);
@@ -7163,37 +7159,37 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
 // ========================================
 app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
     try {
-        // Overall stats - Updated to show queued separately
+        // Overall stats - FIXED to use opened_at for opens, status for delivery
         const statsResult = await pool.query(`
             SELECT
                 COUNT(*) as total_emails,
-                COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened') as total_sent,
+                COUNT(*) FILTER (WHERE status IN ('sent', 'queued')) as total_sent,
                 COUNT(*) FILTER (WHERE status = 'queued') as total_queued,
                 COUNT(*) FILTER (WHERE status = 'failed') as total_failed,
                 COUNT(*) FILTER (WHERE status = 'pending') as total_pending,
-                COUNT(*) FILTER (WHERE status = 'opened') as total_opened,
+                COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as total_opened,
                 COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as total_clicked,
                 ROUND(
-                    COUNT(*) FILTER (WHERE status IN ('sent', 'opened', 'queued'))::NUMERIC /
+                    COUNT(*) FILTER (WHERE status IN ('sent', 'queued'))::NUMERIC /
                     NULLIF(COUNT(*), 0) * 100, 1
                 ) as delivery_rate,
                 ROUND(
-                    COUNT(*) FILTER (WHERE status = 'opened')::NUMERIC /
-                    NULLIF(COUNT(*) FILTER (WHERE status IN ('sent', 'opened', 'queued')), 0) * 100, 1
+                    COUNT(*) FILTER (WHERE opened_at IS NOT NULL)::NUMERIC /
+                    NULLIF(COUNT(*) FILTER (WHERE status IN ('sent', 'queued')), 0) * 100, 1
                 ) as open_rate,
                 ROUND(
                     COUNT(*) FILTER (WHERE clicked_at IS NOT NULL)::NUMERIC /
-                    NULLIF(COUNT(*) FILTER (WHERE status IN ('sent', 'opened', 'queued')), 0) * 100, 1
+                    NULLIF(COUNT(*) FILTER (WHERE status IN ('sent', 'queued')), 0) * 100, 1
                 ) as click_rate
             FROM email_log
         `);
 
-        // Leads that opened and became hot
+        // Leads that opened and became hot - FIXED to use opened_at
         const hotConversionsResult = await pool.query(`
             SELECT COUNT(DISTINCT el.lead_id) as opened_and_became_hot
             FROM email_log el
             JOIN leads l ON el.lead_id = l.id
-            WHERE el.status = 'opened'
+            WHERE el.opened_at IS NOT NULL
             AND l.lead_temperature = 'hot'
         `);
 
@@ -12400,8 +12396,7 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
         // Create email_log entry and send with tracking pixel
         await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML });
         
-        // ✅ FIX: Mark lead as "contacted" IMMEDIATELY after sending email
-        // This makes the lead show up in the "Contacted" section right away
+        // Mark lead as "contacted" immediately
         await pool.query(
             `UPDATE leads 
              SET status = 'contacted',
@@ -12410,12 +12405,12 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
              AND status NOT IN ('dead', 'closed', 'lost')`,
             [leadId]
         );
-        console.log(`[FOLLOW-UP] ✅ Lead ${leadId} marked as "contacted" immediately`);
+        console.log(`[FOLLOW-UP] Lead ${leadId} marked as "contacted" immediately`);
         
         // ✅ CRITICAL: Do NOT update last_contact_date here!
         // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:
-        // - Email opens → status becomes 'opened' → lead advances
-        // - 24 hours without bounce → status becomes 'sent' → lead advances
+        // - Email opens → lead advances (opened_at gets set)
+        // - 24 hours without bounce → status changes to 'sent' → lead advances
         // Updating immediately here was causing false hot leads!
         
         // Add note to lead

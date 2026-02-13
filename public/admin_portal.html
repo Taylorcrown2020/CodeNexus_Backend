@@ -8116,15 +8116,24 @@ async function loadEmailOpenReport() {
 
         // Use recent_emails instead of recent_opens (new field name)
         const recentRows = (data.recent_emails || []).slice(0, 20).map(e => {
-            const statusBadge = {
-                'opened': '<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Opened</span>',
-                'queued': '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Queued</span>',
-                'sent': '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Sent</span>',
-                'failed': '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Failed</span>',
-                'pending': '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Pending</span>'
+            // Delivery Status Badge
+            const deliveryBadge = {
+                'sent': '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>Sent</span>',
+                'queued': '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Queued</span>',
+                'failed': '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Failed</span>',
+                'pending': '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Pending</span>'
             }[e.status] || '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">Unknown</span>';
             
-            const isClicked = !!e.clicked_at;
+            // Opened Status Badge (separate from delivery)
+            const openedBadge = e.opened_at 
+                ? '<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Opened</span>'
+                : '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Not Opened</span>';
+            
+            // Clicked Status Badge
+            const clickedBadge = e.clicked_at
+                ? '<span style="background:#ede9fe;color:#7c3aed;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3"/></svg>Clicked</span>'
+                : '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">—</span>';
+            
             const isHot = e.lead_temperature === 'hot';
             
             return `<tr>
@@ -8132,13 +8141,9 @@ async function loadEmailOpenReport() {
                 <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted); font-size:12px;">${e.lead_email || '—'}</td>
                 <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${e.subject || '—'}</td>
                 <td>${e.sent_at ? formatDate(e.sent_at) : (e.status === 'pending' ? 'Pending' : '—')}</td>
-                <td>${statusBadge}</td>
-                <td>
-                    ${isClicked
-                        ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Clicked</span>`
-                        : `<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">—</span>`
-                    }
-                </td>
+                <td>${deliveryBadge}</td>
+                <td>${openedBadge}</td>
+                <td>${clickedBadge}</td>
                 <td>${isHot ? '<span style="background:#fef2f2;color:#ef4444;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">HOT</span>' : '<span style="color:var(--text-muted);font-size:12px;">Cold</span>'}</td>
                 ${e.status === 'failed' && e.error_message ? `<td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#dc2626; font-size:11px;">${e.error_message}</td>` : '<td>—</td>'}
             </tr>`;
@@ -8176,13 +8181,14 @@ async function loadEmailOpenReport() {
                             <th>Email</th>
                             <th>Subject</th>
                             <th>Sent</th>
-                            <th>Status</th>
+                            <th>Delivery</th>
+                            <th>Opened</th>
                             <th>Clicked</th>
                             <th>Temp</th>
                             <th>Error</th>
                         </tr>
                     </thead>
-                    <tbody>${recentRows || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">No emails recorded yet</td></tr>'}</tbody>
+                    <tbody>${recentRows || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">No emails recorded yet</td></tr>'}</tbody>
                 </table>
             </div>
             `}
@@ -17554,7 +17560,7 @@ function refreshFollowUps() {
 
 // Reset all COLD leads back to "Never Contacted" state
 async function resetColdLeadsToNeverContacted() {
-    if (!confirm('⚠️ This will reset ALL COLD LEADS back to "Never Contacted" state.\n\nThis means:\n- follow_up_count will be set to 0\n- last_contact_date will be cleared\n- Hot leads and Dead leads will NOT be affected\n\nAre you sure you want to continue?')) {
+    if (!confirm('⚠️ This will reset ALL COLD LEADS back to "Never Contacted" state.\n\nThis means:\n- follow_up_count will be set to 0\n- last_contact_date will be cleared\n- status will be reset to new\n- Hot leads and Dead leads will NOT be affected\n\nAre you sure you want to continue?')) {
         return;
     }
     
@@ -17571,7 +17577,17 @@ async function resetColdLeadsToNeverContacted() {
         
         if (data.success) {
             showToast(`✅ Reset ${data.count} cold leads to "Never Contacted"`, 'success');
-            refreshFollowUps(); // Reload the follow-ups tab
+            
+            // Real-time refresh - reload ALL data immediately
+            await loadLeads();
+            await loadCustomers();
+            await loadInvoices();
+            await updateBadges();
+            
+            // Refresh the current view
+            if (state.currentSection === 'followups') {
+                await renderFollowUps(document.getElementById('content'));
+            }
         } else {
             showToast(`❌ Error: ${data.message}`, 'error');
         }
@@ -17582,7 +17598,7 @@ async function resetColdLeadsToNeverContacted() {
 }
 
 async function resetAllLeadsToNeverContacted() {
-    if (!confirm('🚨 CRITICAL WARNING 🚨\n\nThis will reset ALL LEADS (both HOT and COLD) back to "Never Contacted" state.\n\nThis means:\n- follow_up_count will be set to 0\n- last_contact_date will be cleared\n- lead_temperature will be reset to cold\n- ALL leads except Dead/Closed will be affected\n\nTHIS CANNOT BE UNDONE!\n\nAre you ABSOLUTELY SURE you want to continue?')) {
+    if (!confirm('🚨 CRITICAL WARNING 🚨\n\nThis will reset ALL LEADS (both HOT and COLD) back to "Never Contacted" state.\n\nThis means:\n- follow_up_count will be set to 0\n- last_contact_date will be cleared\n- lead_temperature will be reset to cold\n- status will be reset to new\n- ALL leads except Dead/Closed will be affected\n\nTHIS CANNOT BE UNDONE!\n\nAre you ABSOLUTELY SURE you want to continue?')) {
         return;
     }
     
@@ -17604,7 +17620,17 @@ async function resetAllLeadsToNeverContacted() {
         
         if (data.success) {
             showToast(`✅ Reset ${data.count} leads to "Never Contacted" (including ${data.hotCount} hot leads)`, 'success');
-            refreshFollowUps(); // Reload the follow-ups tab
+            
+            // Real-time refresh - reload ALL data immediately
+            await loadLeads();
+            await loadCustomers();
+            await loadInvoices();
+            await updateBadges();
+            
+            // Refresh the current view
+            if (state.currentSection === 'followups') {
+                await renderFollowUps(document.getElementById('content'));
+            }
         } else {
             showToast(`❌ Error: ${data.message}`, 'error');
         }

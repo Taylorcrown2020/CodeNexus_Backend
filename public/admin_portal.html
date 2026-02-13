@@ -17861,35 +17861,45 @@ async function renderFollowUps(content) {
         const token = state.authToken || localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-        // Fetch hot/cold leads and dead leads in parallel
-        const [tempResponse, deadResponse] = await Promise.all([
+        // Fetch leads due for follow-up AND all leads to get total counts
+        const [tempResponse, deadResponse, allLeadsResponse] = await Promise.all([
             fetch(`${API_URL}/api/follow-ups/by-temperature`, { headers }),
-            fetch(`${API_URL}/api/follow-ups/dead-leads`, { headers })
+            fetch(`${API_URL}/api/follow-ups/dead-leads`, { headers }),
+            fetch(`${API_URL}/api/leads`, { headers })
         ]);
         
         if (!tempResponse.ok) throw new Error(`API error: ${tempResponse.status}`);
         
         const data = await tempResponse.json();
-        const hotLeads = data.data.hot || [];
-        const coldLeads = data.data.cold || [];
+        const hotLeadsDueNow = data.data.hot || [];
+        const coldLeadsDueNow = data.data.cold || [];
         const deadLeads = deadResponse.ok ? ((await deadResponse.json()).leads || []) : [];
         
-        console.log(`[FOLLOW-UPS] ✅ Loaded ${hotLeads.length} hot, ${coldLeads.length} cold, ${deadLeads.length} dead leads`);
-        console.log(`[FOLLOW-UPS] 🔥 HOT LEADS:`, hotLeads.map(l => ({ id: l.id, name: l.name, temp: l.lead_temperature, score: l.engagement_score, lastContact: l.last_contact_date })));
-        console.log(`[FOLLOW-UPS] ❄️  COLD LEADS:`, coldLeads.map(l => ({ id: l.id, name: l.name, temp: l.lead_temperature, score: l.engagement_score, lastContact: l.last_contact_date })));
+        // Get TOTAL counts from all leads
+        let totalHotCount = 0;
+        let totalColdCount = 0;
+        if (allLeadsResponse.ok) {
+            const allLeadsData = await allLeadsResponse.json();
+            const allLeads = allLeadsData.leads || [];
+            totalHotCount = allLeads.filter(l => !l.is_customer && !l.unsubscribed && l.lead_temperature === 'hot').length;
+            totalColdCount = allLeads.filter(l => !l.is_customer && !l.unsubscribed && l.lead_temperature !== 'hot').length;
+        }
+        
+        console.log(`[FOLLOW-UPS] ✅ Due now: ${hotLeadsDueNow.length} hot, ${coldLeadsDueNow.length} cold`);
+        console.log(`[FOLLOW-UPS] ✅ Total: ${totalHotCount} hot, ${totalColdCount} cold, ${deadLeads.length} dead leads`);
         
         // Store in state for tab switching
-        state.hotLeads = hotLeads;
-        state.coldLeads = coldLeads;
+        state.hotLeads = hotLeadsDueNow;
+        state.coldLeads = coldLeadsDueNow;
         state.deadLeads = deadLeads;
         state.currentFollowUpTab = state.currentFollowUpTab || 'cold';
         
-        // Build the page HTML with tabs
+        // Build the page HTML with tabs - use TOTAL counts in badges
         content.innerHTML = `
             <div class="page-header" style="margin-bottom: 24px;">
                 <div>
                     <h2>Follow Ups</h2>
-                    <p class="section-subtitle">Manage leads by engagement level</p>
+                    <p class="section-subtitle">Manage leads by engagement level - showing leads due for follow-up</p>
                 </div>
             </div>
 
@@ -17901,7 +17911,8 @@ async function renderFollowUps(content) {
                            border: none; border-bottom: 3px solid ${state.currentFollowUpTab === 'cold' ? '#3b82f6' : 'transparent'}; 
                            color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
                     Cold Leads
-                    <span style="display: inline-block; margin-left: 8px; background: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${coldLeads.length}</span>
+                    <span style="display: inline-block; margin-left: 8px; background: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${totalColdCount}</span>
+                    <span style="display: inline-block; margin-left: 4px; font-size: 10px; color: var(--text-muted);">(${coldLeadsDueNow.length} due)</span>
                 </button>
                 <button id="tabHot" onclick="switchFollowUpTemperatureTab('hot')" 
                     class="temperature-tab ${state.currentFollowUpTab === 'hot' ? 'active' : ''}"
@@ -17909,7 +17920,8 @@ async function renderFollowUps(content) {
                            border: none; border-bottom: 3px solid ${state.currentFollowUpTab === 'hot' ? '#ef4444' : 'transparent'}; 
                            color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
                     Hot Leads
-                    <span style="display: inline-block; margin-left: 8px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${hotLeads.length}</span>
+                    <span style="display: inline-block; margin-left: 8px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${totalHotCount}</span>
+                    <span style="display: inline-block; margin-left: 4px; font-size: 10px; color: var(--text-muted);">(${hotLeadsDueNow.length} due)</span>
                 </button>
                 <button id="tabDead" onclick="switchFollowUpTemperatureTab('dead')" 
                     class="temperature-tab ${state.currentFollowUpTab === 'dead' ? 'active' : ''}"
@@ -17923,7 +17935,7 @@ async function renderFollowUps(content) {
 
             <!-- Tab Content Container -->
             <div id="followUpTabContent">
-                ${buildFollowUpTabContent(state.currentFollowUpTab, hotLeads, coldLeads, deadLeads)}
+                ${buildFollowUpTabContent(state.currentFollowUpTab, hotLeadsDueNow, coldLeadsDueNow, deadLeads)}
             </div>
         `;
         

@@ -6727,9 +6727,9 @@ app.get('/api/analytics/funnel', authenticateToken, async (req, res) => {
     try {
         const funnel = await pool.query(`
             SELECT 
-                COUNT(*) FILTER (WHERE status = 'new') as new_leads,
-                COUNT(*) FILTER (WHERE status = 'contacted') as contacted,
-                COUNT(*) FILTER (WHERE status = 'pending') as pending,
+                COUNT(*) FILTER (WHERE status = 'new' AND is_customer = FALSE) as new_leads,
+                COUNT(*) FILTER (WHERE status = 'contacted' AND is_customer = FALSE) as contacted,
+                COUNT(*) FILTER (WHERE status = 'pending' AND is_customer = FALSE) as pending,
                 COUNT(*) FILTER (WHERE is_customer = true) as converted,
                 ROUND(
                     COUNT(*) FILTER (WHERE is_customer = true)::numeric / 
@@ -6737,7 +6737,6 @@ app.get('/api/analytics/funnel', authenticateToken, async (req, res) => {
                     2
                 ) as conversion_rate
             FROM leads
-            WHERE created_at >= NOW() - INTERVAL '90 days'
         `);
         
         res.json({
@@ -6796,7 +6795,7 @@ app.get('/api/analytics/sources', authenticateToken, async (req, res) => {
                     2
                 ) as conversion_rate
             FROM leads
-            WHERE created_at >= NOW() - INTERVAL '90 days'
+            WHERE is_customer = FALSE
             GROUP BY source
             ORDER BY count DESC
         `);

@@ -598,7 +598,7 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
 // Validate email domain has mail servers BEFORE sending
 async function validateEmailDomain(email) {
     try {
-        // Basic format check
+        // Basic format check only - DNS checks can cause false failures
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             return { valid: false, reason: 'Invalid email format' };
@@ -607,7 +607,7 @@ async function validateEmailDomain(email) {
         // Extract domain
         const domain = email.split('@')[1].toLowerCase();
         
-        // Common typo detection
+        // Common typo detection only - no DNS lookups
         const commonTypos = {
             'gmial.com': 'gmail.com',
             'gmai.com': 'gmail.com',
@@ -626,24 +626,11 @@ async function validateEmailDomain(email) {
             };
         }
         
-        // Check if domain has MX records (mail servers)
-        try {
-            const mxRecords = await dns.resolveMx(domain);
-            if (!mxRecords || mxRecords.length === 0) {
-                return { valid: false, reason: 'Domain has no mail servers (no MX records)' };
-            }
-            
-            console.log(`[EMAIL-VALIDATION] ✅ Domain ${domain} has ${mxRecords.length} mail server(s)`);
-            return { valid: true, mxRecords };
-            
-        } catch (dnsError) {
-            if (dnsError.code === 'ENOTFOUND' || dnsError.code === 'ENODATA') {
-                return { valid: false, reason: `Domain '${domain}' does not exist` };
-            }
-            // DNS lookup failed for other reasons - log but assume valid to avoid false negatives
-            console.warn(`[EMAIL-VALIDATION] ⚠️  Could not verify domain ${domain}:`, dnsError.message);
-            return { valid: true, warning: `Could not verify domain: ${dnsError.message}` };
-        }
+        // Don't do DNS validation - it causes too many false failures
+        // Let the mail server handle validation instead
+        console.log(`[EMAIL-VALIDATION] ✅ Email format valid: ${email}`);
+        return { valid: true };
+        
     } catch (error) {
         console.error('[EMAIL-VALIDATION] Error validating email:', error);
         // On unexpected errors, assume valid to avoid blocking legitimate emails
@@ -746,7 +733,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         
         if (emailSettings.useBrevo && emailSettings.brevoApiKey) {
             console.log('[EMAIL] Sending via Brevo...');
-            const brevoResponse = await sendViaBrevo(
+            await sendViaBrevo(
                 emailSettings.brevoApiKey,
                 emailSettings.brevoSenderEmail || process.env.EMAIL_USER,
                 emailSettings.brevoSenderName || 'Diamondback Coding',
@@ -754,13 +741,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 subject,
                 html
             );
-            
-            // Verify Brevo actually accepted it
-            if (!brevoResponse || !brevoResponse.messageId) {
-                throw new Error('Brevo did not return a valid messageId');
-            }
-            
-            console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to} (messageId: ${brevoResponse.messageId})`);
+            console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to}`);
         } else {
             console.log('[EMAIL] Sending via Nodemailer...');
             const info = await transporter.sendMail({
@@ -778,43 +759,19 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 throw new Error(`Email rejected by mail server: ${info.rejected.join(', ')}`);
             }
             
-            // Additional check: verify we got a messageId
-            if (!info.messageId) {
-                throw new Error('Nodemailer did not return a messageId - send may have failed');
-            }
-            
             console.log(`[EMAIL] ✅ Email accepted by mail server for ${to}`);
         }
         
-        // 7. CRITICAL: Only mark as 'sent' if we successfully got here without errors
-        // Double-check the email_log still exists and isn't already marked failed
+        // 7. Mark as 'sent' since the mail server accepted it
         if (emailLogId) {
-            const logCheck = await pool.query(
-                'SELECT status FROM email_log WHERE id = $1',
+            await pool.query(
+                `UPDATE email_log 
+                 SET status = 'sent', 
+                     sent_at = CURRENT_TIMESTAMP 
+                 WHERE id = $1`,
                 [emailLogId]
             );
-            
-            if (logCheck.rows.length === 0) {
-                console.error(`[EMAIL] ERROR: email_log ${emailLogId} disappeared!`);
-                throw new Error('Email log entry not found');
-            }
-            
-            const currentStatus = logCheck.rows[0].status;
-            
-            // If it's already failed (from validation), don't override it
-            if (currentStatus === 'failed') {
-                console.log(`[EMAIL] Email_log ${emailLogId} already marked as FAILED - not overriding`);
-            } else {
-                // Mark as SENT only if mail server truly accepted it
-                await pool.query(
-                    `UPDATE email_log 
-                     SET status = 'sent', 
-                         sent_at = CURRENT_TIMESTAMP 
-                     WHERE id = $1`,
-                    [emailLogId]
-                );
-                console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as SENT (mail server accepted)`);
-            }
+            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as SENT`);
         }
         
         // 8. Update follow-up tracking since email was successfully sent

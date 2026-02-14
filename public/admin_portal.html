@@ -4330,669 +4330,19 @@ function makeTablesResponsive() {
 // ========================================
 
 servicePackages = {
-    // FREE WEBSITE PACKAGES (No free maintenance, very basic SEO)
-    'free-basic': {
-        name: 'Free Basic Website',
-        description: 'Entry-level website for startups and small businesses',
-        price: 0,
-        duration: '1-2 weeks',
-        isFree: true,
-        phases: [
-            {
-                name: 'Quick Setup & Planning',
-                duration: '1-2 days',
-                tasks: [
-                    'Brief consultation call (30 minutes)',
-                    'Basic requirements gathering',
-                    'Template selection',
-                    'Content outline approval'
-                ]
-            },
-            {
-                name: 'Development & Setup',
-                duration: '3-5 days',
-                tasks: [
-                    'Up to 5 basic pages (Home, About, Services, Contact, One custom page)',
-                    'Template-based design',
-                    'Mobile-responsive layout',
-                    'Basic contact form',
-                    'Very basic on-page SEO (title tags, meta descriptions only)'
-                ]
-            },
-            {
-                name: 'Launch',
-                duration: '1-2 days',
-                tasks: [
-                    'Basic testing',
-                    'Domain connection assistance',
-                    'Free subdomain deployment (yourname.render.app)',
-                    'Basic Google Analytics setup',
-                    'Quick 15-minute walkthrough'
-                ]
-            }
-        ],
-        features: [
-            'Up to 5 basic pages',
-            'Template-based design',
-            'Mobile responsive',
-            'Basic contact form',
-            'Very basic SEO (titles & meta only)',
-            'Free subdomain hosting',
-            'Google Analytics',
-            'NO free maintenance period',
-            'NO admin dashboard',
-            'NO CRM features',
-            'NO custom integrations'
-        ],
-        notes: 'Perfect for getting online quickly. Upgrade to paid packages for advanced features. Monthly maintenance available for additional fee.'
-    },
-    
-    'free-portfolio': {
-        name: 'Free Portfolio Website',
-        description: 'Showcase your work with a simple portfolio site',
-        price: 0,
-        duration: '1-2 weeks',
-        isFree: true,
-        phases: [
-            {
-                name: 'Portfolio Planning',
-                duration: '1-2 days',
-                tasks: [
-                    'Brief consultation (30 minutes)',
-                    'Portfolio structure planning',
-                    'Gallery/project showcase setup',
-                    'Content requirements list'
-                ]
-            },
-            {
-                name: 'Development',
-                duration: '4-6 days',
-                tasks: [
-                    'Up to 6 pages (Home, About, Portfolio/Gallery, Services, Contact, Resume/Bio)',
-                    'Portfolio/gallery template setup',
-                    'Project showcase sections',
-                    'Image optimization',
-                    'Basic contact form',
-                    'Very basic SEO'
-                ]
-            },
-            {
-                name: 'Launch',
-                duration: '1-2 days',
-                tasks: [
-                    'Testing across devices',
-                    'Free subdomain deployment',
-                    'Basic analytics setup',
-                    '15-minute training on updating portfolio'
-                ]
-            }
-        ],
-        features: [
-            'Up to 6 pages',
-            'Portfolio/gallery showcase',
-            'Project display sections',
-            'Template-based design',
-            'Mobile responsive',
-            'Image optimization',
-            'Basic contact form',
-            'Very basic SEO',
-            'Free subdomain hosting',
-            'NO free maintenance',
-            'NO custom features'
-        ],
-        notes: 'Great for freelancers, artists, photographers. Monthly maintenance available for fee.'
-    },
-    
-    'free-business-card': {
-        name: 'Free Business Card Website',
-        description: 'Simple one-page site with essential business info',
-        price: 0,
-        duration: '3-5 days',
-        isFree: true,
-        phases: [
-            {
-                name: 'Setup',
-                duration: '1 day',
-                tasks: [
-                    'Quick 20-minute consultation',
-                    'Business info collection',
-                    'Single-page layout selection'
-                ]
-            },
-            {
-                name: 'Development',
-                duration: '2-3 days',
-                tasks: [
-                    'Single-page website (all content on one page)',
-                    'Sections: Header, About, Services, Contact',
-                    'Template-based modern design',
-                    'Mobile responsive',
-                    'Click-to-call & email buttons',
-                    'Google Maps embed',
-                    'Very basic SEO'
-                ]
-            },
-            {
-                name: 'Launch',
-                duration: '1 day',
-                tasks: [
-                    'Quick testing',
-                    'Free subdomain deployment',
-                    'Basic analytics',
-                    'Quick handoff'
-                ]
-            }
-        ],
-        features: [
-            'Single-page design',
-            'Essential business sections',
-            'Click-to-call/email buttons',
-            'Google Maps integration',
-            'Template-based design',
-            'Mobile responsive',
-            'Very basic SEO',
-            'Free subdomain hosting',
-            'NO multi-page navigation',
-            'NO free maintenance',
-            'NO custom features'
-        ],
-        notes: 'Perfect for establishing basic online presence quickly. Monthly maintenance available for fee.'
-    },
-    
-    'free-landing-page': {
-        name: 'Free Landing Page',
-        description: 'Single focused landing page for campaigns or lead generation',
-        price: 0,
-        duration: '3-5 days',
-        isFree: true,
-        phases: [
-            {
-                name: 'Campaign Planning',
-                duration: '1 day',
-                tasks: [
-                    '20-minute strategy call',
-                    'Campaign goal identification',
-                    'Call-to-action planning',
-                    'Lead capture form setup'
-                ]
-            },
-            {
-                name: 'Development',
-                duration: '2-3 days',
-                tasks: [
-                    'Single focused landing page',
-                    'Conversion-focused template design',
-                    'Lead capture form',
-                    'Call-to-action buttons',
-                    'Mobile responsive',
-                    'Very basic SEO for target keyword'
-                ]
-            },
-            {
-                name: 'Launch',
-                duration: '1 day',
-                tasks: [
-                    'Form testing',
-                    'Free subdomain deployment',
-                    'Basic conversion tracking',
-                    'Quick handoff'
-                ]
-            }
-        ],
-        features: [
-            'Single landing page',
-            'Conversion-focused design',
-            'Lead capture form',
-            'Mobile responsive',
-            'Call-to-action optimization',
-            'Very basic SEO',
-            'Free subdomain hosting',
-            'Basic conversion tracking',
-            'NO multi-page site',
-            'NO free maintenance',
-            'NO advanced integrations'
-        ],
-        notes: 'Ideal for campaigns, promotions, or testing ideas. Monthly maintenance available for fee.'
-    },
-    
-    'starter-website': {
-        name: 'Starter Package - $1,499',
-        description: 'Perfect for small businesses getting started online',
-        price: 1499,
-        duration: '2-3 weeks',
-        phases: [
-            {
-                name: 'Discovery & Planning',
-                duration: '2-3 days',
-                tasks: [
-                    'Initial consultation and requirements gathering',
-                    'Brand guidelines review',
-                    'Content strategy planning',
-                    'Wireframe approval',
-                    'Contract execution and 50% deposit collection'
-                ]
-            },
-            {
-                name: 'Design & Development',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Up to 15 custom-designed pages',
-                    'Modern, professional UI design',
-                    'Mobile-responsive layout implementation',
-                    'Contact form integration',
-                    'Basic SEO setup',
-                    'Performance-optimized frontend'
-                ]
-            },
-            {
-                name: 'User System & Database',
-                duration: '3-4 days',
-                tasks: [
-                    'Custom basic user login & authentication',
-                    'Secure admin dashboard access',
-                    'PostgreSQL database setup',
-                    'Admin panel for managing leads & submissions',
-                    'Role-ready structure for future expansion'
-                ]
-            },
-            {
-                name: 'Lead Capture & CRM',
-                duration: '2-3 days',
-                tasks: [
-                    'Contact forms with lead capture',
-                    'Leads stored securely in database',
-                    'Basic CRM setup (leads & contacts)',
-                    'Status tracking for new & contacted leads'
-                ]
-            },
-            {
-                name: 'Optional Integrations',
-                duration: '1-2 days',
-                tasks: [
-                    'Email automation integration (if requested)',
-                    'SMS marketing automation (if requested)',
-                    'Stripe or Shopify billing integration (if requested)',
-                    'E-commerce ready with cart system (if requested)',
-                    'Form-triggered notifications'
-                ]
-            },
-            {
-                name: 'Testing & Launch',
-                duration: '2-3 days',
-                tasks: [
-                    'Cross-browser testing',
-                    'Mobile responsiveness check',
-                    'Client review and revisions',
-                    'Domain setup and deployment to Render',
-                    'SSL certificate installation',
-                    'Google Analytics setup',
-                    'Final 50% payment collection',
-                    '90 days of free add-ons begins',
-                    '90 days of free priority support begins'
-                ]
-            }
-        ],
-        features: [
-            'Up to 15 custom-designed pages',
-            'Mobile responsive design',
-            'Contact form integration',
-            'Basic SEO optimization',
-            'Custom user login & authentication',
-            'Secure admin dashboard',
-            'PostgreSQL database',
-            'Basic CRM for leads',
-            'Render deployment',
-            'Google Analytics setup',
-            '90 days of free add-ons',
-            '90 days of free priority support',
-            'Optional: Email/SMS automation',
-            'Optional: Stripe/Shopify integration',
-            'Optional: E-commerce cart system'
-        ],
-        notes: 'Some features may require third-party services or usage-based fees (SMS, email, payment processing)'
-    },
-    
-    'professional-website': {
-        name: 'Professional Package - $2,999',
-        description: 'Comprehensive solution for growing businesses',
-        price: 2999,
-        duration: '4-6 weeks',
-        phases: [
-            {
-                name: 'Strategy & Planning',
-                duration: '1 week',
-                tasks: [
-                    'In-depth business analysis',
-                    'Competitor research',
-                    'User persona development',
-                    'Site architecture planning (up to 25 pages)',
-                    'Content strategy development',
-                    'Contract execution and 50% deposit collection'
-                ]
-            },
-            {
-                name: 'Design Phase',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Custom design mockups (2-3 concepts)',
-                    'Design revision rounds',
-                    'UI/UX optimization',
-                    'Brand integration',
-                    'Design system creation',
-                    'Mobile-responsive layouts'
-                ]
-            },
-            {
-                name: 'Development Phase',
-                duration: '2-3 weeks',
-                tasks: [
-                    'Up to 25 custom-designed pages',
-                    'Frontend development',
-                    'Advanced CMS integration',
-                    'Custom user logins & account management',
-                    'Expanded admin dashboard functionality',
-                    'Blog/news section development',
-                    'Advanced contact forms',
-                    'Newsletter integration'
-                ]
-            },
-            {
-                name: 'Advanced Features',
-                duration: '3-5 days',
-                tasks: [
-                    'Advanced CRM setup (leads & contacts)',
-                    'Lead status pipelines & categorization',
-                    'Admin-side lead notes & tracking',
-                    'E-commerce ready (up to 10 products)',
-                    'Advanced business analytics & KPIs',
-                    'Custom data tracking for user activity'
-                ]
-            },
-            {
-                name: 'SEO & Performance',
-                duration: '2-3 days',
-                tasks: [
-                    'Advanced SEO implementation',
-                    'Performance optimization',
-                    'Security hardening',
-                    'Google Analytics & Search Console setup',
-                    'Social media integration',
-                    'Live chat integration'
-                ]
-            },
-            {
-                name: 'Testing & Launch',
-                duration: '3-5 days',
-                tasks: [
-                    'Comprehensive QA testing',
-                    'Security audit',
-                    'Client training sessions',
-                    'Staged deployment to Render',
-                    'Post-launch monitoring',
-                    'Final 50% payment collection',
-                    '120 days of free add-ons begins',
-                    '120 days of free priority support begins'
-                ]
-            }
-        ],
-        features: [
-            'Up to 25 custom-designed pages',
-            'Custom design (unlimited revisions)',
-            'Advanced CMS integration',
-            'Blog/news section',
-            'Advanced contact forms',
-            'Newsletter integration',
-            'E-commerce ready (up to 10 products)',
-            'Advanced SEO package',
-            'Social media integration',
-            'Google Analytics & Search Console',
-            'Live chat integration',
-            'Advanced CRM with pipelines',
-            'Custom analytics & KPIs',
-            'Performance optimization',
-            'Security hardening',
-            '120 days of free add-ons',
-            '120 days of free priority support'
-        ],
-        notes: 'Some features may require third-party services or usage-based fees'
-    },
-    
-    'enterprise-website': {
-        name: 'Enterprise Package - Custom Pricing',
-        description: 'Full-scale solution for established businesses',
-        price: 0, // Custom pricing
-        duration: '8-12 weeks',
-        phases: [
-            {
-                name: 'Discovery & Strategy',
-                duration: '2 weeks',
-                tasks: [
-                    'Stakeholder interviews',
-                    'Comprehensive market research',
-                    'User journey mapping',
-                    'Technical requirements analysis',
-                    'Information architecture planning',
-                    'Content audit and strategy',
-                    'Conversion optimization planning',
-                    'Contract execution and initial payment'
-                ]
-            },
-            {
-                name: 'Design & Prototyping',
-                duration: '3-4 weeks',
-                tasks: [
-                    'Multiple design concepts',
-                    'Interactive prototypes',
-                    'User testing and feedback',
-                    'Accessibility compliance review',
-                    'Design system development',
-                    'Brand guidelines integration'
-                ]
-            },
-            {
-                name: 'Development & Integration',
-                duration: '4-6 weeks',
-                tasks: [
-                    'Unlimited custom-designed pages',
-                    'Custom backend development',
-                    'API integrations',
-                    'Third-party service connections',
-                    'Database architecture',
-                    'Advanced CMS customization',
-                    'E-commerce implementation (unlimited products)',
-                    'User portal/membership system',
-                    'Multi-language support',
-                    'Security implementation'
-                ]
-            },
-            {
-                name: 'Advanced Systems',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Advanced analytics and reporting',
-                    'Marketing automation integration',
-                    'CRM integration',
-                    'API development',
-                    'Advanced security features',
-                    'Custom admin dashboard',
-                    'A/B testing setup',
-                    'Conversion rate optimization'
-                ]
-            },
-            {
-                name: 'Testing, Training & Launch',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Extensive QA testing',
-                    'Load and performance testing',
-                    'Security penetration testing',
-                    'Staff training program',
-                    'Documentation creation',
-                    'Phased rollout strategy',
-                    'Post-launch optimization',
-                    'Final payment collection',
-                    '12 months of premium support begins'
-                ]
-            }
-        ],
-        features: [
-            'Unlimited custom pages',
-            'Fully custom design and development',
-            'Advanced CMS with custom modules',
-            'E-commerce platform (unlimited products)',
-            'User portal/membership system',
-            'Multi-language support',
-            'Advanced analytics and reporting',
-            'Marketing automation integration',
-            'CRM integration',
-            'API development',
-            'Third-party integrations',
-            'Advanced security features',
-            'Dedicated project manager',
-            'Custom admin dashboard',
-            'A/B testing setup',
-            'Conversion rate optimization',
-            '12 months of premium support',
-            'Priority bug fixes',
-            'Monthly performance reports'
-        ],
-        notes: 'Pricing varies based on project scope and requirements'
-    },
-    
-    'seo-services': {
-        name: 'SEO Services - $199/month',
-        description: 'Comprehensive SEO optimization for Hill Country businesses',
-        price: 199,
-        duration: 'Ongoing monthly service',
-        phases: [
-            {
-                name: 'Initial SEO Audit',
-                duration: '1 week',
-                tasks: [
-                    'Comprehensive website SEO audit',
-                    'Keyword research for Hill Country markets',
-                    'Competitor analysis',
-                    'Technical SEO assessment',
-                    'Current ranking baseline report'
-                ]
-            },
-            {
-                name: 'Monthly Optimization',
-                duration: 'Ongoing',
-                tasks: [
-                    'On-page SEO optimization',
-                    'Content optimization for target keywords',
-                    'Local SEO improvements',
-                    'Google My Business optimization',
-                    'Local citation building',
-                    'Schema markup updates',
-                    'Performance monitoring'
-                ]
-            },
-            {
-                name: 'Monthly Reporting',
-                duration: 'Monthly',
-                tasks: [
-                    'Keyword ranking tracking',
-                    'Traffic analysis',
-                    'Conversion tracking',
-                    'Competitor ranking comparisons',
-                    'Monthly performance reports',
-                    'Strategy adjustments'
-                ]
-            }
-        ],
-        features: [
-            'Keyword research (Hill Country focus)',
-            'On-page SEO optimization',
-            'Technical SEO fixes',
-            'Local SEO optimization',
-            'Google My Business management',
-            'Schema markup implementation',
-            'Content optimization',
-            'Monthly performance reports',
-            'Keyword ranking tracking',
-            'Google Analytics monitoring',
-            'Competitor analysis',
-            'Review generation support'
-        ],
-        notes: 'Results typically visible within 3-6 months'
-    },
-    
-    'digital-marketing': {
-        name: 'Digital Marketing Services - Custom Pricing',
-        description: 'Comprehensive marketing campaigns for growth',
-        price: 0, // Custom pricing
-        duration: 'Custom campaign duration',
-        phases: [
-            {
-                name: 'Strategy Development',
-                duration: '1-2 weeks',
-                tasks: [
-                    'Marketing goals definition',
-                    'Target audience research',
-                    'Platform selection',
-                    'Budget allocation planning',
-                    'Campaign strategy creation',
-                    'Content calendar development'
-                ]
-            },
-            {
-                name: 'Campaign Setup',
-                duration: '1 week',
-                tasks: [
-                    'Account setup (Facebook, Google, etc.)',
-                    'Audience targeting configuration',
-                    'Ad creative development',
-                    'Landing page optimization',
-                    'Tracking pixel installation',
-                    'Conversion goals setup'
-                ]
-            },
-            {
-                name: 'Campaign Management',
-                duration: 'Ongoing',
-                tasks: [
-                    'Daily campaign monitoring',
-                    'A/B testing',
-                    'Budget optimization',
-                    'Ad creative updates',
-                    'Audience refinement',
-                    'Performance analysis',
-                    'Weekly optimization'
-                ]
-            },
-            {
-                name: 'Reporting & Optimization',
-                duration: 'Ongoing',
-                tasks: [
-                    'Weekly performance reports',
-                    'Monthly strategy sessions',
-                    'ROI analysis',
-                    'Campaign adjustments',
-                    'Conversion rate optimization',
-                    'Competitive analysis'
-                ]
-            }
-        ],
-        features: [
-            'Social media marketing (Facebook, Instagram, LinkedIn)',
-            'Google Ads (Search, Display, LSA)',
-            'Facebook & Instagram Ads',
-            'Email marketing campaigns',
-            'Content marketing',
-            'Lead generation campaigns',
-            'Retargeting campaigns',
-            'Analytics & reporting',
-            'A/B testing',
-            'ROI tracking',
-            'Custom audience creation',
-            'Campaign optimization'
-        ],
-        notes: 'Pricing varies based on campaign complexity and ad spend budget'
-    }
+    'web-starter': { name: 'Starter Package', description: 'Up to 15 pages • Mobile responsive • Basic SEO • 2-3 week delivery', price: 0, duration: '2-3 weeks', billing: 'one-time', needsQuote: true, category: 'web-development' },
+    'web-professional': { name: 'Professional Package', description: 'Up to 25 pages • Custom design • Advanced SEO • E-commerce ready', price: 0, duration: '3-4 weeks', billing: 'one-time', needsQuote: true, category: 'web-development' },
+    'web-enterprise': { name: 'Enterprise Package', description: 'Unlimited pages • Fully custom • Advanced integrations', price: 0, duration: 'Custom', billing: 'one-time', needsQuote: true, category: 'web-development' },
+    'crm-essential': { name: 'Essential CRM', description: 'Up to 1,000 contacts • Basic lead management', price: 19.99, billing: 'monthly-per-user', category: 'crm' },
+    'crm-professional': { name: 'Professional CRM', description: 'Up to 10,000 contacts • Sales automation', price: 49.99, billing: 'monthly-per-user', category: 'crm' },
+    'crm-enterprise': { name: 'Enterprise CRM', description: 'Unlimited contacts • Custom integrations', price: 64.99, billing: 'monthly-per-user', category: 'crm' },
+    'seo-local': { name: 'Local SEO', description: 'Google My Business • 10 keywords', price: 199, billing: 'monthly', category: 'seo' },
+    'seo-growth': { name: 'Growth SEO', description: '25 keywords • Content creation', price: 499, billing: 'monthly', category: 'seo' },
+    'seo-enterprise': { name: 'Enterprise SEO', description: 'Unlimited keywords • Dedicated manager', price: 999, billing: 'monthly', category: 'seo' },
+    'marketing-social': { name: 'Social Starter', description: '2 platforms • 12 posts/mo', price: 0, billing: 'monthly', needsQuote: true, category: 'marketing' },
+    'marketing-growth': { name: 'Growth Accelerator', description: '4 platforms • 20 posts/mo • Google Ads', price: 0, billing: 'monthly', needsQuote: true, category: 'marketing' },
+    'marketing-full': { name: 'Full-Service Marketing', description: 'All platforms • Unlimited content', price: 0, billing: 'monthly', needsQuote: true, category: 'marketing' }
 };
-
 // STANDARDIZED WEBSITE DEVELOPMENT PROCESS
 // This applies to ALL website projects regardless of package
 const standardWebsitePhases = [
@@ -7193,7 +6543,7 @@ async function verifyAuthToken() {
             console.log('[AUTH] ✅ Token is valid');
             return true;
         } else {
-            console.warn('[AUTH] Token is invalid or expired');
+            console.warn('[AUTH] ⚠️ Token is invalid or expired');
             return false;
         }
     } catch (error) {
@@ -9363,7 +8713,7 @@ async function renderInvoicePreview(invoice) {
                     invoice.stripe_payment_link = data.paymentLink;
                     console.log('✅ Stripe payment link created:', paymentUrl);
                 } else {
-                    console.warn('Payment link creation returned success but no link');
+                    console.warn('⚠️ Payment link creation returned success but no link');
                 }
             } else {
                 const errorText = await response.text();
@@ -12395,7 +11745,7 @@ function renderProjects(content) {
             </div>
         `;
         
-        console.log('Setting innerHTML, content HTML length:', htmlContent.length);
+        console.log('📝 Setting innerHTML, content HTML length:', htmlContent.length);
         content.innerHTML = htmlContent;
         console.log('✅ renderProjects completed successfully');
     } catch (error) {
@@ -12482,36 +11832,6 @@ function handleProjectSearch(event) {
 }
 
 // Open Project Timeline Modal
-// PACKAGE PRICING DATA (from pricing page)
-const PACKAGES = {
-    // Website (custom quotes)
-    'web-starter': { name: 'Starter Package', price: 0, billing: 'one-time', needsQuote: true },
-    'web-professional': { name: 'Professional Package', price: 0, billing: 'one-time', needsQuote: true },
-    'web-enterprise': { name: 'Enterprise Package', price: 0, billing: 'one-time', needsQuote: true },
-    
-    // CRM (per user/month)
-    'crm-essential': { name: 'Essential CRM', price: 19.99, billing: 'per-user-monthly' },
-    'crm-professional': { name: 'Professional CRM', price: 49.99, billing: 'per-user-monthly' },
-    'crm-enterprise': { name: 'Enterprise CRM', price: 64.99, billing: 'per-user-monthly' },
-    
-    // SEO (monthly)
-    'seo-local': { name: 'Local SEO', price: 199, billing: 'monthly' },
-    'seo-growth': { name: 'Growth SEO', price: 499, billing: 'monthly' },
-    'seo-enterprise': { name: 'Enterprise SEO', price: 999, billing: 'monthly' },
-    
-    // Digital Marketing (custom quotes)
-    'marketing-social': { name: 'Social Starter', price: 0, billing: 'monthly', needsQuote: true },
-    'marketing-growth': { name: 'Growth Accelerator', price: 0, billing: 'monthly', needsQuote: true },
-    'marketing-full': { name: 'Full-Service Marketing', price: 0, billing: 'monthly', needsQuote: true }
-};
-
-// Initialize global arrays for package selection
-window.selectedPackages = window.selectedPackages || [];
-window.packageQuantities = window.packageQuantities || {};
-window.packageCustomPrices = window.packageCustomPrices || {};
-
-// CORRECT openProjectTimelineModal() - ONLY packages from pricing page
-
 function openProjectTimelineModal() {
     const modal = document.getElementById('createModal');
     const titleEl = document.getElementById('createModalTitle');
@@ -12520,16 +11840,15 @@ function openProjectTimelineModal() {
     titleEl.textContent = 'Create Project Timeline & SLA';
     
     // Initialize package selection
-    window.selectedPackages = [];
-    window.packageQuantities = {}; // For CRM user counts
-    window.packageCustomPrices = {}; // For "Get a Quote" packages
+    // Make sure this is initialized at the top of openProjectTimelineModal()
+    window.selectedPackages = window.selectedPackages || [];
+    window.selectedPackages = []; // Initialize empty array
     
     const allLeadsAndCustomers = [...state.leads, ...state.customers];
     const today = new Date().toISOString().split('T')[0];
     
     bodyEl.innerHTML = `
         <div class="form-grid">
-            <!-- CLIENT INFO -->
             <div class="form-group full-width">
                 <label class="form-label">Select Existing Client (Optional)</label>
                 <select class="form-select" id="timelineClient" onchange="populateClientInfo()">
@@ -12565,7 +11884,6 @@ function openProjectTimelineModal() {
                 <textarea class="form-textarea" id="timelineClientAddress" rows="2" placeholder="Street address, City, State ZIP"></textarea>
             </div>
             
-            <!-- PROJECT INFO -->
             <div class="form-group">
                 <label class="form-label">Estimated Start Date</label>
                 <input type="date" class="form-input" id="timelineStartDate" value="${today}">
@@ -12578,246 +11896,73 @@ function openProjectTimelineModal() {
             
             <div class="form-group full-width">
                 <label class="form-label">Project Name / Description</label>
-                <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Company Website + CRM Setup">
+                <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Company Website Redesign, E-commerce Store, etc.">
             </div>
             
-            <!-- PACKAGE SELECTION -->
             <div class="form-group full-width">
-                <label class="form-label">Select Services <span class="required">*</span></label>
-                
-                <div id="packagesList" style="max-height: 500px; overflow-y: auto; padding-right: 8px;">
+                <label class="form-label">Select Service Packages <span class="required">*</span></label>
+                <div id="packagesList" style="display: grid; gap: 12px; margin-top: 12px; max-height: 400px; overflow-y: auto; padding-right: 8px;">
                     
-                    <!-- WEBSITE PACKAGES -->
-                    <div style="margin-top: 16px;">
-                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
-                            Website Development (One-Time Payment)
-                        </div>
-                        <div style="display: grid; gap: 8px; margin-top: 8px;">
-                            <div class="package-option" onclick="togglePackage('web-starter')" id="pkg-web-starter" style="cursor: pointer !important; pointer-events: auto !important;">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-web-starter">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Starter Package</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">Up to 15 pages • Mobile responsive • Basic SEO • 2-3 week delivery</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--accent-amber);">Custom Quote</div>
-                                </div>
-                            </div>
-                            
-                            <div class="package-option" onclick="togglePackage('web-professional')" id="pkg-web-professional">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-web-professional">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Professional Package</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">Up to 25 pages • Custom design • Advanced SEO • E-commerce ready • 3-4 week delivery</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--accent-amber);">Custom Quote</div>
-                                </div>
-                            </div>
-                            
-                            <div class="package-option" onclick="togglePackage('web-enterprise')" id="pkg-web-enterprise">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-web-enterprise">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Enterprise Package</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">Unlimited pages • Fully custom • Advanced integrations • Custom CMS • Dedicated PM</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--accent-amber);">Custom Quote</div>
-                                </div>
-                            </div>
-                        </div>
+                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-contacted); margin-top: 8px; padding: 8px; background: rgba(16,185,129,0.1); border-radius: var(--radius-sm);">
+                        FREE PACKAGES - No Payment Required
                     </div>
                     
-                    <!-- CRM PACKAGES -->
-                    <div style="margin-top: 16px;">
-                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-pending); padding: 8px; background: rgba(245,158,11,0.1); border-radius: var(--radius-sm);">
-                            CRM Solutions (Per User/Month)
+                    ${Object.entries(servicePackages).filter(([key, pkg]) => pkg.isFree).map(([key, pkg]) => `
+                        <div class="expense-item" style="cursor: pointer; border: 2px solid var(--status-contacted);" onclick="togglePackageSelection('${key}', this)">
+                            <div class="expense-checkbox" id="pkg-check-${key}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                            <div class="expense-content" style="flex: 1;">
+                                <div class="expense-description">
+                                    ${pkg.name}
+                                    <span style="margin-left: 8px; background: var(--status-contacted); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700;">FREE</span>
+                                </div>
+                                <div class="expense-meta">
+                                    <span>${pkg.description}</span>
+                                    <span>Duration: ${pkg.duration}</span>
+                                </div>
+                            </div>
+                            <div class="expense-amount" style="color: var(--status-contacted);">FREE</div>
                         </div>
-                        <div style="display: grid; gap: 8px; margin-top: 8px;">
-                            <div class="package-option" onclick="togglePackage('crm-essential')" id="pkg-crm-essential">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-crm-essential">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Essential CRM</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">Up to 1,000 contacts • Basic lead management • Email integration • Mobile app</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--status-pending);">$19.99/user/mo</div>
-                                </div>
-                            </div>
-                            
-                            <div class="package-option" onclick="togglePackage('crm-professional')" id="pkg-crm-professional">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-crm-professional">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Professional CRM</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">Up to 10,000 contacts • Sales automation • Custom pipelines • Advanced analytics • API access</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--status-pending);">$49.99/user/mo</div>
-                                </div>
-                            </div>
-                            
-                            <div class="package-option" onclick="togglePackage('crm-enterprise')" id="pkg-crm-enterprise">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-crm-enterprise">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Enterprise CRM</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">Unlimited contacts • Custom integrations • White-label • Dedicated manager • 24/7 support</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--status-pending);">$64.99/user/mo</div>
-                                </div>
-                            </div>
-                        </div>
+                    `).join('')}
+                    
+                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-top: 16px; padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
+                        PAID PACKAGES - Payment Due Upon Completion
                     </div>
                     
-                    <!-- SEO PACKAGES -->
-                    <div style="margin-top: 16px;">
-                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-new); padding: 8px; background: rgba(96,165,250,0.1); border-radius: var(--radius-sm);">
-                            SEO Services (Monthly)
+                    ${Object.entries(servicePackages).filter(([key, pkg]) => !pkg.isFree).map(([key, pkg]) => `
+                        <div class="expense-item" style="cursor: pointer;" onclick="togglePackageSelection('${key}', this)">
+                            <div class="expense-checkbox" id="pkg-check-${key}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                            <div class="expense-content" style="flex: 1;">
+                                <div class="expense-description">${pkg.name}</div>
+                                <div class="expense-meta">
+                                    <span>${pkg.description}</span>
+                                    <span>Duration: ${pkg.duration}</span>
+                                </div>
+                            </div>
+                            <div class="expense-amount">${pkg.price === 0 ? 'Custom' : '$' + pkg.price.toLocaleString()}</div>
                         </div>
-                        <div style="display: grid; gap: 8px; margin-top: 8px;">
-                            <div class="package-option" onclick="togglePackage('seo-local')" id="pkg-seo-local">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-seo-local">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Local SEO</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">Google My Business • 10 keywords • On-page SEO • Monthly reports • Review management</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--status-new);">$199/mo</div>
-                                </div>
-                            </div>
-                            
-                            <div class="package-option" onclick="togglePackage('seo-growth')" id="pkg-seo-growth">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-seo-growth">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Growth SEO</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">25 keywords • Content creation (2 posts/mo) • Link building • Technical SEO • Schema markup</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--status-new);">$499/mo</div>
-                                </div>
-                            </div>
-                            
-                            <div class="package-option" onclick="togglePackage('seo-enterprise')" id="pkg-seo-enterprise">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-seo-enterprise">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Enterprise SEO</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">Unlimited keywords • 4+ posts/mo • 25+ links/mo • Multi-location • Dedicated manager • 24/7 support</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--status-new);">$999+/mo</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- DIGITAL MARKETING PACKAGES -->
-                    <div style="margin-top: 16px;">
-                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-contacted); padding: 8px; background: rgba(16,185,129,0.1); border-radius: var(--radius-sm);">
-                            Digital Marketing (Monthly)
-                        </div>
-                        <div style="display: grid; gap: 8px; margin-top: 8px;">
-                            <div class="package-option" onclick="togglePackage('marketing-social')" id="pkg-marketing-social">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-marketing-social">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Social Starter</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">2 platforms • 12 posts/mo • Content creation • Analytics • Community management</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--status-contacted);">Custom Quote</div>
-                                </div>
-                            </div>
-                            
-                            <div class="package-option" onclick="togglePackage('marketing-growth')" id="pkg-marketing-growth">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-marketing-growth">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Growth Accelerator</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">4 platforms • 20 posts/mo • Google Ads • Facebook/Instagram Ads • Email campaigns</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--status-contacted);">Custom Quote</div>
-                                </div>
-                            </div>
-                            
-                            <div class="package-option" onclick="togglePackage('marketing-full')" id="pkg-marketing-full">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="package-checkbox" id="pkg-check-marketing-full">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Full-Service Marketing</div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">All platforms • Unlimited content • Multi-platform ads • Video production • Dedicated manager</div>
-                                    </div>
-                                    <div style="text-align: right; font-weight: 700; color: var(--status-contacted);">Custom Quote</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
+                    `).join('')}
                 </div>
             </div>
             
-            <!-- PACKAGE DETAILS (QUANTITY/CUSTOM PRICING) -->
-            <div id="selectedPackagesInputs" class="form-group full-width" style="display: none;">
+            <div id="selectedPackagesInputs" style="margin-top: 20px; display: none;">
                 <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 12px; padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
-                    Package Details
+                    Selected Package Details
                 </div>
-                <div id="packageInputsContainer" style="display: grid; gap: 12px;"></div>
+                <div id="packageInputsContainer" style="display: grid; gap: 16px;"></div>
             </div>
             
-            <!-- PAYMENT & MAINTENANCE -->
             <div class="form-group full-width" id="paymentTermsSection" style="display: none;">
                 <label class="form-label">Payment Terms</label>
                 <select class="form-select" id="paymentTerms">
                     <option value="completion">100% Due Upon Project Completion</option>
-                    <option value="50-50">50% Deposit, 50% Upon Completion</option>
-                    <option value="milestone">Milestone-Based Payments</option>
-                    <option value="custom">Custom Payment Plan</option>
                 </select>
             </div>
             
@@ -12837,22 +11982,30 @@ function openProjectTimelineModal() {
             
             <div class="form-group" id="maintenanceFeeSection" style="display: none;">
                 <label class="form-label">Monthly Maintenance Fee ($)</label>
-                <input type="number" class="form-input" id="maintenanceFee" min="0" step="0.01" value="99.00">
+                <input type="number" class="form-input" id="maintenanceFee" value="59.99" step="0.01" min="0">
             </div>
             
             <div class="form-group full-width" id="maintenanceDetailsSection" style="display: none;">
-                <label class="form-label">Maintenance Scope</label>
-                <textarea class="form-textarea" id="maintenanceDetails" rows="3" placeholder="What's included in maintenance?">Updates, security patches, bug fixes, and up to 2 hours of support per month</textarea>
+                <label class="form-label">Maintenance Details / What's Included</label>
+                <textarea class="form-textarea" id="maintenanceDetails" rows="2" placeholder="Bug fixes, security updates, content changes, etc.">Bug fixes, security updates, minor content modifications (up to 2 hours/month), plugin/software updates, uptime monitoring, priority email support.</textarea>
+            </div>
+            
+            <div class="form-group full-width">
+                <label class="form-label">Special Requirements / Scope Notes</label>
+                <textarea class="form-textarea" id="timelineScope" rows="3" placeholder="Any specific features, integrations, or requirements for this project..."></textarea>
+            </div>
+            
+            <div class="form-group full-width">
+                <label class="form-label">Additional Notes / Terms</label>
+                <textarea class="form-textarea" id="timelineNotes" rows="2" placeholder="Any other notes or special terms..."></textarea>
             </div>
         </div>
         
-        <!-- SUMMARY -->
-        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-top: 20px; border-left: 4px solid var(--accent-amber);">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 8px;">Project Summary</div>
-            <div id="packagesSummary" style="font-size: 13px; color: var(--text-secondary);">No services selected</div>
+        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-top: 20px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 8px;">Selected Packages Summary</div>
+            <div id="packagesSummary" style="font-size: 13px; color: var(--text-muted);">No packages selected</div>
         </div>
         
-        <!-- ACTIONS -->
         <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
             <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
             <button type="button" class="btn btn-secondary" onclick="previewProjectTimeline()">
@@ -12873,196 +12026,23 @@ function openProjectTimelineModal() {
         </div>
     `;
     
-    // Add event listeners
-    setTimeout(() => {
+    // Add event listener for payment terms
+    setTimeout(function() {
         const paymentTermsSelect = document.getElementById('paymentTerms');
         if (paymentTermsSelect) {
             paymentTermsSelect.addEventListener('change', function() {
                 const customSection = document.getElementById('customPaymentSection');
-                customSection.style.display = this.value === 'custom' ? 'block' : 'none';
+                if (this.value === 'custom') {
+                    customSection.style.display = 'block';
+                } else {
+                    customSection.style.display = 'none';
+                }
             });
         }
-        
-        // Add CSS for package selection
-        const style = document.createElement('style');
-        style.textContent = `
-            .package-option {
-                cursor: pointer;
-                padding: 12px;
-                background: var(--bg-tertiary);
-                border: 2px solid var(--border-default);
-                border-radius: var(--radius-sm);
-                transition: all 0.2s;
-                pointer-events: auto !important;
-                position: relative;
-                z-index: 1;
-            }
-            .package-option:hover {
-                border-color: var(--border-strong);
-            }
-            .package-option.selected {
-                border-color: var(--accent-amber) !important;
-                background: rgba(212, 165, 116, 0.08) !important;
-            }
-            .package-checkbox {
-                width: 20px;
-                height: 20px;
-                border: 2px solid var(--border-strong);
-                border-radius: 4px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-            }
-            .package-checkbox.checked {
-                background: var(--accent-amber);
-                border-color: var(--accent-amber) !important;
-            }
-            .package-checkbox.checked svg {
-                opacity: 1 !important;
-                color: var(--bg-primary);
-            }
-        `;
-        document.head.appendChild(style);
     }, 100);
     
     modal.classList.add('active');
-}
-
-// PACKAGE PRICING DATA (from pricing page)
-    // Website (custom quotes)
-    
-    // CRM (per user/month)
-    
-    // SEO (monthly)
-    
-    // Digital Marketing (custom quotes)
-
-function togglePackage(packageKey) {
-    console.log('togglePackage called with:', packageKey);
-    const element = document.getElementById(`pkg-${packageKey}`);
-    const checkbox = document.getElementById(`pkg-check-${packageKey}`);
-    console.log('element:', element, 'checkbox:', checkbox);
-    
-    if (!element || !checkbox) {
-        console.error('Element or checkbox not found!');
-        return;
-    }
-    
-    const index = window.selectedPackages.indexOf(packageKey);
-    
-    if (index > -1) {
-        // Deselect
-        window.selectedPackages.splice(index, 1);
-        delete window.packageQuantities[packageKey];
-        delete window.packageCustomPrices[packageKey];
-        checkbox.classList.remove('checked');
-        element.classList.remove('selected');
-    } else {
-        // Select
-        window.selectedPackages.push(packageKey);
-        
-        // Initialize quantity for CRM packages
-        const pkg = PACKAGES[packageKey];
-        if (pkg && pkg.billing === 'per-user-monthly') {
-            window.packageQuantities[packageKey] = 1;
-        }
-        
-        checkbox.classList.add('checked');
-        element.classList.add('selected');
-    }
-    
-    updatePackagesSummary();
-    updatePackageInputs();
-}
-
-function updatePackageInputs() {
-    const container = document.getElementById('packageInputsContainer');
-    const section = document.getElementById('selectedPackagesInputs');
-    
-    if (!container || !section) return;
-    
-    if (window.selectedPackages.length === 0) {
-        section.style.display = 'none';
-        return;
-    }
-    
-    section.style.display = 'block';
-    container.innerHTML = '';
-    
-    window.selectedPackages.forEach(packageKey => {
-        const pkg = PACKAGES[packageKey];
-        if (!pkg) return;
-        
-        const inputDiv = document.createElement('div');
-        inputDiv.style.cssText = 'background: var(--bg-elevated); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-default);';
-        
-        let fieldsHTML = `<div style="font-weight: 600; margin-bottom: 10px; color: var(--text-primary);">${pkg.name}</div>`;
-        
-        // CRM Packages - Quantity Input
-        if (pkg.billing === 'per-user-monthly') {
-            const currentQty = window.packageQuantities[packageKey] || 1;
-            fieldsHTML += `
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="font-size: 12px;">Number of Users</label>
-                    <input type="number" 
-                           class="form-input" 
-                           id="quantity-${packageKey}" 
-                           min="1" 
-                           value="${currentQty}"
-                           onchange="updatePackageQuantity('${packageKey}', this.value)"
-                           style="max-width: 200px;">
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                        $${pkg.price}/user/month × ${currentQty} = <strong style="color: var(--status-pending);">$${(pkg.price * currentQty).toFixed(2)}/month</strong>
-                    </div>
-                </div>
-            `;
-        }
-        // Packages needing custom quote
-        else if (pkg.needsQuote) {
-            const currentPrice = window.packageCustomPrices[packageKey] || '';
-            fieldsHTML += `
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="font-size: 12px;">Custom Price Quote ($)</label>
-                    <input type="number" 
-                           class="form-input" 
-                           id="customprice-${packageKey}" 
-                           placeholder="Enter quoted amount" 
-                           step="0.01" 
-                           min="0" 
-                           value="${currentPrice}"
-                           onchange="updatePackageCustomPrice('${packageKey}', this.value)"
-                           style="max-width: 200px;">
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                        Enter the custom quote amount
-                    </div>
-                </div>
-            `;
-        }
-        // Fixed price packages
-        else {
-            fieldsHTML += `
-                <div style="font-size: 13px; color: var(--text-secondary);">
-                    <strong style="color: var(--accent-amber);">$${pkg.price.toLocaleString()}</strong>${pkg.billing === 'monthly' ? '/month' : ''}
-                </div>
-            `;
-        }
-        
-        inputDiv.innerHTML = fieldsHTML;
-        container.appendChild(inputDiv);
-    });
-    
-    updatePackagesSummary();
-}
-
-function updatePackageQuantity(packageKey, quantity) {
-    window.packageQuantities[packageKey] = parseInt(quantity) || 1;
-    updatePackageInputs();
-}
-
-function updatePackageCustomPrice(packageKey, price) {
-    window.packageCustomPrices[packageKey] = parseFloat(price) || 0;
-    updatePackagesSummary();
+    console.log('Service packages available:', Object.keys(servicePackages).length);
 }
 
 function toggleMaintenanceOptions() {
@@ -13116,102 +12096,63 @@ function populateClientInfo() {
 }
 
 // Update packages summary
-// CORRECT updatePackagesSummary() - matches pricing page exactly
-
 function updatePackagesSummary() {
     const summaryEl = document.getElementById('packagesSummary');
     const paymentSection = document.getElementById('paymentTermsSection');
-    
-    if (!summaryEl) return;
+    const maintenanceSection = document.getElementById('maintenanceSection');
+    const maintenanceFeeSection = document.getElementById('maintenanceFeeSection');
     
     if (window.selectedPackages.length === 0) {
-        summaryEl.innerHTML = 'No services selected';
+        summaryEl.innerHTML = 'No packages selected';
         if (paymentSection) paymentSection.style.display = 'none';
+        if (maintenanceSection) maintenanceSection.style.display = 'none';
+        if (maintenanceFeeSection) maintenanceFeeSection.style.display = 'none';
         return;
     }
     
-    let oneTimeTotal = 0;
-    let monthlyTotal = 0;
+    let total = 0;
     let hasPaidPackage = false;
-    let needsQuote = false;
+    let hasFreePackage = false;
+    let hasMaintenanceEligible = false;
     
-    const packageDetails = [];
-    
-    window.selectedPackages.forEach(key => {
-        const pkg = PACKAGES[key];
-        if (!pkg) return;
-        
-        let lineItem = pkg.name;
-        
-        // CRM packages (per user/month)
-        if (pkg.billing === 'per-user-monthly') {
-            const qty = window.packageQuantities[key] || 1;
-            const total = pkg.price * qty;
-            monthlyTotal += total;
+    const packages = window.selectedPackages.map(function(key) {
+        const pkg = servicePackages[key];
+        if (pkg.isFree) {
+            hasFreePackage = true;
+        } else {
             hasPaidPackage = true;
-            lineItem += ` - ${qty} user${qty > 1 ? 's' : ''} × $${pkg.price}/user/month = <strong style="color: var(--status-pending);">$${total.toFixed(2)}/month</strong>`;
+            total += pkg.price;
         }
-        // Packages needing custom quote
-        else if (pkg.needsQuote) {
-            const customPrice = window.packageCustomPrices[key] || 0;
-            if (customPrice > 0) {
-                hasPaidPackage = true;
-                if (pkg.billing === 'monthly') {
-                    monthlyTotal += customPrice;
-                    lineItem += ` - <strong style="color: var(--accent-amber);">$${customPrice.toLocaleString()}/month</strong>`;
-                } else {
-                    oneTimeTotal += customPrice;
-                    lineItem += ` - <strong style="color: var(--accent-amber);">$${customPrice.toLocaleString()}</strong>`;
-                }
-            } else {
-                needsQuote = true;
-                lineItem += ' - <strong style="color: var(--text-muted);">Custom Quote (TBD)</strong>';
-            }
+        // Check if package has support period (eligible for maintenance)
+        if (key === 'starter-website' || key === 'professional-website' || key === 'enterprise-website') {
+            hasMaintenanceEligible = true;
         }
-        // Fixed price monthly (SEO)
-        else if (pkg.billing === 'monthly') {
-            monthlyTotal += pkg.price;
-            hasPaidPackage = true;
-            lineItem += ` - <strong style="color: var(--status-new);">$${pkg.price.toLocaleString()}/month</strong>`;
-        }
-        
-        packageDetails.push(lineItem);
+        return pkg.name + (pkg.isFree ? ' (FREE)' : ' ($' + pkg.price.toLocaleString() + ')');
     });
     
-    // Build summary
-    let summaryHtml = '<div style="display: grid; gap: 6px; margin-bottom: 12px;">';
-    packageDetails.forEach(detail => {
-        summaryHtml += `<div style="font-size: 13px; color: var(--text-secondary);">• ${detail}</div>`;
-    });
-    summaryHtml += '</div>';
+    let summaryHtml = '<div style="margin-bottom: 8px;">' + packages.join(', ') + '</div>';
     
-    // Show totals
-    if (oneTimeTotal > 0 || monthlyTotal > 0) {
-        summaryHtml += '<div style="border-top: 1px solid var(--border-default); padding-top: 12px; margin-top: 8px;">';
-        
-        if (oneTimeTotal > 0) {
-            summaryHtml += `<div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
-                One-Time Cost: <span style="color: var(--accent-amber); font-size: 16px; font-weight: 700;">$${oneTimeTotal.toLocaleString()}</span>
-            </div>`;
-        }
-        
-        if (monthlyTotal > 0) {
-            summaryHtml += `<div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
-                Monthly Cost: <span style="color: var(--status-pending); font-size: 16px; font-weight: 700;">$${monthlyTotal.toFixed(2)}/month</span>
-            </div>`;
-        }
-        
-        if (needsQuote) {
-            summaryHtml += '<div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; font-style: italic;">Some packages require custom pricing</div>';
-        }
-        
-        summaryHtml += '</div>';
+    if (hasPaidPackage) {
+        summaryHtml += '<div style="font-size: 16px; font-weight: 700; color: var(--accent-amber);">Total Investment: $' + total.toLocaleString() + '</div>';
+        summaryHtml += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Payment due upon project completion</div>';
+    } else if (hasFreePackage) {
+        summaryHtml += '<div style="font-size: 16px; font-weight: 700; color: var(--status-contacted);">Total: FREE</div>';
+        summaryHtml += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">🎁 No payment required for free packages</div>';
     }
     
     summaryEl.innerHTML = summaryHtml;
     
+    // Show/hide payment terms section (only for paid packages)
     if (paymentSection) {
         paymentSection.style.display = hasPaidPackage ? 'block' : 'none';
+    }
+    
+    // Show/hide maintenance sections (only for packages with support periods)
+    if (maintenanceSection) {
+        maintenanceSection.style.display = hasMaintenanceEligible ? 'block' : 'none';
+    }
+    if (maintenanceFeeSection) {
+        maintenanceFeeSection.style.display = hasMaintenanceEligible ? 'block' : 'none';
     }
 }
 
@@ -13356,9 +12297,83 @@ function previewProjectTimeline() {
 }
 
 // Toggle package selection
-// Save Project Timeline
-// CORRECT saveProjectTimeline() - saves pricing page packages correctly
+function togglePackageSelection(packageKey, element) {
+    const checkbox = document.getElementById(`pkg-check-${packageKey}`);
+    const index = window.selectedPackages.indexOf(packageKey);
+    
+    if (index > -1) {
+        window.selectedPackages.splice(index, 1);
+        checkbox.classList.remove('checked');
+        element.classList.remove('selected');
+    } else {
+        window.selectedPackages.push(packageKey);
+        checkbox.classList.add('checked');
+        element.classList.add('selected');
+    }
+    
+    updatePackagesSummary();
+    updatePackageInputs(); // NEW: Update price/quantity inputs
+}
 
+// NEW FUNCTION: Show custom price/quantity inputs for selected packages
+function updatePackageInputs() {
+    const container = document.getElementById('packageInputsContainer');
+    const section = document.getElementById('selectedPackagesInputs');
+    
+    if (!container || !section) return; // Safety check
+    
+    if (window.selectedPackages.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = 'block';
+    container.innerHTML = '';
+    
+    window.selectedPackages.forEach(packageKey => {
+        const pkg = servicePackages[packageKey];
+        if (!pkg) return;
+        
+        const inputHtml = document.createElement('div');
+        inputHtml.style.cssText = 'background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); border-left: 4px solid var(--accent-amber);';
+        
+        let fieldsHTML = `<div style="font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">${pkg.name}</div>`;
+        
+        // Web Development - Custom Price Input
+        if (pkg.category === 'web-development' && pkg.price === 0) {
+            fieldsHTML += `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Rough Estimate Amount (Subject to Change)</label>
+                    <input type="number" class="form-input" id="price-${packageKey}" placeholder="Enter estimated amount" step="0.01" min="0" value="">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">This is a rough estimate and can be adjusted in the final invoice</div>
+                </div>
+            `;
+        }
+        // CRM - Quantity Input  
+        else if (pkg.category === 'crm' && pkg.billing === 'monthly-per-user') {
+            fieldsHTML += `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Number of Users</label>
+                    <input type="number" class="form-input" id="quantity-${packageKey}" placeholder="How many users?" min="1" value="1">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">$${pkg.price}/user/month × quantity</div>
+                </div>
+            `;
+        }
+        // SEO/Other - Just show price
+        else {
+            fieldsHTML += `
+                <div style="font-size: 14px; color: var(--text-secondary);">
+                    Price: <strong style="color: var(--accent-amber);">$${pkg.price}${pkg.billing === 'monthly' ? '/month' : ''}</strong>
+                </div>
+            `;
+        }
+        
+        inputHtml.innerHTML = fieldsHTML;
+        container.appendChild(inputHtml);
+    });
+}
+
+// Save Project Timeline
 function saveProjectTimeline() {
     if (window.selectedPackages.length === 0) {
         showToast('Please select at least one service package', 'error');
@@ -13377,57 +12392,48 @@ function saveProjectTimeline() {
         return;
     }
     
-    // Calculate totals and build package details
+    // Collect package details with custom prices and quantities
     const packageDetails = {};
-    let oneTimeTotal = 0;
-    let monthlyTotal = 0;
     let hasPaidPackage = false;
-    
-    window.selectedPackages.forEach(key => {
-        const pkg = PACKAGES[key];
+    let totalPrice = 0;
+    window.selectedPackages.forEach(function(key) {
+        const pkg = servicePackages[key];
         if (!pkg) return;
         
         packageDetails[key] = {
             name: pkg.name,
-            billing: pkg.billing,
-            basePrice: pkg.price
+            category: pkg.category || 'other',
+            billing: pkg.billing || 'one-time'
         };
         
-        // CRM packages - per user/month
-        if (pkg.billing === 'per-user-monthly') {
-            const quantity = window.packageQuantities[key] || 1;
+        // Web Development - Get custom price
+        if (pkg.category === 'web-development' && pkg.price === 0) {
+            const priceInput = document.getElementById(`price-${key}`);
+            const customPrice = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+            packageDetails[key].customPrice = customPrice;
+            packageDetails[key].displayPrice = customPrice;
+            totalPrice += customPrice;
+            if (customPrice > 0) hasPaidPackage = true;
+        }
+        // CRM - Get quantity
+        else if (pkg.category === 'crm' && pkg.billing === 'monthly-per-user') {
+            const quantityInput = document.getElementById(`quantity-${key}`);
+            const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
             packageDetails[key].quantity = quantity;
             packageDetails[key].pricePerUnit = pkg.price;
-            packageDetails[key].totalPrice = pkg.price * quantity;
-            monthlyTotal += (pkg.price * quantity);
+            packageDetails[key].displayPrice = pkg.price * quantity;
+            totalPrice += (pkg.price * quantity);
             hasPaidPackage = true;
         }
-        // Custom quote packages
-        else if (pkg.needsQuote) {
-            const customPrice = window.packageCustomPrices[key] || 0;
-            packageDetails[key].customPrice = customPrice;
-            packageDetails[key].needsQuote = true;
-            
-            if (customPrice > 0) {
-                if (pkg.billing === 'monthly') {
-                    monthlyTotal += customPrice;
-                } else {
-                    oneTimeTotal += customPrice;
-                }
-                hasPaidPackage = true;
-            }
-        }
-        // Fixed price packages (SEO)
-        else if (pkg.billing === 'monthly') {
-            packageDetails[key].totalPrice = pkg.price;
-            monthlyTotal += pkg.price;
-            hasPaidPackage = true;
+        // SEO/Other - Use fixed price
+        else {
+            packageDetails[key].displayPrice = pkg.price;
+            totalPrice += pkg.price;
+            if (pkg.price > 0 && !pkg.isFree) hasPaidPackage = true;
         }
     });
     
     const maintenanceIncluded = document.getElementById('maintenanceIncluded').value;
-    const paymentTerms = document.getElementById('paymentTerms') ? document.getElementById('paymentTerms').value : 'completion';
-    const customPaymentDetails = document.getElementById('customPaymentDetails') ? document.getElementById('customPaymentDetails').value : '';
     
     const timeline = {
         clientId: document.getElementById('timelineClient').value || null,
@@ -13439,17 +12445,16 @@ function saveProjectTimeline() {
         startDate: document.getElementById('timelineStartDate').value,
         endDate: document.getElementById('timelineEndDate').value,
         projectName: document.getElementById('timelineProjectName').value,
+        scope: document.getElementById('timelineScope').value,
+        notes: document.getElementById('timelineNotes').value,
         packages: window.selectedPackages,
         packageDetails: packageDetails,
-        packageQuantities: {...window.packageQuantities},
-        packageCustomPrices: {...window.packageCustomPrices},
-        totalOneTime: oneTimeTotal,
-        totalMonthly: monthlyTotal,
+        totalPrice: totalPrice,
         isFreeProject: !hasPaidPackage,
-        paymentTerms: paymentTerms,
-        customPaymentDetails: customPaymentDetails,
+        paymentTerms: 'completion',
+        customPaymentDetails: '',
         maintenanceIncluded: maintenanceIncluded,
-        maintenanceFee: maintenanceIncluded === 'paid' ? (parseFloat(document.getElementById('maintenanceFee').value) || 99.00) : 0,
+        maintenanceFee: maintenanceIncluded === 'paid' ? (parseFloat(document.getElementById('maintenanceFee').value) || 59.99) : 0,
         maintenanceDetails: document.getElementById('maintenanceDetails') ? document.getElementById('maintenanceDetails').value : '',
         status: 'draft',
         createdAt: new Date().toISOString()
@@ -14235,7 +13240,7 @@ function generateTimelineHTML(timeline) {
             ${timeline.notes ? '<div style="margin-top: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-amber);"><div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Additional Notes</div><div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">' + timeline.notes + '</div></div>' : ''}
             
             <div style="background: rgba(245,158,11,0.1); border: 2px solid var(--accent-amber); padding: 20px; border-radius: var(--radius-md); text-align: center; margin-top: 32px;">
-                <div style="font-size: 14px; font-weight: 700; color: var(--accent-amber); margin-bottom: 8px;">Client Signature Required</div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--accent-amber); margin-bottom: 8px;">⚠️ Client Signature Required</div>
                 <div style="font-size: 13px; color: var(--text-secondary);">Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</div>
             </div>
         </div>
@@ -14644,7 +13649,7 @@ function exportTimelineAsPDF() {
                     
                     // SIGNATURE REMINDER
                     '<div style="background: linear-gradient(135deg, #D4A574 0%, #B88F5F 100%); color: white; padding: 24px; border-radius: 4px; text-align: center; margin-bottom: 40px;">' +
-                        '<div style="font-size: 15px; font-weight: 700; margin-bottom: 8px;">CLIENT SIGNATURE REQUIRED</div>' +
+                        '<div style="font-size: 15px; font-weight: 700; margin-bottom: 8px;">⚠️ CLIENT SIGNATURE REQUIRED</div>' +
                         '<div style="font-size: 12px; opacity: 0.95; line-height: 1.5;">Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</div>' +
                     '</div>' +
                     
@@ -17948,7 +16953,7 @@ function refreshFollowUps() {
 
 // Reset all COLD leads back to "Never Contacted" state
 async function resetColdLeadsToNeverContacted() {
-    if (!confirm('This will reset ALL COLD LEADS back to "Never Contacted" state.\n\nThis means:\n- follow_up_count will be set to 0\n- last_contact_date will be cleared\n- status will be reset to new\n- Hot leads and Dead leads will NOT be affected\n\nAre you sure you want to continue?')) {
+    if (!confirm('⚠️ This will reset ALL COLD LEADS back to "Never Contacted" state.\n\nThis means:\n- follow_up_count will be set to 0\n- last_contact_date will be cleared\n- status will be reset to new\n- Hot leads and Dead leads will NOT be affected\n\nAre you sure you want to continue?')) {
         return;
     }
     
@@ -17991,7 +16996,7 @@ async function resetAllLeadsToNeverContacted() {
     }
     
     // Double confirmation for this destructive action
-    if (!confirm('FINAL CONFIRMATION ⚠️\n\nYou are about to reset ALL leads including HOT leads.\n\nType "RESET ALL" in your mind and click OK to proceed, or Cancel to abort.')) {
+    if (!confirm('⚠️ FINAL CONFIRMATION ⚠️\n\nYou are about to reset ALL leads including HOT leads.\n\nType "RESET ALL" in your mind and click OK to proceed, or Cancel to abort.')) {
         return;
     }
     

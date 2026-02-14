@@ -12482,12 +12482,7 @@ function handleProjectSearch(event) {
 }
 
 // Open Project Timeline Modal
-// REPLACEMENT FOR openProjectTimelineModal() function
-// This version has:
-// - Clean package selection by category
-// - Quantity inputs for CRM (per-user pricing)
-// - Custom pricing for Enterprise/Custom packages
-// - No old SLA baggage
+// CORRECT openProjectTimelineModal() - ONLY packages from pricing page
 
 function openProjectTimelineModal() {
     const modal = document.getElementById('createModal');
@@ -12498,31 +12493,11 @@ function openProjectTimelineModal() {
     
     // Initialize package selection
     window.selectedPackages = [];
-    window.packageQuantities = {}; // Track quantities for CRM packages
-    window.packageCustomPrices = {}; // Track custom prices for Enterprise packages
+    window.packageQuantities = {}; // For CRM user counts
+    window.packageCustomPrices = {}; // For "Get a Quote" packages
     
     const allLeadsAndCustomers = [...state.leads, ...state.customers];
     const today = new Date().toISOString().split('T')[0];
-    
-    // Organize packages by category
-    const webPackages = Object.entries(servicePackages).filter(([key, pkg]) => 
-        key.includes('website') || key.includes('free-') || pkg.category === 'web-development'
-    );
-    
-    const crmPackages = Object.entries(servicePackages).filter(([key, pkg]) => 
-        pkg.category === 'crm' || key.includes('crm')
-    );
-    
-    const seoPackages = Object.entries(servicePackages).filter(([key, pkg]) => 
-        pkg.category === 'seo' || key.includes('seo')
-    );
-    
-    const otherPackages = Object.entries(servicePackages).filter(([key, pkg]) => 
-        !key.includes('website') && !key.includes('free-') && 
-        pkg.category !== 'crm' && !key.includes('crm') && 
-        pkg.category !== 'seo' && !key.includes('seo') &&
-        pkg.category !== 'web-development'
-    );
     
     bodyEl.innerHTML = `
         <div class="form-grid">
@@ -12575,7 +12550,7 @@ function openProjectTimelineModal() {
             
             <div class="form-group full-width">
                 <label class="form-label">Project Name / Description</label>
-                <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Company Website Redesign, CRM Implementation, etc.">
+                <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Company Website + CRM Setup">
             </div>
             
             <!-- PACKAGE SELECTION -->
@@ -12584,121 +12559,217 @@ function openProjectTimelineModal() {
                 
                 <div id="packagesList" style="max-height: 500px; overflow-y: auto; padding-right: 8px;">
                     
-                    ${webPackages.length > 0 ? `
+                    <!-- WEBSITE PACKAGES -->
                     <div style="margin-top: 16px;">
                         <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
-                            🌐 Website Development Packages
+                            🌐 Website Development (One-Time Payment)
                         </div>
                         <div style="display: grid; gap: 8px; margin-top: 8px;">
-                            ${webPackages.map(([key, pkg]) => `
-                                <div class="package-option" onclick="togglePackage('${key}')" id="pkg-${key}" style="cursor: pointer; padding: 12px; background: var(--bg-tertiary); border: 2px solid var(--border-default); border-radius: var(--radius-sm); transition: all 0.2s;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div class="package-checkbox" id="pkg-check-${key}" style="width: 20px; height: 20px; border: 2px solid var(--border-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                                <polyline points="20 6 9 17 4 12"/>
-                                            </svg>
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
-                                                ${pkg.name}
-                                                ${pkg.isFree ? '<span style="margin-left: 8px; background: var(--status-contacted); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700;">FREE</span>' : ''}
-                                            </div>
-                                            <div style="font-size: 12px; color: var(--text-secondary);">${pkg.description || ''}</div>
-                                            ${pkg.duration ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">⏱️ ${pkg.duration}</div>` : ''}
-                                        </div>
-                                        <div style="text-align: right; font-weight: 700; color: ${pkg.isFree ? 'var(--status-contacted)' : 'var(--accent-amber)'};">
-                                            ${pkg.price === 0 && !pkg.isFree ? 'Custom Pricing' : pkg.isFree ? 'FREE' : '$' + pkg.price.toLocaleString()}
-                                        </div>
+                            <div class="package-option" onclick="togglePackage('web-starter')" id="pkg-web-starter">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-web-starter">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
                                     </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Starter Package</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Up to 15 pages • Mobile responsive • Basic SEO • 2-3 week delivery</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--accent-amber);">Custom Quote</div>
                                 </div>
-                            `).join('')}
+                            </div>
+                            
+                            <div class="package-option" onclick="togglePackage('web-professional')" id="pkg-web-professional">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-web-professional">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Professional Package</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Up to 25 pages • Custom design • Advanced SEO • E-commerce ready • 3-4 week delivery</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--accent-amber);">Custom Quote</div>
+                                </div>
+                            </div>
+                            
+                            <div class="package-option" onclick="togglePackage('web-enterprise')" id="pkg-web-enterprise">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-web-enterprise">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Enterprise Package</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Unlimited pages • Fully custom • Advanced integrations • Custom CMS • Dedicated PM</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--accent-amber);">Custom Quote</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    ` : ''}
                     
-                    ${crmPackages.length > 0 ? `
+                    <!-- CRM PACKAGES -->
                     <div style="margin-top: 16px;">
                         <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-pending); padding: 8px; background: rgba(245,158,11,0.1); border-radius: var(--radius-sm);">
-                            💼 CRM Packages (Monthly Per User)
+                            💼 CRM Solutions (Per User/Month)
                         </div>
                         <div style="display: grid; gap: 8px; margin-top: 8px;">
-                            ${crmPackages.map(([key, pkg]) => `
-                                <div class="package-option" onclick="togglePackage('${key}')" id="pkg-${key}" style="cursor: pointer; padding: 12px; background: var(--bg-tertiary); border: 2px solid var(--border-default); border-radius: var(--radius-sm); transition: all 0.2s;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div class="package-checkbox" id="pkg-check-${key}" style="width: 20px; height: 20px; border: 2px solid var(--border-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                                <polyline points="20 6 9 17 4 12"/>
-                                            </svg>
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${pkg.name}</div>
-                                            <div style="font-size: 12px; color: var(--text-secondary);">${pkg.description || ''}</div>
-                                        </div>
-                                        <div style="text-align: right;">
-                                            <div style="font-weight: 700; color: var(--status-pending);">$${pkg.price}/user/month</div>
-                                        </div>
+                            <div class="package-option" onclick="togglePackage('crm-essential')" id="pkg-crm-essential">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-crm-essential">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
                                     </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Essential CRM</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Up to 1,000 contacts • Basic lead management • Email integration • Mobile app</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--status-pending);">$19.99/user/mo</div>
                                 </div>
-                            `).join('')}
+                            </div>
+                            
+                            <div class="package-option" onclick="togglePackage('crm-professional')" id="pkg-crm-professional">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-crm-professional">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Professional CRM</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Up to 10,000 contacts • Sales automation • Custom pipelines • Advanced analytics • API access</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--status-pending);">$49.99/user/mo</div>
+                                </div>
+                            </div>
+                            
+                            <div class="package-option" onclick="togglePackage('crm-enterprise')" id="pkg-crm-enterprise">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-crm-enterprise">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Enterprise CRM</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Unlimited contacts • Custom integrations • White-label • Dedicated manager • 24/7 support</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--status-pending);">$64.99/user/mo</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    ` : ''}
                     
-                    ${seoPackages.length > 0 ? `
+                    <!-- SEO PACKAGES -->
                     <div style="margin-top: 16px;">
                         <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-new); padding: 8px; background: rgba(96,165,250,0.1); border-radius: var(--radius-sm);">
-                            🚀 SEO & Marketing Packages
+                            🚀 SEO Services (Monthly)
                         </div>
                         <div style="display: grid; gap: 8px; margin-top: 8px;">
-                            ${seoPackages.map(([key, pkg]) => `
-                                <div class="package-option" onclick="togglePackage('${key}')" id="pkg-${key}" style="cursor: pointer; padding: 12px; background: var(--bg-tertiary); border: 2px solid var(--border-default); border-radius: var(--radius-sm); transition: all 0.2s;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div class="package-checkbox" id="pkg-check-${key}" style="width: 20px; height: 20px; border: 2px solid var(--border-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                                <polyline points="20 6 9 17 4 12"/>
-                                            </svg>
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${pkg.name}</div>
-                                            <div style="font-size: 12px; color: var(--text-secondary);">${pkg.description || ''}</div>
-                                        </div>
-                                        <div style="text-align: right; font-weight: 700; color: var(--status-new);">
-                                            ${pkg.price === 0 ? 'Custom' : '$' + pkg.price}${pkg.billing === 'monthly' ? '/mo' : ''}
-                                        </div>
+                            <div class="package-option" onclick="togglePackage('seo-local')" id="pkg-seo-local">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-seo-local">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
                                     </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Local SEO</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Google My Business • 10 keywords • On-page SEO • Monthly reports • Review management</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--status-new);">$199/mo</div>
                                 </div>
-                            `).join('')}
+                            </div>
+                            
+                            <div class="package-option" onclick="togglePackage('seo-growth')" id="pkg-seo-growth">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-seo-growth">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Growth SEO</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">25 keywords • Content creation (2 posts/mo) • Link building • Technical SEO • Schema markup</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--status-new);">$499/mo</div>
+                                </div>
+                            </div>
+                            
+                            <div class="package-option" onclick="togglePackage('seo-enterprise')" id="pkg-seo-enterprise">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-seo-enterprise">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Enterprise SEO</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Unlimited keywords • 4+ posts/mo • 25+ links/mo • Multi-location • Dedicated manager • 24/7 support</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--status-new);">$999+/mo</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    ` : ''}
                     
-                    ${otherPackages.length > 0 ? `
+                    <!-- DIGITAL MARKETING PACKAGES -->
                     <div style="margin-top: 16px;">
-                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); padding: 8px; background: var(--bg-elevated); border-radius: var(--radius-sm);">
-                            📦 Other Services
+                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-contacted); padding: 8px; background: rgba(16,185,129,0.1); border-radius: var(--radius-sm);">
+                            📱 Digital Marketing (Monthly)
                         </div>
                         <div style="display: grid; gap: 8px; margin-top: 8px;">
-                            ${otherPackages.map(([key, pkg]) => `
-                                <div class="package-option" onclick="togglePackage('${key}')" id="pkg-${key}" style="cursor: pointer; padding: 12px; background: var(--bg-tertiary); border: 2px solid var(--border-default); border-radius: var(--radius-sm); transition: all 0.2s;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div class="package-checkbox" id="pkg-check-${key}" style="width: 20px; height: 20px; border: 2px solid var(--border-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
-                                                <polyline points="20 6 9 17 4 12"/>
-                                            </svg>
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${pkg.name}</div>
-                                            <div style="font-size: 12px; color: var(--text-secondary);">${pkg.description || ''}</div>
-                                        </div>
-                                        <div style="text-align: right; font-weight: 700; color: var(--accent-amber);">
-                                            ${pkg.price === 0 ? 'Custom' : '$' + pkg.price}${pkg.billing === 'monthly' ? '/mo' : ''}
-                                        </div>
+                            <div class="package-option" onclick="togglePackage('marketing-social')" id="pkg-marketing-social">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-marketing-social">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
                                     </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Social Starter</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">2 platforms • 12 posts/mo • Content creation • Analytics • Community management</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--status-contacted);">Custom Quote</div>
                                 </div>
-                            `).join('')}
+                            </div>
+                            
+                            <div class="package-option" onclick="togglePackage('marketing-growth')" id="pkg-marketing-growth">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-marketing-growth">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Growth Accelerator</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">4 platforms • 20 posts/mo • Google Ads • Facebook/Instagram Ads • Email campaigns</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--status-contacted);">Custom Quote</div>
+                                </div>
+                            </div>
+                            
+                            <div class="package-option" onclick="togglePackage('marketing-full')" id="pkg-marketing-full">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="package-checkbox" id="pkg-check-marketing-full">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Full-Service Marketing</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">All platforms • Unlimited content • Multi-platform ads • Video production • Dedicated manager</div>
+                                    </div>
+                                    <div style="text-align: right; font-weight: 700; color: var(--status-contacted);">Custom Quote</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    ` : ''}
                     
                 </div>
             </div>
@@ -12743,7 +12814,7 @@ function openProjectTimelineModal() {
             
             <div class="form-group full-width" id="maintenanceDetailsSection" style="display: none;">
                 <label class="form-label">Maintenance Scope</label>
-                <textarea class="form-textarea" id="maintenanceDetails" rows="3" placeholder="What's included in maintenance? (updates, bug fixes, support hours, etc.)">Updates, security patches, bug fixes, and up to 2 hours of support per month</textarea>
+                <textarea class="form-textarea" id="maintenanceDetails" rows="3" placeholder="What's included in maintenance?">Updates, security patches, bug fixes, and up to 2 hours of support per month</textarea>
             </div>
         </div>
         
@@ -12776,7 +12847,6 @@ function openProjectTimelineModal() {
     
     // Add event listeners
     setTimeout(() => {
-        // Payment terms listener
         const paymentTermsSelect = document.getElementById('paymentTerms');
         if (paymentTermsSelect) {
             paymentTermsSelect.addEventListener('change', function() {
@@ -12785,12 +12855,33 @@ function openProjectTimelineModal() {
             });
         }
         
-        // Add CSS for package selection states
+        // Add CSS for package selection
         const style = document.createElement('style');
         style.textContent = `
+            .package-option {
+                cursor: pointer;
+                padding: 12px;
+                background: var(--bg-tertiary);
+                border: 2px solid var(--border-default);
+                border-radius: var(--radius-sm);
+                transition: all 0.2s;
+            }
+            .package-option:hover {
+                border-color: var(--border-strong);
+            }
             .package-option.selected {
                 border-color: var(--accent-amber) !important;
                 background: rgba(212, 165, 116, 0.08) !important;
+            }
+            .package-checkbox {
+                width: 20px;
+                height: 20px;
+                border: 2px solid var(--border-strong);
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
             }
             .package-checkbox.checked {
                 background: var(--accent-amber);
@@ -12807,7 +12898,29 @@ function openProjectTimelineModal() {
     modal.classList.add('active');
 }
 
-// Toggle package selection
+// PACKAGE PRICING DATA (from pricing page)
+const PACKAGES = {
+    // Website (custom quotes)
+    'web-starter': { name: 'Starter Package', price: 0, billing: 'one-time', needsQuote: true },
+    'web-professional': { name: 'Professional Package', price: 0, billing: 'one-time', needsQuote: true },
+    'web-enterprise': { name: 'Enterprise Package', price: 0, billing: 'one-time', needsQuote: true },
+    
+    // CRM (per user/month)
+    'crm-essential': { name: 'Essential CRM', price: 19.99, billing: 'per-user-monthly' },
+    'crm-professional': { name: 'Professional CRM', price: 49.99, billing: 'per-user-monthly' },
+    'crm-enterprise': { name: 'Enterprise CRM', price: 64.99, billing: 'per-user-monthly' },
+    
+    // SEO (monthly)
+    'seo-local': { name: 'Local SEO', price: 199, billing: 'monthly' },
+    'seo-growth': { name: 'Growth SEO', price: 499, billing: 'monthly' },
+    'seo-enterprise': { name: 'Enterprise SEO', price: 999, billing: 'monthly' },
+    
+    // Digital Marketing (custom quotes)
+    'marketing-social': { name: 'Social Starter', price: 0, billing: 'monthly', needsQuote: true },
+    'marketing-growth': { name: 'Growth Accelerator', price: 0, billing: 'monthly', needsQuote: true },
+    'marketing-full': { name: 'Full-Service Marketing', price: 0, billing: 'monthly', needsQuote: true }
+};
+
 function togglePackage(packageKey) {
     const element = document.getElementById(`pkg-${packageKey}`);
     const checkbox = document.getElementById(`pkg-check-${packageKey}`);
@@ -12824,9 +12937,9 @@ function togglePackage(packageKey) {
         // Select
         window.selectedPackages.push(packageKey);
         
-        // Initialize defaults for CRM packages
-        const pkg = servicePackages[packageKey];
-        if (pkg && pkg.billing === 'monthly-per-user') {
+        // Initialize quantity for CRM packages
+        const pkg = PACKAGES[packageKey];
+        if (pkg && pkg.billing === 'per-user-monthly') {
             window.packageQuantities[packageKey] = 1;
         }
         
@@ -12838,7 +12951,6 @@ function togglePackage(packageKey) {
     updatePackageInputs();
 }
 
-// Update package-specific inputs (quantity for CRM, custom price for Enterprise)
 function updatePackageInputs() {
     const container = document.getElementById('packageInputsContainer');
     const section = document.getElementById('selectedPackagesInputs');
@@ -12854,7 +12966,7 @@ function updatePackageInputs() {
     container.innerHTML = '';
     
     window.selectedPackages.forEach(packageKey => {
-        const pkg = servicePackages[packageKey];
+        const pkg = PACKAGES[packageKey];
         if (!pkg) return;
         
         const inputDiv = document.createElement('div');
@@ -12863,7 +12975,7 @@ function updatePackageInputs() {
         let fieldsHTML = `<div style="font-weight: 600; margin-bottom: 10px; color: var(--text-primary);">${pkg.name}</div>`;
         
         // CRM Packages - Quantity Input
-        if (pkg.billing === 'monthly-per-user') {
+        if (pkg.billing === 'per-user-monthly') {
             const currentQty = window.packageQuantities[packageKey] || 1;
             fieldsHTML += `
                 <div class="form-group" style="margin-bottom: 0;">
@@ -12876,40 +12988,37 @@ function updatePackageInputs() {
                            onchange="updatePackageQuantity('${packageKey}', this.value)"
                            style="max-width: 200px;">
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                        $${pkg.price}/user/month × ${currentQty} users = <strong style="color: var(--accent-amber);">$${(pkg.price * currentQty).toFixed(2)}/month</strong>
+                        $${pkg.price}/user/month × ${currentQty} = <strong style="color: var(--status-pending);">$${(pkg.price * currentQty).toFixed(2)}/month</strong>
                     </div>
                 </div>
             `;
         }
-        // Custom Pricing Packages (Enterprise Website, Digital Marketing, etc.)
-        else if (pkg.price === 0 && !pkg.isFree) {
+        // Packages needing custom quote
+        else if (pkg.needsQuote) {
             const currentPrice = window.packageCustomPrices[packageKey] || '';
             fieldsHTML += `
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="font-size: 12px;">Custom Pricing (Rough Estimate)</label>
+                    <label class="form-label" style="font-size: 12px;">Custom Price Quote ($)</label>
                     <input type="number" 
                            class="form-input" 
                            id="customprice-${packageKey}" 
-                           placeholder="Enter estimated amount" 
+                           placeholder="Enter quoted amount" 
                            step="0.01" 
                            min="0" 
                            value="${currentPrice}"
                            onchange="updatePackageCustomPrice('${packageKey}', this.value)"
                            style="max-width: 200px;">
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                        This is a rough estimate and can be adjusted later
+                        Enter the custom quote amount
                     </div>
                 </div>
             `;
         }
-        // Fixed Price Packages - Just display
+        // Fixed price packages
         else {
             fieldsHTML += `
                 <div style="font-size: 13px; color: var(--text-secondary);">
-                    ${pkg.isFree ? 
-                        '<span style="color: var(--status-contacted); font-weight: 700;">FREE</span>' : 
-                        `Price: <strong style="color: var(--accent-amber);">$${pkg.price.toLocaleString()}</strong>${pkg.billing === 'monthly' ? '/month' : ''}`
-                    }
+                    <strong style="color: var(--accent-amber);">$${pkg.price.toLocaleString()}</strong>${pkg.billing === 'monthly' ? '/month' : ''}
                 </div>
             `;
         }
@@ -12918,20 +13027,17 @@ function updatePackageInputs() {
         container.appendChild(inputDiv);
     });
     
-    // Update summary to reflect new quantities/prices
     updatePackagesSummary();
 }
 
-// Update CRM package quantity
 function updatePackageQuantity(packageKey, quantity) {
     window.packageQuantities[packageKey] = parseInt(quantity) || 1;
-    updatePackageInputs(); // Refresh to show new calculation
+    updatePackageInputs();
 }
 
-// Update custom package price
 function updatePackageCustomPrice(packageKey, price) {
     window.packageCustomPrices[packageKey] = parseFloat(price) || 0;
-    updatePackagesSummary(); // Refresh summary
+    updatePackagesSummary();
 }
 
 function toggleMaintenanceOptions() {
@@ -12985,17 +13091,13 @@ function populateClientInfo() {
 }
 
 // Update packages summary
-// REPLACEMENT for updatePackagesSummary() function
-// Updated to handle:
-// - CRM package quantities (monthly-per-user pricing)
-// - Custom pricing for Enterprise packages
-// - Separate one-time and recurring costs
+// CORRECT updatePackagesSummary() - matches pricing page exactly
 
 function updatePackagesSummary() {
     const summaryEl = document.getElementById('packagesSummary');
     const paymentSection = document.getElementById('paymentTermsSection');
     
-    if (!summaryEl) return; // Safety check
+    if (!summaryEl) return;
     
     if (window.selectedPackages.length === 0) {
         summaryEl.innerHTML = 'No services selected';
@@ -13006,65 +13108,52 @@ function updatePackagesSummary() {
     let oneTimeTotal = 0;
     let monthlyTotal = 0;
     let hasPaidPackage = false;
-    let hasFreePackage = false;
-    let hasCustomPricing = false;
+    let needsQuote = false;
     
     const packageDetails = [];
     
     window.selectedPackages.forEach(key => {
-        const pkg = servicePackages[key];
+        const pkg = PACKAGES[key];
         if (!pkg) return;
         
         let lineItem = pkg.name;
-        let lineCost = 0;
         
-        // FREE packages
-        if (pkg.isFree) {
-            hasFreePackage = true;
-            lineItem += ' <span style="color: var(--status-contacted); font-weight: 700;">(FREE)</span>';
-        }
-        // CRM packages (monthly per user)
-        else if (pkg.billing === 'monthly-per-user') {
-            hasPaidPackage = true;
+        // CRM packages (per user/month)
+        if (pkg.billing === 'per-user-monthly') {
             const qty = window.packageQuantities[key] || 1;
-            lineCost = pkg.price * qty;
-            monthlyTotal += lineCost;
-            lineItem += ` - ${qty} user${qty > 1 ? 's' : ''} × $${pkg.price}/user/month = <strong style="color: var(--status-pending);">$${lineCost.toFixed(2)}/month</strong>`;
+            const total = pkg.price * qty;
+            monthlyTotal += total;
+            hasPaidPackage = true;
+            lineItem += ` - ${qty} user${qty > 1 ? 's' : ''} × $${pkg.price}/user/month = <strong style="color: var(--status-pending);">$${total.toFixed(2)}/month</strong>`;
         }
-        // Custom pricing packages
-        else if (pkg.price === 0 && !pkg.isFree) {
+        // Packages needing custom quote
+        else if (pkg.needsQuote) {
             const customPrice = window.packageCustomPrices[key] || 0;
             if (customPrice > 0) {
                 hasPaidPackage = true;
                 if (pkg.billing === 'monthly') {
                     monthlyTotal += customPrice;
-                    lineItem += ` - <strong style="color: var(--accent-amber);">~$${customPrice.toLocaleString()}/month</strong> <span style="font-size: 11px; color: var(--text-muted);">(estimate)</span>`;
+                    lineItem += ` - <strong style="color: var(--accent-amber);">$${customPrice.toLocaleString()}/month</strong>`;
                 } else {
                     oneTimeTotal += customPrice;
-                    lineItem += ` - <strong style="color: var(--accent-amber);">~$${customPrice.toLocaleString()}</strong> <span style="font-size: 11px; color: var(--text-muted);">(estimate)</span>`;
+                    lineItem += ` - <strong style="color: var(--accent-amber);">$${customPrice.toLocaleString()}</strong>`;
                 }
             } else {
-                hasCustomPricing = true;
-                lineItem += ' - <strong style="color: var(--text-muted);">Custom Pricing (TBD)</strong>';
+                needsQuote = true;
+                lineItem += ' - <strong style="color: var(--text-muted);">Custom Quote (TBD)</strong>';
             }
         }
-        // Regular monthly packages
+        // Fixed price monthly (SEO)
         else if (pkg.billing === 'monthly') {
-            hasPaidPackage = true;
             monthlyTotal += pkg.price;
-            lineItem += ` - <strong style="color: var(--accent-amber);">$${pkg.price.toLocaleString()}/month</strong>`;
-        }
-        // One-time packages
-        else {
             hasPaidPackage = true;
-            oneTimeTotal += pkg.price;
-            lineItem += ` - <strong style="color: var(--accent-amber);">$${pkg.price.toLocaleString()}</strong>`;
+            lineItem += ` - <strong style="color: var(--status-new);">$${pkg.price.toLocaleString()}/month</strong>`;
         }
         
         packageDetails.push(lineItem);
     });
     
-    // Build summary HTML
+    // Build summary
     let summaryHtml = '<div style="display: grid; gap: 6px; margin-bottom: 12px;">';
     packageDetails.forEach(detail => {
         summaryHtml += `<div style="font-size: 13px; color: var(--text-secondary);">• ${detail}</div>`;
@@ -13087,20 +13176,15 @@ function updatePackagesSummary() {
             </div>`;
         }
         
-        if (hasCustomPricing) {
-            summaryHtml += '<div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; font-style: italic;">Note: Some packages require custom pricing discussion</div>';
+        if (needsQuote) {
+            summaryHtml += '<div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; font-style: italic;">⚠️ Some packages require custom pricing</div>';
         }
         
         summaryHtml += '</div>';
-    } else if (hasFreePackage && !hasPaidPackage) {
-        summaryHtml += `<div style="font-size: 16px; font-weight: 700; color: var(--status-contacted); padding-top: 12px; border-top: 1px solid var(--border-default);">
-            Total: FREE 🎁
-        </div>`;
     }
     
     summaryEl.innerHTML = summaryHtml;
     
-    // Show/hide payment terms section
     if (paymentSection) {
         paymentSection.style.display = hasPaidPackage ? 'block' : 'none';
     }
@@ -13324,8 +13408,7 @@ function updatePackageInputs() {
 }
 
 // Save Project Timeline
-// REPLACEMENT for saveProjectTimeline() function
-// Updated to use window.packageQuantities and window.packageCustomPrices
+// CORRECT saveProjectTimeline() - saves pricing page packages correctly
 
 function saveProjectTimeline() {
     if (window.selectedPackages.length === 0) {
@@ -13345,60 +13428,51 @@ function saveProjectTimeline() {
         return;
     }
     
-    // Collect package details with custom prices and quantities
+    // Calculate totals and build package details
     const packageDetails = {};
+    let oneTimeTotal = 0;
+    let monthlyTotal = 0;
     let hasPaidPackage = false;
-    let totalOneTime = 0;
-    let totalMonthly = 0;
     
     window.selectedPackages.forEach(key => {
-        const pkg = servicePackages[key];
+        const pkg = PACKAGES[key];
         if (!pkg) return;
         
         packageDetails[key] = {
             name: pkg.name,
-            category: pkg.category || 'other',
-            billing: pkg.billing || 'one-time',
-            basePrice: pkg.price,
-            isFree: pkg.isFree || false
+            billing: pkg.billing,
+            basePrice: pkg.price
         };
         
-        // CRM Packages - use quantity from window.packageQuantities
-        if (pkg.billing === 'monthly-per-user') {
+        // CRM packages - per user/month
+        if (pkg.billing === 'per-user-monthly') {
             const quantity = window.packageQuantities[key] || 1;
             packageDetails[key].quantity = quantity;
             packageDetails[key].pricePerUnit = pkg.price;
-            packageDetails[key].displayPrice = pkg.price * quantity;
-            totalMonthly += (pkg.price * quantity);
+            packageDetails[key].totalPrice = pkg.price * quantity;
+            monthlyTotal += (pkg.price * quantity);
             hasPaidPackage = true;
         }
-        // Custom Pricing Packages - use custom price from window.packageCustomPrices
-        else if (pkg.price === 0 && !pkg.isFree) {
+        // Custom quote packages
+        else if (pkg.needsQuote) {
             const customPrice = window.packageCustomPrices[key] || 0;
             packageDetails[key].customPrice = customPrice;
-            packageDetails[key].displayPrice = customPrice;
-            packageDetails[key].isEstimate = true;
+            packageDetails[key].needsQuote = true;
             
             if (customPrice > 0) {
                 if (pkg.billing === 'monthly') {
-                    totalMonthly += customPrice;
+                    monthlyTotal += customPrice;
                 } else {
-                    totalOneTime += customPrice;
+                    oneTimeTotal += customPrice;
                 }
                 hasPaidPackage = true;
             }
         }
-        // Regular Monthly Packages
+        // Fixed price packages (SEO)
         else if (pkg.billing === 'monthly') {
-            packageDetails[key].displayPrice = pkg.price;
-            totalMonthly += pkg.price;
-            if (!pkg.isFree) hasPaidPackage = true;
-        }
-        // One-Time Packages
-        else {
-            packageDetails[key].displayPrice = pkg.price;
-            totalOneTime += pkg.price;
-            if (!pkg.isFree && pkg.price > 0) hasPaidPackage = true;
+            packageDetails[key].totalPrice = pkg.price;
+            monthlyTotal += pkg.price;
+            hasPaidPackage = true;
         }
     });
     
@@ -13418,10 +13492,10 @@ function saveProjectTimeline() {
         projectName: document.getElementById('timelineProjectName').value,
         packages: window.selectedPackages,
         packageDetails: packageDetails,
-        packageQuantities: {...window.packageQuantities}, // Save quantities
-        packageCustomPrices: {...window.packageCustomPrices}, // Save custom prices
-        totalOneTime: totalOneTime,
-        totalMonthly: totalMonthly,
+        packageQuantities: {...window.packageQuantities},
+        packageCustomPrices: {...window.packageCustomPrices},
+        totalOneTime: oneTimeTotal,
+        totalMonthly: monthlyTotal,
         isFreeProject: !hasPaidPackage,
         paymentTerms: paymentTerms,
         customPaymentDetails: customPaymentDetails,

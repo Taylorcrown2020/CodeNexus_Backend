@@ -12482,6 +12482,13 @@ function handleProjectSearch(event) {
 }
 
 // Open Project Timeline Modal
+// REPLACEMENT FOR openProjectTimelineModal() function
+// This version has:
+// - Clean package selection by category
+// - Quantity inputs for CRM (per-user pricing)
+// - Custom pricing for Enterprise/Custom packages
+// - No old SLA baggage
+
 function openProjectTimelineModal() {
     const modal = document.getElementById('createModal');
     const titleEl = document.getElementById('createModalTitle');
@@ -12490,15 +12497,36 @@ function openProjectTimelineModal() {
     titleEl.textContent = 'Create Project Timeline & SLA';
     
     // Initialize package selection
-    // Make sure this is initialized at the top of openProjectTimelineModal()
-    window.selectedPackages = window.selectedPackages || [];
-    window.selectedPackages = []; // Initialize empty array
+    window.selectedPackages = [];
+    window.packageQuantities = {}; // Track quantities for CRM packages
+    window.packageCustomPrices = {}; // Track custom prices for Enterprise packages
     
     const allLeadsAndCustomers = [...state.leads, ...state.customers];
     const today = new Date().toISOString().split('T')[0];
     
+    // Organize packages by category
+    const webPackages = Object.entries(servicePackages).filter(([key, pkg]) => 
+        key.includes('website') || key.includes('free-') || pkg.category === 'web-development'
+    );
+    
+    const crmPackages = Object.entries(servicePackages).filter(([key, pkg]) => 
+        pkg.category === 'crm' || key.includes('crm')
+    );
+    
+    const seoPackages = Object.entries(servicePackages).filter(([key, pkg]) => 
+        pkg.category === 'seo' || key.includes('seo')
+    );
+    
+    const otherPackages = Object.entries(servicePackages).filter(([key, pkg]) => 
+        !key.includes('website') && !key.includes('free-') && 
+        pkg.category !== 'crm' && !key.includes('crm') && 
+        pkg.category !== 'seo' && !key.includes('seo') &&
+        pkg.category !== 'web-development'
+    );
+    
     bodyEl.innerHTML = `
         <div class="form-grid">
+            <!-- CLIENT INFO -->
             <div class="form-group full-width">
                 <label class="form-label">Select Existing Client (Optional)</label>
                 <select class="form-select" id="timelineClient" onchange="populateClientInfo()">
@@ -12534,6 +12562,7 @@ function openProjectTimelineModal() {
                 <textarea class="form-textarea" id="timelineClientAddress" rows="2" placeholder="Street address, City, State ZIP"></textarea>
             </div>
             
+            <!-- PROJECT INFO -->
             <div class="form-group">
                 <label class="form-label">Estimated Start Date</label>
                 <input type="date" class="form-input" id="timelineStartDate" value="${today}">
@@ -12546,73 +12575,150 @@ function openProjectTimelineModal() {
             
             <div class="form-group full-width">
                 <label class="form-label">Project Name / Description</label>
-                <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Company Website Redesign, E-commerce Store, etc.">
+                <input type="text" class="form-input" id="timelineProjectName" placeholder="e.g., Company Website Redesign, CRM Implementation, etc.">
             </div>
             
+            <!-- PACKAGE SELECTION -->
             <div class="form-group full-width">
-                <label class="form-label">Select Service Packages <span class="required">*</span></label>
-                <div id="packagesList" style="display: grid; gap: 12px; margin-top: 12px; max-height: 400px; overflow-y: auto; padding-right: 8px;">
+                <label class="form-label">Select Services <span class="required">*</span></label>
+                
+                <div id="packagesList" style="max-height: 500px; overflow-y: auto; padding-right: 8px;">
                     
-                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-contacted); margin-top: 8px; padding: 8px; background: rgba(16,185,129,0.1); border-radius: var(--radius-sm);">
-                        FREE PACKAGES - No Payment Required
-                    </div>
-                    
-                    ${Object.entries(servicePackages).filter(([key, pkg]) => pkg.isFree).map(([key, pkg]) => `
-                        <div class="expense-item" style="cursor: pointer; border: 2px solid var(--status-contacted);" onclick="togglePackageSelection('${key}', this)">
-                            <div class="expense-checkbox" id="pkg-check-${key}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                            </div>
-                            <div class="expense-content" style="flex: 1;">
-                                <div class="expense-description">
-                                    ${pkg.name}
-                                    <span style="margin-left: 8px; background: var(--status-contacted); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700;">FREE</span>
-                                </div>
-                                <div class="expense-meta">
-                                    <span>${pkg.description}</span>
-                                    <span>Duration: ${pkg.duration}</span>
-                                </div>
-                            </div>
-                            <div class="expense-amount" style="color: var(--status-contacted);">FREE</div>
+                    ${webPackages.length > 0 ? `
+                    <div style="margin-top: 16px;">
+                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
+                            🌐 Website Development Packages
                         </div>
-                    `).join('')}
-                    
-                    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-top: 16px; padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
-                        PAID PACKAGES - Payment Due Upon Completion
-                    </div>
-                    
-                    ${Object.entries(servicePackages).filter(([key, pkg]) => !pkg.isFree).map(([key, pkg]) => `
-                        <div class="expense-item" style="cursor: pointer;" onclick="togglePackageSelection('${key}', this)">
-                            <div class="expense-checkbox" id="pkg-check-${key}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                            </div>
-                            <div class="expense-content" style="flex: 1;">
-                                <div class="expense-description">${pkg.name}</div>
-                                <div class="expense-meta">
-                                    <span>${pkg.description}</span>
-                                    <span>Duration: ${pkg.duration}</span>
+                        <div style="display: grid; gap: 8px; margin-top: 8px;">
+                            ${webPackages.map(([key, pkg]) => `
+                                <div class="package-option" onclick="togglePackage('${key}')" id="pkg-${key}" style="cursor: pointer; padding: 12px; background: var(--bg-tertiary); border: 2px solid var(--border-default); border-radius: var(--radius-sm); transition: all 0.2s;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div class="package-checkbox" id="pkg-check-${key}" style="width: 20px; height: 20px; border: 2px solid var(--border-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                                <polyline points="20 6 9 17 4 12"/>
+                                            </svg>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                                ${pkg.name}
+                                                ${pkg.isFree ? '<span style="margin-left: 8px; background: var(--status-contacted); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700;">FREE</span>' : ''}
+                                            </div>
+                                            <div style="font-size: 12px; color: var(--text-secondary);">${pkg.description || ''}</div>
+                                            ${pkg.duration ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">⏱️ ${pkg.duration}</div>` : ''}
+                                        </div>
+                                        <div style="text-align: right; font-weight: 700; color: ${pkg.isFree ? 'var(--status-contacted)' : 'var(--accent-amber)'};">
+                                            ${pkg.price === 0 && !pkg.isFree ? 'Custom Pricing' : pkg.isFree ? 'FREE' : '$' + pkg.price.toLocaleString()}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="expense-amount">${pkg.price === 0 ? 'Custom' : '$' + pkg.price.toLocaleString()}</div>
+                            `).join('')}
                         </div>
-                    `).join('')}
+                    </div>
+                    ` : ''}
+                    
+                    ${crmPackages.length > 0 ? `
+                    <div style="margin-top: 16px;">
+                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-pending); padding: 8px; background: rgba(245,158,11,0.1); border-radius: var(--radius-sm);">
+                            💼 CRM Packages (Monthly Per User)
+                        </div>
+                        <div style="display: grid; gap: 8px; margin-top: 8px;">
+                            ${crmPackages.map(([key, pkg]) => `
+                                <div class="package-option" onclick="togglePackage('${key}')" id="pkg-${key}" style="cursor: pointer; padding: 12px; background: var(--bg-tertiary); border: 2px solid var(--border-default); border-radius: var(--radius-sm); transition: all 0.2s;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div class="package-checkbox" id="pkg-check-${key}" style="width: 20px; height: 20px; border: 2px solid var(--border-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                                <polyline points="20 6 9 17 4 12"/>
+                                            </svg>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${pkg.name}</div>
+                                            <div style="font-size: 12px; color: var(--text-secondary);">${pkg.description || ''}</div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-weight: 700; color: var(--status-pending);">$${pkg.price}/user/month</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${seoPackages.length > 0 ? `
+                    <div style="margin-top: 16px;">
+                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-new); padding: 8px; background: rgba(96,165,250,0.1); border-radius: var(--radius-sm);">
+                            🚀 SEO & Marketing Packages
+                        </div>
+                        <div style="display: grid; gap: 8px; margin-top: 8px;">
+                            ${seoPackages.map(([key, pkg]) => `
+                                <div class="package-option" onclick="togglePackage('${key}')" id="pkg-${key}" style="cursor: pointer; padding: 12px; background: var(--bg-tertiary); border: 2px solid var(--border-default); border-radius: var(--radius-sm); transition: all 0.2s;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div class="package-checkbox" id="pkg-check-${key}" style="width: 20px; height: 20px; border: 2px solid var(--border-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                                <polyline points="20 6 9 17 4 12"/>
+                                            </svg>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${pkg.name}</div>
+                                            <div style="font-size: 12px; color: var(--text-secondary);">${pkg.description || ''}</div>
+                                        </div>
+                                        <div style="text-align: right; font-weight: 700; color: var(--status-new);">
+                                            ${pkg.price === 0 ? 'Custom' : '$' + pkg.price}${pkg.billing === 'monthly' ? '/mo' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${otherPackages.length > 0 ? `
+                    <div style="margin-top: 16px;">
+                        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); padding: 8px; background: var(--bg-elevated); border-radius: var(--radius-sm);">
+                            📦 Other Services
+                        </div>
+                        <div style="display: grid; gap: 8px; margin-top: 8px;">
+                            ${otherPackages.map(([key, pkg]) => `
+                                <div class="package-option" onclick="togglePackage('${key}')" id="pkg-${key}" style="cursor: pointer; padding: 12px; background: var(--bg-tertiary); border: 2px solid var(--border-default); border-radius: var(--radius-sm); transition: all 0.2s;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div class="package-checkbox" id="pkg-check-${key}" style="width: 20px; height: 20px; border: 2px solid var(--border-strong); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
+                                                <polyline points="20 6 9 17 4 12"/>
+                                            </svg>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${pkg.name}</div>
+                                            <div style="font-size: 12px; color: var(--text-secondary);">${pkg.description || ''}</div>
+                                        </div>
+                                        <div style="text-align: right; font-weight: 700; color: var(--accent-amber);">
+                                            ${pkg.price === 0 ? 'Custom' : '$' + pkg.price}${pkg.billing === 'monthly' ? '/mo' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
                 </div>
             </div>
             
-            <div id="selectedPackagesInputs" style="margin-top: 20px; display: none;">
+            <!-- PACKAGE DETAILS (QUANTITY/CUSTOM PRICING) -->
+            <div id="selectedPackagesInputs" class="form-group full-width" style="display: none;">
                 <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 12px; padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
-                    Selected Package Details
+                    📝 Package Details
                 </div>
-                <div id="packageInputsContainer" style="display: grid; gap: 16px;"></div>
+                <div id="packageInputsContainer" style="display: grid; gap: 12px;"></div>
             </div>
             
+            <!-- PAYMENT & MAINTENANCE -->
             <div class="form-group full-width" id="paymentTermsSection" style="display: none;">
                 <label class="form-label">Payment Terms</label>
                 <select class="form-select" id="paymentTerms">
                     <option value="completion">100% Due Upon Project Completion</option>
+                    <option value="50-50">50% Deposit, 50% Upon Completion</option>
+                    <option value="milestone">Milestone-Based Payments</option>
+                    <option value="custom">Custom Payment Plan</option>
                 </select>
             </div>
             
@@ -12632,30 +12738,22 @@ function openProjectTimelineModal() {
             
             <div class="form-group" id="maintenanceFeeSection" style="display: none;">
                 <label class="form-label">Monthly Maintenance Fee ($)</label>
-                <input type="number" class="form-input" id="maintenanceFee" value="59.99" step="0.01" min="0">
+                <input type="number" class="form-input" id="maintenanceFee" min="0" step="0.01" value="99.00">
             </div>
             
             <div class="form-group full-width" id="maintenanceDetailsSection" style="display: none;">
-                <label class="form-label">Maintenance Details / What's Included</label>
-                <textarea class="form-textarea" id="maintenanceDetails" rows="2" placeholder="Bug fixes, security updates, content changes, etc.">Bug fixes, security updates, minor content modifications (up to 2 hours/month), plugin/software updates, uptime monitoring, priority email support.</textarea>
-            </div>
-            
-            <div class="form-group full-width">
-                <label class="form-label">Special Requirements / Scope Notes</label>
-                <textarea class="form-textarea" id="timelineScope" rows="3" placeholder="Any specific features, integrations, or requirements for this project..."></textarea>
-            </div>
-            
-            <div class="form-group full-width">
-                <label class="form-label">Additional Notes / Terms</label>
-                <textarea class="form-textarea" id="timelineNotes" rows="2" placeholder="Any other notes or special terms..."></textarea>
+                <label class="form-label">Maintenance Scope</label>
+                <textarea class="form-textarea" id="maintenanceDetails" rows="3" placeholder="What's included in maintenance? (updates, bug fixes, support hours, etc.)">Updates, security patches, bug fixes, and up to 2 hours of support per month</textarea>
             </div>
         </div>
         
-        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-top: 20px;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 8px;">Selected Packages Summary</div>
-            <div id="packagesSummary" style="font-size: 13px; color: var(--text-muted);">No packages selected</div>
+        <!-- SUMMARY -->
+        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-top: 20px; border-left: 4px solid var(--accent-amber);">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 8px;">📊 Project Summary</div>
+            <div id="packagesSummary" style="font-size: 13px; color: var(--text-secondary);">No services selected</div>
         </div>
         
+        <!-- ACTIONS -->
         <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
             <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
             <button type="button" class="btn btn-secondary" onclick="previewProjectTimeline()">
@@ -12676,23 +12774,164 @@ function openProjectTimelineModal() {
         </div>
     `;
     
-    // Add event listener for payment terms
-    setTimeout(function() {
+    // Add event listeners
+    setTimeout(() => {
+        // Payment terms listener
         const paymentTermsSelect = document.getElementById('paymentTerms');
         if (paymentTermsSelect) {
             paymentTermsSelect.addEventListener('change', function() {
                 const customSection = document.getElementById('customPaymentSection');
-                if (this.value === 'custom') {
-                    customSection.style.display = 'block';
-                } else {
-                    customSection.style.display = 'none';
-                }
+                customSection.style.display = this.value === 'custom' ? 'block' : 'none';
             });
         }
+        
+        // Add CSS for package selection states
+        const style = document.createElement('style');
+        style.textContent = `
+            .package-option.selected {
+                border-color: var(--accent-amber) !important;
+                background: rgba(212, 165, 116, 0.08) !important;
+            }
+            .package-checkbox.checked {
+                background: var(--accent-amber);
+                border-color: var(--accent-amber) !important;
+            }
+            .package-checkbox.checked svg {
+                opacity: 1 !important;
+                color: var(--bg-primary);
+            }
+        `;
+        document.head.appendChild(style);
     }, 100);
     
     modal.classList.add('active');
-    console.log('Service packages available:', Object.keys(servicePackages).length);
+}
+
+// Toggle package selection
+function togglePackage(packageKey) {
+    const element = document.getElementById(`pkg-${packageKey}`);
+    const checkbox = document.getElementById(`pkg-check-${packageKey}`);
+    const index = window.selectedPackages.indexOf(packageKey);
+    
+    if (index > -1) {
+        // Deselect
+        window.selectedPackages.splice(index, 1);
+        delete window.packageQuantities[packageKey];
+        delete window.packageCustomPrices[packageKey];
+        checkbox.classList.remove('checked');
+        element.classList.remove('selected');
+    } else {
+        // Select
+        window.selectedPackages.push(packageKey);
+        
+        // Initialize defaults for CRM packages
+        const pkg = servicePackages[packageKey];
+        if (pkg && pkg.billing === 'monthly-per-user') {
+            window.packageQuantities[packageKey] = 1;
+        }
+        
+        checkbox.classList.add('checked');
+        element.classList.add('selected');
+    }
+    
+    updatePackagesSummary();
+    updatePackageInputs();
+}
+
+// Update package-specific inputs (quantity for CRM, custom price for Enterprise)
+function updatePackageInputs() {
+    const container = document.getElementById('packageInputsContainer');
+    const section = document.getElementById('selectedPackagesInputs');
+    
+    if (!container || !section) return;
+    
+    if (window.selectedPackages.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = 'block';
+    container.innerHTML = '';
+    
+    window.selectedPackages.forEach(packageKey => {
+        const pkg = servicePackages[packageKey];
+        if (!pkg) return;
+        
+        const inputDiv = document.createElement('div');
+        inputDiv.style.cssText = 'background: var(--bg-elevated); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-default);';
+        
+        let fieldsHTML = `<div style="font-weight: 600; margin-bottom: 10px; color: var(--text-primary);">${pkg.name}</div>`;
+        
+        // CRM Packages - Quantity Input
+        if (pkg.billing === 'monthly-per-user') {
+            const currentQty = window.packageQuantities[packageKey] || 1;
+            fieldsHTML += `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="font-size: 12px;">Number of Users</label>
+                    <input type="number" 
+                           class="form-input" 
+                           id="quantity-${packageKey}" 
+                           min="1" 
+                           value="${currentQty}"
+                           onchange="updatePackageQuantity('${packageKey}', this.value)"
+                           style="max-width: 200px;">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                        $${pkg.price}/user/month × ${currentQty} users = <strong style="color: var(--accent-amber);">$${(pkg.price * currentQty).toFixed(2)}/month</strong>
+                    </div>
+                </div>
+            `;
+        }
+        // Custom Pricing Packages (Enterprise Website, Digital Marketing, etc.)
+        else if (pkg.price === 0 && !pkg.isFree) {
+            const currentPrice = window.packageCustomPrices[packageKey] || '';
+            fieldsHTML += `
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="font-size: 12px;">Custom Pricing (Rough Estimate)</label>
+                    <input type="number" 
+                           class="form-input" 
+                           id="customprice-${packageKey}" 
+                           placeholder="Enter estimated amount" 
+                           step="0.01" 
+                           min="0" 
+                           value="${currentPrice}"
+                           onchange="updatePackageCustomPrice('${packageKey}', this.value)"
+                           style="max-width: 200px;">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                        This is a rough estimate and can be adjusted later
+                    </div>
+                </div>
+            `;
+        }
+        // Fixed Price Packages - Just display
+        else {
+            fieldsHTML += `
+                <div style="font-size: 13px; color: var(--text-secondary);">
+                    ${pkg.isFree ? 
+                        '<span style="color: var(--status-contacted); font-weight: 700;">FREE</span>' : 
+                        `Price: <strong style="color: var(--accent-amber);">$${pkg.price.toLocaleString()}</strong>${pkg.billing === 'monthly' ? '/month' : ''}`
+                    }
+                </div>
+            `;
+        }
+        
+        inputDiv.innerHTML = fieldsHTML;
+        container.appendChild(inputDiv);
+    });
+    
+    // Update summary to reflect new quantities/prices
+    updatePackagesSummary();
+}
+
+// Update CRM package quantity
+function updatePackageQuantity(packageKey, quantity) {
+    window.packageQuantities[packageKey] = parseInt(quantity) || 1;
+    updatePackageInputs(); // Refresh to show new calculation
+}
+
+// Update custom package price
+function updatePackageCustomPrice(packageKey, price) {
+    window.packageCustomPrices[packageKey] = parseFloat(price) || 0;
+    updatePackagesSummary(); // Refresh summary
 }
 
 function toggleMaintenanceOptions() {
@@ -12746,63 +12985,124 @@ function populateClientInfo() {
 }
 
 // Update packages summary
+// REPLACEMENT for updatePackagesSummary() function
+// Updated to handle:
+// - CRM package quantities (monthly-per-user pricing)
+// - Custom pricing for Enterprise packages
+// - Separate one-time and recurring costs
+
 function updatePackagesSummary() {
     const summaryEl = document.getElementById('packagesSummary');
     const paymentSection = document.getElementById('paymentTermsSection');
-    const maintenanceSection = document.getElementById('maintenanceSection');
-    const maintenanceFeeSection = document.getElementById('maintenanceFeeSection');
+    
+    if (!summaryEl) return; // Safety check
     
     if (window.selectedPackages.length === 0) {
-        summaryEl.innerHTML = 'No packages selected';
+        summaryEl.innerHTML = 'No services selected';
         if (paymentSection) paymentSection.style.display = 'none';
-        if (maintenanceSection) maintenanceSection.style.display = 'none';
-        if (maintenanceFeeSection) maintenanceFeeSection.style.display = 'none';
         return;
     }
     
-    let total = 0;
+    let oneTimeTotal = 0;
+    let monthlyTotal = 0;
     let hasPaidPackage = false;
     let hasFreePackage = false;
-    let hasMaintenanceEligible = false;
+    let hasCustomPricing = false;
     
-    const packages = window.selectedPackages.map(function(key) {
+    const packageDetails = [];
+    
+    window.selectedPackages.forEach(key => {
         const pkg = servicePackages[key];
+        if (!pkg) return;
+        
+        let lineItem = pkg.name;
+        let lineCost = 0;
+        
+        // FREE packages
         if (pkg.isFree) {
             hasFreePackage = true;
-        } else {
+            lineItem += ' <span style="color: var(--status-contacted); font-weight: 700;">(FREE)</span>';
+        }
+        // CRM packages (monthly per user)
+        else if (pkg.billing === 'monthly-per-user') {
             hasPaidPackage = true;
-            total += pkg.price;
+            const qty = window.packageQuantities[key] || 1;
+            lineCost = pkg.price * qty;
+            monthlyTotal += lineCost;
+            lineItem += ` - ${qty} user${qty > 1 ? 's' : ''} × $${pkg.price}/user/month = <strong style="color: var(--status-pending);">$${lineCost.toFixed(2)}/month</strong>`;
         }
-        // Check if package has support period (eligible for maintenance)
-        if (key === 'starter-website' || key === 'professional-website' || key === 'enterprise-website') {
-            hasMaintenanceEligible = true;
+        // Custom pricing packages
+        else if (pkg.price === 0 && !pkg.isFree) {
+            const customPrice = window.packageCustomPrices[key] || 0;
+            if (customPrice > 0) {
+                hasPaidPackage = true;
+                if (pkg.billing === 'monthly') {
+                    monthlyTotal += customPrice;
+                    lineItem += ` - <strong style="color: var(--accent-amber);">~$${customPrice.toLocaleString()}/month</strong> <span style="font-size: 11px; color: var(--text-muted);">(estimate)</span>`;
+                } else {
+                    oneTimeTotal += customPrice;
+                    lineItem += ` - <strong style="color: var(--accent-amber);">~$${customPrice.toLocaleString()}</strong> <span style="font-size: 11px; color: var(--text-muted);">(estimate)</span>`;
+                }
+            } else {
+                hasCustomPricing = true;
+                lineItem += ' - <strong style="color: var(--text-muted);">Custom Pricing (TBD)</strong>';
+            }
         }
-        return pkg.name + (pkg.isFree ? ' (FREE)' : ' ($' + pkg.price.toLocaleString() + ')');
+        // Regular monthly packages
+        else if (pkg.billing === 'monthly') {
+            hasPaidPackage = true;
+            monthlyTotal += pkg.price;
+            lineItem += ` - <strong style="color: var(--accent-amber);">$${pkg.price.toLocaleString()}/month</strong>`;
+        }
+        // One-time packages
+        else {
+            hasPaidPackage = true;
+            oneTimeTotal += pkg.price;
+            lineItem += ` - <strong style="color: var(--accent-amber);">$${pkg.price.toLocaleString()}</strong>`;
+        }
+        
+        packageDetails.push(lineItem);
     });
     
-    let summaryHtml = '<div style="margin-bottom: 8px;">' + packages.join(', ') + '</div>';
+    // Build summary HTML
+    let summaryHtml = '<div style="display: grid; gap: 6px; margin-bottom: 12px;">';
+    packageDetails.forEach(detail => {
+        summaryHtml += `<div style="font-size: 13px; color: var(--text-secondary);">• ${detail}</div>`;
+    });
+    summaryHtml += '</div>';
     
-    if (hasPaidPackage) {
-        summaryHtml += '<div style="font-size: 16px; font-weight: 700; color: var(--accent-amber);">Total Investment: $' + total.toLocaleString() + '</div>';
-        summaryHtml += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Payment due upon project completion</div>';
-    } else if (hasFreePackage) {
-        summaryHtml += '<div style="font-size: 16px; font-weight: 700; color: var(--status-contacted);">Total: FREE</div>';
-        summaryHtml += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">🎁 No payment required for free packages</div>';
+    // Show totals
+    if (oneTimeTotal > 0 || monthlyTotal > 0) {
+        summaryHtml += '<div style="border-top: 1px solid var(--border-default); padding-top: 12px; margin-top: 8px;">';
+        
+        if (oneTimeTotal > 0) {
+            summaryHtml += `<div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                One-Time Cost: <span style="color: var(--accent-amber); font-size: 16px; font-weight: 700;">$${oneTimeTotal.toLocaleString()}</span>
+            </div>`;
+        }
+        
+        if (monthlyTotal > 0) {
+            summaryHtml += `<div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">
+                Monthly Cost: <span style="color: var(--status-pending); font-size: 16px; font-weight: 700;">$${monthlyTotal.toFixed(2)}/month</span>
+            </div>`;
+        }
+        
+        if (hasCustomPricing) {
+            summaryHtml += '<div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; font-style: italic;">Note: Some packages require custom pricing discussion</div>';
+        }
+        
+        summaryHtml += '</div>';
+    } else if (hasFreePackage && !hasPaidPackage) {
+        summaryHtml += `<div style="font-size: 16px; font-weight: 700; color: var(--status-contacted); padding-top: 12px; border-top: 1px solid var(--border-default);">
+            Total: FREE 🎁
+        </div>`;
     }
     
     summaryEl.innerHTML = summaryHtml;
     
-    // Show/hide payment terms section (only for paid packages)
+    // Show/hide payment terms section
     if (paymentSection) {
         paymentSection.style.display = hasPaidPackage ? 'block' : 'none';
-    }
-    
-    // Show/hide maintenance sections (only for packages with support periods)
-    if (maintenanceSection) {
-        maintenanceSection.style.display = hasMaintenanceEligible ? 'block' : 'none';
-    }
-    if (maintenanceFeeSection) {
-        maintenanceFeeSection.style.display = hasMaintenanceEligible ? 'block' : 'none';
     }
 }
 
@@ -13024,6 +13324,9 @@ function updatePackageInputs() {
 }
 
 // Save Project Timeline
+// REPLACEMENT for saveProjectTimeline() function
+// Updated to use window.packageQuantities and window.packageCustomPrices
+
 function saveProjectTimeline() {
     if (window.selectedPackages.length === 0) {
         showToast('Please select at least one service package', 'error');
@@ -13045,45 +13348,63 @@ function saveProjectTimeline() {
     // Collect package details with custom prices and quantities
     const packageDetails = {};
     let hasPaidPackage = false;
-    let totalPrice = 0;
-    window.selectedPackages.forEach(function(key) {
+    let totalOneTime = 0;
+    let totalMonthly = 0;
+    
+    window.selectedPackages.forEach(key => {
         const pkg = servicePackages[key];
         if (!pkg) return;
         
         packageDetails[key] = {
             name: pkg.name,
             category: pkg.category || 'other',
-            billing: pkg.billing || 'one-time'
+            billing: pkg.billing || 'one-time',
+            basePrice: pkg.price,
+            isFree: pkg.isFree || false
         };
         
-        // Web Development - Get custom price
-        if (pkg.category === 'web-development' && pkg.price === 0) {
-            const priceInput = document.getElementById(`price-${key}`);
-            const customPrice = priceInput ? parseFloat(priceInput.value) || 0 : 0;
-            packageDetails[key].customPrice = customPrice;
-            packageDetails[key].displayPrice = customPrice;
-            totalPrice += customPrice;
-            if (customPrice > 0) hasPaidPackage = true;
-        }
-        // CRM - Get quantity
-        else if (pkg.category === 'crm' && pkg.billing === 'monthly-per-user') {
-            const quantityInput = document.getElementById(`quantity-${key}`);
-            const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
+        // CRM Packages - use quantity from window.packageQuantities
+        if (pkg.billing === 'monthly-per-user') {
+            const quantity = window.packageQuantities[key] || 1;
             packageDetails[key].quantity = quantity;
             packageDetails[key].pricePerUnit = pkg.price;
             packageDetails[key].displayPrice = pkg.price * quantity;
-            totalPrice += (pkg.price * quantity);
+            totalMonthly += (pkg.price * quantity);
             hasPaidPackage = true;
         }
-        // SEO/Other - Use fixed price
+        // Custom Pricing Packages - use custom price from window.packageCustomPrices
+        else if (pkg.price === 0 && !pkg.isFree) {
+            const customPrice = window.packageCustomPrices[key] || 0;
+            packageDetails[key].customPrice = customPrice;
+            packageDetails[key].displayPrice = customPrice;
+            packageDetails[key].isEstimate = true;
+            
+            if (customPrice > 0) {
+                if (pkg.billing === 'monthly') {
+                    totalMonthly += customPrice;
+                } else {
+                    totalOneTime += customPrice;
+                }
+                hasPaidPackage = true;
+            }
+        }
+        // Regular Monthly Packages
+        else if (pkg.billing === 'monthly') {
+            packageDetails[key].displayPrice = pkg.price;
+            totalMonthly += pkg.price;
+            if (!pkg.isFree) hasPaidPackage = true;
+        }
+        // One-Time Packages
         else {
             packageDetails[key].displayPrice = pkg.price;
-            totalPrice += pkg.price;
-            if (pkg.price > 0 && !pkg.isFree) hasPaidPackage = true;
+            totalOneTime += pkg.price;
+            if (!pkg.isFree && pkg.price > 0) hasPaidPackage = true;
         }
     });
     
     const maintenanceIncluded = document.getElementById('maintenanceIncluded').value;
+    const paymentTerms = document.getElementById('paymentTerms') ? document.getElementById('paymentTerms').value : 'completion';
+    const customPaymentDetails = document.getElementById('customPaymentDetails') ? document.getElementById('customPaymentDetails').value : '';
     
     const timeline = {
         clientId: document.getElementById('timelineClient').value || null,
@@ -13095,16 +13416,17 @@ function saveProjectTimeline() {
         startDate: document.getElementById('timelineStartDate').value,
         endDate: document.getElementById('timelineEndDate').value,
         projectName: document.getElementById('timelineProjectName').value,
-        scope: document.getElementById('timelineScope').value,
-        notes: document.getElementById('timelineNotes').value,
         packages: window.selectedPackages,
         packageDetails: packageDetails,
-        totalPrice: totalPrice,
+        packageQuantities: {...window.packageQuantities}, // Save quantities
+        packageCustomPrices: {...window.packageCustomPrices}, // Save custom prices
+        totalOneTime: totalOneTime,
+        totalMonthly: totalMonthly,
         isFreeProject: !hasPaidPackage,
-        paymentTerms: 'completion',
-        customPaymentDetails: '',
+        paymentTerms: paymentTerms,
+        customPaymentDetails: customPaymentDetails,
         maintenanceIncluded: maintenanceIncluded,
-        maintenanceFee: maintenanceIncluded === 'paid' ? (parseFloat(document.getElementById('maintenanceFee').value) || 59.99) : 0,
+        maintenanceFee: maintenanceIncluded === 'paid' ? (parseFloat(document.getElementById('maintenanceFee').value) || 99.00) : 0,
         maintenanceDetails: document.getElementById('maintenanceDetails') ? document.getElementById('maintenanceDetails').value : '',
         status: 'draft',
         createdAt: new Date().toISOString()

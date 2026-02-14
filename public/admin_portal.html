@@ -7193,7 +7193,7 @@ async function verifyAuthToken() {
             console.log('[AUTH] ✅ Token is valid');
             return true;
         } else {
-            console.warn('[AUTH] ⚠️ Token is invalid or expired');
+            console.warn('[AUTH] Token is invalid or expired');
             return false;
         }
     } catch (error) {
@@ -9363,7 +9363,7 @@ async function renderInvoicePreview(invoice) {
                     invoice.stripe_payment_link = data.paymentLink;
                     console.log('✅ Stripe payment link created:', paymentUrl);
                 } else {
-                    console.warn('⚠️ Payment link creation returned success but no link');
+                    console.warn('Payment link creation returned success but no link');
                 }
             } else {
                 const errorText = await response.text();
@@ -12395,7 +12395,7 @@ function renderProjects(content) {
             </div>
         `;
         
-        console.log('📝 Setting innerHTML, content HTML length:', htmlContent.length);
+        console.log('Setting innerHTML, content HTML length:', htmlContent.length);
         content.innerHTML = htmlContent;
         console.log('✅ renderProjects completed successfully');
     } catch (error) {
@@ -12585,10 +12585,10 @@ function openProjectTimelineModal() {
                     <!-- WEBSITE PACKAGES -->
                     <div style="margin-top: 16px;">
                         <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
-                            🌐 Website Development (One-Time Payment)
+                            Website Development (One-Time Payment)
                         </div>
                         <div style="display: grid; gap: 8px; margin-top: 8px;">
-                            <div class="package-option" onclick="togglePackage('web-starter')" id="pkg-web-starter">
+                            <div class="package-option" onclick="togglePackage('web-starter')" id="pkg-web-starter" style="cursor: pointer !important; pointer-events: auto !important;">
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <div class="package-checkbox" id="pkg-check-web-starter">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 14px; height: 14px; opacity: 0;">
@@ -12638,7 +12638,7 @@ function openProjectTimelineModal() {
                     <!-- CRM PACKAGES -->
                     <div style="margin-top: 16px;">
                         <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-pending); padding: 8px; background: rgba(245,158,11,0.1); border-radius: var(--radius-sm);">
-                            💼 CRM Solutions (Per User/Month)
+                            CRM Solutions (Per User/Month)
                         </div>
                         <div style="display: grid; gap: 8px; margin-top: 8px;">
                             <div class="package-option" onclick="togglePackage('crm-essential')" id="pkg-crm-essential">
@@ -12691,7 +12691,7 @@ function openProjectTimelineModal() {
                     <!-- SEO PACKAGES -->
                     <div style="margin-top: 16px;">
                         <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-new); padding: 8px; background: rgba(96,165,250,0.1); border-radius: var(--radius-sm);">
-                            🚀 SEO Services (Monthly)
+                            SEO Services (Monthly)
                         </div>
                         <div style="display: grid; gap: 8px; margin-top: 8px;">
                             <div class="package-option" onclick="togglePackage('seo-local')" id="pkg-seo-local">
@@ -12744,7 +12744,7 @@ function openProjectTimelineModal() {
                     <!-- DIGITAL MARKETING PACKAGES -->
                     <div style="margin-top: 16px;">
                         <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--status-contacted); padding: 8px; background: rgba(16,185,129,0.1); border-radius: var(--radius-sm);">
-                            📱 Digital Marketing (Monthly)
+                            Digital Marketing (Monthly)
                         </div>
                         <div style="display: grid; gap: 8px; margin-top: 8px;">
                             <div class="package-option" onclick="togglePackage('marketing-social')" id="pkg-marketing-social">
@@ -12800,7 +12800,7 @@ function openProjectTimelineModal() {
             <!-- PACKAGE DETAILS (QUANTITY/CUSTOM PRICING) -->
             <div id="selectedPackagesInputs" class="form-group full-width" style="display: none;">
                 <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 12px; padding: 8px; background: var(--accent-amber-dim); border-radius: var(--radius-sm);">
-                    📝 Package Details
+                    Package Details
                 </div>
                 <div id="packageInputsContainer" style="display: grid; gap: 12px;"></div>
             </div>
@@ -12843,7 +12843,7 @@ function openProjectTimelineModal() {
         
         <!-- SUMMARY -->
         <div style="background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); margin-top: 20px; border-left: 4px solid var(--accent-amber);">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 8px;">📊 Project Summary</div>
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent-amber); margin-bottom: 8px;">Project Summary</div>
             <div id="packagesSummary" style="font-size: 13px; color: var(--text-secondary);">No services selected</div>
         </div>
         
@@ -12888,6 +12888,9 @@ function openProjectTimelineModal() {
                 border: 2px solid var(--border-default);
                 border-radius: var(--radius-sm);
                 transition: all 0.2s;
+                pointer-events: auto !important;
+                position: relative;
+                z-index: 1;
             }
             .package-option:hover {
                 border-color: var(--border-strong);
@@ -13186,7 +13189,7 @@ function updatePackagesSummary() {
         }
         
         if (needsQuote) {
-            summaryHtml += '<div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; font-style: italic;">⚠️ Some packages require custom pricing</div>';
+            summaryHtml += '<div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; font-style: italic;">Some packages require custom pricing</div>';
         }
         
         summaryHtml += '</div>';
@@ -14219,7 +14222,7 @@ function generateTimelineHTML(timeline) {
             ${timeline.notes ? '<div style="margin-top: 24px; padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-amber);"><div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Additional Notes</div><div style="font-size: 13px; color: var(--text-secondary); line-height: 1.7;">' + timeline.notes + '</div></div>' : ''}
             
             <div style="background: rgba(245,158,11,0.1); border: 2px solid var(--accent-amber); padding: 20px; border-radius: var(--radius-md); text-align: center; margin-top: 32px;">
-                <div style="font-size: 14px; font-weight: 700; color: var(--accent-amber); margin-bottom: 8px;">⚠️ Client Signature Required</div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--accent-amber); margin-bottom: 8px;">Client Signature Required</div>
                 <div style="font-size: 13px; color: var(--text-secondary);">Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</div>
             </div>
         </div>
@@ -14628,7 +14631,7 @@ function exportTimelineAsPDF() {
                     
                     // SIGNATURE REMINDER
                     '<div style="background: linear-gradient(135deg, #D4A574 0%, #B88F5F 100%); color: white; padding: 24px; border-radius: 4px; text-align: center; margin-bottom: 40px;">' +
-                        '<div style="font-size: 15px; font-weight: 700; margin-bottom: 8px;">⚠️ CLIENT SIGNATURE REQUIRED</div>' +
+                        '<div style="font-size: 15px; font-weight: 700; margin-bottom: 8px;">CLIENT SIGNATURE REQUIRED</div>' +
                         '<div style="font-size: 12px; opacity: 0.95; line-height: 1.5;">Please sign and date this SLA in the Client section above. This document becomes legally binding once both parties have signed.</div>' +
                     '</div>' +
                     
@@ -17932,7 +17935,7 @@ function refreshFollowUps() {
 
 // Reset all COLD leads back to "Never Contacted" state
 async function resetColdLeadsToNeverContacted() {
-    if (!confirm('⚠️ This will reset ALL COLD LEADS back to "Never Contacted" state.\n\nThis means:\n- follow_up_count will be set to 0\n- last_contact_date will be cleared\n- status will be reset to new\n- Hot leads and Dead leads will NOT be affected\n\nAre you sure you want to continue?')) {
+    if (!confirm('This will reset ALL COLD LEADS back to "Never Contacted" state.\n\nThis means:\n- follow_up_count will be set to 0\n- last_contact_date will be cleared\n- status will be reset to new\n- Hot leads and Dead leads will NOT be affected\n\nAre you sure you want to continue?')) {
         return;
     }
     
@@ -17975,7 +17978,7 @@ async function resetAllLeadsToNeverContacted() {
     }
     
     // Double confirmation for this destructive action
-    if (!confirm('⚠️ FINAL CONFIRMATION ⚠️\n\nYou are about to reset ALL leads including HOT leads.\n\nType "RESET ALL" in your mind and click OK to proceed, or Cancel to abort.')) {
+    if (!confirm('FINAL CONFIRMATION ⚠️\n\nYou are about to reset ALL leads including HOT leads.\n\nType "RESET ALL" in your mind and click OK to proceed, or Cancel to abort.')) {
         return;
     }
     

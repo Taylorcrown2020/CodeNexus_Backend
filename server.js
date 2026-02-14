@@ -22,69 +22,113 @@ const BASE_URL = process.env.BASE_URL || 'https://diamondbackcoding.com';
 
 // Service Packages Definition (matching pricing page)
 const servicePackages = {
-    // Web Development Packages (get a quote - no fixed pricing)
-    'starter-website': {
+    // Web Development Packages — keys match frontend admin_portal servicePackages
+    'web-starter': {
         name: 'Starter Package',
-        price: 0, // Quote-based
+        price: 0,
         isFree: false,
-        category: 'web-development'
+        category: 'web-development',
+        description: 'Up to 15 pages • Mobile responsive • Basic SEO • 2-3 week delivery'
     },
-    'professional-website': {
+    'web-professional': {
         name: 'Professional Package',
-        price: 0, // Quote-based
+        price: 0,
         isFree: false,
-        category: 'web-development'
+        category: 'web-development',
+        description: 'Up to 25 pages • Custom design • Advanced SEO • E-commerce ready'
     },
-    'enterprise-website': {
+    'web-enterprise': {
         name: 'Enterprise Package',
-        price: 0, // Quote-based
+        price: 0,
         isFree: false,
-        category: 'web-development'
+        category: 'web-development',
+        description: 'Unlimited pages • Fully custom • Advanced integrations'
     },
     // CRM Packages (monthly per user)
-    'essential-crm': {
+    'crm-essential': {
         name: 'Essential CRM',
         price: 19.99,
         isFree: false,
         category: 'crm',
-        billing: 'monthly-per-user'
+        billing: 'monthly-per-user',
+        description: 'Up to 1,000 contacts • Basic lead management'
     },
-    'professional-crm': {
+    'crm-professional': {
         name: 'Professional CRM',
         price: 49.99,
         isFree: false,
         category: 'crm',
-        billing: 'monthly-per-user'
+        billing: 'monthly-per-user',
+        description: 'Up to 10,000 contacts • Sales automation'
     },
-    'enterprise-crm': {
+    'crm-enterprise': {
         name: 'Enterprise CRM',
         price: 64.99,
         isFree: false,
         category: 'crm',
-        billing: 'monthly-per-user'
+        billing: 'monthly-per-user',
+        description: 'Unlimited contacts • Custom integrations'
     },
     // SEO Packages (monthly)
-    'local-seo': {
+    'seo-local': {
         name: 'Local SEO',
         price: 199,
         isFree: false,
         category: 'seo',
-        billing: 'monthly'
+        billing: 'monthly',
+        description: 'Google My Business • 10 keywords'
     },
-    'growth-seo': {
+    'seo-growth': {
         name: 'Growth SEO',
         price: 499,
         isFree: false,
         category: 'seo',
-        billing: 'monthly'
+        billing: 'monthly',
+        description: '25 keywords • Content creation'
     },
-    'enterprise-seo': {
+    'seo-enterprise': {
         name: 'Enterprise SEO',
         price: 999,
         isFree: false,
         category: 'seo',
-        billing: 'monthly'
-    }
+        billing: 'monthly',
+        description: 'Unlimited keywords • Dedicated manager'
+    },
+    // Marketing Packages
+    'marketing-social': {
+        name: 'Social Starter',
+        price: 0,
+        isFree: false,
+        category: 'marketing',
+        billing: 'monthly',
+        description: '2 platforms • 12 posts/mo'
+    },
+    'marketing-growth': {
+        name: 'Growth Accelerator',
+        price: 0,
+        isFree: false,
+        category: 'marketing',
+        billing: 'monthly',
+        description: '4 platforms • 20 posts/mo • Google Ads'
+    },
+    'marketing-full': {
+        name: 'Full-Service Marketing',
+        price: 0,
+        isFree: false,
+        category: 'marketing',
+        billing: 'monthly',
+        description: 'All platforms • Unlimited content'
+    },
+    // Legacy keys — kept for backward compatibility with any old saved timelines
+    'starter-website': { name: 'Starter Package', price: 0, isFree: false, category: 'web-development' },
+    'professional-website': { name: 'Professional Package', price: 0, isFree: false, category: 'web-development' },
+    'enterprise-website': { name: 'Enterprise Package', price: 0, isFree: false, category: 'web-development' },
+    'essential-crm': { name: 'Essential CRM', price: 19.99, isFree: false, category: 'crm', billing: 'monthly-per-user' },
+    'professional-crm': { name: 'Professional CRM', price: 49.99, isFree: false, category: 'crm', billing: 'monthly-per-user' },
+    'enterprise-crm': { name: 'Enterprise CRM', price: 64.99, isFree: false, category: 'crm', billing: 'monthly-per-user' },
+    'local-seo': { name: 'Local SEO', price: 199, isFree: false, category: 'seo', billing: 'monthly' },
+    'growth-seo': { name: 'Growth SEO', price: 499, isFree: false, category: 'seo', billing: 'monthly' },
+    'enterprise-seo': { name: 'Enterprise SEO', price: 999, isFree: false, category: 'seo', billing: 'monthly' }
 };
 
 const { transporter, verifyEmailConfig } = require('./email-config.js');
@@ -596,8 +640,10 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
     
     try {
         const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log('[BREVO] ✅ Email accepted by Brevo:', response);
-        return response;
+        // response.body.messageId is the Brevo message ID (e.g. "<xxx@smtp-relay.mailin.fr>")
+        const messageId = response?.body?.messageId || response?.messageId || null;
+        console.log('[BREVO] ✅ Email accepted by Brevo. Message ID:', messageId);
+        return { response, messageId };
     } catch (error) {
         // Extract detailed error information from Brevo API
         const errorMessage = error.response?.body?.message || error.message || 'Unknown Brevo error';
@@ -751,7 +797,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         
         if (emailSettings.useBrevo && emailSettings.brevoApiKey) {
             console.log('[EMAIL] Sending via Brevo...');
-            await sendViaBrevo(
+            const brevoResult = await sendViaBrevo(
                 emailSettings.brevoApiKey,
                 emailSettings.brevoSenderEmail || process.env.EMAIL_USER,
                 emailSettings.brevoSenderName || 'Diamondback Coding',
@@ -760,6 +806,14 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 html
             );
             console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to}`);
+            // Store Brevo's message-id so the webhook can look up the exact row
+            if (emailLogId && brevoResult?.messageId) {
+                await pool.query(
+                    `UPDATE email_log SET brevo_message_id = $2 WHERE id = $1`,
+                    [emailLogId, brevoResult.messageId]
+                );
+                console.log(`[EMAIL] Stored brevo_message_id ${brevoResult.messageId} on email_log ${emailLogId}`);
+            }
         } else {
             console.log('[EMAIL] Sending via Nodemailer...');
             const info = await transporter.sendMail({
@@ -780,16 +834,17 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
             console.log(`[EMAIL] ✅ Email accepted by mail server for ${to}`);
         }
         
-        // 7. Mark as 'sent' since the mail server accepted it
+        // 7. Mark as 'queued' for Brevo (awaiting bounce window) or 'sent' for Nodemailer
         if (emailLogId) {
+            const newStatus = emailSettings.useBrevo ? 'queued' : 'sent';
             await pool.query(
                 `UPDATE email_log 
-                 SET status = 'sent', 
+                 SET status = $2, 
                      sent_at = CURRENT_TIMESTAMP 
                  WHERE id = $1`,
-                [emailLogId]
+                [emailLogId, newStatus]
             );
-            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as SENT`);
+            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as ${newStatus.toUpperCase()}`);
         }
         
         // 8. Update follow-up tracking since email was successfully sent
@@ -835,8 +890,39 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
 }
 
 // ========================================
-// DATABASE INITIALIZATION
+// DIRECT EMAIL SEND (no email_log, no tracking)
+// Use for: marketing blasts, SLA/timeline, invoices, system emails.
+// ONLY sendTrackedEmail should write to email_log (follow-up queue emails).
 // ========================================
+async function sendDirectEmail({ to, subject, html, attachments = [] }) {
+    const emailSettings = await getEmailSettings();
+
+    if (emailSettings.useBrevo && emailSettings.brevoApiKey && attachments.length === 0) {
+        // Use Brevo API for non-attachment emails
+        const { messageId } = await sendViaBrevo(
+            emailSettings.brevoApiKey,
+            emailSettings.brevoSenderEmail || process.env.EMAIL_USER,
+            emailSettings.brevoSenderName || 'Diamondback Coding',
+            to,
+            subject,
+            html
+        );
+        console.log(`[DIRECT-EMAIL] ✅ Sent via Brevo to ${to} (message-id: ${messageId})`);
+    } else {
+        // Use Nodemailer — required when attachments are present (e.g. SLA PDF)
+        const info = await transporter.sendMail({
+            from: { name: 'Diamondback Coding', address: process.env.EMAIL_USER },
+            to,
+            subject,
+            html,
+            ...(attachments.length > 0 ? { attachments } : {})
+        });
+        if (info.rejected && info.rejected.length > 0) {
+            throw new Error(`Email rejected by mail server: ${info.rejected.join(', ')}`);
+        }
+        console.log(`[DIRECT-EMAIL] ✅ Sent via Nodemailer to ${to} (messageId: ${info.messageId})`);
+    }
+}
 async function initializeDatabase(){
     const client = await pool.connect();
     try {
@@ -942,6 +1028,16 @@ await client.query(`
             -- Set created_at for existing rows
             UPDATE email_log SET created_at = COALESCE(sent_at, CURRENT_TIMESTAMP) WHERE created_at IS NULL;
             RAISE NOTICE 'Added created_at column to email_log table';
+        END IF;
+
+        -- brevo_message_id: used by the Brevo webhook to reliably look up the
+        -- exact email_log row instead of guessing by email + timestamp.
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='email_log' AND column_name='brevo_message_id'
+        ) THEN
+            ALTER TABLE email_log ADD COLUMN brevo_message_id TEXT;
+            RAISE NOTICE 'Added brevo_message_id column to email_log table';
         END IF;
     END $$;
 `);
@@ -1789,17 +1885,12 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             END $$;
         `);
         
-        // Migration 5: Create admin_sessions table for session tracking
-        // Drop existing tables if they're corrupted
-        await client.query(`DROP TABLE IF EXISTS admin_sessions CASCADE`);
-        await client.query(`DROP TABLE IF EXISTS activity_log CASCADE`);
-        
-        // Create admin_sessions table
+        // Migration 5: Create admin_sessions and activity_log tables (safe — never drops existing data)
         await client.query(`
-            CREATE TABLE admin_sessions (
+            CREATE TABLE IF NOT EXISTS admin_sessions (
                 id SERIAL PRIMARY KEY,
                 user_email VARCHAR(255),
-                token VARCHAR(500) UNIQUE NOT NULL,
+                token TEXT UNIQUE NOT NULL,
                 ip_address VARCHAR(50),
                 user_agent TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1813,19 +1904,28 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             )
         `);
         
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_email ON admin_sessions(user_email)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_sessions_token ON admin_sessions(token)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_sessions_active ON admin_sessions(is_active)`);
+
+        // Migrate token column from VARCHAR(500) to TEXT if it was created that way
         await client.query(`
-            CREATE INDEX idx_sessions_user_email ON admin_sessions(user_email)
-        `);
-        await client.query(`
-            CREATE INDEX idx_sessions_token ON admin_sessions(token)
-        `);
-        await client.query(`
-            CREATE INDEX idx_sessions_active ON admin_sessions(is_active)
+            DO $$ BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'admin_sessions'
+                    AND column_name = 'token'
+                    AND data_type = 'character varying'
+                ) THEN
+                    ALTER TABLE admin_sessions ALTER COLUMN token TYPE TEXT;
+                    RAISE NOTICE 'Migrated admin_sessions.token to TEXT';
+                END IF;
+            END $$;
         `);
         
         // Migration 6: Create activity_log table for audit trail
         await client.query(`
-            CREATE TABLE activity_log (
+            CREATE TABLE IF NOT EXISTS activity_log (
                 id SERIAL PRIMARY KEY,
                 user_email VARCHAR(255),
                 action VARCHAR(100) NOT NULL,
@@ -1904,7 +2004,7 @@ async function logActivity(userEmail, action, resourceType = null, resourceId = 
 // ========================================
 // AUTHENTICATION MIDDLEWARE
 // ========================================
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -1915,16 +2015,66 @@ function authenticateToken(req, res, next) {
         });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Invalid or expired token.' 
-            });
+    // 1. Verify JWT signature and expiry first (fast, no DB)
+    let decoded;
+    try {
+        decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+        return res.status(403).json({ 
+            success: false, 
+            message: 'Invalid or expired token.' 
+        });
+    }
+
+    // 2. Check session is still active in DB (catches revoked sessions)
+    try {
+        const sessionCheck = await pool.query(
+            `SELECT id FROM admin_sessions 
+             WHERE token = $1 AND is_active = true AND expires_at > NOW()
+             LIMIT 1`,
+            [token]
+        );
+
+        if (sessionCheck.rows.length === 0) {
+            // Check if the token exists but is inactive/expired (truly revoked)
+            // vs. simply not in the table (legacy token from before session tracking)
+            const existsCheck = await pool.query(
+                `SELECT id, is_active, expires_at FROM admin_sessions WHERE token = $1 LIMIT 1`,
+                [token]
+            );
+
+            if (existsCheck.rows.length > 0) {
+                // Token exists in DB but is revoked or expired — reject it
+                return res.status(401).json({
+                    success: false,
+                    message: 'Session revoked or expired. Please log in again.'
+                });
+            }
+            // Token not in DB at all — this is a valid JWT from before session tracking was added.
+            // Trust the JWT and create a session row for it going forward.
+            const expiresAt = new Date(decoded.exp * 1000);
+            pool.query(
+                `INSERT INTO admin_sessions (user_email, token, ip_address, user_agent, expires_at)
+                 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (token) DO NOTHING`,
+                [decoded.email, token,
+                 req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown',
+                 req.headers['user-agent'] || 'unknown',
+                 expiresAt]
+            ).catch(e => console.warn('[AUTH] Session backfill failed:', e.message));
+        } else {
+            // Session exists and is active — touch last_activity (non-blocking)
+            pool.query(
+                `UPDATE admin_sessions SET last_activity = NOW() WHERE token = $1`,
+                [token]
+            ).catch(e => console.warn('[AUTH] last_activity update failed:', e.message));
         }
-        req.user = user;
-        next();
-    });
+    } catch (dbErr) {
+        // DB unavailable — fall through and trust the JWT
+        console.warn('[AUTH] Session DB check failed, trusting JWT:', dbErr.message);
+    }
+
+    req.user = decoded;
+    next();
 }
 
 // ========================================
@@ -2016,43 +2166,25 @@ app.post('/api/admin/verify', authenticateToken, (req, res) => {
     });
 });
 
-// Change Password
-app.post('/api/admin/change-password', authenticateToken, async (req, res) => {
+// Logout — revokes the session in the DB so the JWT can't be reused
+app.post('/api/admin/logout', authenticateToken, async (req, res) => {
     try {
-        const { currentPassword, newPassword } = req.body;
-        const userId = req.user.id;
-
-        const userResult = await pool.query('SELECT * FROM admin_users WHERE id = $1', [userId]);
-        const user = userResult.rows[0];
-
-        const validPassword = await bcrypt.compare(currentPassword, user.password_hash);
-
-        if (!validPassword) {
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Current password is incorrect.' 
-            });
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (token) {
+            await pool.query(
+                `UPDATE admin_sessions SET is_active = false WHERE token = $1`,
+                [token]
+            );
         }
-
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        await pool.query(
-            'UPDATE admin_users SET password_hash = $1 WHERE id = $2',
-            [hashedPassword, userId]
-        );
-
-        res.json({ 
-            success: true, 
-            message: 'Password updated successfully.' 
-        });
+        res.json({ success: true, message: 'Logged out successfully.' });
     } catch (error) {
-        console.error('Change password error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Server error.' 
-        });
+        console.error('Logout error:', error);
+        res.json({ success: true, message: 'Logged out.' }); // Always succeed on client side
     }
 });
+
+// Change Password is defined later (see /api/admin/change-password below)
 
 // ========================================
 // LEAD STATISTICS (BEFORE :id ROUTE!)
@@ -4954,11 +5086,9 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
 </body></html>`;
 
         // Send email with PDF attachment
-        const mailOptions = {
-            from: {
-                name: 'Diamondback Coding',
-                address: process.env.EMAIL_USER
-            },
+        // NOTE: SLA/timeline emails are sent directly (NOT via sendTrackedEmail)
+        // so they never appear in the follow-up analytics email_log.
+        await sendDirectEmail({
             to: clientEmail,
             subject: `Service Level Agreement - ${timeline.projectName || 'Project Timeline'}`,
             html: emailHtml,
@@ -4969,9 +5099,7 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                     contentType: 'application/pdf'
                 }
             ]
-        };
-
-        await transporter.sendMail(mailOptions);
+        });
         
         res.json({ 
             success: true, 
@@ -7392,9 +7520,9 @@ app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
             SELECT
                 DATE(COALESCE(sent_at, created_at)) as date,
                 COUNT(*) as total,
-                COUNT(*) FILTER (WHERE status = 'sent' OR status = 'opened') as sent,
+                COUNT(*) FILTER (WHERE status = 'sent') as sent,
                 COUNT(*) FILTER (WHERE status = 'queued') as queued,
-                COUNT(*) FILTER (WHERE status = 'opened') as opened,
+                COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
                 COUNT(*) FILTER (WHERE status = 'failed') as failed
             FROM email_log
             WHERE COALESCE(sent_at, created_at) >= CURRENT_DATE - INTERVAL '30 days'
@@ -14057,6 +14185,7 @@ function startEmailConfirmationJob() {
                 WHERE status = 'queued' 
                 AND sent_at < NOW() - INTERVAL '5 minutes'
                 AND opened_at IS NULL
+                AND status != 'failed'
                 RETURNING id, lead_id, subject, sent_at
             `);
             
@@ -14215,8 +14344,9 @@ app.post('/api/marketing/blast', authenticateToken, async (req, res) => {
                     `, { unsubscribeUrl: unsubUrl });
                 }
 
-                // Send — tracked. isMarketing = true means we do NOT update follow_up_count or last_contact_date
-                await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML, isMarketing: true });
+                // Send directly — marketing blasts are NOT tracked in email_log
+                // (email_log / follow-up analytics only covers follow-up queue emails)
+                await sendDirectEmail({ to: lead.email, subject, html: emailHTML });
                 sent++;
 
                 // Small delay to avoid rate limits
@@ -14306,25 +14436,53 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
         console.log(`[BREVO WEBHOOK] Message ID: ${event['message-id']}`);
         console.log(`[BREVO WEBHOOK] Full event data:`, JSON.stringify(event, null, 2));
         console.log(`========================================\n`);
+
+        // -------------------------------------------------------
+        // Look up the email_log row.
+        // Priority 1: match by brevo_message_id (exact, reliable).
+        // Priority 2: fall back to most-recent row for this email
+        //             within 72 hours (covers late bounce events).
+        // -------------------------------------------------------
+        let emailLog = null;
+        const incomingMsgId = event['message-id'];
+
+        if (incomingMsgId) {
+            const byMsgId = await pool.query(
+                `SELECT el.id, el.status, el.opened_at, el.clicked_at, l.id as lead_id, l.name
+                 FROM email_log el
+                 LEFT JOIN leads l ON el.lead_id = l.id
+                 WHERE el.brevo_message_id = $1
+                 LIMIT 1`,
+                [incomingMsgId]
+            );
+            if (byMsgId.rows.length > 0) {
+                emailLog = byMsgId.rows[0];
+                console.log(`[BREVO WEBHOOK] ✅ Matched email_log ${emailLog.id} via brevo_message_id`);
+            }
+        }
+
+        if (!emailLog) {
+            // Fallback: match by recipient email in the last 72 hours
+            const byEmail = await pool.query(
+                `SELECT el.id, el.status, el.opened_at, el.clicked_at, l.id as lead_id, l.name
+                 FROM email_log el
+                 LEFT JOIN leads l ON el.lead_id = l.id
+                 WHERE l.email = $1
+                 AND el.sent_at > NOW() - INTERVAL '72 hours'
+                 ORDER BY el.sent_at DESC
+                 LIMIT 1`,
+                [event.email]
+            );
+            if (byEmail.rows.length > 0) {
+                emailLog = byEmail.rows[0];
+                console.log(`[BREVO WEBHOOK] ⚠️  Matched email_log ${emailLog.id} via email fallback (no message-id stored)`);
+            }
+        }
         
-        // Find the email_log entry by recipient email and recent timestamp
-        const emailLogResult = await pool.query(
-            `SELECT el.id, el.status, el.opened_at, el.clicked_at, l.id as lead_id, l.name
-             FROM email_log el
-             LEFT JOIN leads l ON el.lead_id = l.id
-             WHERE l.email = $1
-             AND el.sent_at > NOW() - INTERVAL '48 hours'
-             ORDER BY el.sent_at DESC
-             LIMIT 1`,
-            [event.email]
-        );
-        
-        if (emailLogResult.rows.length === 0) {
+        if (!emailLog) {
             console.log(`[BREVO WEBHOOK] ⚠️  Could not find email_log entry for ${event.email}`);
             return res.json({ received: true });
         }
-        
-        const emailLog = emailLogResult.rows[0];
         
         // Handle OPENED event - Brevo tracks real opens!
         if (event.event === 'opened' || event.event === 'unique_opened') {
@@ -14334,7 +14492,8 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
             if (!emailLog.opened_at) {
                 await pool.query(
                     `UPDATE email_log 
-                     SET opened_at = CURRENT_TIMESTAMP
+                     SET opened_at = CURRENT_TIMESTAMP,
+                         status = CASE WHEN status = 'queued' THEN 'sent' ELSE status END
                      WHERE id = $1`,
                     [emailLog.id]
                 );
@@ -14369,7 +14528,8 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
             if (!emailLog.clicked_at) {
                 await pool.query(
                     `UPDATE email_log 
-                     SET clicked_at = CURRENT_TIMESTAMP
+                     SET clicked_at = CURRENT_TIMESTAMP,
+                         status = CASE WHEN status = 'queued' THEN 'sent' ELSE status END
                      WHERE id = $1`,
                     [emailLog.id]
                 );
@@ -14386,10 +14546,11 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
         }
         
         // Handle FAILURE events
+        // These can arrive after the 5-min background job has already promoted the
+        // row to 'sent', so we unconditionally overwrite the status here.
         else if (['hard_bounce', 'soft_bounce', 'blocked', 'spam', 'invalid_email'].includes(event.event)) {
             console.log(`[BREVO WEBHOOK] ❌ EMAIL FAILED - Event: ${event.event}`);
             
-            // Mark as FAILED
             await pool.query(
                 `UPDATE email_log 
                  SET status = 'failed',

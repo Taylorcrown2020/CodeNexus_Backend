@@ -12505,6 +12505,11 @@ const PACKAGES = {
     'marketing-full': { name: 'Full-Service Marketing', price: 0, billing: 'monthly', needsQuote: true }
 };
 
+// Initialize global arrays for package selection
+window.selectedPackages = window.selectedPackages || [];
+window.packageQuantities = window.packageQuantities || {};
+window.packageCustomPrices = window.packageCustomPrices || {};
+
 // CORRECT openProjectTimelineModal() - ONLY packages from pricing page
 
 function openProjectTimelineModal() {
@@ -12934,8 +12939,16 @@ function openProjectTimelineModal() {
     // Digital Marketing (custom quotes)
 
 function togglePackage(packageKey) {
+    console.log('togglePackage called with:', packageKey);
     const element = document.getElementById(`pkg-${packageKey}`);
     const checkbox = document.getElementById(`pkg-check-${packageKey}`);
+    console.log('element:', element, 'checkbox:', checkbox);
+    
+    if (!element || !checkbox) {
+        console.error('Element or checkbox not found!');
+        return;
+    }
+    
     const index = window.selectedPackages.indexOf(packageKey);
     
     if (index > -1) {

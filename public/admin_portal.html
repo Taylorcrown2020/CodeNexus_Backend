@@ -8157,11 +8157,15 @@ async function loadEmailOpenReport() {
                 </div>
                 <div style="background:#f0fdf4;border-radius:8px;padding:16px;text-align:center;">
                     <div style="font-size:28px;font-weight:800;color:#16a34a;">${deliveryRate.toFixed(1)}%</div>
-                    <div style="font-size:12px;color:#16a34a;margin-top:4px;">Delivery Rate <span style="color:var(--text-muted);">(${sent.toLocaleString()} sent)</span></div>
+                    <div style="font-size:12px;color:#16a34a;margin-top:4px;">Sent Successfully <span style="color:var(--text-muted);">(${sent.toLocaleString()} emails)</span></div>
                 </div>
                 <div style="background:#eff6ff;border-radius:8px;padding:16px;text-align:center;">
                     <div style="font-size:28px;font-weight:800;color:#1d4ed8;">${openRate.toFixed(1)}%</div>
-                    <div style="font-size:12px;color:#1d4ed8;margin-top:4px;">Open Rate <span style="color:var(--text-muted);">(${opened.toLocaleString()} opens)</span></div>
+                    <div style="font-size:12px;color:#1d4ed8;margin-top:4px;">Opened <span style="color:var(--text-muted);">(${opened.toLocaleString()} opened)</span></div>
+                </div>
+                <div style="background:#f5f3ff;border-radius:8px;padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:800;color:#7c3aed;">${clickRate.toFixed(1)}%</div>
+                    <div style="font-size:12px;color:#7c3aed;margin-top:4px;">Clicked <span style="color:var(--text-muted);">(${clicked.toLocaleString()} clicked)</span></div>
                 </div>
                 <div style="background:#fef2f2;border-radius:8px;padding:16px;text-align:center;">
                     <div style="font-size:28px;font-weight:800;color:#dc2626;">${failed.toLocaleString()}</div>

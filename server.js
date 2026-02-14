@@ -772,27 +772,36 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
             console.log(`[EMAIL] ✅ Email accepted by mail server for ${to}`);
         }
         
-        // 7. CRITICAL CHANGE: Keep status as 'queued' (not 'sent') until delivery confirmation
-        // Status will change to 'sent' only when:
-        // - Bounce tracking confirms delivery, OR
-        // - User opens the email (tracking pixel fires), OR  
-        // - After 24 hours with no bounce (assumed delivered)
+        // 7. CRITICAL FIX: Mark as 'sent' IMMEDIATELY when mail server accepts it
+        // The mail server acceptance means it's sent - we can see this in server logs
+        // If it later bounces/blocks/fails, the webhook will change status to 'failed'
         if (emailLogId) {
             await pool.query(
                 `UPDATE email_log 
-                 SET status = 'queued', 
+                 SET status = 'sent', 
                      sent_at = CURRENT_TIMESTAMP 
                  WHERE id = $1`,
                 [emailLogId]
             );
-            console.log(`[EMAIL] ⏳ Email_log ${emailLogId} marked as QUEUED (awaiting delivery confirmation)`);
+            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as SENT (mail server accepted)`);
         }
         
-        // 8. DO NOT update follow-up tracking yet - wait for actual delivery
-        // We'll update this when:
-        // - Email is opened (status becomes 'opened')
-        // - 24 hours pass with no bounce (background job marks as 'sent')
-        console.log(`[FOLLOW-UP] ⏳ Lead ${leadId} follow-up pending - waiting for delivery confirmation`);
+        // 8. Update follow-up tracking since email was successfully sent
+        if (leadId && !isMarketing) {
+            await pool.query(
+                `UPDATE leads 
+                 SET last_contact_date = CURRENT_DATE,
+                     follow_up_count = COALESCE(follow_up_count, 0) + 1,
+                     updated_at = CURRENT_TIMESTAMP,
+                     status = CASE 
+                         WHEN status = 'new' THEN 'contacted'
+                         ELSE status
+                     END
+                 WHERE id = $1`,
+                [leadId]
+            );
+            console.log(`[FOLLOW-UP] ✅ Lead ${leadId} advanced - email sent successfully`);
+        }
         
     } catch (error) {
         console.error(`\n========================================`);
@@ -9373,10 +9382,11 @@ async function trackEngagement(leadId, engagementType, details = '') {
         // Update engagement score based on type
         const scoreMap = {
             'form_fill': 30,              // Form fill = instant hot
+            'email_click_hot': 30,         // Email link click = instant hot (NEW!)
             'website_visit_contact': 30,   // Contact page visit = instant hot
             'email_reply': 25,             // Email reply = instant hot
             'website_visit': 15,           // Regular website visit
-            'email_click': 10,             // Clicked email link
+            'email_click': 10,             // Clicked email link (old - not used anymore)
             'email_open': 5                // Opened email
         };
         score += scoreMap[engagementType] || 5;
@@ -9385,14 +9395,14 @@ async function trackEngagement(leadId, engagementType, details = '') {
         
         // CRITICAL: Leads become hot through:
         // 1. Filling out a form (form_fill) → INSTANT HOT
-        // 2. Visiting contact page (website_visit_contact) → INSTANT HOT
-        // 3. Replying to an email (email_reply) → INSTANT HOT
-        // 4. Accumulating 30+ engagement points naturally
-        // 
-        // Email opens and regular link clicks do NOT instantly make leads hot
+        // 2. Clicking ANY link in an email (email_click_hot) → INSTANT HOT (NEW!)
+        // 3. Visiting contact page (website_visit_contact) → INSTANT HOT
+        // 4. Replying to an email (email_reply) → INSTANT HOT
+        // 5. Accumulating 30+ engagement points naturally
         const shouldBeHot = lead.lead_temperature === 'hot' || 
                            score >= 30 || 
                            engagementType === 'form_fill' || 
+                           engagementType === 'email_click_hot' ||
                            engagementType === 'email_reply' ||
                            engagementType === 'website_visit_contact';
         const newTemperature = shouldBeHot ? 'hot' : 'cold';
@@ -9401,8 +9411,7 @@ async function trackEngagement(leadId, engagementType, details = '') {
         console.log(`   - Current: ${lead.lead_temperature || 'null'}`);
         console.log(`   - New: ${newTemperature}`);
         console.log(`   - Should be hot? ${shouldBeHot}`);
-        console.log(`   - Reasons: score >= 30? ${score >= 30}, form_fill? ${engagementType === 'form_fill'}, contact_page? ${engagementType === 'website_visit_contact'}, email_reply? ${engagementType === 'email_reply'}`);
-        console.log(`   - Note: Regular email_click and email_open accumulate points but don't instantly trigger hot status`);
+        console.log(`   - Reasons: score >= 30? ${score >= 30}, form_fill? ${engagementType === 'form_fill'}, email_click? ${engagementType === 'email_click_hot'}, contact_page? ${engagementType === 'website_visit_contact'}, email_reply? ${engagementType === 'email_reply'}`);
         
         // If lead just became hot (cold -> hot transition)
         if (newTemperature === 'hot' && lead.lead_temperature !== 'hot') {
@@ -9507,7 +9516,7 @@ app.get('/api/track/click/:leadId', async (req, res) => {
         const { url, email_id } = req.query;
         
         console.log(`\n========================================`);
-        console.log(`[TRACKING] 🖱️  LINK CLICKED!`);
+        console.log(`[TRACKING] 🖱️  EMAIL LINK CLICKED!`);
         console.log(`[TRACKING] Lead ID: ${leadId}`);
         console.log(`[TRACKING] Email ID: ${email_id}`);
         console.log(`[TRACKING] URL: ${url}`);
@@ -9529,24 +9538,12 @@ app.get('/api/track/click/:leadId', async (req, res) => {
             }
         }
         
-        // Check if this is a contact page visit (makes them HOT immediately)
-        const isContactPage = url && (
-            url.includes('/contact') || 
-            url.includes('contact.html') ||
-            url.includes('#contact')
-        );
+        // CRITICAL FIX: ANY button/link click in an email makes the lead HOT IMMEDIATELY
+        // This is because they're engaging with your marketing - they're interested!
+        console.log(`[TRACKING] 🔥 EMAIL LINK CLICKED - Making lead HOT immediately!`);
+        await trackEngagement(leadId, 'email_click_hot', `Clicked email link: ${url || 'unknown'}`);
         
-        if (isContactPage) {
-            console.log(`[TRACKING] 🔥 CONTACT PAGE VISIT - Making lead HOT immediately!`);
-            // Use 'website_visit_contact' which will trigger hot status
-            await trackEngagement(leadId, 'website_visit_contact', `Visited contact page: ${url || 'unknown'}`);
-        } else {
-            console.log(`[TRACKING] Regular link click - adding points but not instantly hot`);
-            // Regular email click - adds points but doesn't instantly make hot
-            await trackEngagement(leadId, 'email_click', `Clicked link: ${url || 'unknown'}`);
-        }
-        
-        console.log(`[TRACKING] ✅ Lead ${leadId} engagement tracked, redirecting to: ${url || BASE_URL}\n`);
+        console.log(`[TRACKING] ✅ Lead ${leadId} is now HOT, redirecting to: ${url || BASE_URL}\n`);
         
         // Redirect to the actual URL
         const redirectUrl = url || BASE_URL;
@@ -14094,6 +14091,63 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
         <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
     `, { unsubscribeUrl: unsubUrl });
 }
+
+// ========================================
+// BREVO WEBHOOK HANDLER
+// Catches email delivery failures, bounces, and blocks
+// ========================================
+app.post('/api/brevo/webhook', express.json(), async (req, res) => {
+    try {
+        const event = req.body;
+        
+        console.log(`\n========================================`);
+        console.log(`[BREVO WEBHOOK] Received event: ${event.event}`);
+        console.log(`[BREVO WEBHOOK] Email: ${event.email}`);
+        console.log(`[BREVO WEBHOOK] Message ID: ${event['message-id']}`);
+        console.log(`========================================\n`);
+        
+        // Events that mean the email FAILED to deliver
+        const failureEvents = ['hard_bounce', 'soft_bounce', 'blocked', 'spam', 'invalid_email'];
+        
+        if (failureEvents.includes(event.event)) {
+            console.log(`[BREVO WEBHOOK] ❌ EMAIL FAILED - Event: ${event.event}`);
+            
+            // Find the email_log entry by recipient email and recent timestamp
+            const emailLogResult = await pool.query(
+                `SELECT el.id, el.status, l.name
+                 FROM email_log el
+                 LEFT JOIN leads l ON el.lead_id = l.id
+                 WHERE l.email = $1
+                 AND el.sent_at > NOW() - INTERVAL '48 hours'
+                 ORDER BY el.sent_at DESC
+                 LIMIT 1`,
+                [event.email]
+            );
+            
+            if (emailLogResult.rows.length > 0) {
+                const emailLog = emailLogResult.rows[0];
+                
+                // Mark as FAILED
+                await pool.query(
+                    `UPDATE email_log 
+                     SET status = 'failed',
+                         error_message = $2
+                     WHERE id = $1`,
+                    [emailLog.id, `${event.event}: ${event.reason || 'No reason provided'}`]
+                );
+                
+                console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as FAILED (${event.event})`);
+            } else {
+                console.log(`[BREVO WEBHOOK] ⚠️  Could not find email_log entry for ${event.email}`);
+            }
+        }
+        
+        res.json({ received: true });
+    } catch (error) {
+        console.error('[BREVO WEBHOOK] Error processing webhook:', error);
+        res.json({ received: true }); // Always respond 200 to prevent retries
+    }
+});
 
 startServer();
 

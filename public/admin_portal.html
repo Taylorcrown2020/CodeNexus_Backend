@@ -12482,6 +12482,29 @@ function handleProjectSearch(event) {
 }
 
 // Open Project Timeline Modal
+// PACKAGE PRICING DATA (from pricing page)
+const PACKAGES = {
+    // Website (custom quotes)
+    'web-starter': { name: 'Starter Package', price: 0, billing: 'one-time', needsQuote: true },
+    'web-professional': { name: 'Professional Package', price: 0, billing: 'one-time', needsQuote: true },
+    'web-enterprise': { name: 'Enterprise Package', price: 0, billing: 'one-time', needsQuote: true },
+    
+    // CRM (per user/month)
+    'crm-essential': { name: 'Essential CRM', price: 19.99, billing: 'per-user-monthly' },
+    'crm-professional': { name: 'Professional CRM', price: 49.99, billing: 'per-user-monthly' },
+    'crm-enterprise': { name: 'Enterprise CRM', price: 64.99, billing: 'per-user-monthly' },
+    
+    // SEO (monthly)
+    'seo-local': { name: 'Local SEO', price: 199, billing: 'monthly' },
+    'seo-growth': { name: 'Growth SEO', price: 499, billing: 'monthly' },
+    'seo-enterprise': { name: 'Enterprise SEO', price: 999, billing: 'monthly' },
+    
+    // Digital Marketing (custom quotes)
+    'marketing-social': { name: 'Social Starter', price: 0, billing: 'monthly', needsQuote: true },
+    'marketing-growth': { name: 'Growth Accelerator', price: 0, billing: 'monthly', needsQuote: true },
+    'marketing-full': { name: 'Full-Service Marketing', price: 0, billing: 'monthly', needsQuote: true }
+};
+
 // CORRECT openProjectTimelineModal() - ONLY packages from pricing page
 
 function openProjectTimelineModal() {
@@ -12899,27 +12922,13 @@ function openProjectTimelineModal() {
 }
 
 // PACKAGE PRICING DATA (from pricing page)
-const PACKAGES = {
     // Website (custom quotes)
-    'web-starter': { name: 'Starter Package', price: 0, billing: 'one-time', needsQuote: true },
-    'web-professional': { name: 'Professional Package', price: 0, billing: 'one-time', needsQuote: true },
-    'web-enterprise': { name: 'Enterprise Package', price: 0, billing: 'one-time', needsQuote: true },
     
     // CRM (per user/month)
-    'crm-essential': { name: 'Essential CRM', price: 19.99, billing: 'per-user-monthly' },
-    'crm-professional': { name: 'Professional CRM', price: 49.99, billing: 'per-user-monthly' },
-    'crm-enterprise': { name: 'Enterprise CRM', price: 64.99, billing: 'per-user-monthly' },
     
     // SEO (monthly)
-    'seo-local': { name: 'Local SEO', price: 199, billing: 'monthly' },
-    'seo-growth': { name: 'Growth SEO', price: 499, billing: 'monthly' },
-    'seo-enterprise': { name: 'Enterprise SEO', price: 999, billing: 'monthly' },
     
     // Digital Marketing (custom quotes)
-    'marketing-social': { name: 'Social Starter', price: 0, billing: 'monthly', needsQuote: true },
-    'marketing-growth': { name: 'Growth Accelerator', price: 0, billing: 'monthly', needsQuote: true },
-    'marketing-full': { name: 'Full-Service Marketing', price: 0, billing: 'monthly', needsQuote: true }
-};
 
 function togglePackage(packageKey) {
     const element = document.getElementById(`pkg-${packageKey}`);
@@ -13331,82 +13340,6 @@ function previewProjectTimeline() {
 }
 
 // Toggle package selection
-function togglePackageSelection(packageKey, element) {
-    const checkbox = document.getElementById(`pkg-check-${packageKey}`);
-    const index = window.selectedPackages.indexOf(packageKey);
-    
-    if (index > -1) {
-        window.selectedPackages.splice(index, 1);
-        checkbox.classList.remove('checked');
-        element.classList.remove('selected');
-    } else {
-        window.selectedPackages.push(packageKey);
-        checkbox.classList.add('checked');
-        element.classList.add('selected');
-    }
-    
-    updatePackagesSummary();
-    updatePackageInputs(); // NEW: Update price/quantity inputs
-}
-
-// NEW FUNCTION: Show custom price/quantity inputs for selected packages
-function updatePackageInputs() {
-    const container = document.getElementById('packageInputsContainer');
-    const section = document.getElementById('selectedPackagesInputs');
-    
-    if (!container || !section) return; // Safety check
-    
-    if (window.selectedPackages.length === 0) {
-        section.style.display = 'none';
-        return;
-    }
-    
-    section.style.display = 'block';
-    container.innerHTML = '';
-    
-    window.selectedPackages.forEach(packageKey => {
-        const pkg = servicePackages[packageKey];
-        if (!pkg) return;
-        
-        const inputHtml = document.createElement('div');
-        inputHtml.style.cssText = 'background: var(--bg-tertiary); padding: 16px; border-radius: var(--radius-md); border-left: 4px solid var(--accent-amber);';
-        
-        let fieldsHTML = `<div style="font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">${pkg.name}</div>`;
-        
-        // Web Development - Custom Price Input
-        if (pkg.category === 'web-development' && pkg.price === 0) {
-            fieldsHTML += `
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label">Rough Estimate Amount (Subject to Change)</label>
-                    <input type="number" class="form-input" id="price-${packageKey}" placeholder="Enter estimated amount" step="0.01" min="0" value="">
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">This is a rough estimate and can be adjusted in the final invoice</div>
-                </div>
-            `;
-        }
-        // CRM - Quantity Input  
-        else if (pkg.category === 'crm' && pkg.billing === 'monthly-per-user') {
-            fieldsHTML += `
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label">Number of Users</label>
-                    <input type="number" class="form-input" id="quantity-${packageKey}" placeholder="How many users?" min="1" value="1">
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">$${pkg.price}/user/month × quantity</div>
-                </div>
-            `;
-        }
-        // SEO/Other - Just show price
-        else {
-            fieldsHTML += `
-                <div style="font-size: 14px; color: var(--text-secondary);">
-                    Price: <strong style="color: var(--accent-amber);">$${pkg.price}${pkg.billing === 'monthly' ? '/month' : ''}</strong>
-                </div>
-            `;
-        }
-        
-        inputHtml.innerHTML = fieldsHTML;
-        container.appendChild(inputHtml);
-    });
-}
-
 // Save Project Timeline
 // CORRECT saveProjectTimeline() - saves pricing page packages correctly
 

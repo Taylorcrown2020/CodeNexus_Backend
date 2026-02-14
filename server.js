@@ -13848,7 +13848,10 @@ function startEmailConfirmationJob() {
     
     async function confirmQueuedEmails() {
         try {
-            console.log('[EMAIL-CONFIRM] Running background job to confirm queued emails...');
+            console.log('\n========================================');
+            console.log('[EMAIL-CONFIRM] Running background job...');
+            console.log('[EMAIL-CONFIRM] Time:', new Date().toISOString());
+            console.log('========================================');
             
             // Find emails that have been queued for 5+ minutes with no bounce
             const result = await pool.query(`
@@ -13860,8 +13863,14 @@ function startEmailConfirmationJob() {
                 RETURNING id, lead_id, subject, sent_at
             `);
             
+            console.log(`[EMAIL-CONFIRM] Found ${result.rows.length} queued emails to confirm`);
+            
             if (result.rows.length > 0) {
-                console.log(`[EMAIL-CONFIRM] ✅ Confirmed ${result.rows.length} emails as delivered (no bounce after 24hrs)`);
+                console.log(`[EMAIL-CONFIRM] ✅ Confirmed ${result.rows.length} emails as delivered`);
+                
+                for (const email of result.rows) {
+                    console.log(`[EMAIL-CONFIRM]   - Email ${email.id}: "${email.subject}" sent ${email.sent_at}`);
+                }
                 
                 // Now advance the leads for these confirmed emails
                 for (const email of result.rows) {
@@ -13883,10 +13892,11 @@ function startEmailConfirmationJob() {
                     }
                 }
             } else {
-                console.log('[EMAIL-CONFIRM] No queued emails to confirm at this time');
+                console.log('[EMAIL-CONFIRM] No queued emails need confirming right now');
             }
+            console.log('========================================\n');
         } catch (error) {
-            console.error('[EMAIL-CONFIRM] Error in confirmation job:', error);
+            console.error('[EMAIL-CONFIRM] ❌ Error in confirmation job:', error);
         }
     }
     

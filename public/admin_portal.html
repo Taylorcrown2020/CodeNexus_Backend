@@ -4609,6 +4609,12 @@ async function renderSection(section) {
     
     console.log('📍 renderSection - about to switch to:', section);
     
+    // Clean up email report auto-refresh interval when leaving analytics
+    if (section !== 'analytics' && emailReportRefreshInterval) {
+        clearInterval(emailReportRefreshInterval);
+        emailReportRefreshInterval = null;
+    }
+    
     // Route to appropriate render function
     switch(section) {
         case 'dashboard':
@@ -7427,7 +7433,15 @@ function renderAnalytics(content) {
                             </svg>
                             <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Email Open Rate Report</h3>
                         </div>
-                        <span style="font-size: 12px; color: var(--text-muted);">Follow-up emails sent through the system</span>
+                        <span style="font-size: 12px; color: var(--text-muted);">
+                            <span style="display:inline-flex;align-items:center;gap:6px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                                    <polyline points="23 4 23 10 17 10"/>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                                Auto-refreshes every 30s
+                            </span>
+                        </span>
                     </div>
                     <div id="emailOpenReportContent" style="padding: 24px;">
                         <div style="text-align: center; color: var(--text-muted);">Loading email report...</div>
@@ -7441,13 +7455,25 @@ function renderAnalytics(content) {
     });
 }
 
+// Global interval ID for email report auto-refresh
+let emailReportRefreshInterval = null;
+
 async function loadEmailOpenReport() {
     const container = document.getElementById('emailOpenReportContent');
     if (!container) return;
-    try {
-        const res = await fetch(`${API_URL}/api/analytics/email-opens`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
+    
+    // Clear any existing interval
+    if (emailReportRefreshInterval) {
+        clearInterval(emailReportRefreshInterval);
+        emailReportRefreshInterval = null;
+    }
+    
+    // Function to actually fetch and render the data
+    const fetchAndRender = async () => {
+        try {
+            const res = await fetch(`${API_URL}/api/analytics/email-opens`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
         if (!res.ok) throw new Error('Failed to load');
         const data = await res.json();
         const s = data.stats || {};
@@ -7550,6 +7576,13 @@ async function loadEmailOpenReport() {
     } catch (e) {
         if (container) container.innerHTML = `<div style="color:var(--text-muted);text-align:center;padding:20px;">Could not load email report. The tracking data will populate as emails are sent.</div>`;
     }
+    };
+    
+    // Initial load
+    await fetchAndRender();
+    
+    // Set up auto-refresh every 30 seconds (only when on analytics page)
+    emailReportRefreshInterval = setInterval(fetchAndRender, 30000);
 }
 
 function renderFunnelChart(funnel) {

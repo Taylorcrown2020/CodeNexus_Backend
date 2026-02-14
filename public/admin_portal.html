@@ -3973,6 +3973,9 @@ function getAuthToken() {
 // Service Packages will be defined later but we need placeholder
 let servicePackages = {};
 
+// Global interval ID for email report auto-refresh
+let emailReportRefreshInterval = null;
+
 const state = {
     leads: [],
     customers: [],
@@ -7454,9 +7457,6 @@ function renderAnalytics(content) {
         loadEmailOpenReport();
     });
 }
-
-// Global interval ID for email report auto-refresh
-let emailReportRefreshInterval = null;
 
 async function loadEmailOpenReport() {
     const container = document.getElementById('emailOpenReportContent');

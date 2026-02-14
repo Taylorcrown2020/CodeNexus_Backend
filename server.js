@@ -7092,6 +7092,7 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         }
         
         const recipientEmail = emailCheckResult.rows[0].recipient_email;
+        const currentStatus = emailCheckResult.rows[0].current_status;
         
         // Check User-Agent to detect automated email client pre-fetching
         const userAgent = req.headers['user-agent'] || '';
@@ -7118,6 +7119,37 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
             const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
             res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
             return res.end(pixel);
+        }
+        
+        // CRITICAL TIME-BASED FILTER: Check when email was sent
+        // If pixel loads within 60 seconds of sending, it's likely automated preview/testing
+        // Only count as "opened" if it loads 60+ seconds after sending
+        const emailAgeCheck = await pool.query(
+            `SELECT 
+                EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - sent_at)) as seconds_since_sent,
+                sent_at
+             FROM email_log 
+             WHERE id = $1`,
+            [emailLogId]
+        );
+        
+        if (emailAgeCheck.rows.length > 0) {
+            const secondsSinceSent = emailAgeCheck.rows[0].seconds_since_sent;
+            const sentAt = emailAgeCheck.rows[0].sent_at;
+            
+            console.log(`[TRACKING] Email sent at: ${sentAt}`);
+            console.log(`[TRACKING] Seconds since sent: ${Math.floor(secondsSinceSent)}`);
+            
+            if (secondsSinceSent < 60) {
+                console.log(`[TRACKING] ⚠️ SKIPPED - Email opened too quickly (${Math.floor(secondsSinceSent)}s < 60s)`);
+                console.log(`[TRACKING] This is likely an automated preview, email client testing, or you viewing your own sent email`);
+                console.log(`[TRACKING] Real users typically open emails 60+ seconds after they arrive`);
+                const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+                res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
+                return res.end(pixel);
+            }
+            
+            console.log(`[TRACKING] ✅ Email opened after ${Math.floor(secondsSinceSent)} seconds - counting as real open`);
         }
         
         // CRITICAL: Set opened_at but DO NOT change status
@@ -14083,7 +14115,7 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
 
 // ========================================
 // BREVO WEBHOOK HANDLER
-// Catches email delivery failures, bounces, and blocks
+// Catches email delivery failures, opens, and clicks
 // ========================================
 app.post('/api/brevo/webhook', express.json(), async (req, res) => {
     try {
@@ -14093,42 +14125,101 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
         console.log(`[BREVO WEBHOOK] Received event: ${event.event}`);
         console.log(`[BREVO WEBHOOK] Email: ${event.email}`);
         console.log(`[BREVO WEBHOOK] Message ID: ${event['message-id']}`);
+        console.log(`[BREVO WEBHOOK] Full event data:`, JSON.stringify(event, null, 2));
         console.log(`========================================\n`);
         
-        // Events that mean the email FAILED to deliver
-        const failureEvents = ['hard_bounce', 'soft_bounce', 'blocked', 'spam', 'invalid_email'];
+        // Find the email_log entry by recipient email and recent timestamp
+        const emailLogResult = await pool.query(
+            `SELECT el.id, el.status, el.opened_at, el.clicked_at, l.id as lead_id, l.name
+             FROM email_log el
+             LEFT JOIN leads l ON el.lead_id = l.id
+             WHERE l.email = $1
+             AND el.sent_at > NOW() - INTERVAL '48 hours'
+             ORDER BY el.sent_at DESC
+             LIMIT 1`,
+            [event.email]
+        );
         
-        if (failureEvents.includes(event.event)) {
-            console.log(`[BREVO WEBHOOK] ❌ EMAIL FAILED - Event: ${event.event}`);
+        if (emailLogResult.rows.length === 0) {
+            console.log(`[BREVO WEBHOOK] ⚠️  Could not find email_log entry for ${event.email}`);
+            return res.json({ received: true });
+        }
+        
+        const emailLog = emailLogResult.rows[0];
+        
+        // Handle OPENED event - Brevo tracks real opens!
+        if (event.event === 'opened' || event.event === 'unique_opened') {
+            console.log(`[BREVO WEBHOOK] 📧 EMAIL OPENED - Event: ${event.event}`);
             
-            // Find the email_log entry by recipient email and recent timestamp
-            const emailLogResult = await pool.query(
-                `SELECT el.id, el.status, l.name
-                 FROM email_log el
-                 LEFT JOIN leads l ON el.lead_id = l.id
-                 WHERE l.email = $1
-                 AND el.sent_at > NOW() - INTERVAL '48 hours'
-                 ORDER BY el.sent_at DESC
-                 LIMIT 1`,
-                [event.email]
-            );
-            
-            if (emailLogResult.rows.length > 0) {
-                const emailLog = emailLogResult.rows[0];
-                
-                // Mark as FAILED
+            // Only update if not already opened
+            if (!emailLog.opened_at) {
                 await pool.query(
                     `UPDATE email_log 
-                     SET status = 'failed',
-                         error_message = $2
+                     SET opened_at = CURRENT_TIMESTAMP
                      WHERE id = $1`,
-                    [emailLog.id, `${event.event}: ${event.reason || 'No reason provided'}`]
+                    [emailLog.id]
                 );
                 
-                console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as FAILED (${event.event})`);
+                console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as OPENED`);
+                
+                // Track engagement to potentially make them hot
+                if (emailLog.lead_id) {
+                    await pool.query(
+                        `UPDATE leads 
+                         SET last_contact_date = CURRENT_DATE, 
+                             follow_up_count = COALESCE(follow_up_count, 0) + 1,
+                             updated_at = CURRENT_TIMESTAMP
+                         WHERE id = $1
+                         AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
+                        [emailLog.lead_id]
+                    );
+                    
+                    // Track engagement (call the function defined in this file)
+                    await trackEngagement(emailLog.lead_id, 'email_open', 5);
+                }
             } else {
-                console.log(`[BREVO WEBHOOK] ⚠️  Could not find email_log entry for ${event.email}`);
+                console.log(`[BREVO WEBHOOK] Email ${emailLog.id} already marked as opened`);
             }
+        }
+        
+        // Handle CLICKED event
+        else if (event.event === 'click' || event.event === 'unique_click') {
+            console.log(`[BREVO WEBHOOK] 🖱️  EMAIL CLICKED - Event: ${event.event}`);
+            
+            // Only update if not already clicked
+            if (!emailLog.clicked_at) {
+                await pool.query(
+                    `UPDATE email_log 
+                     SET clicked_at = CURRENT_TIMESTAMP
+                     WHERE id = $1`,
+                    [emailLog.id]
+                );
+                
+                console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as CLICKED`);
+                
+                // Make lead HOT when they click
+                if (emailLog.lead_id) {
+                    await trackEngagement(emailLog.lead_id, 'email_click_hot', 'Clicked link in email');
+                }
+            } else {
+                console.log(`[BREVO WEBHOOK] Email ${emailLog.id} already marked as clicked`);
+            }
+        }
+        
+        // Handle FAILURE events
+        else if (['hard_bounce', 'soft_bounce', 'blocked', 'spam', 'invalid_email'].includes(event.event)) {
+            console.log(`[BREVO WEBHOOK] ❌ EMAIL FAILED - Event: ${event.event}`);
+            
+            // Mark as FAILED
+            await pool.query(
+                `UPDATE email_log 
+                 SET status = 'failed',
+                     error_message = $2
+                 WHERE id = $1`,
+                [emailLog.id, `${event.event}: ${event.reason || 'No reason provided'}`]
+            );
+            
+            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as FAILED (${event.event})`);
         }
         
         res.json({ received: true });

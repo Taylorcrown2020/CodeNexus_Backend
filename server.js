@@ -20,52 +20,70 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || 'https://diamondbackcoding.com';
 
-// Service Packages Definition (same as frontend)
+// Service Packages Definition (matching pricing page)
 const servicePackages = {
-    'free-basic': {
-        name: 'Free Basic Website',
-        price: 0,
-        isFree: true
-    },
-    'free-portfolio': {
-        name: 'Free Portfolio Website',
-        price: 0,
-        isFree: true
-    },
-    'free-business-card': {
-        name: 'Free Business Card Website',
-        price: 0,
-        isFree: true
-    },
-    'free-landing-page': {
-        name: 'Free Landing Page',
-        price: 0,
-        isFree: true
-    },
+    // Web Development Packages (get a quote - no fixed pricing)
     'starter-website': {
-        name: 'Starter Package - $1,499',
-        price: 1499,
-        isFree: false
+        name: 'Starter Package',
+        price: 0, // Quote-based
+        isFree: false,
+        category: 'web-development'
     },
     'professional-website': {
-        name: 'Professional Package - $2,999',
-        price: 2999,
-        isFree: false
+        name: 'Professional Package',
+        price: 0, // Quote-based
+        isFree: false,
+        category: 'web-development'
     },
     'enterprise-website': {
-        name: 'Enterprise Package - Custom Pricing',
-        price: 0,
-        isFree: false
+        name: 'Enterprise Package',
+        price: 0, // Quote-based
+        isFree: false,
+        category: 'web-development'
     },
-    'seo-services': {
-        name: 'SEO Services - $199/month',
+    // CRM Packages (monthly per user)
+    'essential-crm': {
+        name: 'Essential CRM',
+        price: 19.99,
+        isFree: false,
+        category: 'crm',
+        billing: 'monthly-per-user'
+    },
+    'professional-crm': {
+        name: 'Professional CRM',
+        price: 49.99,
+        isFree: false,
+        category: 'crm',
+        billing: 'monthly-per-user'
+    },
+    'enterprise-crm': {
+        name: 'Enterprise CRM',
+        price: 64.99,
+        isFree: false,
+        category: 'crm',
+        billing: 'monthly-per-user'
+    },
+    // SEO Packages (monthly)
+    'local-seo': {
+        name: 'Local SEO',
         price: 199,
-        isFree: false
+        isFree: false,
+        category: 'seo',
+        billing: 'monthly'
     },
-    'digital-marketing': {
-        name: 'Digital Marketing Services - Custom Pricing',
-        price: 0,
-        isFree: false
+    'growth-seo': {
+        name: 'Growth SEO',
+        price: 499,
+        isFree: false,
+        category: 'seo',
+        billing: 'monthly'
+    },
+    'enterprise-seo': {
+        name: 'Enterprise SEO',
+        price: 999,
+        isFree: false,
+        category: 'seo',
+        billing: 'monthly'
     }
 };
 
@@ -7855,6 +7873,48 @@ app.get('/api/client/projects/:projectId/milestones', authenticateClient, async 
     }
 });
 
+// ✅ NEW: Get single project with milestones (admin/client portal)
+app.get('/api/client/projects/:projectId', authenticateToken, async (req, res) => {
+    try {
+        const projectId = req.params.projectId;
+        
+        // Get project details
+        const projectResult = await pool.query(`
+            SELECT p.*, l.name as client_name, l.company, l.email
+            FROM projects p
+            LEFT JOIN leads l ON p.lead_id = l.id
+            WHERE p.id = $1
+        `, [projectId]);
+        
+        if (projectResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Project not found'
+            });
+        }
+        
+        // Get milestones for this project
+        const milestonesResult = await pool.query(`
+            SELECT *
+            FROM project_milestones
+            WHERE project_id = $1
+            ORDER BY order_index ASC, due_date ASC
+        `, [projectId]);
+        
+        res.json({
+            success: true,
+            project: projectResult.rows[0],
+            milestones: milestonesResult.rows
+        });
+    } catch (error) {
+        console.error('Get project error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to load project'
+        });
+    }
+});
+
 // Get all projects (admin)
 app.get('/api/projects', authenticateToken, async (req, res) => {
     try {
@@ -8495,13 +8555,15 @@ app.post('/api/admin/client-accounts/:id/reset-password', authenticateToken, asy
     try {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         
-        await db.run(`
+        // ✅ FIXED: Changed from SQLite db.run() to PostgreSQL pool.query()
+        await pool.query(`
             UPDATE leads 
-            SET client_password = ?,
-                password_reset_required = 1
-            WHERE id = ?
+            SET client_password = $1,
+                password_reset_required = TRUE
+            WHERE id = $2
         `, [hashedPassword, req.params.id]);
         
+        console.log(`✅ Password reset successfully for client ID: ${req.params.id}`);
         res.json({ success: true, message: 'Password reset successfully' });
     } catch (error) {
         console.error('Failed to reset password:', error);
@@ -8516,16 +8578,26 @@ app.post('/api/admin/client-accounts/:id/toggle-status', authenticateToken, asyn
     try {
         if (isActive) {
             // Activate account (ensure they have a password)
-            const lead = await db.get('SELECT client_password FROM leads WHERE id = ?', [req.params.id]);
-            if (!lead.client_password) {
+            // ✅ FIXED: Changed from SQLite db.get() to PostgreSQL pool.query()
+            const result = await pool.query(
+                'SELECT client_password FROM leads WHERE id = $1', 
+                [req.params.id]
+            );
+            const lead = result.rows[0];
+            
+            if (!lead || !lead.client_password) {
                 return res.status(400).json({ 
                     success: false, 
                     message: 'Cannot activate - no password set' 
                 });
             }
         } else {
-            // Deactivate by clearing password (or add an is_active flag)
-            await db.run('UPDATE leads SET client_password = NULL WHERE id = ?', [req.params.id]);
+            // Deactivate by clearing password
+            // ✅ FIXED: Changed from SQLite db.run() to PostgreSQL pool.query()
+            await pool.query(
+                'UPDATE leads SET client_password = NULL WHERE id = $1', 
+                [req.params.id]
+            );
         }
         
         res.json({ success: true, message: 'Status updated successfully' });

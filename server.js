@@ -7097,20 +7097,33 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         const recipientEmail = emailCheckResult.rows[0].recipient_email;
         const yourSendingEmail = process.env.EMAIL_USER;
         
-        console.log(`[TRACKING] Recipient: ${recipientEmail}`);
-        console.log(`[TRACKING] Your Email (EMAIL_USER): ${yourSendingEmail}`);
-        console.log(`[TRACKING] Match: ${recipientEmail && yourSendingEmail && recipientEmail.toLowerCase().trim() === yourSendingEmail.toLowerCase().trim()}`);
+        // HARDCODED BACKUP: Block these specific emails
+        const blockedEmails = [
+            'taylor.crownover2024@gmail.com',
+            process.env.EMAIL_USER
+        ].filter(Boolean).map(e => e.toLowerCase().trim());
+        
+        const isBlocked = recipientEmail && blockedEmails.some(blocked => 
+            recipientEmail.toLowerCase().trim() === blocked
+        );
+        
+        console.log(`\n========================================`);
+        console.log(`[TRACKING] EMAIL BLOCKING CHECK`);
+        console.log(`[TRACKING] Recipient: "${recipientEmail}"`);
+        console.log(`[TRACKING] EMAIL_USER env: "${yourSendingEmail}"`);
+        console.log(`[TRACKING] Blocked list: ${JSON.stringify(blockedEmails)}`);
+        console.log(`[TRACKING] Is blocked? ${isBlocked}`);
+        console.log(`========================================\n`);
         
         // CRITICAL: Block tracking of your own email to prevent false opens
-        if (recipientEmail && yourSendingEmail && 
-            recipientEmail.toLowerCase().trim() === yourSendingEmail.toLowerCase().trim()) {
-            console.log(`[TRACKING] 🚫 BLOCKED - Your own email (${recipientEmail}), not tracking`);
+        if (isBlocked) {
+            console.log(`[TRACKING] 🚫🚫🚫 BLOCKED - Not tracking email to: ${recipientEmail}`);
             const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
             res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
             return res.end(pixel);
         }
         
-        console.log(`[TRACKING] ✅ Not your email, proceeding with tracking`);
+        console.log(`[TRACKING] ✅ Email NOT blocked, proceeding with tracking`);
         
         // CRITICAL FIX: Set opened_at but DO NOT change status
         // Status tracks delivery (sent/failed/queued)
@@ -7169,23 +7182,23 @@ app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
         const statsResult = await pool.query(`
             SELECT
                 COUNT(*) as total_emails,
-                COUNT(*) FILTER (WHERE status IN ('sent', 'queued')) as total_sent,
+                COUNT(*) FILTER (WHERE status = 'sent') as total_sent,
                 COUNT(*) FILTER (WHERE status = 'queued') as total_queued,
                 COUNT(*) FILTER (WHERE status = 'failed') as total_failed,
                 COUNT(*) FILTER (WHERE status = 'pending') as total_pending,
                 COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as total_opened,
                 COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as total_clicked,
                 ROUND(
-                    COUNT(*) FILTER (WHERE status IN ('sent', 'queued'))::NUMERIC /
+                    COUNT(*) FILTER (WHERE status = 'sent')::NUMERIC /
                     NULLIF(COUNT(*), 0) * 100, 1
                 ) as delivery_rate,
                 ROUND(
                     COUNT(*) FILTER (WHERE opened_at IS NOT NULL)::NUMERIC /
-                    NULLIF(COUNT(*) FILTER (WHERE status IN ('sent', 'queued')), 0) * 100, 1
+                    NULLIF(COUNT(*) FILTER (WHERE status = 'sent'), 0) * 100, 1
                 ) as open_rate,
                 ROUND(
                     COUNT(*) FILTER (WHERE clicked_at IS NOT NULL)::NUMERIC /
-                    NULLIF(COUNT(*) FILTER (WHERE status IN ('sent', 'queued')), 0) * 100, 1
+                    NULLIF(COUNT(*) FILTER (WHERE status = 'sent'), 0) * 100, 1
                 ) as click_rate
             FROM email_log
         `);

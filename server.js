@@ -723,14 +723,14 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
     }
 
     // 4. Wrap ALL diamondbackcoding.com links with tracking (makes leads hot when clicked)
-    if (leadId) {
+    if (leadId && emailLogId) {
         // Replace all diamondbackcoding.com links with tracked versions
         const websiteUrlPattern = /(https?:\/\/(?:www\.)?diamondbackcoding\.com[^"'\s]*)/gi;
         html = html.replace(websiteUrlPattern, (match) => {
             // Don't double-wrap or wrap tracking URLs
             if (match.includes('/api/track/click/')) return match;
-            if (match.includes('/api/track/open/')) return match; // ← CRITICAL FIX: Don't wrap tracking pixels!
-            return `${BASE_URL}/api/track/click/${leadId}?url=${encodeURIComponent(match)}`;
+            if (match.includes('/api/track/open/')) return match;
+            return `${BASE_URL}/api/track/click/${leadId}?email_id=${emailLogId}&url=${encodeURIComponent(match)}`;
         });
     }
 
@@ -7097,14 +7097,20 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         const recipientEmail = emailCheckResult.rows[0].recipient_email;
         const yourSendingEmail = process.env.EMAIL_USER;
         
+        console.log(`[TRACKING] Recipient: ${recipientEmail}`);
+        console.log(`[TRACKING] Your Email (EMAIL_USER): ${yourSendingEmail}`);
+        console.log(`[TRACKING] Match: ${recipientEmail && yourSendingEmail && recipientEmail.toLowerCase().trim() === yourSendingEmail.toLowerCase().trim()}`);
+        
         // CRITICAL: Block tracking of your own email to prevent false opens
         if (recipientEmail && yourSendingEmail && 
             recipientEmail.toLowerCase().trim() === yourSendingEmail.toLowerCase().trim()) {
-            console.log(`[TRACKING] BLOCKED - Your own email (${recipientEmail}), not tracking`);
+            console.log(`[TRACKING] 🚫 BLOCKED - Your own email (${recipientEmail}), not tracking`);
             const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
             res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
             return res.end(pixel);
         }
+        
+        console.log(`[TRACKING] ✅ Not your email, proceeding with tracking`);
         
         // CRITICAL FIX: Set opened_at but DO NOT change status
         // Status tracks delivery (sent/failed/queued)
@@ -9353,36 +9359,41 @@ async function trackEngagement(leadId, engagementType, details = '') {
         
         // Update engagement score based on type
         const scoreMap = {
-            'form_fill': 30,
-            'email_click': 10,
-            'email_reply': 25,
-            'website_visit': 15,
-            'email_open': 5
+            'form_fill': 30,              // Form fill = instant hot
+            'website_visit_contact': 30,   // Contact page visit = instant hot
+            'email_reply': 25,             // Email reply = instant hot
+            'website_visit': 15,           // Regular website visit
+            'email_click': 10,             // Clicked email link
+            'email_open': 5                // Opened email
         };
         score += scoreMap[engagementType] || 5;
         
         console.log(`[ENGAGEMENT] 💯 NEW SCORE: ${score} (added ${scoreMap[engagementType] || 5} points for ${engagementType})`);
         
-        // CRITICAL FIX: Leads should ONLY become hot through:
-        // 1. Accumulating 20+ engagement points naturally
-        // 2. Filling out a form (form_fill)
-        // 3. Replying to an email (email_reply)
+        // CRITICAL: Leads become hot through:
+        // 1. Filling out a form (form_fill) → INSTANT HOT
+        // 2. Visiting contact page (website_visit_contact) → INSTANT HOT
+        // 3. Replying to an email (email_reply) → INSTANT HOT
+        // 4. Accumulating 30+ engagement points naturally
         // 
-        // Email opens (5pts each) and link clicks (10pts each) should NOT instantly make leads hot
-        // They need to accumulate points OR do a meaningful action
-        const shouldBeHot = lead.lead_temperature === 'hot' || score >= 20 || engagementType === 'form_fill' || engagementType === 'email_reply';
+        // Email opens and regular link clicks do NOT instantly make leads hot
+        const shouldBeHot = lead.lead_temperature === 'hot' || 
+                           score >= 30 || 
+                           engagementType === 'form_fill' || 
+                           engagementType === 'email_reply' ||
+                           engagementType === 'website_visit_contact';
         const newTemperature = shouldBeHot ? 'hot' : 'cold';
         
         console.log(`[ENGAGEMENT] 🌡️  TEMPERATURE DECISION:`);
         console.log(`   - Current: ${lead.lead_temperature || 'null'}`);
         console.log(`   - New: ${newTemperature}`);
         console.log(`   - Should be hot? ${shouldBeHot}`);
-        console.log(`   - Reasons: score >= 20? ${score >= 20}, form_fill? ${engagementType === 'form_fill'}, email_reply? ${engagementType === 'email_reply'}`);
-        console.log(`   - Note: email_click and email_open do NOT instantly make leads hot - they accumulate points`);
+        console.log(`   - Reasons: score >= 30? ${score >= 30}, form_fill? ${engagementType === 'form_fill'}, contact_page? ${engagementType === 'website_visit_contact'}, email_reply? ${engagementType === 'email_reply'}`);
+        console.log(`   - Note: Regular email_click and email_open accumulate points but don't instantly trigger hot status`);
         
         // If lead just became hot (cold -> hot transition)
         if (newTemperature === 'hot' && lead.lead_temperature !== 'hot') {
-            console.log(`[ENGAGEMENT] 🔥 Lead ${leadId} became HOT! Cancelling auto-campaigns...`);
+            console.log(`[ENGAGEMENT] 🔥 Lead ${leadId} became HOT! Cancelling auto-campaigns and RESETTING TIMELINE...`);
             
             // Cancel any active auto-campaigns for this lead
             await pool.query(
@@ -9394,38 +9405,21 @@ async function trackEngagement(leadId, engagementType, details = '') {
                 [leadId]
             );
             
-            // CRITICAL FIX: For email_open/email_click, do NOT reset follow-up tracking
-            // The tracking pixel endpoint already handled advancing the lead
-            // Only reset for form_fill or other non-email engagements
-            if (engagementType === 'email_open' || engagementType === 'email_click') {
-                // Just update temperature and engagement data, preserve follow-up tracking
-                await pool.query(
-                    `UPDATE leads 
-                     SET engagement_history = $1,
-                         engagement_score = $2,
-                         lead_temperature = $3,
-                         became_hot_at = CURRENT_TIMESTAMP,
-                         last_engagement_at = CURRENT_TIMESTAMP
-                     WHERE id = $4`,
-                    [JSON.stringify(history), score, newTemperature, leadId]
-                );
-                console.log(`[ENGAGEMENT] ✅ Lead ${leadId} became HOT via ${engagementType} - follow-up tracking preserved`);
-            } else {
-                // For form fills etc, reset timeline so they show up immediately
-                await pool.query(
-                    `UPDATE leads 
-                     SET engagement_history = $1,
-                         engagement_score = $2,
-                         lead_temperature = $3,
-                         became_hot_at = CURRENT_TIMESTAMP,
-                         last_engagement_at = CURRENT_TIMESTAMP,
-                         last_contact_date = NULL,
-                         follow_up_count = 0
-                     WHERE id = $4`,
-                    [JSON.stringify(history), score, newTemperature, leadId]
-                );
-                console.log(`[ENGAGEMENT] ✅ Lead ${leadId} became HOT via ${engagementType} - timeline reset to show immediately`);
-            }
+            // CRITICAL FIX: When ANY lead becomes hot, reset timeline so they show IMMEDIATELY
+            // This includes email_open, email_click, form_fill, everything
+            await pool.query(
+                `UPDATE leads 
+                 SET engagement_history = $1,
+                     engagement_score = $2,
+                     lead_temperature = $3,
+                     became_hot_at = CURRENT_TIMESTAMP,
+                     last_engagement_at = CURRENT_TIMESTAMP,
+                     last_contact_date = NULL,
+                     follow_up_count = 0
+                 WHERE id = $4`,
+                [JSON.stringify(history), score, newTemperature, leadId]
+            );
+            console.log(`[ENGAGEMENT] ✅ Lead ${leadId} became HOT via ${engagementType} - TIMELINE RESET TO SHOW IMMEDIATELY IN QUEUE`);
         } else {
             // Normal update (not becoming hot)
             // For hot leads, only reset timeline if they've NEVER been contacted before
@@ -9497,17 +9491,47 @@ async function trackEngagement(leadId, engagementType, details = '') {
 app.get('/api/track/click/:leadId', async (req, res) => {
     try {
         const leadId = req.params.leadId;
-        const { url } = req.query;
+        const { url, email_id } = req.query;
         
         console.log(`\n========================================`);
         console.log(`[TRACKING] 🖱️  LINK CLICKED!`);
         console.log(`[TRACKING] Lead ID: ${leadId}`);
+        console.log(`[TRACKING] Email ID: ${email_id}`);
         console.log(`[TRACKING] URL: ${url}`);
         console.log(`========================================\n`);
         
-        // Track the click engagement - this makes them hot
-        const trackResult = await trackEngagement(leadId, 'email_click', `Clicked link: ${url || 'unknown'}`);
-        console.log(`[TRACKING] Track result:`, trackResult);
+        // CRITICAL FIX: Update clicked_at in email_log
+        if (email_id) {
+            try {
+                await pool.query(
+                    `UPDATE email_log 
+                     SET clicked_at = CURRENT_TIMESTAMP
+                     WHERE id = $1 
+                     AND clicked_at IS NULL`,
+                    [email_id]
+                );
+                console.log(`[TRACKING] ✅ Updated email_log ${email_id} with clicked_at timestamp`);
+            } catch (err) {
+                console.error('[TRACKING] Error updating clicked_at:', err);
+            }
+        }
+        
+        // Check if this is a contact page visit (makes them HOT immediately)
+        const isContactPage = url && (
+            url.includes('/contact') || 
+            url.includes('contact.html') ||
+            url.includes('#contact')
+        );
+        
+        if (isContactPage) {
+            console.log(`[TRACKING] 🔥 CONTACT PAGE VISIT - Making lead HOT immediately!`);
+            // Use 'website_visit_contact' which will trigger hot status
+            await trackEngagement(leadId, 'website_visit_contact', `Visited contact page: ${url || 'unknown'}`);
+        } else {
+            console.log(`[TRACKING] Regular link click - adding points but not instantly hot`);
+            // Regular email click - adds points but doesn't instantly make hot
+            await trackEngagement(leadId, 'email_click', `Clicked link: ${url || 'unknown'}`);
+        }
         
         console.log(`[TRACKING] ✅ Lead ${leadId} engagement tracked, redirecting to: ${url || BASE_URL}\n`);
         
@@ -13806,19 +13830,19 @@ async function migrateExistingLeadsToTemperature() {
 // 1. Mark email as 'sent' 
 // 2. Advance the lead (increment follow_up_count, update last_contact_date)
 function startEmailConfirmationJob() {
-    // Run every hour
-    const INTERVAL = 60 * 60 * 1000; // 1 hour in milliseconds
+    // Run every minute for real-time updates
+    const INTERVAL = 60 * 1000; // 1 minute in milliseconds
     
     async function confirmQueuedEmails() {
         try {
             console.log('[EMAIL-CONFIRM] Running background job to confirm queued emails...');
             
-            // Find emails that have been queued for 24+ hours with no bounce
+            // Find emails that have been queued for 5+ minutes with no bounce
             const result = await pool.query(`
                 UPDATE email_log 
                 SET status = 'sent'
                 WHERE status = 'queued' 
-                AND sent_at < NOW() - INTERVAL '24 hours'
+                AND sent_at < NOW() - INTERVAL '5 minutes'
                 AND opened_at IS NULL
                 RETURNING id, lead_id, subject, sent_at
             `);

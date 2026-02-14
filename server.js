@@ -7114,15 +7114,18 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         
         // Don't track opens from email client prefetch scanners
         if (isLikelyPrefetch) {
-            console.log(`[TRACKING] Skipping tracking - detected automated prefetch/proxy`);
+            console.log(`[TRACKING] ⚠️ SKIPPED - Automated prefetch detected, NOT marking as opened`);
             const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
             res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
             return res.end(pixel);
         }
         
-        // CRITICAL FIX: Set opened_at but DO NOT change status
+        // CRITICAL: Set opened_at but DO NOT change status
         // Status tracks delivery (sent/failed/queued)
         // opened_at tracks if recipient opened it
+        console.log(`[TRACKING] 🟢 REAL USER OPEN DETECTED - About to mark email as opened`);
+        console.log(`[TRACKING] This should ONLY happen when a real person clicks on the email in their inbox`);
+        
         const result = await pool.query(
             `UPDATE email_log 
              SET opened_at = CURRENT_TIMESTAMP

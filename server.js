@@ -4524,6 +4524,9 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
 });
 
 // Add this route with your other API routes
+// REPLACEMENT for /api/email/send-timeline endpoint
+// This matches the Zero Transaction Fees email template style
+
 app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
     try {
         const { timeline, clientEmail, clientName } = req.body;
@@ -4532,15 +4535,43 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
 
-        // Calculate total price
-        let totalPrice = 0;
-        timeline.packages.forEach(key => {
-            if (servicePackages[key] && !servicePackages[key].isFree) {
-                totalPrice += servicePackages[key].price;
-            }
-        });
+        // Calculate totals from packageDetails
+        let oneTimeTotal = 0;
+        let monthlyTotal = 0;
+        let roughEstimateText = '';
+        
+        if (timeline.packageDetails) {
+            Object.entries(timeline.packageDetails).forEach(([key, details]) => {
+                if (details.billing === 'monthly-per-user') {
+                    // CRM packages
+                    const quantity = details.quantity || 1;
+                    const total = details.pricePerUnit * quantity;
+                    monthlyTotal += total;
+                } else if (details.needsQuote && details.customPrice) {
+                    // Custom quote packages
+                    if (details.billing === 'monthly') {
+                        monthlyTotal += details.customPrice;
+                    } else {
+                        oneTimeTotal += details.customPrice;
+                    }
+                } else if (details.billing === 'monthly') {
+                    // Fixed monthly (SEO)
+                    monthlyTotal += details.totalPrice || details.basePrice;
+                }
+            });
+        }
 
-        // Generate PDF using PDFKit
+        // Build rough estimate text
+        if (oneTimeTotal > 0 || monthlyTotal > 0) {
+            let parts = [];
+            if (oneTimeTotal > 0) parts.push(`$${oneTimeTotal.toLocaleString()} one-time`);
+            if (monthlyTotal > 0) parts.push(`$${monthlyTotal.toFixed(2)}/month recurring`);
+            roughEstimateText = parts.join(' + ');
+        } else {
+            roughEstimateText = 'Custom Quote';
+        }
+
+        // Generate PDF using PDFKit with NEW template design
         const doc = new PDFDocument({ 
             margin: 50, 
             size: 'LETTER',
@@ -4553,234 +4584,291 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
         const pdfBuffers = [];
         doc.on('data', pdfBuffers.push.bind(pdfBuffers));
 
-        // === PDF CONTENT ===
+        // === PDF CONTENT - NEW DESIGN ===
         
-        // Header (Green bar)
-        doc.rect(0, 0, doc.page.width, 100).fill('#22c55e');
+        // Header (Gold/Amber bar instead of green)
+        doc.rect(0, 0, doc.page.width, 100).fill('#2C3E50'); // Dark blue-gray
+        doc.fillColor('#FFC15E') // Gold color
+           .fontSize(10)
+           .font('Helvetica-Bold')
+           .text('YOUR VISION. OUR CODE. ENDLESS POSSIBILITIES.', 50, 25);
+        doc.fontSize(11).text('Premium Web Development & CRM Solutions', 50, 42);
         doc.fillColor('#ffffff')
            .fontSize(28)
-           .font('Helvetica-Bold')
-           .text('DIAMONDBACK CODING', 50, 30);
-        doc.fontSize(10).text('PREMIUM DEVELOPMENT SERVICES', 50, 65);
+           .text('Diamondback Coding®', 50, 65, { characterSpacing: 2 });
 
         // Reset to black text
         doc.fillColor('#000000');
-        doc.y = 150;
+        doc.y = 130;
 
         // Title
-        doc.fontSize(24)
+        doc.fontSize(28)
            .font('Helvetica-Bold')
-           .text('SERVICE LEVEL AGREEMENT', { align: 'center' });
-        doc.moveDown(0.5);
-        doc.fontSize(12)
+           .text('Service Level Agreement', { align: 'center' });
+        doc.moveDown(0.3);
+        doc.fontSize(11)
            .font('Helvetica')
            .fillColor('#666666')
            .text('Project Timeline & Terms of Service', { align: 'center' });
         doc.fillColor('#000000');
-        doc.moveDown(2);
+        doc.moveDown(1.5);
 
-        // Agreement Overview
-        doc.fontSize(10)
+        // Client & Project Info Box
+        doc.rect(50, doc.y, 512, 80).fillAndStroke('#F7F9FB', '#E0E0E0');
+        const boxY = doc.y + 15;
+        
+        doc.fontSize(8)
            .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('AGREEMENT OVERVIEW');
-        doc.moveDown(0.5);
+           .fillColor('#888888')
+           .text('CLIENT', 70, boxY);
+        doc.fontSize(13)
+           .font('Helvetica-Bold')
+           .fillColor('#2D3142')
+           .text(timeline.clientName, 70, boxY + 12);
+        if (timeline.clientCompany) {
+            doc.fontSize(11)
+               .font('Helvetica')
+               .fillColor('#666666')
+               .text(timeline.clientCompany, 70, boxY + 28);
+        }
+        
+        doc.fontSize(8)
+           .font('Helvetica-Bold')
+           .fillColor('#888888')
+           .text('PROJECT', 320, boxY);
+        doc.fontSize(13)
+           .font('Helvetica-Bold')
+           .fillColor('#2D3142')
+           .text(timeline.projectName || 'Web Development Project', 320, boxY + 12);
         doc.fontSize(11)
-           .font('Helvetica')
-           .fillColor('#000000')
-           .text(`This Service Level Agreement is entered into as of ${new Date(timeline.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} by and between Diamondback Coding and ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''}.`);
-        doc.moveDown(2);
-
-        // Two columns for parties
-        const leftCol = 50;
-        const rightCol = 320;
-        const colTop = doc.y;
-
-        // Service Provider (left column)
-        doc.fontSize(9)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('SERVICE PROVIDER', leftCol, colTop);
-        doc.fillColor('#000000')
-           .fontSize(12)
-           .text('Diamondback Coding', leftCol, colTop + 15);
-        doc.fontSize(10)
            .font('Helvetica')
            .fillColor('#666666')
-           .text('15709 Spillman Ranch Loop', leftCol, colTop + 32)
-           .text('Austin, TX 78738', leftCol, colTop + 46)
-           .text('contact@diamondbackcoding.com', leftCol, colTop + 60)
-           .text('(940) 217-8680', leftCol, colTop + 74);
+           .text(`Start: ${new Date(timeline.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`, 320, boxY + 28);
 
-        // Client (right column)
-        doc.fontSize(9)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('CLIENT', rightCol, colTop);
-        doc.fillColor('#000000')
-           .fontSize(12)
-           .text(timeline.clientName, rightCol, colTop + 15);
-        doc.fontSize(10)
-           .font('Helvetica')
-           .fillColor('#666666');
-        let clientY = colTop + 32;
-        if (timeline.clientCompany) {
-            doc.text(timeline.clientCompany, rightCol, clientY);
-            clientY += 14;
-        }
-        if (timeline.clientEmail) {
-            doc.text(timeline.clientEmail, rightCol, clientY);
-            clientY += 14;
-        }
-        if (timeline.clientPhone) {
-            doc.text(timeline.clientPhone, rightCol, clientY);
-        }
-
-        doc.y = colTop + 120;
+        doc.y = boxY + 80;
         doc.moveDown(2);
 
-        // Project Details
-        doc.fontSize(10)
+        // Scope of Work Section
+        doc.fontSize(16)
            .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('PROJECT DETAILS');
-        doc.moveDown(0.5);
+           .fillColor('#2D3142')
+           .text('1. Scope of Work');
+        doc.moveTo(50, doc.y + 5)
+           .lineTo(200, doc.y + 5)
+           .lineWidth(2)
+           .strokeColor('#FFC15E')
+           .stroke();
+        doc.moveDown(1);
         
         doc.fontSize(11)
            .font('Helvetica')
-           .fillColor('#000000')
-           .text(`Project Name: ${timeline.projectName || 'Web Development Project'}`)
-           .text(`Start Date: ${new Date(timeline.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`)
-           .text(`Total Investment: ${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}`)
-           .text(`Payment Terms: ${getPaymentTermsText(timeline)}`);
-        doc.moveDown(2);
-
-        // Selected Services
-        doc.fontSize(10)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('SELECTED SERVICES');
+           .fillColor('#666666')
+           .text(`Diamondback Coding ("Provider") agrees to deliver the following services to ${timeline.clientName}${timeline.clientCompany ? ' / ' + timeline.clientCompany : ''} ("Client"):`, { width: 500 });
         doc.moveDown(0.5);
-        
+
+        // Deliverables box
+        doc.rect(50, doc.y, 512, 120).fillAndStroke('#FFF9E6', '#E5D4A0');
+        let delivY = doc.y + 15;
+        doc.fontSize(11)
+           .font('Helvetica-Bold')
+           .fillColor('#664D00')
+           .text('Deliverables:', 70, delivY);
+        delivY += 18;
+
+        // List selected packages with features
         timeline.packages.forEach(key => {
             const pkg = servicePackages[key];
             if (pkg) {
-                doc.fontSize(11)
+                doc.fontSize(10)
                    .font('Helvetica')
-                   .fillColor('#000000')
-                   .text(`✓ ${pkg.name}${pkg.isFree ? ' (FREE)' : ''}`);
+                   .fillColor('#664D00')
+                   .text(`• ${pkg.name}`, 80, delivY);
+                delivY += 14;
+                if (pkg.description) {
+                    doc.fontSize(9)
+                       .fillColor('#886600')
+                       .text(`  ${pkg.description}`, 90, delivY, { width: 450 });
+                    delivY += 12;
+                }
             }
         });
-        doc.moveDown(2);
 
-        // Scope if exists
-        if (timeline.scope) {
-            doc.fontSize(10)
-               .font('Helvetica-Bold')
-               .fillColor('#22c55e')
-               .text('PROJECT SCOPE');
-            doc.moveDown(0.5);
-            doc.fontSize(11)
-               .font('Helvetica')
-               .fillColor('#000000')
-               .text(timeline.scope, { width: 500 });
-            doc.moveDown(2);
-        }
+        doc.y = delivY + 15;
+        doc.moveDown(1.5);
 
-        // Add new page for timeline
-        doc.addPage();
-
-        // Detailed Timeline
-        doc.fontSize(14)
+        // Payment Terms Section with ROUGH ESTIMATE
+        doc.fontSize(16)
            .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('DETAILED PROJECT TIMELINE');
-        doc.moveDown(1);
-
-        let phaseNumber = 1;
-        timeline.packages.forEach(packageKey => {
-            const pkg = servicePackages[packageKey];
-            if (!pkg || !pkg.phases) return;
-
-            // Package name
-            doc.fontSize(12)
-               .font('Helvetica-Bold')
-               .fillColor('#000000')
-               .text(pkg.name);
-            doc.fontSize(10)
-               .font('Helvetica')
-               .fillColor('#666666')
-               .text(pkg.description);
-            doc.moveDown(0.5);
-
-            pkg.phases.forEach(phase => {
-                doc.fontSize(11)
-                   .font('Helvetica-Bold')
-                   .fillColor('#000000')
-                   .text(`Phase ${phaseNumber}: ${phase.name} (${phase.duration})`);
-                
-                phase.tasks.forEach(task => {
-                    doc.fontSize(10)
-                       .font('Helvetica')
-                       .fillColor('#333333')
-                       .text(`  • ${task}`, { indent: 20 });
-                });
-                
-                doc.moveDown(0.5);
-                phaseNumber++;
-            });
-
-            doc.moveDown(1);
-        });
-
-        // Client Responsibilities
-        if (doc.y > 600) doc.addPage();
-        
-        doc.fontSize(12)
-           .font('Helvetica-Bold')
-           .fillColor('#22c55e')
-           .text('CLIENT RESPONSIBILITIES');
-        doc.moveDown(0.5);
-        
-        const responsibilities = [
-            'Provide all required content within 3 business days of request',
-            'Respond to design/development reviews within 5 business days',
-            'Attend scheduled bi-weekly progress meetings',
-            'Designate a single point of contact for communications',
-            'Make payments according to agreed schedule',
-            'Provide access to necessary accounts and credentials'
-        ];
-        
-        responsibilities.forEach(resp => {
-            doc.fontSize(10)
-               .font('Helvetica')
-               .fillColor('#000000')
-               .text(`• ${resp}`, { indent: 10 });
-        });
-        doc.moveDown(2);
-
-        // Signature area
-        doc.fontSize(11)
-           .font('Helvetica-Bold')
-           .fillColor('#000000')
-           .text('CLIENT SIGNATURE REQUIRED:');
-        doc.moveDown(1);
-        
-        doc.moveTo(50, doc.y)
-           .lineTo(300, doc.y)
+           .fillColor('#2D3142')
+           .text('2. Payment Terms');
+        doc.moveTo(50, doc.y + 5)
+           .lineTo(220, doc.y + 5)
+           .lineWidth(2)
+           .strokeColor('#FFC15E')
            .stroke();
-        doc.moveDown(0.3);
+        doc.moveDown(1);
+
+        // Payment box
+        doc.rect(50, doc.y, 512, 100).fillAndStroke('#FFF9E6', '#E5D4A0');
+        let payY = doc.y + 20;
+        
+        doc.fontSize(10)
+           .font('Helvetica')
+           .fillColor('#664D00')
+           .text('ROUGH ESTIMATE (Subject to Change):', 70, payY);
+        doc.fontSize(16)
+           .font('Helvetica-Bold')
+           .fillColor('#664D00')
+           .text(roughEstimateText, 350, payY, { align: 'right' });
+        
+        payY += 25;
+        doc.moveTo(70, payY)
+           .lineTo(542, payY)
+           .lineWidth(1)
+           .strokeColor('#E5D4A0')
+           .stroke();
+        
+        payY += 15;
+        doc.fontSize(10)
+           .font('Helvetica')
+           .fillColor('#664D00')
+           .text('Payment Terms:', 70, payY);
+        doc.text(timeline.paymentTerms === 'completion' ? '100% Due Upon Completion' : 'Custom Terms', 350, payY, { align: 'right' });
+        
         doc.fontSize(9)
            .font('Helvetica')
-           .fillColor('#666666')
-           .text('Client Signature');
-        doc.moveDown(2);
-        
-        doc.moveTo(50, doc.y)
-           .lineTo(300, doc.y)
+           .fillColor('#886600')
+           .text('Final pricing will be determined and invoiced separately. Payment accepted via bank transfer, credit card, or check.', 70, payY + 20, { width: 460 });
+
+        doc.y = payY + 50;
+        doc.moveDown(1.5);
+
+        // Revisions & Support - NO FREE SUPPORT
+        doc.fontSize(16)
+           .font('Helvetica-Bold')
+           .fillColor('#2D3142')
+           .text('3. Revisions & Support');
+        doc.moveTo(50, doc.y + 5)
+           .lineTo(260, doc.y + 5)
+           .lineWidth(2)
+           .strokeColor('#FFC15E')
            .stroke();
-        doc.moveDown(0.3);
-        doc.text('Date');
+        doc.moveDown(1);
+
+        doc.rect(50, doc.y, 512, 70).fillAndStroke('#FFF9E6', '#E5D4A0');
+        let suppY = doc.y + 15;
+        
+        doc.fontSize(10)
+           .font('Helvetica-Bold')
+           .fillColor('#664D00')
+           .text('Included Revisions:', 70, suppY);
+        doc.fontSize(9)
+           .font('Helvetica')
+           .text('Two rounds of revisions included per milestone. Additional revisions billed separately.', 70, suppY + 15, { width: 460 });
+        
+        suppY += 35;
+        doc.fontSize(10)
+           .font('Helvetica-Bold')
+           .fillColor('#664D00')
+           .text('Post-Launch Support:', 70, suppY);
+        doc.fontSize(9)
+           .font('Helvetica')
+           .text('No free support or maintenance included. Support and maintenance packages available for purchase separately.', 70, suppY + 15, { width: 460 });
+
+        doc.y = suppY + 40;
+        doc.moveDown(1.5);
+
+        // Terms & Conditions
+        doc.fontSize(16)
+           .font('Helvetica-Bold')
+           .fillColor('#2D3142')
+           .text('4. Terms & Conditions');
+        doc.moveTo(50, doc.y + 5)
+           .lineTo(250, doc.y + 5)
+           .lineWidth(2)
+           .strokeColor('#FFC15E')
+           .stroke();
+        doc.moveDown(1);
+
+        const terms = [
+            { title: 'Ownership', text: 'Upon final payment, Client owns all deliverables. Provider retains right to use project in portfolio.' },
+            { title: 'Confidentiality', text: 'Both parties agree to keep proprietary information confidential.' },
+            { title: 'Termination', text: 'Either party may terminate with 14 days written notice. Client responsible for work completed to date.' },
+            { title: 'Delays', text: 'Provider not liable for delays caused by client-side content/feedback delays or force majeure.' },
+            { title: 'Pricing', text: 'The rough estimate provided is subject to change. Final invoice will reflect actual pricing based on scope and requirements.' }
+        ];
+
+        terms.forEach(term => {
+            doc.fontSize(10)
+               .font('Helvetica-Bold')
+               .fillColor('#000000')
+               .text(`${term.title}: `, { continued: true })
+               .font('Helvetica')
+               .fillColor('#666666')
+               .text(term.text, { width: 500 });
+            doc.moveDown(0.8);
+        });
+
+        // Add new page for signatures
+        doc.addPage();
+        doc.y = 100;
+
+        // Signatures
+        doc.fontSize(11)
+           .font('Helvetica')
+           .fillColor('#666666')
+           .text('By signing below, both parties agree to the terms outlined in this Service Level Agreement.', { align: 'center' });
+        doc.moveDown(3);
+
+        const sigY = doc.y;
+        const leftSig = 70;
+        const rightSig = 340;
+
+        // Client signature
+        doc.moveTo(leftSig, sigY)
+           .lineTo(leftSig + 200, sigY)
+           .lineWidth(2)
+           .strokeColor('#2D3142')
+           .stroke();
+        doc.fontSize(8)
+           .font('Helvetica-Bold')
+           .fillColor('#888888')
+           .text('CLIENT SIGNATURE', leftSig, sigY + 10);
+        doc.fontSize(11)
+           .font('Helvetica')
+           .fillColor('#666666')
+           .text(timeline.clientName, leftSig, sigY + 25);
+        if (timeline.clientCompany) {
+            doc.fontSize(10).text(timeline.clientCompany, leftSig, sigY + 40);
+        }
+
+        // Provider signature
+        doc.moveTo(rightSig, sigY)
+           .lineTo(rightSig + 200, sigY)
+           .lineWidth(2)
+           .strokeColor('#FFC15E')
+           .stroke();
+        doc.fontSize(8)
+           .font('Helvetica-Bold')
+           .fillColor('#888888')
+           .text('PROVIDER SIGNATURE', rightSig, sigY + 10);
+        doc.fontSize(11)
+           .font('Helvetica')
+           .fillColor('#666666')
+           .text('Diamondback Coding', rightSig, sigY + 25);
+        doc.fontSize(10).text('Authorized Representative', rightSig, sigY + 40);
+        doc.fontSize(9).text(`Date: ${new Date().toLocaleDateString()}`, rightSig, sigY + 55);
+
+        // Footer
+        doc.y = 700;
+        doc.fontSize(8)
+           .font('Helvetica-Bold')
+           .fillColor('#FFC15E')
+           .text('DIAMONDBACK CODING', { align: 'center' });
+        doc.fontSize(9)
+           .font('Helvetica')
+           .fillColor('#999999')
+           .text('940-217-8680 | hello@diamondbackcoding.com | diamondbackcoding.com', { align: 'center' });
 
         // End PDF
         doc.end();
@@ -4792,59 +4880,78 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
 
         const pdfBuffer = Buffer.concat(pdfBuffers);
 
-        // Email HTML content
+        // Build email HTML using Zero Transaction Fees template style
         const packagesText = timeline.packages.map(k => 
             servicePackages[k]?.name || k
         ).join(', ');
 
-        const emailHtml = buildEmailHTML(`
-            <p><strong style="font-size:16px;">Hi ${timeline.clientName},</strong></p>
+        // Email uses same design as zerotransactionfees template
+        const emailHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background-color:#F5F5F5;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F5F5">
+<tr><td align="center" style="padding:40px 20px">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;max-width:600px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
 
-            <p>
-                Thank you for choosing Diamondback Coding! We're excited to work with you on
-                <strong>${timeline.projectName || 'your project'}</strong>.
-            </p>
+<!-- Header -->
+<tr><td style="background-color:#2C3E50;padding:60px 40px 70px 40px;text-align:center">
+<span style="color:#FFC15E;font-size:11px;font-weight:600;letter-spacing:2px;font-family:Arial,sans-serif;text-transform:uppercase;display:block;margin-bottom:12px">YOUR VISION. OUR CODE. ENDLESS POSSIBILITIES.</span>
+<span style="color:#FFC15E;font-size:12px;font-weight:600;letter-spacing:2.5px;font-family:Arial,sans-serif;text-transform:uppercase;display:block;margin-bottom:20px">Premium Web Development & CRM Solutions</span>
+<span style="color:#ffffff;font-size:36px;font-weight:300;letter-spacing:3px;font-family:Georgia,serif;font-style:italic;display:block">Diamondback Coding®</span>
+</td></tr>
 
-            <p>
-                Attached to this email is your complete <strong>Service Level Agreement (SLA)</strong>
-                which includes the detailed project timeline, deliverables, and terms.
-            </p>
+<!-- Curve -->
+<tr><td style="background-color:#F5F5F5;padding:0">
+<div style="background-color:#ffffff;border-radius:50% 50% 0 0 / 30px 30px 0 0;height:30px;margin-top:-30px"></div>
+</td></tr>
 
-            <div class="info-box">
-                <div class="info-row">
-                    <span class="info-label">Project</span>
-                    <span class="info-value">${timeline.projectName || 'Web Development'}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Investment</span>
-                    <span class="info-value gold">${timeline.isFreeProject ? 'FREE' : '$' + totalPrice.toLocaleString()}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Services</span>
-                    <span class="info-value">${packagesText}</span>
-                </div>
-            </div>
+<!-- Content -->
+<tr><td style="background-color:#ffffff;padding:40px 50px 50px 50px">
+<span style="color:#2C3E50;font-size:28px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:20px;text-align:center">Your Project Timeline is Ready!</span>
+<p style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;margin:0 0 20px">Hi ${timeline.clientName},</p>
+<p style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;margin:0 0 20px">Thank you for choosing Diamondback Coding! We're excited to work with you on <strong>${timeline.projectName || 'your project'}</strong>.</p>
 
-            <div class="attachment-box">
-                <strong>📎 PDF Attached</strong> — Please review the attached SLA document for complete
-                project details, timeline, and terms. <strong>Your signature is required</strong> to proceed.
-            </div>
+<!-- Project Summary Box -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF9E6;border-left:4px solid #FFC15E;margin:20px 0;border-radius:4px">
+<tr><td style="padding:20px">
+<p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#664D00">PROJECT SUMMARY</p>
+<p style="margin:0 0 8px;font-size:14px;color:#664D00"><strong>Services:</strong> ${packagesText}</p>
+<p style="margin:0 0 8px;font-size:14px;color:#664D00"><strong>Rough Estimate:</strong> ${roughEstimateText} (Subject to Change)</p>
+<p style="margin:0;font-size:12px;color:#886600;font-style:italic">Final pricing will be determined and invoiced separately</p>
+</td></tr>
+</table>
 
-            <h3>Next Steps</h3>
-            <ol>
-                <li><strong>Review</strong> the attached SLA document carefully</li>
-                <li><strong>Sign</strong> the document in the designated client signature area</li>
-                <li><strong>Return</strong> the signed copy to us via email</li>
-                <li>We'll schedule our <strong>kick-off meeting</strong> to get started!</li>
-            </ol>
+<p style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;margin:20px 0">Attached to this email is your complete <strong>Service Level Agreement (SLA)</strong> which includes the detailed project timeline, deliverables, and terms.</p>
 
-            <p>Have questions? We're here to help — feel free to reach out anytime.</p>
+<!-- CTA -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:30px 0">
+<tr><td align="center">
+<a href="#" style="display:inline-block;background-color:#FFC15E;color:#2C3E50;font-size:15px;font-weight:700;font-family:Arial,sans-serif;text-decoration:none;padding:16px 40px;border-radius:6px">VIEW FULL SLA (PDF ATTACHED)</a>
+</td></tr>
+</table>
 
-            <div class="sign-off">
-                <p>Looking forward to building something amazing together!</p>
-                <p class="team-name">— The Diamondback Coding Team</p>
-            </div>
-        `);
+<p style="color:#6B7280;font-size:14px;font-family:Arial,sans-serif;line-height:1.7;margin:20px 0 0"><strong>Next Steps:</strong></p>
+<ol style="color:#6B7280;font-size:14px;font-family:Arial,sans-serif;line-height:1.8;padding-left:20px">
+<li>Review the attached SLA document</li>
+<li>Sign the document in the designated area</li>
+<li>Return the signed copy via email</li>
+<li>We'll schedule our kick-off meeting!</li>
+</ol>
+
+<p style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;margin:30px 0 0">Looking forward to building something amazing together!</p>
+<p style="color:#2C3E50;font-size:14px;font-family:Arial,sans-serif;font-weight:600;margin:10px 0 0">— The Diamondback Coding Team</p>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="background-color:#2C3E50;padding:30px;text-align:center">
+<p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#FFC15E">DIAMONDBACK CODING</p>
+<p style="margin:0;font-size:11px;color:#999">940-217-8680 | hello@diamondbackcoding.com | diamondbackcoding.com</p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body></html>`;
 
         // Send email with PDF attachment
         const mailOptions = {

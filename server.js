@@ -720,6 +720,9 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         const pixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
         html = html.replace(/<\/body>/i, `${pixel}</body>`);
         if (!html.includes(pixel)) html += pixel; // fallback if no </body>
+        
+        console.log(`[EMAIL] Tracking pixel inserted: ${BASE_URL}/api/track/open/${emailLogId}`);
+        console.log(`[EMAIL] When this email is opened, the pixel will load and trigger the tracking endpoint`);
     }
 
     // 4. Wrap ALL diamondbackcoding.com links with tracking (makes leads hot when clicked)
@@ -743,7 +746,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         
         if (emailSettings.useBrevo && emailSettings.brevoApiKey) {
             console.log('[EMAIL] Sending via Brevo...');
-            await sendViaBrevo(
+            const brevoResponse = await sendViaBrevo(
                 emailSettings.brevoApiKey,
                 emailSettings.brevoSenderEmail || process.env.EMAIL_USER,
                 emailSettings.brevoSenderName || 'Diamondback Coding',
@@ -751,7 +754,13 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 subject,
                 html
             );
-            console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to}`);
+            
+            // Verify Brevo actually accepted it
+            if (!brevoResponse || !brevoResponse.messageId) {
+                throw new Error('Brevo did not return a valid messageId');
+            }
+            
+            console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to} (messageId: ${brevoResponse.messageId})`);
         } else {
             console.log('[EMAIL] Sending via Nodemailer...');
             const info = await transporter.sendMail({
@@ -769,21 +778,43 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 throw new Error(`Email rejected by mail server: ${info.rejected.join(', ')}`);
             }
             
+            // Additional check: verify we got a messageId
+            if (!info.messageId) {
+                throw new Error('Nodemailer did not return a messageId - send may have failed');
+            }
+            
             console.log(`[EMAIL] ✅ Email accepted by mail server for ${to}`);
         }
         
-        // 7. CRITICAL FIX: Mark as 'sent' IMMEDIATELY when mail server accepts it
-        // The mail server acceptance means it's sent - we can see this in server logs
-        // If it later bounces/blocks/fails, the webhook will change status to 'failed'
+        // 7. CRITICAL: Only mark as 'sent' if we successfully got here without errors
+        // Double-check the email_log still exists and isn't already marked failed
         if (emailLogId) {
-            await pool.query(
-                `UPDATE email_log 
-                 SET status = 'sent', 
-                     sent_at = CURRENT_TIMESTAMP 
-                 WHERE id = $1`,
+            const logCheck = await pool.query(
+                'SELECT status FROM email_log WHERE id = $1',
                 [emailLogId]
             );
-            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as SENT (mail server accepted)`);
+            
+            if (logCheck.rows.length === 0) {
+                console.error(`[EMAIL] ERROR: email_log ${emailLogId} disappeared!`);
+                throw new Error('Email log entry not found');
+            }
+            
+            const currentStatus = logCheck.rows[0].status;
+            
+            // If it's already failed (from validation), don't override it
+            if (currentStatus === 'failed') {
+                console.log(`[EMAIL] Email_log ${emailLogId} already marked as FAILED - not overriding`);
+            } else {
+                // Mark as SENT only if mail server truly accepted it
+                await pool.query(
+                    `UPDATE email_log 
+                     SET status = 'sent', 
+                         sent_at = CURRENT_TIMESTAMP 
+                     WHERE id = $1`,
+                    [emailLogId]
+                );
+                console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as SENT (mail server accepted)`);
+            }
         }
         
         // 8. Update follow-up tracking since email was successfully sent
@@ -7104,35 +7135,12 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         }
         
         const recipientEmail = emailCheckResult.rows[0].recipient_email;
-        const yourSendingEmail = process.env.EMAIL_USER;
-        
-        // HARDCODED BACKUP: Block these specific emails
-        const blockedEmails = [
-            'taylor.crownover2024@gmail.com',
-            process.env.EMAIL_USER
-        ].filter(Boolean).map(e => e.toLowerCase().trim());
-        
-        const isBlocked = recipientEmail && blockedEmails.some(blocked => 
-            recipientEmail.toLowerCase().trim() === blocked
-        );
         
         console.log(`\n========================================`);
-        console.log(`[TRACKING] EMAIL BLOCKING CHECK`);
+        console.log(`[TRACKING] EMAIL OPEN TRACKING`);
         console.log(`[TRACKING] Recipient: "${recipientEmail}"`);
-        console.log(`[TRACKING] EMAIL_USER env: "${yourSendingEmail}"`);
-        console.log(`[TRACKING] Blocked list: ${JSON.stringify(blockedEmails)}`);
-        console.log(`[TRACKING] Is blocked? ${isBlocked}`);
+        console.log(`[TRACKING] Email Log ID: ${emailLogId}`);
         console.log(`========================================\n`);
-        
-        // CRITICAL: Block tracking of your own email to prevent false opens
-        if (isBlocked) {
-            console.log(`[TRACKING] 🚫🚫🚫 BLOCKED - Not tracking email to: ${recipientEmail}`);
-            const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
-            res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
-            return res.end(pixel);
-        }
-        
-        console.log(`[TRACKING] ✅ Email NOT blocked, proceeding with tracking`);
         
         // CRITICAL FIX: Set opened_at but DO NOT change status
         // Status tracks delivery (sent/failed/queued)

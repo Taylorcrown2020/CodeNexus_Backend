@@ -7093,11 +7093,32 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         
         const recipientEmail = emailCheckResult.rows[0].recipient_email;
         
+        // Check User-Agent to detect automated email client pre-fetching
+        const userAgent = req.headers['user-agent'] || '';
+        const isLikelyPrefetch = 
+            userAgent.includes('GoogleImageProxy') ||  // Gmail pre-fetches images
+            userAgent.includes('OutlookImageProxy') || // Outlook pre-fetches images
+            userAgent.includes('AppleMailProxy') ||    // Apple Mail pre-fetches images
+            userAgent.includes('YahooMailProxy') ||
+            userAgent === '' ||                        // Empty user agent often means automated
+            userAgent.includes('bot') ||
+            userAgent.includes('crawler');
+        
         console.log(`\n========================================`);
         console.log(`[TRACKING] EMAIL OPEN TRACKING`);
         console.log(`[TRACKING] Recipient: "${recipientEmail}"`);
         console.log(`[TRACKING] Email Log ID: ${emailLogId}`);
+        console.log(`[TRACKING] User-Agent: "${userAgent}"`);
+        console.log(`[TRACKING] Likely Prefetch: ${isLikelyPrefetch}`);
         console.log(`========================================\n`);
+        
+        // Don't track opens from email client prefetch scanners
+        if (isLikelyPrefetch) {
+            console.log(`[TRACKING] Skipping tracking - detected automated prefetch/proxy`);
+            const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+            res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
+            return res.end(pixel);
+        }
         
         // CRITICAL FIX: Set opened_at but DO NOT change status
         // Status tracks delivery (sent/failed/queued)

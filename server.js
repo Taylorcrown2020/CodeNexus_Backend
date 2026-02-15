@@ -7947,7 +7947,7 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
         
         // Send via tracked helper (logs to email_log + injects open pixel)
         try {
-            await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML, emailType: 'custom' });
+            await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML });
             console.log('[EMAIL API] ✅ Email sent successfully to:', to);
         } catch (emailError) {
             console.error('[EMAIL API] ❌ Email send error:', emailError);
@@ -13847,7 +13847,7 @@ app.post('/api/send-email', authenticateToken, async (req, res) => {
         <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
     `, { unsubscribeUrl });
     try {
-        await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML, emailType: 'custom' });
+        await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML });
         
         // ✅ CRITICAL: Do NOT update last_contact_date here!
         // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:

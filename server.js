@@ -356,38 +356,50 @@ app.post('/api/brevo/webhook', async (req, res) => {
         const event = req.body;
         
         console.log(`\n========================================`);
-        console.log(`[BREVO WEBHOOK] Received event: ${event.event}`);
+        console.log(`[BREVO WEBHOOK] 📨 Received event: ${event.event}`);
         console.log(`[BREVO WEBHOOK] Email: ${event.email}`);
         console.log(`[BREVO WEBHOOK] Message ID: ${event['message-id']}`);
         console.log(`[BREVO WEBHOOK] Full event data:`, JSON.stringify(event, null, 2));
         console.log(`========================================\n`);
 
-        // Look up the email_log row by brevo_message_id
-        let emailLog = null;
         const incomingMsgId = event['message-id'];
-
-        if (incomingMsgId) {
-            const byMsgId = await pool.query(
-                `SELECT el.id, el.status, el.opened_at, el.clicked_at, el.email_type, l.id as lead_id, l.name
-                 FROM email_log el
-                 LEFT JOIN leads l ON el.lead_id = l.id
-                 WHERE el.brevo_message_id = $1
-                 LIMIT 1`,
-                [incomingMsgId]
-            );
-            if (byMsgId.rows.length > 0) {
-                emailLog = byMsgId.rows[0];
-                console.log(`[BREVO WEBHOOK] ✅ Matched email_log ${emailLog.id} (type: ${emailLog.email_type})`);
-            }
+        
+        if (!incomingMsgId) {
+            console.log(`[BREVO WEBHOOK] ⚠️ WARNING: No message-id in event`);
+            return res.json({ received: true, warning: 'No message-id provided' });
         }
 
-        if (!emailLog) {
-            console.log(`[BREVO WEBHOOK] ⚠️  Could not find email_log entry for ${event.email}`);
-            return res.json({ received: true });
+        // Look up the email_log row by brevo_message_id
+        const emailLogResult = await pool.query(
+            `SELECT el.id, el.status, el.opened_at, el.clicked_at, el.email_type, 
+                    l.id as lead_id, l.name, l.email, l.lead_temperature
+             FROM email_log el
+             LEFT JOIN leads l ON el.lead_id = l.id
+             WHERE el.brevo_message_id = $1
+             LIMIT 1`,
+            [incomingMsgId]
+        );
+
+        if (emailLogResult.rows.length === 0) {
+            console.log(`[BREVO WEBHOOK] ⚠️ No email_log found for message-id: ${incomingMsgId}`);
+            return res.json({ received: true, warning: 'No matching email_log found' });
+        }
+
+        const emailLog = emailLogResult.rows[0];
+        console.log(`[BREVO WEBHOOK] ✅ MATCHED: email_log ${emailLog.id} | Lead: ${emailLog.name} | Type: ${emailLog.email_type}`);
+        
+        // Handle DELIVERED event
+        if (event.event === 'delivered') {
+            console.log(`[BREVO WEBHOOK] 📬 EMAIL DELIVERED`);
+            await pool.query(
+                `UPDATE email_log SET status = 'sent' WHERE id = $1`,
+                [emailLog.id]
+            );
+            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as SENT`);
         }
         
         // Handle OPENED event
-        if (event.event === 'opened' || event.event === 'unique_opened') {
+        else if (event.event === 'opened' || event.event === 'unique_opened') {
             console.log(`[BREVO WEBHOOK] 📧 EMAIL OPENED`);
             await pool.query(
                 `UPDATE email_log 
@@ -397,11 +409,17 @@ app.post('/api/brevo/webhook', async (req, res) => {
                 [emailLog.id]
             );
             console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as OPENED`);
+            
+            // Track engagement for the lead
+            if (emailLog.lead_id) {
+                await trackEngagement(emailLog.lead_id, 'email_open', 'Opened via Brevo webhook');
+            }
         }
         
         // Handle CLICKED event
         else if (event.event === 'click' || event.event === 'unique_click') {
-            console.log(`[BREVO WEBHOOK] 🖱️  EMAIL CLICKED (type: ${emailLog.email_type})`);
+            console.log(`[BREVO WEBHOOK] 🖱️ EMAIL LINK CLICKED`);
+            const clickUrl = event.link || event.url || 'unknown';
             await pool.query(
                 `UPDATE email_log 
                  SET clicked_at = COALESCE(clicked_at, CURRENT_TIMESTAMP),
@@ -411,32 +429,29 @@ app.post('/api/brevo/webhook', async (req, res) => {
                 [emailLog.id]
             );
             console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as CLICKED`);
-        }
-        
-        // Handle DELIVERED event
-        else if (event.event === 'delivered') {
-            console.log(`[BREVO WEBHOOK] 📬 EMAIL DELIVERED`);
-            await pool.query(
-                `UPDATE email_log SET status = 'sent' WHERE id = $1 AND status = 'queued'`,
-                [emailLog.id]
-            );
-            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as SENT`);
+            
+            // Convert to hot if follow-up email
+            if (emailLog.email_type === 'follow-up' && emailLog.lead_id) {
+                console.log(`[BREVO WEBHOOK] 🔥 FOLLOW-UP CLICKED - Converting lead ${emailLog.lead_id} to HOT`);
+                await trackEngagement(emailLog.lead_id, 'email_click_hot', `Clicked via Brevo: ${clickUrl}`);
+            }
         }
         
         // Handle FAILURE events
-        else if (['hard_bounce', 'soft_bounce', 'blocked', 'spam', 'invalid_email'].includes(event.event)) {
+        else if (['hard_bounce', 'soft_bounce', 'blocked', 'spam', 'invalid_email', 'error'].includes(event.event)) {
             console.log(`[BREVO WEBHOOK] ❌ EMAIL FAILED - Event: ${event.event}`);
+            const errorMsg = `${event.event}: ${event.reason || 'No reason'}`;
             await pool.query(
                 `UPDATE email_log SET status = 'failed', error_message = $2 WHERE id = $1`,
-                [emailLog.id, `${event.event}: ${event.reason || 'No reason'}`]
+                [emailLog.id, errorMsg]
             );
             console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as FAILED`);
         }
         
-        res.json({ received: true });
+        res.json({ received: true, processed: true });
     } catch (error) {
-        console.error('[BREVO WEBHOOK] Error:', error);
-        res.json({ received: true });
+        console.error('[BREVO WEBHOOK] ❌ Error:', error);
+        res.json({ received: true, error: error.message });
     }
 });
 
@@ -1019,23 +1034,11 @@ async function sendDirectEmail({ to, subject, html, attachments = [], leadId = n
         console.warn('[EMAIL] Could not insert email_log row:', e.message);
     }
 
-    // Inject tracking pixel for ALL emails (not just follow-ups)
-    if (emailLogId) {
-        const pixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
-        html = html.replace(/<\/body>/i, `${pixel}</body>`);
-        if (!html.includes(pixel)) html += pixel;
-        console.log(`[EMAIL] Tracking pixel inserted: ${BASE_URL}/api/track/open/${emailLogId}`);
-    }
+    // NO CUSTOM TRACKING PIXEL - Brevo handles all open tracking via webhooks
+    console.log(`[EMAIL] Relying on Brevo webhook for open tracking (no custom pixel)`);
 
-    // Wrap diamondbackcoding.com links with tracking for ALL emails
-    if (leadId && emailLogId) {
-        const websiteUrlPattern = /(https?:\/\/(?:www\.)?diamondbackcoding\.com[^"'\s]*)/gi;
-        html = html.replace(websiteUrlPattern, (match) => {
-            if (match.includes('/api/track/click/')) return match;
-            if (match.includes('/api/track/open/')) return match;
-            return `${BASE_URL}/api/track/click/${leadId}?email_id=${emailLogId}&url=${encodeURIComponent(match)}`;
-        });
-    }
+    // NO CUSTOM LINK TRACKING - Brevo handles all click tracking via webhooks
+    console.log(`[EMAIL] Relying on Brevo webhook for click tracking (no custom link wrapping)`);
 
     const emailSettings = await getEmailSettings();
 
@@ -7528,12 +7531,18 @@ app.get('/api/follow-ups/dead-leads', authenticateToken, async (req, res) => {
 // EMAIL OPEN TRACKING PIXEL
 // ========================================
 app.get('/api/track/open/:emailLogId', async (req, res) => {
+    const sendPixel = () => {
+        const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+        res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
+        return res.end(pixel);
+    };
+    
     try {
         const { emailLogId } = req.params;
         
         // Check if this is YOUR email (to prevent false tracking)
         const emailCheckResult = await pool.query(
-            `SELECT l.email as recipient_email, el.status as current_status
+            `SELECT l.email as recipient_email, el.status as current_status, el.sent_at, el.opened_at
              FROM email_log el
              LEFT JOIN leads l ON el.lead_id = l.id
              WHERE el.id = $1`,
@@ -7542,27 +7551,31 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         
         if (emailCheckResult.rows.length === 0) {
             console.log(`[TRACKING] Email log ${emailLogId} not found`);
-            const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
-            res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
-            return res.end(pixel);
+            return sendPixel();
         }
         
         const recipientEmail = emailCheckResult.rows[0].recipient_email;
         const currentStatus = emailCheckResult.rows[0].current_status;
+        const sentAt = emailCheckResult.rows[0].sent_at;
+        const alreadyOpened = emailCheckResult.rows[0].opened_at;
+        
+        // Skip if already tracked
+        if (alreadyOpened) {
+            console.log(`[TRACKING] Email ${emailLogId} already opened at ${alreadyOpened}`);
+            return sendPixel();
+        }
         
         // Check User-Agent to detect automated email client pre-fetching
         const userAgent = req.headers['user-agent'] || '';
         const isLikelyPrefetch = 
-            userAgent.includes('GoogleImageProxy') ||  // Gmail pre-fetches images
-            userAgent.includes('OutlookImageProxy') || // Outlook pre-fetches images
-            userAgent.includes('AppleMailProxy') ||    // Apple Mail pre-fetches images
+            userAgent.includes('GoogleImageProxy') ||
+            userAgent.includes('OutlookImageProxy') ||
+            userAgent.includes('AppleMailProxy') ||
             userAgent.includes('YahooMailProxy') ||
-            userAgent === '' ||                        // Empty user agent often means automated
-            userAgent.includes('bot') ||
-            userAgent.includes('crawler');
+            (userAgent === '' && sentAt && (Date.now() - new Date(sentAt).getTime()) < 5000);
         
         console.log(`\n========================================`);
-        console.log(`[TRACKING] EMAIL OPEN TRACKING`);
+        console.log(`[TRACKING] 📧 EMAIL OPEN`);
         console.log(`[TRACKING] Recipient: "${recipientEmail}"`);
         console.log(`[TRACKING] Email Log ID: ${emailLogId}`);
         console.log(`[TRACKING] User-Agent: "${userAgent}"`);
@@ -7571,67 +7584,41 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         
         // Don't track opens from email client prefetch scanners
         if (isLikelyPrefetch) {
-            console.log(`[TRACKING] ⚠️ SKIPPED - Automated prefetch detected, NOT marking as opened`);
-            const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
-            res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
-            return res.end(pixel);
+            console.log(`[TRACKING] ⚠️ SKIPPED - Automated prefetch detected`);
+            return sendPixel();
         }
         
-        // CRITICAL TIME-BASED FILTER: Check when email was sent
-        // If pixel loads within 60 seconds of sending, it's likely automated preview/testing
-        // Only count as "opened" if it loads 60+ seconds after sending
-        const emailAgeCheck = await pool.query(
-            `SELECT 
-                EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - sent_at)) as seconds_since_sent,
-                sent_at
-             FROM email_log 
-             WHERE id = $1`,
-            [emailLogId]
-        );
-        
-        if (emailAgeCheck.rows.length > 0) {
-            const secondsSinceSent = emailAgeCheck.rows[0].seconds_since_sent;
-            const sentAt = emailAgeCheck.rows[0].sent_at;
-            
-            console.log(`[TRACKING] Email sent at: ${sentAt}`);
+        // CRITICAL TIME-BASED FILTER: Only skip if opened within 5 seconds (not 60!)
+        if (sentAt) {
+            const secondsSinceSent = (Date.now() - new Date(sentAt).getTime()) / 1000;
             console.log(`[TRACKING] Seconds since sent: ${Math.floor(secondsSinceSent)}`);
             
-            if (secondsSinceSent < 60) {
-                console.log(`[TRACKING] ⚠️ SKIPPED - Email opened too quickly (${Math.floor(secondsSinceSent)}s < 60s)`);
-                console.log(`[TRACKING] This is likely an automated preview, email client testing, or you viewing your own sent email`);
-                console.log(`[TRACKING] Real users typically open emails 60+ seconds after they arrive`);
-                const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
-                res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
-                return res.end(pixel);
+            if (secondsSinceSent < 5) {
+                console.log(`[TRACKING] ⚠️ SKIPPED - Opened too quickly (${Math.floor(secondsSinceSent)}s < 5s)`);
+                return sendPixel();
             }
             
-            console.log(`[TRACKING] ✅ Email opened after ${Math.floor(secondsSinceSent)} seconds - counting as real open`);
+            console.log(`[TRACKING] ✅ Valid open after ${Math.floor(secondsSinceSent)} seconds`);
         }
         
-        // CRITICAL: Set opened_at but DO NOT change status
-        // Status tracks delivery (sent/failed/queued)
-        // opened_at tracks if recipient opened it
-        console.log(`[TRACKING] 🟢 REAL USER OPEN DETECTED - About to mark email as opened`);
-        console.log(`[TRACKING] This should ONLY happen when a real person clicks on the email in their inbox`);
+        // TRACK THE OPEN
+        console.log(`[TRACKING] 🟢 TRACKING EMAIL OPEN`);
         
         const result = await pool.query(
             `UPDATE email_log 
-             SET opened_at = CURRENT_TIMESTAMP
+             SET opened_at = CURRENT_TIMESTAMP,
+                 status = CASE WHEN status IN ('pending', 'queued') THEN 'sent' ELSE status END
              WHERE id = $1 
-             AND opened_at IS NULL  -- Only track first open
+             AND opened_at IS NULL
              RETURNING lead_id, status`,
             [emailLogId]
         );
         
-        // If we updated a row, this means the email was opened
         if (result.rows.length > 0) {
             const leadId = result.rows[0].lead_id;
-            const deliveryStatus = result.rows[0].status;
-            
-            console.log(`[TRACKING] ✅ Email ${emailLogId} OPENED by lead ${leadId} (delivery status: ${deliveryStatus})`);
+            console.log(`[TRACKING] ✅ Email ${emailLogId} marked as OPENED by lead ${leadId}`);
             
             if (leadId) {
-                // Advance the lead since they opened the email
                 await pool.query(
                     `UPDATE leads 
                      SET last_contact_date = CURRENT_DATE, 
@@ -7641,22 +7628,15 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
                      AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
                     [leadId]
                 );
-                console.log(`[FOLLOW-UP] ✅ Lead ${leadId} advanced - email opened`);
                 
-                // Track engagement to make them hot
                 await trackEngagement(leadId, 'email_open', 5);
+                console.log(`[TRACKING] ✅ Lead ${leadId} engagement tracked`);
             }
-        } else {
-            console.log(`[TRACKING] Email ${emailLogId} already tracked or not found`);
         }
     } catch (e) {
         console.error('[TRACKING] Error tracking email open:', e);
-        // Silently swallow - never break pixel delivery
     }
-    // Return 1×1 transparent GIF regardless of success/failure
-    const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
-    res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate', 'Pragma': 'no-cache' });
-    res.end(pixel);
+    return sendPixel();
 });
 
 // ========================================
@@ -10092,9 +10072,14 @@ app.get('/api/track/click/:leadId', async (req, res) => {
         
         // ONLY make lead hot if this is from a FOLLOW-UP email
         if (emailType === 'follow-up') {
-            console.log(`[TRACKING] 🔥 FOLLOW-UP EMAIL LINK CLICKED - Making lead HOT immediately!`);
-            await trackEngagement(leadId, 'email_click_hot', `Clicked follow-up email link: ${url || 'unknown'}`);
-            console.log(`[TRACKING] ✅ Lead ${leadId} is now HOT, redirecting to: ${url || BASE_URL}\n`);
+            console.log(`[TRACKING] 🔥🔥🔥 FOLLOW-UP EMAIL LINK CLICKED - Making lead HOT immediately!`);
+            const result = await trackEngagement(leadId, 'email_click_hot', `Clicked follow-up email link: ${url || 'unknown'}`);
+            console.log(`[TRACKING] ✅ Lead ${leadId} engagement result:`, result);
+            if (result?.temperature === 'hot') {
+                console.log(`[TRACKING] ✅✅✅ LEAD ${leadId} IS NOW HOT ✅✅✅`);
+            } else {
+                console.log(`[TRACKING] ⚠️ WARNING: Lead did not become hot - check trackEngagement function`);
+            }
         } else {
             console.log(`[TRACKING] ℹ️  Email type '${emailType}' click tracked, but NOT converting to hot (only follow-up emails convert)`);
             console.log(`[TRACKING] Redirecting to: ${url || BASE_URL}\n`);

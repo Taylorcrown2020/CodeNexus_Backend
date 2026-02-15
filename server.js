@@ -337,6 +337,110 @@ app.get('/api/test/ping', (req, res) => {
 });
 
 // ========================================
+// BREVO WEBHOOK ENDPOINTS
+// ========================================
+// Test endpoint
+app.get('/api/brevo/webhook/test', (req, res) => {
+    console.log('[BREVO WEBHOOK TEST] GET request received - endpoint is accessible');
+    res.json({ 
+        success: true, 
+        message: 'Brevo webhook endpoint is accessible',
+        timestamp: new Date().toISOString(),
+        instructions: 'Configure this URL in Brevo dashboard: ' + BASE_URL + '/api/brevo/webhook'
+    });
+});
+
+// Main webhook handler
+app.post('/api/brevo/webhook', async (req, res) => {
+    try {
+        const event = req.body;
+        
+        console.log(`\n========================================`);
+        console.log(`[BREVO WEBHOOK] Received event: ${event.event}`);
+        console.log(`[BREVO WEBHOOK] Email: ${event.email}`);
+        console.log(`[BREVO WEBHOOK] Message ID: ${event['message-id']}`);
+        console.log(`[BREVO WEBHOOK] Full event data:`, JSON.stringify(event, null, 2));
+        console.log(`========================================\n`);
+
+        // Look up the email_log row by brevo_message_id
+        let emailLog = null;
+        const incomingMsgId = event['message-id'];
+
+        if (incomingMsgId) {
+            const byMsgId = await pool.query(
+                `SELECT el.id, el.status, el.opened_at, el.clicked_at, el.email_type, l.id as lead_id, l.name
+                 FROM email_log el
+                 LEFT JOIN leads l ON el.lead_id = l.id
+                 WHERE el.brevo_message_id = $1
+                 LIMIT 1`,
+                [incomingMsgId]
+            );
+            if (byMsgId.rows.length > 0) {
+                emailLog = byMsgId.rows[0];
+                console.log(`[BREVO WEBHOOK] ✅ Matched email_log ${emailLog.id} (type: ${emailLog.email_type})`);
+            }
+        }
+
+        if (!emailLog) {
+            console.log(`[BREVO WEBHOOK] ⚠️  Could not find email_log entry for ${event.email}`);
+            return res.json({ received: true });
+        }
+        
+        // Handle OPENED event
+        if (event.event === 'opened' || event.event === 'unique_opened') {
+            console.log(`[BREVO WEBHOOK] 📧 EMAIL OPENED`);
+            await pool.query(
+                `UPDATE email_log 
+                 SET opened_at = COALESCE(opened_at, CURRENT_TIMESTAMP),
+                     status = CASE WHEN status IN ('pending', 'queued') THEN 'sent' ELSE status END
+                 WHERE id = $1`,
+                [emailLog.id]
+            );
+            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as OPENED`);
+        }
+        
+        // Handle CLICKED event
+        else if (event.event === 'click' || event.event === 'unique_click') {
+            console.log(`[BREVO WEBHOOK] 🖱️  EMAIL CLICKED (type: ${emailLog.email_type})`);
+            await pool.query(
+                `UPDATE email_log 
+                 SET clicked_at = COALESCE(clicked_at, CURRENT_TIMESTAMP),
+                     opened_at = COALESCE(opened_at, CURRENT_TIMESTAMP),
+                     status = CASE WHEN status IN ('pending', 'queued') THEN 'sent' ELSE status END
+                 WHERE id = $1`,
+                [emailLog.id]
+            );
+            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as CLICKED`);
+        }
+        
+        // Handle DELIVERED event
+        else if (event.event === 'delivered') {
+            console.log(`[BREVO WEBHOOK] 📬 EMAIL DELIVERED`);
+            await pool.query(
+                `UPDATE email_log SET status = 'sent' WHERE id = $1 AND status = 'queued'`,
+                [emailLog.id]
+            );
+            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as SENT`);
+        }
+        
+        // Handle FAILURE events
+        else if (['hard_bounce', 'soft_bounce', 'blocked', 'spam', 'invalid_email'].includes(event.event)) {
+            console.log(`[BREVO WEBHOOK] ❌ EMAIL FAILED - Event: ${event.event}`);
+            await pool.query(
+                `UPDATE email_log SET status = 'failed', error_message = $2 WHERE id = $1`,
+                [emailLog.id, `${event.event}: ${event.reason || 'No reason'}`]
+            );
+            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as FAILED`);
+        }
+        
+        res.json({ received: true });
+    } catch (error) {
+        console.error('[BREVO WEBHOOK] Error:', error);
+        res.json({ received: true });
+    }
+});
+
+// ========================================
 // DATABASE CONNECTION
 // ========================================
 
@@ -14551,173 +14655,7 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
     `, { unsubscribeUrl: unsubUrl });
 }
 
-// ========================================
-// BREVO WEBHOOK TEST ENDPOINT
-// ========================================
-// Test if webhook endpoint is accessible from outside
-app.get('/api/brevo/webhook/test', (req, res) => {
-    console.log('[BREVO WEBHOOK TEST] GET request received - endpoint is accessible');
-    res.json({ 
-        success: true, 
-        message: 'Brevo webhook endpoint is accessible',
-        timestamp: new Date().toISOString(),
-        instructions: 'Configure this URL in Brevo dashboard: ' + BASE_URL + '/api/brevo/webhook'
-    });
-});
-
-// ========================================
-// BREVO WEBHOOK HANDLER
-// Catches email delivery failures, opens, and clicks
-// ========================================
-app.post('/api/brevo/webhook', async (req, res) => {
-    try {
-        const event = req.body;
-        
-        console.log(`\n========================================`);
-        console.log(`[BREVO WEBHOOK] Received event: ${event.event}`);
-        console.log(`[BREVO WEBHOOK] Email: ${event.email}`);
-        console.log(`[BREVO WEBHOOK] Message ID: ${event['message-id']}`);
-        console.log(`[BREVO WEBHOOK] Full event data:`, JSON.stringify(event, null, 2));
-        console.log(`========================================\n`);
-
-        // -------------------------------------------------------
-        // Look up the email_log row.
-        // Priority 1: match by brevo_message_id (exact, reliable).
-        // Priority 2: fall back to most-recent row for this email
-        //             within 72 hours (covers late bounce events).
-        // -------------------------------------------------------
-        let emailLog = null;
-        const incomingMsgId = event['message-id'];
-
-        if (incomingMsgId) {
-            const byMsgId = await pool.query(
-                `SELECT el.id, el.status, el.opened_at, el.clicked_at, el.email_type, l.id as lead_id, l.name
-                 FROM email_log el
-                 LEFT JOIN leads l ON el.lead_id = l.id
-                 WHERE el.brevo_message_id = $1
-                 LIMIT 1`,
-                [incomingMsgId]
-            );
-            if (byMsgId.rows.length > 0) {
-                emailLog = byMsgId.rows[0];
-                console.log(`[BREVO WEBHOOK] ✅ Matched email_log ${emailLog.id} via brevo_message_id (type: ${emailLog.email_type})`);
-            }
-        }
-
-        if (!emailLog) {
-            // Fallback: match by recipient email in the last 72 hours
-            const byEmail = await pool.query(
-                `SELECT el.id, el.status, el.opened_at, el.clicked_at, el.email_type, l.id as lead_id, l.name
-                 FROM email_log el
-                 LEFT JOIN leads l ON el.lead_id = l.id
-                 WHERE l.email = $1
-                 AND el.sent_at > NOW() - INTERVAL '72 hours'
-                 ORDER BY el.sent_at DESC
-                 LIMIT 1`,
-                [event.email]
-            );
-            if (byEmail.rows.length > 0) {
-                emailLog = byEmail.rows[0];
-                console.log(`[BREVO WEBHOOK] ⚠️  Matched email_log ${emailLog.id} via email fallback (no message-id stored, type: ${emailLog.email_type})`);
-            }
-        }
-        
-        if (!emailLog) {
-            console.log(`[BREVO WEBHOOK] ⚠️  Could not find email_log entry for ${event.email}`);
-            return res.json({ received: true });
-        }
-        
-        // Handle OPENED event - Brevo tracks real opens!
-        if (event.event === 'opened' || event.event === 'unique_opened') {
-            console.log(`[BREVO WEBHOOK] 📧 EMAIL OPENED - Event: ${event.event}`);
-            
-            // If email was opened, it was definitely sent (delivered)
-            // Update both opened_at and status to 'sent'
-            await pool.query(
-                `UPDATE email_log 
-                 SET opened_at = COALESCE(opened_at, CURRENT_TIMESTAMP),
-                     status = CASE 
-                        WHEN status IN ('pending', 'queued') THEN 'sent'
-                        ELSE status
-                     END
-                 WHERE id = $1`,
-                [emailLog.id]
-            );
-            
-            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as OPENED and status → sent`);
-            console.log(`[BREVO WEBHOOK] Logic: Open event means email was delivered`);
-            
-            // Track engagement to potentially make them hot
-            if (emailLog.lead_id) {
-                await pool.query(
-                    `UPDATE leads 
-                     SET last_contact_date = CURRENT_DATE, 
-                         follow_up_count = COALESCE(follow_up_count, 0) + 1,
-                         updated_at = CURRENT_TIMESTAMP
-                     WHERE id = $1
-                     AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
-                    [emailLog.lead_id]
-                );
-                
-                // Track engagement (call the function defined in this file)
-                await trackEngagement(emailLog.lead_id, 'email_open', 5);
-            }
-        }
-        
-        // Handle CLICKED event
-        else if (event.event === 'click' || event.event === 'unique_click') {
-            console.log(`[BREVO WEBHOOK] 🖱️  EMAIL CLICKED - Event: ${event.event}`);
-            console.log(`[BREVO WEBHOOK] Email type: ${emailLog.email_type}`);
-            
-            // CRITICAL: If someone clicked, the email was definitely sent and opened
-            // Update all three: status to 'sent', opened_at, and clicked_at
-            await pool.query(
-                `UPDATE email_log 
-                 SET clicked_at = COALESCE(clicked_at, CURRENT_TIMESTAMP),
-                     opened_at = COALESCE(opened_at, CURRENT_TIMESTAMP),
-                     status = CASE 
-                        WHEN status IN ('pending', 'queued') THEN 'sent'
-                        ELSE status
-                     END
-                 WHERE id = $1`,
-                [emailLog.id]
-            );
-            
-            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} updated: status → sent, opened_at set, clicked_at set`);
-            console.log(`[BREVO WEBHOOK] Logic: Click event means email was delivered and opened`);
-            
-            // ONLY make lead HOT if this is from a FOLLOW-UP email
-            if (emailLog.lead_id && emailLog.email_type === 'follow-up') {
-                console.log(`[BREVO WEBHOOK] 🔥 Follow-up email clicked - making lead HOT`);
-                await trackEngagement(emailLog.lead_id, 'email_click_hot', 'Clicked link in follow-up email');
-            } else if (emailLog.lead_id) {
-                console.log(`[BREVO WEBHOOK] ℹ️  Email type '${emailLog.email_type}' clicked - NOT converting to hot (only follow-up emails convert)`);
-            }
-        }
-        
-        // Handle FAILURE events
-        // These can arrive after the 5-min background job has already promoted the
-        // row to 'sent', so we unconditionally overwrite the status here.
-        else if (['hard_bounce', 'soft_bounce', 'blocked', 'spam', 'invalid_email'].includes(event.event)) {
-            console.log(`[BREVO WEBHOOK] ❌ EMAIL FAILED - Event: ${event.event}`);
-            
-            await pool.query(
-                `UPDATE email_log 
-                 SET status = 'failed',
-                     error_message = $2
-                 WHERE id = $1`,
-                [emailLog.id, `${event.event}: ${event.reason || 'No reason provided'}`]
-            );
-            
-            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as FAILED (${event.event})`);
-        }
-        
-        res.json({ received: true });
-    } catch (error) {
-        console.error('[BREVO WEBHOOK] Error processing webhook:', error);
-        res.json({ received: true }); // Always respond 200 to prevent retries
-    }
-});
+// Brevo webhooks defined earlier in file (after line 337)
 
 startServer();
 

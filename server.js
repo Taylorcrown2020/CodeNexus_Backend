@@ -14569,7 +14569,7 @@ app.get('/api/brevo/webhook/test', (req, res) => {
 // BREVO WEBHOOK HANDLER
 // Catches email delivery failures, opens, and clicks
 // ========================================
-app.post('/api/brevo/webhook', express.json(), async (req, res) => {
+app.post('/api/brevo/webhook', async (req, res) => {
     try {
         const event = req.body;
         

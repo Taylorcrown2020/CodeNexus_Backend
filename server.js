@@ -751,13 +751,9 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
     sendSmtpEmail.subject = subject;
     sendSmtpEmail.htmlContent = html;
     
-    // CRITICAL: Enable Brevo's built-in open and click tracking
-    // Without this, Brevo won't send webhook events!
-    sendSmtpEmail.params = {
-        TRACKING_ENABLED: 'true'
-    };
-    
-    console.log('[BREVO] Sending email with Brevo tracking ENABLED');
+    // Brevo automatically tracks opens and clicks by default
+    // No special settings needed - tracking happens automatically
+    console.log('[BREVO] Sending email (Brevo tracks opens/clicks automatically)');
     
     try {
         const response = await apiInstance.sendTransacEmail(sendSmtpEmail);

@@ -411,6 +411,15 @@ app.post('/api/brevo/webhook', async (req, res) => {
                 [emailLog.id]
             );
             console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as CLICKED`);
+            
+            // ONLY make lead hot if this is a FOLLOW-UP email
+            if (emailLog.email_type === 'follow-up' && emailLog.lead_id) {
+                console.log(`[BREVO WEBHOOK] 🔥 FOLLOW-UP EMAIL CLICKED - Making lead HOT!`);
+                await trackEngagement(emailLog.lead_id, 'email_click_hot', 'Clicked follow-up email link via Brevo webhook');
+                console.log(`[BREVO WEBHOOK] ✅ Lead ${emailLog.lead_id} is now HOT`);
+            } else {
+                console.log(`[BREVO WEBHOOK] ℹ️  Email type '${emailLog.email_type}' clicked - NOT converting to hot`);
+            }
         }
         
         // Handle DELIVERED event
@@ -878,27 +887,13 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         console.warn(`[EMAIL] ⚠️  Warning: ${validation.warning}`);
     }
 
-    // 3. Inject 1×1 open-tracking pixel
-    if (emailLogId) {
-        const pixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
-        html = html.replace(/<\/body>/i, `${pixel}</body>`);
-        if (!html.includes(pixel)) html += pixel; // fallback if no </body>
-        
-        console.log(`[EMAIL] Tracking pixel inserted: ${BASE_URL}/api/track/open/${emailLogId}`);
-        console.log(`[EMAIL] When this email is opened, the pixel will load and trigger the tracking endpoint`);
-    }
+    // 3. DON'T inject custom tracking pixel - Brevo handles this via webhooks
+    // Brevo will send webhook events when email is opened/clicked
+    console.log(`[EMAIL] Brevo webhook will handle open/click tracking for email_log ${emailLogId}`);
 
-    // 4. Wrap ALL diamondbackcoding.com links with tracking (makes leads hot when clicked)
-    if (leadId && emailLogId) {
-        // Replace all diamondbackcoding.com links with tracked versions
-        const websiteUrlPattern = /(https?:\/\/(?:www\.)?diamondbackcoding\.com[^"'\s]*)/gi;
-        html = html.replace(websiteUrlPattern, (match) => {
-            // Don't double-wrap or wrap tracking URLs
-            if (match.includes('/api/track/click/')) return match;
-            if (match.includes('/api/track/open/')) return match;
-            return `${BASE_URL}/api/track/click/${leadId}?email_id=${emailLogId}&url=${encodeURIComponent(match)}`;
-        });
-    }
+    // 4. DON'T wrap links - Brevo handles click tracking via webhooks
+    // Brevo will automatically track clicks and send webhook events
+    console.log(`[EMAIL] Brevo webhook will handle link click tracking`);
 
     // 5. Get email settings to check if Brevo is enabled
     const emailSettings = await getEmailSettings();
@@ -1019,23 +1014,8 @@ async function sendDirectEmail({ to, subject, html, attachments = [], leadId = n
         console.warn('[EMAIL] Could not insert email_log row:', e.message);
     }
 
-    // Inject tracking pixel for ALL emails (not just follow-ups)
-    if (emailLogId) {
-        const pixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
-        html = html.replace(/<\/body>/i, `${pixel}</body>`);
-        if (!html.includes(pixel)) html += pixel;
-        console.log(`[EMAIL] Tracking pixel inserted: ${BASE_URL}/api/track/open/${emailLogId}`);
-    }
-
-    // Wrap diamondbackcoding.com links with tracking for ALL emails
-    if (leadId && emailLogId) {
-        const websiteUrlPattern = /(https?:\/\/(?:www\.)?diamondbackcoding\.com[^"'\s]*)/gi;
-        html = html.replace(websiteUrlPattern, (match) => {
-            if (match.includes('/api/track/click/')) return match;
-            if (match.includes('/api/track/open/')) return match;
-            return `${BASE_URL}/api/track/click/${leadId}?email_id=${emailLogId}&url=${encodeURIComponent(match)}`;
-        });
-    }
+    // DON'T inject custom tracking pixel - Brevo handles this via webhooks
+    console.log(`[EMAIL] Brevo webhook will handle open/click tracking for email_log ${emailLogId}`);
 
     const emailSettings = await getEmailSettings();
 

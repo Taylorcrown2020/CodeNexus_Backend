@@ -638,6 +638,14 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
     sendSmtpEmail.subject = subject;
     sendSmtpEmail.htmlContent = html;
     
+    // CRITICAL: Enable Brevo's built-in open and click tracking
+    // Without this, Brevo won't send webhook events!
+    sendSmtpEmail.params = {
+        TRACKING_ENABLED: 'true'
+    };
+    
+    console.log('[BREVO] Sending email with Brevo tracking ENABLED');
+    
     try {
         const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
         // response.body.messageId is the Brevo message ID (e.g. "<xxx@smtp-relay.mailin.fr>")
@@ -9942,26 +9950,37 @@ app.get('/api/track/click/:leadId', async (req, res) => {
         console.log(`[TRACKING] URL: ${url}`);
         console.log(`========================================\n`);
         
-        // Get email type to determine if this should make the lead hot
+        // Get email type and current status to determine if this should make the lead hot
         let emailType = null;
+        let currentStatus = null;
         if (email_id) {
             try {
                 const emailResult = await pool.query(
-                    `SELECT email_type FROM email_log WHERE id = $1`,
+                    `SELECT email_type, status, opened_at FROM email_log WHERE id = $1`,
                     [email_id]
                 );
-                emailType = emailResult.rows[0]?.email_type;
-                console.log(`[TRACKING] Email type: ${emailType}`);
+                const emailData = emailResult.rows[0];
+                emailType = emailData?.email_type;
+                currentStatus = emailData?.status;
+                console.log(`[TRACKING] Email type: ${emailType}, Current status: ${currentStatus}`);
                 
-                // Update clicked_at timestamp
+                // CRITICAL: If someone clicked a link, the email MUST have been:
+                // 1. Delivered (sent) - otherwise they couldn't receive it
+                // 2. Opened - otherwise they couldn't see the link to click
+                // So we update ALL three: status to 'sent', opened_at, and clicked_at
                 await pool.query(
                     `UPDATE email_log 
-                     SET clicked_at = CURRENT_TIMESTAMP
-                     WHERE id = $1 
-                     AND clicked_at IS NULL`,
+                     SET clicked_at = COALESCE(clicked_at, CURRENT_TIMESTAMP),
+                         opened_at = COALESCE(opened_at, CURRENT_TIMESTAMP),
+                         status = CASE 
+                            WHEN status IN ('pending', 'queued') THEN 'sent'
+                            ELSE status
+                         END
+                     WHERE id = $1`,
                     [email_id]
                 );
-                console.log(`[TRACKING] ✅ Updated email_log ${email_id} with clicked_at timestamp`);
+                console.log(`[TRACKING] ✅ Updated email_log ${email_id}: status → sent, opened_at set, clicked_at set`);
+                console.log(`[TRACKING] Logic: User clicked link → email MUST have been delivered and opened`);
             } catch (err) {
                 console.error('[TRACKING] Error updating email_log:', err);
             }
@@ -14282,18 +14301,19 @@ function startEmailConfirmationJob() {
             console.log('[EMAIL-CONFIRM] Time:', new Date().toISOString());
             console.log('========================================');
             
-            // Find emails that have been queued for 5+ minutes with no bounce
+            // Find emails that have been queued for 2+ minutes with no bounce
+            // REDUCED from 5 to 2 minutes for faster confirmation
             const result = await pool.query(`
                 UPDATE email_log 
                 SET status = 'sent'
                 WHERE status = 'queued' 
-                AND sent_at < NOW() - INTERVAL '5 minutes'
-                AND opened_at IS NULL
+                AND sent_at < NOW() - INTERVAL '2 minutes'
                 AND status != 'failed'
                 RETURNING id, lead_id, subject, sent_at
             `);
             
-            console.log(`[EMAIL-CONFIRM] Found ${result.rows.length} queued emails to confirm`);
+            console.log(`[EMAIL-CONFIRM] Found ${result.rows.length} queued emails to confirm as sent`);
+            console.log(`[EMAIL-CONFIRM] Logic: If queued for 2+ min without bounce → assume delivered`);
             
             if (result.rows.length > 0) {
                 console.log(`[EMAIL-CONFIRM] ✅ Confirmed ${result.rows.length} emails as delivered`);
@@ -14532,6 +14552,20 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
 }
 
 // ========================================
+// BREVO WEBHOOK TEST ENDPOINT
+// ========================================
+// Test if webhook endpoint is accessible from outside
+app.get('/api/brevo/webhook/test', (req, res) => {
+    console.log('[BREVO WEBHOOK TEST] GET request received - endpoint is accessible');
+    res.json({ 
+        success: true, 
+        message: 'Brevo webhook endpoint is accessible',
+        timestamp: new Date().toISOString(),
+        instructions: 'Configure this URL in Brevo dashboard: ' + BASE_URL + '/api/brevo/webhook'
+    });
+});
+
+// ========================================
 // BREVO WEBHOOK HANDLER
 // Catches email delivery failures, opens, and clicks
 // ========================================
@@ -14597,35 +14631,36 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
         if (event.event === 'opened' || event.event === 'unique_opened') {
             console.log(`[BREVO WEBHOOK] 📧 EMAIL OPENED - Event: ${event.event}`);
             
-            // Only update if not already opened
-            if (!emailLog.opened_at) {
+            // If email was opened, it was definitely sent (delivered)
+            // Update both opened_at and status to 'sent'
+            await pool.query(
+                `UPDATE email_log 
+                 SET opened_at = COALESCE(opened_at, CURRENT_TIMESTAMP),
+                     status = CASE 
+                        WHEN status IN ('pending', 'queued') THEN 'sent'
+                        ELSE status
+                     END
+                 WHERE id = $1`,
+                [emailLog.id]
+            );
+            
+            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as OPENED and status → sent`);
+            console.log(`[BREVO WEBHOOK] Logic: Open event means email was delivered`);
+            
+            // Track engagement to potentially make them hot
+            if (emailLog.lead_id) {
                 await pool.query(
-                    `UPDATE email_log 
-                     SET opened_at = CURRENT_TIMESTAMP,
-                         status = CASE WHEN status = 'queued' THEN 'sent' ELSE status END
-                     WHERE id = $1`,
-                    [emailLog.id]
+                    `UPDATE leads 
+                     SET last_contact_date = CURRENT_DATE, 
+                         follow_up_count = COALESCE(follow_up_count, 0) + 1,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $1
+                     AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
+                    [emailLog.lead_id]
                 );
                 
-                console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as OPENED`);
-                
-                // Track engagement to potentially make them hot
-                if (emailLog.lead_id) {
-                    await pool.query(
-                        `UPDATE leads 
-                         SET last_contact_date = CURRENT_DATE, 
-                             follow_up_count = COALESCE(follow_up_count, 0) + 1,
-                             updated_at = CURRENT_TIMESTAMP
-                         WHERE id = $1
-                         AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
-                        [emailLog.lead_id]
-                    );
-                    
-                    // Track engagement (call the function defined in this file)
-                    await trackEngagement(emailLog.lead_id, 'email_open', 5);
-                }
-            } else {
-                console.log(`[BREVO WEBHOOK] Email ${emailLog.id} already marked as opened`);
+                // Track engagement (call the function defined in this file)
+                await trackEngagement(emailLog.lead_id, 'email_open', 5);
             }
         }
         
@@ -14634,27 +14669,29 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
             console.log(`[BREVO WEBHOOK] 🖱️  EMAIL CLICKED - Event: ${event.event}`);
             console.log(`[BREVO WEBHOOK] Email type: ${emailLog.email_type}`);
             
-            // Only update if not already clicked
-            if (!emailLog.clicked_at) {
-                await pool.query(
-                    `UPDATE email_log 
-                     SET clicked_at = CURRENT_TIMESTAMP,
-                         status = CASE WHEN status = 'queued' THEN 'sent' ELSE status END
-                     WHERE id = $1`,
-                    [emailLog.id]
-                );
-                
-                console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as CLICKED`);
-                
-                // ONLY make lead HOT if this is from a FOLLOW-UP email
-                if (emailLog.lead_id && emailLog.email_type === 'follow-up') {
-                    console.log(`[BREVO WEBHOOK] 🔥 Follow-up email clicked - making lead HOT`);
-                    await trackEngagement(emailLog.lead_id, 'email_click_hot', 'Clicked link in follow-up email');
-                } else if (emailLog.lead_id) {
-                    console.log(`[BREVO WEBHOOK] ℹ️  Email type '${emailLog.email_type}' clicked - NOT converting to hot (only follow-up emails convert)`);
-                }
-            } else {
-                console.log(`[BREVO WEBHOOK] Email ${emailLog.id} already marked as clicked`);
+            // CRITICAL: If someone clicked, the email was definitely sent and opened
+            // Update all three: status to 'sent', opened_at, and clicked_at
+            await pool.query(
+                `UPDATE email_log 
+                 SET clicked_at = COALESCE(clicked_at, CURRENT_TIMESTAMP),
+                     opened_at = COALESCE(opened_at, CURRENT_TIMESTAMP),
+                     status = CASE 
+                        WHEN status IN ('pending', 'queued') THEN 'sent'
+                        ELSE status
+                     END
+                 WHERE id = $1`,
+                [emailLog.id]
+            );
+            
+            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} updated: status → sent, opened_at set, clicked_at set`);
+            console.log(`[BREVO WEBHOOK] Logic: Click event means email was delivered and opened`);
+            
+            // ONLY make lead HOT if this is from a FOLLOW-UP email
+            if (emailLog.lead_id && emailLog.email_type === 'follow-up') {
+                console.log(`[BREVO WEBHOOK] 🔥 Follow-up email clicked - making lead HOT`);
+                await trackEngagement(emailLog.lead_id, 'email_click_hot', 'Clicked link in follow-up email');
+            } else if (emailLog.lead_id) {
+                console.log(`[BREVO WEBHOOK] ℹ️  Email type '${emailLog.email_type}' clicked - NOT converting to hot (only follow-up emails convert)`);
             }
         }
         

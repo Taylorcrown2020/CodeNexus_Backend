@@ -716,16 +716,16 @@ async function getEmailSettings() {
     }
 }
 
-async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false }) {
+async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false, emailType = 'follow-up' }) {
     // 1. Create email_log row with 'pending' status BEFORE sending so we have the ID
     let emailLogId = null;
     try {
         const logRow = await pool.query(
-            `INSERT INTO email_log (lead_id, subject, status) VALUES ($1, $2, 'pending') RETURNING id`,
-            [leadId || null, subject]
+            `INSERT INTO email_log (lead_id, subject, status, email_type) VALUES ($1, $2, 'pending', $3) RETURNING id`,
+            [leadId || null, subject, emailType]
         );
         emailLogId = logRow.rows[0]?.id;
-        console.log(`[EMAIL] Created email_log entry ${emailLogId} for ${to} - Status: pending`);
+        console.log(`[EMAIL] Created email_log entry ${emailLogId} for ${to} - Status: pending - Type: ${emailType}`);
     } catch (e) {
         console.warn('[TRACKED-EMAIL] Could not insert email_log row:', e.message);
     }
@@ -890,39 +890,124 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
 }
 
 // ========================================
-// DIRECT EMAIL SEND (no email_log, no tracking)
-// Use for: marketing blasts, SLA/timeline, invoices, system emails.
-// ONLY sendTrackedEmail should write to email_log (follow-up queue emails).
+// UNIFIED EMAIL SEND WITH TRACKING
+// All emails now go through tracking for accurate analytics
 // ========================================
-async function sendDirectEmail({ to, subject, html, attachments = [] }) {
+async function sendDirectEmail({ to, subject, html, attachments = [], leadId = null, emailType = 'system' }) {
+    // Create email_log entry for ALL emails (not just follow-ups)
+    let emailLogId = null;
+    try {
+        const logRow = await pool.query(
+            `INSERT INTO email_log (lead_id, subject, status, email_type) VALUES ($1, $2, 'pending', $3) RETURNING id`,
+            [leadId || null, subject, emailType]
+        );
+        emailLogId = logRow.rows[0]?.id;
+        console.log(`[EMAIL] Created email_log entry ${emailLogId} for ${to} - Type: ${emailType}`);
+    } catch (e) {
+        console.warn('[EMAIL] Could not insert email_log row:', e.message);
+    }
+
+    // Inject tracking pixel for ALL emails (not just follow-ups)
+    if (emailLogId) {
+        const pixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
+        html = html.replace(/<\/body>/i, `${pixel}</body>`);
+        if (!html.includes(pixel)) html += pixel;
+        console.log(`[EMAIL] Tracking pixel inserted: ${BASE_URL}/api/track/open/${emailLogId}`);
+    }
+
+    // Wrap diamondbackcoding.com links with tracking for ALL emails
+    if (leadId && emailLogId) {
+        const websiteUrlPattern = /(https?:\/\/(?:www\.)?diamondbackcoding\.com[^"'\s]*)/gi;
+        html = html.replace(websiteUrlPattern, (match) => {
+            if (match.includes('/api/track/click/')) return match;
+            if (match.includes('/api/track/open/')) return match;
+            return `${BASE_URL}/api/track/click/${leadId}?email_id=${emailLogId}&url=${encodeURIComponent(match)}`;
+        });
+    }
+
     const emailSettings = await getEmailSettings();
 
-    if (emailSettings.useBrevo && emailSettings.brevoApiKey && attachments.length === 0) {
-        // Use Brevo API for non-attachment emails
-        const { messageId } = await sendViaBrevo(
-            emailSettings.brevoApiKey,
-            emailSettings.brevoSenderEmail || process.env.EMAIL_USER,
-            emailSettings.brevoSenderName || 'Diamondback Coding',
-            to,
-            subject,
-            html
-        );
-        console.log(`[DIRECT-EMAIL] ✅ Sent via Brevo to ${to} (message-id: ${messageId})`);
-    } else {
-        // Use Nodemailer — required when attachments are present (e.g. SLA PDF)
-        const info = await transporter.sendMail({
-            from: { name: 'Diamondback Coding', address: process.env.EMAIL_USER },
-            to,
-            subject,
-            html,
-            ...(attachments.length > 0 ? { attachments } : {})
-        });
-        if (info.rejected && info.rejected.length > 0) {
-            throw new Error(`Email rejected by mail server: ${info.rejected.join(', ')}`);
+    try {
+        console.log(`[EMAIL] Sending to: ${to} | Subject: ${subject} | Type: ${emailType} | Method: ${emailSettings.useBrevo ? 'Brevo' : 'Nodemailer'}`);
+
+        if (emailSettings.useBrevo && emailSettings.brevoApiKey && attachments.length === 0) {
+            console.log('[EMAIL] Sending via Brevo...');
+            const brevoResult = await sendViaBrevo(
+                emailSettings.brevoApiKey,
+                emailSettings.brevoSenderEmail || process.env.EMAIL_USER,
+                emailSettings.brevoSenderName || 'Diamondback Coding',
+                to,
+                subject,
+                html
+            );
+            console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to}`);
+            
+            // Store Brevo message-id for webhook tracking
+            if (emailLogId && brevoResult?.messageId) {
+                await pool.query(
+                    `UPDATE email_log SET brevo_message_id = $2 WHERE id = $1`,
+                    [emailLogId, brevoResult.messageId]
+                );
+                console.log(`[EMAIL] Stored brevo_message_id ${brevoResult.messageId} on email_log ${emailLogId}`);
+            }
+        } else {
+            // Use Nodemailer for attachments or when Brevo is not configured
+            console.log('[EMAIL] Sending via Nodemailer...');
+            const info = await transporter.sendMail({
+                from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                to,
+                subject,
+                html,
+                attachments
+            });
+            
+            console.log(`[EMAIL] Nodemailer messageId: ${info.messageId}`);
+            console.log(`[EMAIL] Nodemailer response: ${info.response}`);
+            
+            if (info.rejected && info.rejected.length > 0) {
+                throw new Error(`Email rejected by mail server: ${info.rejected.join(', ')}`);
+            }
+            
+            console.log(`[EMAIL] ✅ Email accepted by mail server for ${to}`);
         }
-        console.log(`[DIRECT-EMAIL] ✅ Sent via Nodemailer to ${to} (messageId: ${info.messageId})`);
+        
+        // Mark as 'queued' for Brevo or 'sent' for Nodemailer
+        if (emailLogId) {
+            const newStatus = (emailSettings.useBrevo && attachments.length === 0) ? 'queued' : 'sent';
+            await pool.query(
+                `UPDATE email_log 
+                 SET status = $2, 
+                     sent_at = CURRENT_TIMESTAMP 
+                 WHERE id = $1`,
+                [emailLogId, newStatus]
+            );
+            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as ${newStatus.toUpperCase()}`);
+        }
+        
+    } catch (error) {
+        console.error(`\n========================================`);
+        console.error(`[EMAIL] ❌❌❌ SEND FAILED ❌❌❌`);
+        console.error(`[EMAIL] To: ${to}`);
+        console.error(`[EMAIL] Subject: ${subject}`);
+        console.error(`[EMAIL] Type: ${emailType}`);
+        console.error(`[EMAIL] Error: ${error.message}`);
+        console.error(`========================================\n`);
+        
+        // Mark as failed
+        if (emailLogId) {
+            await pool.query(
+                `UPDATE email_log SET status = 'failed', sent_at = CURRENT_TIMESTAMP, error_message = $2 WHERE id = $1`,
+                [emailLogId, error.message]
+            );
+            console.log(`[EMAIL] ❌ Email_log ${emailLogId} marked as FAILED`);
+        }
+        
+        throw error;
     }
+
+    return emailLogId;
 }
+
 async function initializeDatabase(){
     const client = await pool.connect();
     try {
@@ -1038,6 +1123,16 @@ await client.query(`
         ) THEN
             ALTER TABLE email_log ADD COLUMN brevo_message_id TEXT;
             RAISE NOTICE 'Added brevo_message_id column to email_log table';
+        END IF;
+
+        -- email_type: categorize emails for better analytics
+        -- Values: 'follow-up', 'marketing', 'invoice', 'timeline', 'system'
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='email_log' AND column_name='email_type'
+        ) THEN
+            ALTER TABLE email_log ADD COLUMN email_type VARCHAR(50) DEFAULT 'follow-up';
+            RAISE NOTICE 'Added email_type column to email_log table';
         END IF;
     END $$;
 `);
@@ -5085,9 +5180,7 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
 </table>
 </body></html>`;
 
-        // Send email with PDF attachment
-        // NOTE: SLA/timeline emails are sent directly (NOT via sendTrackedEmail)
-        // so they never appear in the follow-up analytics email_log.
+        // Send email with PDF attachment and tracking
         await sendDirectEmail({
             to: clientEmail,
             subject: `Service Level Agreement - ${timeline.projectName || 'Project Timeline'}`,
@@ -5098,7 +5191,9 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                     content: pdfBuffer,
                     contentType: 'application/pdf'
                 }
-            ]
+            ],
+            leadId: timeline.leadId || null,
+            emailType: 'timeline'
         });
         
         res.json({ 
@@ -5230,25 +5325,23 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             </div>
         `);
         
-        console.log('Preparing to send email...');
-        console.log('From:', process.env.EMAIL_USER);
+        console.log('Preparing to send invoice email...');
         console.log('To:', clientEmail);
         
-        const info = await transporter.sendMail({
-            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+        await sendDirectEmail({
             to: clientEmail,
             subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
-            html: emailHTML
+            html: emailHTML,
+            leadId: invoice.lead_id || null,
+            emailType: 'invoice'
         });
         
         console.log('Invoice email sent successfully');
-        console.log('Message ID:', info.messageId);
         
         res.json({ 
             success: true, 
             message: `Invoice email sent successfully to ${clientEmail}`,
             details: {
-                messageId: info.messageId,
                 to: clientEmail
             }
         });
@@ -5457,12 +5550,10 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             </div>
         `);
         
-        console.log('📤 Preparing to send email...');
-        console.log('📧 From:', process.env.EMAIL_USER);
+        console.log('📤 Preparing to send invoice email with PDF...');
         console.log('📧 To:', clientEmail);
         
-        const info = await transporter.sendMail({
-            from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+        await sendDirectEmail({
             to: clientEmail,
             subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
             html: emailHTML,
@@ -5472,18 +5563,18 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
                     content: pdfBuffer,
                     contentType: 'application/pdf'
                 }
-            ]
+            ],
+            leadId: invoice.lead_id || null,
+            emailType: 'invoice'
         });
         
         console.log('✅ Invoice email sent successfully');
-        console.log('📨 Message ID:', info.messageId);
         console.log('📬 To:', clientEmail);
         
         res.json({ 
             success: true, 
             message: `Invoice email sent successfully to ${clientEmail}`,
             details: {
-                messageId: info.messageId,
                 to: clientEmail
             }
         });
@@ -7495,7 +7586,7 @@ app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
             AND l.lead_temperature = 'hot'
         `);
 
-        // Recent emails with lead info (last 100) - show all statuses
+        // Recent emails with lead info (last 100) - show all statuses and email types
         const recentEmailsResult = await pool.query(`
             SELECT
                 el.id,
@@ -7505,6 +7596,7 @@ app.get('/api/analytics/email-opens', authenticateToken, async (req, res) => {
                 el.clicked_at,
                 el.status,
                 el.error_message,
+                el.email_type,
                 l.name as lead_name,
                 l.email as lead_email,
                 l.lead_temperature,
@@ -9850,9 +9942,18 @@ app.get('/api/track/click/:leadId', async (req, res) => {
         console.log(`[TRACKING] URL: ${url}`);
         console.log(`========================================\n`);
         
-        // CRITICAL FIX: Update clicked_at in email_log
+        // Get email type to determine if this should make the lead hot
+        let emailType = null;
         if (email_id) {
             try {
+                const emailResult = await pool.query(
+                    `SELECT email_type FROM email_log WHERE id = $1`,
+                    [email_id]
+                );
+                emailType = emailResult.rows[0]?.email_type;
+                console.log(`[TRACKING] Email type: ${emailType}`);
+                
+                // Update clicked_at timestamp
                 await pool.query(
                     `UPDATE email_log 
                      SET clicked_at = CURRENT_TIMESTAMP
@@ -9862,16 +9963,19 @@ app.get('/api/track/click/:leadId', async (req, res) => {
                 );
                 console.log(`[TRACKING] ✅ Updated email_log ${email_id} with clicked_at timestamp`);
             } catch (err) {
-                console.error('[TRACKING] Error updating clicked_at:', err);
+                console.error('[TRACKING] Error updating email_log:', err);
             }
         }
         
-        // CRITICAL FIX: ANY button/link click in an email makes the lead HOT IMMEDIATELY
-        // This is because they're engaging with your marketing - they're interested!
-        console.log(`[TRACKING] 🔥 EMAIL LINK CLICKED - Making lead HOT immediately!`);
-        await trackEngagement(leadId, 'email_click_hot', `Clicked email link: ${url || 'unknown'}`);
-        
-        console.log(`[TRACKING] ✅ Lead ${leadId} is now HOT, redirecting to: ${url || BASE_URL}\n`);
+        // ONLY make lead hot if this is from a FOLLOW-UP email
+        if (emailType === 'follow-up') {
+            console.log(`[TRACKING] 🔥 FOLLOW-UP EMAIL LINK CLICKED - Making lead HOT immediately!`);
+            await trackEngagement(leadId, 'email_click_hot', `Clicked follow-up email link: ${url || 'unknown'}`);
+            console.log(`[TRACKING] ✅ Lead ${leadId} is now HOT, redirecting to: ${url || BASE_URL}\n`);
+        } else {
+            console.log(`[TRACKING] ℹ️  Email type '${emailType}' click tracked, but NOT converting to hot (only follow-up emails convert)`);
+            console.log(`[TRACKING] Redirecting to: ${url || BASE_URL}\n`);
+        }
         
         // Redirect to the actual URL
         const redirectUrl = url || BASE_URL;
@@ -14344,9 +14448,14 @@ app.post('/api/marketing/blast', authenticateToken, async (req, res) => {
                     `, { unsubscribeUrl: unsubUrl });
                 }
 
-                // Send directly — marketing blasts are NOT tracked in email_log
-                // (email_log / follow-up analytics only covers follow-up queue emails)
-                await sendDirectEmail({ to: lead.email, subject, html: emailHTML });
+                // Send with tracking - marketing emails ARE now tracked in email_log
+                await sendDirectEmail({ 
+                    to: lead.email, 
+                    subject, 
+                    html: emailHTML, 
+                    leadId: lead.id,
+                    emailType: 'marketing'
+                });
                 sent++;
 
                 // Small delay to avoid rate limits
@@ -14448,7 +14557,7 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
 
         if (incomingMsgId) {
             const byMsgId = await pool.query(
-                `SELECT el.id, el.status, el.opened_at, el.clicked_at, l.id as lead_id, l.name
+                `SELECT el.id, el.status, el.opened_at, el.clicked_at, el.email_type, l.id as lead_id, l.name
                  FROM email_log el
                  LEFT JOIN leads l ON el.lead_id = l.id
                  WHERE el.brevo_message_id = $1
@@ -14457,14 +14566,14 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
             );
             if (byMsgId.rows.length > 0) {
                 emailLog = byMsgId.rows[0];
-                console.log(`[BREVO WEBHOOK] ✅ Matched email_log ${emailLog.id} via brevo_message_id`);
+                console.log(`[BREVO WEBHOOK] ✅ Matched email_log ${emailLog.id} via brevo_message_id (type: ${emailLog.email_type})`);
             }
         }
 
         if (!emailLog) {
             // Fallback: match by recipient email in the last 72 hours
             const byEmail = await pool.query(
-                `SELECT el.id, el.status, el.opened_at, el.clicked_at, l.id as lead_id, l.name
+                `SELECT el.id, el.status, el.opened_at, el.clicked_at, el.email_type, l.id as lead_id, l.name
                  FROM email_log el
                  LEFT JOIN leads l ON el.lead_id = l.id
                  WHERE l.email = $1
@@ -14475,7 +14584,7 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
             );
             if (byEmail.rows.length > 0) {
                 emailLog = byEmail.rows[0];
-                console.log(`[BREVO WEBHOOK] ⚠️  Matched email_log ${emailLog.id} via email fallback (no message-id stored)`);
+                console.log(`[BREVO WEBHOOK] ⚠️  Matched email_log ${emailLog.id} via email fallback (no message-id stored, type: ${emailLog.email_type})`);
             }
         }
         
@@ -14523,6 +14632,7 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
         // Handle CLICKED event
         else if (event.event === 'click' || event.event === 'unique_click') {
             console.log(`[BREVO WEBHOOK] 🖱️  EMAIL CLICKED - Event: ${event.event}`);
+            console.log(`[BREVO WEBHOOK] Email type: ${emailLog.email_type}`);
             
             // Only update if not already clicked
             if (!emailLog.clicked_at) {
@@ -14536,9 +14646,12 @@ app.post('/api/brevo/webhook', express.json(), async (req, res) => {
                 
                 console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as CLICKED`);
                 
-                // Make lead HOT when they click
-                if (emailLog.lead_id) {
-                    await trackEngagement(emailLog.lead_id, 'email_click_hot', 'Clicked link in email');
+                // ONLY make lead HOT if this is from a FOLLOW-UP email
+                if (emailLog.lead_id && emailLog.email_type === 'follow-up') {
+                    console.log(`[BREVO WEBHOOK] 🔥 Follow-up email clicked - making lead HOT`);
+                    await trackEngagement(emailLog.lead_id, 'email_click_hot', 'Clicked link in follow-up email');
+                } else if (emailLog.lead_id) {
+                    console.log(`[BREVO WEBHOOK] ℹ️  Email type '${emailLog.email_type}' clicked - NOT converting to hot (only follow-up emails convert)`);
                 }
             } else {
                 console.log(`[BREVO WEBHOOK] Email ${emailLog.id} already marked as clicked`);

@@ -7510,12 +7510,22 @@ async function loadEmailOpenReport() {
                 ? '<span style="background:#ede9fe;color:#7c3aed;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3"/></svg>Clicked</span>'
                 : '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">—</span>';
             
+            // Email Type Badge
+            const emailTypeBadge = {
+                'follow-up': '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Follow-up</span>',
+                'marketing': '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Marketing</span>',
+                'invoice': '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Invoice</span>',
+                'timeline': '<span style="background:#ede9fe;color:#6b21a8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">Timeline</span>',
+                'system': '<span style="background:#f3f4f6;color:#4b5563;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">System</span>'
+            }[e.email_type || 'system'] || '<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:10px;font-size:11px;">Unknown</span>';
+            
             const isHot = e.lead_temperature === 'hot';
             
             return `<tr>
                 <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${e.lead_name || '—'}</td>
                 <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted); font-size:12px;">${e.lead_email || '—'}</td>
                 <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${e.subject || '—'}</td>
+                <td>${emailTypeBadge}</td>
                 <td>${e.sent_at ? formatDate(e.sent_at) : (e.status === 'pending' ? 'Pending' : '—')}</td>
                 <td>${deliveryBadge}</td>
                 <td>${openedBadge}</td>
@@ -7554,12 +7564,13 @@ async function loadEmailOpenReport() {
             </div>
             ${totalEmails === 0 ? `<div style="text-align:center;padding:40px;color:var(--text-muted);">No emails logged yet. Tracking will populate as follow-up emails are sent.</div>` : `
             <div style="overflow-x:auto;">
-                <table class="data-table" style="min-width:900px;">
+                <table class="data-table" style="min-width:1000px;">
                     <thead>
                         <tr>
                             <th>Lead</th>
                             <th>Email</th>
                             <th>Subject</th>
+                            <th>Type</th>
                             <th>Sent</th>
                             <th>Delivery</th>
                             <th>Opened</th>
@@ -7568,7 +7579,7 @@ async function loadEmailOpenReport() {
                             <th>Error</th>
                         </tr>
                     </thead>
-                    <tbody>${recentRows || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">No emails recorded yet</td></tr>'}</tbody>
+                    <tbody>${recentRows || '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);">No emails recorded yet</td></tr>'}</tbody>
                 </table>
             </div>
             `}

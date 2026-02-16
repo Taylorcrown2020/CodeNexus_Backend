@@ -3703,6 +3703,15 @@ body.graffiti-mode .sidebar::after {
                 Schedule
                 <span class="nav-badge" id="scheduleBadge">0</span>
             </div>
+            <div class="nav-item" data-section="team">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                Team Performance
+            </div>
         </div>
 
         <!-- ── Projects & Work ── -->
@@ -4525,7 +4534,8 @@ async function renderSection(section) {
         'client-portal': 'Client Portal',
         recruitment: 'Recruitment',
         calendar: 'Booking Calendar',
-        schedule: 'Schedule'
+        schedule: 'Schedule',
+        team: 'Team Performance'
     };
     
     const pageTitleEl = document.getElementById('pageTitle');
@@ -4715,6 +4725,10 @@ case 'client-portal':
 
         case 'schedule':
             renderSchedule(content);
+            break;
+            
+        case 'team':
+            renderTeamPerformance(content);
             break;
             
         default:
@@ -7869,10 +7883,10 @@ function renderSchedule(content) {
     let { currentMonth, currentYear, selectedDate } = window.scheduleState;
     
     const renderCalendarView = () => {
-        // Use the persistent state
+        // ALWAYS read from persistent state at the start of render
         currentMonth = window.scheduleState.currentMonth;
         currentYear = window.scheduleState.currentYear;
-        selectedDate = window.scheduleState.selectedDate;
+        const selectedDate = window.scheduleState.selectedDate; // Read fresh each time
         
         const firstDay = new Date(currentYear, currentMonth, 1).getDay();
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -8019,7 +8033,7 @@ function renderSchedule(content) {
     
     window.selectScheduleDate = (year, month, day) => {
         window.scheduleState.selectedDate = new Date(year, month, day);
-        selectedDate = window.scheduleState.selectedDate;
+        const selectedDate = window.scheduleState.selectedDate;
         
         // Filter appointments for selected date
         const dayApts = (window.allScheduleAppointments || []).filter(apt => {
@@ -8028,38 +8042,43 @@ function renderSchedule(content) {
         });
         
         const dateStr = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-        document.getElementById('selectedDateText').textContent = dateStr;
         
-        const selectedDateList = document.getElementById('selectedDateList');
-        if (dayApts.length === 0) {
-            selectedDateList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">No appointments scheduled for this day</div>';
-        } else {
-            selectedDateList.innerHTML = dayApts.map(apt => {
-                const aptTime = new Date(apt.scheduled_time);
-                const timeStr = aptTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                return `
-                    <div style="background:var(--bg-tertiary);border-radius:8px;padding:14px;margin-bottom:10px;cursor:pointer;" onclick="openRescheduleModal(${apt.id}, '${apt.lead_name}', '${apt.scheduled_time}')">
-                        <div style="display:flex;justify-content:space-between;align-items:start;">
-                            <div>
-                                <div style="font-weight:700;font-size:15px;margin-bottom:4px;">${apt.lead_name}</div>
-                                <div style="font-size:13px;color:var(--text-muted);">⏰ ${timeStr}</div>
-                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">📧 ${apt.lead_email}</div>
-                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${apt.event_type || 'Consultation'}</div>
-                            </div>
-                            <div style="display:flex;flex-direction:column;gap:8px;">
-                                <span style="background:#dcfce7;color:#16a34a;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">${apt.status}</span>
-                                <button onclick="event.stopPropagation(); openRescheduleModal(${apt.id}, '${apt.lead_name}', '${apt.scheduled_time}')" class="btn btn-secondary" style="padding:6px 12px;font-size:11px;white-space:nowrap;">Reschedule</button>
+        const selectedDateBox = document.getElementById('selectedDateAppointments');
+        if (selectedDateBox) {
+            document.getElementById('selectedDateText').textContent = dateStr;
+            
+            const selectedDateList = document.getElementById('selectedDateList');
+            if (dayApts.length === 0) {
+                selectedDateList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">No appointments scheduled for this day</div>';
+            } else {
+                selectedDateList.innerHTML = dayApts.map(apt => {
+                    const aptTime = new Date(apt.scheduled_time);
+                    const timeStr = aptTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                    return `
+                        <div style="background:var(--bg-tertiary);border-radius:8px;padding:14px;margin-bottom:10px;">
+                            <div style="display:flex;justify-content:space-between;align-items:start;">
+                                <div style="flex:1;">
+                                    <div style="font-weight:700;font-size:15px;margin-bottom:4px;">${apt.lead_name}</div>
+                                    <div style="font-size:13px;color:var(--text-muted);">⏰ ${timeStr}</div>
+                                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">📧 ${apt.lead_email}</div>
+                                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${apt.event_type || 'Consultation'}</div>
+                                </div>
+                                <div style="display:flex;flex-direction:column;gap:8px;">
+                                    <span style="background:#dcfce7;color:#16a34a;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap;">${apt.status}</span>
+                                    <button onclick="openRescheduleModal(${apt.id}, '${apt.lead_name.replace(/'/g, "\\'")}', '${apt.scheduled_time}')" class="btn btn-secondary" style="padding:6px 12px;font-size:11px;white-space:nowrap;">Reschedule</button>
+                                    <button onclick="cancelAppointment(${apt.id})" class="btn" style="padding:6px 12px;font-size:11px;background:#fee2e2;color:#dc2626;white-space:nowrap;">Cancel</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+            }
+            
+            selectedDateBox.style.display = 'block';
+            selectedDateBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
         
-        document.getElementById('selectedDateAppointments').style.display = 'block';
-        document.getElementById('selectedDateAppointments').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        
-        // Re-render calendar to show selection
+        // Re-render calendar to show selection (this updates the borders)
         renderCalendarView();
     };
     
@@ -8078,6 +8097,487 @@ function renderSchedule(content) {
     
     renderCalendarView();
 }
+
+// ==================== RESCHEDULE & CANCEL APPOINTMENTS ====================
+
+function openRescheduleModal(appointmentId, leadName, currentScheduledTime) {
+    const currentDate = new Date(currentScheduledTime);
+    const dateStr = currentDate.toISOString().split('T')[0];
+    const timeStr = currentDate.toTimeString().slice(0, 5);
+    
+    showModal(`Reschedule Appointment - ${leadName}`, `
+        <form id="rescheduleForm" onsubmit="handleReschedule(event, ${appointmentId})">
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-weight:600;margin-bottom:8px;font-size:13px;">Current Time:</label>
+                <div style="background:var(--bg-tertiary);padding:12px;border-radius:8px;font-size:14px;">
+                    ${currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} 
+                    at ${currentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                </div>
+            </div>
+            
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-weight:600;margin-bottom:8px;font-size:13px;">New Date:</label>
+                <input type="date" name="newDate" value="${dateStr}" required 
+                       style="width:100%;padding:12px;border:1px solid var(--border-subtle);border-radius:8px;font-size:14px;background:var(--bg-tertiary);color:var(--text-primary);">
+            </div>
+            
+            <div style="margin-bottom:24px;">
+                <label style="display:block;font-weight:600;margin-bottom:8px;font-size:13px;">New Time:</label>
+                <select name="newTime" required 
+                        style="width:100%;padding:12px;border:1px solid var(--border-subtle);border-radius:8px;font-size:14px;background:var(--bg-tertiary);color:var(--text-primary);">
+                    ${generateTimeSlots(timeStr)}
+                </select>
+            </div>
+            
+            <div style="display:flex;gap:12px;justify-content:flex-end;">
+                <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Confirm Reschedule</button>
+            </div>
+        </form>
+    `);
+}
+
+function generateTimeSlots(selectedTime) {
+    const slots = [
+        '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+        '16:00', '16:30'
+    ];
+    
+    return slots.map(slot => {
+        const selected = slot === selectedTime ? 'selected' : '';
+        const hour = parseInt(slot.split(':')[0]);
+        const min = slot.split(':')[1];
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+        const displayTime = `${displayHour}:${min} ${period}`;
+        return `<option value="${slot}" ${selected}>${displayTime}</option>`;
+    }).join('');
+}
+
+async function handleReschedule(event, appointmentId) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const newDate = formData.get('newDate');
+    const newTime = formData.get('newTime');
+    
+    // Combine date and time
+    const scheduledTime = new Date(`${newDate}T${newTime}:00`);
+    
+    try {
+        const response = await fetch(`${API_URL}/api/appointments/${appointmentId}/reschedule`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ scheduled_time: scheduledTime.toISOString() })
+        });
+        
+        if (response.ok) {
+            showToast('Appointment rescheduled successfully', 'success');
+            closeModal();
+            
+            // Refresh schedule if we're on that section
+            if (state.currentSection === 'schedule') {
+                renderSection('schedule');
+            }
+        } else {
+            throw new Error('Failed to reschedule');
+        }
+    } catch (error) {
+        console.error('Reschedule error:', error);
+        showToast('Failed to reschedule appointment', 'error');
+    }
+}
+
+async function cancelAppointment(appointmentId) {
+    if (!confirm('Are you sure you want to cancel this appointment?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/appointments/${appointmentId}/cancel`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            showToast('Appointment cancelled successfully', 'success');
+            
+            // Refresh schedule if we're on that section
+            if (state.currentSection === 'schedule') {
+                renderSection('schedule');
+            }
+        } else {
+            throw new Error('Failed to cancel');
+        }
+    } catch (error) {
+        console.error('Cancel error:', error);
+        showToast('Failed to cancel appointment', 'error');
+    }
+}
+
+// ==================== END RESCHEDULE & CANCEL ====================
+
+async function loadLeadAppointments(leadId) {
+    try {
+        const response = await fetch(`${API_URL}/api/appointments/lead/${leadId}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load appointments');
+        
+        const appointments = await response.json();
+        const container = document.getElementById('leadAppointmentsList');
+        
+        if (!container) return;
+        
+        if (appointments.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">No appointments scheduled</div>';
+            return;
+        }
+        
+        // Separate past and upcoming
+        const now = new Date();
+        const upcoming = appointments.filter(apt => new Date(apt.scheduled_time) >= now && apt.status === 'scheduled');
+        const past = appointments.filter(apt => new Date(apt.scheduled_time) < now || apt.status !== 'scheduled');
+        
+        let html = '';
+        
+        if (upcoming.length > 0) {
+            html += '<div style="margin-bottom:20px;"><h4 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--brand-gold);">Upcoming Appointments</h4>';
+            upcoming.forEach(apt => {
+                const aptDate = new Date(apt.scheduled_time);
+                const dateStr = aptDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const timeStr = aptDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                
+                html += `
+                    <div style="background:var(--bg-tertiary);border-radius:8px;padding:14px;margin-bottom:10px;border-left:3px solid #10b981;">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+                            <div style="flex:1;">
+                                <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${apt.event_type || 'Consultation'}</div>
+                                <div style="font-size:13px;color:var(--text-muted);">📅 ${dateStr} at ${timeStr}</div>
+                            </div>
+                            <span style="background:#dcfce7;color:#16a34a;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">Scheduled</span>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:10px;">
+                            <button onclick="openRescheduleModal(${apt.id}, '${apt.lead_name.replace(/'/g, "\\'")}', '${apt.scheduled_time}')" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;flex:1;">Reschedule</button>
+                            <button onclick="cancelAppointment(${apt.id})" class="btn" style="padding:6px 12px;font-size:12px;background:#fee2e2;color:#dc2626;flex:1;">Cancel</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        if (past.length > 0) {
+            html += '<div><h4 style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text-muted);">Past Appointments</h4>';
+            past.forEach(apt => {
+                const aptDate = new Date(apt.scheduled_time);
+                const dateStr = aptDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const timeStr = aptDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                const statusColor = apt.status === 'completed' ? '#3b82f6' : apt.status === 'cancelled' ? '#ef4444' : '#6b7280';
+                const statusBg = apt.status === 'completed' ? '#dbeafe' : apt.status === 'cancelled' ? '#fee2e2' : '#f3f4f6';
+                
+                html += `
+                    <div style="background:var(--bg-tertiary);border-radius:8px;padding:14px;margin-bottom:10px;opacity:0.7;">
+                        <div style="display:flex;justify-content:space-between;align-items:start;">
+                            <div>
+                                <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${apt.event_type || 'Consultation'}</div>
+                                <div style="font-size:13px;color:var(--text-muted);">📅 ${dateStr} at ${timeStr}</div>
+                            </div>
+                            <span style="background:${statusBg};color:${statusColor};padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">${apt.status}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading lead appointments:', error);
+        const container = document.getElementById('leadAppointmentsList');
+        if (container) {
+            container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--status-danger);">Failed to load appointments</div>';
+        }
+    }
+}
+
+// ==================== END LOAD LEAD APPOINTMENTS ====================
+
+// ==================== TEAM PERFORMANCE ====================
+
+async function renderTeamPerformance(content) {
+    console.log('👥 Rendering Team Performance');
+    
+    try {
+        // Fetch employee performance data
+        const [performanceRes, statsRes] = await Promise.all([
+            fetch(`${API_URL}/api/employees/performance`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }),
+            fetch(`${API_URL}/api/employees/stats`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            })
+        ]);
+        
+        const employees = await performanceRes.json();
+        const stats = await statsRes.json();
+        
+        // Calculate percentages
+        const assignedPct = stats.total_leads > 0 ? ((stats.assigned_leads / stats.total_leads) * 100).toFixed(1) : 0;
+        const hotAssignedPct = stats.assigned_hot > 0 ? ((stats.assigned_hot / (stats.assigned_hot + stats.unassigned_hot)) * 100).toFixed(1) : 0;
+        const coldAssignedPct = stats.assigned_cold > 0 ? ((stats.assigned_cold / (stats.assigned_cold + stats.unassigned_cold)) * 100).toFixed(1) : 0;
+        
+        content.innerHTML = `
+            <div class="section-header" style="margin-bottom: 32px;">
+                <h2 style="font-size: 28px; font-weight: 800;">Team Performance</h2>
+                <button class="btn btn-primary" onclick="exportClosingsReport()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Export Closings
+                </button>
+            </div>
+            
+            <!-- Overview Statistics -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:32px;">
+                <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:24px;">
+                    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px;">Total Leads</div>
+                    <div style="font-size:32px;font-weight:800;color:var(--brand-gold);margin-bottom:4px;">${stats.total_leads}</div>
+                    <div style="font-size:12px;color:var(--text-muted);">
+                        ${stats.assigned_leads} assigned (${assignedPct}%) • ${stats.unassigned_leads} unassigned
+                    </div>
+                </div>
+                
+                <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:24px;">
+                    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px;">Hot Leads</div>
+                    <div style="font-size:32px;font-weight:800;color:#ef4444;margin-bottom:4px;">${stats.assigned_hot + stats.unassigned_hot}</div>
+                    <div style="font-size:12px;color:var(--text-muted);">
+                        ${stats.assigned_hot} assigned (${hotAssignedPct}%) • ${stats.unassigned_hot} unassigned
+                    </div>
+                </div>
+                
+                <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:24px;">
+                    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px;">Cold Leads</div>
+                    <div style="font-size:32px;font-weight:800;color:#3b82f6;margin-bottom:4px;">${stats.assigned_cold + stats.unassigned_cold}</div>
+                    <div style="font-size:12px;color:var(--text-muted);">
+                        ${stats.assigned_cold} assigned (${coldAssignedPct}%) • ${stats.unassigned_cold} unassigned
+                    </div>
+                </div>
+                
+                <div style="background:linear-gradient(135deg,#10b981,#059669);border-radius:var(--radius-lg);padding:24px;">
+                    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.9);margin-bottom:8px;">Total Closings</div>
+                    <div style="font-size:32px;font-weight:800;color:#ffffff;margin-bottom:4px;">${employees.reduce((sum, e) => sum + parseInt(e.closings || 0), 0)}</div>
+                    <div style="font-size:12px;color:rgba(255,255,255,0.8);">
+                        Across all team members
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Employee List -->
+            <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:24px;">
+                <h3 style="font-size:18px;font-weight:700;margin-bottom:20px;">Team Members</h3>
+                <div style="display:grid;gap:16px;">
+                    ${employees.length > 0 ? employees.map(emp => `
+                        <div onclick="viewEmployeeDetails(${emp.id}, '${emp.username.replace(/'/g, "\\'")}', ${emp.closings})" 
+                             style="background:var(--bg-tertiary);border-radius:8px;padding:20px;cursor:pointer;transition:all 0.2s;border:1px solid var(--border-subtle);" 
+                             onmouseover="this.style.borderColor='var(--brand-gold)';this.style.transform='translateX(4px)'" 
+                             onmouseout="this.style.borderColor='var(--border-subtle)';this.style.transform='translateX(0)'">
+                            <div style="display:flex;justify-content:space-between;align-items:start;">
+                                <div style="flex:1;">
+                                    <div style="font-weight:700;font-size:16px;margin-bottom:6px;color:var(--text-primary);">${emp.username}</div>
+                                    <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">${emp.email}</div>
+                                    
+                                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:12px;">
+                                        <div>
+                                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Total Assigned</div>
+                                            <div style="font-size:18px;font-weight:700;color:var(--brand-gold);">${emp.total_assigned}</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Hot Leads</div>
+                                            <div style="font-size:18px;font-weight:700;color:#ef4444;">${emp.hot_assigned}</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Cold Leads</div>
+                                            <div style="font-size:18px;font-weight:700;color:#3b82f6;">${emp.cold_assigned}</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Closings</div>
+                                            <div style="font-size:18px;font-weight:700;color:#10b981;">${emp.closings}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;color:var(--text-muted);">
+                                    <polyline points="9 18 15 12 9 6"/>
+                                </svg>
+                            </div>
+                        </div>
+                    `).join('') : '<div style="text-align:center;padding:40px;color:var(--text-muted);">No employees found</div>'}
+                </div>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error loading team performance:', error);
+        content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Error loading team performance</div>';
+    }
+}
+
+async function viewEmployeeDetails(employeeId, employeeName, closings) {
+    const modal = document.getElementById('detailModal');
+    const titleEl = document.getElementById('detailModalTitle');
+    const bodyEl = document.getElementById('detailModalBody');
+    const footerEl = document.getElementById('detailModalFooter');
+    
+    titleEl.textContent = `${employeeName} - Performance Details`;
+    bodyEl.innerHTML = '<div style="text-align:center;padding:40px;">Loading...</div>';
+    modal.classList.add('active');
+    
+    try {
+        const [leadsRes, closingsRes] = await Promise.all([
+            fetch(`${API_URL}/api/employees/${employeeId}/leads`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }),
+            fetch(`${API_URL}/api/employees/${employeeId}/closings`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            })
+        ]);
+        
+        const leads = await leadsRes.json();
+        const closingsList = await closingsRes.json();
+        
+        bodyEl.innerHTML = `
+            <div class="detail-section">
+                <div class="section-header">
+                    <h3 class="section-title">Performance Summary</h3>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+                    <div style="background:var(--bg-tertiary);padding:16px;border-radius:8px;text-align:center;">
+                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Total Assigned</div>
+                        <div style="font-size:24px;font-weight:700;color:var(--brand-gold);">${leads.length}</div>
+                    </div>
+                    <div style="background:var(--bg-tertiary);padding:16px;border-radius:8px;text-align:center;">
+                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Active Leads</div>
+                        <div style="font-size:24px;font-weight:700;color:#3b82f6;">${leads.filter(l => l.status !== 'closed').length}</div>
+                    </div>
+                    <div style="background:linear-gradient(135deg,#10b981,#059669);padding:16px;border-radius:8px;text-align:center;">
+                        <div style="font-size:11px;color:rgba(255,255,255,0.9);margin-bottom:4px;">Closings</div>
+                        <div style="font-size:24px;font-weight:700;color:#ffffff;">${closings}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <div class="section-header">
+                    <h3 class="section-title">Assigned Leads (${leads.length})</h3>
+                </div>
+                <div style="max-height:400px;overflow-y:auto;">
+                    ${leads.length > 0 ? leads.map(lead => {
+                        const tempBadge = {
+                            'hot': '<span style="background:#fee2e2;color:#dc2626;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">🔥 Hot</span>',
+                            'warm': '<span style="background:#fef3c7;color:#d97706;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">⚠️ Warm</span>',
+                            'cold': '<span style="background:#dbeafe;color:#1d4ed8;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">❄️ Cold</span>'
+                        }[lead.lead_temperature] || '';
+                        
+                        const statusBadge = lead.status === 'closed' 
+                            ? '<span style="background:#dcfce7;color:#16a34a;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;">✅ Closed</span>'
+                            : '';
+                        
+                        return `
+                            <div onclick="openDetailModal('lead', ${lead.id})" 
+                                 style="background:var(--bg-tertiary);border-radius:8px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;" 
+                                 onmouseover="this.style.background='var(--bg-hover)'" 
+                                 onmouseout="this.style.background='var(--bg-tertiary)'">
+                                <div style="display:flex;justify-content:space-between;align-items:start;">
+                                    <div style="flex:1;">
+                                        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${lead.name}</div>
+                                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">${lead.email}</div>
+                                        ${lead.company ? `<div style="font-size:12px;color:var(--text-muted);">🏢 ${lead.company}</div>` : ''}
+                                        ${lead.appointment_count > 0 ? `<div style="font-size:11px;color:var(--brand-gold);margin-top:4px;">📅 ${lead.appointment_count} appointment${lead.appointment_count > 1 ? 's' : ''}</div>` : ''}
+                                    </div>
+                                    <div style="display:flex;gap:8px;">
+                                        ${tempBadge}
+                                        ${statusBadge}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') : '<div style="text-align:center;padding:20px;color:var(--text-muted);">No assigned leads</div>'}
+                </div>
+            </div>
+            
+            ${closingsList.length > 0 ? `
+                <div class="detail-section">
+                    <div class="section-header">
+                        <h3 class="section-title">Closings History (${closingsList.length})</h3>
+                    </div>
+                    <div style="max-height:300px;overflow-y:auto;">
+                        ${closingsList.map(closing => `
+                            <div style="background:var(--bg-tertiary);border-radius:8px;padding:14px;margin-bottom:10px;border-left:3px solid #10b981;">
+                                <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${closing.name}</div>
+                                <div style="font-size:12px;color:var(--text-muted);margin-bottom:2px;">${closing.email}</div>
+                                ${closing.company ? `<div style="font-size:12px;color:var(--text-muted);">🏢 ${closing.company}</div>` : ''}
+                                ${closing.budget ? `<div style="font-size:12px;color:var(--text-muted);">💰 $${parseFloat(closing.budget).toLocaleString()}</div>` : ''}
+                                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Closed: ${formatDate(closing.updated_at)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        `;
+        
+        footerEl.innerHTML = `
+            <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+        `;
+        
+    } catch (error) {
+        console.error('Error loading employee details:', error);
+        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--status-danger);">Failed to load employee details</div>';
+    }
+}
+
+async function exportClosingsReport() {
+    try {
+        const response = await fetch(`${API_URL}/api/export/closings`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `closings-report-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showToast('Closings report exported successfully', 'success');
+        } else {
+            throw new Error('Export failed');
+        }
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast('Failed to export closings report', 'error');
+    }
+}
+
+// ==================== END TEAM PERFORMANCE ====================
+
 
 window.viewBookingDetail = async function(bookingId) {
     try {
@@ -8894,6 +9394,12 @@ async function openDetailModal(type, id) {
                         </div>
                     </div>
                     <div class="detail-item">
+                        <div class="detail-label">Assigned To</div>
+                        <div class="detail-value" id="assignedEmployeeDisplay">
+                            ${lead.assigned_to ? `<span style="color:var(--brand-gold);font-weight:600;">Employee #${lead.assigned_to}</span>` : '<span style="color:var(--text-muted);">Not assigned</span>'}
+                        </div>
+                    </div>
+                    <div class="detail-item">
                         <div class="detail-label">Created</div>
                         <div class="detail-value">${formatDate(lead.created_at)}</div>
                     </div>
@@ -9036,6 +9542,15 @@ async function openDetailModal(type, id) {
                 </button>
             </div>
             
+            <div class="detail-section" id="appointmentsSection">
+                <div class="section-header">
+                    <h3 class="section-title">Appointments</h3>
+                </div>
+                <div id="leadAppointmentsList" style="min-height:100px;">
+                    <div style="text-align:center;padding:20px;color:var(--text-muted);">Loading appointments...</div>
+                </div>
+            </div>
+            
             <div class="detail-section">
                 <div class="section-header">
                     <h3 class="section-title">Notes</h3>
@@ -9140,6 +9655,9 @@ async function openDetailModal(type, id) {
         `;
         
         modal.classList.add('active');
+        
+        // Load appointments for this lead
+        loadLeadAppointments(id);
         
     } else if (type === 'invoice') {
         console.log('Opening invoice modal for ID:', id);

@@ -11745,7 +11745,7 @@ Our objective is to provide businesses with the best and most cost-effective web
 <span style="color:#E5E7EB;font-size:15px;font-family:Arial,sans-serif;display:block;margin-bottom:25px;line-height:1.6">Let's discuss how we can help you grow with a custom web solution</span>
 <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto">
 <tr><td style="background-color:#F59E0B;border-radius:6px;padding:14px 40px">
-<a href="https://diamondbackcoding.com/contact.html" style="color:#000000;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,sans-serif;display:block">Get Started</a>
+<a href="${SCHEDULING_URL}" style="color:#000000;font-size:15px;font-weight:700;text-decoration:none;font-family:Arial,sans-serif;display:block">Schedule a Call</a>
 </td></tr>
 </table>
 </td></tr>
@@ -13007,7 +13007,7 @@ Transform your business with cutting-edge development and CRM solutions. <strong
 <td width="76%" align="center">
 <table cellpadding="0" cellspacing="0" border="0" style="background:#EC4899;border-radius:50px;box-shadow:0 8px 25px rgba(251,113,133,0.5);display:inline-block">
 <tr><td class="cta-button" style="padding:18px 60px">
-<a href="https://diamondbackcoding.com?utm_source=email&utm_medium=spring-sale&utm_campaign=25off" style="color:#ffffff;font-size:16px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.8px;font-family:Arial Black,Arial,sans-serif;display:block">Claim Your 25% Discount</a>
+<a href="${SCHEDULING_URL}?utm_source=email&utm_medium=spring-sale&utm_campaign=25off" style="color:#ffffff;font-size:16px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:1.8px;font-family:Arial Black,Arial,sans-serif;display:block">Schedule Your Consultation</a>
 </td></tr>
 </table>
 </td>
@@ -15518,6 +15518,154 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
         <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
     `, { unsubscribeUrl: unsubUrl });
 }
+
+// ========================================
+// EMPLOYEE PERFORMANCE & TRACKING
+// ========================================
+
+// Get all employees with performance stats
+app.get('/api/employees/performance', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                au.id,
+                au.username,
+                au.email,
+                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id THEN l.id END) as total_assigned,
+                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id AND l.lead_temperature = 'hot' THEN l.id END) as hot_assigned,
+                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id AND l.lead_temperature = 'cold' THEN l.id END) as cold_assigned,
+                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id AND l.status = 'closed' THEN l.id END) as closings
+            FROM admin_users au
+            LEFT JOIN leads l ON l.assigned_to = au.id
+            GROUP BY au.id, au.username, au.email
+            ORDER BY closings DESC, total_assigned DESC
+        `);
+        
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[EMPLOYEES] Error fetching performance:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get leads assigned to specific employee
+app.get('/api/employees/:id/leads', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const result = await pool.query(`
+            SELECT 
+                l.*,
+                (SELECT COUNT(*) FROM appointments WHERE LOWER(lead_email) = LOWER(l.email)) as appointment_count
+            FROM leads l
+            WHERE l.assigned_to = $1
+            ORDER BY 
+                CASE 
+                    WHEN l.lead_temperature = 'hot' THEN 1
+                    WHEN l.lead_temperature = 'warm' THEN 2
+                    WHEN l.lead_temperature = 'cold' THEN 3
+                END,
+                l.created_at DESC
+        `, [id]);
+        
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[EMPLOYEES] Error fetching employee leads:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get closings for specific employee
+app.get('/api/employees/:id/closings', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const result = await pool.query(`
+            SELECT 
+                l.id,
+                l.name,
+                l.email,
+                l.company,
+                l.budget,
+                l.project_type,
+                l.created_at,
+                l.updated_at
+            FROM leads l
+            WHERE l.assigned_to = $1 AND l.status = 'closed'
+            ORDER BY l.updated_at DESC
+        `, [id]);
+        
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[EMPLOYEES] Error fetching closings:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Export closings report
+app.post('/api/export/closings', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                au.username as employee_name,
+                l.name as lead_name,
+                l.email,
+                l.company,
+                l.budget,
+                l.project_type,
+                l.created_at as lead_created,
+                l.updated_at as closed_date
+            FROM leads l
+            JOIN admin_users au ON l.assigned_to = au.id
+            WHERE l.status = 'closed'
+            ORDER BY au.username, l.updated_at DESC
+        `);
+        
+        // Create CSV
+        const headers = ['Employee', 'Lead Name', 'Email', 'Company', 'Budget', 'Project Type', 'Lead Created', 'Closed Date'];
+        const rows = result.rows.map(row => [
+            row.employee_name || 'Unassigned',
+            row.lead_name,
+            row.email,
+            row.company || 'N/A',
+            row.budget ? `$${parseFloat(row.budget).toFixed(2)}` : 'N/A',
+            row.project_type || 'N/A',
+            new Date(row.lead_created).toLocaleDateString(),
+            new Date(row.closed_date).toLocaleDateString()
+        ]);
+        
+        const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="closings-report-${new Date().toISOString().split('T')[0]}.csv"`);
+        res.send(csv);
+    } catch (error) {
+        console.error('[EXPORT] Error exporting closings:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get assignment statistics
+app.get('/api/employees/stats', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                COUNT(*) as total_leads,
+                COUNT(CASE WHEN assigned_to IS NOT NULL THEN 1 END) as assigned_leads,
+                COUNT(CASE WHEN assigned_to IS NULL THEN 1 END) as unassigned_leads,
+                COUNT(CASE WHEN assigned_to IS NOT NULL AND lead_temperature = 'hot' THEN 1 END) as assigned_hot,
+                COUNT(CASE WHEN assigned_to IS NOT NULL AND lead_temperature = 'cold' THEN 1 END) as assigned_cold,
+                COUNT(CASE WHEN assigned_to IS NULL AND lead_temperature = 'hot' THEN 1 END) as unassigned_hot,
+                COUNT(CASE WHEN assigned_to IS NULL AND lead_temperature = 'cold' THEN 1 END) as unassigned_cold
+            FROM leads
+        `);
+        
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('[EMPLOYEES] Error fetching stats:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
 // Brevo webhooks defined earlier in file (after line 337)
 

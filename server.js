@@ -2378,7 +2378,7 @@ app.post('/api/scheduling/webhook', async (req, res) => {
             
             // Create new lead as hot (they scheduled!)
             const newLead = await pool.query(
-                `INSERT INTO leads (name, email, lead_temperature, source, notes, last_contact)
+                `INSERT INTO leads (name, email, lead_temperature, source, notes, last_contact_date)
                  VALUES ($1, $2, 'hot', 'scheduling', $3, NOW())
                  RETURNING id`,
                 [
@@ -2397,7 +2397,7 @@ app.post('/api/scheduling/webhook', async (req, res) => {
                 await pool.query(
                     `UPDATE leads 
                      SET lead_temperature = 'hot', 
-                         last_contact = NOW(),
+                         last_contact_date = NOW(),
                          notes = COALESCE(notes || E'\\n\\n', '') || $1
                      WHERE id = $2`,
                     [`✅ Scheduled ${eventType} for ${scheduledTime}`, lead.id]
@@ -2408,7 +2408,7 @@ app.post('/api/scheduling/webhook', async (req, res) => {
                 // Already hot, just update notes
                 await pool.query(
                     `UPDATE leads 
-                     SET last_contact = NOW(),
+                     SET last_contact_date = NOW(),
                          notes = COALESCE(notes || E'\\n\\n', '') || $1
                      WHERE id = $2`,
                     [`📅 Scheduled ${eventType} for ${scheduledTime}`, lead.id]

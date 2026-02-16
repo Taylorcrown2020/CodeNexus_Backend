@@ -491,255 +491,114 @@ function generateBookingWidgetHTML(leadEmail = '') {
 // ========================================
 // Single source of truth for all outgoing email styling.
 // Matches the diamondbackcoding.com brand: black / gold / white.
-// Usage: buildEmailHTML(bodyHTML, { unsubscribeUrl })
+// Modern email template matching follow-up design
+// Usage: buildEmailHTML(bodyHTML, { eyebrow, headline, ctaLabel, ctaUrl, accentColor, tagline, unsubscribeUrl })
 
 function buildEmailHTML(bodyHTML, opts = {}) {
-    const year = new Date().getFullYear();
-    const unsubscribeBlock = opts.unsubscribeUrl
-        ? `<tr><td style="padding: 12px 0 0 0; border-top: 1px solid #3a3a3a;">
-            <a href="${opts.unsubscribeUrl}" style="color: #888; font-size: 11px; text-decoration: none;">Unsubscribe from follow-up emails</a>
-           </td></tr>`
-        : '';
-
+    const eyebrow = opts.eyebrow || '';
+    const headline = opts.headline || '';
+    const accentColor = opts.accentColor || '#FF6B35';
+    const tagline = opts.tagline || 'YOUR VISION. OUR CODE.';
+    const ctaLabel = opts.ctaLabel || '';
+    const ctaUrl = opts.ctaUrl || '';
+    const unsubscribeUrl = opts.unsubscribeUrl || '';
+    
     return `<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Diamondback Coding</title>
 <style>
-    body, td, th, div, p, a, ul, li, ol { margin: 0; padding: 0; }
-    img { border: none; display: block; }
-    body {
-        font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
-        background-color: #f0efe9;
-        color: #2a2a2a;
-        -webkit-font-smoothing: antialiased;
-    }
-    a { color: inherit; text-decoration: none; }
-    .email-outer {
-        max-width: 620px;
-        margin: 0 auto;
-        background: #ffffff;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    }
-    .email-header {
-        background-color: #111111;
-        padding: 32px 36px 28px;
-    }
-    .logo-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .logo-icon { width: 28px; height: 28px; }
-    .logo-text {
-        font-size: 18px;
-        font-weight: 600;
-        letter-spacing: 2.2px;
-        text-transform: uppercase;
-        color: #D4A847;
-        font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
-    }
-    .email-body {
-        padding: 36px 40px 32px;
-        background: #ffffff;
-    }
-    .email-body p {
-        font-size: 15px;
-        line-height: 1.75;
-        color: #3d3d3d;
-        margin-bottom: 16px;
-    }
-    .email-body p:last-child { margin-bottom: 0; }
-    .email-body ul, .email-body ol {
-        padding-left: 22px;
-        margin-bottom: 16px;
-    }
-    .email-body li {
-        font-size: 15px;
-        line-height: 1.75;
-        color: #3d3d3d;
-        margin-bottom: 6px;
-    }
-    .email-body h2 {
-        font-size: 20px;
-        color: #111111;
-        margin-bottom: 10px;
-        font-weight: 600;
-    }
-    .email-body h3 {
-        font-size: 16px;
-        color: #111111;
-        margin-top: 24px;
-        margin-bottom: 8px;
-        font-weight: 600;
-    }
-    .info-box {
-        background: #faf8f2;
-        border-left: 3px solid #D4A847;
-        border-radius: 4px;
-        padding: 18px 20px;
-        margin: 20px 0;
-    }
-    .info-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 14px;
-        padding: 5px 0;
-    }
-    .info-label { color: #777; font-weight: 600; }
-    .info-value { color: #111; font-weight: 700; }
-    .info-value.gold { color: #D4A847; }
-    .highlight-box {
-        background: #faf8f2;
-        border-radius: 6px;
-        padding: 24px;
-        text-align: center;
-        margin: 24px 0;
-    }
-    .highlight-label {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #888;
-        margin-bottom: 6px;
-    }
-    .highlight-value {
-        font-size: 28px;
-        font-weight: 700;
-        color: #D4A847;
-    }
-    .btn-gold {
-        display: inline-block;
-        background: #D4A847;
-        color: #111111;
-        font-weight: 700;
-        font-size: 14px;
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
-        padding: 14px 32px;
-        border-radius: 4px;
-        text-decoration: none;
-        margin: 8px 0;
-    }
-    .btn-center { text-align: center; margin: 28px 0; }
-    .btn-note { font-size: 11px; color: #999; text-align: center; margin-top: 6px; }
-    .attachment-box {
-        background: #faf8f2;
-        border: 1px solid #e8e0c8;
-        border-radius: 6px;
-        padding: 16px 20px;
-        margin: 20px 0;
-        font-size: 14px;
-        color: #555;
-    }
-    .attachment-box strong { color: #111; }
-    .inv-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-    .inv-table th {
-        background: #f5f3ed;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        color: #888;
-        padding: 10px 12px;
-        text-align: left;
-        border-bottom: 2px solid #D4A847;
-    }
-    .inv-table th:last-child, .inv-table td:last-child { text-align: right; }
-    .inv-table th:nth-child(2) { text-align: center; }
-    .inv-table td {
-        padding: 11px 12px;
-        border-bottom: 1px solid #eee;
-        font-size: 14px;
-        color: #3d3d3d;
-    }
-    .inv-table td:nth-child(2) { text-align: center; }
-    .inv-totals { text-align: right; margin-top: 14px; }
-    .inv-totals p { font-size: 14px; color: #555; margin-bottom: 4px; }
-    .inv-totals .total-line { font-size: 18px; font-weight: 700; color: #111; }
-    .inv-totals .total-line span { color: #D4A847; }
-    .notes-box {
-        background: #faf8f2;
-        border-radius: 6px;
-        padding: 16px 20px;
-        margin: 20px 0;
-    }
-    .notes-box p { font-size: 14px; color: #555; }
-    .sign-off { margin-top: 28px; }
-    .sign-off p { font-size: 15px; color: #3d3d3d; margin-bottom: 2px; }
-    .sign-off .team-name { font-weight: 600; color: #111; }
-    .email-footer {
-        background: #1a1a1a;
-        padding: 28px 36px 24px;
-    }
-    .footer-brand {
-        font-size: 13px;
-        font-weight: 600;
-        color: #D4A847;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin-bottom: 10px;
-    }
-    .footer-address {
-        font-size: 12px;
-        color: #777;
-        line-height: 1.7;
-        margin-bottom: 14px;
-    }
-    .footer-nav {
-        font-size: 11px;
-        color: #666;
-        margin-bottom: 18px;
-    }
-    .footer-nav a { color: #999; margin-right: 14px; text-decoration: none; }
-    .footer-nav a:hover { color: #D4A847; }
-    .footer-copy {
-        font-size: 11px;
-        color: #555;
-        padding-top: 14px;
-        border-top: 1px solid #2e2e2e;
-    }
+@media only screen and (max-width: 620px) {
+  .wrap { width: 100% !important; }
+  .section-pad { padding: 36px 24px !important; }
+  .headline { font-size: 32px !important; }
+  .cta-btn a { font-size: 15px !important; padding: 16px 28px !important; }
+}
+table td { border-collapse: collapse; }
 </style>
 </head>
-<body>
-<div style="padding: 28px 0;" align="center">
-    <div class="email-outer">
-        <div class="email-header">
-            <div class="logo-row">
-                <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M14 2L26 8.5V21.5L14 28L2 21.5V8.5L14 2Z" stroke="#D4A847" stroke-width="1.8" fill="none"/>
-                    <path d="M14 2L26 8.5L14 15L2 8.5L14 2Z" stroke="#D4A847" stroke-width="1.2" fill="none" opacity="0.5"/>
-                    <path d="M14 15V28" stroke="#D4A847" stroke-width="1.2" opacity="0.5"/>
-                </svg>
-                <span class="logo-text">Diamondback Coding</span>
-            </div>
-        </div>
-        <div class="email-body">
-            ${bodyHTML}
-        </div>
-        <div class="email-footer">
-            <table width="100%" cellpadding="0" cellspacing="0">
-                <tr><td class="footer-brand">Diamondback Coding</td></tr>
-                <tr><td class="footer-address">
-                    15709 Spillman Ranch Loop, Austin, TX 78738<br>
-                    <a href="mailto:contact@diamondbackcoding.com" style="color:#999;">contact@diamondbackcoding.com</a> &nbsp;\u00b7&nbsp;
-                    <a href="tel:+19402178680" style="color:#999;">(940) 217-8680</a>
-                </td></tr>
-                <tr><td class="footer-nav">
-                    <a href="https://diamondbackcoding.com">Website</a>
-                    <a href="https://diamondbackcoding.com/projects">Projects</a>
-                    <a href="https://diamondbackcoding.com/services">Services</a>
-                    <a href="https://diamondbackcoding.com/company">Company</a>
-                </td></tr>
-                ${unsubscribeBlock}
-                <tr><td class="footer-copy">&copy; ${year} Diamondback Coding. All rights reserved.</td></tr>
-            </table>
-        </div>
-    </div>
-</div>
+<body style="margin:0;padding:0;background:#F7F9FB;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F9FB;">
+<tr><td align="center" style="padding:32px 16px 48px;">
+
+<table class="wrap" width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;">
+
+<!-- HEADER -->
+<tr><td style="background:#FFFFFF;border-radius:3px 3px 0 0;padding:26px 40px;" class="section-pad">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td valign="middle">
+      <span style="font-size:12px;font-weight:800;letter-spacing:4px;text-transform:uppercase;color:#111111;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">DIAMONDBACK CODING</span>
+    </td>
+    <td align="right" valign="middle">
+      <table cellpadding="0" cellspacing="0" border="0" style="background:${accentColor};border-radius:2px;">
+      <tr><td style="padding:6px 14px;">
+        <span style="color:#FFFFFF;font-size:9px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${tagline}</span>
+      </td></tr>
+      </table>
+    </td>
+  </tr>
+  </table>
+</td></tr>
+
+<!-- SEPARATOR -->
+<tr><td style="background:#FFFFFF;height:1px;padding:0;"></td></tr>
+
+<!-- CONTENT -->
+<tr><td style="background:#FFFFFF;padding:48px 40px 56px;" class="section-pad">
+  ${eyebrow ? `<p style="margin:0 0 18px;font-size:10px;font-weight:800;letter-spacing:3.5px;text-transform:uppercase;color:${accentColor};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${eyebrow}</p>` : ''}
+  ${headline ? `<p class="headline" style="margin:0 0 22px;font-size:42px;font-weight:800;color:#2D3142;line-height:1.08;letter-spacing:-1.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${headline}</p>` : ''}
+  <div style="font-size:15px;font-weight:400;color:#666666;line-height:1.75;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+    ${bodyHTML}
+  </div>
+</td></tr>
+
+${ctaLabel && ctaUrl ? `
+<!-- CTA -->
+<tr><td style="background:#F7F9FB;padding:40px 40px 48px;" class="section-pad">
+  <table cellpadding="0" cellspacing="0" border="0">
+  <tr class="cta-btn"><td style="background:${accentColor};border-radius:3px;">
+    <a href="${ctaUrl}" style="display:block;padding:18px 40px;font-size:16px;font-weight:800;color:#FFFFFF;text-decoration:none;letter-spacing:0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${ctaLabel}</a>
+  </td></tr>
+  </table>
+  <p style="margin:20px 0 0;font-size:13px;color:#999999;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Or reply directly to this email — we read every one.</p>
+</td></tr>
+` : ''}
+
+<!-- FOOTER -->
+<tr><td style="background:#2D3142;padding:32px 40px;border-radius:0 0 3px 3px;" class="section-pad">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td valign="top">
+      <p style="margin:0 0 6px;font-size:11px;font-weight:800;color:#FFFFFF;letter-spacing:2.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Diamondback Coding</p>
+      <p style="margin:0;font-size:12px;color:#B8B8B8;line-height:1.8;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+        Web Development &amp; CRM Solutions<br>
+        Austin, TX 78746<br>
+        <a href="tel:+15129800393" style="color:${accentColor};text-decoration:none;">(512) 980-0393</a>
+      </p>
+    </td>
+    <td align="right" valign="top">
+      <p style="margin:0 0 8px;"><a href="https://diamondbackcoding.com" style="color:#B8B8B8;font-size:11px;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Website</a></p>
+      <p style="margin:0;"><a href="https://instagram.com/diamondbackcoding" style="color:#B8B8B8;font-size:11px;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Instagram</a></p>
+    </td>
+  </tr>
+  ${unsubscribeUrl ? `<tr><td colspan="2" style="padding-top:22px;border-top:1px solid #454B5F;">
+    <p style="margin:0;font-size:11px;color:#7A7F8F;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+      You received this because you previously connected with Diamondback Coding. &nbsp;
+      <a href="${unsubscribeUrl}" style="color:#7A7F8F;text-decoration:underline;">Unsubscribe</a>
+    </p>
+  </td></tr>` : ''}
+  </table>
+</td></tr>
+
+</table>
+
+</td></tr>
+</table>
+
 </body>
 </html>`;
 }
@@ -2443,52 +2302,36 @@ app.post('/api/scheduling/webhook', async (req, res) => {
         });
         
         const confirmationEmail = buildEmailHTML(`
-            <h2 style="font-size: 22px; color: #111111; margin-bottom: 18px; font-weight: 600;">Your Consultation is Confirmed</h2>
-            
             <p>Hi ${inviteeName || 'there'},</p>
             
             <p>Thank you for scheduling a consultation with Diamondback Coding. We're excited to discuss your project and explore how we can help bring your vision to life.</p>
             
-            <div class="info-box" style="margin: 28px 0;">
-                <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 14px; font-weight: 600;">Appointment Details</div>
-                
-                <div class="info-row">
-                    <span class="info-label">Date</span>
-                    <span class="info-value">${formattedDate}</span>
-                </div>
-                
-                <div class="info-row">
-                    <span class="info-label">Time</span>
-                    <span class="info-value">${formattedTime}</span>
-                </div>
-                
-                <div class="info-row">
-                    <span class="info-label">Type</span>
-                    <span class="info-value">${eventType || 'Consultation'}</span>
-                </div>
-            </div>
+            <p style="margin: 24px 0; padding: 20px; background: #F7F9FB; border-radius: 6px; border-left: 4px solid #FF6B35;">
+                <strong style="display: block; margin-bottom: 8px; color: #2D3142;">Appointment Details</strong>
+                <strong>Date:</strong> ${formattedDate}<br>
+                <strong>Time:</strong> ${formattedTime}<br>
+                <strong>Type:</strong> ${eventType || 'Consultation'}
+            </p>
             
-            <h3 style="font-size: 16px; color: #111111; margin: 24px 0 10px 0; font-weight: 600;">What to Expect</h3>
+            <p><strong>What to Expect:</strong></p>
             <p>We'll call you at the scheduled time to discuss:</p>
-            <ul>
+            <ul style="margin: 12px 0; padding-left: 24px;">
                 <li>Your project goals and requirements</li>
                 <li>Timeline and budget expectations</li>
                 <li>How Diamondback Coding can help bring your vision to life</li>
             </ul>
             
-            <div class="btn-center" style="margin: 32px 0;">
-                <a href="${SCHEDULING_URL}" class="btn-gold">Reschedule Appointment</a>
-            </div>
-            
-            <p style="margin-top: 24px; text-align: center; font-size: 13px; color: #777;">
-                Need to cancel? Please contact us at <a href="tel:+15129800393" style="color: #D4A847; font-weight: 600;">(512) 980-0393</a> or reply to this email.
+            <p style="margin-top: 24px; text-align: center; font-size: 13px; color: #666;">
+                Need to make changes? Contact us at <a href="tel:+15129800393" style="color: #FF6B35; font-weight: 600;">(512) 980-0393</a> or reply to this email.
             </p>
-            
-            <div class="sign-off">
-                <p>Looking forward to speaking with you!</p>
-                <p class="team-name">The Diamondback Coding Team</p>
-            </div>
-        `, {});
+        `, {
+            eyebrow: 'APPOINTMENT CONFIRMED',
+            headline: 'Your Consultation is Confirmed',
+            ctaLabel: 'Reschedule Appointment',
+            ctaUrl: SCHEDULING_URL,
+            accentColor: '#FF6B35',
+            tagline: 'YOUR VISION. OUR CODE.'
+        });
         
         try {
             await transporter.sendMail({
@@ -2661,44 +2504,30 @@ app.put('/api/appointments/:id/reschedule', authenticateToken, async (req, res) 
         });
         
         const confirmationEmail = buildEmailHTML(`
-            <h2 style="font-size: 22px; color: #111111; margin-bottom: 18px; font-weight: 600;">Your Consultation Has Been Rescheduled</h2>
-            
             <p>Hi ${appointment.lead_name || 'there'},</p>
             
-            <p>Your consultation with Diamondback Coding has been rescheduled to a new time.</p>
+            <p>Your consultation with Diamondback Coding has been successfully rescheduled.</p>
             
-            <div class="info-box" style="margin: 28px 0;">
-                <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 14px; font-weight: 600;">Updated Appointment Details</div>
-                
-                <div class="info-row">
-                    <span class="info-label">Date</span>
-                    <span class="info-value">${formattedDate}</span>
-                </div>
-                
-                <div class="info-row">
-                    <span class="info-label">Time</span>
-                    <span class="info-value">${formattedTime}</span>
-                </div>
-                
-                <div class="info-row">
-                    <span class="info-label">Type</span>
-                    <span class="info-value">${appointment.event_type || 'Consultation'}</span>
-                </div>
-            </div>
-            
-            <div class="btn-center" style="margin: 32px 0;">
-                <a href="${SCHEDULING_URL}" class="btn-gold">Reschedule Again</a>
-            </div>
-            
-            <p style="margin-top: 24px; text-align: center; font-size: 13px; color: #777;">
-                Need to cancel? Please contact us at <a href="tel:+15129800393" style="color: #D4A847; font-weight: 600;">(512) 980-0393</a> or reply to this email.
+            <p style="margin: 24px 0; padding: 20px; background: #F7F9FB; border-radius: 6px; border-left: 4px solid #1A7A3A;">
+                <strong style="display: block; margin-bottom: 8px; color: #2D3142;">Updated Appointment Details</strong>
+                <strong>Date:</strong> ${formattedDate}<br>
+                <strong>Time:</strong> ${formattedTime}<br>
+                <strong>Type:</strong> ${appointment.event_type || 'Consultation'}
             </p>
             
-            <div class="sign-off">
-                <p>Looking forward to speaking with you!</p>
-                <p class="team-name">The Diamondback Coding Team</p>
-            </div>
-        `, {});
+            <p>We're looking forward to speaking with you at your new scheduled time!</p>
+            
+            <p style="margin-top: 24px; text-align: center; font-size: 13px; color: #666;">
+                Need to reschedule again? Contact us at <a href="tel:+15129800393" style="color: #1A7A3A; font-weight: 600;">(512) 980-0393</a> or reply to this email.
+            </p>
+        `, {
+            eyebrow: 'RESCHEDULED',
+            headline: 'Your Consultation Has Been Rescheduled',
+            ctaLabel: 'Reschedule Again',
+            ctaUrl: SCHEDULING_URL,
+            accentColor: '#1A7A3A',
+            tagline: 'FLEXIBLE SCHEDULING.'
+        });
         
         try {
             await transporter.sendMail({
@@ -3692,6 +3521,53 @@ app.get('/api/employees', authenticateToken, async (req, res) => {
             success: false, 
             message: 'Server error: ' + error.message 
         });
+    }
+});
+
+// Get employee performance stats (MUST be before /:id route)
+app.get('/api/employees/performance', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                au.id,
+                au.username,
+                au.email,
+                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id THEN l.id END) as total_assigned,
+                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id AND l.lead_temperature = 'hot' THEN l.id END) as hot_assigned,
+                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id AND l.lead_temperature = 'cold' THEN l.id END) as cold_assigned,
+                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id AND l.status = 'closed' THEN l.id END) as closings
+            FROM admin_users au
+            LEFT JOIN leads l ON l.assigned_to = au.id
+            GROUP BY au.id, au.username, au.email
+            ORDER BY closings DESC, total_assigned DESC
+        `);
+        
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[EMPLOYEES] Error fetching performance:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get assignment statistics (MUST be before /:id route)
+app.get('/api/employees/stats', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                COUNT(*) as total_leads,
+                COUNT(CASE WHEN assigned_to IS NOT NULL THEN 1 END) as assigned_leads,
+                COUNT(CASE WHEN assigned_to IS NULL THEN 1 END) as unassigned_leads,
+                COUNT(CASE WHEN assigned_to IS NOT NULL AND lead_temperature = 'hot' THEN 1 END) as assigned_hot,
+                COUNT(CASE WHEN assigned_to IS NOT NULL AND lead_temperature = 'cold' THEN 1 END) as assigned_cold,
+                COUNT(CASE WHEN assigned_to IS NULL AND lead_temperature = 'hot' THEN 1 END) as unassigned_hot,
+                COUNT(CASE WHEN assigned_to IS NULL AND lead_temperature = 'cold' THEN 1 END) as unassigned_cold
+            FROM leads
+        `);
+        
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('[EMPLOYEES] Error fetching stats:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
@@ -6084,70 +5960,48 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
         const discount = parseFloat(invoice.discount_amount || 0);
         
         const emailHTML = buildEmailHTML(`
-            <p><strong style="font-size:16px;">Hello ${clientName || 'Valued Customer'},</strong></p>
+            <p><strong>Hello ${clientName || 'Valued Customer'},</strong></p>
 
             <p>Thank you for your business! Here is your invoice.</p>
 
-            <div class="info-box">
-                <div class="info-row">
-                    <span class="info-label">Invoice Number</span>
-                    <span class="info-value">${invoice.invoice_number}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Issue Date</span>
-                    <span class="info-value">${new Date(invoice.issue_date).toLocaleDateString()}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Due Date</span>
-                    <span class="info-value">${new Date(invoice.due_date).toLocaleDateString()}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Amount Due</span>
-                    <span class="info-value gold" style="font-size:20px;">$${parseFloat(invoice.total_amount).toLocaleString()}</span>
-                </div>
-            </div>
+            <p style="margin: 24px 0; padding: 20px; background: #F7F9FB; border-radius: 6px; border-left: 4px solid #1A7A3A;">
+                <strong style="display: block; margin-bottom: 12px; color: #2D3142;">Invoice Summary</strong>
+                <strong>Invoice #:</strong> ${invoice.invoice_number}<br>
+                <strong>Issue Date:</strong> ${new Date(invoice.issue_date).toLocaleDateString()}<br>
+                <strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}<br>
+                <strong style="font-size: 18px; color: #1A7A3A; display: block; margin-top: 12px;">Amount Due: $${parseFloat(invoice.total_amount).toLocaleString()}</strong>
+            </p>
 
-            <h3>Invoice Details</h3>
-            <table class="inv-table">
+            <table style="width: 100%; border-collapse: collapse; margin: 24px 0;">
                 <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th>Qty</th>
-                        <th>Unit Price</th>
-                        <th>Amount</th>
+                    <tr style="background: #F7F9FB; border-bottom: 2px solid #1A7A3A;">
+                        <th style="padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Description</th>
+                        <th style="padding: 12px; text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Qty</th>
+                        <th style="padding: 12px; text-align: right; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Unit Price</th>
+                        <th style="padding: 12px; text-align: right; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Amount</th>
                     </tr>
                 </thead>
                 <tbody>${itemsHTML}</tbody>
             </table>
 
-            <div class="inv-totals">
-                <p><strong>Subtotal:</strong> $${parseFloat(invoice.subtotal).toLocaleString()}</p>
-                ${taxAmount > 0 ? `<p><strong>Tax (${invoice.tax_rate}%):</strong> $${taxAmount.toLocaleString()}</p>` : ''}
-                ${discount > 0 ? `<p><strong>Discount:</strong> -$${discount.toLocaleString()}</p>` : ''}
-                <p class="total-line"><strong>Total:</strong> <span>$${parseFloat(invoice.total_amount).toLocaleString()}</span></p>
+            <div style="text-align: right; margin: 24px 0; padding: 16px; background: #F7F9FB; border-radius: 6px;">
+                <p style="margin: 0 0 8px 0;"><strong>Subtotal:</strong> $${parseFloat(invoice.subtotal).toLocaleString()}</p>
+                ${taxAmount > 0 ? `<p style="margin: 0 0 8px 0;"><strong>Tax (${invoice.tax_rate}%):</strong> $${taxAmount.toLocaleString()}</p>` : ''}
+                ${discount > 0 ? `<p style="margin: 0 0 8px 0;"><strong>Discount:</strong> -$${discount.toLocaleString()}</p>` : ''}
+                <p style="margin: 12px 0 0 0; font-size: 20px; font-weight: 800; color: #1A7A3A;"><strong>Total:</strong> $${parseFloat(invoice.total_amount).toLocaleString()}</p>
             </div>
 
-            ${invoice.stripe_payment_link ? `
-                <div class="btn-center">
-                    <a href="${invoice.stripe_payment_link}" class="btn-gold">Pay Invoice Now</a>
-                    <p class="btn-note">Secure payment powered by Stripe</p>
-                </div>
-            ` : ''}
+            ${invoice.notes ? `<p style="padding: 16px; background: #F7F9FB; border-radius: 6px; font-style: italic; color: #666;"><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
 
-            ${invoice.notes ? `
-                <div class="notes-box">
-                    <p><strong>Notes</strong></p>
-                    <p>${invoice.notes}</p>
-                </div>
-            ` : ''}
-
-            <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
-
-            <div class="sign-off">
-                <p>Best regards,</p>
-                <p class="team-name">The Diamondback Coding Team</p>
-            </div>
-        `);
+            <p style="margin-top: 24px;">If you have any questions about this invoice, please don't hesitate to contact us.</p>
+        `, {
+            eyebrow: 'INVOICE',
+            headline: `Invoice #${invoice.invoice_number}`,
+            ctaLabel: invoice.stripe_payment_link ? 'Pay Invoice Now' : null,
+            ctaUrl: invoice.stripe_payment_link || null,
+            accentColor: '#1A7A3A',
+            tagline: 'SECURE PAYMENT.'
+        });
         
         console.log('Preparing to send invoice email...');
         console.log('To:', clientEmail);
@@ -15535,30 +15389,6 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
 // EMPLOYEE PERFORMANCE & TRACKING
 // ========================================
 
-// Get all employees with performance stats
-app.get('/api/employees/performance', authenticateToken, async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT 
-                au.id,
-                au.username,
-                au.email,
-                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id THEN l.id END) as total_assigned,
-                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id AND l.lead_temperature = 'hot' THEN l.id END) as hot_assigned,
-                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id AND l.lead_temperature = 'cold' THEN l.id END) as cold_assigned,
-                COUNT(DISTINCT CASE WHEN l.assigned_to = au.id AND l.status = 'closed' THEN l.id END) as closings
-            FROM admin_users au
-            LEFT JOIN leads l ON l.assigned_to = au.id
-            GROUP BY au.id, au.username, au.email
-            ORDER BY closings DESC, total_assigned DESC
-        `);
-        
-        res.json(result.rows);
-    } catch (error) {
-        console.error('[EMPLOYEES] Error fetching performance:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
 
 // Get leads assigned to specific employee
 app.get('/api/employees/:id/leads', authenticateToken, async (req, res) => {
@@ -15657,27 +15487,6 @@ app.post('/api/export/closings', authenticateToken, async (req, res) => {
     }
 });
 
-// Get assignment statistics
-app.get('/api/employees/stats', authenticateToken, async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT 
-                COUNT(*) as total_leads,
-                COUNT(CASE WHEN assigned_to IS NOT NULL THEN 1 END) as assigned_leads,
-                COUNT(CASE WHEN assigned_to IS NULL THEN 1 END) as unassigned_leads,
-                COUNT(CASE WHEN assigned_to IS NOT NULL AND lead_temperature = 'hot' THEN 1 END) as assigned_hot,
-                COUNT(CASE WHEN assigned_to IS NOT NULL AND lead_temperature = 'cold' THEN 1 END) as assigned_cold,
-                COUNT(CASE WHEN assigned_to IS NULL AND lead_temperature = 'hot' THEN 1 END) as unassigned_hot,
-                COUNT(CASE WHEN assigned_to IS NULL AND lead_temperature = 'cold' THEN 1 END) as unassigned_cold
-            FROM leads
-        `);
-        
-        res.json(result.rows[0]);
-    } catch (error) {
-        console.error('[EMPLOYEES] Error fetching stats:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
 
 // Brevo webhooks defined earlier in file (after line 337)
 

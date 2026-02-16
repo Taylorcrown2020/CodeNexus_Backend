@@ -7923,7 +7923,8 @@ function renderSchedule(content) {
                         const dayApts = appointmentsByDate[dayCount] || [];
                         
                         calendarHTML += `
-                            <div onclick="selectScheduleDate(${currentYear}, ${currentMonth}, ${dayCount})" 
+                            <div class="calendar-day" data-day="${dayCount}" 
+                                 onclick="selectScheduleDate(${currentYear}, ${currentMonth}, ${dayCount})" 
                                  style="background:var(--bg-secondary);border-radius:8px;padding:12px;min-height:120px;
                                         border:${isSelected ? '3px solid var(--brand-gold)' : isToday ? '2px solid var(--brand-gold)' : '1px solid var(--border-subtle)'};
                                         cursor:pointer;transition:all 0.2s;" 
@@ -8032,8 +8033,25 @@ function renderSchedule(content) {
     };
     
     window.selectScheduleDate = (year, month, day) => {
+        console.log(`Selecting date: ${year}-${month}-${day}`);
         window.scheduleState.selectedDate = new Date(year, month, day);
-        const selectedDate = window.scheduleState.selectedDate;
+        
+        // Update ALL calendar day borders
+        document.querySelectorAll('.calendar-day').forEach(dayEl => {
+            const dayNum = parseInt(dayEl.getAttribute('data-day'));
+            const isToday = dayNum === new Date().getDate() && 
+                           window.scheduleState.currentMonth === new Date().getMonth() && 
+                           window.scheduleState.currentYear === new Date().getFullYear();
+            const isSelected = dayNum === day;
+            
+            if (isSelected) {
+                dayEl.style.border = '3px solid var(--brand-gold)';
+            } else if (isToday) {
+                dayEl.style.border = '2px solid var(--brand-gold)';
+            } else {
+                dayEl.style.border = '1px solid var(--border-subtle)';
+            }
+        });
         
         // Filter appointments for selected date
         const dayApts = (window.allScheduleAppointments || []).filter(apt => {
@@ -8041,6 +8059,7 @@ function renderSchedule(content) {
             return aptDate.getDate() === day && aptDate.getMonth() === month && aptDate.getFullYear() === year;
         });
         
+        const selectedDate = window.scheduleState.selectedDate;
         const dateStr = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         
         const selectedDateBox = document.getElementById('selectedDateAppointments');
@@ -8075,11 +8094,10 @@ function renderSchedule(content) {
             }
             
             selectedDateBox.style.display = 'block';
-            selectedDateBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            setTimeout(() => {
+                selectedDateBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
         }
-        
-        // Re-render calendar to show selection (this updates the borders)
-        renderCalendarView();
     };
     
     window.changeScheduleMonth = (delta) => {
@@ -8327,8 +8345,14 @@ async function renderTeamPerformance(content) {
             })
         ]);
         
+        if (!performanceRes.ok || !statsRes.ok) {
+            throw new Error(`HTTP error! Performance: ${performanceRes.status}, Stats: ${statsRes.status}`);
+        }
+        
         const employees = await performanceRes.json();
         const stats = await statsRes.json();
+        
+        console.log('Team Performance Data:', { employees, stats });
         
         // Calculate percentages
         const assignedPct = stats.total_leads > 0 ? ((stats.assigned_leads / stats.total_leads) * 100).toFixed(1) : 0;

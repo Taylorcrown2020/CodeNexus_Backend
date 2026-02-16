@@ -19,7 +19,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || 'https://diamondbackcoding.com';
-const SCHEDULING_URL = process.env.SCHEDULING_URL || 'https://diamondbackcoding.com/schedule';
+const SCHEDULING_URL = process.env.SCHEDULING_URL || 'https://diamondbackcoding.com/schedule.html';
 
 // Service Packages Definition (matching pricing page)
 const servicePackages = {
@@ -2438,6 +2438,16 @@ app.post('/api/scheduling/webhook', async (req, res) => {
         console.error('[SCHEDULING WEBHOOK] Error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+// Serve schedule page
+app.get('/schedule', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'schedule.html'));
+});
+
+// Also serve with .html extension
+app.get('/schedule.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'schedule.html'));
 });
 
 // Get upcoming appointments for dashboard

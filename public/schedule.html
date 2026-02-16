@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule a Consultation | Diamondback Coding</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+:root {
+    --brand-gold: #E5C4A0;
+    --brand-gold-dark: #d4a574;
+    --brand-black: #000000;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --border-light: #e5e7eb;
+    --text-primary: #000000;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
+    --status-success: #10b981;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --radius: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; min-height: 100vh; }
+.header { background: var(--brand-black); padding: 20px 0; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo svg { width: 24px; height: 24px; }
+.logo-text { font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #ffffff; }
+.main { padding: 60px 24px; min-height: calc(100vh - 200px); }
+.scheduling-container { max-width: 1000px; margin: 0 auto; }
+.page-header { text-align: center; margin-bottom: 50px; }
+.page-title { font-family: var(--font-display); font-size: 48px; font-weight: 400; margin-bottom: 16px; }
+.page-subtitle { font-size: 18px; color: var(--text-secondary); max-width: 700px; margin: 0 auto; line-height: 1.7; }
+.scheduling-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+@media (max-width: 768px) { .scheduling-grid { grid-template-columns: 1fr; } .page-title { font-size: 36px; } }
+.calendar-section, .time-slots-section, .form-section { background: var(--bg-primary); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+.section-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--brand-gold-dark); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.section-title svg { width: 18px; height: 18px; }
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.calendar-month { font-size: 16px; font-weight: 600; }
+.calendar-nav { display: flex; gap: 8px; }
+.calendar-nav button { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; }
+.calendar-nav button:hover:not(:disabled) { background: #fef9f3; border-color: var(--brand-gold-dark); color: var(--brand-gold-dark); }
+.calendar-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.calendar-day-header { text-align: center; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); padding: 8px 0; }
+.calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: var(--radius); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; background: var(--bg-secondary); border: 1px solid var(--border-light); color: var(--text-primary); }
+.calendar-day:hover:not(.disabled):not(.other-month) { background: #fef9f3; border-color: var(--brand-gold-dark); color: var(--brand-gold-dark); transform: scale(1.05); }
+.calendar-day.selected { background: var(--brand-gold); color: var(--brand-black); font-weight: 600; border-color: var(--brand-gold-dark); }
+.calendar-day.today { border-color: var(--brand-gold-dark); border-width: 2px; font-weight: 600; }
+.calendar-day.disabled { opacity: 0.3; cursor: not-allowed; }
+.calendar-day.other-month { opacity: 0.2; cursor: default; }
+.time-slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.time-slot { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 12px; text-align: center; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.time-slot:hover:not(.disabled) { background: #fef9f3; border-color: var(--brand-gold-dark); color: var(--brand-gold-dark); transform: translateY(-1px); }
+.time-slot.selected { background: var(--brand-gold); color: var(--brand-black); font-weight: 600; border-color: var(--brand-gold-dark); }
+.time-slot.disabled { opacity: 0.3; cursor: not-allowed; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.3; }
+.form-group { margin-bottom: 20px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.form-input, .form-textarea { width: 100%; background: var(--bg-primary); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 12px 14px; font-size: 15px; font-family: var(--font-body); color: var(--text-primary); transition: all 0.2s; }
+.form-input:focus, .form-textarea:focus { outline: none; border-color: var(--brand-gold-dark); box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1); }
+.form-textarea { resize: vertical; min-height: 100px; }
+.selected-datetime { background: #fef9f3; border: 1px solid var(--brand-gold-dark); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+.selected-datetime svg { width: 20px; height: 20px; color: var(--brand-gold-dark); flex-shrink: 0; }
+.selected-datetime-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 2px; }
+.selected-datetime-value { font-size: 15px; font-weight: 600; }
+.btn { background: var(--brand-gold); color: var(--brand-black); border: none; border-radius: var(--radius); padding: 14px 28px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; width: 100%; }
+.btn:hover:not(:disabled) { background: var(--brand-gold-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-light); }
+.success-message { background: var(--bg-primary); border: 1px solid var(--status-success); border-radius: var(--radius); padding: 48px; text-align: center; box-shadow: var(--shadow); }
+.success-icon { width: 64px; height: 64px; margin: 0 auto 24px; background: rgba(16, 185, 129, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.success-icon svg { width: 32px; height: 32px; color: var(--status-success); }
+.success-title { font-family: var(--font-display); font-size: 32px; font-weight: 400; margin-bottom: 12px; color: var(--status-success); }
+.success-text { font-size: 16px; color: var(--text-secondary); margin-bottom: 32px; }
+.success-details { background: var(--bg-secondary); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; text-align: left; }
+.success-details-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+.success-details-item:last-child { border-bottom: none; }
+.success-details-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+.success-details-value { font-size: 15px; font-weight: 600; }
+.loading { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(0, 0, 0, 0.2); border-radius: 50%; border-top-color: #000000; animation: spin 0.6s linear infinite; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.footer { background: var(--bg-secondary); border-top: 1px solid var(--border-light); padding: 32px 24px; text-align: center; }
+.footer-text { font-size: 14px; color: var(--text-muted); }
+.footer-link { color: var(--brand-gold-dark); text-decoration: none; }
+.footer-link:hover { color: var(--brand-gold); }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 3H21V21H3V3Z" stroke="white" stroke-width="2"/>
+                    <path d="M7 7H17V17H7V7Z" stroke="white" stroke-width="1.5"/>
+                </svg>
+                <span class="logo-text">DIAMONDBACK CODING</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="scheduling-container">
+                <div class="page-header">
+                    <h1 class="page-title">Schedule Your Consultation</h1>
+                    <p class="page-subtitle">Choose a date and time that works best for you. We'll discuss your project goals and how Diamondback Coding can help bring your vision to life.</p>
+                </div>
+
+                <div id="schedulingInterface">
+                    <div class="scheduling-grid">
+                        <div class="calendar-section">
+                            <h2 class="section-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                                Select a Date
+                            </h2>
+                            <div class="calendar">
+                                <div class="calendar-header">
+                                    <div class="calendar-month" id="calendarMonth"></div>
+                                    <div class="calendar-nav">
+                                        <button id="prevMonth">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="15 18 9 12 15 6"/>
+                                            </svg>
+                                        </button>
+                                        <button id="nextMonth">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="9 18 15 12 9 6"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="calendarGrid" class="calendar-grid"></div>
+                            </div>
+                        </div>
+
+                        <div class="time-slots-section">
+                            <h2 class="section-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                Select a Time
+                            </h2>
+                            <div id="timeSlotsContainer">
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                    <div>Please select a date first</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section" id="formSection" style="display: none;">
+                        <h2 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            Your Information
+                        </h2>
+
+                        <div class="selected-datetime">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            <div>
+                                <div class="selected-datetime-label">Selected Time</div>
+                                <div class="selected-datetime-value" id="selectedDateTimeText"></div>
+                            </div>
+                        </div>
+
+                        <form id="schedulingForm">
+                            <div class="form-group">
+                                <label class="form-label" for="name">Full Name *</label>
+                                <input type="text" id="name" class="form-input" required placeholder="John Doe">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="email">Email Address *</label>
+                                <input type="email" id="email" class="form-input" required placeholder="john@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="phone">Phone Number</label>
+                                <input type="tel" id="phone" class="form-input" placeholder="(555) 123-4567">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="company">Company Name</label>
+                                <input type="text" id="company" class="form-input" placeholder="Your Company">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="notes">What would you like to discuss?</label>
+                                <textarea id="notes" class="form-textarea" placeholder="Tell us about your project..."></textarea>
+                            </div>
+                            <button type="submit" class="btn" id="submitBtn">Confirm Appointment</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="successMessage" style="display: none;">
+                    <div class="success-message">
+                        <div class="success-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <h2 class="success-title">You're All Set!</h2>
+                        <p class="success-text">Your consultation has been scheduled. We'll send you a confirmation email shortly.</p>
+                        <div class="success-details" id="successDetails"></div>
+                        <button class="btn btn-secondary" onclick="location.href='/'">Return to Homepage</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">
+                © 2026 Diamondback Coding. All rights reserved. | 
+                <a href="mailto:contact@diamondbackcoding.com" class="footer-link">contact@diamondbackcoding.com</a> | 
+                <a href="tel:+15129800393" class="footer-link">(512) 980-0393</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        const API_URL = window.location.origin;
+        let currentMonth = new Date();
+        let selectedDate = null;
+        let selectedTime = null;
+        const timeSlots = ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM'];
+        const businessDays = [1, 2, 3, 4, 5];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCalendar();
+            document.getElementById('prevMonth').addEventListener('click', () => { currentMonth.setMonth(currentMonth.getMonth() - 1); renderCalendar(); });
+            document.getElementById('nextMonth').addEventListener('click', () => { currentMonth.setMonth(currentMonth.getMonth() + 1); renderCalendar(); });
+            document.getElementById('schedulingForm').addEventListener('submit', handleFormSubmit);
+        });
+
+        function renderCalendar() {
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('calendarMonth').textContent = `${monthNames[month]} ${year}`;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            document.getElementById('prevMonth').disabled = year === today.getFullYear() && month === today.getMonth();
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+            let html = '';
+            // Headers
+            ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
+                html += `<div class="calendar-day-header">${day}</div>`;
+            });
+
+            // Previous month days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                html += `<div class="calendar-day other-month">${daysInPrevMonth - i}</div>`;
+            }
+
+            // Current month days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                date.setHours(0, 0, 0, 0);
+                let classes = 'calendar-day';
+                const isToday = date.getTime() === today.getTime();
+                const isPast = date < today;
+                const isWeekend = !businessDays.includes(date.getDay());
+                const isSelected = selectedDate && date.getTime() === selectedDate.getTime();
+                
+                if (isToday) classes += ' today';
+                if (isPast || isWeekend) classes += ' disabled';
+                if (isSelected) classes += ' selected';
+                
+                const onclick = (!isPast && !isWeekend) ? `onclick="selectDate(new Date(${year},${month},${day}), this)"` : '';
+                html += `<div class="${classes}" ${onclick}>${day}</div>`;
+            }
+
+            // Next month days
+            const totalCells = firstDay + daysInMonth;
+            const remainingCells = (Math.ceil(totalCells / 7) * 7) - totalCells;
+            for (let day = 1; day <= remainingCells; day++) {
+                html += `<div class="calendar-day other-month">${day}</div>`;
+            }
+
+            document.getElementById('calendarGrid').innerHTML = html;
+        }
+
+        function selectDate(date, el) {
+            selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            selectedTime = null;
+            document.querySelectorAll('.calendar-day').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+            renderTimeSlots();
+            document.getElementById('formSection').style.display = 'none';
+        }
+
+        function renderTimeSlots() {
+            let html = '<div class="time-slots">';
+            timeSlots.forEach(time => {
+                const isSelected = selectedTime === time;
+                html += `<div class="time-slot ${isSelected ? 'selected' : ''}" onclick="selectTime('${time}', this)">${time}</div>`;
+            });
+            html += '</div>';
+            document.getElementById('timeSlotsContainer').innerHTML = html;
+        }
+
+        function selectTime(time, el) {
+            selectedTime = time;
+            document.querySelectorAll('.time-slot').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('formSection').style.display = 'block';
+            const dateStr = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('selectedDateTimeText').textContent = `${dateStr} at ${selectedTime}`;
+            document.getElementById('formSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            if (!selectedDate || !selectedTime) { alert('Please select a date and time'); return; }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Scheduling...';
+
+            const [hours, minutes, period] = selectedTime.match(/(\d+):(\d+)\s(AM|PM)/).slice(1);
+            let hour = parseInt(hours);
+            if (period === 'PM' && hour !== 12) hour += 12;
+            if (period === 'AM' && hour === 12) hour = 0;
+
+            const scheduledTime = new Date(selectedDate);
+            scheduledTime.setHours(hour, parseInt(minutes), 0, 0);
+
+            const formData = {
+                event: 'invitee.created',
+                payload: {
+                    email: document.getElementById('email').value,
+                    name: document.getElementById('name').value,
+                    scheduled_event: { start_time: scheduledTime.toISOString() },
+                    event_type: { name: 'Consultation' },
+                    phone: document.getElementById('phone').value,
+                    company: document.getElementById('company').value,
+                    notes: document.getElementById('notes').value
+                }
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/api/scheduling/webhook`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                if (response.ok && result.processed) {
+                    showSuccess(formData.payload);
+                } else {
+                    throw new Error(result.error || 'Failed to schedule');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Failed to schedule appointment. Please try again or contact us directly at (512) 980-0393.');
+                btn.disabled = false;
+                btn.innerHTML = 'Confirm Appointment';
+            }
+        }
+
+        function showSuccess(data) {
+            document.getElementById('schedulingInterface').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'block';
+            const dateStr = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('successDetails').innerHTML = `
+                <div class="success-details-item"><span class="success-details-label">Name</span><span class="success-details-value">${data.name}</span></div>
+                <div class="success-details-item"><span class="success-details-label">Email</span><span class="success-details-value">${data.email}</span></div>
+                <div class="success-details-item"><span class="success-details-label">Date & Time</span><span class="success-details-value">${dateStr} at ${selectedTime}</span></div>
+                <div class="success-details-item"><span class="success-details-label">Type</span><span class="success-details-value">Discovery Call</span></div>
+            `;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

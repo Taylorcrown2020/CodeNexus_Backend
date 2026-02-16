@@ -5501,38 +5501,99 @@ function renderDashboard(content) {
             </div>
             
             <div class="table-container">
-                <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle);">
-                    <h3 style="font-size: 15px; font-weight: 700;">Upcoming Tasks</h3>
+                <div style="padding: 20px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="font-size: 15px; font-weight: 700;">Upcoming Appointments</h3>
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Next 7 Days</div>
                 </div>
-                <div style="padding: 16px;">
-                    ${state.tasks.filter(t => !t.completed).slice(0, 5).map(task => `
-                        <div class="task-item" style="margin-bottom: 10px;">
-                            <div class="task-checkbox ${task.completed ? 'checked' : ''}" onclick="toggleTask(${task.id})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                            </div>
-                            <div class="task-content">
-                                <div class="task-title">${task.title}</div>
-                                <div class="task-meta">
-                                    <div class="task-due ${new Date(task.dueDate) < new Date() ? 'overdue' : ''}">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                            <line x1="16" y1="2" x2="16" y2="6"/>
-                                            <line x1="8" y1="2" x2="8" y2="6"/>
-                                            <line x1="3" y1="10" x2="21" y2="10"/>
-                                        </svg>
-                                        ${formatDate(task.dueDate)}
-                                    </div>
-                                    <span class="priority-badge priority-${task.priority}">${task.priority}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
+                <div id="upcomingAppointmentsList" style="padding: 16px;">
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; opacity: 0.3;">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        <div style="font-size: 13px;">Loading appointments...</div>
+                    </div>
                 </div>
             </div>
         </div>
     `;
+    
+    // Load appointments after rendering
+    loadUpcomingAppointments();
+}
+
+// Load and display upcoming appointments
+async function loadUpcomingAppointments() {
+    try {
+        const token = state.authToken || localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/appointments/upcoming`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load appointments');
+        
+        const appointments = await response.json();
+        const container = document.getElementById('upcomingAppointmentsList');
+        
+        if (!container) return; // User navigated away
+        
+        if (appointments.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; opacity: 0.3;">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <div style="font-size: 13px;">No upcoming appointments</div>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = appointments.slice(0, 5).map(apt => {
+            const scheduledDate = new Date(apt.scheduled_time);
+            const isToday = scheduledDate.toDateString() === new Date().toDateString();
+            const isTomorrow = scheduledDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
+            
+            let dateLabel = formatDate(apt.scheduled_time);
+            if (isToday) dateLabel = 'Today';
+            else if (isTomorrow) dateLabel = 'Tomorrow';
+            
+            const timeLabel = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            
+            return `
+                <div style="padding: 12px; margin-bottom: 10px; background: var(--bg-tertiary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-amber);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">${apt.lead_name || apt.lead_email}</div>
+                        ${apt.lead_temperature ? `<span class="status-badge status-${apt.lead_temperature === 'hot' ? 'success' : 'pending'}" style="font-size: 10px; padding: 2px 8px;">${apt.lead_temperature.toUpperCase()}</span>` : ''}
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">${apt.event_type || 'Consultation'}</div>
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span>${dateLabel} at ${timeLabel}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading appointments:', error);
+        const container = document.getElementById('upcomingAppointmentsList');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: var(--status-danger); font-size: 13px;">
+                    Failed to load appointments
+                </div>
+            `;
+        }
+    }
 }
 
 // ==================== CLIENT PORTAL SECTION ====================

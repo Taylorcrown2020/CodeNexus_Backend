@@ -19,6 +19,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || 'https://diamondbackcoding.com';
+const SCHEDULING_URL = process.env.SCHEDULING_URL || 'https://diamondbackcoding.com/schedule';
 
 // Service Packages Definition (matching pricing page)
 const servicePackages = {
@@ -2335,6 +2336,177 @@ async function authenticateToken(req, res, next) {
     req.user = decoded;
     next();
 }
+
+// ========================================
+// SCHEDULING WEBHOOK (e.g., from Calendly, Cal.com, etc.)
+// ========================================
+app.post('/api/scheduling/webhook', async (req, res) => {
+    try {
+        console.log('[SCHEDULING WEBHOOK] Received:', JSON.stringify(req.body, null, 2));
+        
+        // Extract data from webhook payload
+        // This structure works for Calendly - adjust based on your scheduling provider
+        const { event, payload } = req.body;
+        
+        // Only process scheduled events (new appointments)
+        if (event !== 'invitee.created' && event !== 'appointment.scheduled') {
+            console.log('[SCHEDULING WEBHOOK] Ignoring event type:', event);
+            return res.json({ received: true, processed: false });
+        }
+        
+        // Extract invitee details
+        const inviteeEmail = payload?.email || payload?.invitee?.email;
+        const inviteeName = payload?.name || payload?.invitee?.name;
+        const scheduledTime = payload?.scheduled_event?.start_time || payload?.start_time;
+        const eventType = payload?.event_type?.name || payload?.event_name || 'Consultation';
+        
+        if (!inviteeEmail) {
+            console.error('[SCHEDULING WEBHOOK] No email found in payload');
+            return res.status(400).json({ error: 'No email in payload' });
+        }
+        
+        console.log(`[SCHEDULING WEBHOOK] Processing appointment for: ${inviteeEmail}`);
+        
+        // Find the lead by email
+        const leadResult = await pool.query(
+            'SELECT id, name, email, lead_temperature FROM leads WHERE LOWER(email) = LOWER($1)',
+            [inviteeEmail]
+        );
+        
+        if (leadResult.rows.length === 0) {
+            console.log('[SCHEDULING WEBHOOK] Lead not found, creating new lead');
+            
+            // Create new lead as hot (they scheduled!)
+            const newLead = await pool.query(
+                `INSERT INTO leads (name, email, lead_temperature, source, notes, last_contact)
+                 VALUES ($1, $2, 'hot', 'scheduling', $3, NOW())
+                 RETURNING id`,
+                [
+                    inviteeName || inviteeEmail.split('@')[0],
+                    inviteeEmail,
+                    `Scheduled ${eventType} for ${scheduledTime}`
+                ]
+            );
+            
+            console.log(`[SCHEDULING WEBHOOK] Created new hot lead: ${newLead.rows[0].id}`);
+        } else {
+            const lead = leadResult.rows[0];
+            
+            // Promote cold lead to hot
+            if (lead.lead_temperature === 'cold') {
+                await pool.query(
+                    `UPDATE leads 
+                     SET lead_temperature = 'hot', 
+                         last_contact = NOW(),
+                         notes = COALESCE(notes || E'\\n\\n', '') || $1
+                     WHERE id = $2`,
+                    [`✅ Scheduled ${eventType} for ${scheduledTime}`, lead.id]
+                );
+                
+                console.log(`[SCHEDULING WEBHOOK] ✅ Promoted lead ${lead.id} from COLD to HOT`);
+            } else {
+                // Already hot, just update notes
+                await pool.query(
+                    `UPDATE leads 
+                     SET last_contact = NOW(),
+                         notes = COALESCE(notes || E'\\n\\n', '') || $1
+                     WHERE id = $2`,
+                    [`📅 Scheduled ${eventType} for ${scheduledTime}`, lead.id]
+                );
+                
+                console.log(`[SCHEDULING WEBHOOK] Updated existing lead ${lead.id} (already ${lead.lead_temperature})`);
+            }
+        }
+        
+        // Store the appointment in database
+        await pool.query(
+            `INSERT INTO appointments (lead_email, lead_name, scheduled_time, event_type, status, created_at)
+             VALUES ($1, $2, $3, $4, 'scheduled', NOW())
+             ON CONFLICT DO NOTHING`,
+            [inviteeEmail, inviteeName, scheduledTime, eventType]
+        );
+        
+        console.log('[SCHEDULING WEBHOOK] ✅ Appointment stored successfully');
+        
+        res.json({ 
+            received: true, 
+            processed: true,
+            message: 'Appointment recorded and lead updated'
+        });
+        
+    } catch (error) {
+        console.error('[SCHEDULING WEBHOOK] Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get upcoming appointments for dashboard
+app.get('/api/appointments/upcoming', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                a.id,
+                a.lead_email,
+                a.lead_name,
+                a.scheduled_time,
+                a.event_type,
+                a.status,
+                a.created_at,
+                l.id as lead_id,
+                l.lead_temperature,
+                l.company
+            FROM appointments a
+            LEFT JOIN leads l ON LOWER(l.email) = LOWER(a.lead_email)
+            WHERE a.scheduled_time >= NOW()
+            AND a.status = 'scheduled'
+            ORDER BY a.scheduled_time ASC
+            LIMIT 50
+        `);
+        
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[APPOINTMENTS] Error fetching upcoming:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get all appointments (with filtering)
+app.get('/api/appointments', authenticateToken, async (req, res) => {
+    try {
+        const { status, limit = 100 } = req.query;
+        
+        let query = `
+            SELECT 
+                a.id,
+                a.lead_email,
+                a.lead_name,
+                a.scheduled_time,
+                a.event_type,
+                a.status,
+                a.created_at,
+                l.id as lead_id,
+                l.lead_temperature,
+                l.company
+            FROM appointments a
+            LEFT JOIN leads l ON LOWER(l.email) = LOWER(a.lead_email)
+        `;
+        
+        const params = [];
+        if (status) {
+            query += ` WHERE a.status = $1`;
+            params.push(status);
+        }
+        
+        query += ` ORDER BY a.scheduled_time DESC LIMIT $${params.length + 1}`;
+        params.push(limit);
+        
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[APPOINTMENTS] Error fetching all:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
 // ========================================
 // AUTHENTICATION ROUTES
@@ -12054,7 +12226,7 @@ Valid for all packages. Choose one option per customer.
 <tr><td align="center" style="padding:0 30px 25px 30px;background-color:#06B6D4">
 <table cellpadding="0" cellspacing="0" border="0" style="background-color:#EC4899;border-radius:50px">
 <tr><td style="padding:22px 75px">
-<a href="https://diamondbackcoding.com/contact.html" style="color:#ffffff;font-size:18px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2.2px;font-family:'Arial Black',Arial,sans-serif;display:block">Claim Your 25% Discount</a>
+<a href="${SCHEDULING_URL}" style="color:#ffffff;font-size:18px;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:2.2px;font-family:'Arial Black',Arial,sans-serif;display:block">Schedule Your Consultation</a>
 </td></tr>
 </table>
 </td></tr>
@@ -13099,7 +13271,7 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
                     subhead: `Hi ${lead.name || 'there'} — I wanted to check in on my previous message.`,
                     body: `We help businesses like yours build custom websites and CRM platforms — owned by you, no subscriptions, no transaction fees. If you haven't had a chance to look us over, I'd love just five minutes of your time.`,
                     ctaLabel: 'Schedule a Quick Call',
-                    ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                    ctaUrl: SCHEDULING_URL,
                     accentColor: '#FF6B35',
                     tagline: 'YOUR VISION. OUR CODE.',
                 },
@@ -13108,8 +13280,8 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
                     headline: 'You keep 100% of your revenue.',
                     subhead: `Hi ${lead.name || 'there'} — just circling back one more time.`,
                     body: `Platforms like Shopify and Squarespace quietly take 2–5% of every sale you make. With a custom Diamondback site, that money stays in your pocket — forever. For a business doing $200K/year, that's up to $10,000 back in your pocket annually.`,
-                    ctaLabel: 'See How Much You Could Save',
-                    ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                    ctaLabel: 'Schedule a Consultation',
+                    ctaUrl: SCHEDULING_URL,
                     accentColor: '#1A7A3A',
                     tagline: 'ZERO TRANSACTION FEES.',
                 },
@@ -13118,8 +13290,8 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
                     headline: 'No pressure — just wanted you to have this.',
                     subhead: `Hi ${lead.name || 'there'},`,
                     body: `I won't keep filling your inbox. But before I go, I'd love for you to know that our clients get custom-built websites they fully own, CRM systems tailored to how they work, and real human support. No templates. No platform lock-in. If the timing ever makes sense, we'll be here.`,
-                    ctaLabel: 'Take a Look When You\'re Ready',
-                    ctaUrl: 'https://diamondbackcoding.com',
+                    ctaLabel: 'Book a Call When Ready',
+                    ctaUrl: SCHEDULING_URL,
                     accentColor: '#2D3142',
                     tagline: 'BUILT FOR YOUR BUSINESS.',
                 },
@@ -13128,8 +13300,8 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
                     headline: 'We\'re still here when you\'re ready.',
                     subhead: `Hi ${lead.name || 'there'} — hope things are going well.`,
                     body: `We know timing isn't always right. When it is, we'd love to talk about how a custom website or CRM can take work off your plate and keep more revenue in your business. No obligation — just a conversation.`,
-                    ctaLabel: 'Let\'s Talk',
-                    ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                    ctaLabel: 'Schedule a Call',
+                    ctaUrl: SCHEDULING_URL,
                     accentColor: '#FF6B35',
                     tagline: 'DIAMONDBACK CODING.',
                 },
@@ -13958,8 +14130,8 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
                             headline: 'You keep 100% of your revenue.',
                             subhead: `Hi ${c.lead_name || 'there'} — just circling back one more time.`,
                             body: `Platforms like Shopify and Squarespace quietly take 2–5% of every sale you make. With a custom Diamondback site, that money stays in your pocket — forever. For a business doing $200K/year, that's up to $10,000 back in your pocket annually.`,
-                            ctaLabel: 'See How Much You Could Save',
-                            ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                            ctaLabel: 'Schedule a Consultation',
+                            ctaUrl: SCHEDULING_URL,
                             accentColor: '#1A7A3A',
                             tagline: 'ZERO TRANSACTION FEES.',
                         },
@@ -13969,8 +14141,8 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
                             headline: 'No pressure — just wanted you to have this.',
                             subhead: `Hi ${c.lead_name || 'there'},`,
                             body: `I won't keep filling your inbox. But before I go, I'd love for you to know that our clients get custom-built websites they fully own, CRM systems tailored to how they work, and real human support. No templates. No platform lock-in. If the timing ever makes sense, we'll be here.`,
-                            ctaLabel: 'Take a Look When You\'re Ready',
-                            ctaUrl: 'https://diamondbackcoding.com',
+                            ctaLabel: 'Book a Call When Ready',
+                            ctaUrl: SCHEDULING_URL,
                             accentColor: '#2D3142',
                             tagline: 'BUILT FOR YOUR BUSINESS.',
                         },
@@ -13980,8 +14152,8 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
                             headline: 'We\'re still here when you\'re ready.',
                             subhead: `Hi ${c.lead_name || 'there'} — hope things are going well.`,
                             body: `We know timing isn't always right. When it is, we'd love to talk about how a custom website or CRM can take work off your plate and keep more revenue in your business. No obligation — just a conversation.`,
-                            ctaLabel: 'Let\'s Talk',
-                            ctaUrl: 'https://diamondbackcoding.com/contact.html',
+                            ctaLabel: 'Schedule a Call',
+                            ctaUrl: SCHEDULING_URL,
                             accentColor: '#FF6B35',
                             tagline: 'DIAMONDBACK CODING.',
                         },
@@ -15005,15 +15177,18 @@ app.post('/api/marketing/blast', authenticateToken, async (req, res) => {
 
                 if (template === 'zerotransactionfees') {
                     // Reuse the zero transaction fees template (inline version)
-                    emailHTML = await buildMarketingTemplateHTML(template, name, subject, body, unsubUrl, BASE_URL);
+                    emailHTML = await buildMarketingTemplateHTML(template, name, subject, body, unsubUrl, BASE_URL, SCHEDULING_URL);
                 } else if (['initial', 'valentinessale', 'springsale', 'blackfriday', 'initialsale', 'valentines14'].includes(template)) {
-                    emailHTML = await buildMarketingTemplateHTML(template, name, subject, body, unsubUrl, BASE_URL);
+                    emailHTML = await buildMarketingTemplateHTML(template, name, subject, body, unsubUrl, BASE_URL, SCHEDULING_URL);
                 } else {
                     // Custom or simple text template
                     const personalizedBody = (body || '').replace(/{{name}}/g, name).replace(/{{Name}}/g, name);
                     emailHTML = buildEmailHTML(`
                         <p>Hi ${name},</p>
                         <div style="white-space: pre-wrap; font-size: 15px; line-height: 1.75; color: #3d3d3d;">${personalizedBody.replace(/\n/g, '<br>')}</div>
+                        <div class="btn-center">
+                            <a href="${SCHEDULING_URL}" class="btn-gold">Schedule a Call</a>
+                        </div>
                         <div class="sign-off">
                             <p>Warm regards,</p>
                             <p class="team-name">The Diamondback Coding Team</p>
@@ -15052,7 +15227,7 @@ app.post('/api/marketing/blast', authenticateToken, async (req, res) => {
 
 // Helper: build HTML for a marketing template by name
 // Calls the same server-side template logic used by follow-ups
-async function buildMarketingTemplateHTML(template, name, subject, bodyText, unsubUrl, baseUrl) {
+async function buildMarketingTemplateHTML(template, name, subject, bodyText, unsubUrl, baseUrl, schedulingUrl = SCHEDULING_URL) {
     // For HTML templates: delegate to inline generation matching the follow-up handler
     // We generate a minimal stub — the main template bodies are defined in /api/follow-ups/:leadId/send-email
     // For marketing blasts we use the buildEmailHTML wrapper with a branded personalised message,
@@ -15073,7 +15248,7 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
             </div>
             <p>Ready to stop losing revenue to your own platform?</p>
             <div style="margin:28px 0;">
-                <a href="${baseUrl}/contact.html" style="background:#FF6B35;color:#fff;padding:14px 32px;border-radius:3px;font-weight:700;text-decoration:none;font-size:15px;">Get a Free Consultation</a>
+                <a href="${SCHEDULING_URL}" style="background:#FF6B35;color:#fff;padding:14px 32px;border-radius:3px;font-weight:700;text-decoration:none;font-size:15px;">Schedule a Free Consultation</a>
             </div>
             <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
         `, { unsubscribeUrl: unsubUrl });
@@ -15098,7 +15273,7 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
         <h2 style="font-size:24px;color:#2D3142;letter-spacing:-0.5px;margin-bottom:12px;">${pd.headline}</h2>
         <p>${pd.body}</p>
         <div style="margin:28px 0;">
-            <a href="${baseUrl}/contact.html" style="background:${accentColor};color:#fff;padding:14px 32px;border-radius:3px;font-weight:700;text-decoration:none;font-size:15px;">Learn More</a>
+            <a href="${schedulingUrl}" style="background:${accentColor};color:#fff;padding:14px 32px;border-radius:3px;font-weight:700;text-decoration:none;font-size:15px;">Schedule a Call</a>
         </div>
         <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
     `, { unsubscribeUrl: unsubUrl });

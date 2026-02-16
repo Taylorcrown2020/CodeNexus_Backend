@@ -3693,6 +3693,16 @@ body.graffiti-mode .sidebar::after {
                 Invoices
                 <span class="nav-badge" id="invoicesBadge">0</span>
             </div>
+            <div class="nav-item" data-section="schedule">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Schedule
+                <span class="nav-badge" id="scheduleBadge">0</span>
+            </div>
         </div>
 
         <!-- ── Projects & Work ── -->
@@ -4513,7 +4523,9 @@ async function renderSection(section) {
         'lead-scoring': 'Lead Scoring',
         'scoring-rules': 'Scoring Rules',
         'client-portal': 'Client Portal',
-        recruitment: 'Recruitment'
+        recruitment: 'Recruitment',
+        calendar: 'Booking Calendar',
+        schedule: 'Schedule'
     };
     
     const pageTitleEl = document.getElementById('pageTitle');
@@ -4699,6 +4711,10 @@ case 'client-portal':
 
         case 'marketing':
             await renderMarketing(content);
+            break;
+
+        case 'schedule':
+            renderSchedule(content);
             break;
             
         default:
@@ -7773,6 +7789,385 @@ ${inv.status !== 'paid' ? `
             `}
         </div>
     `;
+}
+
+function renderSchedule(content) {
+    console.log('📅 Rendering Schedule');
+    
+    const now = new Date();
+    let currentMonth = now.getMonth();
+    let currentYear = now.getFullYear();
+    
+    const renderCalendarView = () => {
+        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        
+        fetch(`${API_URL}/api/bookings?month=${currentMonth + 1}&year=${currentYear}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        })
+        .then(r => r.json())
+        .then(data => {
+            const bookings = data.bookings || [];
+            const bookingsByDate = {};
+            bookings.forEach(b => {
+                const date = new Date(b.booking_date).getDate();
+                if (!bookingsByDate[date]) bookingsByDate[date] = [];
+                bookingsByDate[date].push(b);
+            });
+            
+            let calendarHTML = '';
+            let dayCount = 1;
+            
+            for (let week = 0; week < 6; week++) {
+                calendarHTML += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px;">';
+                for (let day = 0; day < 7; day++) {
+                    if ((week === 0 && day < firstDay) || dayCount > daysInMonth) {
+                        calendarHTML += '<div style="background:var(--bg-secondary);border-radius:8px;padding:12px;min-height:120px;opacity:0.3;"></div>';
+                    } else {
+                        const isToday = dayCount === now.getDate() && currentMonth === now.getMonth() && currentYear === now.getFullYear();
+                        const dayBookings = bookingsByDate[dayCount] || [];
+                        
+                        calendarHTML += `
+                            <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;min-height:120px;border:${isToday ? '2px solid var(--brand-gold)' : '1px solid var(--border-subtle)'};">
+                                <div style="font-weight:700;font-size:16px;margin-bottom:8px;${isToday ? 'color:var(--brand-gold);' : ''}">${dayCount}</div>
+                                ${dayBookings.slice(0, 4).map(b => {
+                                    const statusColor = b.status === 'scheduled' ? '#10b981' : b.status === 'cancelled' ? '#ef4444' : '#f59e0b';
+                                    return `
+                                        <div style="background:${statusColor};color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="viewBookingDetail(${b.id})" title="${b.contact_name} - ${b.service_type || 'Consultation'}">
+                                            ${b.booking_time.substring(0,5)} ${b.contact_name}
+                                        </div>
+                                    `;
+                                }).join('')}
+                                ${dayBookings.length > 4 ? `<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:4px;">+${dayBookings.length - 4} more</div>` : ''}
+                            </div>
+                        `;
+                        dayCount++;
+                    }
+                }
+                calendarHTML += '</div>';
+                if (dayCount > daysInMonth) break;
+            }
+            
+            content.innerHTML = `
+                <div class="section-header" style="margin-bottom: 24px;">
+                    <h2 style="font-size: 24px; font-weight: 800;">Schedule</h2>
+                    <div style="display:flex;gap:12px;align-items:center;">
+                        <button onclick="changeScheduleMonth(-1)" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                        </button>
+                        <span style="font-size:18px;font-weight:700;min-width:200px;text-align:center;">${monthNames[currentMonth]} ${currentYear}</span>
+                        <button onclick="changeScheduleMonth(1)" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                                <polyline points="9 18 15 12 9 6"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:20px;margin-bottom:24px;">
+                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:12px;">
+                        ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => 
+                            `<div style="text-align:center;font-weight:700;color:var(--text-muted);font-size:12px;">${day}</div>`
+                        ).join('')}
+                    </div>
+                    ${calendarHTML}
+                </div>
+
+                <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:24px;">
+                    <h3 style="font-size:18px;font-weight:700;margin-bottom:16px;">Upcoming Appointments</h3>
+                    <div style="display:grid;gap:12px;">
+                        ${bookings.filter(b => new Date(b.booking_date) >= new Date() && b.status !== 'cancelled').slice(0, 15).map(b => {
+                            const statusBadge = {
+                                'scheduled': '<span style="background:#dcfce7;color:#16a34a;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">Scheduled</span>',
+                                'completed': '<span style="background:#dbeafe;color:#1d4ed8;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">Completed</span>',
+                                'cancelled': '<span style="background:#fee2e2;color:#dc2626;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">Cancelled</span>'
+                            }[b.status] || '';
+                            
+                            return `
+                            <div style="background:var(--bg-tertiary);border-radius:8px;padding:16px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;">
+                                <div>
+                                    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+                                        <span style="font-weight:700;font-size:14px;">${b.contact_name}</span>
+                                        ${statusBadge}
+                                    </div>
+                                    <div style="font-size:12px;color:var(--text-muted);">
+                                        📅 ${formatDate(b.booking_date)} at ${b.booking_time.substring(0,5)}
+                                        ${b.service_type ? ` • ${b.service_type}` : ''}
+                                    </div>
+                                    ${b.contact_email ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📧 ${b.contact_email}</div>` : ''}
+                                    ${b.contact_phone ? `<div style="font-size:11px;color:var(--text-muted);">📞 ${b.contact_phone}</div>` : ''}
+                                    ${b.notes ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px;font-style:italic;">${b.notes}</div>` : ''}
+                                </div>
+                                <div style="display:flex;gap:8px;flex-direction:column;">
+                                    ${b.status === 'scheduled' ? `<button onclick="markBookingComplete(${b.id})" class="btn btn-secondary" style="padding:8px 12px;font-size:12px;white-space:nowrap;">Mark Complete</button>` : ''}
+                                    <button onclick="cancelBooking(${b.id})" class="btn" style="padding:8px 12px;font-size:12px;background:#fee2e2;color:#dc2626;white-space:nowrap;">Cancel</button>
+                                </div>
+                            </div>
+                        `;
+                        }).join('') || '<div style="text-align:center;padding:40px;color:var(--text-muted);">No upcoming appointments</div>'}
+                    </div>
+                </div>
+            `;
+            
+            const badge = document.getElementById('scheduleBadge');
+            if (badge) badge.textContent = bookings.filter(b => new Date(b.booking_date) >= new Date() && b.status !== 'cancelled').length;
+        })
+        .catch(e => {
+            console.error('Error loading bookings:', e);
+            content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Error loading schedule</div>';
+        });
+    };
+    
+    window.changeScheduleMonth = (delta) => {
+        currentMonth += delta;
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        } else if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+        renderCalendarView();
+    };
+    
+    renderCalendarView();
+}
+
+window.viewBookingDetail = async function(bookingId) {
+    try {
+        const res = await fetch(`${API_URL}/api/bookings?date=all`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await res.json();
+        const booking = data.bookings.find(b => b.id === bookingId);
+        
+        if (!booking) {
+            showToast('Booking not found', 'error');
+            return;
+        }
+        
+        const statusBadge = {
+            'scheduled': '<span style="background:#dcfce7;color:#16a34a;padding:6px 14px;border-radius:12px;font-size:12px;font-weight:700;">Scheduled</span>',
+            'completed': '<span style="background:#dbeafe;color:#1d4ed8;padding:6px 14px;border-radius:12px;font-size:12px;font-weight:700;">Completed</span>',
+            'cancelled': '<span style="background:#fee2e2;color:#dc2626;padding:6px 14px;border-radius:12px;font-size:12px;font-weight:700;">Cancelled</span>'
+        }[booking.status] || '';
+        
+        const modal = document.getElementById('createModal');
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Booking Details</h2>
+                    <button class="modal-close" onclick="closeModal('createModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom:24px;">
+                        ${statusBadge}
+                    </div>
+                    <div style="display:grid;gap:16px;">
+                        <div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Client</div>
+                            <div style="font-size:16px;font-weight:700;">${booking.contact_name}</div>
+                        </div>
+                        ${booking.contact_email ? `
+                        <div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Email</div>
+                            <div style="font-size:14px;">${booking.contact_email}</div>
+                        </div>
+                        ` : ''}
+                        ${booking.contact_phone ? `
+                        <div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Phone</div>
+                            <div style="font-size:14px;">${booking.contact_phone}</div>
+                        </div>
+                        ` : ''}
+                        <div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Date & Time</div>
+                            <div style="font-size:14px;">${formatDate(booking.booking_date)} at ${booking.booking_time.substring(0,5)}</div>
+                        </div>
+                        ${booking.service_type ? `
+                        <div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Service</div>
+                            <div style="font-size:14px;">${booking.service_type}</div>
+                        </div>
+                        ` : ''}
+                        ${booking.notes ? `
+                        <div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Notes</div>
+                            <div style="font-size:14px;font-style:italic;">${booking.notes}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="modal-actions" style="margin-top:24px;">
+                        <button class="btn btn-secondary" onclick="closeModal('createModal')">Close</button>
+                        ${booking.status === 'scheduled' ? `<button class="btn btn-primary" onclick="markBookingComplete(${bookingId}); closeModal('createModal');">Mark Complete</button>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        modal.classList.add('active');
+    } catch (error) {
+        console.error('Error loading booking:', error);
+        showToast('Error loading booking details', 'error');
+    }
+};
+
+window.markBookingComplete = async function(bookingId) {
+    try {
+        const res = await fetch(`${API_URL}/api/bookings/${bookingId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: 'completed' })
+        });
+        
+        if (!res.ok) throw new Error('Failed to update booking');
+        
+        showToast('Booking marked as complete', 'success');
+        
+        if (state.currentSection === 'schedule') {
+            renderSchedule(document.getElementById('contentArea'));
+        }
+    } catch (error) {
+        console.error('Error updating booking:', error);
+        showToast('Error updating booking', 'error');
+    }
+};
+
+window.cancelBooking = async function(bookingId) {
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    
+    try {
+        const res = await fetch(`${API_URL}/api/bookings/${bookingId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: 'cancelled' })
+        });
+        
+        if (!res.ok) throw new Error('Failed to cancel booking');
+        
+        showToast('Booking cancelled', 'success');
+        
+        if (state.currentSection === 'schedule') {
+            renderSchedule(document.getElementById('contentArea'));
+        }
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
+        showToast('Error cancelling booking', 'error');
+    }
+};
+
+async function renderSectionEmailAnalytics(emailType, includeHotConversion = false) {
+    try {
+        const res = await fetch(`${API_URL}/api/analytics/email-section/${emailType}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (!res.ok) throw new Error('Failed to load');
+        
+        const data = await res.json();
+        const s = data.stats || {};
+        
+        const totalEmails = parseInt(s.total_emails) || 0;
+        const sent = parseInt(s.total_sent) || 0;
+        const opened = parseInt(s.total_opened) || 0;
+        const clicked = parseInt(s.total_clicked) || 0;
+        const deliveryRate = parseFloat(s.delivery_rate) || 0;
+        const openRate = parseFloat(s.open_rate) || 0;
+        const clickRate = parseFloat(s.click_rate) || 0;
+        const hotConversions = includeHotConversion ? (parseInt(s.opened_and_became_hot) || 0) : 0;
+        
+        const recentRows = (data.recent_emails || []).slice(0, 10).map(e => {
+            const deliveryBadge = {
+                'sent': '<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">Sent</span>',
+                'failed': '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">Failed</span>'
+            }[e.status] || '<span>—</span>';
+            
+            const openedBadge = e.opened_at 
+                ? '<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">Opened</span>'
+                : '<span style="color:var(--text-muted);font-size:11px;">—</span>';
+            
+            const clickedBadge = e.clicked_at
+                ? '<span style="background:#ede9fe;color:#7c3aed;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">Clicked</span>'
+                : '<span style="color:var(--text-muted);font-size:11px;">—</span>';
+            
+            return `<tr>
+                <td style="font-size:13px;">${e.lead_name || '—'}</td>
+                <td style="font-size:12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.subject || '—'}</td>
+                <td style="font-size:12px;">${e.sent_at ? formatDate(e.sent_at) : '—'}</td>
+                <td>${deliveryBadge}</td>
+                <td>${openedBadge}</td>
+                <td>${clickedBadge}</td>
+                ${includeHotConversion ? `<td>${e.lead_temperature === 'hot' ? '<span style="background:#fef2f2;color:#ef4444;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">HOT</span>' : '<span style="color:var(--text-muted);font-size:11px;">Cold</span>'}</td>` : ''}
+            </tr>`;
+        }).join('');
+        
+        return `
+        <div style="background:var(--bg-tertiary);border-radius:var(--radius-lg);padding:24px;margin-top:32px;border:1px solid var(--border-subtle);">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;color:var(--brand-gold);">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                <h3 style="font-size: 16px; font-weight: 700; margin: 0;">${emailType.charAt(0).toUpperCase() + emailType.slice(1)} Email Analytics</h3>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;text-align:center;">
+                    <div style="font-size:22px;font-weight:800;color:var(--text-primary);">${totalEmails}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Total</div>
+                </div>
+                <div style="background:#f0fdf4;border-radius:8px;padding:14px;text-align:center;">
+                    <div style="font-size:22px;font-weight:800;color:#16a34a;">${deliveryRate.toFixed(1)}%</div>
+                    <div style="font-size:11px;color:#16a34a;margin-top:4px;">Delivered</div>
+                </div>
+                <div style="background:#eff6ff;border-radius:8px;padding:14px;text-align:center;">
+                    <div style="font-size:22px;font-weight:800;color:#1d4ed8;">${openRate.toFixed(1)}%</div>
+                    <div style="font-size:11px;color:#1d4ed8;margin-top:4px;">Opened</div>
+                </div>
+                <div style="background:#f5f3ff;border-radius:8px;padding:14px;text-align:center;">
+                    <div style="font-size:22px;font-weight:800;color:#7c3aed;">${clickRate.toFixed(1)}%</div>
+                    <div style="font-size:11px;color:#7c3aed;margin-top:4px;">Clicked</div>
+                </div>
+                ${includeHotConversion ? `
+                <div style="background:#fef9f0;border-radius:8px;padding:14px;text-align:center;">
+                    <div style="font-size:22px;font-weight:800;color:#d97706;">${hotConversions}</div>
+                    <div style="font-size:11px;color:#d97706;margin-top:4px;">→ Hot</div>
+                </div>
+                ` : ''}
+            </div>
+            
+            ${totalEmails === 0 ? `<div style="text-align:center;padding:30px;color:var(--text-muted);">No ${emailType} emails sent yet</div>` : `
+            <div style="overflow-x:auto;">
+                <table class="data-table" style="font-size:13px;">
+                    <thead>
+                        <tr>
+                            <th>Lead</th>
+                            <th>Subject</th>
+                            <th>Sent</th>
+                            <th>Status</th>
+                            <th>Opened</th>
+                            <th>Clicked</th>
+                            ${includeHotConversion ? '<th>Temp</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody>${recentRows}</tbody>
+                </table>
+            </div>
+            `}
+        </div>
+        `;
+    } catch (e) {
+        return `<div style="background:var(--bg-tertiary);border-radius:var(--radius-lg);padding:24px;margin-top:32px;text-align:center;color:var(--text-muted);">Could not load ${emailType} analytics</div>`;
+    }
 }
 
 // ADD THIS NEW FUNCTION (place it after renderInvoices):

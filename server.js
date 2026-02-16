@@ -455,6 +455,31 @@ app.post('/api/brevo/webhook', async (req, res) => {
     }
 });
 
+function generateBookingWidgetHTML(leadEmail = '') {
+    const bookingUrl = `${BASE_URL}/book${leadEmail ? `?email=${encodeURIComponent(leadEmail)}` : ''}`;
+    
+    return `
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 24px 0;">
+<tr><td style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); border-radius: 12px; padding: 32px 28px; border: 2px solid #D4A847;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td align="center" style="padding-bottom: 20px;">
+        <span style="color: #D4A847; font-size: 22px; font-weight: 700; font-family: Arial, sans-serif; display: block; margin-bottom: 8px;">📅 Schedule Your Free Consultation</span>
+        <span style="color: #c4c4c4; font-size: 14px; font-family: Arial, sans-serif; display: block; line-height: 1.5;">Pick a time that works for you - we'll discuss your project and answer questions.</span>
+    </td></tr>
+    <tr><td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
+        <tr><td style="background: #D4A847; border-radius: 8px; padding: 16px 40px; box-shadow: 0 4px 12px rgba(212, 168, 71, 0.3);">
+            <a href="${bookingUrl}" style="color: #000000; font-size: 16px; font-weight: 700; text-decoration: none; font-family: Arial, sans-serif; display: block;">View Available Times</a>
+        </td></tr>
+        </table>
+        <span style="color: #888; font-size: 12px; font-family: Arial, sans-serif; display: block; margin-top: 12px;">Click to see real-time availability</span>
+    </td></tr>
+    </table>
+</td></tr>
+</table>
+`;
+}
+
 // ========================================
 // DATABASE CONNECTION
 // ========================================
@@ -1846,6 +1871,30 @@ await client.query(`
             ON CONFLICT DO NOTHING;
         `);
 
+        // Bookings/Appointments Table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS bookings (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE SET NULL,
+                contact_name VARCHAR(255) NOT NULL,
+                contact_email VARCHAR(255) NOT NULL,
+                contact_phone VARCHAR(50),
+                booking_date DATE NOT NULL,
+                booking_time TIME NOT NULL,
+                duration_minutes INTEGER DEFAULT 30,
+                service_type VARCHAR(100),
+                notes TEXT,
+                status VARCHAR(50) DEFAULT 'scheduled',
+                booked_from VARCHAR(50) DEFAULT 'email',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_bookings_date_time ON bookings(booking_date, booking_time);
+        `);
+
 await client.query(`CREATE TABLE IF NOT EXISTS client_uploads (
     id SERIAL PRIMARY KEY,
     lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
@@ -2944,6 +2993,242 @@ app.get('/api/admin/cookie-consent/stats', authenticateToken, async (req, res) =
             message: 'Server error.' 
         });
     }
+});
+
+app.get('/book', (req, res) => {
+    const email = req.query.email || '';
+    res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book a Consultation - Diamondback Coding</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #1a1a1a; margin-bottom: 10px; font-size: 28px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #D4A847;
+        }
+        .date-time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn {
+            background: #D4A847;
+            color: #000;
+            border: none;
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(212, 168, 71, 0.3);
+        }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .time-slot {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .time-slot:hover { border-color: #D4A847; background: #fff9e6; }
+        .time-slot.selected { border-color: #D4A847; background: #D4A847; color: #000; font-weight: 700; }
+        .time-slot.booked { opacity: 0.4; cursor: not-allowed; }
+        .success { background: #22c55e; color: white; padding: 20px; border-radius: 8px; text-align: center; }
+        .error { background: #ef4444; color: white; padding: 20px; border-radius: 8px; text-align: center; }
+        .loading { text-align: center; padding: 20px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📅 Schedule Your Consultation</h1>
+        <p class="subtitle">Let's discuss your project - pick a time that works for you</p>
+        
+        <div id="bookingForm">
+            <div class="form-group">
+                <label>Your Name *</label>
+                <input type="text" id="name" required value="">
+            </div>
+            <div class="form-group">
+                <label>Your Email *</label>
+                <input type="email" id="email" required value="${email}">
+            </div>
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="tel" id="phone">
+            </div>
+            <div class="form-group">
+                <label>Service Interest</label>
+                <select id="service">
+                    <option value="Web Development">Web Development</option>
+                    <option value="CRM System">CRM System</option>
+                    <option value="SEO Services">SEO Services</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="General Consultation">General Consultation</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Select Date *</label>
+                <input type="date" id="date" min="${new Date().toISOString().split('T')[0]}" required>
+            </div>
+            <div id="timeSlotsContainer" style="display:none;">
+                <label>Available Times *</label>
+                <div id="timeSlots" class="time-slots"></div>
+            </div>
+            <div class="form-group">
+                <label>Additional Notes</label>
+                <textarea id="notes" rows="3"></textarea>
+            </div>
+            <button class="btn" id="submitBtn" onclick="submitBooking()">Confirm Booking</button>
+        </div>
+        
+        <div id="successMessage" style="display:none;" class="success">
+            <h2>✅ Booking Confirmed!</h2>
+            <p>You'll receive a confirmation email shortly. We look forward to speaking with you!</p>
+        </div>
+        
+        <div id="errorMessage" style="display:none;" class="error">
+            <h2>❌ Booking Failed</h2>
+            <p id="errorText"></p>
+        </div>
+    </div>
+
+    <script>
+        let selectedTime = null;
+        
+        document.getElementById('date').addEventListener('change', async (e) => {
+            const date = e.target.value;
+            if (!date) return;
+            
+            const container = document.getElementById('timeSlotsContainer');
+            const slotsDiv = document.getElementById('timeSlots');
+            
+            container.style.display = 'block';
+            slotsDiv.innerHTML = '<div class="loading">Loading available times...</div>';
+            
+            try {
+                const res = await fetch(\`${BASE_URL}/api/public/booking/availability?date=\${date}\`);
+                const data = await res.json();
+                
+                if (data.available && data.available.length > 0) {
+                    slotsDiv.innerHTML = data.available.map(time => 
+                        \`<div class="time-slot" onclick="selectTime('\${time}')">\${formatTime(time)}</div>\`
+                    ).join('');
+                } else {
+                    slotsDiv.innerHTML = '<p style="text-align:center;color:#666;">No available times for this date</p>';
+                }
+            } catch (error) {
+                slotsDiv.innerHTML = '<p style="text-align:center;color:#ef4444;">Error loading times</p>';
+            }
+        });
+        
+        function selectTime(time) {
+            selectedTime = time;
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected');
+                if (slot.textContent.includes(formatTime(time))) {
+                    slot.classList.add('selected');
+                }
+            });
+        }
+        
+        function formatTime(time24) {
+            const [hours, minutes] = time24.split(':');
+            const h = parseInt(hours);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            return \`\${h12}:\${minutes} \${ampm}\`;
+        }
+        
+        async function submitBooking() {
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const service = document.getElementById('service').value;
+            const date = document.getElementById('date').value;
+            const notes = document.getElementById('notes').value;
+            
+            if (!name || !email || !date || !selectedTime) {
+                alert('Please fill in all required fields and select a time');
+                return;
+            }
+            
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Booking...';
+            
+            try {
+                const res = await fetch('${BASE_URL}/api/public/booking/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contact_name: name,
+                        contact_email: email,
+                        contact_phone: phone,
+                        booking_date: date,
+                        booking_time: selectedTime,
+                        service_type: service,
+                        notes: notes,
+                        lead_email: email
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('bookingForm').style.display = 'none';
+                    document.getElementById('successMessage').style.display = 'block';
+                } else {
+                    throw new Error(data.error || 'Booking failed');
+                }
+            } catch (error) {
+                document.getElementById('errorText').textContent = error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Try Again';
+            }
+        }
+    </script>
+</body>
+</html>
+    `);
 });
 
 // ========================================
@@ -11070,6 +11355,8 @@ Our objective is to provide businesses with the best and most cost-effective web
 </table>
 </td></tr>
 
+${generateBookingWidgetHTML(lead.email)}
+
 <!-- Footer -->
 <tr><td style="background-color:#2C3E50;padding:35px 40px">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -14447,6 +14734,183 @@ function startEmailConfirmationJob() {
     
     console.log('[EMAIL-CONFIRM] ✅ Background job started - will auto-confirm emails every hour');
 }
+
+// ========================================
+// BOOKINGS API
+// ========================================
+
+// PUBLIC: Get available time slots
+app.get('/api/public/booking/availability', async (req, res) => {
+    try {
+        const { date } = req.query;
+        if (!date) return res.status(400).json({ error: 'Date required' });
+        
+        const bookingsResult = await pool.query(
+            `SELECT booking_time, duration_minutes FROM bookings 
+             WHERE booking_date = $1 AND status != 'cancelled' ORDER BY booking_time`,
+            [date]
+        );
+        
+        const businessStart = 9, businessEnd = 17, slotDuration = 30;
+        const availableSlots = [];
+        const bookedTimes = new Set();
+        
+        bookingsResult.rows.forEach(b => {
+            const [hours, minutes] = b.booking_time.split(':').map(Number);
+            const startMinutes = hours * 60 + minutes;
+            const duration = b.duration_minutes || 30;
+            for (let i = 0; i < duration; i += slotDuration) {
+                bookedTimes.add(startMinutes + i);
+            }
+        });
+        
+        for (let hour = businessStart; hour < businessEnd; hour++) {
+            for (let minute of [0, 30]) {
+                const totalMinutes = hour * 60 + minute;
+                if (!bookedTimes.has(totalMinutes)) {
+                    availableSlots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+                }
+            }
+        }
+        
+        res.json({ date, available: availableSlots, booked: bookingsResult.rows.length });
+    } catch (error) {
+        console.error('Error fetching availability:', error);
+        res.status(500).json({ error: 'Failed to fetch availability' });
+    }
+});
+
+// PUBLIC: Create booking
+app.post('/api/public/booking/create', async (req, res) => {
+    try {
+        const { contact_name, contact_email, contact_phone, booking_date, booking_time, service_type, notes, lead_email } = req.body;
+        
+        if (!contact_name || !contact_email || !booking_date || !booking_time) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        
+        const existingBooking = await pool.query(
+            `SELECT id FROM bookings WHERE booking_date = $1 AND booking_time = $2 AND status != 'cancelled'`,
+            [booking_date, booking_time]
+        );
+        
+        if (existingBooking.rows.length > 0) {
+            return res.status(409).json({ error: 'Time slot no longer available' });
+        }
+        
+        let leadId = null;
+        if (lead_email || contact_email) {
+            const leadResult = await pool.query('SELECT id FROM leads WHERE email = $1', [lead_email || contact_email]);
+            if (leadResult.rows.length > 0) leadId = leadResult.rows[0].id;
+        }
+        
+        const result = await pool.query(
+            `INSERT INTO bookings (lead_id, contact_name, contact_email, contact_phone, booking_date, booking_time, service_type, notes, booked_from)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'email') RETURNING *`,
+            [leadId, contact_name, contact_email, contact_phone, booking_date, booking_time, service_type, notes]
+        );
+        
+        res.json({ success: true, booking: result.rows[0], message: 'Booking confirmed!' });
+    } catch (error) {
+        console.error('Error creating booking:', error);
+        res.status(500).json({ error: 'Failed to create booking' });
+    }
+});
+
+// ADMIN: Get all bookings
+app.get('/api/bookings', authenticateToken, async (req, res) => {
+    try {
+        const { month, year, date } = req.query;
+        let query = `SELECT b.*, l.name as lead_name FROM bookings b LEFT JOIN leads l ON b.lead_id = l.id WHERE 1=1`;
+        const params = [];
+        
+        if (date) {
+            query += ' AND b.booking_date = $1';
+            params.push(date);
+        } else if (month && year) {
+            query += ' AND EXTRACT(MONTH FROM b.booking_date) = $1 AND EXTRACT(YEAR FROM b.booking_date) = $2';
+            params.push(month, year);
+        }
+        
+        query += ' ORDER BY b.booking_date ASC, b.booking_time ASC';
+        const result = await pool.query(query, params);
+        res.json({ bookings: result.rows });
+    } catch (error) {
+        console.error('Error fetching bookings:', error);
+        res.status(500).json({ error: 'Failed to fetch bookings' });
+    }
+});
+
+// ADMIN: Update booking
+app.put('/api/bookings/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, notes } = req.body;
+        
+        const result = await pool.query(
+            `UPDATE bookings SET status = COALESCE($1, status), notes = COALESCE($2, notes), updated_at = CURRENT_TIMESTAMP
+             WHERE id = $3 RETURNING *`,
+            [status, notes, id]
+        );
+        
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+        res.json({ success: true, booking: result.rows[0] });
+    } catch (error) {
+        console.error('Error updating booking:', error);
+        res.status(500).json({ error: 'Failed to update booking' });
+    }
+});
+
+// ADMIN: Delete booking
+app.delete('/api/bookings/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('DELETE FROM bookings WHERE id = $1 RETURNING *', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting booking:', error);
+        res.status(500).json({ error: 'Failed to delete booking' });
+    }
+});
+
+// Section-specific email analytics
+app.get('/api/analytics/email-section/:emailType', authenticateToken, async (req, res) => {
+    try {
+        const { emailType } = req.params;
+        
+        const statsQuery = `
+            SELECT 
+                COUNT(*) as total_emails,
+                SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as total_sent,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as total_failed,
+                SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as total_opened,
+                SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as total_clicked,
+                ROUND((SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END)::DECIMAL / NULLIF(COUNT(*), 0) * 100), 1) as delivery_rate,
+                ROUND((SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END)::DECIMAL / NULLIF(SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END), 0) * 100), 1) as open_rate,
+                ROUND((SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END)::DECIMAL / NULLIF(SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END), 0) * 100), 1) as click_rate
+                ${emailType === 'follow-up' ? `,
+                SUM(CASE WHEN opened_at IS NOT NULL AND 
+                    EXISTS (SELECT 1 FROM leads WHERE leads.id = email_log.lead_id AND lead_temperature = 'hot')
+                    THEN 1 ELSE 0 END) as opened_and_became_hot` : ''}
+            FROM email_log WHERE email_type = $1
+        `;
+        
+        const statsResult = await pool.query(statsQuery, [emailType]);
+        
+        const recentQuery = `
+            SELECT email_log.*, leads.name as lead_name, leads.email as lead_email, leads.lead_temperature
+            FROM email_log LEFT JOIN leads ON email_log.lead_id = leads.id
+            WHERE email_log.email_type = $1 ORDER BY email_log.created_at DESC LIMIT 50
+        `;
+        
+        const recentResult = await pool.query(recentQuery, [emailType]);
+        res.json({ stats: statsResult.rows[0], recent_emails: recentResult.rows });
+    } catch (error) {
+        console.error('Error fetching section email analytics:', error);
+        res.status(500).json({ error: 'Failed to fetch analytics' });
+    }
+});
 
 async function startServer() {
     try {

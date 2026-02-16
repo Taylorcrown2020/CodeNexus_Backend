@@ -7858,6 +7858,7 @@ function renderSchedule(content) {
     const now = new Date();
     let currentMonth = now.getMonth();
     let currentYear = now.getFullYear();
+    let selectedDate = null;
     
     const renderCalendarView = () => {
         const firstDay = new Date(currentYear, currentMonth, 1).getDay();
@@ -7865,17 +7866,20 @@ function renderSchedule(content) {
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                            'July', 'August', 'September', 'October', 'November', 'December'];
         
-        fetch(`${API_URL}/api/bookings?month=${currentMonth + 1}&year=${currentYear}`, {
+        fetch(`${API_URL}/api/appointments`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         })
         .then(r => r.json())
-        .then(data => {
-            const bookings = data.bookings || [];
-            const bookingsByDate = {};
-            bookings.forEach(b => {
-                const date = new Date(b.booking_date).getDate();
-                if (!bookingsByDate[date]) bookingsByDate[date] = [];
-                bookingsByDate[date].push(b);
+        .then(appointments => {
+            // Group appointments by date
+            const appointmentsByDate = {};
+            appointments.forEach(apt => {
+                const aptDate = new Date(apt.scheduled_time);
+                if (aptDate.getMonth() === currentMonth && aptDate.getFullYear() === currentYear) {
+                    const day = aptDate.getDate();
+                    if (!appointmentsByDate[day]) appointmentsByDate[day] = [];
+                    appointmentsByDate[day].push(apt);
+                }
             });
             
             let calendarHTML = '';
@@ -7888,20 +7892,28 @@ function renderSchedule(content) {
                         calendarHTML += '<div style="background:var(--bg-secondary);border-radius:8px;padding:12px;min-height:120px;opacity:0.3;"></div>';
                     } else {
                         const isToday = dayCount === now.getDate() && currentMonth === now.getMonth() && currentYear === now.getFullYear();
-                        const dayBookings = bookingsByDate[dayCount] || [];
+                        const isSelected = selectedDate && selectedDate.getDate() === dayCount && selectedDate.getMonth() === currentMonth && selectedDate.getFullYear() === currentYear;
+                        const dayApts = appointmentsByDate[dayCount] || [];
                         
                         calendarHTML += `
-                            <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;min-height:120px;border:${isToday ? '2px solid var(--brand-gold)' : '1px solid var(--border-subtle)'};">
+                            <div onclick="selectScheduleDate(${currentYear}, ${currentMonth}, ${dayCount})" 
+                                 style="background:var(--bg-secondary);border-radius:8px;padding:12px;min-height:120px;
+                                        border:${isSelected ? '3px solid var(--brand-gold)' : isToday ? '2px solid var(--brand-gold)' : '1px solid var(--border-subtle)'};
+                                        cursor:pointer;transition:all 0.2s;" 
+                                 onmouseover="this.style.borderColor='var(--brand-gold)'" 
+                                 onmouseout="this.style.borderColor='${isSelected ? 'var(--brand-gold)' : isToday ? 'var(--brand-gold)' : 'var(--border-subtle)'}'">
                                 <div style="font-weight:700;font-size:16px;margin-bottom:8px;${isToday ? 'color:var(--brand-gold);' : ''}">${dayCount}</div>
-                                ${dayBookings.slice(0, 4).map(b => {
-                                    const statusColor = b.status === 'scheduled' ? '#10b981' : b.status === 'cancelled' ? '#ef4444' : '#f59e0b';
+                                ${dayApts.slice(0, 3).map(apt => {
+                                    const aptTime = new Date(apt.scheduled_time);
+                                    const timeStr = aptTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                                    const statusColor = apt.status === 'scheduled' ? '#10b981' : apt.status === 'cancelled' ? '#ef4444' : '#f59e0b';
                                     return `
-                                        <div style="background:${statusColor};color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="viewBookingDetail(${b.id})" title="${b.contact_name} - ${b.service_type || 'Consultation'}">
-                                            ${b.booking_time.substring(0,5)} ${b.contact_name}
+                                        <div style="background:${statusColor};color:#fff;padding:4px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${apt.lead_name} - ${apt.event_type || 'Consultation'}">
+                                            ${timeStr.replace(' ', '')} ${apt.lead_name}
                                         </div>
                                     `;
                                 }).join('')}
-                                ${dayBookings.length > 4 ? `<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:4px;">+${dayBookings.length - 4} more</div>` : ''}
+                                ${dayApts.length > 3 ? `<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:4px;">+${dayApts.length - 3} more</div>` : ''}
                             </div>
                         `;
                         dayCount++;
@@ -7910,6 +7922,11 @@ function renderSchedule(content) {
                 calendarHTML += '</div>';
                 if (dayCount > daysInMonth) break;
             }
+            
+            // Get upcoming appointments
+            const upcomingApts = appointments
+                .filter(apt => new Date(apt.scheduled_time) >= new Date() && apt.status === 'scheduled')
+                .sort((a, b) => new Date(a.scheduled_time) - new Date(b.scheduled_time));
             
             content.innerHTML = `
                 <div class="section-header" style="margin-bottom: 24px;">
@@ -7938,34 +7955,35 @@ function renderSchedule(content) {
                     ${calendarHTML}
                 </div>
 
+                <div id="selectedDateAppointments" style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:24px;margin-bottom:24px;display:none;">
+                    <h3 style="font-size:18px;font-weight:700;margin-bottom:16px;">Appointments for <span id="selectedDateText"></span></h3>
+                    <div id="selectedDateList"></div>
+                </div>
+
                 <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:24px;">
                     <h3 style="font-size:18px;font-weight:700;margin-bottom:16px;">Upcoming Appointments</h3>
                     <div style="display:grid;gap:12px;">
-                        ${bookings.filter(b => new Date(b.booking_date) >= new Date() && b.status !== 'cancelled').slice(0, 15).map(b => {
-                            const statusBadge = {
-                                'scheduled': '<span style="background:#dcfce7;color:#16a34a;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">Scheduled</span>',
-                                'completed': '<span style="background:#dbeafe;color:#1d4ed8;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">Completed</span>',
-                                'cancelled': '<span style="background:#fee2e2;color:#dc2626;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">Cancelled</span>'
-                            }[b.status] || '';
+                        ${upcomingApts.slice(0, 15).map(apt => {
+                            const aptDate = new Date(apt.scheduled_time);
+                            const dateStr = aptDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            const timeStr = aptDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                             
                             return `
-                            <div style="background:var(--bg-tertiary);border-radius:8px;padding:16px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;">
-                                <div>
-                                    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
-                                        <span style="font-weight:700;font-size:14px;">${b.contact_name}</span>
-                                        ${statusBadge}
+                            <div style="background:var(--bg-tertiary);border-radius:8px;padding:16px;">
+                                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+                                    <div>
+                                        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${apt.lead_name}</div>
+                                        <div style="font-size:12px;color:var(--text-muted);">
+                                            📅 ${dateStr} at ${timeStr}
+                                        </div>
+                                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                                            📧 ${apt.lead_email}
+                                        </div>
+                                        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+                                            ${apt.event_type || 'Consultation'}
+                                        </div>
                                     </div>
-                                    <div style="font-size:12px;color:var(--text-muted);">
-                                        📅 ${formatDate(b.booking_date)} at ${b.booking_time.substring(0,5)}
-                                        ${b.service_type ? ` • ${b.service_type}` : ''}
-                                    </div>
-                                    ${b.contact_email ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📧 ${b.contact_email}</div>` : ''}
-                                    ${b.contact_phone ? `<div style="font-size:11px;color:var(--text-muted);">📞 ${b.contact_phone}</div>` : ''}
-                                    ${b.notes ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px;font-style:italic;">${b.notes}</div>` : ''}
-                                </div>
-                                <div style="display:flex;gap:8px;flex-direction:column;">
-                                    ${b.status === 'scheduled' ? `<button onclick="markBookingComplete(${b.id})" class="btn btn-secondary" style="padding:8px 12px;font-size:12px;white-space:nowrap;">Mark Complete</button>` : ''}
-                                    <button onclick="cancelBooking(${b.id})" class="btn" style="padding:8px 12px;font-size:12px;background:#fee2e2;color:#dc2626;white-space:nowrap;">Cancel</button>
+                                    <span style="background:#dcfce7;color:#16a34a;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">Scheduled</span>
                                 </div>
                             </div>
                         `;
@@ -7975,12 +7993,57 @@ function renderSchedule(content) {
             `;
             
             const badge = document.getElementById('scheduleBadge');
-            if (badge) badge.textContent = bookings.filter(b => new Date(b.booking_date) >= new Date() && b.status !== 'cancelled').length;
+            if (badge) badge.textContent = upcomingApts.length;
+            
+            // Store appointments for date selection
+            window.allScheduleAppointments = appointments;
         })
         .catch(e => {
-            console.error('Error loading bookings:', e);
+            console.error('Error loading appointments:', e);
             content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Error loading schedule</div>';
         });
+    };
+    
+    window.selectScheduleDate = (year, month, day) => {
+        selectedDate = new Date(year, month, day);
+        
+        // Filter appointments for selected date
+        const dayApts = (window.allScheduleAppointments || []).filter(apt => {
+            const aptDate = new Date(apt.scheduled_time);
+            return aptDate.getDate() === day && aptDate.getMonth() === month && aptDate.getFullYear() === year;
+        });
+        
+        const dateStr = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        document.getElementById('selectedDateText').textContent = dateStr;
+        
+        const selectedDateList = document.getElementById('selectedDateList');
+        if (dayApts.length === 0) {
+            selectedDateList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">No appointments scheduled for this day</div>';
+        } else {
+            selectedDateList.innerHTML = dayApts.map(apt => {
+                const aptTime = new Date(apt.scheduled_time);
+                const timeStr = aptTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                return `
+                    <div style="background:var(--bg-tertiary);border-radius:8px;padding:14px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;align-items:start;">
+                            <div>
+                                <div style="font-weight:700;font-size:15px;margin-bottom:4px;">${apt.lead_name}</div>
+                                <div style="font-size:13px;color:var(--text-muted);">⏰ ${timeStr}</div>
+                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">📧 ${apt.lead_email}</div>
+                                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${apt.event_type || 'Consultation'}</div>
+                            </div>
+                            <span style="background:#dcfce7;color:#16a34a;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">${apt.status}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        document.getElementById('selectedDateAppointments').style.display = 'block';
+        document.getElementById('selectedDateAppointments').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        // Re-render calendar to show selection
+        renderCalendarView();
     };
     
     window.changeScheduleMonth = (delta) => {
@@ -7992,6 +8055,7 @@ function renderSchedule(content) {
             currentMonth = 0;
             currentYear++;
         }
+        selectedDate = null;
         renderCalendarView();
     };
     

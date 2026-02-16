@@ -2428,6 +2428,75 @@ app.post('/api/scheduling/webhook', async (req, res) => {
         
         console.log('[SCHEDULING WEBHOOK] ✅ Appointment stored successfully');
         
+        // Send confirmation email
+        const appointmentDate = new Date(scheduledTime);
+        const formattedDate = appointmentDate.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        const formattedTime = appointmentDate.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true 
+        });
+        
+        const confirmationEmail = buildEmailHTML(`
+            <h2 style="font-size: 24px; color: #2D3142; margin-bottom: 16px;">Your Consultation is Confirmed! 🎉</h2>
+            
+            <p>Hi ${inviteeName || 'there'},</p>
+            
+            <p>Thank you for scheduling a consultation with Diamondback Coding. We're excited to discuss your project!</p>
+            
+            <div style="background: #fef9f3; border: 2px solid #d4a574; border-radius: 8px; padding: 24px; margin: 24px 0;">
+                <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #6B7280; margin-bottom: 12px;">Appointment Details</div>
+                
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 15px; color: #6B7280;">📅 Date:</span>
+                    <span style="font-size: 16px; font-weight: 700; color: #000; margin-left: 8px;">${formattedDate}</span>
+                </div>
+                
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 15px; color: #6B7280;">⏰ Time:</span>
+                    <span style="font-size: 16px; font-weight: 700; color: #000; margin-left: 8px;">${formattedTime}</span>
+                </div>
+                
+                <div>
+                    <span style="font-size: 15px; color: #6B7280;">📞 Type:</span>
+                    <span style="font-size: 16px; font-weight: 700; color: #000; margin-left: 8px;">${eventType || 'Consultation'}</span>
+                </div>
+            </div>
+            
+            <h3 style="font-size: 18px; color: #2D3142; margin: 28px 0 12px 0;">What to Expect</h3>
+            <p>We'll call you at the scheduled time to discuss:</p>
+            <ul style="margin: 12px 0; padding-left: 24px; line-height: 1.8;">
+                <li>Your project goals and requirements</li>
+                <li>Timeline and budget expectations</li>
+                <li>How Diamondback Coding can help bring your vision to life</li>
+            </ul>
+            
+            <p style="margin-top: 24px;">If you need to reschedule or have any questions, please contact us at <a href="tel:+15129800393" style="color: #d4a574; text-decoration: none; font-weight: 600;">(512) 980-0393</a> or reply to this email.</p>
+            
+            <div class="sign-off">
+                <p>Looking forward to speaking with you!</p>
+                <p class="team-name">The Diamondback Coding Team</p>
+            </div>
+        `, {});
+        
+        try {
+            await transporter.sendMail({
+                from: process.env.SMTP_FROM || 'Diamondback Coding <noreply@diamondbackcoding.com>',
+                to: inviteeEmail,
+                subject: `Consultation Confirmed - ${formattedDate} at ${formattedTime}`,
+                html: confirmationEmail
+            });
+            console.log('[SCHEDULING WEBHOOK] ✅ Confirmation email sent to:', inviteeEmail);
+        } catch (emailError) {
+            console.error('[SCHEDULING WEBHOOK] Failed to send confirmation email:', emailError);
+            // Don't fail the whole request if email fails
+        }
+        
         res.json({ 
             received: true, 
             processed: true,

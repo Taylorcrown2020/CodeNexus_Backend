@@ -2587,6 +2587,159 @@ app.get('/api/appointments', authenticateToken, async (req, res) => {
     }
 });
 
+// Get appointments for a specific lead
+app.get('/api/appointments/lead/:leadId', authenticateToken, async (req, res) => {
+    try {
+        const { leadId } = req.params;
+        
+        // Get lead email first
+        const leadResult = await pool.query('SELECT email FROM leads WHERE id = $1', [leadId]);
+        if (leadResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Lead not found' });
+        }
+        
+        const leadEmail = leadResult.rows[0].email;
+        
+        const result = await pool.query(
+            `SELECT * FROM appointments 
+             WHERE LOWER(lead_email) = LOWER($1) 
+             ORDER BY scheduled_time DESC`,
+            [leadEmail]
+        );
+        
+        res.json(result.rows);
+    } catch (error) {
+        console.error('[APPOINTMENTS] Error fetching lead appointments:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Reschedule appointment
+app.put('/api/appointments/:id/reschedule', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { scheduled_time } = req.body;
+        
+        if (!scheduled_time) {
+            return res.status(400).json({ message: 'scheduled_time is required' });
+        }
+        
+        // Get appointment details for confirmation email
+        const aptResult = await pool.query('SELECT * FROM appointments WHERE id = $1', [id]);
+        if (aptResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+        
+        const appointment = aptResult.rows[0];
+        
+        // Update appointment
+        await pool.query(
+            'UPDATE appointments SET scheduled_time = $1, updated_at = NOW() WHERE id = $2',
+            [scheduled_time, id]
+        );
+        
+        console.log(`[APPOINTMENTS] Rescheduled appointment ${id} to ${scheduled_time}`);
+        
+        // Send confirmation email
+        const appointmentDate = new Date(scheduled_time);
+        const formattedDate = appointmentDate.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        const formattedTime = appointmentDate.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true 
+        });
+        
+        const confirmationEmail = buildEmailHTML(`
+            <h2 style="font-size: 24px; color: #2D3142; margin-bottom: 16px;">Your Consultation Has Been Rescheduled ✅</h2>
+            
+            <p>Hi ${appointment.lead_name || 'there'},</p>
+            
+            <p>Your consultation with Diamondback Coding has been rescheduled to a new time.</p>
+            
+            <div style="background: #fef9f3; border: 2px solid #d4a574; border-radius: 8px; padding: 24px; margin: 24px 0;">
+                <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #6B7280; margin-bottom: 12px;">Updated Appointment Details</div>
+                
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 15px; color: #6B7280;">📅 Date:</span>
+                    <span style="font-size: 16px; font-weight: 700; color: #000; margin-left: 8px;">${formattedDate}</span>
+                </div>
+                
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 15px; color: #6B7280;">⏰ Time:</span>
+                    <span style="font-size: 16px; font-weight: 700; color: #000; margin-left: 8px;">${formattedTime}</span>
+                </div>
+                
+                <div>
+                    <span style="font-size: 15px; color: #6B7280;">📞 Type:</span>
+                    <span style="font-size: 16px; font-weight: 700; color: #000; margin-left: 8px;">${appointment.event_type || 'Consultation'}</span>
+                </div>
+            </div>
+            
+            <p>If you need to reschedule again or have any questions, please contact us at <a href="tel:+15129800393" style="color: #d4a574; text-decoration: none; font-weight: 600;">(512) 980-0393</a> or reply to this email.</p>
+            
+            <div class="sign-off">
+                <p>Looking forward to speaking with you!</p>
+                <p class="team-name">The Diamondback Coding Team</p>
+            </div>
+        `, {});
+        
+        try {
+            await transporter.sendMail({
+                from: process.env.SMTP_FROM || 'Diamondback Coding <noreply@diamondbackcoding.com>',
+                to: appointment.lead_email,
+                subject: `Consultation Rescheduled - ${formattedDate} at ${formattedTime}`,
+                html: confirmationEmail
+            });
+            console.log('[APPOINTMENTS] Reschedule confirmation sent to:', appointment.lead_email);
+        } catch (emailError) {
+            console.error('[APPOINTMENTS] Failed to send reschedule email:', emailError);
+        }
+        
+        res.json({ message: 'Appointment rescheduled successfully' });
+    } catch (error) {
+        console.error('[APPOINTMENTS] Error rescheduling:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Cancel appointment
+app.put('/api/appointments/:id/cancel', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        await pool.query(
+            'UPDATE appointments SET status = $1, cancelled_at = NOW() WHERE id = $2',
+            ['cancelled', id]
+        );
+        
+        console.log(`[APPOINTMENTS] Cancelled appointment ${id}`);
+        res.json({ message: 'Appointment cancelled successfully' });
+    } catch (error) {
+        console.error('[APPOINTMENTS] Error cancelling:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Delete appointment (when lead is deleted)
+app.delete('/api/appointments/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        await pool.query('DELETE FROM appointments WHERE id = $1', [id]);
+        
+        console.log(`[APPOINTMENTS] Deleted appointment ${id}`);
+        res.json({ message: 'Appointment deleted successfully' });
+    } catch (error) {
+        console.error('[APPOINTMENTS] Error deleting:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // ========================================
 // AUTHENTICATION ROUTES
 // ========================================
@@ -2937,20 +3090,28 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
     try {
         const leadId = req.params.id;
 
-        // First delete all notes associated with the lead
-        await pool.query('DELETE FROM lead_notes WHERE lead_id = $1', [leadId]);
-        
-        // Then delete the lead/customer
-        const result = await pool.query('DELETE FROM leads WHERE id = $1 RETURNING *', [leadId]);
-
-        if (result.rows.length === 0) {
+        // Get lead email first
+        const leadResult = await pool.query('SELECT email FROM leads WHERE id = $1', [leadId]);
+        if (leadResult.rows.length === 0) {
             return res.status(404).json({ 
                 success: false, 
                 message: 'Lead not found.' 
             });
         }
+        
+        const leadEmail = leadResult.rows[0].email;
 
-        console.log(`✅ Lead/Customer ${leadId} deleted`);
+        // Delete all appointments associated with this lead
+        await pool.query('DELETE FROM appointments WHERE LOWER(lead_email) = LOWER($1)', [leadEmail]);
+        console.log(`🗑️ Deleted appointments for lead ${leadId} (${leadEmail})`);
+
+        // Delete all notes associated with the lead
+        await pool.query('DELETE FROM lead_notes WHERE lead_id = $1', [leadId]);
+        
+        // Then delete the lead/customer
+        const result = await pool.query('DELETE FROM leads WHERE id = $1 RETURNING *', [leadId]);
+
+        console.log(`✅ Lead/Customer ${leadId} deleted with all associated appointments`);
 
         res.json({
             success: true,

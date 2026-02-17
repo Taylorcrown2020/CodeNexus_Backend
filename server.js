@@ -2487,42 +2487,64 @@ app.get('/api/appointments/lead/:leadId', authenticateToken, async (req, res) =>
 });
 
 // Reschedule appointment
-// Admin-initiated appointment creation (from Schedule tab)
+// Admin-initiated appointment creation (from Schedule tab — lead picker)
 app.post('/api/appointments/admin-create', authenticateToken, async (req, res) => {
     try {
-        const { leadName, leadEmail, scheduledTime, eventType = 'Consultation' } = req.body;
+        const {
+            leadId,
+            leadName,
+            leadEmail,
+            scheduledTime,
+            eventType = 'Consultation',
+            notes     = '',
+            sendEmail = true
+        } = req.body;
 
         if (!leadName || !leadEmail || !scheduledTime) {
             return res.status(400).json({ success: false, message: 'leadName, leadEmail, and scheduledTime are required' });
         }
 
-        // Upsert lead record if they don't exist
-        let leadId = null;
-        const leadRes = await pool.query(
-            `SELECT id FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1`,
-            [leadEmail]
-        );
+        // ── 1. Resolve or create the lead ───────────────────────────
+        let resolvedLeadId = parseInt(leadId) || null;
 
-        if (leadRes.rows.length > 0) {
-            leadId = leadRes.rows[0].id;
-            // Promote to hot if cold
+        if (!resolvedLeadId) {
+            const leadRes = await pool.query(
+                `SELECT id FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+                [leadEmail]
+            );
+            if (leadRes.rows.length > 0) {
+                resolvedLeadId = leadRes.rows[0].id;
+            }
+        }
+
+        if (resolvedLeadId) {
+            // Promote cold → hot, update last contact, append notes if provided
+            const noteAppend = notes
+                ? `, notes = COALESCE(notes || E'\\n\\n', '') || $2`
+                : '';
+            const params = notes
+                ? [resolvedLeadId, `📅 Scheduled ${eventType} for ${new Date(scheduledTime).toLocaleString('en-US', { timeZone: 'America/Chicago' })} — ${notes}`]
+                : [resolvedLeadId];
+
             await pool.query(`
                 UPDATE leads
                 SET lead_temperature = CASE WHEN lead_temperature = 'cold' THEN 'hot' ELSE lead_temperature END,
-                    last_contact_date = NOW(), updated_at = NOW()
+                    last_contact_date = NOW(),
+                    updated_at = NOW()
+                    ${noteAppend}
                 WHERE id = $1
-            `, [leadId]);
+            `, params);
         } else {
-            // Create a stub lead
+            // Create a stub lead for someone not yet in the system
             const newLead = await pool.query(`
-                INSERT INTO leads (name, email, status, lead_temperature, source, created_at, updated_at)
-                VALUES ($1, $2, 'new', 'warm', 'admin-scheduled', NOW(), NOW())
+                INSERT INTO leads (name, email, status, lead_temperature, source, notes, created_at, updated_at)
+                VALUES ($1, $2, 'new', 'warm', 'admin-scheduled', $3, NOW(), NOW())
                 RETURNING id
-            `, [leadName, leadEmail]);
-            leadId = newLead.rows[0].id;
+            `, [leadName, leadEmail, notes || null]);
+            resolvedLeadId = newLead.rows[0].id;
         }
 
-        // Check for conflicts (same time slot ± 30 min)
+        // ── 2. Conflict check ± 30 min ───────────────────────────────
         const conflict = await pool.query(`
             SELECT id FROM appointments
             WHERE lead_email = $1
@@ -2531,20 +2553,87 @@ app.post('/api/appointments/admin-create', authenticateToken, async (req, res) =
         `, [leadEmail, scheduledTime]);
 
         if (conflict.rows.length > 0) {
-            return res.status(409).json({ success: false, message: 'This person already has an appointment within 30 minutes of that time' });
+            return res.status(409).json({
+                success: false,
+                message: 'This person already has an appointment within 30 minutes of that time'
+            });
         }
 
-        // Insert appointment
+        // ── 3. Insert appointment ────────────────────────────────────
         const aptResult = await pool.query(
             `INSERT INTO appointments (lead_email, lead_name, scheduled_time, event_type, status, created_at)
              VALUES ($1, $2, $3, $4, 'scheduled', NOW()) RETURNING *`,
             [leadEmail, leadName, scheduledTime, eventType]
         );
-
         const apt = aptResult.rows[0];
+
         console.log(`[APPOINTMENTS] Admin created: ${eventType} for ${leadName} (${leadEmail}) at ${scheduledTime}`);
 
-        res.json({ success: true, appointment: apt, message: 'Appointment created successfully' });
+        // ── 4. Send confirmation email if requested ──────────────────
+        if (sendEmail) {
+            try {
+                const aptDate = new Date(scheduledTime);
+                const fmtDate = aptDate.toLocaleDateString('en-US', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                    timeZone: 'America/Chicago'
+                });
+                const fmtTime = aptDate.toLocaleTimeString('en-US', {
+                    hour: 'numeric', minute: '2-digit', hour12: true,
+                    timeZone: 'America/Chicago'
+                });
+
+                const confirmHtml = buildEmailHTML(`
+                    <p>Hi ${leadName},</p>
+                    <p>An appointment has been scheduled for you with Diamondback Coding. We look forward to connecting with you.</p>
+
+                    <p style="margin:24px 0;padding:20px;background:#F7F9FB;border-radius:6px;border-left:4px solid #FF6B35;">
+                        <strong style="display:block;margin-bottom:10px;color:#2D3142;font-size:15px;">Appointment Details</strong>
+                        <strong>Date:</strong> ${fmtDate}<br>
+                        <strong>Time:</strong> ${fmtTime} CT<br>
+                        <strong>Type:</strong> ${eventType}
+                        ${notes ? `<br><strong>Notes:</strong> ${notes}` : ''}
+                    </p>
+
+                    <p><strong>What to Expect:</strong></p>
+                    <p>We will reach out at the scheduled time to discuss your project goals, timeline, and how Diamondback Coding can help bring your vision to life.</p>
+
+                    <p style="margin-top:24px;font-size:13px;color:#666;text-align:center;">
+                        Need to reschedule or have questions?
+                        Call us at <a href="tel:+15129800393" style="color:#FF6B35;font-weight:600;">(512) 980-0393</a>
+                        or reply to this email.
+                    </p>
+                `, {
+                    eyebrow:     'APPOINTMENT CONFIRMED',
+                    headline:    'Your appointment is scheduled.',
+                    ctaLabel:    'Reschedule',
+                    ctaUrl:      process.env.SCHEDULING_URL || 'https://diamondbackcoding.com/schedule.html',
+                    accentColor: '#FF6B35',
+                    tagline:     'YOUR VISION. OUR CODE.'
+                });
+
+                await sendTrackedEmail({
+                    leadId:    resolvedLeadId,
+                    to:        leadEmail,
+                    subject:   `Appointment Confirmed — ${fmtDate} at ${fmtTime} CT`,
+                    html:      confirmHtml,
+                    emailType: 'appointment_confirmation'
+                });
+
+                console.log(`[APPOINTMENTS] Confirmation email sent to ${leadEmail}`);
+            } catch (emailErr) {
+                // Email failure never blocks the appointment from being created
+                console.error('[APPOINTMENTS] Confirmation email failed:', emailErr.message);
+            }
+        }
+
+        res.json({
+            success:     true,
+            appointment: apt,
+            emailSent:   sendEmail,
+            message:     sendEmail
+                ? `Appointment created and confirmation email sent to ${leadEmail}`
+                : 'Appointment created successfully'
+        });
 
     } catch (error) {
         console.error('[APPOINTMENTS] Admin create error:', error);
@@ -8696,6 +8785,101 @@ app.post('/api/stripe/subscription-webhook',
 // ========================================
 
 // Create Stripe Checkout session for a CRM subscription
+// ── PUBLIC Subscription Checkout (no auth — called from pricing page) ────────
+app.post('/api/public/subscriptions/checkout', async (req, res) => {
+    try {
+        const { packageKey, userCount, email, name } = req.body;
+
+        if (!packageKey || !userCount || userCount < 1) {
+            return res.status(400).json({ success: false, message: 'packageKey and userCount are required' });
+        }
+
+        const pkg = servicePackages[packageKey];
+        if (!pkg || pkg.category !== 'crm' || pkg.billing !== 'monthly-per-user') {
+            return res.status(400).json({ success: false, message: 'Invalid CRM package key' });
+        }
+
+        if (!pkg.stripePriceId) {
+            return res.status(500).json({
+                success: false,
+                message: `Stripe price not yet configured for ${packageKey}. Please contact us to complete your subscription.`
+            });
+        }
+
+        // Look up or create lead so we can link the subscription later
+        let leadId = null;
+        let stripeCustomerId = null;
+
+        if (email) {
+            const existing = await pool.query(
+                `SELECT id, stripe_customer_id FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+                [email]
+            );
+
+            if (existing.rows.length > 0) {
+                leadId = existing.rows[0].id;
+                stripeCustomerId = existing.rows[0].stripe_customer_id;
+            } else if (name) {
+                const newLead = await pool.query(`
+                    INSERT INTO leads (name, email, status, lead_temperature, source, created_at, updated_at)
+                    VALUES ($1, $2, 'new', 'hot', 'pricing-page-subscription', NOW(), NOW())
+                    RETURNING id
+                `, [name, email]);
+                leadId = newLead.rows[0].id;
+            }
+
+            if (leadId && !stripeCustomerId) {
+                const customer = await stripe.customers.create({
+                    email,
+                    name: name || email,
+                    metadata: { lead_id: leadId.toString() }
+                });
+                stripeCustomerId = customer.id;
+                await pool.query(
+                    `UPDATE leads SET stripe_customer_id = $1 WHERE id = $2`,
+                    [stripeCustomerId, leadId]
+                );
+            }
+        }
+
+        const sessionConfig = {
+            mode: 'subscription',
+            line_items: [{ price: pkg.stripePriceId, quantity: parseInt(userCount) }],
+            success_url: `${BASE_URL}/pricing.html?sub=success&plan=${encodeURIComponent(pkg.name)}`,
+            cancel_url:  `${BASE_URL}/pricing.html?sub=cancelled`,
+            allow_promotion_codes: true,
+            subscription_data: {
+                metadata: {
+                    lead_id:     leadId ? leadId.toString() : '',
+                    package_key: packageKey,
+                    user_count:  userCount.toString()
+                }
+            },
+            metadata: {
+                lead_id:     leadId ? leadId.toString() : '',
+                package_key: packageKey
+            }
+        };
+
+        if (stripeCustomerId) {
+            sessionConfig.customer = stripeCustomerId;
+        } else if (email) {
+            sessionConfig.customer_email = email;
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
+
+        console.log(`[PUBLIC CHECKOUT] Session: ${session.id} | ${packageKey} x${userCount} | ${email || 'guest'}`);
+
+        res.json({ success: true, checkoutUrl: session.url });
+
+    } catch (error) {
+        console.error('[PUBLIC CHECKOUT] Error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ── ADMIN Subscription Checkout (authenticated) ────────────────────────────
 app.post('/api/subscriptions/checkout', authenticateToken, async (req, res) => {
     try {
         const { packageKey, userCount, leadId, successUrl, cancelUrl } = req.body;
@@ -16435,6 +16619,7 @@ console.log(`[ROUTES] Total routes registered: ${routeCount}\n`);
 const clientRoutes = [
     '/api/client/login',
     '/api/client/dashboard',
+    '/api/public/subscriptions/checkout',
     '/api/client/projects',
     '/api/client/invoices'
 ];

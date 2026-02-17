@@ -8699,12 +8699,17 @@ function renderSchedule(content) {
 
 // ==================== ADD APPOINTMENT (ADMIN) ====================
 
-function openAddAppointmentModal() {
+async function openAddAppointmentModal() {
     // Pre-fill date to selected calendar date, or today
     const sel   = window.scheduleState?.selectedDate;
     const today = sel
         ? sel.toLocaleDateString('en-CA')
         : new Date().toLocaleDateString('en-CA');
+
+    // Ensure leads are loaded — Schedule section doesn't load them automatically
+    if (!state.leads || state.leads.length === 0) {
+        try { await loadLeads(); } catch(e) { console.warn('[Schedule] Could not pre-load leads:', e); }
+    }
 
     // Build combined leads + customers list, sorted by name
     const everyone = [...(state.leads || []), ...(state.customers || [])]

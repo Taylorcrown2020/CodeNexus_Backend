@@ -763,7 +763,16 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         console.warn('[TRACKED-EMAIL] Could not insert email_log row:', e.message);
     }
 
-    // 2. VALIDATE EMAIL DOMAIN BEFORE SENDING - Catch typos early!
+    // 2. Determine if this email should be tracked (open pixel + link tracking)
+    // Confirmation emails should NOT be tracked — they're transactional, not engagement-driven
+    const confirmationTypes = ['appointment_confirmation', 'appointment_cancelled', 'appointment_rescheduled'];
+    const shouldTrack = !confirmationTypes.includes(emailType);
+    
+    if (!shouldTrack) {
+        console.log(`[EMAIL] Type '${emailType}' is a confirmation — skipping tracking pixel and link wrapping`);
+    }
+
+    // 3. VALIDATE EMAIL DOMAIN BEFORE SENDING - Catch typos early!
     console.log(`[EMAIL] Validating email address: ${to}`);
     const validation = await validateEmailDomain(to);
     
@@ -799,8 +808,8 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         console.warn(`[EMAIL] ⚠️  Warning: ${validation.warning}`);
     }
 
-    // 3. Inject 1×1 open-tracking pixel
-    if (emailLogId) {
+    // 4. Inject 1×1 open-tracking pixel (skip for confirmation emails)
+    if (emailLogId && shouldTrack) {
         const pixel = `<img src="${BASE_URL}/api/track/open/${emailLogId}" width="1" height="1" style="display:none;border:0;" alt="" />`;
         html = html.replace(/<\/body>/i, `${pixel}</body>`);
         if (!html.includes(pixel)) html += pixel; // fallback if no </body>
@@ -809,8 +818,8 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         console.log(`[EMAIL] When this email is opened, the pixel will load and trigger the tracking endpoint`);
     }
 
-    // 4. Wrap ALL diamondbackcoding.com links with tracking (makes leads hot when clicked)
-    if (leadId && emailLogId) {
+    // 5. Wrap ALL diamondbackcoding.com links with tracking (makes leads hot when clicked, skip for confirmation emails)
+    if (leadId && emailLogId && shouldTrack) {
         // Replace all diamondbackcoding.com links with tracked versions
         const websiteUrlPattern = /(https?:\/\/(?:www\.)?diamondbackcoding\.com[^"'\s]*)/gi;
         html = html.replace(websiteUrlPattern, (match) => {
@@ -821,10 +830,10 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         });
     }
 
-    // 5. Get email settings to check if Brevo is enabled
+    // 6. Get email settings to check if Brevo is enabled
     const emailSettings = await getEmailSettings();
     
-    // 6. Send via Brevo or Nodemailer
+    // 7. Send via Brevo or Nodemailer
     try {
         console.log(`[EMAIL] Attempting to send to: ${to} | Subject: ${subject} | Method: ${emailSettings.useBrevo ? 'Brevo' : 'Nodemailer'}`);
         
@@ -9116,9 +9125,9 @@ app.post('/api/subscriptions/:id/cancel', authenticateToken, async (req, res) =>
 
                 const cancelHtml = buildEmailHTML(`
                     <p>Hi ${leadName},</p>
-                    <p>${immediate
-                        ? `Your <strong>${sub.package_name || 'CRM'}</strong> subscription has been cancelled. Access has ended and no further charges will be made.`
-                        : `Your <strong>${sub.package_name || 'CRM'}</strong> subscription has been scheduled for cancellation. You will continue to have full access until the end of your current billing period.`
+                    <p>We're really sorry to see you go. ${immediate
+                        ? `Your <strong>${sub.package_name || 'CRM'}</strong> subscription has been cancelled and access has ended.`
+                        : `Your <strong>${sub.package_name || 'CRM'}</strong> subscription is scheduled to cancel at the end of your current billing period. Until then, you'll keep full access to everything.`
                     }</p>
 
                     <table width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -9126,7 +9135,7 @@ app.post('/api/subscriptions/:id/cancel', authenticateToken, async (req, res) =>
                         <tr>
                             <td style="background:#f7f9fb;padding:14px 24px;border-bottom:1px solid #e8e8e8;">
                                 <span style="font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#999;">
-                                    Cancellation Details
+                                    Cancellation Summary
                                 </span>
                             </td>
                         </tr>
@@ -9154,16 +9163,24 @@ app.post('/api/subscriptions/:id/cancel', authenticateToken, async (req, res) =>
                         </td></tr>
                     </table>
 
-                    <p style="font-size:13px;color:#888;margin:0;">
-                        Cancelled by mistake?
-                        Call us at <strong>(512) 980-0393</strong> or reply to this email
-                        and we can get you back up and running immediately.
-                    </p>
+                    <div style="background:rgba(255,107,53,0.06);border:1px solid rgba(255,107,53,0.2);border-radius:8px;padding:20px 24px;margin:28px 0;">
+                        <p style="font-size:15px;font-weight:600;margin:0 0 10px;color:#222;">We really don't want to see you go.</p>
+                        <p style="font-size:14px;color:#555;margin:0 0 18px;line-height:1.6;">
+                            If you cancelled due to an issue we can fix, or if you're open to exploring other options, 
+                            we'd love the chance to make things right. Your success matters to us.
+                        </p>
+                        <p style="font-size:13px;color:#888;margin:0;">
+                            Changed your mind? Call us at <strong style="color:#222;">(512) 980-0393</strong>, 
+                            or click below to reactivate your subscription with just one click.
+                        </p>
+                    </div>
                 `, {
                     eyebrow:     'SUBSCRIPTION CANCELLED',
-                    headline:    immediate ? 'Your subscription has ended.' : 'Cancellation scheduled.',
-                    accentColor: '#EF4444',
-                    tagline:     'WE HOPE TO WORK WITH YOU AGAIN.'
+                    headline:    immediate ? 'We hate to see you go.' : 'Your cancellation is scheduled.',
+                    accentColor: '#FF6B35',
+                    tagline:     'COME BACK ANYTIME \u2014 WE\'LL BE HERE.',
+                    ctaLabel:    'Reactivate My Subscription',
+                    ctaUrl:      `${BASE_URL}/client-portal.html`
                 });
 
                 await sendTrackedEmail({
@@ -9624,13 +9641,14 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
                  status = CASE WHEN status IN ('pending', 'queued') THEN 'sent' ELSE status END
              WHERE id = $1 
              AND opened_at IS NULL
-             RETURNING lead_id, status`,
+             RETURNING lead_id, status, email_type`,
             [emailLogId]
         );
         
         if (result.rows.length > 0) {
-            const leadId = result.rows[0].lead_id;
-            console.log(`[TRACKING] ✅ Email ${emailLogId} marked as OPENED by lead ${leadId}`);
+            const leadId   = result.rows[0].lead_id;
+            const emailType = result.rows[0].email_type;
+            console.log(`[TRACKING] ✅ Email ${emailLogId} marked as OPENED by lead ${leadId} | type: ${emailType}`);
             
             if (leadId) {
                 await pool.query(
@@ -9642,8 +9660,15 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
                      AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
                     [leadId]
                 );
-                
-                await trackEngagement(leadId, 'email_open', 5);
+
+                // Opens on follow-up and marketing emails count as strong engagement → hot
+                if (emailType === 'follow-up' || emailType === 'marketing') {
+                    console.log(`[TRACKING] 🔥 ${emailType} email opened — promoting lead ${leadId} to HOT`);
+                    await trackEngagement(leadId, 'email_click_hot', `Opened ${emailType} email (ID: ${emailLogId})`);
+                } else {
+                    // All other email types (invoice, subscription, appointment) just log engagement
+                    await trackEngagement(leadId, 'email_open', 5);
+                }
                 console.log(`[TRACKING] ✅ Lead ${leadId} engagement tracked`);
             }
         }
@@ -9941,7 +9966,7 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
         
         // Send via tracked helper (logs to email_log + injects open pixel)
         try {
-            await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML });
+            await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML, emailType: 'follow-up' });
             console.log('[EMAIL API] ✅ Email sent successfully to:', to);
         } catch (emailError) {
             console.error('[EMAIL API] ❌ Email send error:', emailError);
@@ -11835,14 +11860,14 @@ app.post('/api/client/subscription/:id/cancel', authenticateClient, async (req, 
 
             const cancelHtml = buildEmailHTML(`
                 <p>Hi ${leadName},</p>
-                <p>${immediate
-                    ? `Your <strong>${sub.package_name || 'CRM'}</strong> subscription has been cancelled. Access has ended and no further charges will be made.`
-                    : `Your <strong>${sub.package_name || 'CRM'}</strong> subscription cancellation has been scheduled. You'll keep full access until the end of your current billing period.`
+                <p>We're really sorry to see you go. ${immediate
+                    ? `Your <strong>${sub.package_name || 'CRM'}</strong> subscription has been cancelled and access has ended.`
+                    : `Your <strong>${sub.package_name || 'CRM'}</strong> subscription is scheduled to cancel at the end of your current billing period. Until then, you'll keep full access to everything.`
                 }</p>
                 <table width="100%" cellpadding="0" cellspacing="0" border="0"
                        style="margin:28px 0;border-radius:6px;overflow:hidden;border:1px solid #e8e8e8;">
                     <tr><td style="background:#f7f9fb;padding:14px 24px;border-bottom:1px solid #e8e8e8;">
-                        <span style="font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#999;">Cancellation Details</span>
+                        <span style="font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#999;">Cancellation Summary</span>
                     </td></tr>
                     <tr><td style="padding:0;">
                         <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -11851,18 +11876,34 @@ app.post('/api/client/subscription/:id/cancel', authenticateClient, async (req, 
                                 <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">${sub.package_name || 'CRM Subscription'}</td>
                             </tr>
                             <tr>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Users</td>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">${sub.user_count || 1}</td>
+                            </tr>
+                            <tr>
                                 <td style="padding:13px 24px;font-size:13px;color:#888;">Access Ends</td>
                                 <td style="padding:13px 24px;font-size:13px;font-weight:700;color:#222;text-align:right;">${accessEndsLabel}</td>
                             </tr>
                         </table>
                     </td></tr>
                 </table>
-                <p style="font-size:13px;color:#888;margin:0;">Changed your mind? Call us at <strong>(512) 980-0393</strong> and we can reactivate your subscription.</p>
+                <div style="background:rgba(255,107,53,0.06);border:1px solid rgba(255,107,53,0.2);border-radius:8px;padding:20px 24px;margin:28px 0;">
+                    <p style="font-size:15px;font-weight:600;margin:0 0 10px;color:#222;">We really don't want to see you go.</p>
+                    <p style="font-size:14px;color:#555;margin:0 0 18px;line-height:1.6;">
+                        If you cancelled due to an issue we can fix, or if you're open to exploring other options, 
+                        we'd love the chance to make things right. Your success matters to us.
+                    </p>
+                    <p style="font-size:13px;color:#888;margin:0;">
+                        Changed your mind? Call us at <strong style="color:#222;">(512) 980-0393</strong>, 
+                        or click below to reactivate your subscription with just one click.
+                    </p>
+                </div>
             `, {
                 eyebrow:     'SUBSCRIPTION CANCELLED',
-                headline:    immediate ? 'Your subscription has ended.' : 'Cancellation scheduled.',
-                accentColor: '#EF4444',
-                tagline:     'WE HOPE TO WORK WITH YOU AGAIN.'
+                headline:    immediate ? 'We hate to see you go.' : 'Your cancellation is scheduled.',
+                accentColor: '#FF6B35',
+                tagline:     'COME BACK ANYTIME \u2014 WE\'LL BE HERE.',
+                ctaLabel:    'Reactivate My Subscription',
+                ctaUrl:      `${BASE_URL}/client-portal.html`
             });
 
             await sendTrackedEmail({
@@ -12363,10 +12404,10 @@ app.get('/api/track/click/:leadId', async (req, res) => {
             }
         }
         
-        // ONLY make lead hot if this is from a FOLLOW-UP email
-        if (emailType === 'follow-up') {
-            console.log(`[TRACKING] 🔥🔥🔥 FOLLOW-UP EMAIL LINK CLICKED - Making lead HOT immediately!`);
-            const result = await trackEngagement(leadId, 'email_click_hot', `Clicked follow-up email link: ${url || 'unknown'}`);
+        // Follow-up AND marketing email clicks both immediately convert lead to hot
+        if (emailType === 'follow-up' || emailType === 'marketing') {
+            console.log(`[TRACKING] 🔥🔥🔥 ${(emailType||'').toUpperCase()} EMAIL LINK CLICKED - Making lead HOT immediately!`);
+            const result = await trackEngagement(leadId, 'email_click_hot', `Clicked ${emailType} email link: ${url || 'unknown'}`);
             console.log(`[TRACKING] ✅ Lead ${leadId} engagement result:`, result);
             if (result?.temperature === 'hot') {
                 console.log(`[TRACKING] ✅✅✅ LEAD ${leadId} IS NOW HOT ✅✅✅`);
@@ -12374,8 +12415,8 @@ app.get('/api/track/click/:leadId', async (req, res) => {
                 console.log(`[TRACKING] ⚠️ WARNING: Lead did not become hot - check trackEngagement function`);
             }
         } else {
-            console.log(`[TRACKING] ℹ️  Email type '${emailType}' click tracked, but NOT converting to hot (only follow-up emails convert)`);
-            console.log(`[TRACKING] Redirecting to: ${url || BASE_URL}\n`);
+            // All other email types (invoice, subscription, appointment) — track click but don't force hot
+            console.log(`[TRACKING] ℹ️  Email type '${emailType}' click tracked (no hot conversion for this type)`);
         }
         
         // Redirect to the actual URL
@@ -15263,7 +15304,7 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
         }
 
         // Create email_log entry and send with tracking pixel
-        await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML });
+        await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML, emailType: 'follow-up' });
         
         // Mark lead as "contacted" immediately
         await pool.query(
@@ -15397,7 +15438,7 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
                     </div>
                 `, { unsubscribeUrl });
 
-                await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML });
+                await sendTrackedEmail({ leadId, to: lead.email, subject: emailSubject, html: emailHTML, emailType: 'follow-up' });
                 
                 // DO NOT update last_contact_date here - it will be updated when email is confirmed
                 // The sendTrackedEmail function handles this correctly now
@@ -15522,7 +15563,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
                     </div>
                 `, { unsubscribeUrl });
 
-                await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML });
+                await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML, emailType: 'marketing' });
                 
                 // ✅ CRITICAL: Do NOT update last_contact_date here!
                 // The sendTrackedEmail function and tracking pixel endpoint handle this correctly
@@ -15677,7 +15718,7 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
                     </div>
                 `, { unsubscribeUrl });
 
-                await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML });
+                await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML, emailType: 'marketing' });
 
                 // ✅ CRITICAL: Do NOT update last_contact_date here!
                 // The sendTrackedEmail function and tracking pixel endpoint handle this correctly
@@ -15790,7 +15831,7 @@ app.post('/api/auto-campaigns', authenticateToken, async (req, res) => {
             <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
         `, { unsubscribeUrl });
 
-        await sendTrackedEmail({ leadId, to: lead.email, subject, html: emailHTML });
+        await sendTrackedEmail({ leadId, to: lead.email, subject, html: emailHTML, emailType: 'follow-up' });
 
         // Insert campaign row
         const ins = await pool.query(`
@@ -16062,7 +16103,7 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
                 }
 
                 // Send the email (same for both hot and cold)
-                await sendTrackedEmail({ leadId: c.lead_id, to: c.lead_email, subject: emailSubject, html: emailHTML });
+                await sendTrackedEmail({ leadId: c.lead_id, to: c.lead_email, subject: emailSubject, html: emailHTML, emailType: 'follow-up' });
 
                 await pool.query('UPDATE auto_campaigns SET last_sent_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=$1', [c.id]);
                 
@@ -16127,7 +16168,7 @@ app.post('/api/send-email', authenticateToken, async (req, res) => {
         <div class="sign-off"><p>Warm regards,</p><p class="team-name">The Diamondback Coding Team</p></div>
     `, { unsubscribeUrl });
     try {
-        await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML });
+        await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML, emailType: 'follow-up' });
         
         // ✅ CRITICAL: Do NOT update last_contact_date here!
         // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:

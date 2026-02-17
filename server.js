@@ -2293,12 +2293,14 @@ app.post('/api/scheduling/webhook', async (req, res) => {
             weekday: 'long', 
             year: 'numeric', 
             month: 'long', 
-            day: 'numeric' 
+            day: 'numeric',
+            timeZone: 'America/Chicago'
         });
         const formattedTime = appointmentDate.toLocaleTimeString('en-US', { 
             hour: 'numeric', 
             minute: '2-digit', 
-            hour12: true 
+            hour12: true,
+            timeZone: 'America/Chicago'
         });
         
         const confirmationEmail = buildEmailHTML(`
@@ -2495,12 +2497,14 @@ app.put('/api/appointments/:id/reschedule', authenticateToken, async (req, res) 
             weekday: 'long', 
             year: 'numeric', 
             month: 'long', 
-            day: 'numeric' 
+            day: 'numeric',
+            timeZone: 'America/Chicago'
         });
         const formattedTime = appointmentDate.toLocaleTimeString('en-US', { 
             hour: 'numeric', 
             minute: '2-digit', 
-            hour12: true 
+            hour12: true,
+            timeZone: 'America/Chicago'
         });
         
         const confirmationEmail = buildEmailHTML(`
@@ -2552,13 +2556,80 @@ app.put('/api/appointments/:id/reschedule', authenticateToken, async (req, res) 
 app.put('/api/appointments/:id/cancel', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        
+
+        // Fetch appointment details BEFORE cancelling so we can email the lead
+        const apptResult = await pool.query(
+            'SELECT * FROM appointments WHERE id = $1',
+            [id]
+        );
+
+        if (apptResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+
+        const appt = apptResult.rows[0];
+
         await pool.query(
             'UPDATE appointments SET status = $1, cancelled_at = NOW() WHERE id = $2',
             ['cancelled', id]
         );
-        
+
         console.log(`[APPOINTMENTS] Cancelled appointment ${id}`);
+
+        // Send cancellation email to lead
+        if (appt.lead_email) {
+            try {
+                const apptDate = new Date(appt.scheduled_time);
+                const formattedDate = apptDate.toLocaleDateString('en-US', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                    timeZone: 'America/Chicago'
+                });
+                const formattedTime = apptDate.toLocaleTimeString('en-US', {
+                    hour: 'numeric', minute: '2-digit', hour12: true,
+                    timeZone: 'America/Chicago'
+                });
+
+                const cancelEmail = buildEmailHTML(`
+                    <p><strong>Hi ${appt.lead_name || 'there'},</strong></p>
+
+                    <p>Your consultation with Diamondback Coding has been cancelled. We're sorry we weren't able to connect this time.</p>
+
+                    <p style="margin: 24px 0; padding: 20px; background: #F7F9FB; border-radius: 6px; border-left: 4px solid #EF4444;">
+                        <strong style="display: block; margin-bottom: 8px; color: #2D3142;">Cancelled Appointment</strong>
+                        <strong>Date:</strong> ${formattedDate}<br>
+                        <strong>Time:</strong> ${formattedTime} CT<br>
+                        <strong>Type:</strong> ${appt.event_type || 'Consultation'}
+                    </p>
+
+                    <p>If you'd like to reschedule, we'd love to connect at a time that works better for you.</p>
+
+                    <p style="margin-top: 24px; font-size: 13px; color: #666;">
+                        Questions? Reach us at <a href="tel:+15129800393" style="color: #EF4444; font-weight: 600;">(512) 980-0393</a> or reply to this email.
+                    </p>
+                `, {
+                    eyebrow: 'APPOINTMENT CANCELLED',
+                    headline: 'Your Consultation Has Been Cancelled',
+                    ctaLabel: 'Reschedule a New Time',
+                    ctaUrl: SCHEDULING_URL,
+                    accentColor: '#EF4444',
+                    tagline: 'WE\'D LOVE TO RECONNECT.'
+                });
+
+                await sendDirectEmail({
+                    to: appt.lead_email,
+                    subject: 'Your Consultation Has Been Cancelled — Diamondback Coding',
+                    html: cancelEmail,
+                    leadId: appt.lead_id || null,
+                    emailType: 'appointment_cancelled'
+                });
+
+                console.log(`[APPOINTMENTS] Cancellation email sent to ${appt.lead_email}`);
+            } catch (emailErr) {
+                console.error('[APPOINTMENTS] Failed to send cancellation email:', emailErr);
+                // Don't fail the whole request if email fails
+            }
+        }
+
         res.json({ message: 'Appointment cancelled successfully' });
     } catch (error) {
         console.error('[APPOINTMENTS] Error cancelling:', error);
@@ -5807,78 +5878,120 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
 
         const pdfBuffer = Buffer.concat(pdfBuffers);
 
-        // Build email HTML using Zero Transaction Fees template style
+        // Determine package categories
+        const categories = {
+            web: timeline.packages.some(k => servicePackages[k]?.category === 'web-development'),
+            crm: timeline.packages.some(k => servicePackages[k]?.category === 'crm'),
+            seo: timeline.packages.some(k => servicePackages[k]?.category === 'seo'),
+            marketing: timeline.packages.some(k => servicePackages[k]?.category === 'marketing')
+        };
+        
+        // Build package list
         const packagesText = timeline.packages.map(k => 
             servicePackages[k]?.name || k
         ).join(', ');
-
-        // Email uses same design as zerotransactionfees template
-        const emailHtml = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background-color:#F5F5F5;">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F5F5">
-<tr><td align="center" style="padding:40px 20px">
-<table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;max-width:600px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
-
-<!-- Header -->
-<tr><td style="background-color:#2C3E50;padding:60px 40px 70px 40px;text-align:center">
-<span style="color:#FFC15E;font-size:11px;font-weight:600;letter-spacing:2px;font-family:Arial,sans-serif;text-transform:uppercase;display:block;margin-bottom:12px">YOUR VISION. OUR CODE. ENDLESS POSSIBILITIES.</span>
-<span style="color:#FFC15E;font-size:12px;font-weight:600;letter-spacing:2.5px;font-family:Arial,sans-serif;text-transform:uppercase;display:block;margin-bottom:20px">Premium Web Development & CRM Solutions</span>
-<span style="color:#ffffff;font-size:36px;font-weight:300;letter-spacing:3px;font-family:Georgia,serif;font-style:italic;display:block">Diamondback Coding®</span>
-</td></tr>
-
-<!-- Curve -->
-<tr><td style="background-color:#F5F5F5;padding:0">
-<div style="background-color:#ffffff;border-radius:50% 50% 0 0 / 30px 30px 0 0;height:30px;margin-top:-30px"></div>
-</td></tr>
-
-<!-- Content -->
-<tr><td style="background-color:#ffffff;padding:40px 50px 50px 50px">
-<span style="color:#2C3E50;font-size:28px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:20px;text-align:center">Your Project Timeline is Ready!</span>
-<p style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;margin:0 0 20px">Hi ${timeline.clientName},</p>
-<p style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;margin:0 0 20px">Thank you for choosing Diamondback Coding! We're excited to work with you on <strong>${timeline.projectName || 'your project'}</strong>.</p>
-
-<!-- Project Summary Box -->
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF9E6;border-left:4px solid #FFC15E;margin:20px 0;border-radius:4px">
-<tr><td style="padding:20px">
-<p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#664D00">PROJECT SUMMARY</p>
-<p style="margin:0 0 8px;font-size:14px;color:#664D00"><strong>Services:</strong> ${packagesText}</p>
-<p style="margin:0 0 8px;font-size:14px;color:#664D00"><strong>Rough Estimate:</strong> ${roughEstimateText} (Subject to Change)</p>
-<p style="margin:0;font-size:12px;color:#886600;font-style:italic">Final pricing will be determined and invoiced separately</p>
-</td></tr>
-</table>
-
-<p style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;margin:20px 0">Attached to this email is your complete <strong>Service Level Agreement (SLA)</strong> which includes the detailed project timeline, deliverables, and terms.</p>
-
-<!-- CTA -->
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:30px 0">
-<tr><td align="center">
-<a href="#" style="display:inline-block;background-color:#FFC15E;color:#2C3E50;font-size:15px;font-weight:700;font-family:Arial,sans-serif;text-decoration:none;padding:16px 40px;border-radius:6px">VIEW FULL SLA (PDF ATTACHED)</a>
-</td></tr>
-</table>
-
-<p style="color:#6B7280;font-size:14px;font-family:Arial,sans-serif;line-height:1.7;margin:20px 0 0"><strong>Next Steps:</strong></p>
-<ol style="color:#6B7280;font-size:14px;font-family:Arial,sans-serif;line-height:1.8;padding-left:20px">
-<li>Review the attached SLA document</li>
-<li>Sign the document in the designated area</li>
-<li>Return the signed copy via email</li>
-<li>We'll schedule our kick-off meeting!</li>
-</ol>
-
-<p style="color:#6B7280;font-size:15px;font-family:Arial,sans-serif;line-height:1.8;margin:30px 0 0">Looking forward to building something amazing together!</p>
-<p style="color:#2C3E50;font-size:14px;font-family:Arial,sans-serif;font-weight:600;margin:10px 0 0">— The Diamondback Coding Team</p>
-</td></tr>
-
-<!-- Footer -->
-<tr><td style="background-color:#2C3E50;padding:30px;text-align:center">
-<p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#FFC15E">DIAMONDBACK CODING</p>
-<p style="margin:0;font-size:11px;color:#999">940-217-8680 | hello@diamondbackcoding.com | diamondbackcoding.com</p>
-</td></tr>
-
-</table>
-</td></tr>
-</table>
-</body></html>`;
+        
+        // Create dynamic headline based on what's included
+        let headline = '';
+        let eyebrow = 'PROJECT AGREEMENT';
+        let accentColor = '#4169E1'; // Blue for professional
+        let tagline = 'BUILT FOR YOUR BUSINESS.';
+        
+        if (categories.web && categories.crm) {
+            headline = 'Your Complete Web & CRM Solution';
+            tagline = 'WEBSITE + CRM POWER.';
+        } else if (categories.web) {
+            headline = 'Your Custom Website Project';
+            tagline = 'YOUR VISION. OUR CODE.';
+            accentColor = '#FF6B35'; // Orange
+        } else if (categories.crm) {
+            headline = 'Your Custom CRM Solution';
+            tagline = 'MANAGE LEADS. CLOSE DEALS.';
+            accentColor = '#1A7A3A'; // Green
+        } else if (categories.seo) {
+            headline = 'Your SEO Growth Strategy';
+            tagline = 'RANK HIGHER. GROW FASTER.';
+        } else if (categories.marketing) {
+            headline = 'Your Marketing Campaign';
+            tagline = 'REACH MORE. SELL MORE.';
+        } else {
+            headline = 'Your Custom Solution';
+        }
+        
+        // Dynamic project description
+        let projectDescription = '';
+        if (categories.web && categories.crm) {
+            projectDescription = 'We\'re building you a complete digital ecosystem: a custom website that showcases your business and a powerful CRM platform to manage your leads and customers — all owned by you, with zero transaction fees.';
+        } else if (categories.web) {
+            projectDescription = 'We\'re building you a custom website that\'s 100% yours — no subscriptions, no transaction fees, no platform lock-in. Just a professional online presence designed specifically for your business.';
+        } else if (categories.crm) {
+            projectDescription = 'We\'re building you a custom CRM system tailored to how your business operates — track leads, manage customers, and close more deals without paying per-seat fees or transaction costs.';
+        } else if (categories.seo) {
+            projectDescription = 'We\'re optimizing your online presence to rank higher in search results, drive more organic traffic, and grow your business visibility.';
+        } else if (categories.marketing) {
+            projectDescription = 'We\'re launching a comprehensive marketing campaign to increase your brand awareness, engage your audience, and drive conversions.';
+        } else {
+            projectDescription = `We're excited to work with you on ${timeline.projectName || 'your project'}.`;
+        }
+        
+        // Dynamic next steps based on package type
+        let nextSteps = '';
+        if (categories.web || categories.crm) {
+            nextSteps = `
+                <li><strong>Review the SLA:</strong> Read through the attached agreement and timeline</li>
+                <li><strong>Sign & Return:</strong> Sign the document and email it back to us</li>
+                <li><strong>Kick-off Meeting:</strong> We'll schedule a call to discuss your vision and requirements</li>
+                <li><strong>Design Phase:</strong> We'll create mockups and prototypes for your approval</li>
+                <li><strong>Development:</strong> We'll build your ${categories.web && categories.crm ? 'website and CRM' : categories.web ? 'website' : 'CRM'}</li>
+                <li><strong>Testing & Launch:</strong> Final testing, training, and go-live!</li>
+            `;
+        } else {
+            nextSteps = `
+                <li>Review the attached SLA document</li>
+                <li>Sign the document and return via email</li>
+                <li>We'll schedule our kick-off meeting</li>
+                <li>Project begins according to timeline!</li>
+            `;
+        }
+        
+        // Build email using modern template
+        const emailHtml = buildEmailHTML(`
+            <p><strong>Hi ${timeline.clientName},</strong></p>
+            
+            <p>${projectDescription}</p>
+            
+            <p style="margin: 24px 0; padding: 20px; background: #F7F9FB; border-radius: 6px; border-left: 4px solid ${accentColor};">
+                <strong style="display: block; margin-bottom: 12px; color: #2D3142;">Project Summary</strong>
+                <strong>Services:</strong> ${packagesText}<br>
+                ${roughEstimateText ? `<strong>Estimated Investment:</strong> ${roughEstimateText}<br>` : ''}
+                <em style="font-size: 12px; color: #666; display: block; margin-top: 8px;">Final pricing will be confirmed and invoiced separately</em>
+            </p>
+            
+            <p><strong>What's Attached:</strong></p>
+            <p>Your complete <strong>Service Level Agreement (SLA)</strong> includes:</p>
+            <ul style="margin: 12px 0 24px 0; padding-left: 24px; line-height: 1.8;">
+                <li>Detailed project timeline with milestones</li>
+                <li>Scope of work and deliverables</li>
+                <li>Terms and conditions</li>
+                <li>Payment schedule</li>
+            </ul>
+            
+            <p><strong>Next Steps:</strong></p>
+            <ol style="margin: 12px 0 24px 0; padding-left: 24px; line-height: 1.8;">
+                ${nextSteps}
+            </ol>
+            
+            <p>Have questions? Reply to this email or call us at <a href="tel:+15129800393" style="color: ${accentColor}; font-weight: 600;">(512) 980-0393</a>.</p>
+            
+            <p style="margin-top: 32px;">We're excited to bring your vision to life!</p>
+        `, {
+            eyebrow: eyebrow,
+            headline: headline,
+            ctaLabel: null, // No CTA button needed for SLA
+            ctaUrl: null,
+            accentColor: accentColor,
+            tagline: tagline
+        });
 
         // Send email with PDF attachment and tracking
         await sendDirectEmail({
@@ -15016,6 +15129,56 @@ function startEmailConfirmationJob() {
 // ========================================
 // BOOKINGS API
 // ========================================
+
+// PUBLIC: Get booked time slots for a date (used by schedule.html to gray out taken/past slots)
+// Returns booked times from BOTH the appointments table and the bookings table
+app.get('/api/public/booked-times', async (req, res) => {
+    try {
+        const { date } = req.query; // expects YYYY-MM-DD
+        if (!date) return res.status(400).json({ error: 'date param required' });
+
+        // Pull from appointments table (admin-created)
+        const apptResult = await pool.query(
+            `SELECT scheduled_time FROM appointments
+             WHERE DATE(scheduled_time AT TIME ZONE 'America/Chicago') = $1
+               AND status NOT IN ('cancelled')`,
+            [date]
+        );
+
+        // Pull from bookings table (public booking widget)
+        const bookResult = await pool.query(
+            `SELECT booking_time FROM bookings
+             WHERE booking_date = $1 AND status != 'cancelled'`,
+            [date]
+        );
+
+        const booked = new Set();
+
+        // From appointments table — convert UTC to CT, format as "HH:MM AM/PM"
+        apptResult.rows.forEach(row => {
+            const d = new Date(row.scheduled_time);
+            const ct = new Intl.DateTimeFormat('en-US', {
+                hour: 'numeric', minute: '2-digit', hour12: true,
+                timeZone: 'America/Chicago'
+            }).format(d);
+            booked.add(ct.replace('\u202f', ' ')); // normalize non-breaking space
+        });
+
+        // From bookings table — stored as "HH:MM" 24h, convert to display format
+        bookResult.rows.forEach(row => {
+            const [hStr, mStr] = row.booking_time.split(':');
+            const h = parseInt(hStr), m = parseInt(mStr);
+            const period = h >= 12 ? 'PM' : 'AM';
+            const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+            booked.add(`${h12}:${String(m).padStart(2, '0')} ${period}`);
+        });
+
+        res.json({ date, booked: [...booked] });
+    } catch (error) {
+        console.error('[SCHEDULE] Error fetching booked times:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 // PUBLIC: Get available time slots
 app.get('/api/public/booking/availability', async (req, res) => {

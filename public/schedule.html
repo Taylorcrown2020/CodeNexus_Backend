@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schedule a Consultation | Diamondback Coding</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
     <style>
 :root {
     --brand-gold: #E5C4A0;
@@ -27,8 +29,8 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 .header { background: var(--brand-black); padding: 20px 0; }
 .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-.logo svg { width: 24px; height: 24px; }
-.logo-text { font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #ffffff; }
+.logo svg { width: 28px; height: 28px; flex-shrink: 0; }
+.logo-text { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 16px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: #ffffff; }
 .main { padding: 60px 24px; min-height: calc(100vh - 200px); }
 .scheduling-container { max-width: 1000px; margin: 0 auto; }
 .page-header { text-align: center; margin-bottom: 50px; }
@@ -57,7 +59,8 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 .time-slot { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 12px; text-align: center; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
 .time-slot:hover:not(.disabled) { background: #fef9f3; border-color: var(--brand-gold-dark); color: var(--brand-gold-dark); transform: translateY(-1px); }
 .time-slot.selected { background: var(--brand-gold); color: var(--brand-black); font-weight: 600; border-color: var(--brand-gold-dark); }
-.time-slot.disabled { opacity: 0.3; cursor: not-allowed; }
+.time-slot.disabled { opacity: 0.35; cursor: not-allowed; background: #f0f0f0; color: #aaa; font-size: 12px; }
+.time-slot.disabled[onclick=""] { text-decoration: line-through; }
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
 .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.3; }
 .form-group { margin-bottom: 20px; }
@@ -94,10 +97,12 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 <body>
     <header class="header">
         <div class="container">
-            <a href="/" class="logo">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M3 3H21V21H3V3Z" stroke="white" stroke-width="2"/>
-                    <path d="M7 7H17V17H7V7Z" stroke="white" stroke-width="1.5"/>
+            <a href="https://diamondbackcoding.com" class="logo">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="white" stroke-width="1.5"/>
+                    <path d="M12 12L3 7.5" stroke="white" stroke-width="1.5"/>
+                    <path d="M12 12V21" stroke="white" stroke-width="1.5"/>
+                    <path d="M12 12L21 7.5" stroke="white" stroke-width="1.5"/>
                 </svg>
                 <span class="logo-text">DIAMONDBACK CODING</span>
             </a>
@@ -241,101 +246,199 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 
     <script>
         const API_URL = window.location.origin;
-        let currentMonth = new Date();
-        let selectedDate = null;
-        let selectedTime = null;
-        const timeSlots = ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM'];
-        const businessDays = [1, 2, 3, 4, 5];
 
+        // ─── CONFIGURATION ───────────────────────────────────────────────────
+        // All times in CT (America/Chicago). Customers see slots that:
+        //   1. Have not already passed (same-day cutoff: 3 PM CT)
+        //   2. Are not already booked in appointments or bookings tables
+        const ALL_TIME_SLOTS = [
+            '9:00 AM','9:30 AM','10:00 AM','10:30 AM',
+            '11:00 AM','11:30 AM',
+            '1:00 PM','1:30 PM','2:00 PM','2:30 PM',
+            '3:00 PM','3:30 PM','4:00 PM','4:30 PM'
+        ];
+        // Customers cannot book same-day after this hour (24h, CT)
+        const SAME_DAY_CUTOFF_HOUR = 15; // 3:00 PM CT
+        // Customers cannot book same-day after this many hours before a slot
+        const MIN_NOTICE_HOURS = 2; // must book at least 2h before the slot
+
+        const businessDays = [1,2,3,4,5]; // Mon–Fri
+
+        let currentMonth = new Date();
+        let selectedDate  = null;
+        let selectedTime  = null;
+        let bookedTimes   = new Set(); // filled on each date selection
+
+        // ─── INIT ─────────────────────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', () => {
             renderCalendar();
-            document.getElementById('prevMonth').addEventListener('click', () => { currentMonth.setMonth(currentMonth.getMonth() - 1); renderCalendar(); });
-            document.getElementById('nextMonth').addEventListener('click', () => { currentMonth.setMonth(currentMonth.getMonth() + 1); renderCalendar(); });
+            document.getElementById('prevMonth').addEventListener('click', () => {
+                currentMonth.setMonth(currentMonth.getMonth() - 1);
+                renderCalendar();
+            });
+            document.getElementById('nextMonth').addEventListener('click', () => {
+                currentMonth.setMonth(currentMonth.getMonth() + 1);
+                renderCalendar();
+            });
             document.getElementById('schedulingForm').addEventListener('submit', handleFormSubmit);
         });
 
+        // ─── CALENDAR ─────────────────────────────────────────────────────────
         function renderCalendar() {
-            const year = currentMonth.getFullYear();
+            const year  = currentMonth.getFullYear();
             const month = currentMonth.getMonth();
-            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            const monthNames = ['January','February','March','April','May','June',
+                                'July','August','September','October','November','December'];
             document.getElementById('calendarMonth').textContent = `${monthNames[month]} ${year}`;
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            document.getElementById('prevMonth').disabled = year === today.getFullYear() && month === today.getMonth();
+            const nowCT = getNowCT();
+            const todayCT = new Date(nowCT.getFullYear(), nowCT.getMonth(), nowCT.getDate());
 
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            document.getElementById('prevMonth').disabled =
+                year === todayCT.getFullYear() && month === todayCT.getMonth();
+
+            const firstDay      = new Date(year, month, 1).getDay();
+            const daysInMonth   = new Date(year, month + 1, 0).getDate();
             const daysInPrevMonth = new Date(year, month, 0).getDate();
 
             let html = '';
-            // Headers
-            ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
-                html += `<div class="calendar-day-header">${day}</div>`;
+            ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+                html += `<div class="calendar-day-header">${d}</div>`;
             });
 
-            // Previous month days
             for (let i = firstDay - 1; i >= 0; i--) {
                 html += `<div class="calendar-day other-month">${daysInPrevMonth - i}</div>`;
             }
 
-            // Current month days
             for (let day = 1; day <= daysInMonth; day++) {
                 const date = new Date(year, month, day);
-                date.setHours(0, 0, 0, 0);
                 let classes = 'calendar-day';
-                const isToday = date.getTime() === today.getTime();
-                const isPast = date < today;
+                const isToday   = date.getTime() === todayCT.getTime();
+                const isPast    = date < todayCT;
                 const isWeekend = !businessDays.includes(date.getDay());
-                const isSelected = selectedDate && date.getTime() === selectedDate.getTime();
-                
+
+                // Same-day: disable if current CT time is past cutoff
+                const isSameDayCutoff = isToday && nowCT.getHours() >= SAME_DAY_CUTOFF_HOUR;
+
+                const isSelected = selectedDate &&
+                    date.getFullYear() === selectedDate.getFullYear() &&
+                    date.getMonth()    === selectedDate.getMonth() &&
+                    date.getDate()     === selectedDate.getDate();
+
                 if (isToday) classes += ' today';
-                if (isPast || isWeekend) classes += ' disabled';
+                if (isPast || isWeekend || isSameDayCutoff) classes += ' disabled';
                 if (isSelected) classes += ' selected';
-                
-                const onclick = (!isPast && !isWeekend) ? `onclick="selectDate(new Date(${year},${month},${day}), this)"` : '';
+
+                const clickable = !isPast && !isWeekend && !isSameDayCutoff;
+                const onclick = clickable
+                    ? `onclick="selectDate(new Date(${year},${month},${day}), this)"`
+                    : '';
                 html += `<div class="${classes}" ${onclick}>${day}</div>`;
             }
 
-            // Next month days
             const totalCells = firstDay + daysInMonth;
-            const remainingCells = (Math.ceil(totalCells / 7) * 7) - totalCells;
-            for (let day = 1; day <= remainingCells; day++) {
+            const remaining  = (Math.ceil(totalCells / 7) * 7) - totalCells;
+            for (let day = 1; day <= remaining; day++) {
                 html += `<div class="calendar-day other-month">${day}</div>`;
             }
 
             document.getElementById('calendarGrid').innerHTML = html;
         }
 
-        function selectDate(date, el) {
+        // ─── DATE SELECTION ────────────────────────────────────────────────────
+        async function selectDate(date, el) {
             selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
             selectedTime = null;
             document.querySelectorAll('.calendar-day').forEach(e => e.classList.remove('selected'));
             el.classList.add('selected');
-            renderTimeSlots();
             document.getElementById('formSection').style.display = 'none';
+
+            // Show loading state in time slots
+            document.getElementById('timeSlotsContainer').innerHTML =
+                '<div class="empty-state"><p style="color:#999;">Loading available times…</p></div>';
+
+            // Fetch booked times from server
+            const dateStr = formatDateYMD(selectedDate);
+            try {
+                const res  = await fetch(`${API_URL}/api/public/booked-times?date=${dateStr}`);
+                const data = await res.json();
+                bookedTimes = new Set((data.booked || []).map(normalizeTime));
+            } catch (e) {
+                console.warn('Could not fetch booked times, proceeding with empty set', e);
+                bookedTimes = new Set();
+            }
+
+            renderTimeSlots();
         }
 
+        // ─── TIME SLOTS ────────────────────────────────────────────────────────
         function renderTimeSlots() {
+            const nowCT  = getNowCT();
+            const isToday = selectedDate &&
+                selectedDate.getFullYear() === nowCT.getFullYear() &&
+                selectedDate.getMonth()    === nowCT.getMonth() &&
+                selectedDate.getDate()     === nowCT.getDate();
+
+            let anyAvailable = false;
             let html = '<div class="time-slots">';
-            timeSlots.forEach(time => {
-                const isSelected = selectedTime === time;
-                html += `<div class="time-slot ${isSelected ? 'selected' : ''}" onclick="selectTime('${time}', this)">${time}</div>`;
+
+            ALL_TIME_SLOTS.forEach(time => {
+                const normalized = normalizeTime(time);
+                const isBooked   = bookedTimes.has(normalized);
+
+                // For today, disable slots that are within MIN_NOTICE_HOURS of now
+                let isTooSoon = false;
+                if (isToday) {
+                    const slotMinutes = parseSlotMinutes(time);
+                    const nowMinutes  = nowCT.getHours() * 60 + nowCT.getMinutes();
+                    isTooSoon = slotMinutes - nowMinutes < MIN_NOTICE_HOURS * 60;
+                }
+
+                const isDisabled = isBooked || isTooSoon;
+                const isSelected = normalizeTime(selectedTime || '') === normalized;
+
+                let classes = 'time-slot';
+                if (isDisabled) classes += ' disabled';
+                if (isSelected && !isDisabled) classes += ' selected';
+
+                const label  = isBooked ? `${time} — Booked` : time;
+                const onclick = isDisabled ? '' : `onclick="selectTime('${time}', this)"`;
+
+                if (!isDisabled) anyAvailable = true;
+                html += `<div class="${classes}" ${onclick}>${label}</div>`;
             });
+
             html += '</div>';
+
+            if (!anyAvailable) {
+                html = `<div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <p style="font-weight:600;margin-bottom:4px;">No times available</p>
+                    <p style="font-size:13px;color:#999;">Please select a different date.</p>
+                </div>`;
+            }
+
             document.getElementById('timeSlotsContainer').innerHTML = html;
         }
 
+        // ─── TIME SELECTION ────────────────────────────────────────────────────
         function selectTime(time, el) {
             selectedTime = time;
             document.querySelectorAll('.time-slot').forEach(e => e.classList.remove('selected'));
             el.classList.add('selected');
             document.getElementById('formSection').style.display = 'block';
-            const dateStr = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            document.getElementById('selectedDateTimeText').textContent = `${dateStr} at ${selectedTime}`;
+            const dateStr = selectedDate.toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+            document.getElementById('selectedDateTimeText').textContent = `${dateStr} at ${time}`;
             document.getElementById('formSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
+        // ─── FORM SUBMIT ───────────────────────────────────────────────────────
         async function handleFormSubmit(e) {
             e.preventDefault();
             if (!selectedDate || !selectedTime) { alert('Please select a date and time'); return; }
@@ -349,19 +452,38 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
             if (period === 'PM' && hour !== 12) hour += 12;
             if (period === 'AM' && hour === 12) hour = 0;
 
-            const scheduledTime = new Date(selectedDate);
-            scheduledTime.setHours(hour, parseInt(minutes), 0, 0);
+            // Build a CT-aware ISO string by appending the CT UTC offset.
+            // CT is UTC-6 (CST) or UTC-5 (CDT). We detect DST by checking what
+            // Date thinks the offset is for that date in CT.
+            const y   = selectedDate.getFullYear();
+            const mo  = String(selectedDate.getMonth() + 1).padStart(2,'0');
+            const d   = String(selectedDate.getDate()).padStart(2,'0');
+            const hh  = String(hour).padStart(2,'0');
+            const mm  = String(parseInt(minutes)).padStart(2,'0');
+
+            // Detect whether CT is on CST (-06:00) or CDT (-05:00) for this date
+            // by creating a date with the CT label and checking its UTC offset
+            const testDate = new Date(`${y}-${mo}-${d}T${hh}:${mm}:00`);
+            const ctFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/Chicago',
+                timeZoneName: 'short'
+            });
+            const ctParts = ctFormatter.formatToParts(testDate);
+            const tzName  = ctParts.find(p => p.type === 'timeZoneName')?.value || 'CST';
+            const offset  = tzName === 'CDT' ? '-05:00' : '-06:00';
+
+            const ctISOString = `${y}-${mo}-${d}T${hh}:${mm}:00${offset}`;
 
             const formData = {
                 event: 'invitee.created',
                 payload: {
-                    email: document.getElementById('email').value,
-                    name: document.getElementById('name').value,
-                    scheduled_event: { start_time: scheduledTime.toISOString() },
+                    email:   document.getElementById('email').value,
+                    name:    document.getElementById('name').value,
+                    scheduled_event: { start_time: ctISOString },
                     event_type: { name: 'Consultation' },
-                    phone: document.getElementById('phone').value,
+                    phone:   document.getElementById('phone').value,
                     company: document.getElementById('company').value,
-                    notes: document.getElementById('notes').value
+                    notes:   document.getElementById('notes').value
                 }
             };
 
@@ -371,7 +493,6 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
                 });
-
                 const result = await response.json();
                 if (response.ok && result.processed) {
                     showSuccess(formData.payload);
@@ -380,7 +501,7 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
                 }
             } catch (error) {
                 console.error(error);
-                alert('Failed to schedule appointment. Please try again or contact us directly at (512) 980-0393.');
+                alert('Failed to schedule. Please try again or call us at (512) 980-0393.');
                 btn.disabled = false;
                 btn.innerHTML = 'Confirm Appointment';
             }
@@ -397,6 +518,41 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
                 <div class="success-details-item"><span class="success-details-label">Type</span><span class="success-details-value">Discovery Call</span></div>
             `;
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ─── HELPERS ──────────────────────────────────────────────────────────
+
+        // Get current date/time in America/Chicago timezone
+        function getNowCT() {
+            const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' });
+            return new Date(nowStr);
+        }
+
+        // Format a Date as YYYY-MM-DD
+        function formatDateYMD(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // Normalize a display time like "9:00 AM" or "09:00 AM" → "9:00 AM"
+        // so comparisons between server & client are consistent
+        function normalizeTime(t) {
+            if (!t) return '';
+            return t.replace(/^0/, '').trim(); // strip leading zero, e.g. "09:00 AM" → "9:00 AM"
+        }
+
+        // Parse a display time like "9:30 AM" into minutes since midnight
+        function parseSlotMinutes(time) {
+            const m = time.match(/(\d+):(\d+)\s(AM|PM)/);
+            if (!m) return 0;
+            let h = parseInt(m[1]);
+            const min = parseInt(m[2]);
+            const period = m[3];
+            if (period === 'PM' && h !== 12) h += 12;
+            if (period === 'AM' && h === 12) h = 0;
+            return h * 60 + min;
         }
     </script>
 </body>

@@ -1596,16 +1596,16 @@ body.crm-active .hero,
         <div class="section-subtitle">FLEXIBLE PRICING</div>
         <h2 class="section-title">Choose Your CRM Solution</h2>
         <p class="section-description">
-            Powerful CRM tools designed for businesses nationwide. No long-term contracts, cancel anytime.
+            Powerful CRM tools designed for businesses nationwide. Cancel anytime.
         </p>
     </div>
 
-    <div class="services-grid">
+    <div class="services-grid crm-grid-four">
         <!-- Starter Plan -->
         <div class="service-card">
             <div class="service-badge">STARTER</div>
             <div class="service-price">$19.99 / User</div>
-            <div class="service-period">per month</div>
+            <div class="service-period">per month, billed monthly</div>
             <h3 class="service-name">Essential CRM</h3>
             <p class="service-description">
                 Perfect for small businesses getting started with customer relationship management.
@@ -1618,14 +1618,20 @@ body.crm-active .hero,
                 <li>Standard reporting</li>
                 <li>Email support</li>
             </ul>
-            <button class="service-btn" onclick="openModal()">GET STARTED</button>
+            <div class="crm-subscribe-group">
+                <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-essential', 'Essential CRM', 19.99)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                    SUBSCRIBE
+                </button>
+                <div class="crm-subscribe-note">No contracts. Cancel anytime.</div>
+            </div>
         </div>
 
         <!-- Professional Plan (Featured) -->
         <div class="service-card featured">
             <div class="service-badge">MOST POPULAR</div>
             <div class="service-price">$49.99 / User</div>
-            <div class="service-period">per month</div>
+            <div class="service-period">per month, billed monthly</div>
             <h3 class="service-name">Professional CRM</h3>
             <p class="service-description">
                 Advanced features for growing businesses that need automation and deeper insights.
@@ -1634,19 +1640,25 @@ body.crm-active .hero,
                 <li>Up to 10,000 contacts</li>
                 <li>Advanced lead scoring</li>
                 <li>Sales automation workflows</li>
-                <li>Custom fields & pipelines</li>
+                <li>Custom fields &amp; pipelines</li>
                 <li>Advanced analytics</li>
-                <li>Priority phone & email support</li>
+                <li>Priority phone &amp; email support</li>
                 <li>API access</li>
             </ul>
-            <button class="service-btn" onclick="openModal()">GET STARTED</button>
+            <div class="crm-subscribe-group">
+                <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-professional', 'Professional CRM', 49.99)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                    SUBSCRIBE
+                </button>
+                <div class="crm-subscribe-note">No contracts. Cancel anytime.</div>
+            </div>
         </div>
 
         <!-- Enterprise Plan -->
         <div class="service-card">
             <div class="service-badge">ENTERPRISE</div>
             <div class="service-price">$64.99 / User</div>
-            <div class="service-period">tailored pricing</div>
+            <div class="service-period">per month, billed monthly</div>
             <h3 class="service-name">Enterprise CRM</h3>
             <p class="service-description">
                 Fully customized solution with dedicated support for large-scale operations.
@@ -1660,9 +1672,85 @@ body.crm-active .hero,
                 <li>Custom training sessions</li>
                 <li>SLA guarantee</li>
             </ul>
-            <button class="service-btn" onclick="openModal()">CONTACT SALES</button>
+            <div class="crm-subscribe-group">
+                <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-enterprise', 'Enterprise CRM', 64.99)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                    SUBSCRIBE
+                </button>
+                <div class="crm-subscribe-note">No contracts. Cancel anytime.</div>
+            </div>
+        </div>
+
+        <!-- Custom CRM Build -->
+        <div class="service-card crm-custom-card">
+            <div class="service-badge custom-badge">CUSTOM BUILD</div>
+            <div class="service-price custom-price">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle;margin-right:8px;opacity:0.7;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                Custom
+            </div>
+            <div class="service-period">quoted per project</div>
+            <h3 class="service-name">Custom CRM Build</h3>
+            <p class="service-description">
+                A fully bespoke CRM engineered around your exact workflows — not the other way around.
+            </p>
+            <ul class="service-features">
+                <li>Built from scratch to your specs</li>
+                <li>Unique database &amp; data model</li>
+                <li>Custom automations &amp; triggers</li>
+                <li>Third-party integrations</li>
+                <li>Role-based access control</li>
+                <li>Dedicated development team</li>
+                <li>Full source code ownership</li>
+            </ul>
+            <button class="service-btn crm-custom-btn" onclick="openModal()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:7px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                GET A QUOTE
+            </button>
         </div>
     </div>
+
+    <!-- CRM Subscribe Modal -->
+    <div id="crmSubscribeModal" class="crm-modal-overlay" onclick="closeCRMModal(event)" style="display:none;">
+        <div class="crm-modal-box" onclick="event.stopPropagation()">
+            <button class="crm-modal-close" onclick="closeCRMSubscribeModal()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <div class="crm-modal-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            </div>
+            <h2 class="crm-modal-title" id="crmModalTitle">Subscribe to Professional CRM</h2>
+            <p class="crm-modal-subtitle">Enter the number of users. Your subscription will be set up by our team.</p>
+            <div class="crm-modal-price-row">
+                <span class="crm-modal-price-label">Price per user</span>
+                <span class="crm-modal-price-value" id="crmModalPricePerUser">$49.99 / mo</span>
+            </div>
+            <div class="crm-modal-field">
+                <label class="crm-modal-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:-2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Number of Users
+                </label>
+                <div class="crm-qty-control">
+                    <button type="button" class="crm-qty-btn" onclick="changeCRMQty(-1)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                    <input type="number" id="crmUserCount" class="crm-qty-input" value="1" min="1" max="999" oninput="updateCRMTotal()">
+                    <button type="button" class="crm-qty-btn" onclick="changeCRMQty(1)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="crm-modal-total-row">
+                <span>Monthly Total</span>
+                <strong id="crmModalTotal">$49.99 / mo</strong>
+            </div>
+            <button class="crm-modal-submit-btn" onclick="submitCRMSubscription()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:-3px;"><polyline points="20 6 9 17 4 12"/></svg>
+                Request Subscription Setup
+            </button>
+            <p class="crm-modal-footer-note">Our team will reach out within 1 business day to complete setup.</p>
+        </div>
+    </div>
+
 </section>
 
     <style>
@@ -1930,6 +2018,215 @@ body.crm-active .hero,
 
 .service-card.featured .service-btn:hover {
     background: #e6b86b;
+}
+
+/* ── CRM 4-column grid ─────────────────────────────────────── */
+.crm-grid-four {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+}
+
+/* Custom CRM card accent */
+.crm-custom-card {
+    border-color: #1a1a1a;
+    background: #0d0d0d;
+    color: var(--white);
+}
+.crm-custom-card .service-name,
+.crm-custom-card .service-price,
+.crm-custom-card .service-period {
+    color: var(--white);
+}
+.crm-custom-card .service-description { color: rgba(255,255,255,0.65); }
+.crm-custom-card .service-features li { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.1); }
+.crm-custom-card .service-features li::before { color: var(--gold); }
+.crm-custom-card:hover { border-color: var(--gold); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+
+.custom-badge { background: var(--gold) !important; color: var(--black) !important; }
+.custom-price { font-size: 42px !important; display: flex; align-items: center; }
+
+/* Subscribe button & note */
+.crm-subscribe-group { margin-top: 0; }
+.crm-subscribe-note {
+    text-align: center;
+    font-size: 11px;
+    color: var(--grey-500);
+    margin-top: 8px;
+    letter-spacing: 0.3px;
+}
+.service-card.featured .crm-subscribe-note { color: rgba(0,0,0,0.5); }
+
+/* Custom CRM quote button */
+.crm-custom-btn {
+    background: var(--gold);
+    color: var(--black);
+}
+.crm-custom-btn:hover {
+    background: #e6b86b;
+    color: var(--black);
+}
+
+/* ── CRM Subscribe Modal ───────────────────────────────────── */
+.crm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+    backdrop-filter: blur(4px);
+}
+.crm-modal-box {
+    background: var(--white);
+    border-radius: 8px;
+    padding: 48px 44px 40px;
+    max-width: 480px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+}
+.crm-modal-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--grey-500);
+    padding: 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+.crm-modal-close:hover { color: var(--black); }
+.crm-modal-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--grey-100);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    color: var(--black);
+}
+.crm-modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--black);
+    margin: 0 0 8px;
+}
+.crm-modal-subtitle {
+    font-size: 14px;
+    color: var(--grey-600);
+    line-height: 1.6;
+    margin: 0 0 28px;
+}
+.crm-modal-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--grey-100);
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+.crm-modal-price-label { font-size: 13px; color: var(--grey-600); }
+.crm-modal-price-value { font-size: 18px; font-weight: 700; color: var(--black); }
+.crm-modal-field { margin-bottom: 20px; }
+.crm-modal-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--grey-600);
+    margin-bottom: 10px;
+}
+.crm-qty-control {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 2px solid var(--grey-300);
+    border-radius: 6px;
+    overflow: hidden;
+    width: 160px;
+}
+.crm-qty-btn {
+    background: var(--grey-100);
+    border: none;
+    width: 44px;
+    height: 48px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--black);
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+.crm-qty-btn:hover { background: var(--grey-200); }
+.crm-qty-input {
+    flex: 1;
+    border: none;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--black);
+    background: var(--white);
+    padding: 0;
+    min-width: 0;
+    outline: none;
+    height: 48px;
+}
+.crm-modal-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--grey-200);
+    border-bottom: 1px solid var(--grey-200);
+    padding: 16px 0;
+    margin-bottom: 24px;
+    font-size: 14px;
+    color: var(--grey-600);
+}
+.crm-modal-total-row strong { font-size: 22px; font-weight: 800; color: var(--black); }
+.crm-modal-submit-btn {
+    background: var(--black);
+    color: var(--white);
+    border: none;
+    width: 100%;
+    padding: 18px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.crm-modal-submit-btn:hover { background: var(--dark-grey); transform: translateY(-1px); }
+.crm-modal-footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--grey-500);
+    margin: 14px 0 0;
+    line-height: 1.6;
+}
+
+@media (max-width: 1200px) {
+    .crm-grid-four { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+    .crm-grid-four { grid-template-columns: 1fr; }
+    .crm-modal-box { padding: 32px 24px; }
 }
 
 .service-content[data-service-content="crm"].active ~ .hero,
@@ -5950,6 +6247,88 @@ window.testButton = function() {
     console.log('🧪 Test button clicked!');
     openModal();
 };
+
+// ── CRM Subscribe Modal ──────────────────────────────────────────────────
+let _crmPkg = { key: '', name: '', price: 0 };
+
+function openCRMSubscribeModal(packageKey, packageName, pricePerUser) {
+    _crmPkg = { key: packageKey, name: packageName, price: pricePerUser };
+
+    document.getElementById('crmModalTitle').textContent = 'Subscribe to ' + packageName;
+    document.getElementById('crmModalPricePerUser').textContent = '$' + pricePerUser.toFixed(2) + ' / user / mo';
+    document.getElementById('crmUserCount').value = '1';
+    updateCRMTotal();
+
+    const modal = document.getElementById('crmSubscribeModal');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCRMSubscribeModal() {
+    document.getElementById('crmSubscribeModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function closeCRMModal(e) {
+    if (e.target === document.getElementById('crmSubscribeModal')) {
+        closeCRMSubscribeModal();
+    }
+}
+
+function changeCRMQty(delta) {
+    const input = document.getElementById('crmUserCount');
+    const current = parseInt(input.value) || 1;
+    const next = Math.max(1, current + delta);
+    input.value = next;
+    updateCRMTotal();
+}
+
+function updateCRMTotal() {
+    const qty = parseInt(document.getElementById('crmUserCount').value) || 1;
+    const total = (_crmPkg.price * qty).toFixed(2);
+    document.getElementById('crmModalTotal').textContent = '$' + total + ' / mo';
+}
+
+function submitCRMSubscription() {
+    const userCount = parseInt(document.getElementById('crmUserCount').value) || 1;
+    const monthly   = (_crmPkg.price * userCount).toFixed(2);
+
+    const btn = document.querySelector('.crm-modal-submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;animation:spin 1s linear infinite;vertical-align:-3px;"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" opacity="0.3"/><path d="M21 12a9 9 0 0 0-9-9"/></svg> Sending...';
+
+    // Submit to the same contact/modal form — pre-fill subscription intent
+    const subscriptionNote = [
+        'CRM Subscription Request',
+        'Package: ' + _crmPkg.name,
+        'Users: ' + userCount,
+        'Monthly Total: $' + monthly + '/mo'
+    ].join('\n');
+
+    closeCRMSubscribeModal();
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:-3px;"><polyline points="20 6 9 17 4 12"/></svg> Request Subscription Setup';
+
+    // Open main modal and pre-populate if the fields are available
+    openModal();
+
+    // Try to fill in the notes field after modal opens
+    setTimeout(function() {
+        const notesField = document.querySelector('#contactModal textarea, #leadModal textarea, textarea[name="message"], textarea[name="notes"]');
+        if (notesField && !notesField.value) {
+            notesField.value = subscriptionNote;
+        }
+        const subjectField = document.querySelector('input[name="subject"], #subjectField');
+        if (subjectField && !subjectField.value) {
+            subjectField.value = 'CRM Subscription — ' + _crmPkg.name;
+        }
+    }, 150);
+}
+
+// Close on Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeCRMSubscribeModal();
+});
 </script>
 <!-- SUCCESS MODAL -->
 <div class="success-modal" id="successModal">

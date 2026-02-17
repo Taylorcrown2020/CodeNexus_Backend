@@ -3693,6 +3693,13 @@ body.graffiti-mode .sidebar::after {
                 Invoices
                 <span class="nav-badge" id="invoicesBadge">0</span>
             </div>
+            <div class="nav-item" data-section="subscriptions">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                </svg>
+                Subscriptions
+                <span class="nav-badge" id="subscriptionsBadge" style="display:none;">0</span>
+            </div>
             <div class="nav-item" data-section="schedule">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -4358,6 +4365,7 @@ servicePackages = {
     'crm-essential': { name: 'Essential CRM', description: 'Up to 1,000 contacts • Basic lead management', price: 19.99, billing: 'monthly-per-user', category: 'crm' },
     'crm-professional': { name: 'Professional CRM', description: 'Up to 10,000 contacts • Sales automation', price: 49.99, billing: 'monthly-per-user', category: 'crm' },
     'crm-enterprise': { name: 'Enterprise CRM', description: 'Unlimited contacts • Custom integrations', price: 64.99, billing: 'monthly-per-user', category: 'crm' },
+    'crm-custom': { name: 'Custom CRM Build', description: 'Built to exact specs • Full ownership', price: 0, billing: 'custom', needsQuote: true, category: 'crm' },
     'seo-local': { name: 'Local SEO', description: 'Google My Business • 10 keywords', price: 199, billing: 'monthly', category: 'seo' },
     'seo-growth': { name: 'Growth SEO', description: '25 keywords • Content creation', price: 499, billing: 'monthly', category: 'seo' },
     'seo-enterprise': { name: 'Enterprise SEO', description: 'Unlimited keywords • Dedicated manager', price: 999, billing: 'monthly', category: 'seo' },
@@ -4662,6 +4670,10 @@ async function renderSection(section) {
             
         case 'invoices':
             renderInvoices(content);
+            break;
+
+        case 'subscriptions':
+            renderSubscriptions(content);
             break;
             
         case 'employees':
@@ -7348,8 +7360,344 @@ if (typeof module !== 'undefined' && module.exports) {
     };
 }
 
+
+// ═══════════════════════════════════════════════════════════════════
+// SUBSCRIPTIONS MANAGEMENT SECTION
+// Full subscriber list with cancel / reactivate / billing-portal actions
+// ═══════════════════════════════════════════════════════════════════
+
+async function renderSubscriptions(content) {
+    content.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--text-muted);">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="animation:spin 1s linear infinite;margin-bottom:12px;">
+            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke-opacity="0.2"/>
+            <path d="M21 12a9 9 0 0 0-9-9"/>
+        </svg>
+        <div>Loading subscriptions…</div>
+    </div>`;
+
+    try {
+        const [subData, statsData] = await Promise.all([
+            fetch(`${API_URL}/api/subscriptions?limit=500`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }).then(r => r.json()),
+            fetch(`${API_URL}/api/analytics/subscriptions`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }).then(r => r.json()).catch(() => ({ success: false }))
+        ]);
+
+        const subs      = subData.success  ? subData.subscriptions  : [];
+        const ov        = statsData.success ? (statsData.overview || statsData) : {};
+        const mrr       = parseFloat(ov.mrr || 0);
+        const active    = parseInt(ov.active_subscribers || ov.active_count || 0);
+        const canceling = parseInt(ov.canceling || ov.canceling_count || 0);
+        const pastDue   = parseInt(ov.past_due || ov.past_due_count || 0);
+        const atRiskMrr = parseFloat(ov.at_risk_mrr || 0);
+
+        // Update sidebar badge
+        const badge = document.getElementById('subscriptionsBadge');
+        if (badge) {
+            badge.textContent = active;
+            badge.style.display = active > 0 ? '' : 'none';
+        }
+
+        content.innerHTML = `
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+            <div>
+                <h2 style="font-size:22px;font-weight:800;margin:0 0 4px;color:var(--text-primary);">CRM Subscriptions</h2>
+                <p style="font-size:13px;color:var(--text-muted);margin:0;">
+                    Manage subscriber accounts — cancel, reactivate, or open billing portal.
+                    Cancellation emails are sent to the subscriber automatically.
+                </p>
+            </div>
+            <select id="subStatusFilter" onchange="filterSubRows()" style="padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);font-size:13px;cursor:pointer;">
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="canceling">Canceling</option>
+                <option value="past_due">Past Due</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+
+        <!-- KPI strip -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+            <div class="stat-card" style="padding:18px 20px;">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">MRR</div>
+                <div style="font-size:26px;font-weight:800;color:var(--text-primary);">$${mrr.toFixed(2)}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Monthly recurring revenue</div>
+            </div>
+            <div class="stat-card" style="padding:18px 20px;">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Active</div>
+                <div style="font-size:26px;font-weight:800;color:var(--text-primary);">${active}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Paying subscribers</div>
+            </div>
+            <div class="stat-card" style="padding:18px 20px;">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Canceling</div>
+                <div style="font-size:26px;font-weight:800;color:${canceling > 0 ? 'var(--accent-amber)' : 'var(--text-primary)'};">${canceling}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Ends at period close</div>
+            </div>
+            <div class="stat-card" style="padding:18px 20px;">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Past Due</div>
+                <div style="font-size:26px;font-weight:800;color:${pastDue > 0 ? 'var(--status-closed)' : 'var(--text-primary)'};">${pastDue}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${atRiskMrr > 0 ? '$'+atRiskMrr.toFixed(2)+' at risk' : 'No past-due accounts'}</div>
+            </div>
+        </div>
+
+        ${pastDue > 0 ? `
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-md);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="font-size:13px;color:var(--text-primary);">
+                <strong>${pastDue} subscriber${pastDue > 1 ? 's are' : ' is'} past due</strong> —
+                $${atRiskMrr.toFixed(2)} MRR at risk. Stripe will retry automatically.
+            </span>
+        </div>` : ''}
+
+        <!-- Table -->
+        <div class="card" style="overflow:hidden;">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead><tr>
+                        <th>Subscriber</th>
+                        <th>Plan</th>
+                        <th style="text-align:center;">Users</th>
+                        <th>Monthly</th>
+                        <th>Status</th>
+                        <th>Next Billing / Ends</th>
+                        <th>Subscribed</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr></thead>
+                    <tbody id="subTableBody">
+                        ${subs.length === 0
+                            ? `<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--text-muted);">
+                                No subscriptions yet — they'll appear here once someone subscribes.
+                               </td></tr>`
+                            : subs.map(s => _buildSubRow(s)).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Cancel confirmation modal -->
+        <div id="subCancelModal"
+             style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px;"
+             onclick="if(event.target===this)_closeSubModal()">
+            <div style="background:var(--bg-primary);border-radius:var(--radius-lg);padding:36px 40px;max-width:460px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.3);position:relative;">
+                <button onclick="_closeSubModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;padding:6px;color:var(--text-muted);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+
+                <!-- Icon -->
+                <div style="width:48px;height:48px;background:rgba(239,68,68,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                </div>
+
+                <h3 style="font-size:18px;font-weight:800;margin:0 0 8px;color:var(--text-primary);">Cancel Subscription</h3>
+                <p id="subCancelDesc" style="font-size:14px;color:var(--text-secondary);margin:0 0 22px;line-height:1.65;"></p>
+
+                <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:16px 18px;margin-bottom:18px;">
+                    <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+                        <input type="checkbox" id="subCancelImmediate"
+                               style="margin-top:2px;width:16px;height:16px;accent-color:#ef4444;flex-shrink:0;">
+                        <div>
+                            <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:3px;">Cancel immediately</div>
+                            <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
+                                Access ends right now. Leave unchecked to let them keep access until the end of the current billing period.
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:22px;display:flex;gap:10px;align-items:flex-start;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    <span style="font-size:12px;color:var(--text-secondary);line-height:1.5;">
+                        A cancellation confirmation email is sent to the subscriber automatically.
+                    </span>
+                </div>
+
+                <div style="display:flex;gap:10px;">
+                    <button onclick="_closeSubModal()" class="btn btn-secondary" style="flex:1;">Keep Active</button>
+                    <button id="subCancelConfirmBtn" onclick="_confirmSubCancel()"
+                            class="btn" style="flex:1;background:#ef4444;color:#fff;border-color:#ef4444;">
+                        Cancel Subscription
+                    </button>
+                </div>
+            </div>
+        </div>`;
+
+    } catch (err) {
+        content.innerHTML = `<div style="padding:48px;text-align:center;color:var(--text-muted);">
+            Error loading subscriptions: ${err.message}
+        </div>`;
+    }
+}
+
+function _buildSubRow(s) {
+    const statusConfig = {
+        active:    { label: 'Active',    bg: 'rgba(16,185,129,0.12)',  color: '#059669' },
+        canceling: { label: 'Canceling', bg: 'rgba(245,158,11,0.12)',  color: '#d97706' },
+        past_due:  { label: 'Past Due',  bg: 'rgba(239,68,68,0.12)',   color: '#dc2626' },
+        cancelled: { label: 'Cancelled', bg: 'var(--bg-tertiary)',     color: 'var(--text-muted)' }
+    };
+    const sc  = statusConfig[s.status] || statusConfig.cancelled;
+    const nm  = s.lead_name  || (s.lead_email ? s.lead_email.split('@')[0] : '—');
+    const em  = s.lead_email || '—';
+    const amt = parseFloat(s.monthly_total || 0).toFixed(2);
+
+    const periodEnd   = s.current_period_end ? new Date(s.current_period_end) : null;
+    const createdAt   = s.created_at         ? new Date(s.created_at)         : null;
+    const fmtShort    = d => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+    const canCancel     = ['active', 'past_due'].includes(s.status);
+    const canReactivate = s.status === 'canceling';
+    const hasBilling    = !!s.stripe_customer_id;
+
+    return `<tr data-sub-status="${s.status}">
+        <td>
+            <div style="font-weight:700;color:var(--text-primary);font-size:13px;">${nm}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${em}</div>
+        </td>
+        <td style="font-size:13px;color:var(--text-secondary);">${s.package_name || '—'}</td>
+        <td style="text-align:center;font-weight:700;font-size:13px;">${s.user_count || 1}</td>
+        <td style="font-family:monospace;font-weight:800;font-size:14px;color:var(--text-primary);">$${amt}</td>
+        <td>
+            <span style="background:${sc.bg};color:${sc.color};padding:3px 9px;border-radius:4px;font-size:11px;font-weight:800;letter-spacing:0.3px;">
+                ${sc.label}
+            </span>
+        </td>
+        <td style="font-size:12px;color:var(--text-secondary);">${fmtShort(periodEnd)}</td>
+        <td style="font-size:12px;color:var(--text-secondary);">${fmtShort(createdAt)}</td>
+        <td>
+            <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
+                ${canCancel ? `
+                <button onclick="_openSubCancelModal(${s.id}, '${(nm).replace(/'/g,"\\'").replace(/"/g,'&quot;')}', '${(s.package_name||'CRM').replace(/'/g,"\\'")}')"
+                    style="padding:5px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;
+                           background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.3);">
+                    Cancel
+                </button>` : ''}
+                ${canReactivate ? `
+                <button onclick="_reactivateSub(${s.id})"
+                    style="padding:5px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;
+                           background:rgba(16,185,129,0.1);color:#059669;border:1px solid rgba(16,185,129,0.3);">
+                    Reactivate
+                </button>` : ''}
+                ${hasBilling ? `
+                <button onclick="_openBillingPortal(${s.id})"
+                    style="padding:5px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;
+                           background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color);">
+                    Billing
+                </button>` : ''}
+            </div>
+        </td>
+    </tr>`;
+}
+
+function filterSubRows() {
+    const val  = document.getElementById('subStatusFilter')?.value || 'all';
+    document.querySelectorAll('#subTableBody tr[data-sub-status]').forEach(row => {
+        row.style.display = (val === 'all' || row.dataset.subStatus === val) ? '' : 'none';
+    });
+}
+
+// ── Cancel modal state ─────────────────────────────────────────────
+let _subCancelId = null;
+
+function _openSubCancelModal(subId, subName, planName) {
+    _subCancelId = subId;
+    const desc = document.getElementById('subCancelDesc');
+    if (desc) {
+        desc.textContent = `You are about to cancel ${subName}'s ${planName} subscription. A confirmation email will be sent to them automatically.`;
+    }
+    const chk = document.getElementById('subCancelImmediate');
+    if (chk) chk.checked = false;
+    const modal = document.getElementById('subCancelModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function _closeSubModal() {
+    _subCancelId = null;
+    const modal = document.getElementById('subCancelModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function _confirmSubCancel() {
+    if (!_subCancelId) return;
+    const immediate = document.getElementById('subCancelImmediate')?.checked || false;
+    const btn       = document.getElementById('subCancelConfirmBtn');
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Cancelling…'; }
+
+    try {
+        const res  = await fetch(`${API_URL}/api/subscriptions/${_subCancelId}/cancel`, {
+            method:  'POST',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ immediate })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            _closeSubModal();
+            showToast(immediate ? 'Subscription cancelled immediately.' : 'Cancellation scheduled — access continues until end of period.', 'success');
+            renderSubscriptions(document.getElementById('mainContent'));
+        } else {
+            showToast(data.message || 'Cancellation failed', 'error');
+        }
+    } catch (err) {
+        showToast('Network error: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Cancel Subscription'; }
+    }
+}
+
+async function _reactivateSub(subId) {
+    if (!confirm('Remove the scheduled cancellation and keep this subscription active?')) return;
+    try {
+        const res  = await fetch(`${API_URL}/api/subscriptions/${subId}/reactivate`, {
+            method:  'POST',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Subscription reactivated.', 'success');
+            renderSubscriptions(document.getElementById('mainContent'));
+        } else {
+            showToast(data.message || 'Reactivation failed', 'error');
+        }
+    } catch (err) {
+        showToast('Network error: ' + err.message, 'error');
+    }
+}
+
+async function _openBillingPortal(subId) {
+    try {
+        showToast('Opening billing portal…', 'info');
+        const res  = await fetch(`${API_URL}/api/subscriptions/${subId}/portal`, {
+            method:  'POST',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success && data.portalUrl) {
+            window.open(data.portalUrl, '_blank');
+        } else {
+            showToast(data.message || 'Could not open billing portal', 'error');
+        }
+    } catch (err) {
+        showToast('Network error: ' + err.message, 'error');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// END SUBSCRIPTIONS SECTION
+// ═══════════════════════════════════════════════════════════════════
+
 function renderAnalytics(content) {
-    // Load analytics data
+    content.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--text-muted);">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="animation:spin 1s linear infinite;margin-bottom:12px;">
+            <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke-opacity="0.2"/>
+            <path d="M21 12a9 9 0 0 0-9-9"/>
+        </svg>
+        <div>Loading analytics...</div>
+    </div>`;
+
     Promise.all([
         fetch(`${API_URL}/api/analytics/revenue?period=30`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
@@ -7362,192 +7710,398 @@ function renderAnalytics(content) {
         }).then(r => r.json()),
         fetch(`${API_URL}/api/analytics/sources`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
-        }).then(r => r.json())
-    ]).then(([revenueData, funnelData, performanceData, sourcesData]) => {
-        
-        const totalRevenue = revenueData.revenue.reduce((sum, day) => sum + parseFloat(day.revenue), 0);
-        const avgDealSize = totalRevenue / (revenueData.revenue.reduce((sum, day) => sum + day.invoice_count, 0) || 1);
-        
+        }).then(r => r.json()),
+        fetch(`${API_URL}/api/analytics/subscriptions`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.json()).catch(() => ({ success: false, overview: {}, by_package: [], mrr_trend: [] })),
+        fetch(`${API_URL}/api/analytics/subscription-events?limit=15`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        }).then(r => r.json()).catch(() => ({ success: false, events: [] }))
+    ]).then(([revenueData, funnelData, performanceData, sourcesData, subData, subEvents]) => {
+
+        const totalRevenue  = revenueData.revenue.reduce((s, d) => s + parseFloat(d.revenue), 0);
+        const avgDealSize   = totalRevenue / (revenueData.revenue.reduce((s, d) => s + d.invoice_count, 0) || 1);
+        const sub           = subData.success ? subData.overview : {};
+        const mrr           = parseFloat(sub.mrr || 0);
+        const arr           = parseFloat(sub.arr || 0);
+        const activeSubs    = parseInt(sub.active_subscribers || 0);
+        const newThisMonth  = parseInt(sub.new_this_month || 0);
+        const churnedMonth  = parseInt(sub.churned_this_month || 0);
+        const churnRate     = parseFloat(sub.churn_rate || 0);
+        const atRiskMRR     = parseFloat(sub.at_risk_mrr || 0);
+        const cancelingCount = parseInt(sub.canceling || 0);
+        const pastDueCount  = parseInt(sub.past_due || 0);
+
         content.innerHTML = `
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- SECTION TABS -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div style="display:flex;gap:8px;margin-bottom:28px;border-bottom:1px solid var(--border-subtle);padding-bottom:0;">
+            <button class="analytics-tab-btn active" id="atab-overview" onclick="switchAnalyticsTab('overview')" style="padding:10px 20px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--text-primary);border-bottom:2px solid var(--accent-amber);margin-bottom:-1px;">Overview</button>
+            <button class="analytics-tab-btn" id="atab-subscriptions" onclick="switchAnalyticsTab('subscriptions')" style="padding:10px 20px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-1px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:5px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Subscriptions
+            </button>
+            <button class="analytics-tab-btn" id="atab-email" onclick="switchAnalyticsTab('email')" style="padding:10px 20px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-1px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:5px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                Email
+            </button>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- TAB: OVERVIEW -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div id="analytics-tab-overview">
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">30-Day Revenue</span>
                         <div class="stat-icon amber">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="12" y1="1" x2="12" y2="23"/>
-                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                            </svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                         </div>
                     </div>
-                    <div class="stat-value">$${totalRevenue.toLocaleString()}</div>
-                    <div class="stat-change positive">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="18 15 12 9 6 15"/>
-                        </svg>
-                        ${((totalRevenue / 30) * 30).toLocaleString()}/month avg
-                    </div>
+                    <div class="stat-value">$${totalRevenue.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+                    <div class="stat-change">Project &amp; invoice revenue</div>
                 </div>
-                
                 <div class="stat-card">
                     <div class="stat-header">
-                        <span class="stat-label">Projected Revenue (90d)</span>
-                        <div class="stat-icon blue">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 3v18h18"/>
-                                <path d="M18 17l-5-5-3 3-4-4"/>
-                            </svg>
+                        <span class="stat-label">Monthly Recurring Revenue</span>
+                        <div class="stat-icon green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                         </div>
                     </div>
-                    <div class="stat-value">$${parseFloat(revenueData.projected || 0).toLocaleString()}</div>
-                    <div class="stat-change">Based on probability</div>
+                    <div class="stat-value">$${mrr.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                    <div class="stat-change">ARR: $${arr.toLocaleString(undefined, {maximumFractionDigits:0})}/yr</div>
                 </div>
-                
                 <div class="stat-card">
                     <div class="stat-header">
                         <span class="stat-label">Conversion Rate</span>
-                        <div class="stat-icon green">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                            </svg>
+                        <div class="stat-icon blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                         </div>
                     </div>
                     <div class="stat-value">${funnelData.funnel.conversion_rate}%</div>
                     <div class="stat-change">Last 90 days</div>
                 </div>
-                
                 <div class="stat-card">
                     <div class="stat-header">
-                        <span class="stat-label">Average Deal Size</span>
+                        <span class="stat-label">Active Subscribers</span>
                         <div class="stat-icon purple">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <path d="M3 9h18"/>
-                                <path d="M9 21V9"/>
-                            </svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         </div>
                     </div>
-                    <div class="stat-value">$${avgDealSize.toLocaleString()}</div>
-                    <div class="stat-change">Per closed deal</div>
+                    <div class="stat-value">${activeSubs}</div>
+                    <div class="stat-change ${newThisMonth > 0 ? 'positive' : ''}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="${newThisMonth > 0 ? '18 15 12 9 6 15' : '18 9 12 15 6 9'}"/></svg>
+                        ${newThisMonth} new this month
+                    </div>
                 </div>
             </div>
-            
-            <div class="analytics-grid">
-                <!-- Conversion Funnel -->
+
+            <div class="analytics-grid" style="margin-top:24px;">
                 <div class="analytics-card">
                     <div class="analytics-header">
                         <h3 class="analytics-title">Conversion Funnel (90 days)</h3>
                     </div>
-                    <div style="padding: 20px;">
-                        ${renderFunnelChart(funnelData.funnel)}
-                    </div>
+                    <div style="padding:20px;">${renderFunnelChart(funnelData.funnel)}</div>
                 </div>
-                
-                <!-- Lead Sources -->
                 <div class="analytics-card">
                     <div class="analytics-header">
                         <h3 class="analytics-title">Lead Sources</h3>
                     </div>
                     <div class="metrics-list">
-                        ${sourcesData.sources.map(source => `
+                        ${sourcesData.sources.map(s => `
                             <div class="metric-item">
                                 <div>
-                                    <span class="metric-label">${source.source}</span>
-                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-                                        ${source.conversion_rate}% conversion
-                                    </div>
+                                    <span class="metric-label">${s.source}</span>
+                                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${s.conversion_rate}% conversion</div>
                                 </div>
-                                <span class="metric-value">${source.count}</span>
-                            </div>
-                        `).join('')}
+                                <span class="metric-value">${s.count}</span>
+                            </div>`).join('')}
                     </div>
                 </div>
-                
-                <!-- Revenue Trend -->
                 <div class="analytics-card full-width">
                     <div class="analytics-header">
                         <h3 class="analytics-title">30-Day Revenue Trend</h3>
                     </div>
-                    <div class="chart-container">
-                        ${renderRevenueChart(revenueData.revenue)}
-                    </div>
+                    <div class="chart-container">${renderRevenueChart(revenueData.revenue)}</div>
                 </div>
-                
-                <!-- Employee Performance -->
                 <div class="analytics-card full-width">
                     <div class="analytics-header">
                         <h3 class="analytics-title">Team Performance</h3>
                     </div>
                     <div class="table-container">
                         <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Employee</th>
-                                    <th>Total Leads</th>
-                                    <th>Converted</th>
-                                    <th>Conversion Rate</th>
-                                    <th>Total Revenue</th>
-                                </tr>
-                            </thead>
+                            <thead><tr>
+                                <th>Employee</th><th>Total Leads</th><th>Converted</th>
+                                <th>Conversion Rate</th><th>Total Revenue</th>
+                            </tr></thead>
                             <tbody>
                                 ${performanceData.performance.map(emp => `
                                     <tr>
-                                        <td>
-                                            <div class="contact-cell">
-                                                <div class="contact-avatar">${getInitials(emp.name)}</div>
-                                                <div class="contact-name">${emp.name}</div>
-                                            </div>
-                                        </td>
+                                        <td><div class="contact-cell">
+                                            <div class="contact-avatar">${getInitials(emp.name)}</div>
+                                            <div class="contact-name">${emp.name}</div>
+                                        </div></td>
                                         <td>${emp.total_leads}</td>
                                         <td>${emp.converted}</td>
-                                        <td>
-                                            <span style="color: ${emp.conversion_rate >= 20 ? 'var(--status-contacted)' : 'var(--text-muted)'}">
-                                                ${emp.conversion_rate}%
-                                            </span>
-                                        </td>
-                                        <td style="font-family: var(--font-mono); font-weight: 600;">
-                                            $${parseFloat(emp.total_revenue).toLocaleString()}
-                                        </td>
-                                    </tr>
-                                `).join('')}
+                                        <td><span style="color:${emp.conversion_rate >= 20 ? 'var(--status-contacted)' : 'var(--text-muted)'}">${emp.conversion_rate}%</span></td>
+                                        <td style="font-family:var(--font-mono);font-weight:600;">$${parseFloat(emp.total_revenue).toLocaleString()}</td>
+                                    </tr>`).join('')}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Email Open Rate Report -->
-            <div id="emailOpenReport" style="margin-top: 28px;">
-                <div style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 4px 0 0 0; overflow: hidden;">
-                    <div style="padding: 20px 24px 16px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- TAB: SUBSCRIPTIONS -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div id="analytics-tab-subscriptions" style="display:none;">
+
+            <!-- KPI row -->
+            <div class="stats-grid" style="margin-bottom:24px;">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">MRR</span>
+                        <div class="stat-icon green">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        </div>
+                    </div>
+                    <div class="stat-value">$${mrr.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                    <div class="stat-change ${sub.new_mrr_this_month > 0 ? 'positive' : ''}">
+                        +$${parseFloat(sub.new_mrr_this_month || 0).toFixed(2)} this month
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">ARR</span>
+                        <div class="stat-icon blue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17l-5-5-3 3-4-4"/></svg>
+                        </div>
+                    </div>
+                    <div class="stat-value">$${arr.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+                    <div class="stat-change">Annualised run rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Active Subscribers</span>
+                        <div class="stat-icon amber">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                    </div>
+                    <div class="stat-value">${activeSubs}</div>
+                    <div class="stat-change">${cancelingCount} canceling, ${pastDueCount} past due</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Monthly Churn Rate</span>
+                        <div class="stat-icon ${churnRate > 5 ? 'red' : 'purple'}" style="${churnRate > 5 ? 'background:var(--status-bg-closed)' : ''}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </div>
+                    </div>
+                    <div class="stat-value" style="color:${churnRate > 5 ? 'var(--status-closed)' : 'inherit'}">${churnRate}%</div>
+                    <div class="stat-change">${churnedMonth} churned this month</div>
+                </div>
+            </div>
+
+            <!-- At-risk MRR banner -->
+            ${atRiskMRR > 0 ? `
+            <div style="background:var(--status-bg-closed);border:1px solid var(--status-closed);border-radius:var(--radius-md);padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-closed)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span style="font-size:13px;font-weight:600;color:var(--status-closed);">$${atRiskMRR.toFixed(2)}/mo at risk</span>
+                <span style="font-size:13px;color:var(--text-secondary);">— ${pastDueCount} subscription${pastDueCount !== 1 ? 's' : ''} past due. Review billing and follow up.</span>
+            </div>` : ''}
+
+            <div class="analytics-grid">
+                <!-- Subscriptions by Package -->
+                <div class="analytics-card">
+                    <div class="analytics-header">
+                        <h3 class="analytics-title">Revenue by Package</h3>
+                    </div>
+                    <div class="metrics-list">
+                        ${subData.success && subData.by_package.length > 0 ? subData.by_package.map(p => `
+                            <div class="metric-item">
+                                <div>
+                                    <span class="metric-label">${p.package_name}</span>
+                                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${parseInt(p.subscriber_count)} subscriber${parseInt(p.subscriber_count) !== 1 ? 's' : ''} &bull; avg ${parseFloat(p.avg_users || 1).toFixed(1)} users</div>
+                                </div>
+                                <span class="metric-value">$${parseFloat(p.package_mrr).toFixed(2)}/mo</span>
+                            </div>`).join('') : '<div style="padding:20px;text-align:center;color:var(--text-muted);">No subscriptions yet</div>'}
+                    </div>
+                </div>
+
+                <!-- Subscription Health -->
+                <div class="analytics-card">
+                    <div class="analytics-header">
+                        <h3 class="analytics-title">Subscription Health</h3>
+                    </div>
+                    <div style="padding:20px 24px;">
+                        ${renderSubscriptionHealthChart(sub)}
+                    </div>
+                </div>
+
+                <!-- MRR Trend -->
+                <div class="analytics-card full-width">
+                    <div class="analytics-header">
+                        <h3 class="analytics-title">MRR Growth (12 months)</h3>
+                    </div>
+                    <div class="chart-container">
+                        ${renderMRRTrendChart(subData.success ? subData.mrr_trend : [])}
+                    </div>
+                </div>
+
+                <!-- Recent Subscription Events -->
+                <div class="analytics-card full-width">
+                    <div class="analytics-header">
+                        <h3 class="analytics-title">Recent Subscription Events</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead><tr>
+                                <th>Date</th><th>Event</th><th>Subscriber</th>
+                                <th>Package</th><th>Amount</th>
+                            </tr></thead>
+                            <tbody>
+                                ${subEvents.success && subEvents.events.length > 0 ? subEvents.events.map(ev => `
+                                    <tr>
+                                        <td style="color:var(--text-muted);font-size:12px;">${new Date(ev.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
+                                        <td>${renderSubEventBadge(ev.event_type)}</td>
+                                        <td>${ev.lead_email || ev.lead_name || '—'}</td>
+                                        <td>${ev.package_name || '—'}</td>
+                                        <td style="font-family:var(--font-mono);font-weight:600;">${ev.amount ? '$' + parseFloat(ev.amount).toFixed(2) : '—'}</td>
+                                    </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted);">No subscription events yet</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- TAB: EMAIL -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div id="analytics-tab-email" style="display:none;">
+            <div id="emailOpenReport" style="margin-top:4px;">
+                <div style="background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:4px 0 0 0;overflow:hidden;">
+                    <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;">
                         <div style="display:flex;align-items:center;gap:10px;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;color:var(--text-secondary);">
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                                 <polyline points="22,6 12,13 2,6"/>
                             </svg>
-                            <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Email Open Rate Report</h3>
+                            <h3 style="font-size:16px;font-weight:700;margin:0;">Email Open Rate Report</h3>
                         </div>
-                        <span style="font-size: 12px; color: var(--text-muted);">
+                        <span style="font-size:12px;color:var(--text-muted);">
                             <span style="display:inline-flex;align-items:center;gap:6px;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-                                    <polyline points="23 4 23 10 17 10"/>
-                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                    <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                                 </svg>
                                 Auto-refreshes every 30s
                             </span>
                         </span>
                     </div>
-                    <div id="emailOpenReportContent" style="padding: 24px;">
-                        <div style="text-align: center; color: var(--text-muted);">Loading email report...</div>
+                    <div id="emailOpenReportContent" style="padding:24px;">
+                        <div style="text-align:center;color:var(--text-muted);">Loading email report...</div>
                     </div>
                 </div>
             </div>
+        </div>
         `;
 
-        // Load email open report asynchronously
-        loadEmailOpenReport();
+        // Set up tab switching
+        window._analyticsSubData = subData;
+        window._analyticsSubEvents = subEvents;
+
+        // Load email report when Email tab is active
+        // (deferred — only load when tab is clicked)
+        window._emailReportLoaded = false;
     });
 }
+
+function switchAnalyticsTab(tab) {
+    ['overview','subscriptions','email'].forEach(t => {
+        const el = document.getElementById('analytics-tab-' + t);
+        const btn = document.getElementById('atab-' + t);
+        if (el) el.style.display = (t === tab) ? '' : 'none';
+        if (btn) {
+            btn.style.color = (t === tab) ? 'var(--text-primary)' : 'var(--text-secondary)';
+            btn.style.borderBottom = (t === tab) ? '2px solid var(--accent-amber)' : '2px solid transparent';
+        }
+    });
+
+    if (tab === 'email' && !window._emailReportLoaded) {
+        window._emailReportLoaded = true;
+        loadEmailOpenReport();
+    }
+}
+
+function renderSubscriptionHealthChart(sub) {
+    const active   = parseInt(sub.active_subscribers || 0);
+    const canceling = parseInt(sub.canceling || 0);
+    const pastDue  = parseInt(sub.past_due || 0);
+    const total = active + canceling + pastDue || 1;
+
+    const bars = [
+        { label: 'Active',    value: active,    color: 'var(--status-contacted)', pct: (active / total * 100).toFixed(0) },
+        { label: 'Canceling', value: canceling, color: 'var(--accent-amber)',      pct: (canceling / total * 100).toFixed(0) },
+        { label: 'Past Due',  value: pastDue,   color: 'var(--status-closed)',     pct: (pastDue / total * 100).toFixed(0) }
+    ];
+
+    return bars.map(b => `
+        <div style="margin-bottom:18px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+                <span style="color:var(--text-secondary);font-weight:500;">${b.label}</span>
+                <span style="font-weight:700;color:var(--text-primary);">${b.value}</span>
+            </div>
+            <div style="height:8px;background:var(--bg-tertiary);border-radius:4px;overflow:hidden;">
+                <div style="height:100%;width:${b.pct}%;background:${b.color};border-radius:4px;transition:width 0.4s ease;"></div>
+            </div>
+        </div>`).join('');
+}
+
+function renderMRRTrendChart(trend) {
+    if (!trend || trend.length === 0) {
+        return `<div style="text-align:center;padding:40px;color:var(--text-muted);">No MRR data yet</div>`;
+    }
+
+    const maxMRR = Math.max(...trend.map(m => parseFloat(m.new_mrr || 0)), 1);
+    const chartH = 120;
+
+    return `
+        <div style="display:flex;align-items:flex-end;gap:8px;height:${chartH + 40}px;padding:0 8px;">
+            ${trend.map(m => {
+                const pct = (parseFloat(m.new_mrr || 0) / maxMRR * 100).toFixed(1);
+                const h   = Math.max(4, parseFloat(pct) / 100 * chartH);
+                const month = new Date(m.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                return `
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                        <div style="font-size:10px;color:var(--text-muted);">$${parseFloat(m.new_mrr || 0).toFixed(0)}</div>
+                        <div style="width:100%;height:${h}px;background:var(--accent-amber);border-radius:3px 3px 0 0;opacity:0.85;min-width:12px;"></div>
+                        <div style="font-size:10px;color:var(--text-muted);white-space:nowrap;">${month}</div>
+                    </div>`;
+            }).join('')}
+        </div>`;
+}
+
+function renderSubEventBadge(eventType) {
+    const map = {
+        'subscription_created':             { label: 'New',           color: 'var(--status-contacted)',   bg: 'var(--status-bg-contacted)' },
+        'payment_succeeded':                { label: 'Payment',       color: 'var(--status-contacted)',   bg: 'var(--status-bg-contacted)' },
+        'payment_failed':                   { label: 'Failed',        color: 'var(--status-closed)',      bg: 'var(--status-bg-closed)' },
+        'subscription_updated':             { label: 'Updated',       color: 'var(--accent-amber)',        bg: 'rgba(255,193,94,0.12)' },
+        'subscription_cancel_scheduled':    { label: 'Cancel Sched.', color: 'var(--accent-amber)',        bg: 'rgba(255,193,94,0.12)' },
+        'subscription_cancelled_immediate': { label: 'Cancelled',     color: 'var(--status-closed)',      bg: 'var(--status-bg-closed)' },
+        'subscription_deleted':             { label: 'Ended',         color: 'var(--status-closed)',      bg: 'var(--status-bg-closed)' },
+        'subscription_reactivated':         { label: 'Reactivated',   color: 'var(--status-contacted)',   bg: 'var(--status-bg-contacted)' }
+    };
+    const s = map[eventType] || { label: eventType, color: 'var(--text-secondary)', bg: 'var(--bg-tertiary)' };
+    return `<span style="background:${s.bg};color:${s.color};padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;">${s.label}</span>`;
+}
+
+
 
 async function loadEmailOpenReport() {
     const container = document.getElementById('emailOpenReportContent');
@@ -7960,6 +8514,12 @@ function renderSchedule(content) {
                 <div class="section-header" style="margin-bottom: 24px;">
                     <h2 style="font-size: 24px; font-weight: 800;">Schedule</h2>
                     <div style="display:flex;gap:12px;align-items:center;">
+                        <button onclick="openAddAppointmentModal()" class="btn btn-primary" style="display:flex;align-items:center;gap:6px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:15px;height:15px;">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Add Appointment
+                        </button>
                         <button onclick="changeScheduleMonth(-1)" class="btn btn-secondary">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
                                 <polyline points="15 18 9 12 15 6"/>
@@ -8114,6 +8674,119 @@ function renderSchedule(content) {
     };
     
     renderCalendarView();
+}
+
+// ==================== ADD APPOINTMENT (ADMIN) ====================
+
+function openAddAppointmentModal() {
+    // Pre-fill date to selected calendar date, or today
+    const sel = window.scheduleState?.selectedDate;
+    const today = sel
+        ? sel.toLocaleDateString('en-CA')   // YYYY-MM-DD in local time
+        : new Date().toLocaleDateString('en-CA');
+
+    showModal('Add New Appointment', `
+        <form id="addAppointmentForm" onsubmit="handleAddAppointment(event)">
+            <div style="margin-bottom:16px;">
+                <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Lead / Client Name *</label>
+                <input type="text" id="newAptLeadName" required
+                    placeholder="Full name"
+                    style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Email *</label>
+                <input type="email" id="newAptLeadEmail" required
+                    placeholder="email@example.com"
+                    style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+                <div>
+                    <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Date *</label>
+                    <input type="date" id="newAptDate" required value="${today}"
+                        style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
+                </div>
+                <div>
+                    <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Time (CT) *</label>
+                    <input type="time" id="newAptTime" required value="09:00"
+                        style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
+                </div>
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Appointment Type</label>
+                <select id="newAptType"
+                    style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
+                    <option value="Consultation">Consultation</option>
+                    <option value="Discovery Call">Discovery Call</option>
+                    <option value="Follow-Up">Follow-Up</option>
+                    <option value="Project Review">Project Review</option>
+                    <option value="Onboarding">Onboarding</option>
+                    <option value="Strategy Session">Strategy Session</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="button" onclick="closeModal('addAppointmentModal')"
+                    class="btn btn-secondary" style="flex:1;">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px;">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Appointment
+                </button>
+            </div>
+        </form>
+    `, null, 'addAppointmentModal');
+}
+
+async function handleAddAppointment(e) {
+    e.preventDefault();
+
+    const leadName  = document.getElementById('newAptLeadName').value.trim();
+    const leadEmail = document.getElementById('newAptLeadEmail').value.trim();
+    const date      = document.getElementById('newAptDate').value;
+    const time      = document.getElementById('newAptTime').value;
+    const eventType = document.getElementById('newAptType').value;
+
+    if (!leadName || !leadEmail || !date || !time) return;
+
+    // Build ISO timestamp in CT by appending Central offset
+    // DST detection: CT is UTC-5 in CDT (Mar–Nov) and UTC-6 in CST
+    const localDt   = new Date(`${date}T${time}:00`);
+    const month     = localDt.getMonth(); // 0-based
+    const isDST     = month >= 2 && month <= 10; // rough DST window
+    const offset    = isDST ? '-05:00' : '-06:00';
+    const isoStr    = `${date}T${time}:00${offset}`;
+
+    const submitBtn = document.querySelector('#addAppointmentForm button[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
+
+    try {
+        const res  = await fetch(`${API_URL}/api/appointments/admin-create`, {
+            method:  'POST',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                leadName,
+                leadEmail,
+                scheduledTime: isoStr,
+                eventType
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            closeModal('addAppointmentModal');
+            showToast('Appointment added successfully', 'success');
+            // Refresh calendar to show new appointment
+            const content = document.getElementById('contentArea') || document.getElementById('mainContent');
+            if (content) renderSchedule(content);
+        } else {
+            showToast(data.message || 'Failed to add appointment', 'error');
+        }
+    } catch (err) {
+        showToast('Network error: ' + err.message, 'error');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add Appointment'; }
+    }
 }
 
 // ==================== RESCHEDULE & CANCEL APPOINTMENTS ====================
@@ -13472,13 +14145,28 @@ function updatePackageInputs() {
                 </div>
             `;
         }
-        // CRM - Quantity Input  
+        // CRM subscription - Quantity Input  
         else if (pkg.category === 'crm' && pkg.billing === 'monthly-per-user') {
             fieldsHTML += `
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label">Number of Users</label>
                     <input type="number" class="form-input" id="quantity-${packageKey}" placeholder="How many users?" min="1" value="1">
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">$${pkg.price}/user/month × quantity</div>
+                </div>
+            `;
+        }
+        // Custom CRM — one-time build fee + optional monthly retainer
+        else if (pkg.category === 'crm' && pkg.billing === 'custom') {
+            fieldsHTML += `
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Build Quote (One-Time)</label>
+                    <input type="number" class="form-input" id="price-${packageKey}" placeholder="Enter estimated build cost" step="0.01" min="0" value="">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">One-time development fee — subject to change</div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Monthly Retainer (Optional)</label>
+                    <input type="number" class="form-input" id="retainer-${packageKey}" placeholder="Optional ongoing support fee" step="0.01" min="0" value="">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Recurring support / maintenance fee per month</div>
                 </div>
             `;
         }
@@ -13538,7 +14226,7 @@ function saveProjectTimeline() {
             totalPrice += customPrice;
             if (customPrice > 0) hasPaidPackage = true;
         }
-        // CRM - Get quantity
+        // CRM subscription - Get quantity
         else if (pkg.category === 'crm' && pkg.billing === 'monthly-per-user') {
             const quantityInput = document.getElementById(`quantity-${key}`);
             const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
@@ -13547,6 +14235,19 @@ function saveProjectTimeline() {
             packageDetails[key].displayPrice = pkg.price * quantity;
             totalPrice += (pkg.price * quantity);
             hasPaidPackage = true;
+        }
+        // Custom CRM — build quote + optional monthly retainer
+        else if (pkg.category === 'crm' && pkg.billing === 'custom') {
+            const priceInput = document.getElementById(`price-${key}`);
+            const retainerInput = document.getElementById(`retainer-${key}`);
+            const buildCost = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+            const retainer = retainerInput ? parseFloat(retainerInput.value) || 0 : 0;
+            packageDetails[key].customPrice = buildCost;
+            packageDetails[key].monthlyRetainer = retainer;
+            packageDetails[key].displayPrice = buildCost;
+            packageDetails[key].needsQuote = true;
+            totalPrice += buildCost;
+            if (buildCost > 0 || retainer > 0) hasPaidPackage = true;
         }
         // SEO/Other - Use fixed price
         else {

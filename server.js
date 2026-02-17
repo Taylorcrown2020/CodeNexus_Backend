@@ -52,6 +52,7 @@ const servicePackages = {
         isFree: false,
         category: 'crm',
         billing: 'monthly-per-user',
+        stripePriceId: process.env.STRIPE_CRM_ESSENTIAL_PRICE_ID,
         description: 'Up to 1,000 contacts • Basic lead management'
     },
     'crm-professional': {
@@ -60,6 +61,7 @@ const servicePackages = {
         isFree: false,
         category: 'crm',
         billing: 'monthly-per-user',
+        stripePriceId: process.env.STRIPE_CRM_PROFESSIONAL_PRICE_ID,
         description: 'Up to 10,000 contacts • Sales automation'
     },
     'crm-enterprise': {
@@ -68,7 +70,18 @@ const servicePackages = {
         isFree: false,
         category: 'crm',
         billing: 'monthly-per-user',
+        stripePriceId: process.env.STRIPE_CRM_ENTERPRISE_PRICE_ID,
         description: 'Unlimited contacts • Custom integrations'
+    },
+    // Custom CRM — bespoke builds, quoted per project
+    'crm-custom': {
+        name: 'Custom CRM Build',
+        price: 0,
+        isFree: false,
+        category: 'crm',
+        billing: 'custom',
+        needsQuote: true,
+        description: 'Fully custom CRM built to exact specifications'
     },
     // SEO Packages (monthly)
     'seo-local': {
@@ -127,6 +140,7 @@ const servicePackages = {
     'essential-crm': { name: 'Essential CRM', price: 19.99, isFree: false, category: 'crm', billing: 'monthly-per-user' },
     'professional-crm': { name: 'Professional CRM', price: 49.99, isFree: false, category: 'crm', billing: 'monthly-per-user' },
     'enterprise-crm': { name: 'Enterprise CRM', price: 64.99, isFree: false, category: 'crm', billing: 'monthly-per-user' },
+    'custom-crm': { name: 'Custom CRM Build', price: 0, isFree: false, category: 'crm', billing: 'custom', needsQuote: true },
     'local-seo': { name: 'Local SEO', price: 199, isFree: false, category: 'seo', billing: 'monthly' },
     'growth-seo': { name: 'Growth SEO', price: 499, isFree: false, category: 'seo', billing: 'monthly' },
     'enterprise-seo': { name: 'Enterprise SEO', price: 999, isFree: false, category: 'seo', billing: 'monthly' }
@@ -284,6 +298,13 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
             
         default:
             console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
+    }
+
+    // Also process subscription events from the same webhook
+    try {
+        await processSubscriptionWebhook(event);
+    } catch (subErr) {
+        console.error('[WEBHOOK] Subscription processing error:', subErr.message);
     }
     
     res.json({received: true});
@@ -2466,6 +2487,71 @@ app.get('/api/appointments/lead/:leadId', authenticateToken, async (req, res) =>
 });
 
 // Reschedule appointment
+// Admin-initiated appointment creation (from Schedule tab)
+app.post('/api/appointments/admin-create', authenticateToken, async (req, res) => {
+    try {
+        const { leadName, leadEmail, scheduledTime, eventType = 'Consultation' } = req.body;
+
+        if (!leadName || !leadEmail || !scheduledTime) {
+            return res.status(400).json({ success: false, message: 'leadName, leadEmail, and scheduledTime are required' });
+        }
+
+        // Upsert lead record if they don't exist
+        let leadId = null;
+        const leadRes = await pool.query(
+            `SELECT id FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+            [leadEmail]
+        );
+
+        if (leadRes.rows.length > 0) {
+            leadId = leadRes.rows[0].id;
+            // Promote to hot if cold
+            await pool.query(`
+                UPDATE leads
+                SET lead_temperature = CASE WHEN lead_temperature = 'cold' THEN 'hot' ELSE lead_temperature END,
+                    last_contact_date = NOW(), updated_at = NOW()
+                WHERE id = $1
+            `, [leadId]);
+        } else {
+            // Create a stub lead
+            const newLead = await pool.query(`
+                INSERT INTO leads (name, email, status, lead_temperature, source, created_at, updated_at)
+                VALUES ($1, $2, 'new', 'warm', 'admin-scheduled', NOW(), NOW())
+                RETURNING id
+            `, [leadName, leadEmail]);
+            leadId = newLead.rows[0].id;
+        }
+
+        // Check for conflicts (same time slot ± 30 min)
+        const conflict = await pool.query(`
+            SELECT id FROM appointments
+            WHERE lead_email = $1
+              AND status = 'scheduled'
+              AND ABS(EXTRACT(EPOCH FROM (scheduled_time - $2::timestamptz))) < 1800
+        `, [leadEmail, scheduledTime]);
+
+        if (conflict.rows.length > 0) {
+            return res.status(409).json({ success: false, message: 'This person already has an appointment within 30 minutes of that time' });
+        }
+
+        // Insert appointment
+        const aptResult = await pool.query(
+            `INSERT INTO appointments (lead_email, lead_name, scheduled_time, event_type, status, created_at)
+             VALUES ($1, $2, $3, $4, 'scheduled', NOW()) RETURNING *`,
+            [leadEmail, leadName, scheduledTime, eventType]
+        );
+
+        const apt = aptResult.rows[0];
+        console.log(`[APPOINTMENTS] Admin created: ${eventType} for ${leadName} (${leadEmail}) at ${scheduledTime}`);
+
+        res.json({ success: true, appointment: apt, message: 'Appointment created successfully' });
+
+    } catch (error) {
+        console.error('[APPOINTMENTS] Admin create error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 app.put('/api/appointments/:id/reschedule', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
@@ -5541,10 +5627,16 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
         if (timeline.packageDetails) {
             Object.entries(timeline.packageDetails).forEach(([key, details]) => {
                 if (details.billing === 'monthly-per-user') {
-                    // CRM packages
+                    // CRM subscription packages
                     const quantity = details.quantity || 1;
                     const total = details.pricePerUnit * quantity;
                     monthlyTotal += total;
+                } else if (details.billing === 'custom' && details.customPrice) {
+                    // Custom CRM — one-time build fee + optional retainer
+                    if (details.monthlyRetainer) {
+                        monthlyTotal += details.monthlyRetainer;
+                    }
+                    oneTimeTotal += details.customPrice;
                 } else if (details.needsQuote && details.customPrice) {
                     // Custom quote packages
                     if (details.billing === 'monthly') {
@@ -8071,6 +8163,1068 @@ app.get('/api/analytics/sources', authenticateToken, async (req, res) => {
     }
 });
 
+
+// ========================================
+// SUBSCRIPTION SYSTEM
+// ========================================
+// CRM packages (Essential, Professional, Enterprise) are sold as
+// recurring Stripe subscriptions (per-user/month). The Custom CRM
+// package is sold as a one-time Stripe Checkout (project quote).
+//
+// Required .env variables:
+//   STRIPE_CRM_ESSENTIAL_PRICE_ID   — monthly per-user price for Essential CRM
+//   STRIPE_CRM_PROFESSIONAL_PRICE_ID — monthly per-user price for Professional CRM
+//   STRIPE_CRM_ENTERPRISE_PRICE_ID  — monthly per-user price for Enterprise CRM
+//   STRIPE_WEBHOOK_SECRET            — already present for invoice payments
+//   BASE_URL                         — already present
+//
+// Database tables added via initializeSubscriptionTables() called in startServer().
+
+async function initializeSubscriptionTables() {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // CRM subscriptions table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS crm_subscriptions (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE SET NULL,
+                lead_email VARCHAR(255) NOT NULL,
+                lead_name VARCHAR(255),
+                package_key VARCHAR(100) NOT NULL,
+                package_name VARCHAR(255) NOT NULL,
+                user_count INTEGER NOT NULL DEFAULT 1,
+                price_per_user NUMERIC(10,2) NOT NULL,
+                monthly_total NUMERIC(10,2) NOT NULL,
+                stripe_customer_id VARCHAR(255),
+                stripe_subscription_id VARCHAR(255) UNIQUE,
+                stripe_price_id VARCHAR(255),
+                status VARCHAR(50) NOT NULL DEFAULT 'active',
+                current_period_start TIMESTAMP,
+                current_period_end TIMESTAMP,
+                cancel_at_period_end BOOLEAN DEFAULT FALSE,
+                cancelled_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Subscription events log (billing history)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS subscription_events (
+                id SERIAL PRIMARY KEY,
+                subscription_id INTEGER REFERENCES crm_subscriptions(id) ON DELETE CASCADE,
+                lead_email VARCHAR(255),
+                event_type VARCHAR(100) NOT NULL,
+                amount NUMERIC(10,2),
+                description TEXT,
+                stripe_event_id VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Indexes
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_crm_subs_lead_id ON crm_subscriptions(lead_id)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_crm_subs_stripe_sub ON crm_subscriptions(stripe_subscription_id)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_crm_subs_status ON crm_subscriptions(status)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_sub_events_sub_id ON subscription_events(subscription_id)`);
+
+        await client.query('COMMIT');
+        console.log('[SUBSCRIPTIONS] Tables initialized');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('[SUBSCRIPTIONS] Table init error:', error);
+    } finally {
+        client.release();
+    }
+}
+
+// ========================================
+// STRIPE WEBHOOK — subscription events
+// Appended to existing webhook handler via separate processing.
+// Call processSubscriptionWebhook() from the main webhook route.
+// ========================================
+async function processSubscriptionWebhook(event) {
+    const obj = event.data.object;
+
+    // ── Subscription Created ──────────────────────────────────────
+    if (event.type === 'customer.subscription.created') {
+        const customerId = obj.customer;
+        const subId = obj.id;
+        const priceId = obj.items.data[0].price.id;
+        const quantity = obj.items.data[0].quantity || 1;
+
+        // Map Stripe price → our package key
+        const packageKey = resolvePackageFromPrice(priceId);
+        if (!packageKey) {
+            console.log(`[SUB WEBHOOK] Unknown price ID: ${priceId}, ignoring`);
+            return;
+        }
+
+        const pkg = servicePackages[packageKey];
+        const periodStart = obj.current_period_start ? new Date(obj.current_period_start * 1000) : null;
+        const periodEnd   = obj.current_period_end   ? new Date(obj.current_period_end * 1000)   : null;
+
+        // Find lead by stripe_customer_id (set during checkout creation)
+        const leadResult = await pool.query(
+            `SELECT id, name, email FROM leads WHERE stripe_customer_id = $1`,
+            [customerId]
+        );
+
+        const lead = leadResult.rows[0] || null;
+        const leadEmail = lead?.email || (await getStripeCustomerEmail(customerId));
+
+        await pool.query(`
+            INSERT INTO crm_subscriptions
+                (lead_id, lead_email, lead_name, package_key, package_name,
+                 user_count, price_per_user, monthly_total,
+                 stripe_customer_id, stripe_subscription_id, stripe_price_id,
+                 status, current_period_start, current_period_end)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13)
+            ON CONFLICT (stripe_subscription_id) DO UPDATE SET
+                status = 'active',
+                current_period_start = $12,
+                current_period_end = $13,
+                updated_at = NOW()
+        `, [
+            lead?.id || null,
+            leadEmail,
+            lead?.name || null,
+            packageKey,
+            pkg.name,
+            quantity,
+            pkg.price,
+            pkg.price * quantity,
+            customerId,
+            subId,
+            priceId,
+            periodStart,
+            periodEnd
+        ]);
+
+        await logSubscriptionEvent(subId, leadEmail, 'subscription_created', pkg.price * quantity,
+            `${pkg.name} subscription started — ${quantity} user${quantity > 1 ? 's' : ''}`);
+
+        // Promote lead to customer
+        if (lead) {
+            await pool.query(
+                `UPDATE leads SET is_customer = TRUE, customer_status = 'active', updated_at = NOW() WHERE id = $1`,
+                [lead.id]
+            );
+        }
+
+        console.log(`[SUB WEBHOOK] Subscription created: ${packageKey} x${quantity} for ${leadEmail}`);
+    }
+
+    // ── Invoice Paid (recurring charge) ──────────────────────────
+    // ── Invoice Paid — first payment AND every renewal get a receipt ─
+    else if (event.type === 'invoice.payment_succeeded') {
+        const subId = obj.subscription;
+        if (!subId) return;
+
+        const amount          = (obj.amount_paid || 0) / 100;
+        const invoiceNumber   = obj.number || null;          // e.g. "INV-0001"
+        const hostedInvoiceUrl = obj.hosted_invoice_url || null;
+        const isFirstPayment  = obj.billing_reason === 'subscription_create';
+
+        const periodStart = obj.lines?.data[0]?.period?.start
+            ? new Date(obj.lines.data[0].period.start * 1000) : null;
+        const periodEnd   = obj.lines?.data[0]?.period?.end
+            ? new Date(obj.lines.data[0].period.end * 1000)   : null;
+
+        // 1. Update subscription record
+        await pool.query(`
+            UPDATE crm_subscriptions
+            SET current_period_end = COALESCE($1, current_period_end),
+                status = 'active',
+                updated_at = NOW()
+            WHERE stripe_subscription_id = $2
+        `, [periodEnd, subId]);
+
+        // 2. Pull full subscription + lead data in one query
+        const subRow = await pool.query(`
+            SELECT cs.*, l.id AS lead_db_id
+            FROM crm_subscriptions cs
+            LEFT JOIN leads l ON cs.lead_id = l.id
+            WHERE cs.stripe_subscription_id = $1
+        `, [subId]);
+
+        const sub      = subRow.rows[0];
+        const email    = sub?.lead_email;
+        const leadName = sub?.lead_name  || 'Valued Customer';
+        const leadDbId = sub?.lead_db_id || null;
+
+        if (email) {
+            await logSubscriptionEvent(subId, email, 'payment_succeeded', amount,
+                `${isFirstPayment ? 'First payment' : 'Renewal payment'} — $${amount.toFixed(2)}`);
+        }
+
+        // 3. Update lead lifetime value
+        if (email) {
+            await pool.query(`
+                UPDATE leads SET lifetime_value = COALESCE(lifetime_value, 0) + $1, updated_at = NOW()
+                WHERE email = $2
+            `, [amount, email]);
+        }
+
+        // 4. Send receipt email (every successful charge, no exceptions)
+        if (email && amount > 0) {
+            try {
+                const fmtDate = d => d
+                    ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'N/A';
+
+                const periodLabel = (periodStart && periodEnd)
+                    ? `${fmtDate(periodStart)} – ${fmtDate(periodEnd)}`
+                    : 'Current billing period';
+
+                const receiptHtml = buildEmailHTML(`
+                    <p>Hi ${leadName},</p>
+                    <p>${isFirstPayment
+                        ? 'Thank you for subscribing to the Diamondback Coding CRM. Your subscription is now active and your first payment has been processed.'
+                        : 'Your Diamondback Coding CRM subscription has renewed successfully. Here is your receipt.'
+                    }</p>
+
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                           style="margin:28px 0;border-radius:6px;overflow:hidden;border:1px solid #e8e8e8;">
+                        <tr>
+                            <td style="background:#f7f9fb;padding:14px 24px;border-bottom:1px solid #e8e8e8;">
+                                <span style="font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#999;">
+                                    Payment Receipt
+                                </span>
+                            </td>
+                        </tr>
+                        <tr><td style="padding:0;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Plan</td>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">
+                                        ${sub?.package_name || 'CRM Subscription'}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Users</td>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">
+                                        ${sub?.user_count || 1}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Billing Period</td>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">
+                                        ${periodLabel}
+                                    </td>
+                                </tr>
+                                ${invoiceNumber ? `
+                                <tr>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Invoice #</td>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">
+                                        ${invoiceNumber}
+                                    </td>
+                                </tr>` : ''}
+                                <tr style="background:#f7f9fb;">
+                                    <td style="padding:16px 24px;font-size:14px;font-weight:800;color:#222;">Amount Paid</td>
+                                    <td style="padding:16px 24px;font-size:22px;font-weight:800;color:#1a7a3a;text-align:right;">
+                                        $${amount.toFixed(2)}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td></tr>
+                    </table>
+
+                    ${hostedInvoiceUrl
+                        ? `<p style="font-size:13px;color:#888;margin-bottom:8px;">
+                            Need a PDF copy?
+                            <a href="${hostedInvoiceUrl}" style="color:#1a7a3a;font-weight:700;">View your invoice</a>
+                           </p>`
+                        : ''}
+                    <p style="font-size:13px;color:#888;margin:0;">
+                        Questions? Call us at <strong>(512) 980-0393</strong> or reply to this email.
+                    </p>
+                `, {
+                    eyebrow:     'PAYMENT CONFIRMED',
+                    headline:    isFirstPayment ? 'Welcome \u2014 you\'re all set.' : 'Your subscription has renewed.',
+                    accentColor: '#1A7A3A',
+                    tagline:     'MANAGE LEADS. CLOSE DEALS.',
+                    ctaLabel:    hostedInvoiceUrl ? 'View Invoice' : '',
+                    ctaUrl:      hostedInvoiceUrl || ''
+                });
+
+                const subject = isFirstPayment
+                    ? `Receipt — $${amount.toFixed(2)} | Diamondback CRM Subscription`
+                    : `Renewal Receipt — $${amount.toFixed(2)} | Diamondback CRM`;
+
+                await sendTrackedEmail({
+                    leadId:    leadDbId,
+                    to:        email,
+                    subject,
+                    html:      receiptHtml,
+                    emailType: 'subscription_receipt'
+                });
+
+                console.log(`[SUB WEBHOOK] Receipt sent → ${email} ($${amount.toFixed(2)}, ${isFirstPayment ? 'first' : 'renewal'})`);
+            } catch (emailErr) {
+                // Never let an email failure block the payment record
+                console.error('[SUB WEBHOOK] Receipt email error (payment still recorded):', emailErr.message);
+            }
+        }
+
+        console.log(`[SUB WEBHOOK] Payment succeeded: $${amount} for sub ${subId}`);
+    }
+
+    // ── Invoice Payment Failed ────────────────────────────────────
+    else if (event.type === 'invoice.payment_failed') {
+        const subId = obj.subscription;
+        if (!subId) return;
+
+        await pool.query(`
+            UPDATE crm_subscriptions SET status = 'past_due', updated_at = NOW()
+            WHERE stripe_subscription_id = $1
+        `, [subId]);
+
+        const subRow = await pool.query(`
+            SELECT cs.*, l.id AS lead_db_id
+            FROM crm_subscriptions cs
+            LEFT JOIN leads l ON cs.lead_id = l.id
+            WHERE cs.stripe_subscription_id = $1
+        `, [subId]);
+
+        const sub      = subRow.rows[0];
+        const email    = sub?.lead_email;
+        const leadName = sub?.lead_name  || 'Valued Customer';
+        const leadDbId = sub?.lead_db_id || null;
+
+        if (email) {
+            await logSubscriptionEvent(subId, email, 'payment_failed', 0, 'Payment failed');
+
+            // Send payment failed notification
+            try {
+                const failHtml = buildEmailHTML(`
+                    <p>Hi ${leadName},</p>
+                    <p>We were unable to process your payment for the
+                       <strong>${sub?.package_name || 'CRM'}</strong> subscription.
+                       This is usually caused by an expired card, insufficient funds, or a bank decline.</p>
+
+                    <div style="margin:28px 0;padding:20px 24px;background:#fff5f5;
+                                border-left:4px solid #ef4444;border-radius:4px;">
+                        <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#b91c1c;">
+                            Action required
+                        </p>
+                        <p style="margin:0;font-size:13px;color:#7f1d1d;line-height:1.6;">
+                            Please update your payment method to keep your subscription active.
+                            Stripe will retry the charge automatically, but access may be suspended
+                            if payment cannot be collected.
+                        </p>
+                    </div>
+
+                    <p style="font-size:13px;color:#888;margin:0;">
+                        If you think this is a mistake, call us at <strong>(512) 980-0393</strong>
+                        or reply to this email and we'll sort it out right away.
+                    </p>
+                `, {
+                    eyebrow:     'PAYMENT FAILED',
+                    headline:    "We couldn't process your payment.",
+                    accentColor: '#EF4444',
+                    tagline:     'ACTION REQUIRED'
+                });
+
+                await sendTrackedEmail({
+                    leadId:    leadDbId,
+                    to:        email,
+                    subject:   `Payment Failed — Action Required | ${sub?.package_name || 'CRM'} Subscription`,
+                    html:      failHtml,
+                    emailType: 'subscription_payment_failed'
+                });
+
+                console.log(`[SUB WEBHOOK] Payment-failed notice sent → ${email}`);
+            } catch (emailErr) {
+                console.error('[SUB WEBHOOK] Payment-failed email error:', emailErr.message);
+            }
+        }
+
+        console.log(`[SUB WEBHOOK] Payment failed for sub ${subId}`);
+    }
+
+    // ── Subscription Updated (upgrade/downgrade/cancel-scheduled) ─
+    else if (event.type === 'customer.subscription.updated') {
+        const subId = obj.id;
+        const isCanceling = obj.cancel_at_period_end === true;
+        const periodEnd = obj.current_period_end ? new Date(obj.current_period_end * 1000) : null;
+
+        let newStatus = 'active';
+        if (isCanceling) newStatus = 'canceling';
+        if (obj.status === 'past_due') newStatus = 'past_due';
+
+        const newQuantity = obj.items.data[0]?.quantity || 1;
+        const priceId = obj.items.data[0]?.price?.id;
+        const packageKey = resolvePackageFromPrice(priceId);
+        const pkg = packageKey ? servicePackages[packageKey] : null;
+
+        await pool.query(`
+            UPDATE crm_subscriptions
+            SET status = $1,
+                cancel_at_period_end = $2,
+                current_period_end = COALESCE($3, current_period_end),
+                user_count = $4,
+                monthly_total = $5,
+                updated_at = NOW()
+            WHERE stripe_subscription_id = $6
+        `, [
+            newStatus,
+            isCanceling,
+            periodEnd,
+            newQuantity,
+            pkg ? pkg.price * newQuantity : null,
+            subId
+        ]);
+
+        const sub = await pool.query(
+            `SELECT lead_email FROM crm_subscriptions WHERE stripe_subscription_id = $1`,
+            [subId]
+        );
+        const email = sub.rows[0]?.lead_email;
+        if (email) {
+            const desc = isCanceling
+                ? `Subscription scheduled to cancel at end of period`
+                : `Subscription updated — ${newQuantity} user${newQuantity > 1 ? 's' : ''}`;
+            await logSubscriptionEvent(subId, email, 'subscription_updated', null, desc);
+        }
+
+        console.log(`[SUB WEBHOOK] Subscription updated: status=${newStatus} for sub ${subId}`);
+    }
+
+    // ── Subscription Deleted (ended) ──────────────────────────────
+    else if (event.type === 'customer.subscription.deleted') {
+        const subId = obj.id;
+
+        await pool.query(`
+            UPDATE crm_subscriptions
+            SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW()
+            WHERE stripe_subscription_id = $1
+        `, [subId]);
+
+        const sub = await pool.query(
+            `SELECT lead_email FROM crm_subscriptions WHERE stripe_subscription_id = $1`,
+            [subId]
+        );
+        const email = sub.rows[0]?.lead_email;
+        if (email) {
+            await logSubscriptionEvent(subId, email, 'subscription_deleted', null,
+                'Subscription cancelled and access ended');
+        }
+
+        console.log(`[SUB WEBHOOK] Subscription deleted: ${subId}`);
+    }
+}
+
+// Helper — resolve package key from Stripe price ID
+function resolvePackageFromPrice(priceId) {
+    if (!priceId) return null;
+    if (priceId === process.env.STRIPE_CRM_ESSENTIAL_PRICE_ID)    return 'crm-essential';
+    if (priceId === process.env.STRIPE_CRM_PROFESSIONAL_PRICE_ID) return 'crm-professional';
+    if (priceId === process.env.STRIPE_CRM_ENTERPRISE_PRICE_ID)   return 'crm-enterprise';
+    return null;
+}
+
+// Helper — log subscription event
+async function logSubscriptionEvent(stripeSubId, email, eventType, amount, description) {
+    try {
+        const sub = await pool.query(
+            `SELECT id FROM crm_subscriptions WHERE stripe_subscription_id = $1`,
+            [stripeSubId]
+        );
+        const subDbId = sub.rows[0]?.id || null;
+
+        await pool.query(`
+            INSERT INTO subscription_events
+                (subscription_id, lead_email, event_type, amount, description)
+            VALUES ($1, $2, $3, $4, $5)
+        `, [subDbId, email, eventType, amount || null, description]);
+    } catch (err) {
+        console.error('[SUB EVENT LOG ERROR]', err.message);
+    }
+}
+
+// Helper — get Stripe customer email from Stripe API
+async function getStripeCustomerEmail(customerId) {
+    try {
+        const customer = await stripe.customers.retrieve(customerId);
+        return customer.email || null;
+    } catch {
+        return null;
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Attach subscription webhook processing to existing webhook route.
+// We do this by patching the switch statement's default case via middleware.
+// ────────────────────────────────────────────────────────────────────────────
+// NOTE: The existing /api/stripe/webhook route handles checkout.session.completed
+// for invoices. We layer on top of it here for subscription events.
+// Since we can't modify the switch, we add a second webhook listener at a
+// different path that Stripe will also deliver to:
+app.post('/api/stripe/subscription-webhook',
+    express.raw({ type: 'application/json' }),
+    async (req, res) => {
+        const sig = req.headers['stripe-signature'];
+        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+        if (!webhookSecret) {
+            return res.status(500).send('Webhook secret not configured');
+        }
+
+        let event;
+        try {
+            event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        } catch (err) {
+            console.error('[SUB WEBHOOK] Signature error:', err.message);
+            return res.status(400).send(`Webhook Error: ${err.message}`);
+        }
+
+        try {
+            await processSubscriptionWebhook(event);
+        } catch (err) {
+            console.error('[SUB WEBHOOK] Processing error:', err);
+        }
+
+        res.json({ received: true });
+    }
+);
+
+// ========================================
+// SUBSCRIPTION API ROUTES
+// ========================================
+
+// Create Stripe Checkout session for a CRM subscription
+app.post('/api/subscriptions/checkout', authenticateToken, async (req, res) => {
+    try {
+        const { packageKey, userCount, leadId, successUrl, cancelUrl } = req.body;
+
+        if (!packageKey || !userCount || userCount < 1) {
+            return res.status(400).json({ success: false, message: 'packageKey and userCount are required' });
+        }
+
+        const pkg = servicePackages[packageKey];
+        if (!pkg || pkg.category !== 'crm' || pkg.billing !== 'monthly-per-user') {
+            return res.status(400).json({ success: false, message: 'Invalid CRM subscription package' });
+        }
+
+        if (!pkg.stripePriceId) {
+            return res.status(400).json({
+                success: false,
+                message: `Stripe price ID not configured for ${packageKey}. Set ${packageKey.toUpperCase().replace(/-/g,'_')}_PRICE_ID in .env`
+            });
+        }
+
+        // Get lead info
+        let leadEmail = null;
+        let leadName  = null;
+        let stripeCustomerId = null;
+
+        if (leadId) {
+            const leadResult = await pool.query(
+                `SELECT id, name, email, stripe_customer_id FROM leads WHERE id = $1`,
+                [leadId]
+            );
+            if (leadResult.rows.length > 0) {
+                const lead = leadResult.rows[0];
+                leadEmail = lead.email;
+                leadName  = lead.name;
+                stripeCustomerId = lead.stripe_customer_id;
+
+                // Ensure Stripe customer exists for this lead
+                if (!stripeCustomerId) {
+                    const stripeCustomer = await stripe.customers.create({
+                        email: leadEmail,
+                        name: leadName,
+                        metadata: { lead_id: leadId.toString() }
+                    });
+                    stripeCustomerId = stripeCustomer.id;
+                    await pool.query(
+                        `UPDATE leads SET stripe_customer_id = $1 WHERE id = $2`,
+                        [stripeCustomerId, leadId]
+                    );
+                }
+            }
+        }
+
+        const sessionConfig = {
+            mode: 'subscription',
+            line_items: [{
+                price: pkg.stripePriceId,
+                quantity: parseInt(userCount)
+            }],
+            success_url: successUrl || `${BASE_URL}/admin`,
+            cancel_url:  cancelUrl  || `${BASE_URL}/admin`,
+            subscription_data: {
+                metadata: {
+                    lead_id:     leadId     ? leadId.toString() : '',
+                    package_key: packageKey,
+                    user_count:  userCount.toString()
+                }
+            },
+            metadata: {
+                lead_id:     leadId     ? leadId.toString() : '',
+                package_key: packageKey
+            }
+        };
+
+        if (stripeCustomerId) {
+            sessionConfig.customer = stripeCustomerId;
+        } else if (leadEmail) {
+            sessionConfig.customer_email = leadEmail;
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
+
+        console.log(`[SUBSCRIPTIONS] Checkout session created: ${session.id} for ${packageKey} x${userCount}`);
+
+        res.json({ success: true, checkoutUrl: session.url, sessionId: session.id });
+
+    } catch (error) {
+        console.error('[SUBSCRIPTIONS] Checkout error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get all subscriptions (admin view)
+app.get('/api/subscriptions', authenticateToken, async (req, res) => {
+    try {
+        const { status, page = 1, limit = 50 } = req.query;
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+
+        let whereClause = '';
+        const params = [];
+
+        if (status && status !== 'all') {
+            params.push(status);
+            whereClause = `WHERE cs.status = $${params.length}`;
+        }
+
+        params.push(parseInt(limit), offset);
+
+        const result = await pool.query(`
+            SELECT
+                cs.*,
+                l.name  AS lead_name_ref,
+                l.email AS lead_email_ref,
+                l.company
+            FROM crm_subscriptions cs
+            LEFT JOIN leads l ON cs.lead_id = l.id
+            ${whereClause}
+            ORDER BY cs.created_at DESC
+            LIMIT $${params.length - 1} OFFSET $${params.length}
+        `, params);
+
+        const countResult = await pool.query(`
+            SELECT COUNT(*) FROM crm_subscriptions cs ${whereClause}
+        `, params.slice(0, params.length - 2));
+
+        res.json({
+            success: true,
+            subscriptions: result.rows,
+            total: parseInt(countResult.rows[0].count),
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+    } catch (error) {
+        console.error('[SUBSCRIPTIONS] List error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Get subscription details + billing history
+app.get('/api/subscriptions/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const subResult = await pool.query(`
+            SELECT cs.*, l.name AS lead_name_ref, l.email AS lead_email_ref, l.company
+            FROM crm_subscriptions cs
+            LEFT JOIN leads l ON cs.lead_id = l.id
+            WHERE cs.id = $1
+        `, [id]);
+
+        if (subResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Subscription not found' });
+        }
+
+        const events = await pool.query(`
+            SELECT * FROM subscription_events
+            WHERE subscription_id = $1
+            ORDER BY created_at DESC
+            LIMIT 50
+        `, [id]);
+
+        res.json({
+            success: true,
+            subscription: subResult.rows[0],
+            events: events.rows
+        });
+    } catch (error) {
+        console.error('[SUBSCRIPTIONS] Detail error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Cancel a subscription — admin-initiated, with automatic confirmation email to subscriber
+app.post('/api/subscriptions/:id/cancel', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { immediate = false } = req.body;
+
+        // Pull subscription + linked lead in one shot
+        const subResult = await pool.query(`
+            SELECT cs.*, l.id AS lead_db_id
+            FROM crm_subscriptions cs
+            LEFT JOIN leads l ON cs.lead_id = l.id
+            WHERE cs.id = $1
+        `, [id]);
+
+        if (subResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Subscription not found' });
+        }
+
+        const sub      = subResult.rows[0];
+        const email    = sub.lead_email;
+        const leadName = sub.lead_name  || 'Valued Customer';
+        const leadDbId = sub.lead_db_id || null;
+
+        if (!sub.stripe_subscription_id) {
+            return res.status(400).json({ success: false, message: 'No Stripe subscription ID on record' });
+        }
+
+        let accessEndsDate = null;
+
+        if (immediate) {
+            await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+            await pool.query(
+                `UPDATE crm_subscriptions SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW() WHERE id = $1`,
+                [id]
+            );
+            await logSubscriptionEvent(sub.stripe_subscription_id, email,
+                'subscription_cancelled_immediate', null, 'Cancelled immediately by admin');
+        } else {
+            const updated = await stripe.subscriptions.update(sub.stripe_subscription_id, {
+                cancel_at_period_end: true
+            });
+            accessEndsDate = updated.current_period_end
+                ? new Date(updated.current_period_end * 1000) : null;
+
+            await pool.query(
+                `UPDATE crm_subscriptions SET status = 'canceling', cancel_at_period_end = TRUE, updated_at = NOW() WHERE id = $1`,
+                [id]
+            );
+            await logSubscriptionEvent(sub.stripe_subscription_id, email,
+                'subscription_cancel_scheduled', null, 'Scheduled to cancel at period end by admin');
+        }
+
+        // ── Cancellation confirmation email ───────────────────────
+        if (email) {
+            try {
+                const fmtDate = d => d
+                    ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : null;
+
+                const accessEndsLabel = immediate
+                    ? 'Immediately'
+                    : (fmtDate(accessEndsDate) || 'End of current billing period');
+
+                const cancelHtml = buildEmailHTML(`
+                    <p>Hi ${leadName},</p>
+                    <p>${immediate
+                        ? `Your <strong>${sub.package_name || 'CRM'}</strong> subscription has been cancelled. Access has ended and no further charges will be made.`
+                        : `Your <strong>${sub.package_name || 'CRM'}</strong> subscription has been scheduled for cancellation. You will continue to have full access until the end of your current billing period.`
+                    }</p>
+
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                           style="margin:28px 0;border-radius:6px;overflow:hidden;border:1px solid #e8e8e8;">
+                        <tr>
+                            <td style="background:#f7f9fb;padding:14px 24px;border-bottom:1px solid #e8e8e8;">
+                                <span style="font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#999;">
+                                    Cancellation Details
+                                </span>
+                            </td>
+                        </tr>
+                        <tr><td style="padding:0;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Plan</td>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">
+                                        ${sub.package_name || 'CRM Subscription'}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Users</td>
+                                    <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">
+                                        ${sub.user_count || 1}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:13px 24px;font-size:13px;color:#888;">Access Ends</td>
+                                    <td style="padding:13px 24px;font-size:13px;font-weight:700;color:#222;text-align:right;">
+                                        ${accessEndsLabel}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td></tr>
+                    </table>
+
+                    <p style="font-size:13px;color:#888;margin:0;">
+                        Cancelled by mistake?
+                        Call us at <strong>(512) 980-0393</strong> or reply to this email
+                        and we can get you back up and running immediately.
+                    </p>
+                `, {
+                    eyebrow:     'SUBSCRIPTION CANCELLED',
+                    headline:    immediate ? 'Your subscription has ended.' : 'Cancellation scheduled.',
+                    accentColor: '#EF4444',
+                    tagline:     'WE HOPE TO WORK WITH YOU AGAIN.'
+                });
+
+                await sendTrackedEmail({
+                    leadId:    leadDbId,
+                    to:        email,
+                    subject:   `Your ${sub.package_name || 'CRM'} Subscription Has Been Cancelled`,
+                    html:      cancelHtml,
+                    emailType: 'subscription_cancelled'
+                });
+
+                console.log(`[SUBSCRIPTIONS] Cancellation email sent → ${email}`);
+            } catch (emailErr) {
+                // Email failure never blocks the cancel from succeeding
+                console.error('[SUBSCRIPTIONS] Cancellation email error (cancel still processed):', emailErr.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: immediate
+                ? 'Subscription cancelled immediately. Confirmation email sent.'
+                : 'Subscription scheduled to cancel at end of billing period. Confirmation email sent.'
+        });
+
+    } catch (error) {
+        console.error('[SUBSCRIPTIONS] Cancel error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Reactivate a subscription that was set to cancel
+app.post('/api/subscriptions/:id/reactivate', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const subResult = await pool.query(
+            `SELECT * FROM crm_subscriptions WHERE id = $1`,
+            [id]
+        );
+
+        if (subResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Subscription not found' });
+        }
+
+        const sub = subResult.rows[0];
+
+        await stripe.subscriptions.update(sub.stripe_subscription_id, {
+            cancel_at_period_end: false
+        });
+
+        await pool.query(
+            `UPDATE crm_subscriptions SET status = 'active', cancel_at_period_end = FALSE, updated_at = NOW() WHERE id = $1`,
+            [id]
+        );
+
+        await logSubscriptionEvent(sub.stripe_subscription_id, sub.lead_email,
+            'subscription_reactivated', null, 'Subscription reactivated by admin');
+
+        res.json({ success: true, message: 'Subscription reactivated' });
+
+    } catch (error) {
+        console.error('[SUBSCRIPTIONS] Reactivate error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Open Stripe Customer Portal for a subscriber
+app.post('/api/subscriptions/:id/portal', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const subResult = await pool.query(
+            `SELECT stripe_customer_id FROM crm_subscriptions WHERE id = $1`,
+            [id]
+        );
+
+        if (subResult.rows.length === 0 || !subResult.rows[0].stripe_customer_id) {
+            return res.status(404).json({ success: false, message: 'No Stripe customer found' });
+        }
+
+        const portal = await stripe.billingPortal.sessions.create({
+            customer: subResult.rows[0].stripe_customer_id,
+            return_url: `${BASE_URL}/admin`
+        });
+
+        res.json({ success: true, portalUrl: portal.url });
+
+    } catch (error) {
+        console.error('[SUBSCRIPTIONS] Portal error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ========================================
+// SUBSCRIPTION ANALYTICS ENDPOINTS
+// ========================================
+
+// MRR, subscriber counts, churn, growth
+app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
+    try {
+        // Active subscribers and MRR
+        const mrrResult = await pool.query(`
+            SELECT
+                COUNT(*) FILTER (WHERE status = 'active')                    AS active_count,
+                COUNT(*) FILTER (WHERE status = 'canceling')                 AS canceling_count,
+                COUNT(*) FILTER (WHERE status = 'past_due')                  AS past_due_count,
+                COUNT(*) FILTER (WHERE status = 'cancelled')                 AS churned_count,
+                COALESCE(SUM(monthly_total) FILTER (WHERE status IN ('active','canceling')), 0) AS mrr,
+                COALESCE(SUM(monthly_total) FILTER (WHERE status = 'past_due'), 0)              AS at_risk_mrr
+            FROM crm_subscriptions
+        `);
+
+        // New subscribers this month
+        const newThisMonth = await pool.query(`
+            SELECT COUNT(*) AS count, COALESCE(SUM(monthly_total), 0) AS new_mrr
+            FROM crm_subscriptions
+            WHERE created_at >= DATE_TRUNC('month', NOW())
+              AND status != 'cancelled'
+        `);
+
+        // Churn this month
+        const churnThisMonth = await pool.query(`
+            SELECT COUNT(*) AS count, COALESCE(SUM(monthly_total), 0) AS churned_mrr
+            FROM crm_subscriptions
+            WHERE cancelled_at >= DATE_TRUNC('month', NOW())
+              AND status = 'cancelled'
+        `);
+
+        // Subscribers by package
+        const byPackage = await pool.query(`
+            SELECT
+                package_key,
+                package_name,
+                COUNT(*) FILTER (WHERE status IN ('active','canceling')) AS subscriber_count,
+                COALESCE(SUM(monthly_total) FILTER (WHERE status IN ('active','canceling')), 0) AS package_mrr,
+                AVG(user_count) FILTER (WHERE status IN ('active','canceling')) AS avg_users
+            FROM crm_subscriptions
+            GROUP BY package_key, package_name
+            ORDER BY package_mrr DESC
+        `);
+
+        // Monthly MRR trend (last 12 months)
+        const mrrTrend = await pool.query(`
+            SELECT
+                DATE_TRUNC('month', created_at) AS month,
+                COUNT(*) AS new_subs,
+                COALESCE(SUM(monthly_total), 0) AS new_mrr
+            FROM crm_subscriptions
+            WHERE created_at >= NOW() - INTERVAL '12 months'
+            GROUP BY DATE_TRUNC('month', created_at)
+            ORDER BY month ASC
+        `);
+
+        // Churn rate: churned this month / active at start of month
+        const activeStartOfMonth = await pool.query(`
+            SELECT COUNT(*) AS count
+            FROM crm_subscriptions
+            WHERE created_at < DATE_TRUNC('month', NOW())
+              AND (cancelled_at IS NULL OR cancelled_at >= DATE_TRUNC('month', NOW()))
+        `);
+
+        const churnedCount  = parseInt(churnThisMonth.rows[0].count);
+        const activeAtStart = parseInt(activeStartOfMonth.rows[0].count);
+        const churnRate     = activeAtStart > 0
+            ? ((churnedCount / activeAtStart) * 100).toFixed(2)
+            : '0.00';
+
+        const stats = mrrResult.rows[0];
+        const mrr   = parseFloat(stats.mrr);
+
+        res.json({
+            success: true,
+            overview: {
+                mrr,
+                arr: mrr * 12,
+                active_subscribers:   parseInt(stats.active_count),
+                canceling:            parseInt(stats.canceling_count),
+                past_due:             parseInt(stats.past_due_count),
+                total_churned:        parseInt(stats.churned_count),
+                at_risk_mrr:          parseFloat(stats.at_risk_mrr),
+                new_this_month:       parseInt(newThisMonth.rows[0].count),
+                new_mrr_this_month:   parseFloat(newThisMonth.rows[0].new_mrr),
+                churned_this_month:   churnedCount,
+                churned_mrr_this_month: parseFloat(churnThisMonth.rows[0].churned_mrr),
+                churn_rate:           parseFloat(churnRate)
+            },
+            by_package:  byPackage.rows,
+            mrr_trend:   mrrTrend.rows
+        });
+
+    } catch (error) {
+        console.error('[ANALYTICS] Subscription overview error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Recent subscription events feed
+app.get('/api/analytics/subscription-events', authenticateToken, async (req, res) => {
+    try {
+        const { limit = 20 } = req.query;
+
+        const events = await pool.query(`
+            SELECT
+                se.*,
+                cs.package_name,
+                cs.lead_name,
+                cs.user_count
+            FROM subscription_events se
+            LEFT JOIN crm_subscriptions cs ON se.subscription_id = cs.id
+            ORDER BY se.created_at DESC
+            LIMIT $1
+        `, [parseInt(limit)]);
+
+        res.json({ success: true, events: events.rows });
+    } catch (error) {
+        console.error('[ANALYTICS] Subscription events error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Also attach stripe_customer_id column to leads if missing
+// (needed to link leads → Stripe customers for subscriptions)
+// ────────────────────────────────────────────────────────────────────────────
+async function addLeadStripeCustomerColumn() {
+    try {
+        await pool.query(`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'leads' AND column_name = 'stripe_customer_id'
+                ) THEN
+                    ALTER TABLE leads ADD COLUMN stripe_customer_id VARCHAR(255);
+                END IF;
+            END $$;
+        `);
+        console.log('[SUBSCRIPTIONS] leads.stripe_customer_id column ready');
+    } catch (err) {
+        console.error('[SUBSCRIPTIONS] Column migration error:', err.message);
+    }
+}
+
+
+
 // Get upcoming reminders
 app.get('/api/reminders', authenticateToken, async (req, res) => {
     try {
@@ -10370,6 +11524,285 @@ app.post('/api/client/tickets/:id/responses', authenticateClient, async (req, re
     } catch (error) {
         console.error('[CLIENT] Add response error:', error);
         res.status(500).json({ success: false, message: 'Failed to add response' });
+    }
+});
+
+// ========================================
+// CLIENT SUBSCRIPTION ENDPOINTS
+// Authenticated by client JWT (authenticateClient)
+// ========================================
+
+// GET  /api/client/subscription   — view current subscription(s)
+app.get('/api/client/subscription', authenticateClient, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT cs.*, se.event_type, se.amount, se.description, se.created_at AS event_date
+            FROM crm_subscriptions cs
+            LEFT JOIN LATERAL (
+                SELECT event_type, amount, description, created_at
+                FROM subscription_events
+                WHERE subscription_id = cs.id
+                ORDER BY created_at DESC
+                LIMIT 6
+            ) se ON true
+            WHERE cs.lead_email = $1
+            ORDER BY cs.created_at DESC
+        `, [req.user.email]);
+
+        // Group events per subscription
+        const subMap = {};
+        result.rows.forEach(row => {
+            if (!subMap[row.id]) {
+                subMap[row.id] = {
+                    id: row.id,
+                    package_key:       row.package_key,
+                    package_name:      row.package_name,
+                    user_count:        row.user_count,
+                    price_per_user:    parseFloat(row.price_per_user || 0),
+                    monthly_total:     parseFloat(row.monthly_total || 0),
+                    status:            row.status,
+                    cancel_at_period_end: row.cancel_at_period_end,
+                    current_period_start: row.current_period_start,
+                    current_period_end:   row.current_period_end,
+                    created_at:        row.created_at,
+                    cancelled_at:      row.cancelled_at,
+                    stripe_customer_id: row.stripe_customer_id,
+                    events: []
+                };
+            }
+            if (row.event_date) {
+                subMap[row.id].events.push({
+                    event_type:  row.event_type,
+                    amount:      row.amount,
+                    description: row.description,
+                    created_at:  row.event_date
+                });
+            }
+        });
+
+        const subscriptions = Object.values(subMap);
+        res.json({ success: true, subscriptions });
+    } catch (error) {
+        console.error('[CLIENT SUB] Get error:', error);
+        res.status(500).json({ success: false, message: 'Failed to load subscription' });
+    }
+});
+
+// POST /api/client/subscription/:id/cancel  — cancel own subscription
+app.post('/api/client/subscription/:id/cancel', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { immediate = false } = req.body;
+
+        // Verify the subscription belongs to this client
+        const subResult = await pool.query(`
+            SELECT cs.*, l.id AS lead_db_id
+            FROM crm_subscriptions cs
+            LEFT JOIN leads l ON cs.lead_id = l.id
+            WHERE cs.id = $1 AND cs.lead_email = $2
+        `, [id, req.user.email]);
+
+        if (subResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Subscription not found' });
+        }
+
+        const sub      = subResult.rows[0];
+        const leadName = sub.lead_name  || req.user.name || 'Valued Customer';
+        const email    = sub.lead_email;
+        const leadDbId = sub.lead_db_id || null;
+
+        if (!['active', 'past_due', 'canceling'].includes(sub.status)) {
+            return res.status(400).json({ success: false, message: 'Subscription is not active' });
+        }
+
+        if (!sub.stripe_subscription_id) {
+            return res.status(400).json({ success: false, message: 'No Stripe subscription on record. Please contact support.' });
+        }
+
+        let accessEndsDate = null;
+
+        if (immediate) {
+            await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+            await pool.query(
+                `UPDATE crm_subscriptions SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW() WHERE id = $1`,
+                [id]
+            );
+            await logSubscriptionEvent(sub.stripe_subscription_id, email,
+                'subscription_cancelled_immediate', null, 'Cancelled immediately by customer');
+        } else {
+            const updated = await stripe.subscriptions.update(sub.stripe_subscription_id, {
+                cancel_at_period_end: true
+            });
+            accessEndsDate = updated.current_period_end
+                ? new Date(updated.current_period_end * 1000) : null;
+
+            await pool.query(
+                `UPDATE crm_subscriptions SET status = 'canceling', cancel_at_period_end = TRUE, updated_at = NOW() WHERE id = $1`,
+                [id]
+            );
+            await logSubscriptionEvent(sub.stripe_subscription_id, email,
+                'subscription_cancel_scheduled', null, 'Scheduled to cancel at period end by customer');
+        }
+
+        // Send confirmation email
+        try {
+            const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null;
+            const accessEndsLabel = immediate ? 'Immediately' : (fmtDate(accessEndsDate) || 'end of current billing period');
+
+            const cancelHtml = buildEmailHTML(`
+                <p>Hi ${leadName},</p>
+                <p>${immediate
+                    ? `Your <strong>${sub.package_name || 'CRM'}</strong> subscription has been cancelled. Access has ended and no further charges will be made.`
+                    : `Your <strong>${sub.package_name || 'CRM'}</strong> subscription cancellation has been scheduled. You'll keep full access until the end of your current billing period.`
+                }</p>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                       style="margin:28px 0;border-radius:6px;overflow:hidden;border:1px solid #e8e8e8;">
+                    <tr><td style="background:#f7f9fb;padding:14px 24px;border-bottom:1px solid #e8e8e8;">
+                        <span style="font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#999;">Cancellation Details</span>
+                    </td></tr>
+                    <tr><td style="padding:0;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Plan</td>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">${sub.package_name || 'CRM Subscription'}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:13px 24px;font-size:13px;color:#888;">Access Ends</td>
+                                <td style="padding:13px 24px;font-size:13px;font-weight:700;color:#222;text-align:right;">${accessEndsLabel}</td>
+                            </tr>
+                        </table>
+                    </td></tr>
+                </table>
+                <p style="font-size:13px;color:#888;margin:0;">Changed your mind? Call us at <strong>(512) 980-0393</strong> and we can reactivate your subscription.</p>
+            `, {
+                eyebrow:     'SUBSCRIPTION CANCELLED',
+                headline:    immediate ? 'Your subscription has ended.' : 'Cancellation scheduled.',
+                accentColor: '#EF4444',
+                tagline:     'WE HOPE TO WORK WITH YOU AGAIN.'
+            });
+
+            await sendTrackedEmail({
+                leadId:    leadDbId,
+                to:        email,
+                subject:   `Your ${sub.package_name || 'CRM'} Subscription Has Been Cancelled`,
+                html:      cancelHtml,
+                emailType: 'subscription_cancelled'
+            });
+        } catch (emailErr) {
+            console.error('[CLIENT SUB] Cancel email error:', emailErr.message);
+        }
+
+        res.json({
+            success: true,
+            message: immediate
+                ? 'Subscription cancelled. Confirmation email sent.'
+                : 'Cancellation scheduled. You keep access until the end of your billing period.'
+        });
+
+    } catch (error) {
+        console.error('[CLIENT SUB] Cancel error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// POST /api/client/subscription/:id/change-plan — upgrade or downgrade
+app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { newPackageKey, newUserCount } = req.body;
+
+        // Verify ownership
+        const subResult = await pool.query(
+            `SELECT * FROM crm_subscriptions WHERE id = $1 AND lead_email = $2`,
+            [id, req.user.email]
+        );
+
+        if (subResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Subscription not found' });
+        }
+
+        const sub = subResult.rows[0];
+
+        if (!['active', 'canceling'].includes(sub.status)) {
+            return res.status(400).json({ success: false, message: 'Subscription must be active to change plans' });
+        }
+
+        // Validate new plan
+        const validPlans = ['crm-essential', 'crm-professional', 'crm-enterprise'];
+        if (newPackageKey && !validPlans.includes(newPackageKey)) {
+            return res.status(400).json({ success: false, message: 'Invalid plan' });
+        }
+
+        const targetPkgKey  = newPackageKey || sub.package_key;
+        const targetPkg     = servicePackages[targetPkgKey];
+        const targetPriceId = targetPkg?.stripePriceId;
+        const targetQty     = parseInt(newUserCount) || sub.user_count;
+
+        if (!targetPriceId) {
+            return res.status(400).json({ success: false, message: 'Plan price not configured. Please contact support.' });
+        }
+
+        // Fetch the live subscription from Stripe to get the item ID
+        const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+        const itemId    = stripeSub.items.data[0].id;
+
+        // Update via Stripe — proration happens automatically
+        await stripe.subscriptions.update(sub.stripe_subscription_id, {
+            items: [{ id: itemId, price: targetPriceId, quantity: targetQty }],
+            proration_behavior: 'create_prorations',
+            cancel_at_period_end: false   // reactivate if was canceling
+        });
+
+        // Update our DB
+        const newMonthly = targetPkg.price * targetQty;
+        await pool.query(`
+            UPDATE crm_subscriptions
+            SET package_key = $1, package_name = $2, user_count = $3,
+                price_per_user = $4, monthly_total = $5, stripe_price_id = $6,
+                status = 'active', cancel_at_period_end = FALSE, updated_at = NOW()
+            WHERE id = $7
+        `, [targetPkgKey, targetPkg.name, targetQty, targetPkg.price, newMonthly, targetPriceId, id]);
+
+        await logSubscriptionEvent(sub.stripe_subscription_id, sub.lead_email,
+            'subscription_updated', newMonthly,
+            `Plan changed to ${targetPkg.name} × ${targetQty} users by customer`);
+
+        res.json({
+            success: true,
+            message: `Plan updated to ${targetPkg.name} for ${targetQty} user${targetQty > 1 ? 's' : ''}.`,
+            newMonthly: newMonthly.toFixed(2)
+        });
+
+    } catch (error) {
+        console.error('[CLIENT SUB] Change plan error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// POST /api/client/subscription/:id/billing-portal — open Stripe self-service portal
+app.post('/api/client/subscription/:id/billing-portal', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const subResult = await pool.query(
+            `SELECT stripe_customer_id FROM crm_subscriptions WHERE id = $1 AND lead_email = $2`,
+            [id, req.user.email]
+        );
+
+        if (subResult.rows.length === 0 || !subResult.rows[0].stripe_customer_id) {
+            return res.status(404).json({ success: false, message: 'No billing account found. Please contact support.' });
+        }
+
+        const portal = await stripe.billingPortal.sessions.create({
+            customer:   subResult.rows[0].stripe_customer_id,
+            return_url: `${BASE_URL}/client-portal.html`
+        });
+
+        res.json({ success: true, portalUrl: portal.url });
+
+    } catch (error) {
+        console.error('[CLIENT SUB] Portal error:', error);
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 
@@ -15358,6 +16791,8 @@ async function startServer() {
         await initializeDatabase(pool);
         await initializeExpenseTables();
         await addLeadSourceTracking();
+        await initializeSubscriptionTables();
+        await addLeadStripeCustomerColumn();
         
         // Migrate existing leads to temperature system
         await migrateExistingLeadsToTemperature();

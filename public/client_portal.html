@@ -1536,6 +1536,16 @@ textarea {
                             <span class="badge" id="ticketBadge" style="display: none;">0</span>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-section="subscription">
+                            <span class="icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                </svg>
+                            </span>
+                            Subscription
+                        </a>
+                    </li>
                 </ul>
             </nav>
 
@@ -1719,6 +1729,16 @@ textarea {
                             <!-- Tickets will be loaded here -->
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <!-- Subscription Section -->
+            <section id="subscriptionSection" class="content-section">
+                <div class="topbar">
+                    <h1 class="page-title">My Subscription</h1>
+                </div>
+                <div id="subscriptionContainer">
+                    <!-- Loaded dynamically -->
                 </div>
             </section>
         </main>
@@ -2487,6 +2507,9 @@ function navigateTo(section) {
         case 'support':
             loadTickets();
             break;
+        case 'subscription':
+            loadSubscription();
+            break;
     }
 }
 
@@ -2877,6 +2900,427 @@ async function submitTicketResponse(ticketId) {
             if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
             return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
         }
+
+        // ══════════════════════════════════════════════════════════════
+        // SUBSCRIPTION MANAGEMENT
+        // ══════════════════════════════════════════════════════════════
+
+        // Plan definitions (mirrors server servicePackages)
+        const CRM_PLANS = [
+            { key: 'crm-essential',    name: 'Essential CRM',    price: 19.99, description: 'Core CRM features • Up to 5 users' },
+            { key: 'crm-professional', name: 'Professional CRM', price: 49.99, description: 'Advanced features • Unlimited users' },
+            { key: 'crm-enterprise',   name: 'Enterprise CRM',   price: 64.99, description: 'Full suite • Priority support' }
+        ];
+
+        async function loadSubscription() {
+            const container = document.getElementById('subscriptionContainer');
+            container.innerHTML = `
+                <div style="text-align:center;padding:48px;color:var(--text-muted);">
+                    <div class="spinner" style="margin:0 auto 16px;"></div>
+                    Loading subscription…
+                </div>`;
+
+            try {
+                const res  = await fetch(`${API_BASE}/client/subscription`, {
+                    headers: { 'Authorization': `Bearer ${state.token}` }
+                });
+                const data = await res.json();
+
+                if (!data.success) throw new Error(data.message || 'Failed to load');
+                renderSubscription(data.subscriptions || []);
+            } catch (err) {
+                container.innerHTML = `
+                    <div style="text-align:center;padding:48px;color:var(--text-muted);">
+                        <p>Could not load subscription data.</p>
+                        <button class="btn" style="margin-top:12px;" onclick="loadSubscription()">Try Again</button>
+                    </div>`;
+            }
+        }
+
+        function renderSubscription(subscriptions) {
+            const container = document.getElementById('subscriptionContainer');
+
+            const activeSubs = subscriptions.filter(s => ['active','canceling','past_due'].includes(s.status));
+            const pastSubs   = subscriptions.filter(s => s.status === 'cancelled');
+
+            if (subscriptions.length === 0) {
+                container.innerHTML = `
+                    <div class="card" style="text-align:center;padding:60px 24px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                             style="width:64px;height:64px;margin:0 auto 16px;opacity:0.25;display:block;">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        </svg>
+                        <h3 style="margin:0 0 8px;font-size:20px;">No Active Subscription</h3>
+                        <p style="color:var(--text-muted);margin:0 0 24px;font-size:14px;">
+                            You don't have an active CRM subscription yet.
+                        </p>
+                        <a href="/pricing.html" class="btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
+                            View Plans
+                        </a>
+                    </div>`;
+                return;
+            }
+
+            const statusConfig = {
+                active:    { label: 'Active',    color: '#059669', bg: 'rgba(16,185,129,0.1)' },
+                canceling: { label: 'Canceling', color: '#d97706', bg: 'rgba(245,158,11,0.1)' },
+                past_due:  { label: 'Past Due',  color: '#dc2626', bg: 'rgba(239,68,68,0.1)' },
+                cancelled: { label: 'Cancelled', color: '#6b7280', bg: 'rgba(107,114,128,0.1)' }
+            };
+
+            const fmtDate  = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—';
+            const fmtMoney = v => '$' + parseFloat(v || 0).toFixed(2);
+
+            const eventBadge = et => {
+                const m = {
+                    payment_succeeded:              { l: 'Payment',     c: '#059669' },
+                    payment_failed:                 { l: 'Failed',      c: '#dc2626' },
+                    subscription_created:           { l: 'Started',     c: '#2563eb' },
+                    subscription_updated:           { l: 'Updated',     c: '#d97706' },
+                    subscription_cancel_scheduled:  { l: 'Cancel Sched',c: '#d97706' },
+                    subscription_cancelled_immediate:{ l: 'Cancelled',  c: '#dc2626' },
+                    subscription_deleted:           { l: 'Ended',       c: '#6b7280' },
+                    subscription_reactivated:       { l: 'Reactivated', c: '#059669' }
+                };
+                const info = m[et] || { l: et, c: '#6b7280' };
+                return `<span style="background:${info.c}1a;color:${info.c};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">${info.l}</span>`;
+            };
+
+            container.innerHTML = activeSubs.map(sub => {
+                const sc = statusConfig[sub.status] || statusConfig.cancelled;
+                const canChange = ['active','canceling'].includes(sub.status);
+                const canCancel = ['active','past_due'].includes(sub.status);
+                const isCancel  = sub.status === 'canceling';
+
+                return `
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <h2 class="card-title" style="margin:0 0 4px;">${sub.package_name}</h2>
+                            <span style="background:${sc.bg};color:${sc.color};padding:3px 10px;border-radius:5px;font-size:12px;font-weight:700;">${sc.label}</span>
+                            ${isCancel ? `<span style="font-size:12px;color:var(--text-muted);margin-left:8px;">· Access ends ${fmtDate(sub.current_period_end)}</span>` : ''}
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:28px;font-weight:800;">${fmtMoney(sub.monthly_total)}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">${sub.user_count} user${sub.user_count !== 1 ? 's' : ''} / month</div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+
+                        ${sub.status === 'past_due' ? `
+                        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:14px 16px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" style="width:18px;height:18px;flex-shrink:0;margin-top:1px;">
+                                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                            <div>
+                                <strong style="color:#dc2626;">Payment past due.</strong>
+                                <span style="font-size:13px;color:var(--text-secondary);margin-left:4px;">Your card was declined. Please update your payment method to keep access.</span>
+                                <br><button onclick="openClientBillingPortal(${sub.id})"
+                                    style="margin-top:8px;padding:6px 14px;font-size:12px;font-weight:700;border-radius:5px;cursor:pointer;
+                                           background:#dc2626;color:#fff;border:none;">
+                                    Update Payment Method
+                                </button>
+                            </div>
+                        </div>` : ''}
+
+                        <!-- Billing info -->
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px;padding:16px;background:var(--bg-hover);border-radius:8px;">
+                            <div>
+                                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;">Current Period</div>
+                                <div style="font-size:13px;font-weight:600;">${fmtDate(sub.current_period_start)}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">to ${fmtDate(sub.current_period_end)}</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;">Next Charge</div>
+                                <div style="font-size:13px;font-weight:600;">${isCancel ? 'None — cancelling' : fmtDate(sub.current_period_end)}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">${isCancel ? '' : fmtMoney(sub.monthly_total)}</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;">Member Since</div>
+                                <div style="font-size:13px;font-weight:600;">${fmtDate(sub.created_at)}</div>
+                            </div>
+                        </div>
+
+                        <!-- Change plan -->
+                        ${canChange ? `
+                        <div style="margin-bottom:24px;">
+                            <h3 style="font-size:14px;font-weight:700;margin:0 0 12px;">Change Plan</h3>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+                                ${CRM_PLANS.map(plan => {
+                                    const isCurrent = plan.key === sub.package_key;
+                                    return `
+                                    <div style="border:2px solid ${isCurrent ? 'var(--accent-primary,#f59e0b)' : 'var(--border-color,#e5e7eb)'};
+                                                border-radius:10px;padding:16px;cursor:${isCurrent ? 'default' : 'pointer'};
+                                                background:${isCurrent ? 'rgba(245,158,11,0.05)' : 'var(--bg-primary)'};"
+                                         onclick="${isCurrent ? '' : `openChangePlanModal(${sub.id}, '${plan.key}', '${plan.name}', ${plan.price}, ${sub.user_count})`}">
+                                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                                            <span style="font-size:14px;font-weight:700;">${plan.name}</span>
+                                            ${isCurrent ? `<span style="font-size:10px;font-weight:800;color:var(--accent-primary,#f59e0b);background:rgba(245,158,11,0.1);padding:2px 6px;border-radius:4px;">CURRENT</span>` : ''}
+                                        </div>
+                                        <div style="font-size:20px;font-weight:800;margin-bottom:4px;">$${plan.price.toFixed(2)}<span style="font-size:12px;font-weight:400;color:var(--text-muted);">/user/mo</span></div>
+                                        <div style="font-size:12px;color:var(--text-muted);">${plan.description}</div>
+                                        ${!isCurrent ? `<div style="margin-top:10px;padding:6px;background:var(--bg-hover);border-radius:5px;text-align:center;font-size:12px;font-weight:600;">
+                                            ${plan.price > CRM_PLANS.find(p=>p.key===sub.package_key)?.price ? '↑ Upgrade' : '↓ Downgrade'}
+                                        </div>` : ''}
+                                    </div>`;
+                                }).join('')}
+                            </div>
+                        </div>` : ''}
+
+                        <!-- Action buttons -->
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--border-color);">
+                            <button onclick="openClientBillingPortal(${sub.id})"
+                                style="padding:9px 18px;font-size:13px;font-weight:700;border-radius:7px;cursor:pointer;
+                                       background:var(--bg-hover);color:var(--text-primary);border:1px solid var(--border-color);display:flex;align-items:center;gap:6px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;">
+                                    <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                                </svg>
+                                Manage Billing
+                            </button>
+                            ${canCancel ? `
+                            <button onclick="openClientCancelModal(${sub.id}, '${sub.package_name.replace(/'/g,"\\'")}', '${fmtDate(sub.current_period_end)}')"
+                                style="padding:9px 18px;font-size:13px;font-weight:700;border-radius:7px;cursor:pointer;
+                                       background:transparent;color:#dc2626;border:1px solid rgba(220,38,38,0.3);display:flex;align-items:center;gap:6px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;">
+                                    <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                                </svg>
+                                Cancel Subscription
+                            </button>` : ''}
+                        </div>
+
+                        <!-- Billing history -->
+                        ${sub.events && sub.events.length > 0 ? `
+                        <div style="margin-top:24px;">
+                            <h3 style="font-size:14px;font-weight:700;margin:0 0 12px;">Recent Activity</h3>
+                            <div style="border:1px solid var(--border-color);border-radius:8px;overflow:hidden;">
+                                ${sub.events.map((ev, i) => `
+                                <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 16px;
+                                            ${i < sub.events.length-1 ? 'border-bottom:1px solid var(--border-color);' : ''}">
+                                    <div style="display:flex;align-items:center;gap:10px;">
+                                        ${eventBadge(ev.event_type)}
+                                        <span style="font-size:13px;color:var(--text-secondary);">${ev.description || ev.event_type}</span>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        ${ev.amount > 0 ? `<div style="font-size:13px;font-weight:700;">$${parseFloat(ev.amount).toFixed(2)}</div>` : ''}
+                                        <div style="font-size:11px;color:var(--text-muted);">${fmtDate(ev.created_at)}</div>
+                                    </div>
+                                </div>`).join('')}
+                            </div>
+                        </div>` : ''}
+                    </div>
+                </div>`;
+            }).join('') + (pastSubs.length > 0 ? `
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header"><h2 class="card-title">Past Subscriptions</h2></div>
+                    <div class="card-body">
+                        ${pastSubs.map(sub => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-color);">
+                            <div>
+                                <div style="font-weight:600;">${sub.package_name}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Cancelled ${fmtDate(sub.cancelled_at)}</div>
+                            </div>
+                            <div style="font-size:13px;font-weight:600;color:var(--text-muted);">${fmtMoney(sub.monthly_total)}/mo</div>
+                        </div>`).join('')}
+                    </div>
+                </div>` : '');
+
+            // Attach modal HTML
+            if (!document.getElementById('clientSubModals')) {
+                document.body.insertAdjacentHTML('beforeend', `
+                <div id="clientSubModals">
+                    <!-- Change plan modal -->
+                    <div id="changePlanModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px;"
+                         onclick="if(event.target===this)closePlanModal()">
+                        <div style="background:var(--bg-primary,#fff);border-radius:12px;padding:36px 40px;max-width:480px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.25);position:relative;">
+                            <button onclick="closePlanModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;padding:6px;color:var(--text-muted);">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                            <h3 style="font-size:18px;font-weight:800;margin:0 0 6px;" id="changePlanTitle">Change Plan</h3>
+                            <p id="changePlanDesc" style="font-size:14px;color:var(--text-muted,#6b7280);margin:0 0 20px;line-height:1.6;"></p>
+                            <div style="margin-bottom:18px;">
+                                <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Number of Users</label>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <button onclick="changePlanQty(-1)" style="width:36px;height:36px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-hover);font-size:18px;cursor:pointer;font-weight:700;">−</button>
+                                    <input type="number" id="changePlanQty" value="1" min="1"
+                                           style="width:80px;text-align:center;padding:8px;border:1px solid var(--border-color);border-radius:6px;font-size:16px;font-weight:700;">
+                                    <button onclick="changePlanQty(1)" style="width:36px;height:36px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-hover);font-size:18px;cursor:pointer;font-weight:700;">+</button>
+                                </div>
+                            </div>
+                            <div id="changePlanTotal" style="padding:14px 16px;background:var(--bg-hover);border-radius:8px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+                                <span style="font-size:13px;color:var(--text-muted);">New Monthly Total</span>
+                                <span id="changePlanTotalAmt" style="font-size:22px;font-weight:800;">$0.00</span>
+                            </div>
+                            <p style="font-size:12px;color:var(--text-muted);margin:0 0 18px;">Prorations are handled automatically — you'll be charged or credited the difference on your next invoice.</p>
+                            <div style="display:flex;gap:10px;">
+                                <button onclick="closePlanModal()" style="flex:1;padding:10px;border-radius:7px;border:1px solid var(--border-color);background:var(--bg-hover);font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+                                <button id="changePlanBtn" onclick="confirmChangePlan()"
+                                    style="flex:1;padding:10px;border-radius:7px;border:none;background:var(--accent-primary,#f59e0b);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">
+                                    Confirm Change
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cancel modal -->
+                    <div id="clientCancelModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px;"
+                         onclick="if(event.target===this)closeClientCancelModal()">
+                        <div style="background:var(--bg-primary,#fff);border-radius:12px;padding:36px 40px;max-width:460px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.25);position:relative;">
+                            <button onclick="closeClientCancelModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;padding:6px;color:var(--text-muted);">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                            <div style="width:48px;height:48px;background:rgba(220,38,38,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            </div>
+                            <h3 style="font-size:18px;font-weight:800;margin:0 0 8px;">Cancel Subscription</h3>
+                            <p id="clientCancelDesc" style="font-size:14px;color:var(--text-muted,#6b7280);margin:0 0 20px;line-height:1.65;"></p>
+                            <div style="background:var(--bg-hover);border-radius:8px;padding:14px 16px;margin-bottom:16px;">
+                                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+                                    <input type="checkbox" id="clientCancelImmediate"
+                                           style="margin-top:2px;width:16px;height:16px;flex-shrink:0;accent-color:#dc2626;">
+                                    <div>
+                                        <div style="font-size:13px;font-weight:700;margin-bottom:3px;">Cancel immediately</div>
+                                        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
+                                            Your access ends right now. Leave unchecked to keep access until your billing period ends.
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                            <p style="font-size:12px;color:var(--text-muted);margin:0 0 20px;">You'll receive a confirmation email. To reactivate, contact us at (512) 980-0393.</p>
+                            <div style="display:flex;gap:10px;">
+                                <button onclick="closeClientCancelModal()" style="flex:1;padding:10px;border-radius:7px;border:1px solid var(--border-color);background:var(--bg-hover);font-size:14px;font-weight:600;cursor:pointer;">Keep Subscription</button>
+                                <button id="clientCancelBtn" onclick="confirmClientCancel()"
+                                    style="flex:1;padding:10px;border-radius:7px;border:none;background:#dc2626;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">
+                                    Cancel Subscription
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`);
+            }
+        }
+
+        // Change Plan Modal
+        let _planState = { subId: null, planKey: null, planName: null, pricePerUser: 0 };
+
+        function openChangePlanModal(subId, planKey, planName, pricePerUser, currentQty) {
+            _planState = { subId, planKey, planName, pricePerUser };
+            document.getElementById('changePlanTitle').textContent = planName.includes('Essential') ? '↓ Downgrade Plan' : '↑ Upgrade Plan';
+            document.getElementById('changePlanDesc').textContent = `Switch to ${planName} at $${pricePerUser.toFixed(2)}/user/month. Prorations are handled automatically.`;
+            document.getElementById('changePlanQty').value = currentQty || 1;
+            updateChangePlanTotal();
+            document.getElementById('changePlanModal').style.display = 'flex';
+        }
+
+        function closePlanModal() {
+            document.getElementById('changePlanModal').style.display = 'none';
+            _planState = { subId: null, planKey: null, planName: null, pricePerUser: 0 };
+        }
+
+        function changePlanQty(delta) {
+            const input = document.getElementById('changePlanQty');
+            input.value = Math.max(1, (parseInt(input.value) || 1) + delta);
+            updateChangePlanTotal();
+        }
+
+        function updateChangePlanTotal() {
+            const qty   = parseInt(document.getElementById('changePlanQty').value) || 1;
+            const total = (_planState.pricePerUser * qty).toFixed(2);
+            document.getElementById('changePlanTotalAmt').textContent = '$' + total;
+        }
+
+        async function confirmChangePlan() {
+            const qty = parseInt(document.getElementById('changePlanQty').value) || 1;
+            const btn = document.getElementById('changePlanBtn');
+            btn.disabled = true; btn.textContent = 'Updating…';
+            try {
+                const res  = await fetch(`${API_BASE}/client/subscription/${_planState.subId}/change-plan`, {
+                    method:  'POST',
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ newPackageKey: _planState.planKey, newUserCount: qty })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closePlanModal();
+                    await loadSubscription();
+                    alert(`Plan updated to ${_planState.planName} for ${qty} user${qty > 1 ? 's' : ''}. Your next invoice will reflect any prorated difference.`);
+                } else {
+                    alert(data.message || 'Plan change failed');
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btn.disabled = false; btn.textContent = 'Confirm Change';
+            }
+        }
+
+        // Cancel Modal
+        let _clientCancelSubId = null;
+
+        function openClientCancelModal(subId, planName, periodEnd) {
+            _clientCancelSubId = subId;
+            document.getElementById('clientCancelDesc').textContent =
+                `You're about to cancel your ${planName} subscription. A confirmation email will be sent to you automatically.`;
+            document.getElementById('clientCancelImmediate').checked = false;
+            document.getElementById('clientCancelModal').style.display = 'flex';
+        }
+
+        function closeClientCancelModal() {
+            _clientCancelSubId = null;
+            document.getElementById('clientCancelModal').style.display = 'none';
+        }
+
+        async function confirmClientCancel() {
+            if (!_clientCancelSubId) return;
+            const immediate = document.getElementById('clientCancelImmediate').checked;
+            const btn = document.getElementById('clientCancelBtn');
+            btn.disabled = true; btn.textContent = 'Cancelling…';
+            try {
+                const res  = await fetch(`${API_BASE}/client/subscription/${_clientCancelSubId}/cancel`, {
+                    method:  'POST',
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ immediate })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeClientCancelModal();
+                    await loadSubscription();
+                    alert(data.message || 'Subscription cancelled. A confirmation email has been sent.');
+                } else {
+                    alert(data.message || 'Cancellation failed. Please try again or contact support.');
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                btn.disabled = false; btn.textContent = 'Cancel Subscription';
+            }
+        }
+
+        async function openClientBillingPortal(subId) {
+            const btn = event.target.closest('button');
+            if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
+            try {
+                const res  = await fetch(`${API_BASE}/client/subscription/${subId}/billing-portal`, {
+                    method:  'POST',
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (data.success && data.portalUrl) {
+                    window.location.href = data.portalUrl;
+                } else {
+                    alert(data.message || 'Could not open billing portal. Please contact support.');
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Manage Billing'; }
+            }
+        }
+
+        // document.getElementById change-plan qty input listener
+        document.addEventListener('input', e => {
+            if (e.target.id === 'changePlanQty') updateChangePlanTotal();
+        });
+
     </script>
 </body>
 </html>

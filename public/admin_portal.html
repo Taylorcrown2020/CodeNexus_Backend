@@ -7701,16 +7701,16 @@ function renderAnalytics(content) {
     Promise.all([
         fetch(`${API_URL}/api/analytics/revenue?period=30`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
-        }).then(r => r.json()),
+        }).then(r => r.json()).catch(() => ({ revenue: [] })),
         fetch(`${API_URL}/api/analytics/funnel`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
-        }).then(r => r.json()),
+        }).then(r => r.json()).catch(() => ({ funnel: { conversion_rate: 0, new: 0, contacted: 0, pending: 0, converted: 0 } })),
         fetch(`${API_URL}/api/analytics/employee-performance`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
-        }).then(r => r.json()),
+        }).then(r => r.json()).catch(() => ({ performance: [] })),
         fetch(`${API_URL}/api/analytics/sources`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
-        }).then(r => r.json()),
+        }).then(r => r.json()).catch(() => ({ sources: [] })),
         fetch(`${API_URL}/api/analytics/subscriptions`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         }).then(r => r.json()).catch(() => ({ success: false, overview: {}, by_package: [], mrr_trend: [] })),
@@ -7719,8 +7719,17 @@ function renderAnalytics(content) {
         }).then(r => r.json()).catch(() => ({ success: false, events: [] }))
     ]).then(([revenueData, funnelData, performanceData, sourcesData, subData, subEvents]) => {
 
-        const totalRevenue  = revenueData.revenue.reduce((s, d) => s + parseFloat(d.revenue), 0);
-        const avgDealSize   = totalRevenue / (revenueData.revenue.reduce((s, d) => s + d.invoice_count, 0) || 1);
+        // Defensive normalisation -- never crash on missing fields
+        const revenueRows  = revenueData?.revenue      || [];
+        const funnelObj    = funnelData?.funnel        || { conversion_rate: 0, new: 0, contacted: 0, pending: 0, converted: 0 };
+        const perfRows     = performanceData?.performance || [];
+        const sourceRows   = sourcesData?.sources      || [];
+        const byPackage    = subData?.by_package       || [];
+        const mrrTrend     = subData?.mrr_trend        || [];
+        const subEventList = subEvents?.events         || [];
+
+        const totalRevenue  = revenueRows.reduce((s, d) => s + parseFloat(d.revenue || 0), 0);
+        const avgDealSize   = totalRevenue / (revenueRows.reduce((s, d) => s + (d.invoice_count || 0), 0) || 1);
         const sub           = subData.success ? subData.overview : {};
         const mrr           = parseFloat(sub.mrr || 0);
         const arr           = parseFloat(sub.arr || 0);
@@ -7781,7 +7790,7 @@ function renderAnalytics(content) {
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                         </div>
                     </div>
-                    <div class="stat-value">${funnelData.funnel.conversion_rate}%</div>
+                    <div class="stat-value">${funnelObj.conversion_rate}%</div>
                     <div class="stat-change">Last 90 days</div>
                 </div>
                 <div class="stat-card">
@@ -7804,14 +7813,14 @@ function renderAnalytics(content) {
                     <div class="analytics-header">
                         <h3 class="analytics-title">Conversion Funnel (90 days)</h3>
                     </div>
-                    <div style="padding:20px;">${renderFunnelChart(funnelData.funnel)}</div>
+                    <div style="padding:20px;">${renderFunnelChart(funnelObj)}</div>
                 </div>
                 <div class="analytics-card">
                     <div class="analytics-header">
                         <h3 class="analytics-title">Lead Sources</h3>
                     </div>
                     <div class="metrics-list">
-                        ${sourcesData.sources.map(s => `
+                        ${sourceRows.map(s => `
                             <div class="metric-item">
                                 <div>
                                     <span class="metric-label">${s.source}</span>
@@ -7825,7 +7834,7 @@ function renderAnalytics(content) {
                     <div class="analytics-header">
                         <h3 class="analytics-title">30-Day Revenue Trend</h3>
                     </div>
-                    <div class="chart-container">${renderRevenueChart(revenueData.revenue)}</div>
+                    <div class="chart-container">${renderRevenueChart(revenueRows)}</div>
                 </div>
                 <div class="analytics-card full-width">
                     <div class="analytics-header">
@@ -7838,7 +7847,7 @@ function renderAnalytics(content) {
                                 <th>Conversion Rate</th><th>Total Revenue</th>
                             </tr></thead>
                             <tbody>
-                                ${performanceData.performance.map(emp => `
+                                ${perfRows.map(emp => `
                                     <tr>
                                         <td><div class="contact-cell">
                                             <div class="contact-avatar">${getInitials(emp.name)}</div>
@@ -7922,7 +7931,7 @@ function renderAnalytics(content) {
                         <h3 class="analytics-title">Revenue by Package</h3>
                     </div>
                     <div class="metrics-list">
-                        ${subData.success && subData.by_package.length > 0 ? subData.by_package.map(p => `
+                        ${byPackage.length > 0 ? byPackage.map(p => `
                             <div class="metric-item">
                                 <div>
                                     <span class="metric-label">${p.package_name}</span>
@@ -7949,7 +7958,7 @@ function renderAnalytics(content) {
                         <h3 class="analytics-title">MRR Growth (12 months)</h3>
                     </div>
                     <div class="chart-container">
-                        ${renderMRRTrendChart(subData.success ? subData.mrr_trend : [])}
+                        ${renderMRRTrendChart(mrrTrend)}
                     </div>
                 </div>
 
@@ -7965,7 +7974,7 @@ function renderAnalytics(content) {
                                 <th>Package</th><th>Amount</th>
                             </tr></thead>
                             <tbody>
-                                ${subEvents.success && subEvents.events.length > 0 ? subEvents.events.map(ev => `
+                                ${subEventList.length > 0 ? subEventList.map(ev => `
                                     <tr>
                                         <td style="color:var(--text-muted);font-size:12px;">${new Date(ev.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
                                         <td>${renderSubEventBadge(ev.event_type)}</td>
@@ -8018,6 +8027,18 @@ function renderAnalytics(content) {
         // Load email report when Email tab is active
         // (deferred — only load when tab is clicked)
         window._emailReportLoaded = false;
+    }).catch(err => {
+        console.error('[Analytics] Render error:', err);
+        const content = document.getElementById('contentArea');
+        if (content) content.innerHTML = `
+            <div style="padding:48px;text-align:center;color:var(--text-muted);">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;display:block;opacity:0.4;">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <div style="font-size:14px;margin-bottom:8px;">Analytics failed to load</div>
+                <div style="font-size:12px;color:var(--text-muted);">${err.message}</div>
+                <button onclick="renderAnalytics(document.getElementById('contentArea'))" class="btn btn-secondary" style="margin-top:16px;">Retry</button>
+            </div>`;
     });
 }
 
@@ -8680,39 +8701,81 @@ function renderSchedule(content) {
 
 function openAddAppointmentModal() {
     // Pre-fill date to selected calendar date, or today
-    const sel = window.scheduleState?.selectedDate;
+    const sel   = window.scheduleState?.selectedDate;
     const today = sel
-        ? sel.toLocaleDateString('en-CA')   // YYYY-MM-DD in local time
+        ? sel.toLocaleDateString('en-CA')
         : new Date().toLocaleDateString('en-CA');
+
+    // Build combined leads + customers list, sorted by name
+    const everyone = [...(state.leads || []), ...(state.customers || [])]
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    // Group: customers first, then leads
+    const customers = everyone.filter(p => p.is_customer);
+    const leads     = everyone.filter(p => !p.is_customer);
+
+    const buildOptions = (arr) => arr.map(p => {
+        const badge = p.is_customer ? '★ ' : '';
+        const company = p.company ? ` — ${p.company}` : '';
+        return `<option value="${p.id}" data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-email="${p.email||''}">${badge}${p.name || p.email}${company}</option>`;
+    }).join('');
+
+    const optionsHTML = `
+        <option value="">— Select a lead or customer —</option>
+        ${customers.length ? `<optgroup label="★ Customers">${buildOptions(customers)}</optgroup>` : ''}
+        ${leads.length     ? `<optgroup label="Leads">${buildOptions(leads)}</optgroup>`           : ''}
+    `;
 
     showModal('Add New Appointment', `
         <form id="addAppointmentForm" onsubmit="handleAddAppointment(event)">
-            <div style="margin-bottom:16px;">
-                <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Lead / Client Name *</label>
-                <input type="text" id="newAptLeadName" required
-                    placeholder="Full name"
-                    style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
+
+            <!-- ── Step 1: Pick a person ── -->
+            <div style="margin-bottom:6px;">
+                <label style="display:block;font-weight:700;margin-bottom:6px;font-size:13px;color:var(--text-primary);">
+                    Search &amp; Select Lead / Customer *
+                </label>
+                <!-- Live search box -->
+                <input type="text" id="newAptSearch" autocomplete="off"
+                    placeholder="Type a name, email, or company…"
+                    oninput="filterAptLeadList(this.value)"
+                    style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px 6px 0 0;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);box-sizing:border-box;">
+                <!-- Scrollable list -->
+                <div id="aptLeadListWrap" style="border:1px solid var(--border-color);border-top:none;border-radius:0 0 6px 6px;max-height:200px;overflow-y:auto;background:var(--bg-primary);">
+                    <div id="aptLeadList"></div>
+                </div>
             </div>
-            <div style="margin-bottom:16px;">
-                <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Email *</label>
-                <input type="email" id="newAptLeadEmail" required
-                    placeholder="email@example.com"
-                    style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
+
+            <!-- Selected person chip -->
+            <div id="aptSelectedChip" style="display:none;margin-bottom:16px;margin-top:8px;padding:10px 14px;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.3);border-radius:6px;display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <span id="aptChipName" style="font-weight:700;font-size:14px;color:var(--text-primary);"></span>
+                    <span id="aptChipEmail" style="font-size:12px;color:var(--text-muted);margin-left:8px;"></span>
+                </div>
+                <button type="button" onclick="clearAptSelection()"
+                    style="background:none;border:none;cursor:pointer;padding:2px 6px;color:var(--text-muted);font-size:16px;line-height:1;">✕</button>
             </div>
+
+            <!-- Hidden fields populated on selection -->
+            <input type="hidden" id="newAptLeadId">
+            <input type="hidden" id="newAptLeadName">
+            <input type="hidden" id="newAptLeadEmail">
+
+            <!-- ── Step 2: Date / Time / Type ── -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
                 <div>
-                    <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Date *</label>
+                    <label style="display:block;font-weight:700;margin-bottom:6px;font-size:13px;">Date *</label>
                     <input type="date" id="newAptDate" required value="${today}"
-                        style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
+                        style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);box-sizing:border-box;">
                 </div>
                 <div>
-                    <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Time (CT) *</label>
+                    <label style="display:block;font-weight:700;margin-bottom:6px;font-size:13px;">Time (Central) *</label>
                     <input type="time" id="newAptTime" required value="09:00"
-                        style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
+                        style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);box-sizing:border-box;">
                 </div>
             </div>
+
             <div style="margin-bottom:20px;">
-                <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Appointment Type</label>
+                <label style="display:block;font-weight:700;margin-bottom:6px;font-size:13px;">Appointment Type</label>
                 <select id="newAptType"
                     style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);">
                     <option value="Consultation">Consultation</option>
@@ -8724,10 +8787,30 @@ function openAddAppointmentModal() {
                     <option value="Other">Other</option>
                 </select>
             </div>
+
+            <!-- Notes -->
+            <div style="margin-bottom:20px;">
+                <label style="display:block;font-weight:700;margin-bottom:6px;font-size:13px;">Notes <span style="font-weight:400;color:var(--text-muted);">(optional — added to lead profile)</span></label>
+                <textarea id="newAptNotes" rows="2" placeholder="Any prep notes, agenda items, topics to cover…"
+                    style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:6px;font-size:14px;background:var(--bg-secondary);color:var(--text-primary);resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+
+            <!-- Email toggle -->
+            <div style="margin-bottom:20px;padding:12px 14px;background:var(--bg-secondary);border-radius:6px;border:1px solid var(--border-color);">
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                    <input type="checkbox" id="newAptSendEmail" checked
+                        style="width:16px;height:16px;accent-color:#FF6B35;flex-shrink:0;">
+                    <div>
+                        <div style="font-size:13px;font-weight:700;color:var(--text-primary);">Send confirmation email</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Sends the appointment details to the lead / customer automatically</div>
+                    </div>
+                </label>
+            </div>
+
             <div style="display:flex;gap:10px;">
                 <button type="button" onclick="closeModal('addAppointmentModal')"
                     class="btn btn-secondary" style="flex:1;">Cancel</button>
-                <button type="submit" class="btn btn-primary" style="flex:1;">
+                <button type="submit" id="newAptSubmitBtn" class="btn btn-primary" style="flex:1;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px;">
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
@@ -8736,47 +8819,143 @@ function openAddAppointmentModal() {
             </div>
         </form>
     `, null, 'addAppointmentModal');
+
+    // Populate the lead list after modal renders
+    setTimeout(() => _renderAptLeadList(everyone, ''), 50);
 }
+
+// ── Lead list helpers ──────────────────────────────────────────────
+
+// Cached for the current modal open
+let _aptAllPeople = [];
+
+function _renderAptLeadList(people, query) {
+    _aptAllPeople = people;
+    const list = document.getElementById('aptLeadList');
+    if (!list) return;
+
+    const q = query.toLowerCase().trim();
+    const filtered = q
+        ? people.filter(p =>
+            (p.name  || '').toLowerCase().includes(q) ||
+            (p.email || '').toLowerCase().includes(q) ||
+            (p.company || '').toLowerCase().includes(q))
+        : people;
+
+    if (filtered.length === 0) {
+        list.innerHTML = `<div style="padding:14px 16px;font-size:13px;color:var(--text-muted);text-align:center;">No matches found</div>`;
+        return;
+    }
+
+    list.innerHTML = filtered.slice(0, 80).map(p => {
+        const badge   = p.is_customer
+            ? `<span style="font-size:10px;font-weight:800;color:#059669;background:rgba(16,185,129,0.12);padding:1px 5px;border-radius:3px;margin-right:6px;">CUSTOMER</span>`
+            : `<span style="font-size:10px;font-weight:800;color:var(--text-muted);background:var(--bg-tertiary);padding:1px 5px;border-radius:3px;margin-right:6px;">LEAD</span>`;
+        const company = p.company ? `<span style="color:var(--text-muted);margin-left:4px;">· ${p.company}</span>` : '';
+        const temp    = p.lead_temperature
+            ? { hot: '🔥', warm: '☀️', cold: '❄️' }[p.lead_temperature] || ''
+            : '';
+
+        return `<div onclick="selectAptLead(${p.id}, '${(p.name||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}', '${(p.email||'').replace(/'/g,"\\'")}')"
+                     style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border-subtle,#f0f0f0);display:flex;align-items:center;justify-content:space-between;"
+                     onmouseover="this.style.background='var(--bg-hover)'"
+                     onmouseout="this.style.background=''">
+            <div style="min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    ${badge}${p.name || '(no name)'} ${temp}${company}
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${p.email || ''}</div>
+            </div>
+        </div>`;
+    }).join('');
+
+    if (filtered.length > 80) {
+        list.innerHTML += `<div style="padding:10px 14px;font-size:12px;color:var(--text-muted);text-align:center;">Showing first 80 — type to narrow down</div>`;
+    }
+}
+
+function filterAptLeadList(query) {
+    _renderAptLeadList(_aptAllPeople, query);
+}
+
+function selectAptLead(id, name, email) {
+    // Fill hidden fields
+    document.getElementById('newAptLeadId').value    = id;
+    document.getElementById('newAptLeadName').value  = name;
+    document.getElementById('newAptLeadEmail').value = email;
+
+    // Show chip, hide list + search
+    document.getElementById('aptChipName').textContent  = name;
+    document.getElementById('aptChipEmail').textContent = email;
+    const chip = document.getElementById('aptSelectedChip');
+    chip.style.display = 'flex';
+
+    // Hide the search/list
+    document.getElementById('newAptSearch').style.display     = 'none';
+    document.getElementById('aptLeadListWrap').style.display  = 'none';
+}
+
+function clearAptSelection() {
+    document.getElementById('newAptLeadId').value    = '';
+    document.getElementById('newAptLeadName').value  = '';
+    document.getElementById('newAptLeadEmail').value = '';
+    document.getElementById('aptChipName').textContent  = '';
+    document.getElementById('aptChipEmail').textContent = '';
+    document.getElementById('aptSelectedChip').style.display  = 'none';
+    document.getElementById('newAptSearch').style.display     = '';
+    document.getElementById('aptLeadListWrap').style.display  = '';
+    document.getElementById('newAptSearch').value = '';
+    _renderAptLeadList(_aptAllPeople, '');
+    document.getElementById('newAptSearch').focus();
+}
+
+// ── Submit handler ────────────────────────────────────────────────
 
 async function handleAddAppointment(e) {
     e.preventDefault();
 
+    const leadId    = document.getElementById('newAptLeadId').value;
     const leadName  = document.getElementById('newAptLeadName').value.trim();
     const leadEmail = document.getElementById('newAptLeadEmail').value.trim();
     const date      = document.getElementById('newAptDate').value;
     const time      = document.getElementById('newAptTime').value;
     const eventType = document.getElementById('newAptType').value;
+    const notes     = document.getElementById('newAptNotes').value.trim();
+    const sendEmail = document.getElementById('newAptSendEmail').checked;
 
-    if (!leadName || !leadEmail || !date || !time) return;
+    if (!leadName || !leadEmail) {
+        showToast('Please select a lead or customer first', 'error');
+        return;
+    }
+    if (!date || !time) {
+        showToast('Please pick a date and time', 'error');
+        return;
+    }
 
-    // Build ISO timestamp in CT by appending Central offset
-    // DST detection: CT is UTC-5 in CDT (Mar–Nov) and UTC-6 in CST
-    const localDt   = new Date(`${date}T${time}:00`);
-    const month     = localDt.getMonth(); // 0-based
-    const isDST     = month >= 2 && month <= 10; // rough DST window
-    const offset    = isDST ? '-05:00' : '-06:00';
-    const isoStr    = `${date}T${time}:00${offset}`;
+    // Build CT-aware ISO string
+    const month  = new Date(`${date}T${time}:00`).getMonth();
+    const isDST  = month >= 2 && month <= 10;
+    const isoStr = `${date}T${time}:00${isDST ? '-05:00' : '-06:00'}`;
 
-    const submitBtn = document.querySelector('#addAppointmentForm button[type="submit"]');
+    const submitBtn = document.getElementById('newAptSubmitBtn');
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
 
     try {
         const res  = await fetch(`${API_URL}/api/appointments/admin-create`, {
             method:  'POST',
             headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-                leadName,
-                leadEmail,
-                scheduledTime: isoStr,
-                eventType
-            })
+            body:    JSON.stringify({ leadId, leadName, leadEmail, scheduledTime: isoStr, eventType, notes, sendEmail })
         });
         const data = await res.json();
 
         if (data.success) {
             closeModal('addAppointmentModal');
-            showToast('Appointment added successfully', 'success');
-            // Refresh calendar to show new appointment
+            showToast(
+                sendEmail
+                    ? `Appointment added — confirmation email sent to ${leadEmail}`
+                    : 'Appointment added successfully',
+                'success'
+            );
             const content = document.getElementById('contentArea') || document.getElementById('mainContent');
             if (content) renderSchedule(content);
         } else {
@@ -8785,7 +8964,7 @@ async function handleAddAppointment(e) {
     } catch (err) {
         showToast('Network error: ' + err.message, 'error');
     } finally {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Add Appointment'; }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Appointment'; }
     }
 }
 

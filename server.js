@@ -8360,6 +8360,25 @@ async function processSubscriptionWebhook(event) {
         const lead = leadResult.rows[0] || null;
         const leadEmail = lead?.email || (await getStripeCustomerEmail(customerId));
 
+        // Multiple subscriptions are allowed - customer can have separate subscriptions for different teams
+
+                // If no lead/customer exists, create them as a CUSTOMER (not a lead)
+        if (!lead && leadEmail) {
+            console.log(`[SUB WEBHOOK] No existing customer/lead found for ${leadEmail} - creating new CUSTOMER`);
+            
+            const newCustomerResult = await pool.query(`
+                INSERT INTO leads (
+                    email, name, source, lead_temperature, stripe_customer_id, 
+                    is_customer, customer_status, status, created_at, updated_at
+                )
+                VALUES ($1, $2, 'subscription-direct', 'hot', $3, TRUE, 'active', 'closed', NOW(), NOW())
+                RETURNING id, name, email
+            `, [leadEmail, leadEmail.split('@')[0], customerId]);
+            
+            lead = newCustomerResult.rows[0];
+            console.log(`[SUB WEBHOOK] ✅ Created new CUSTOMER ${lead.id} (${leadEmail}) - NOT a lead`);
+        }
+
         await pool.query(`
             INSERT INTO crm_subscriptions
                 (lead_id, lead_email, lead_name, package_key, package_name,
@@ -8391,27 +8410,41 @@ async function processSubscriptionWebhook(event) {
         await logSubscriptionEvent(subId, leadEmail, 'subscription_created', pkg.price * quantity,
             `${pkg.name} subscription started — ${quantity} user${quantity > 1 ? 's' : ''}`);
 
-        // Promote lead to customer AND create client portal account
-        if (lead) {
-            await pool.query(
-                `UPDATE leads SET is_customer = TRUE, customer_status = 'active', updated_at = NOW() WHERE id = $1`,
-                [lead.id]
-            );
+        // Convert lead to customer (whether they were cold, warm, or hot lead)
+        if (lead && lead.id) {
+            await pool.query(`
+                UPDATE leads 
+                SET is_customer = TRUE, 
+                    customer_status = 'active',
+                    status = 'closed',
+                    lead_temperature = 'hot',
+                    updated_at = NOW() 
+                WHERE id = $1
+            `, [lead.id]);
+            
+            console.log(`[SUB WEBHOOK] ✅ Converted lead ${lead.id} to CUSTOMER (was: ${lead.name || leadEmail})`);
+        } else {
+            console.log(`[SUB WEBHOOK] ⚠️  Warning: No lead ID available for ${leadEmail}`);
+        }
+
+        // Create client portal account regardless (even if lead creation somehow failed above)
+        if (leadEmail) {
 
             // Auto-create client portal account if they don't have one
             const portalCheck = await pool.query(
-                `SELECT client_password FROM leads WHERE id = $1`,
-                [lead.id]
+                `SELECT client_password, id, name FROM leads WHERE email = $1`,
+                [leadEmail]
             );
 
-            if (!portalCheck.rows[0]?.client_password) {
+            const leadForPortal = portalCheck.rows[0];
+            if (leadForPortal && !leadForPortal.client_password) {
                 // Generate temporary password
                 const tempPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
                 const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
                 await pool.query(
-                    `UPDATE leads SET client_password = $1 WHERE id = $2`,
-                    [hashedPassword, lead.id]
+                    `UPDATE leads SET client_password = $1 WHERE email = $2`,
+                    [hashedPassword, leadEmail]
                 );
 
                 console.log(`[SUB WEBHOOK] Client portal account created for ${leadEmail}`);
@@ -8419,7 +8452,7 @@ async function processSubscriptionWebhook(event) {
                 // Send welcome email with login credentials
                 try {
                     const welcomeHtml = buildEmailHTML(`
-                        <p>Hi ${lead.name || 'there'},</p>
+                        <p>Hi ${leadForPortal?.name || 'there'},</p>
                         <p>Welcome to Diamondback Coding! Your <strong>${pkg.name}</strong> subscription is now active.</p>
                         
                         <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:28px 0;">
@@ -8473,7 +8506,7 @@ async function processSubscriptionWebhook(event) {
                     });
 
                     await sendTrackedEmail({
-                        leadId:    lead.id,
+                        leadId:    leadForPortal?.id || null,
                         to:        leadEmail,
                         subject:   'Welcome to Diamondback CRM — Your Portal Access',
                         html:      welcomeHtml,
@@ -8519,14 +8552,21 @@ async function processSubscriptionWebhook(event) {
         const subRow = await pool.query(`
             SELECT cs.*, l.id AS lead_db_id
             FROM crm_subscriptions cs
-            LEFT JOIN leads l ON cs.lead_id = l.id
+            LEFT JOIN leads l ON (cs.lead_id = l.id OR cs.lead_email = l.email)
             WHERE cs.stripe_subscription_id = $1
         `, [subId]);
 
         const sub      = subRow.rows[0];
         const email    = sub?.lead_email;
         const leadName = sub?.lead_name  || 'Valued Customer';
-        const leadDbId = sub?.lead_db_id || null;
+        let leadDbId   = sub?.lead_db_id || null;
+        
+        // If still no leadDbId, look up by email
+        if (!leadDbId && email) {
+            const leadLookup = await pool.query(`SELECT id FROM leads WHERE email = $1`, [email]);
+            leadDbId = leadLookup.rows[0]?.id || null;
+            console.log(`[SUB WEBHOOK] Looked up lead by email: ${email} → ${leadDbId ? 'Found' : 'Not found'}`);
+        }
 
         if (email) {
             await logSubscriptionEvent(subId, email, 'payment_succeeded', amount,
@@ -8560,7 +8600,7 @@ async function processSubscriptionWebhook(event) {
                     invoiceNumber,
                     amount,
                     subId,
-                    `${sub?.package_name || 'CRM'} subscription ${isFirstPayment ? 'first payment' : 'renewal'} — ${sub?.user_count || 1} user(s)`
+                    `${sub?.package_name || 'CRM'} subscription ${isFirstPayment ? 'first payment' : 'renewal'} — ${sub?.user_count || 1} user(s) (Subscription ID: ${sub?.id || 'N/A'})`
                 ]);
                 
                 console.log(`[SUB WEBHOOK] Invoice ${invoiceNumber} created for $${amount.toFixed(2)}`);
@@ -8888,7 +8928,38 @@ async function getStripeCustomerEmail(customerId) {
 // for invoices. We layer on top of it here for subscription events.
 // Since we can't modify the switch, we add a second webhook listener at a
 // different path that Stripe will also deliver to:
-// Subscription webhooks handled by /api/stripe/webhook above
+// Redirect old subscription webhook URL to new unified webhook
+app.post('/api/stripe/subscription-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    console.log('[WEBHOOK REDIRECT] Old subscription-webhook URL called - forwarding to main webhook handler');
+    
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    
+    if (!webhookSecret) {
+        console.error('[WEBHOOK] STRIPE_WEBHOOK_SECRET not configured');
+        return res.status(500).send('Webhook secret not configured');
+    }
+    
+    let event;
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        console.log('[WEBHOOK REDIRECT] Event type:', event.type);
+    } catch (err) {
+        console.error('[WEBHOOK REDIRECT] Signature verification failed:', err.message);
+        return res.status(400).send('Webhook Error: ' + err.message);
+    }
+    
+    // Process subscription events
+    try {
+        await processSubscriptionWebhook(event);
+        res.json({ received: true });
+    } catch (err) {
+        console.error('[WEBHOOK REDIRECT] Processing error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Old comment kept for reference
 
 // ========================================
 // SUBSCRIPTION API ROUTES
@@ -9417,7 +9488,7 @@ app.post('/api/subscriptions/:id/portal', authenticateToken, async (req, res) =>
 // MRR, subscriber counts, churn, growth
 app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
     try {
-        // Active subscribers and MRR
+        // Active subscriptions and MRR (counts ALL subscriptions, including multiple per customer)
         const mrrResult = await pool.query(`
             SELECT
                 COUNT(*) FILTER (WHERE status = 'active')                    AS active_count,
@@ -9425,7 +9496,8 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COUNT(*) FILTER (WHERE status = 'past_due')                  AS past_due_count,
                 COUNT(*) FILTER (WHERE status = 'cancelled')                 AS churned_count,
                 COALESCE(SUM(monthly_total) FILTER (WHERE status IN ('active','canceling')), 0) AS mrr,
-                COALESCE(SUM(monthly_total) FILTER (WHERE status = 'past_due'), 0)              AS at_risk_mrr
+                COALESCE(SUM(monthly_total) FILTER (WHERE status = 'past_due'), 0)              AS at_risk_mrr,
+                COUNT(DISTINCT lead_email) FILTER (WHERE status IN ('active','canceling','past_due')) AS unique_customers
             FROM crm_subscriptions
         `);
 
@@ -9493,6 +9565,7 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 mrr,
                 arr: mrr * 12,
                 active_subscribers:   parseInt(stats.active_count),
+                unique_customers:     parseInt(stats.unique_customers || 0),
                 canceling:            parseInt(stats.canceling_count),
                 past_due:             parseInt(stats.past_due_count),
                 total_churned:        parseInt(stats.churned_count),
@@ -12053,11 +12126,25 @@ app.post('/api/client/subscription/:id/cancel', authenticateClient, async (req, 
             console.error('[CLIENT SUB] Cancel email error:', emailErr.message);
         }
 
+        // Recalculate total MRR for this customer
+        const mrrCheck = await pool.query(`
+            SELECT COALESCE(SUM(monthly_total), 0) as total_mrr, COUNT(*) as active_count
+            FROM crm_subscriptions
+            WHERE lead_email = $1 AND status IN ('active', 'past_due')
+        `, [email]);
+        
+        const remainingMRR = parseFloat(mrrCheck.rows[0]?.total_mrr || 0);
+        const remainingSubs = parseInt(mrrCheck.rows[0]?.active_count || 0);
+        
+        console.log(`[CLIENT SUB] After cancellation: ${email} has ${remainingSubs} active subscriptions, $${remainingMRR.toFixed(2)} total MRR`);
+
         res.json({
             success: true,
             message: immediate
                 ? 'Subscription cancelled. Confirmation email sent.'
-                : 'Cancellation scheduled. You keep access until the end of your billing period.'
+                : 'Cancellation scheduled. You keep access until the end of your billing period.',
+            remainingSubscriptions: remainingSubs,
+            totalMRR: remainingMRR.toFixed(2)
         });
 
     } catch (error) {
@@ -12128,6 +12215,66 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
         await logSubscriptionEvent(sub.stripe_subscription_id, sub.lead_email,
             'subscription_updated', newMonthly,
             `Plan changed to ${targetPkg.name} × ${targetQty} users by customer`);
+
+        // Recalculate total MRR for this customer across all their subscriptions
+        const mrrResult = await pool.query(`
+            SELECT COALESCE(SUM(monthly_total), 0) as total_mrr
+            FROM crm_subscriptions
+            WHERE lead_email = $1 AND status IN ('active', 'past_due', 'canceling')
+        `, [sub.lead_email]);
+        
+        const totalMRR = parseFloat(mrrResult.rows[0]?.total_mrr || 0);
+        console.log(`[CLIENT SUB] Total MRR for ${sub.lead_email}: $${totalMRR.toFixed(2)} across all subscriptions`);
+
+        // Send email confirming the plan change
+        const isUpgrade = targetPkg.price > (sub.monthly_total / sub.user_count);
+        const changeType = isUpgrade ? 'upgrade' : 'downgrade';
+        
+        try {
+            const changeEmail = buildEmailHTML(
+                '<p>Hi ' + (sub.lead_name || 'there') + ',</p>' +
+                '<p>Your subscription plan change has been confirmed. Starting at your next billing period, your plan will ' + changeType + ' to <strong>' + targetPkg.name + '</strong>.</p>' +
+                '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0;border-radius:6px;overflow:hidden;border:1px solid #e8e8e8;">' +
+                '<tr><td style="background:#f7f9fb;padding:14px 24px;border-bottom:1px solid #e8e8e8;">' +
+                '<span style="font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#999;">Plan Change Summary</span>' +
+                '</td></tr>' +
+                '<tr><td style="padding:0;">' +
+                '<table width="100%" cellpadding="0" cellspacing="0" border="0">' +
+                '<tr><td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Current Plan</td>' +
+                '<td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">' + sub.package_name + ' (' + sub.user_count + ' users)</td></tr>' +
+                '<tr><td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">New Plan</td>' +
+                '<td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">' + targetPkg.name + ' (' + targetQty + ' users)</td></tr>' +
+                '<tr><td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Current Monthly</td>' +
+                '<td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;text-align:right;">$' + sub.monthly_total.toFixed(2) + '</td></tr>' +
+                '<tr style="background:#f7f9fb;"><td style="padding:16px 24px;font-size:14px;font-weight:800;color:#222;">New Monthly</td>' +
+                '<td style="padding:16px 24px;font-size:22px;font-weight:800;color:' + (isUpgrade ? '#FF6B35' : '#1a7a3a') + ';text-align:right;">$' + newMonthly.toFixed(2) + '</td></tr>' +
+                '</table></td></tr></table>' +
+                '<p style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:6px;padding:14px;font-size:13px;color:#555;margin:28px 0;">' +
+                '<strong>Effective Date:</strong> Your next billing period. You will continue paying $' + sub.monthly_total.toFixed(2) + '/month until then.' +
+                '</p>' +
+                '<p style="font-size:13px;color:#888;">Questions? Call us at <strong>(512) 980-0393</strong> or reply to this email.</p>',
+                {
+                    eyebrow: 'SUBSCRIPTION ' + changeType.toUpperCase(),
+                    headline: 'Your plan change is confirmed.',
+                    accentColor: isUpgrade ? '#FF6B35' : '#1a7a3a',
+                    tagline: 'MANAGE LEADS. CLOSE DEALS.',
+                    ctaLabel: 'View Subscription',
+                    ctaUrl: BASE_URL + '/client-portal.html'
+                }
+            );
+
+            await sendTrackedEmail({
+                leadId: sub.lead_id || null,
+                to: sub.lead_email,
+                subject: 'Subscription ' + (isUpgrade ? 'Upgrade' : 'Downgrade') + ' Confirmed — ' + targetPkg.name,
+                html: changeEmail,
+                emailType: 'subscription_change'
+            });
+            
+            console.log('[CLIENT SUB] Plan change email sent to ' + sub.lead_email);
+        } catch (emailErr) {
+            console.error('[CLIENT SUB] Plan change email failed:', emailErr.message);
+        }
 
         res.json({
             success: true,

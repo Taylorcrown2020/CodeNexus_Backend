@@ -2566,6 +2566,8 @@ function navigateTo(section) {
                     </div>
                 `;
             }).join('');
+            
+            container.innerHTML = html;
         }
 
         async function handleFileUpload(files) {
@@ -2986,7 +2988,23 @@ async function submitTicketResponse(ticketId) {
                 return `<span style="background:${info.c}1a;color:${info.c};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">${info.l}</span>`;
             };
 
-            container.innerHTML = activeSubs.map(sub => {
+            // Add "Add New Subscription" button at the top
+            let html = `
+                <div style="margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <h2 style="margin:0 0 4px;font-size:20px;font-weight:800;">Your Subscriptions</h2>
+                        <p style="margin:0;color:var(--text-muted);font-size:14px;">Manage all your CRM subscriptions below</p>
+                    </div>
+                    <a href="/pricing.html" class="btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;background:#FF6B35;color:#fff;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add New Subscription
+                    </a>
+                </div>
+            `;
+
+            html += activeSubs.map(sub => {
                 const sc = statusConfig[sub.status] || statusConfig.cancelled;
                 const canChange = ['active','canceling'].includes(sub.status);
                 const canCancel = ['active','past_due'].includes(sub.status);

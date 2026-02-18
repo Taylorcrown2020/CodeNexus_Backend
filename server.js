@@ -8357,7 +8357,7 @@ async function processSubscriptionWebhook(event) {
             [customerId]
         );
 
-        const lead = leadResult.rows[0] || null;
+        let lead = leadResult.rows[0] || null;
         const leadEmail = lead?.email || (await getStripeCustomerEmail(customerId));
 
         // Multiple subscriptions are allowed - customer can have separate subscriptions for different teams

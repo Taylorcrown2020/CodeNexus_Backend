@@ -3135,7 +3135,191 @@ async function submitTicketResponse(ticketId) {
             { key: 'crm-enterprise',   name: 'Enterprise CRM',   price: 64.99, description: 'Full suite • Priority support' }
         ];
 
-        async function loadSubscription() {
+        // ══════════════════════════════════════════════════════════════
+        // CHANGE PLAN FUNCTIONALITY
+        // ══════════════════════════════════════════════════════════════
+        
+        let _changePlanState = {
+            subId: null,
+            currentPlanKey: null,
+            currentPlanName: null,
+            currentPrice: 0,
+            currentUsers: 1,
+            selectedPlanKey: null,
+            selectedPrice: 0
+        };
+        
+        function openChangePlanModal(subId, currentPlanKey, currentPlanName, currentPrice, currentUsers) {
+            _changePlanState = {
+                subId,
+                currentPlanKey,
+                currentPlanName,
+                currentPrice,
+                currentUsers,
+                selectedPlanKey: currentPlanKey,
+                selectedPrice: currentPrice
+            };
+            
+            // Create modal if it doesn't exist
+            if (!document.getElementById('changePlanModal')) {
+                document.body.insertAdjacentHTML('beforeend', `
+                <div id="changePlanModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px;"
+                     onclick="if(event.target===this)closeChangePlanModal()">
+                    <div onclick="event.stopPropagation()" style="background:var(--bg-primary,#fff);border-radius:12px;padding:36px 40px;max-width:600px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.25);position:relative;">
+                        <button onclick="closeChangePlanModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;padding:6px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                        <h3 style="font-size:18px;font-weight:800;margin:0 0 6px;">Change Your Plan</h3>
+                        <p style="font-size:14px;color:#6b7280;margin:0 0 24px;">Select a new plan and adjust your user count</p>
+                        
+                        <div id="changePlanOptions" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;"></div>
+                        
+                        <div style="margin-bottom:24px;">
+                            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">Number of Users</label>
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <button onclick="adjustPlanUsers(-1)" style="width:40px;height:40px;border-radius:6px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-size:18px;font-weight:700;">−</button>
+                                <input type="number" id="changePlanUserCount" value="1" min="1" max="999" 
+                                       style="flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:6px;text-align:center;font-size:16px;font-weight:700;"
+                                       oninput="updateChangePlanTotal()">
+                                <button onclick="adjustPlanUsers(1)" style="width:40px;height:40px;border-radius:6px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-size:18px;font-weight:700;">+</button>
+                            </div>
+                        </div>
+                        
+                        <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px;">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                                <span style="font-size:13px;color:#6b7280;">Current Plan</span>
+                                <span style="font-size:13px;font-weight:600;" id="changePlanCurrentTotal">—</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;">
+                                <span style="font-size:14px;font-weight:700;">New Monthly Total</span>
+                                <span style="font-size:20px;font-weight:800;color:#059669;" id="changePlanNewTotal">$0.00</span>
+                            </div>
+                        </div>
+                        
+                        <div id="changePlanNotice" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:12px;margin-bottom:20px;font-size:13px;display:none;"></div>
+                        
+                        <div style="display:flex;gap:10px;">
+                            <button onclick="closeChangePlanModal()" style="flex:1;padding:10px;border-radius:7px;border:1px solid #e5e7eb;background:#f9fafb;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+                            <button id="confirmChangePlanBtn" onclick="confirmChangePlan()" style="flex:1;padding:10px;border-radius:7px;border:none;background:#f59e0b;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Confirm Change</button>
+                        </div>
+                    </div>
+                </div>
+                `);
+            }
+            
+            // Populate plan options
+            const optionsHtml = CRM_PLANS.map(plan => {
+                const isCurrent = plan.key === currentPlanKey;
+                return `
+                    <div onclick="selectChangePlan('${plan.key}', ${plan.price})" 
+                         id="plan-option-${plan.key}"
+                         style="border:2px solid ${isCurrent ? '#f59e0b' : '#e5e7eb'};
+                                border-radius:10px;padding:16px;cursor:pointer;text-align:center;
+                                background:${isCurrent ? 'rgba(245,158,11,0.05)' : '#fff'};">
+                        ${isCurrent ? '<div style="font-size:10px;font-weight:800;color:#f59e0b;margin-bottom:4px;">CURRENT</div>' : ''}
+                        <div style="font-size:14px;font-weight:700;margin-bottom:6px;">${plan.name}</div>
+                        <div style="font-size:20px;font-weight:800;">$${plan.price.toFixed(2)}</div>
+                        <div style="font-size:11px;color:#6b7280;">per user/mo</div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('changePlanOptions').innerHTML = optionsHtml;
+            document.getElementById('changePlanUserCount').value = currentUsers;
+            document.getElementById('changePlanCurrentTotal').textContent = '$' + (currentPrice * currentUsers).toFixed(2) + '/mo';
+            updateChangePlanTotal();
+            
+            document.getElementById('changePlanModal').style.display = 'flex';
+        }
+        
+        function closeChangePlanModal() {
+            document.getElementById('changePlanModal').style.display = 'none';
+        }
+        
+        function selectChangePlan(planKey, price) {
+            _changePlanState.selectedPlanKey = planKey;
+            _changePlanState.selectedPrice = price;
+            
+            CRM_PLANS.forEach(plan => {
+                const el = document.getElementById('plan-option-' + plan.key);
+                if (el) {
+                    const isSelected = plan.key === planKey;
+                    el.style.borderColor = isSelected ? '#f59e0b' : '#e5e7eb';
+                    el.style.background = isSelected ? 'rgba(245,158,11,0.05)' : '#fff';
+                }
+            });
+            
+            updateChangePlanTotal();
+        }
+        
+        function adjustPlanUsers(delta) {
+            const input = document.getElementById('changePlanUserCount');
+            input.value = Math.max(1, parseInt(input.value) + delta);
+            updateChangePlanTotal();
+        }
+        
+        function updateChangePlanTotal() {
+            const users = parseInt(document.getElementById('changePlanUserCount').value) || 1;
+            const newTotal = _changePlanState.selectedPrice * users;
+            document.getElementById('changePlanNewTotal').textContent = '$' + newTotal.toFixed(2);
+            
+            const isUpgrade = _changePlanState.selectedPrice > _changePlanState.currentPrice;
+            const notice = document.getElementById('changePlanNotice');
+            
+            if (_changePlanState.selectedPlanKey === _changePlanState.currentPlanKey && users === _changePlanState.currentUsers) {
+                notice.style.display = 'none';
+            } else {
+                notice.style.display = 'block';
+                notice.innerHTML = isUpgrade 
+                    ? '⚡ <strong>Upgrade:</strong> Changes take effect immediately. You\'ll be charged a prorated amount.'
+                    : '📅 <strong>Downgrade:</strong> Changes take effect at your next billing date. You keep full access until then.';
+            }
+        }
+        
+        async function confirmChangePlan() {
+            const btn = document.getElementById('confirmChangePlanBtn');
+            const newUserCount = parseInt(document.getElementById('changePlanUserCount').value) || 1;
+            
+            if (_changePlanState.selectedPlanKey === _changePlanState.currentPlanKey && newUserCount === _changePlanState.currentUsers) {
+                alert('No changes made - same plan and user count.');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            
+            try {
+                const res = await fetch(`${API_BASE}/client/subscription/${_changePlanState.subId}/change-plan`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        newPackageKey: _changePlanState.selectedPlanKey,
+                        newUserCount: newUserCount
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    closeChangePlanModal();
+                    await loadSubscription();
+                } else {
+                    alert(data.message || 'Failed to change plan');
+                }
+            } catch (error) {
+                console.error('Change plan error:', error);
+                alert('Error changing plan: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Confirm Change';
+            }
+        }
+
+                async function loadSubscription() {
             const container = document.getElementById('subscriptionContainer');
             container.innerHTML = `
                 <div style="text-align:center;padding:48px;color:var(--text-muted);">
@@ -3321,6 +3505,16 @@ async function submitTicketResponse(ticketId) {
                                 </svg>
                                 Manage Billing
                             </button>
+                            ${canChange ? `
+                            <button onclick="openChangePlanModal(${sub.id}, '${sub.package_key}', '${sub.package_name}', ${sub.price_per_user}, ${sub.user_count})"
+                                style="padding:9px 18px;font-size:13px;font-weight:700;border-radius:7px;cursor:pointer;
+                                       background:#f59e0b;color:#fff;border:none;display:flex;align-items:center;gap:6px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                                    <polyline points="17 6 23 6 23 12"/>
+                                </svg>
+                                Change Plan
+                            </button>` : ''}
                             ${canCancel ? `
                             <button onclick="openClientCancelModal(${sub.id}, '${sub.package_name.replace(/'/g,"\\'")}', '${fmtDate(sub.current_period_end)}')"
                                 style="padding:9px 18px;font-size:13px;font-weight:700;border-radius:7px;cursor:pointer;

@@ -2147,6 +2147,148 @@ async function logActivity(userEmail, action, resourceType = null, resourceId = 
     }
 }
 
+
+// POST /api/client/subscription/:id/change-plan — Change subscription plan
+app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { newPackageKey, newUserCount } = req.body;
+        
+        // Verify subscription belongs to client
+        const subResult = await pool.query(
+            `SELECT * FROM crm_subscriptions WHERE id = $1 AND lead_email = $2`,
+            [id, req.user.email]
+        );
+        
+        if (subResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Subscription not found' });
+        }
+        
+        const sub = subResult.rows[0];
+        
+        if (!['active', 'past_due'].includes(sub.status)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Can only change plan for active subscriptions' 
+            });
+        }
+        
+        const currentPlan = servicePackages[sub.package_key];
+        const newPlan = servicePackages[newPackageKey];
+        
+        if (!newPlan || !newPlan.stripePriceId) {
+            return res.status(400).json({ success: false, message: 'Invalid plan selected' });
+        }
+        
+        const isUpgrade = newPlan.price > currentPlan.price;
+        const newMonthlyTotal = newPlan.price * newUserCount;
+        
+        // Get the subscription item ID from Stripe
+        const stripeSubscription = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+        const itemId = stripeSubscription.items.data[0].id;
+        
+        // Update subscription in Stripe
+        await stripe.subscriptions.update(sub.stripe_subscription_id, {
+            items: [{
+                id: itemId,
+                price: newPlan.stripePriceId,
+                quantity: newUserCount
+            }],
+            proration_behavior: isUpgrade ? 'always_invoice' : 'none',
+            billing_cycle_anchor: isUpgrade ? 'now' : 'unchanged'
+        });
+        
+        // Update in database
+        await pool.query(
+            `UPDATE crm_subscriptions 
+             SET package_key = $1, 
+                 package_name = $2, 
+                 user_count = $3, 
+                 price_per_user = $4, 
+                 monthly_total = $5,
+                 updated_at = NOW()
+             WHERE id = $6`,
+            [newPackageKey, newPlan.name, newUserCount, newPlan.price, newMonthlyTotal, id]
+        );
+        
+        // Log event
+        await logSubscriptionEvent(
+            sub.stripe_subscription_id, 
+            sub.lead_email,
+            'plan_changed',
+            newMonthlyTotal,
+            `Changed from ${currentPlan.name} to ${newPlan.name} (${isUpgrade ? 'upgrade' : 'downgrade'})`
+        );
+        
+        // Send confirmation email
+        try {
+            const changeHtml = buildEmailHTML(`
+                <p>Hi ${sub.lead_name || 'there'},</p>
+                <p>Your subscription plan has been ${isUpgrade ? 'upgraded' : 'downgraded'}.</p>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                       style="margin:28px 0;border-radius:6px;overflow:hidden;border:1px solid #e8e8e8;">
+                    <tr><td style="padding:0;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Previous Plan</td>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">${currentPlan.name}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">New Plan</td>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">${newPlan.name}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Users</td>
+                                <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">${newUserCount}</td>
+                            </tr>
+                            <tr style="background:#f7f9fb;">
+                                <td style="padding:16px 24px;font-size:14px;font-weight:800;color:#222;">New Monthly Total</td>
+                                <td style="padding:16px 24px;font-size:22px;font-weight:800;color:#1a7a3a;text-align:right;">$${newMonthlyTotal.toFixed(2)}</td>
+                            </tr>
+                        </table>
+                    </td></tr>
+                </table>
+                <p style="font-size:13px;color:#888;">
+                    ${isUpgrade 
+                        ? 'Your upgrade takes effect immediately. You\'ll be charged a prorated amount for the remainder of this billing period.' 
+                        : 'Your downgrade will take effect at your next billing date. You\'ll keep full access to your current plan until then.'}
+                </p>
+                <p style="font-size:13px;color:#888;">Questions? Call us at <strong>(512) 980-0393</strong></p>
+            `, {
+                eyebrow: isUpgrade ? 'PLAN UPGRADED' : 'PLAN DOWNGRADED',
+                headline: isUpgrade ? 'Your plan has been upgraded' : 'Your plan has been downgraded',
+                accentColor: isUpgrade ? '#FF6B35' : '#059669',
+                tagline: 'MANAGE LEADS. CLOSE DEALS.',
+                ctaLabel: 'View Subscription',
+                ctaUrl: `${BASE_URL}/client_portal.html`
+            });
+            
+            await sendTrackedEmail({
+                leadId: sub.lead_id,
+                to: sub.lead_email,
+                subject: `${isUpgrade ? 'Upgrade' : 'Downgrade'} Confirmed — ${newPlan.name}`,
+                html: changeHtml,
+                emailType: 'subscription_change'
+            });
+        } catch (emailErr) {
+            console.error('[CHANGE PLAN] Email error:', emailErr);
+        }
+        
+        res.json({
+            success: true,
+            message: isUpgrade 
+                ? `Upgraded to ${newPlan.name}! Changes take effect immediately.`
+                : `Downgraded to ${newPlan.name}. Changes take effect at your next billing date.`,
+            isUpgrade,
+            newMonthlyTotal
+        });
+        
+    } catch (error) {
+        console.error('[CHANGE PLAN] Error:', error);
+        res.status(500).json({ success: false, message: 'Server error changing plan' });
+    }
+});
+
 // ========================================
 // AUTHENTICATION MIDDLEWARE
 // ========================================
@@ -12566,6 +12708,67 @@ app.post('/api/client/subscription/:id/cancel', authenticateClient, async (req, 
 
         if (!sub.stripe_subscription_id) {
             return res.status(400).json({ success: false, message: 'No Stripe subscription on record. Please contact support.' });
+        }
+
+        // ── CHECK IF COMPANY ADMIN - CASCADE CANCEL ALL USERS ──
+        if (sub.client_portal_id) {
+            const adminCheck = await pool.query(
+                `SELECT is_company_admin FROM leads WHERE email = $1`,
+                [email]
+            );
+            
+            if (adminCheck.rows[0]?.is_company_admin) {
+                console.log(`[CANCEL] Company admin cancelling - cascading to all company users`);
+                
+                // Get all company users
+                const companyUsers = await pool.query(
+                    `SELECT cu.*, cs.stripe_subscription_id as sub_stripe_id 
+                     FROM company_users cu
+                     LEFT JOIN crm_subscriptions cs ON cu.subscription_id = cs.id
+                     WHERE cu.client_portal_id = $1 AND cu.status = 'active'`,
+                    [sub.client_portal_id]
+                );
+                
+                // Cancel each user's Stripe subscription
+                for (const user of companyUsers.rows) {
+                    const userStripeSubId = user.sub_stripe_id || user.stripe_subscription_id;
+                    if (userStripeSubId) {
+                        try {
+                            if (immediate) {
+                                await stripe.subscriptions.cancel(userStripeSubId);
+                                console.log(`[CANCEL] Immediately cancelled: ${user.user_email}`);
+                            } else {
+                                await stripe.subscriptions.update(userStripeSubId, {
+                                    cancel_at_period_end: true
+                                });
+                                console.log(`[CANCEL] Scheduled cancellation: ${user.user_email}`);
+                            }
+                        } catch (stripeErr) {
+                            console.error(`[CANCEL] Error cancelling ${user.user_email}:`, stripeErr.message);
+                        }
+                    }
+                }
+                
+                // Update company_users table
+                if (immediate) {
+                    await pool.query(
+                        `UPDATE company_users 
+                         SET status = 'cancelled', cancelled_date = NOW() 
+                         WHERE client_portal_id = $1`,
+                        [sub.client_portal_id]
+                    );
+                } else {
+                    // Mark as pending cancellation
+                    await pool.query(
+                        `UPDATE company_users 
+                         SET status = 'canceling'
+                         WHERE client_portal_id = $1`,
+                        [sub.client_portal_id]
+                    );
+                }
+                
+                console.log(`[CANCEL] Cascaded cancellation to ${companyUsers.rows.length} users`);
+            }
         }
 
         let accessEndsDate = null;

@@ -8463,7 +8463,7 @@ async function processSubscriptionWebhook(event) {
                                 <tr>
                                     <td style="padding:8px 0;font-size:13px;color:#888;">Portal URL</td>
                                     <td style="padding:8px 0;font-size:13px;font-weight:700;color:#222;text-align:right;">
-                                        ${BASE_URL}/client-portal.html
+                                        ${BASE_URL}/client_portal.html
                                     </td>
                                 </tr>
                                 <tr>
@@ -8502,7 +8502,7 @@ async function processSubscriptionWebhook(event) {
                         accentColor: '#FF6B35',
                         tagline:     'MANAGE LEADS. CLOSE DEALS.',
                         ctaLabel:    'Access Client Portal',
-                        ctaUrl:      `${BASE_URL}/client-portal.html`
+                        ctaUrl:      `${BASE_URL}/client_portal.html`
                     });
 
                     await sendTrackedEmail({
@@ -8574,6 +8574,11 @@ async function processSubscriptionWebhook(event) {
         }
 
         // 3. Update lead lifetime value AND create invoice record
+        if (!leadDbId) {
+            console.log(`[SUB WEBHOOK] ⚠️ Cannot create invoice - no leadDbId found for ${email}`);
+            console.log(`[SUB WEBHOOK] Subscription: ${subId}, Email: ${email}`);
+        }
+        
         if (email && leadDbId) {
             await pool.query(`
                 UPDATE leads SET 
@@ -8588,7 +8593,7 @@ async function processSubscriptionWebhook(event) {
             try {
                 const invoiceNum = await pool.query(`SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_number FROM 5) AS INT)), 0) + 1 AS next FROM invoices`);
                 const nextNum = invoiceNum.rows[0].next;
-                const invoiceNumber = `INV-${String(nextNum).padStart(4, '0')}`;
+                const ourInvoiceNumber = `INV-${String(nextNum).padStart(4, '0')}`;
 
                 await pool.query(`
                     INSERT INTO invoices (
@@ -8597,13 +8602,13 @@ async function processSubscriptionWebhook(event) {
                     ) VALUES ($1, $2, 'paid', $3, NOW(), 'Stripe', $4, $5)
                 `, [
                     leadDbId,
-                    invoiceNumber,
+                    ourInvoiceNumber,
                     amount,
                     subId,
                     `${sub?.package_name || 'CRM'} subscription ${isFirstPayment ? 'first payment' : 'renewal'} — ${sub?.user_count || 1} user(s) (Subscription ID: ${sub?.id || 'N/A'})`
                 ]);
                 
-                console.log(`[SUB WEBHOOK] Invoice ${invoiceNumber} created for $${amount.toFixed(2)}`);
+                console.log(`[SUB WEBHOOK] Invoice ${ourInvoiceNumber} created for $${amount.toFixed(2)}`);
             } catch (invErr) {
                 console.error('[SUB WEBHOOK] Failed to create invoice record:', invErr.message);
             }
@@ -9387,7 +9392,7 @@ app.post('/api/subscriptions/:id/cancel', authenticateToken, async (req, res) =>
                     accentColor: '#FF6B35',
                     tagline:     'COME BACK ANYTIME \u2014 WE\'LL BE HERE.',
                     ctaLabel:    'Reactivate My Subscription',
-                    ctaUrl:      `${BASE_URL}/client-portal.html`
+                    ctaUrl:      `${BASE_URL}/client_portal.html`
                 });
 
                 await sendTrackedEmail({
@@ -12112,7 +12117,7 @@ app.post('/api/client/subscription/:id/cancel', authenticateClient, async (req, 
                 accentColor: '#FF6B35',
                 tagline:     'COME BACK ANYTIME \u2014 WE\'LL BE HERE.',
                 ctaLabel:    'Reactivate My Subscription',
-                ctaUrl:      `${BASE_URL}/client-portal.html`
+                ctaUrl:      `${BASE_URL}/client_portal.html`
             });
 
             await sendTrackedEmail({
@@ -12259,7 +12264,7 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
                     accentColor: isUpgrade ? '#FF6B35' : '#1a7a3a',
                     tagline: 'MANAGE LEADS. CLOSE DEALS.',
                     ctaLabel: 'View Subscription',
-                    ctaUrl: BASE_URL + '/client-portal.html'
+                    ctaUrl: BASE_URL + '/client_portal.html'
                 }
             );
 
@@ -12305,7 +12310,7 @@ app.post('/api/client/subscription/:id/billing-portal', authenticateClient, asyn
 
         const portal = await stripe.billingPortal.sessions.create({
             customer:   subResult.rows[0].stripe_customer_id,
-            return_url: `${BASE_URL}/client-portal.html`
+            return_url: `${BASE_URL}/client_portal.html`
         });
 
         res.json({ success: true, portalUrl: portal.url });

@@ -6329,7 +6329,7 @@ async function submitCRMSubscription() {
             msg += 'To upgrade, downgrade, or manage your subscriptions, please use your Client Portal.\n\n';
             msg += 'Go to Client Portal now?';
             if (confirm(msg)) {
-                window.location.href = '/client-portal.html';
+                window.location.href = '/client_portal.html';
             }
         } else {
             alert(data.message || 'Could not start checkout. Please try again or contact us.');

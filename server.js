@@ -310,19 +310,6 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
     res.json({received: true});
 });
 
-// ========================================
-// MIDDLEWARE (AFTER WEBHOOK!)
-// ========================================
-app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
-    credentials: true
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
-
 // Request logging
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.path}`);
@@ -765,7 +752,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
 
     // 2. Determine if this email should be tracked (open pixel + link tracking)
     // Confirmation emails should NOT be tracked — they're transactional, not engagement-driven
-    const confirmationTypes = ['appointment_confirmation', 'appointment_cancelled', 'appointment_rescheduled'];
+    const confirmationTypes = ['appointment_confirmation', 'appointment_cancelled', 'appointment_rescheduled', 'subscription_welcome'];
     const shouldTrack = !confirmationTypes.includes(emailType);
     
     if (!shouldTrack) {
@@ -8404,12 +8391,100 @@ async function processSubscriptionWebhook(event) {
         await logSubscriptionEvent(subId, leadEmail, 'subscription_created', pkg.price * quantity,
             `${pkg.name} subscription started — ${quantity} user${quantity > 1 ? 's' : ''}`);
 
-        // Promote lead to customer
+        // Promote lead to customer AND create client portal account
         if (lead) {
             await pool.query(
                 `UPDATE leads SET is_customer = TRUE, customer_status = 'active', updated_at = NOW() WHERE id = $1`,
                 [lead.id]
             );
+
+            // Auto-create client portal account if they don't have one
+            const portalCheck = await pool.query(
+                `SELECT client_password FROM leads WHERE id = $1`,
+                [lead.id]
+            );
+
+            if (!portalCheck.rows[0]?.client_password) {
+                // Generate temporary password
+                const tempPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+                const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+                await pool.query(
+                    `UPDATE leads SET client_password = $1 WHERE id = $2`,
+                    [hashedPassword, lead.id]
+                );
+
+                console.log(`[SUB WEBHOOK] Client portal account created for ${leadEmail}`);
+
+                // Send welcome email with login credentials
+                try {
+                    const welcomeHtml = buildEmailHTML(`
+                        <p>Hi ${lead.name || 'there'},</p>
+                        <p>Welcome to Diamondback Coding! Your <strong>${pkg.name}</strong> subscription is now active.</p>
+                        
+                        <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:28px 0;">
+                            <div style="font-size:12px;font-weight:800;color:#666;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">
+                                Your Client Portal Access
+                            </div>
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:8px 0;font-size:13px;color:#888;">Portal URL</td>
+                                    <td style="padding:8px 0;font-size:13px;font-weight:700;color:#222;text-align:right;">
+                                        ${BASE_URL}/client-portal.html
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Username (Email)</td>
+                                    <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;font-weight:700;color:#222;text-align:right;">
+                                        ${leadEmail}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Temporary Password</td>
+                                    <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:14px;font-weight:700;color:#FF6B35;font-family:monospace;text-align:right;">
+                                        ${tempPassword}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <p style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:14px;font-size:13px;color:#856404;">
+                            <strong>Security Notice:</strong> This is a temporary password. Please log in and change it immediately in your portal settings.
+                        </p>
+
+                        <p>In your client portal, you can:</p>
+                        <ul style="line-height:1.8;color:#555;">
+                            <li>Manage your subscription (upgrade, downgrade, cancel)</li>
+                            <li>View and download invoices</li>
+                            <li>Update payment methods</li>
+                            <li>Access support resources</li>
+                        </ul>
+
+                        <p style="font-size:13px;color:#888;margin-top:28px;">
+                            Questions? Call us at <strong>(512) 980-0393</strong> or reply to this email.
+                        </p>
+                    `, {
+                        eyebrow:     'WELCOME TO DIAMONDBACK CRM',
+                        headline:    'Your account is ready.',
+                        accentColor: '#FF6B35',
+                        tagline:     'MANAGE LEADS. CLOSE DEALS.',
+                        ctaLabel:    'Access Client Portal',
+                        ctaUrl:      `${BASE_URL}/client-portal.html`
+                    });
+
+                    await sendTrackedEmail({
+                        leadId:    lead.id,
+                        to:        leadEmail,
+                        subject:   'Welcome to Diamondback CRM — Your Portal Access',
+                        html:      welcomeHtml,
+                        emailType: 'subscription_welcome'
+                    });
+
+                    console.log(`[SUB WEBHOOK] Welcome email sent to ${leadEmail} with portal credentials`);
+                } catch (emailErr) {
+                    console.error('[SUB WEBHOOK] Failed to send welcome email:', emailErr.message);
+                }
+            }
         }
 
         console.log(`[SUB WEBHOOK] Subscription created: ${packageKey} x${quantity} for ${leadEmail}`);
@@ -8458,12 +8533,40 @@ async function processSubscriptionWebhook(event) {
                 `${isFirstPayment ? 'First payment' : 'Renewal payment'} — $${amount.toFixed(2)}`);
         }
 
-        // 3. Update lead lifetime value
-        if (email) {
+        // 3. Update lead lifetime value AND create invoice record
+        if (email && leadDbId) {
             await pool.query(`
-                UPDATE leads SET lifetime_value = COALESCE(lifetime_value, 0) + $1, updated_at = NOW()
+                UPDATE leads SET 
+                    lifetime_value = COALESCE(lifetime_value, 0) + $1,
+                    is_customer = TRUE,
+                    customer_status = 'active',
+                    updated_at = NOW()
                 WHERE email = $2
             `, [amount, email]);
+
+            // Create invoice record for this subscription payment
+            try {
+                const invoiceNum = await pool.query(`SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_number FROM 5) AS INT)), 0) + 1 AS next FROM invoices`);
+                const nextNum = invoiceNum.rows[0].next;
+                const invoiceNumber = `INV-${String(nextNum).padStart(4, '0')}`;
+
+                await pool.query(`
+                    INSERT INTO invoices (
+                        lead_id, invoice_number, status, total_amount, paid_at,
+                        payment_method, payment_reference, notes
+                    ) VALUES ($1, $2, 'paid', $3, NOW(), 'Stripe', $4, $5)
+                `, [
+                    leadDbId,
+                    invoiceNumber,
+                    amount,
+                    subId,
+                    `${sub?.package_name || 'CRM'} subscription ${isFirstPayment ? 'first payment' : 'renewal'} — ${sub?.user_count || 1} user(s)`
+                ]);
+                
+                console.log(`[SUB WEBHOOK] Invoice ${invoiceNumber} created for $${amount.toFixed(2)}`);
+            } catch (invErr) {
+                console.error('[SUB WEBHOOK] Failed to create invoice record:', invErr.message);
+            }
         }
 
         // 4. Send receipt email (every successful charge, no exceptions)
@@ -8702,13 +8805,37 @@ async function processSubscriptionWebhook(event) {
         `, [subId]);
 
         const sub = await pool.query(
-            `SELECT lead_email FROM crm_subscriptions WHERE stripe_subscription_id = $1`,
+            `SELECT lead_email, lead_id FROM crm_subscriptions WHERE stripe_subscription_id = $1`,
             [subId]
         );
         const email = sub.rows[0]?.lead_email;
+        const leadId = sub.rows[0]?.lead_id;
+
         if (email) {
             await logSubscriptionEvent(subId, email, 'subscription_deleted', null,
                 'Subscription cancelled and access ended');
+
+            // Check if this customer has any other active subscriptions
+            const otherSubs = await pool.query(`
+                SELECT COUNT(*) as count FROM crm_subscriptions
+                WHERE lead_email = $1 AND status IN ('active', 'past_due') AND stripe_subscription_id != $2
+            `, [email, subId]);
+
+            const hasOtherActiveSubs = parseInt(otherSubs.rows[0]?.count || 0) > 0;
+
+            // Only disable portal access if they have NO other active subscriptions
+            if (!hasOtherActiveSubs && leadId) {
+                await pool.query(`
+                    UPDATE leads
+                    SET customer_status = 'inactive',
+                        updated_at = NOW()
+                    WHERE id = $1
+                `, [leadId]);
+
+                console.log(`[SUB WEBHOOK] Customer portal access disabled for ${email} (no active subscriptions)`);
+            } else if (hasOtherActiveSubs) {
+                console.log(`[SUB WEBHOOK] Customer ${email} still has ${otherSubs.rows[0].count} active subscription(s) — portal access maintained`);
+            }
         }
 
         console.log(`[SUB WEBHOOK] Subscription deleted: ${subId}`);
@@ -8761,33 +8888,7 @@ async function getStripeCustomerEmail(customerId) {
 // for invoices. We layer on top of it here for subscription events.
 // Since we can't modify the switch, we add a second webhook listener at a
 // different path that Stripe will also deliver to:
-app.post('/api/stripe/subscription-webhook',
-    express.raw({ type: 'application/json' }),
-    async (req, res) => {
-        const sig = req.headers['stripe-signature'];
-        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-        if (!webhookSecret) {
-            return res.status(500).send('Webhook secret not configured');
-        }
-
-        let event;
-        try {
-            event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-        } catch (err) {
-            console.error('[SUB WEBHOOK] Signature error:', err.message);
-            return res.status(400).send(`Webhook Error: ${err.message}`);
-        }
-
-        try {
-            await processSubscriptionWebhook(event);
-        } catch (err) {
-            console.error('[SUB WEBHOOK] Processing error:', err);
-        }
-
-        res.json({ received: true });
-    }
-);
+// Subscription webhooks handled by /api/stripe/webhook above
 
 // ========================================
 // SUBSCRIPTION API ROUTES
@@ -8818,6 +8919,41 @@ app.post('/api/public/subscriptions/checkout', async (req, res) => {
         // Look up or create lead so we can link the subscription later
         let leadId = null;
         let stripeCustomerId = null;
+
+        // ── CHECK FOR EXISTING SUBSCRIPTIONS FIRST ──
+        // This prevents accidental duplicate subscriptions
+        if (email) {
+            const existingSubsCheck = await pool.query(`
+                SELECT id, package_key, package_name, status, user_count, monthly_total, stripe_subscription_id
+                FROM crm_subscriptions
+                WHERE LOWER(lead_email) = LOWER($1)
+                AND status IN ('active', 'past_due', 'canceling')
+                ORDER BY created_at DESC
+            `, [email]);
+
+            if (existingSubsCheck.rows.length > 0) {
+                // They have active subscriptions — return them for upgrade/downgrade modal
+                return res.status(200).json({
+                    success: false,
+                    hasExistingSubscriptions: true,
+                    subscriptions: existingSubsCheck.rows.map(s => ({
+                        id: s.id,
+                        packageKey: s.package_key,
+                        packageName: s.package_name,
+                        status: s.status,
+                        userCount: s.user_count,
+                        monthlyTotal: s.monthly_total,
+                        stripeSubscriptionId: s.stripe_subscription_id
+                    })),
+                    requestedPackage: {
+                        key: packageKey,
+                        name: pkg.name,
+                        pricePerUser: pkg.price
+                    },
+                    requestedUserCount: userCount
+                });
+            }
+        }
 
         if (email) {
             const existing = await pool.query(
@@ -11971,10 +12107,11 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
         const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
         const itemId    = stripeSub.items.data[0].id;
 
-        // Update via Stripe — proration happens automatically
+        // Update via Stripe — changes take effect at next billing period (no proration)
         await stripe.subscriptions.update(sub.stripe_subscription_id, {
             items: [{ id: itemId, price: targetPriceId, quantity: targetQty }],
-            proration_behavior: 'create_prorations',
+            proration_behavior: 'none',    // No proration — changes at renewal
+            billing_cycle_anchor: 'unchanged',  // Keep current billing cycle
             cancel_at_period_end: false   // reactivate if was canceling
         });
 
@@ -11994,8 +12131,9 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
 
         res.json({
             success: true,
-            message: `Plan updated to ${targetPkg.name} for ${targetQty} user${targetQty > 1 ? 's' : ''}.`,
-            newMonthly: newMonthly.toFixed(2)
+            message: `Plan change scheduled. Starting at your next billing period, you'll be on ${targetPkg.name} for ${targetQty} user${targetQty > 1 ? 's' : ''} at $${newMonthly.toFixed(2)}/month.`,
+            newMonthly: newMonthly.toFixed(2),
+            effectiveDate: 'next_billing_period'
         });
 
     } catch (error) {
@@ -12065,6 +12203,15 @@ app.post('/api/client/login', async (req, res) => {
             return res.status(401).json({ 
                 success: false, 
                 message: 'Your account is not activated. Please contact your project manager.' 
+            });
+        }
+
+        // Check if customer account is active (has at least one active subscription)
+        if (lead.customer_status !== 'active') {
+            console.log('[AUTH] Customer account inactive:', email);
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Your account is inactive. Please renew your subscription or contact support.' 
             });
         }
         

@@ -4878,24 +4878,24 @@ body.crm-active .hero,
 
 <script>
 function openModal() {
-    console.log('🔓 Opening modal...');
+    console.log('[MODAL] Opening...');
     const modal = document.getElementById('contactModal');
     if (modal) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        console.log('✅ Modal opened');
+        console.log('[MODAL] Opened');
     } else {
         console.error('❌ Modal not found!');
     }
 }
 
 function closeModal() {
-    console.log('🔒 Closing modal...');
+    console.log('[MODAL] Closing...');
     const modal = document.getElementById('contactModal');
     if (modal) {
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
-        console.log('✅ Modal closed');
+        console.log('[MODAL] Closed');
     }
 }
 
@@ -5913,17 +5913,16 @@ document.addEventListener('click', function(e) {
 </div>
 
 <script>
-    // MOBILE MENU FIX - Put this at the VERY BOTTOM of your HTML file, right before </body>
-
+// MOBILE MENU FIX
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔥 MOBILE MENU STARTING');
+    console.log('[MOBILE MENU] Starting...');
     
     // Find ALL the hamburger buttons and menus
     const allButtons = document.querySelectorAll('.mobile-menu-btn');
     const allMenus = document.querySelectorAll('.nav-links');
     
-    console.log('🔥 Found ' + allButtons.length + ' buttons');
-    console.log('🔥 Found ' + allMenus.length + ' menus');
+    console.log('[MOBILE MENU] Found ' + allButtons.length + ' buttons');
+    console.log('[MOBILE MENU] Found ' + allMenus.length + ' menus');
     
     // When ANY button is clicked
     allButtons.forEach(function(button) {
@@ -5931,7 +5930,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log('🔥 BUTTON WAS CLICKED!!!');
+            console.log('[MOBILE MENU] Button clicked');
             
             // Toggle ALL buttons
             allButtons.forEach(function(btn) {
@@ -5945,7 +5944,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    console.log('🔥 MOBILE MENU READY');
+    console.log('[MOBILE MENU] Ready');
 });
 </script>
 
@@ -5956,24 +5955,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Modal Functions
 function openModal() {
-    console.log('🔓 Opening modal...');
+    console.log('[MODAL] Opening...');
     const modal = document.getElementById('contactModal');
     if (modal) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        console.log('✅ Modal opened');
+        console.log('[MODAL] Opened');
     } else {
-        console.error('❌ Modal element not found');
+        console.error('[MODAL] Element not found');
     }
 }
 
 function closeModal() {
-    console.log('🔒 Closing modal...');
+    console.log('[MODAL] Closing...');
     const modal = document.getElementById('contactModal');
     if (modal) {
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
-        console.log('✅ Modal closed');
+        console.log('[MODAL] Closed');
     }
 }
 
@@ -5987,7 +5986,7 @@ function closeSuccessModal() {
 
 async function handleSubmit(event) {
     event.preventDefault();
-    console.log('📤 Form submitted');
+    console.log('[FORM] Submitted');
     
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
@@ -6323,6 +6322,15 @@ async function submitCRMSubscription() {
         if (data.success && data.checkoutUrl) {
             // Hand off to Stripe Checkout
             window.location.href = data.checkoutUrl;
+        } else if (data.hasExistingSubscriptions) {
+            // They already have subscriptions — show modal and redirect to client portal
+            closeCRMSubscribeModal();
+            var msg = 'You already have ' + data.subscriptions.length + ' active CRM subscription(s).\n\n';
+            msg += 'To upgrade, downgrade, or manage your subscriptions, please use your Client Portal.\n\n';
+            msg += 'Go to Client Portal now?';
+            if (confirm(msg)) {
+                window.location.href = '/client-portal.html';
+            }
         } else {
             alert(data.message || 'Could not start checkout. Please try again or contact us.');
             btn.disabled = false;

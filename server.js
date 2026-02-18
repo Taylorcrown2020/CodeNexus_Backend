@@ -8259,6 +8259,391 @@ app.get('/api/analytics/sources', authenticateToken, async (req, res) => {
 });
 
 
+
+
+
+// Get all subscriptions with company grouping (for admin portal)
+app.get('/api/subscriptions', authenticateToken, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        
+        // Get all individual subscriptions (not part of a company)
+        const individualSubs = await pool.query(`
+            SELECT 
+                cs.*,
+                l.name as lead_name,
+                NULL as client_portal_id,
+                FALSE as is_company_subscription
+            FROM crm_subscriptions cs
+            LEFT JOIN leads l ON cs.lead_id = l.id
+            WHERE (cs.client_portal_id IS NULL OR cs.client_portal_id = '')
+            ORDER BY cs.created_at DESC
+            LIMIT $1
+        `, [limit]);
+        
+        // Get all companies with their users
+        const companies = await pool.query(`
+            SELECT 
+                cc.id as company_id,
+                cc.client_portal_id,
+                cc.company_name,
+                cc.admin_email,
+                cc.total_active_seats,
+                cc.monthly_total as company_monthly_total,
+                cc.created_at as company_created_at,
+                json_agg(
+                    json_build_object(
+                        'id', cu.id,
+                        'user_label', cu.user_label,
+                        'user_name', cu.user_name,
+                        'user_email', cu.user_email,
+                        'subscription_id', cu.subscription_id,
+                        'stripe_subscription_id', cu.stripe_subscription_id,
+                        'package_key', cu.package_key,
+                        'package_name', cu.package_name,
+                        'price_per_user', cu.price_per_user,
+                        'status', cu.status,
+                        'added_date', cu.added_date,
+                        'cancelled_date', cu.cancelled_date
+                    ) ORDER BY cu.added_date DESC
+                ) as users
+            FROM client_companies cc
+            LEFT JOIN company_users cu ON cc.client_portal_id = cu.client_portal_id
+            GROUP BY cc.id, cc.client_portal_id, cc.company_name, cc.admin_email, 
+                     cc.total_active_seats, cc.monthly_total, cc.created_at
+            ORDER BY cc.created_at DESC
+        `);
+        
+        res.json({
+            success: true,
+            individualSubscriptions: individualSubs.rows,
+            companies: companies.rows
+        });
+    } catch (error) {
+        console.error('[ADMIN] Get subscriptions error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ========================================
+// COMPANY MANAGEMENT API ENDPOINTS
+// ========================================
+
+// Get company info and all users (for company admin)
+app.get('/api/client/company', authenticateClient, async (req, res) => {
+    try {
+        const email = req.user.email;
+        
+        // Check if user is a company admin
+        const leadResult = await pool.query(
+            `SELECT id, email, is_company_admin, client_portal_id FROM leads WHERE email = $1`,
+            [email]
+        );
+        
+        const lead = leadResult.rows[0];
+        if (!lead || !lead.is_company_admin || !lead.client_portal_id) {
+            return res.status(403).json({
+                success: false,
+                message: 'Not a company admin'
+            });
+        }
+        
+        // Get company info
+        const companyResult = await pool.query(
+            `SELECT * FROM client_companies WHERE client_portal_id = $1`,
+            [lead.client_portal_id]
+        );
+        
+        if (companyResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Company not found'
+            });
+        }
+        
+        const company = companyResult.rows[0];
+        
+        // Get all users
+        const usersResult = await pool.query(
+            `SELECT * FROM company_users WHERE client_portal_id = $1 ORDER BY added_date DESC`,
+            [lead.client_portal_id]
+        );
+        
+        res.json({
+            success: true,
+            company: {
+                id: company.id,
+                clientPortalId: company.client_portal_id,
+                companyName: company.company_name,
+                adminEmail: company.admin_email,
+                totalActiveSeats: company.total_active_seats,
+                monthlyTotal: parseFloat(company.monthly_total || 0),
+                createdAt: company.created_at
+            },
+            users: usersResult.rows.map(u => ({
+                id: u.id,
+                userLabel: u.user_label,
+                userName: u.user_name,
+                userEmail: u.user_email,
+                subscriptionId: u.subscription_id,
+                stripeSubscriptionId: u.stripe_subscription_id,
+                packageKey: u.package_key,
+                packageName: u.package_name,
+                pricePerUser: parseFloat(u.price_per_user || 0),
+                status: u.status,
+                addedDate: u.added_date,
+                cancelledDate: u.cancelled_date
+            }))
+        });
+    } catch (error) {
+        console.error('[COMPANY API] Get company error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Update user label
+app.put('/api/client/company/user/:id/label', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userLabel } = req.body;
+        const email = req.user.email;
+        
+        // Verify admin
+        const leadResult = await pool.query(
+            `SELECT client_portal_id FROM leads WHERE email = $1 AND is_company_admin = TRUE`,
+            [email]
+        );
+        
+        if (leadResult.rows.length === 0) {
+            return res.status(403).json({ success: false, message: 'Not authorized' });
+        }
+        
+        const clientPortalId = leadResult.rows[0].client_portal_id;
+        
+        // Update user label
+        await pool.query(
+            `UPDATE company_users SET user_label = $1 WHERE id = $2 AND client_portal_id = $3`,
+            [userLabel, id, clientPortalId]
+        );
+        
+        // Also update in subscriptions table
+        const userResult = await pool.query(
+            `SELECT stripe_subscription_id FROM company_users WHERE id = $1`,
+            [id]
+        );
+        
+        if (userResult.rows[0]?.stripe_subscription_id) {
+            await pool.query(
+                `UPDATE crm_subscriptions SET user_label = $1 WHERE stripe_subscription_id = $2`,
+                [userLabel, userResult.rows[0].stripe_subscription_id]
+            );
+        }
+        
+        res.json({ success: true, message: 'User label updated' });
+    } catch (error) {
+        console.error('[COMPANY API] Update label error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Cancel individual user subscription
+app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const email = req.user.email;
+        
+        // Verify admin
+        const leadResult = await pool.query(
+            `SELECT client_portal_id, email FROM leads WHERE email = $1 AND is_company_admin = TRUE`,
+            [email]
+        );
+        
+        if (leadResult.rows.length === 0) {
+            return res.status(403).json({ success: false, message: 'Not authorized' });
+        }
+        
+        const clientPortalId = leadResult.rows[0].client_portal_id;
+        const adminEmail = leadResult.rows[0].email;
+        
+        // Get user details
+        const userResult = await pool.query(
+            `SELECT * FROM company_users WHERE id = $1 AND client_portal_id = $2`,
+            [id, clientPortalId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        
+        const user = userResult.rows[0];
+        
+        // Cancel the Stripe subscription
+        if (user.stripe_subscription_id) {
+            try {
+                await stripe.subscriptions.cancel(user.stripe_subscription_id);
+                console.log(`[COMPANY API] Cancelled subscription ${user.stripe_subscription_id} for user ${user.user_email}`);
+            } catch (stripeErr) {
+                console.error('[COMPANY API] Stripe cancellation error:', stripeErr);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to cancel subscription in Stripe'
+                });
+            }
+        }
+        
+        // Update user status
+        await pool.query(
+            `UPDATE company_users SET status = 'cancelled', cancelled_date = NOW() WHERE id = $1`,
+            [id]
+        );
+        
+        // Send notification to admin
+        try {
+            const cancelEmail = buildEmailHTML(`
+                <p>Hi,</p>
+                <p>A user subscription in your company has been cancelled:</p>
+                <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px;margin:28px 0;">
+                    <div style="margin-bottom:12px;"><strong>User:</strong> ${user.user_name} (${user.user_email})</div>
+                    <div style="margin-bottom:12px;"><strong>Label:</strong> ${user.user_label || 'None'}</div>
+                    <div style="margin-bottom:12px;"><strong>Plan:</strong> ${user.package_name}</div>
+                    <div><strong>Monthly Cost:</strong> $${parseFloat(user.price_per_user || 0).toFixed(2)}</div>
+                </div>
+                <p>Your company's monthly total has been updated accordingly.</p>
+                <p style="font-size:13px;color:#888;">Questions? Call us at <strong>(512) 980-0393</strong></p>
+            `, {
+                eyebrow: 'USER CANCELLED',
+                headline: 'Company user subscription cancelled',
+                accentColor: '#dc2626',
+                tagline: 'COMPANY MANAGEMENT',
+                ctaLabel: 'View Company Portal',
+                ctaUrl: `${BASE_URL}/client_portal.html`
+            });
+            
+            await sendTrackedEmail({
+                leadId: null,
+                to: adminEmail,
+                subject: 'Company User Cancelled - ' + user.user_name,
+                html: cancelEmail,
+                emailType: 'company_user_cancelled'
+            });
+        } catch (emailErr) {
+            console.error('[COMPANY API] Cancel notification email error:', emailErr);
+        }
+        
+        res.json({
+            success: true,
+            message: 'User subscription cancelled',
+            newMonthlyTotal: await getCompanyMonthlyTotal(clientPortalId)
+        });
+    } catch (error) {
+        console.error('[COMPANY API] Cancel user error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Helper to get current company monthly total
+async function getCompanyMonthlyTotal(clientPortalId) {
+    const result = await pool.query(
+        `SELECT monthly_total FROM client_companies WHERE client_portal_id = $1`,
+        [clientPortalId]
+    );
+    return parseFloat(result.rows[0]?.monthly_total || 0);
+}
+
+// ========================================
+// COMPANY SUBSCRIPTION HELPERS
+// ========================================
+
+// Generate unique Client Portal ID (CLI-XXXX format)
+function generateClientPortalID() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No confusing chars like O/0, I/1
+    let id = 'CLI-';
+    for (let i = 0; i < 4; i++) {
+        id += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return id;
+}
+
+// Validate if Client Portal ID exists and return company info
+async function validateClientPortalID(clientPortalId) {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM client_companies WHERE client_portal_id = $1',
+            [clientPortalId.toUpperCase().trim()]
+        );
+        return result.rows[0] || null;
+    } catch (err) {
+        console.error('[COMPANY] Error validating portal ID:', err);
+        return null;
+    }
+}
+
+// Create new company and return Client Portal ID
+async function createCompany(companyName, adminEmail, adminName) {
+    try {
+        // Generate unique ID
+        let clientPortalId;
+        let attempts = 0;
+        while (attempts < 10) {
+            clientPortalId = generateClientPortalID();
+            const existing = await validateClientPortalID(clientPortalId);
+            if (!existing) break;
+            attempts++;
+        }
+        
+        if (attempts >= 10) {
+            throw new Error('Failed to generate unique Client Portal ID');
+        }
+        
+        // Create company record
+        const result = await pool.query(`
+            INSERT INTO client_companies (
+                client_portal_id, company_name, admin_email, admin_name,
+                total_active_seats, monthly_total, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, 0, 0, NOW(), NOW())
+            RETURNING *
+        `, [clientPortalId, companyName, adminEmail, adminName]);
+        
+        console.log(`[COMPANY] Created company: ${companyName} (${clientPortalId})`);
+        return result.rows[0];
+    } catch (err) {
+        console.error('[COMPANY] Error creating company:', err);
+        throw err;
+    }
+}
+
+// Add user to company
+async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser) {
+    try {
+        const result = await pool.query(`
+            INSERT INTO company_users (
+                client_portal_id, user_label, user_name, user_email,
+                subscription_id, stripe_subscription_id,
+                package_key, package_name, price_per_user,
+                status, added_date
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active', NOW())
+            ON CONFLICT (client_portal_id, user_email) 
+            DO UPDATE SET
+                user_label = EXCLUDED.user_label,
+                user_name = EXCLUDED.user_name,
+                subscription_id = EXCLUDED.subscription_id,
+                stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+                package_key = EXCLUDED.package_key,
+                package_name = EXCLUDED.package_name,
+                price_per_user = EXCLUDED.price_per_user,
+                status = 'active',
+                cancelled_date = NULL
+            RETURNING *
+        `, [clientPortalId, userLabel, userName, userEmail, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser]);
+        
+        console.log(`[COMPANY] Added user to ${clientPortalId}: ${userName} (${userEmail})`);
+        return result.rows[0];
+    } catch (err) {
+        console.error('[COMPANY] Error adding user:', err);
+        throw err;
+    }
+}
+
 // ========================================
 // SUBSCRIPTION SYSTEM
 // ========================================
@@ -8361,6 +8746,16 @@ async function processSubscriptionWebhook(event) {
         const periodStart = obj.current_period_start ? new Date(obj.current_period_start * 1000) : null;
         const periodEnd   = obj.current_period_end   ? new Date(obj.current_period_end * 1000)   : null;
 
+        // Extract company subscription metadata
+        const metadata = obj.metadata || {};
+        const userType = metadata.user_type || 'individual';
+        const clientPortalId = metadata.client_portal_id || null;
+        const userLabel = metadata.user_label || null;
+        const userName = metadata.user_name || null;
+        const userEmail = metadata.user_email || null;
+        
+        console.log(`[SUB WEBHOOK] User type: ${userType}${clientPortalId ? ` | Portal ID: ${clientPortalId}` : ''}`);
+
         // Find lead by stripe_customer_id (set during checkout creation)
         const leadResult = await pool.query(
             `SELECT id, name, email FROM leads WHERE stripe_customer_id = $1`,
@@ -8419,6 +8814,66 @@ async function processSubscriptionWebhook(event) {
 
         await logSubscriptionEvent(subId, leadEmail, 'subscription_created', pkg.price * quantity,
             `${pkg.name} subscription started — ${quantity} user${quantity > 1 ? 's' : ''}`);
+
+        // ── COMPANY SUBSCRIPTION HANDLING ──
+        if (clientPortalId) {
+            // This is a company subscription - add user to company
+            const subResult = await pool.query(
+                'SELECT id FROM crm_subscriptions WHERE stripe_subscription_id = $1',
+                [subId]
+            );
+            const subscriptionId = subResult.rows[0]?.id;
+            
+            try {
+                await addCompanyUser(
+                    clientPortalId,
+                    userName || leadEmail.split('@')[0],
+                    userEmail || leadEmail,
+                    userLabel,
+                    subscriptionId,
+                    subId,
+                    packageKey,
+                    pkg.name,
+                    pkg.price
+                );
+                
+                // Update subscription record to mark as company subscription
+                await pool.query(`
+                    UPDATE crm_subscriptions 
+                    SET client_portal_id = $1, 
+                        is_company_subscription = TRUE,
+                        user_label = $2
+                    WHERE stripe_subscription_id = $3
+                `, [clientPortalId, userLabel, subId]);
+                
+                // If this is a company-new, create portal account for admin and link to company
+                if (userType === 'company-new' && lead && lead.id) {
+                    await pool.query(`
+                        UPDATE leads 
+                        SET client_portal_id = $1, is_company_admin = TRUE
+                        WHERE id = $2
+                    `, [clientPortalId, lead.id]);
+                    console.log(`[SUB WEBHOOK] ✅ Company admin linked: ${leadEmail} → ${clientPortalId}`);
+                }
+                
+                // If this is a company-employee, do NOT mark them as a customer in leads table
+                // They exist only as company_users, not as standalone customers
+                if (userType === 'company-employee' && lead && lead.id) {
+                    await pool.query(`
+                        UPDATE leads 
+                        SET is_customer = FALSE,
+                            customer_status = NULL,
+                            status = 'closed'
+                        WHERE id = $1
+                    `, [lead.id]);
+                    console.log(`[SUB WEBHOOK] ✅ Company employee NOT marked as customer: ${leadEmail}`);
+                }
+                
+                console.log(`[SUB WEBHOOK] ✅ Company user added to ${clientPortalId}`);
+            } catch (companyErr) {
+                console.error('[SUB WEBHOOK] Error adding company user:', companyErr);
+            }
+        }
 
         // Convert lead to customer (whether they were cold, warm, or hot lead)
         if (lead && lead.id) {
@@ -8584,6 +9039,8 @@ async function processSubscriptionWebhook(event) {
         }
 
         // 3. Update lead lifetime value AND create invoice record
+        let ourInvoiceNumber = null; // Will be set if invoice is created
+        
         if (!leadDbId) {
             console.log(`[SUB WEBHOOK] ⚠️ Cannot create invoice - no leadDbId found for ${email}`);
             console.log(`[SUB WEBHOOK] Subscription: ${subId}, Email: ${email}`);
@@ -8603,7 +9060,7 @@ async function processSubscriptionWebhook(event) {
             try {
                 const invoiceNum = await pool.query(`SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_number FROM 5) AS INT)), 0) + 1 AS next FROM invoices`);
                 const nextNum = invoiceNum.rows[0].next;
-                const ourInvoiceNumber = `INV-${String(nextNum).padStart(4, '0')}`;
+                ourInvoiceNumber = `INV-${String(nextNum).padStart(4, '0')}`;
 
                 await pool.query(`
                     INSERT INTO invoices (
@@ -8671,11 +9128,11 @@ async function processSubscriptionWebhook(event) {
                                         ${periodLabel}
                                     </td>
                                 </tr>
-                                ${invoiceNumber ? `
+                                ${ourInvoiceNumber ? `
                                 <tr>
                                     <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Invoice #</td>
                                     <td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">
-                                        ${invoiceNumber}
+                                        ${ourInvoiceNumber}
                                     </td>
                                 </tr>` : ''}
                                 <tr style="background:#f7f9fb;">
@@ -8984,7 +9441,15 @@ app.post('/api/stripe/subscription-webhook', express.raw({ type: 'application/js
 // ── PUBLIC Subscription Checkout (no auth — called from pricing page) ────────
 app.post('/api/public/subscriptions/checkout', async (req, res) => {
     try {
-        const { packageKey, userCount, email, name } = req.body;
+        const { 
+            packageKey, userCount, email, name,
+            userType, // 'individual', 'company-new', 'company-employee'
+            clientPortalId, // For company-employee
+            companyName, // For company-new
+            userLabel // Optional custom label for company users
+        } = req.body;
+        
+        console.log('[CHECKOUT] User type:', userType || 'individual');
 
         if (!packageKey || !userCount || userCount < 1) {
             return res.status(400).json({ success: false, message: 'packageKey and userCount are required' });
@@ -9073,22 +9538,71 @@ app.post('/api/public/subscriptions/checkout', async (req, res) => {
             }
         }
 
+        // ── HANDLE COMPANY SUBSCRIPTIONS ──
+        let companyPortalId = null;
+        let isNewCompany = false;
+        
+        if (userType === 'company-new') {
+            // Create new company and generate Client Portal ID
+            if (!companyName || !email || !name) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Company name, admin email, and admin name are required for new company subscriptions'
+                });
+            }
+            
+            const company = await createCompany(companyName, email, name);
+            companyPortalId = company.client_portal_id;
+            isNewCompany = true;
+            console.log(`[CHECKOUT] New company created: ${companyName} (${companyPortalId})`);
+            
+        } else if (userType === 'company-employee') {
+            // Validate Client Portal ID
+            if (!clientPortalId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Client Portal ID is required for employee subscriptions'
+                });
+            }
+            
+            const company = await validateClientPortalID(clientPortalId);
+            if (!company) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid Client Portal ID. Please check with your company admin.'
+                });
+            }
+            
+            companyPortalId = company.client_portal_id;
+            console.log(`[CHECKOUT] Employee joining company: ${company.company_name} (${companyPortalId})`);
+        }
+
         const sessionConfig = {
             mode: 'subscription',
             line_items: [{ price: pkg.stripePriceId, quantity: parseInt(userCount) }],
-            success_url: `${BASE_URL}/pricing.html?sub=success&plan=${encodeURIComponent(pkg.name)}`,
+            success_url: companyPortalId && isNewCompany
+                ? `${BASE_URL}/pricing.html?sub=success&plan=${encodeURIComponent(pkg.name)}&cid=${companyPortalId}`
+                : `${BASE_URL}/pricing.html?sub=success&plan=${encodeURIComponent(pkg.name)}`,
             cancel_url:  `${BASE_URL}/pricing.html?sub=cancelled`,
             allow_promotion_codes: true,
             subscription_data: {
                 metadata: {
                     lead_id:     leadId ? leadId.toString() : '',
                     package_key: packageKey,
-                    user_count:  userCount.toString()
+                    user_count:  userCount.toString(),
+                    user_type:   userType || 'individual',
+                    client_portal_id: companyPortalId || '',
+                    user_label:  userLabel || '',
+                    company_name: companyName || '',
+                    user_name:   name || '',
+                    user_email:  email || ''
                 }
             },
             metadata: {
                 lead_id:     leadId ? leadId.toString() : '',
-                package_key: packageKey
+                package_key: packageKey,
+                user_type:   userType || 'individual',
+                client_portal_id: companyPortalId || ''
             }
         };
 
@@ -12415,7 +12929,9 @@ app.post('/api/client/login', async (req, res) => {
                 id: lead.id,
                 name: lead.name,
                 email: lead.email,
-                company: lead.company
+                company: lead.company,
+                isCompanyAdmin: lead.is_company_admin || false,
+                clientPortalId: lead.client_portal_id || null
             }
         });
         

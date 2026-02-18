@@ -1715,42 +1715,120 @@ body.crm-active .hero,
             <button class="crm-modal-close" onclick="closeCRMSubscribeModal()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
-            <div class="crm-modal-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            </div>
-            <h2 class="crm-modal-title" id="crmModalTitle">Subscribe to Professional CRM</h2>
-            <p class="crm-modal-subtitle">Choose your user count. You'll be taken to secure Stripe Checkout to complete payment.</p>
-            <div class="crm-modal-price-row">
-                <span class="crm-modal-price-label">Price per user</span>
-                <span class="crm-modal-price-value" id="crmModalPricePerUser">$49.99 / mo</span>
-            </div>
-            <div class="crm-modal-field">
-                <label class="crm-modal-label">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:-2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    Number of Users
-                </label>
-                <div class="crm-qty-control">
-                    <button type="button" class="crm-qty-btn" onclick="changeCRMQty(-1)">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            
+            <!-- SCREEN 1: Subscription Type Selection -->
+            <div id="subscriptionTypeScreen">
+                <div class="crm-modal-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                </div>
+                <h2 class="crm-modal-title" id="crmModalTitle">Subscribe to Professional CRM</h2>
+                <p class="crm-modal-subtitle">How are you subscribing?</p>
+                
+                <div style="margin:32px 0;display:flex;flex-direction:column;gap:12px;">
+                    <button onclick="selectSubscriptionType('individual')" style="padding:20px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;cursor:pointer;text-align:left;transition:all 0.2s;" onmouseover="this.style.borderColor='#FF6B35';this.style.background='#fff5f0'" onmouseout="this.style.borderColor='#e5e7eb';this.style.background='#fff'">
+                        <div style="font-weight:700;font-size:16px;margin-bottom:4px;">Individual User</div>
+                        <div style="font-size:13px;color:#6b7280;">Subscription for yourself only</div>
                     </button>
-                    <input type="number" id="crmUserCount" class="crm-qty-input" value="1" min="1" max="999" oninput="updateCRMTotal()">
-                    <button type="button" class="crm-qty-btn" onclick="changeCRMQty(1)">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    
+                    <button onclick="selectSubscriptionType('company-new')" style="padding:20px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;cursor:pointer;text-align:left;transition:all 0.2s;" onmouseover="this.style.borderColor='#FF6B35';this.style.background='#fff5f0'" onmouseout="this.style.borderColor='#e5e7eb';this.style.background='#fff'">
+                        <div style="font-weight:700;font-size:16px;margin-bottom:4px;">Company (First Time)</div>
+                        <div style="font-size:13px;color:#6b7280;">Create a company account and get a Client Portal ID</div>
+                    </button>
+                    
+                    <button onclick="selectSubscriptionType('company-employee')" style="padding:20px;border:2px solid #e5e7eb;border-radius:10px;background:#fff;cursor:pointer;text-align:left;transition:all 0.2s;" onmouseover="this.style.borderColor='#FF6B35';this.style.background='#fff5f0'" onmouseout="this.style.borderColor='#e5e7eb';this.style.background='#fff'">
+                        <div style="font-weight:700;font-size:16px;margin-bottom:4px;">Employee (Join Existing Company)</div>
+                        <div style="font-size:13px;color:#6b7280;">You have a Client Portal ID from your company</div>
                     </button>
                 </div>
             </div>
-            <div class="crm-modal-total-row">
-                <span>Monthly Total</span>
-                <strong id="crmModalTotal">$49.99 / mo</strong>
+            
+            <!-- SCREEN 2: Subscription Details -->
+            <div id="subscriptionDetailsScreen" style="display:none;">
+                <h2 class="crm-modal-title" id="crmModalDetailsTitle">Complete Your Subscription</h2>
+                <div class="crm-modal-price-row">
+                    <span class="crm-modal-price-label">Price per user</span>
+                    <span class="crm-modal-price-value" id="crmModalPricePerUser">$49.99 / mo</span>
+                </div>
+                
+                <!-- Individual Fields -->
+                <div id="individualFields" style="display:none;">
+                    <p class="crm-modal-subtitle">Choose your user count and proceed to checkout.</p>
+                </div>
+                
+                <!-- Company New Fields -->
+                <div id="companyNewFields" style="display:none;margin-bottom:20px;">
+                    <div class="crm-modal-field">
+                        <label class="crm-modal-label">Company Name</label>
+                        <input type="text" id="companyNameInput" placeholder="Acme Corp" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;">
+                    </div>
+                    <div class="crm-modal-field">
+                        <label class="crm-modal-label">Your Name</label>
+                        <input type="text" id="adminNameInput" placeholder="John Doe" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;">
+                    </div>
+                    <div class="crm-modal-field">
+                        <label class="crm-modal-label">Your Email</label>
+                        <input type="email" id="adminEmailInput" placeholder="john@acme.com" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;">
+                    </div>
+                    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:12px;font-size:13px;margin-top:12px;">
+                        ✓ You'll receive a unique <strong>Client Portal ID</strong> after checkout to share with your team.
+                    </div>
+                </div>
+                
+                <!-- Company Employee Fields -->
+                <div id="companyEmployeeFields" style="display:none;margin-bottom:20px;">
+                    <div class="crm-modal-field">
+                        <label class="crm-modal-label">Client Portal ID</label>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="clientPortalIdInput" placeholder="CLI-XXXX" maxlength="8" style="flex:1;padding:12px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;text-transform:uppercase;" oninput="this.value = this.value.toUpperCase()">
+                            <button id="validatePortalBtn" onclick="validatePortalID()" style="padding:12px 20px;background:#f59e0b;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Validate</button>
+                        </div>
+                        <div id="portalValidationResult" style="margin-top:8px;font-size:13px;"></div>
+                    </div>
+                    <div class="crm-modal-field">
+                        <label class="crm-modal-label">Your Name</label>
+                        <input type="text" id="employeeNameInput" placeholder="Jane Smith" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;">
+                    </div>
+                    <div class="crm-modal-field">
+                        <label class="crm-modal-label">Your Email</label>
+                        <input type="email" id="employeeEmailInput" placeholder="jane@acme.com" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;">
+                    </div>
+                    <div class="crm-modal-field">
+                        <label class="crm-modal-label">User Label (Optional)</label>
+                        <input type="text" id="userLabelInput" placeholder="e.g., Sales Rep 1" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;">
+                    </div>
+                </div>
+                
+                <!-- User Count (for all types) -->
+                <div class="crm-modal-field">
+                    <label class="crm-modal-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:-2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Number of Users
+                    </label>
+                    <div class="crm-qty-control">
+                        <button type="button" class="crm-qty-btn" onclick="changeCRMQty(-1)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                        <input type="number" id="crmUserCount" class="crm-qty-input" value="1" min="1" max="999" oninput="updateCRMTotal()">
+                        <button type="button" class="crm-qty-btn" onclick="changeCRMQty(1)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="crm-modal-total-row">
+                    <span>Monthly Total</span>
+                    <strong id="crmModalTotal">$49.99 / mo</strong>
+                </div>
+                
+                <button class="crm-modal-submit-btn" id="crmCheckoutBtn" onclick="submitCRMSubscription()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:-3px;"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    Subscribe Now
+                </button>
+                <p class="crm-modal-footer-note" style="display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Secure checkout powered by Stripe. Cancel anytime.
+                </p>
             </div>
-            <button class="crm-modal-submit-btn" id="crmCheckoutBtn" onclick="submitCRMSubscription()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:-3px;"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                Subscribe Now
-            </button>
-            <p class="crm-modal-footer-note" style="display:flex;align-items:center;justify-content:center;gap:6px;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                Secure checkout powered by Stripe. Cancel anytime.
-            </p>
         </div>
     </div>
 
@@ -6261,9 +6339,79 @@ function openCRMSubscribeModal(packageKey, packageName, pricePerUser) {
     document.getElementById('crmUserCount').value = '1';
     updateCRMTotal();
 
+    // Reset to type selection screen
+    showSubscriptionTypeSelection();
+
     const modal = document.getElementById('crmSubscribeModal');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+}
+
+// Show subscription type selection (Individual, Company New, Company Employee)
+function showSubscriptionTypeSelection() {
+    document.getElementById('subscriptionTypeScreen').style.display = 'block';
+    document.getElementById('subscriptionDetailsScreen').style.display = 'none';
+}
+
+// Show details screen after type is selected
+function selectSubscriptionType(type) {
+    window._subscriptionType = type;
+    document.getElementById('subscriptionTypeScreen').style.display = 'none';
+    document.getElementById('subscriptionDetailsScreen').style.display = 'block';
+    
+    // Show/hide relevant fields
+    const companyNewFields = document.getElementById('companyNewFields');
+    const companyEmployeeFields = document.getElementById('companyEmployeeFields');
+    const individualFields = document.getElementById('individualFields');
+    
+    companyNewFields.style.display = type === 'company-new' ? 'block' : 'none';
+    companyEmployeeFields.style.display = type === 'company-employee' ? 'block' : 'none';
+    individualFields.style.display = type === 'individual' ? 'block' : 'none';
+    
+    // Update title
+    const titles = {
+        'individual': 'Complete Your Subscription',
+        'company-new': 'Create Company Account',
+        'company-employee': 'Join Your Company'
+    };
+    document.getElementById('crmModalDetailsTitle').textContent = titles[type];
+}
+
+// Validate company portal ID
+async function validatePortalID() {
+    const input = document.getElementById('clientPortalIdInput');
+    const portalId = input.value.trim().toUpperCase();
+    const btn = document.getElementById('validatePortalBtn');
+    const result = document.getElementById('portalValidationResult');
+    
+    if (!portalId) {
+        result.innerHTML = '<span style="color:#dc2626;">Please enter a Client Portal ID</span>';
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = 'Validating...';
+    result.innerHTML = '';
+    
+    try {
+        // For now, we'll validate during checkout
+        // Just format check here
+        if (!/^CLI-[A-Z0-9]{4}$/.test(portalId)) {
+            result.innerHTML = '<span style="color:#dc2626;">Invalid format. Should be CLI-XXXX</span>';
+            btn.disabled = false;
+            btn.textContent = 'Validate ID';
+            return;
+        }
+        
+        result.innerHTML = '<span style="color:#059669;">✓ ID format valid. Will verify during checkout.</span>';
+        btn.disabled = false;
+        btn.textContent = 'Validate ID';
+        input.value = portalId;
+    } catch (err) {
+        result.innerHTML = '<span style="color:#dc2626;">Validation error. Please try again.</span>';
+        btn.disabled = false;
+        btn.textContent = 'Validate ID';
+    }
 }
 
 function closeCRMSubscribeModal() {
@@ -6308,13 +6456,46 @@ async function submitCRMSubscription() {
             apiBase = window.location.protocol + '//' + h + ':3000/api';
         }
 
+        // Collect subscription type data
+        const userType = window._subscriptionType || 'individual';
+        const payload = {
+            packageKey: _crmPkg.key,
+            userCount:  userCount,
+            userType:   userType
+        };
+        
+        // Add type-specific fields
+        if (userType === 'individual') {
+            // Individual - no extra fields needed
+        } else if (userType === 'company-new') {
+            payload.companyName = document.getElementById('companyNameInput').value.trim();
+            payload.name = document.getElementById('adminNameInput').value.trim();
+            payload.email = document.getElementById('adminEmailInput').value.trim();
+            
+            if (!payload.companyName || !payload.name || !payload.email) {
+                alert('Please fill in all company information fields.');
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:-3px;"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Subscribe Now';
+                return;
+            }
+        } else if (userType === 'company-employee') {
+            payload.clientPortalId = document.getElementById('clientPortalIdInput').value.trim().toUpperCase();
+            payload.name = document.getElementById('employeeNameInput').value.trim();
+            payload.email = document.getElementById('employeeEmailInput').value.trim();
+            payload.userLabel = document.getElementById('userLabelInput').value.trim();
+            
+            if (!payload.clientPortalId || !payload.name || !payload.email) {
+                alert('Please fill in all employee information fields.');
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:-3px;"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Subscribe Now';
+                return;
+            }
+        }
+
         var res = await fetch(apiBase + '/public/subscriptions/checkout', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-                packageKey: _crmPkg.key,
-                userCount:  userCount
-            })
+            body:    JSON.stringify(payload)
         });
 
         var data = await res.json();
@@ -6348,9 +6529,15 @@ async function submitCRMSubscription() {
     var params = new URLSearchParams(window.location.search);
     if (params.get('sub') === 'success') {
         var plan = params.get('plan') || 'CRM';
+        var clientId = params.get('cid');
         var banner = document.createElement('div');
         banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#059669;color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:15px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
-        banner.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> You\'re subscribed to ' + plan + '! Check your email for your receipt. &nbsp;<button onclick="this.parentNode.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px;">Dismiss</button>';
+        if (clientId) {
+            // Company subscription - show Client Portal ID prominently
+            banner.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> You\'re subscribed! Your Client Portal ID: <strong style="font-size:18px;letter-spacing:2px;margin:0 8px;background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:4px;">' + clientId + '</strong> (Share with your team) &nbsp;<button onclick="this.parentNode.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px;">Dismiss</button>';
+        } else {
+            banner.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> You\'re subscribed to ' + plan + '! Check your email for your receipt. &nbsp;<button onclick="this.parentNode.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px;">Dismiss</button>';
+        }
         document.body.prepend(banner);
         // Clean URL
         history.replaceState({}, '', window.location.pathname);

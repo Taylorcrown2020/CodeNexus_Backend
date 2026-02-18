@@ -1592,6 +1592,34 @@ textarea {
                 </div>
             </section>
 
+            <!-- Company Dashboard Section (for company admins) -->
+            <section id="companyDashboardSection" class="content-section" style="display:none;">
+                <div class="topbar">
+                    <h1 class="page-title">Company Management</h1>
+                </div>
+
+                <div id="companyInfoCard" class="card" style="margin-bottom:24px;">
+                    <div class="card-header">
+                        <h2 class="card-title">Company Information</h2>
+                    </div>
+                    <div class="card-body" id="companyInfo">
+                        <!-- Company info will load here -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <h2 class="card-title">Team Members</h2>
+                        <a href="/pricing.html" class="btn" style="background:#FF6B35;color:#fff;text-decoration:none;padding:8px 16px;border-radius:6px;font-size:14px;">
+                            + Add Team Member
+                        </a>
+                    </div>
+                    <div class="card-body" id="companyUsers">
+                        <!-- Users will load here -->
+                    </div>
+                </div>
+            </section>
+
             <!-- Projects Section -->
             <section id="projectsSection" class="content-section">
                 <div class="topbar">
@@ -1784,7 +1812,9 @@ const API_BASE = (() => {
             invoices: [],
             files: [],
             tickets: [],
-            currentSection: 'dashboard'
+            currentSection: 'dashboard',
+            isCompanyAdmin: false,
+            companyData: null
         };
 
         // Initialize
@@ -1892,10 +1922,17 @@ const API_BASE = (() => {
                 if (data.success) {
                     state.token = data.token;
                     state.user = data.client;
+                    state.isCompanyAdmin = data.client.isCompanyAdmin || false;
                     localStorage.setItem('clientToken', data.token);
                     localStorage.setItem('clientUser', JSON.stringify(data.client));
                     showPortal();
-                    loadDashboard();
+                    
+                    // Check if company admin and load appropriate dashboard
+                    if (state.isCompanyAdmin) {
+                        await loadCompanyDashboard();
+                    } else {
+                        loadDashboard();
+                    }
                 } else {
                     document.getElementById('errorText').textContent = data.message || 'Login failed';
                     errorDiv.classList.add('show');
@@ -1983,7 +2020,191 @@ const API_BASE = (() => {
         }
 
         // Dashboard
-        async function loadDashboard() {
+
+        // ========================================
+        // COMPANY DASHBOARD FUNCTIONS
+        // ========================================
+        
+        async function loadCompanyDashboard() {
+            try {
+                // Show company section, hide others
+                document.querySelectorAll('.content-section').forEach(s => s.style.display = 'none');
+                document.getElementById('companyDashboardSection').style.display = 'block';
+                document.getElementById('companyDashboardSection').classList.add('active');
+                
+                const response = await fetch(`${API_BASE}/client/company`, {
+                    headers: { 'Authorization': `Bearer ${state.token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    document.getElementById('companyInfo').innerHTML = `
+                        <p style="color:#dc2626;">${data.message || 'Error loading company data'}</p>
+                    `;
+                    return;
+                }
+                
+                state.companyData = data;
+                renderCompanyInfo(data.company);
+                renderCompanyUsers(data.users);
+                
+            } catch (error) {
+                console.error('Load company error:', error);
+                document.getElementById('companyInfo').innerHTML = `
+                    <p style="color:#dc2626;">Failed to load company data. Please refresh the page.</p>
+                `;
+            }
+        }
+        
+        function renderCompanyInfo(company) {
+            const html = `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
+                    <div>
+                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">Company Name</div>
+                        <div style="font-size:16px;font-weight:700;">${company.companyName}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">Client Portal ID</div>
+                        <div style="font-size:16px;font-weight:700;font-family:monospace;display:flex;align-items:center;gap:8px;">
+                            ${company.clientPortalId}
+                            <button onclick="copyPortalId('${company.clientPortalId}')" style="padding:4px 10px;background:#f59e0b;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;">
+                                COPY
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">Active Seats</div>
+                        <div style="font-size:16px;font-weight:700;">${company.totalActiveSeats}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">Monthly Total</div>
+                        <div style="font-size:16px;font-weight:700;color:#059669;">$${company.monthlyTotal.toFixed(2)}</div>
+                    </div>
+                </div>
+                <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:14px;margin-top:20px;font-size:13px;">
+                    💡 <strong>Share your Client Portal ID</strong> (${company.clientPortalId}) with team members so they can join your company account.
+                </div>
+            `;
+            document.getElementById('companyInfo').innerHTML = html;
+        }
+        
+        function renderCompanyUsers(users) {
+            if (users.length === 0) {
+                document.getElementById('companyUsers').innerHTML = `
+                    <p style="text-align:center;color:var(--text-muted);padding:40px;">
+                        No team members yet. Click "Add Team Member" to get started.
+                    </p>
+                `;
+                return;
+            }
+            
+            const html = users.map(user => {
+                const statusColor = user.status === 'active' ? '#059669' : '#6b7280';
+                const statusBg = user.status === 'active' ? '#d1fae5' : '#f3f4f6';
+                
+                return `
+                    <div style="border-bottom:1px solid var(--border-color);padding:16px 0;display:flex;justify-content:space-between;align-items:center;">
+                        <div style="flex:1;">
+                            <div style="margin-bottom:6px;">
+                                <input type="text" 
+                                       value="${user.userLabel || 'Unnamed'}" 
+                                       onblur="updateUserLabel(${user.id}, this.value)"
+                                       style="border:none;background:transparent;font-size:15px;font-weight:700;padding:4px;border-bottom:1px dashed #ddd;width:200px;"
+                                       placeholder="Click to set label">
+                            </div>
+                            <div style="font-size:13px;color:var(--text-muted);">
+                                ${user.userName} • ${user.userEmail}
+                            </div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+                                ${user.packageName} • Added ${new Date(user.addedDate).toLocaleDateString()}
+                            </div>
+                        </div>
+                        <div style="text-align:right;display:flex;align-items:center;gap:16px;">
+                            <div>
+                                <div style="font-size:18px;font-weight:800;">$${user.pricePerUser.toFixed(2)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">per month</div>
+                            </div>
+                            <div>
+                                <div style="background:${statusBg};color:${statusColor};padding:4px 10px;border-radius:4px;font-size:11px;font-weight:700;margin-bottom:6px;">
+                                    ${user.status.toUpperCase()}
+                                </div>
+                                ${user.status === 'active' ? `
+                                    <button onclick="cancelUserConfirm(${user.id}, '${user.userName}')" 
+                                            style="padding:6px 12px;background:#dc2626;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">
+                                        Cancel
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('companyUsers').innerHTML = html;
+        }
+        
+        function copyPortalId(id) {
+            navigator.clipboard.writeText(id).then(() => {
+                alert('Client Portal ID copied: ' + id);
+            });
+        }
+        
+        async function updateUserLabel(userId, newLabel) {
+            try {
+                const response = await fetch(`${API_BASE}/client/company/user/${userId}/label`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userLabel: newLabel })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    console.log('User label updated');
+                } else {
+                    alert('Failed to update label: ' + data.message);
+                    loadCompanyDashboard(); // Reload
+                }
+            } catch (error) {
+                console.error('Update label error:', error);
+                alert('Error updating label');
+            }
+        }
+        
+        function cancelUserConfirm(userId, userName) {
+            if (!confirm(`Cancel subscription for ${userName}?\n\nThis will end their access at the end of their billing period and reduce your monthly total.`)) {
+                return;
+            }
+            cancelUser(userId);
+        }
+        
+        async function cancelUser(userId) {
+            try {
+                const response = await fetch(`${API_BASE}/client/company/user/${userId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('User subscription cancelled successfully. Your new monthly total is $' + data.newMonthlyTotal.toFixed(2));
+                    loadCompanyDashboard(); // Reload
+                } else {
+                    alert('Failed to cancel user: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Cancel user error:', error);
+                alert('Error cancelling user');
+            }
+        }
+
+                async function loadDashboard() {
             try {
                 const response = await fetch(`${API_BASE}/client/dashboard`, {
                     headers: {

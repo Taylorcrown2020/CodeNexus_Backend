@@ -7385,12 +7385,13 @@ async function renderSubscriptions(content) {
             }).then(r => r.json()).catch(() => ({ success: false }))
         ]);
 
-        const subs      = subData.success  ? subData.subscriptions  : [];
-        const ov        = statsData.success ? (statsData.overview || statsData) : {};
-        const mrr       = parseFloat(ov.mrr || 0);
-        const active    = parseInt(ov.active_subscribers || ov.active_count || 0);
+        const individualSubs = subData.success ? (subData.individualSubscriptions || []) : [];
+        const companies = subData.success ? (subData.companies || []) : [];
+        const ov = statsData.success ? (statsData.overview || statsData) : {};
+        const mrr = parseFloat(ov.mrr || 0);
+        const active = parseInt(ov.active_subscribers || ov.active_count || 0);
         const canceling = parseInt(ov.canceling || ov.canceling_count || 0);
-        const pastDue   = parseInt(ov.past_due || ov.past_due_count || 0);
+        const pastDue = parseInt(ov.past_due || ov.past_due_count || 0);
         const atRiskMrr = parseFloat(ov.at_risk_mrr || 0);
 
         // Update sidebar badge
@@ -7406,17 +7407,9 @@ async function renderSubscriptions(content) {
             <div>
                 <h2 style="font-size:22px;font-weight:800;margin:0 0 4px;color:var(--text-primary);">CRM Subscriptions</h2>
                 <p style="font-size:13px;color:var(--text-muted);margin:0;">
-                    Manage subscriber accounts — cancel, reactivate, or open billing portal.
-                    Cancellation emails are sent to the subscriber automatically.
+                    Manage all subscriptions — individual users and company accounts with their team members.
                 </p>
             </div>
-            <select id="subStatusFilter" onchange="filterSubRows()" style="padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);font-size:13px;cursor:pointer;">
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="canceling">Canceling</option>
-                <option value="past_due">Past Due</option>
-                <option value="cancelled">Cancelled</option>
-            </select>
         </div>
 
         <!-- KPI strip -->
@@ -7427,33 +7420,114 @@ async function renderSubscriptions(content) {
                 <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Monthly recurring revenue</div>
             </div>
             <div class="stat-card" style="padding:18px 20px;">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Companies</div>
+                <div style="font-size:26px;font-weight:800;color:var(--text-primary);">${companies.length}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Company accounts</div>
+            </div>
+            <div class="stat-card" style="padding:18px 20px;">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Individuals</div>
+                <div style="font-size:26px;font-weight:800;color:var(--text-primary);">${individualSubs.length}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Individual subscriptions</div>
+            </div>
+            <div class="stat-card" style="padding:18px 20px;">
                 <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Active</div>
                 <div style="font-size:26px;font-weight:800;color:var(--text-primary);">${active}</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Paying subscribers</div>
-            </div>
-            <div class="stat-card" style="padding:18px 20px;">
-                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Canceling</div>
-                <div style="font-size:26px;font-weight:800;color:${canceling > 0 ? 'var(--accent-amber)' : 'var(--text-primary)'};">${canceling}</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Ends at period close</div>
-            </div>
-            <div class="stat-card" style="padding:18px 20px;">
-                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Past Due</div>
-                <div style="font-size:26px;font-weight:800;color:${pastDue > 0 ? 'var(--status-closed)' : 'var(--text-primary)'};">${pastDue}</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${atRiskMrr > 0 ? '$'+atRiskMrr.toFixed(2)+' at risk' : 'No past-due accounts'}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Total subscriptions</div>
             </div>
         </div>
 
-        ${pastDue > 0 ? `
-        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-md);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span style="font-size:13px;color:var(--text-primary);">
-                <strong>${pastDue} subscriber${pastDue > 1 ? 's are' : ' is'} past due</strong> —
-                $${atRiskMrr.toFixed(2)} MRR at risk. Stripe will retry automatically.
-            </span>
-        </div>` : ''}
+        <!-- Companies Section -->
+        ${companies.length > 0 ? `
+        <div class="card" style="margin-bottom:24px;">
+            <div class="card-header">
+                <h2 class="card-title">Company Accounts (${companies.length})</h2>
+            </div>
+            <div class="card-body" style="padding:0;">
+                ${companies.map(company => {
+                    const totalSeats = company.users ? company.users.filter(u => u.user_email).length : 0;
+                    const activeSeats = company.users ? company.users.filter(u => u.status === 'active').length : 0;
+                    
+                    return `
+                        <div style="border-bottom:1px solid var(--border-color);padding:20px 24px;">
+                            <!-- Company Header -->
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                                <div style="flex:1;">
+                                    <h3 style="font-size:16px;font-weight:700;margin:0 0 6px;color:var(--text-primary);">
+                                        ${company.company_name}
+                                    </h3>
+                                    <div style="font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:16px;">
+                                        <span>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px;">
+                                                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                            </svg>
+                                            <strong style="font-family:monospace;letter-spacing:0.5px;">${company.client_portal_id}</strong>
+                                        </span>
+                                        <span>Admin: ${company.admin_email}</span>
+                                        <span>Joined: ${new Date(company.company_created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                    </div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-size:24px;font-weight:800;color:#059669;">$${parseFloat(company.company_monthly_total || 0).toFixed(2)}</div>
+                                    <div style="font-size:11px;color:var(--text-muted);">Monthly Total</div>
+                                    <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">${activeSeats} active / ${totalSeats} total seats</div>
+                                </div>
+                            </div>
 
-        <!-- Table -->
-        <div class="card" style="overflow:hidden;">
+                            <!-- Team Members Table -->
+                            <div style="background:var(--bg-secondary);border-radius:8px;overflow:hidden;">
+                                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                                    <thead>
+                                        <tr style="background:var(--bg-tertiary);border-bottom:1px solid var(--border-color);">
+                                            <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Label / Name</th>
+                                            <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Email</th>
+                                            <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Plan</th>
+                                            <th style="padding:10px 16px;text-align:right;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Price/mo</th>
+                                            <th style="padding:10px 16px;text-align:center;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Status</th>
+                                            <th style="padding:10px 16px;text-align:center;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Added</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${company.users && company.users.filter(u => u.user_email).map((user, idx) => {
+                                            const statusColors = {
+                                                active: { bg: 'rgba(16,185,129,0.12)', color: '#059669', label: 'Active' },
+                                                cancelled: { bg: 'var(--bg-tertiary)', color: 'var(--text-muted)', label: 'Cancelled' }
+                                            };
+                                            const sc = statusColors[user.status] || statusColors.cancelled;
+                                            
+                                            return `
+                                                <tr style="border-bottom:1px solid var(--border-color);">
+                                                    <td style="padding:12px 16px;">
+                                                        <div style="font-weight:600;color:var(--text-primary);">${user.user_label || 'Unnamed'}</div>
+                                                        <div style="font-size:12px;color:var(--text-muted);">${user.user_name}</div>
+                                                    </td>
+                                                    <td style="padding:12px 16px;color:var(--text-secondary);">${user.user_email}</td>
+                                                    <td style="padding:12px 16px;color:var(--text-secondary);">${user.package_name || '—'}</td>
+                                                    <td style="padding:12px 16px;text-align:right;font-weight:700;color:var(--text-primary);">$${parseFloat(user.price_per_user || 0).toFixed(2)}</td>
+                                                    <td style="padding:12px 16px;text-align:center;">
+                                                        <span style="background:${sc.bg};color:${sc.color};padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;">${sc.label}</span>
+                                                    </td>
+                                                    <td style="padding:12px 16px;text-align:center;color:var(--text-muted);font-size:12px;">
+                                                        ${new Date(user.added_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">No users</td></tr>'}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Individual Subscriptions Section -->
+        ${individualSubs.length > 0 ? `
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Individual Subscriptions (${individualSubs.length})</h2>
+            </div>
             <div class="table-container">
                 <table class="data-table">
                     <thead><tr>
@@ -7462,73 +7536,68 @@ async function renderSubscriptions(content) {
                         <th style="text-align:center;">Users</th>
                         <th>Monthly</th>
                         <th>Status</th>
-                        <th>Next Billing / Ends</th>
+                        <th>Next Billing</th>
                         <th>Subscribed</th>
-                        <th style="text-align:right;">Actions</th>
                     </tr></thead>
-                    <tbody id="subTableBody">
-                        ${subs.length === 0
-                            ? `<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--text-muted);">
-                                No subscriptions yet — they'll appear here once someone subscribes.
-                               </td></tr>`
-                            : subs.map(s => _buildSubRow(s)).join('')}
+                    <tbody>
+                        ${individualSubs.map(s => _buildIndividualSubRow(s)).join('')}
                     </tbody>
                 </table>
             </div>
         </div>
+        ` : ''}
 
-        <!-- Cancel confirmation modal -->
-        <div id="subCancelModal"
-             style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;padding:16px;"
-             onclick="if(event.target===this)_closeSubModal()">
-            <div style="background:var(--bg-primary);border-radius:var(--radius-lg);padding:36px 40px;max-width:460px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.3);position:relative;">
-                <button onclick="_closeSubModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;padding:6px;color:var(--text-muted);">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-
-                <!-- Icon -->
-                <div style="width:48px;height:48px;background:rgba(239,68,68,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                </div>
-
-                <h3 style="font-size:18px;font-weight:800;margin:0 0 8px;color:var(--text-primary);">Cancel Subscription</h3>
-                <p id="subCancelDesc" style="font-size:14px;color:var(--text-secondary);margin:0 0 22px;line-height:1.65;"></p>
-
-                <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:16px 18px;margin-bottom:18px;">
-                    <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
-                        <input type="checkbox" id="subCancelImmediate"
-                               style="margin-top:2px;width:16px;height:16px;accent-color:#ef4444;flex-shrink:0;">
-                        <div>
-                            <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:3px;">Cancel immediately</div>
-                            <div style="font-size:12px;color:var(--text-muted);line-height:1.5;">
-                                Access ends right now. Leave unchecked to let them keep access until the end of the current billing period.
-                            </div>
-                        </div>
-                    </label>
-                </div>
-
-                <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:22px;display:flex;gap:10px;align-items:flex-start;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                    <span style="font-size:12px;color:var(--text-secondary);line-height:1.5;">
-                        A cancellation confirmation email is sent to the subscriber automatically.
-                    </span>
-                </div>
-
-                <div style="display:flex;gap:10px;">
-                    <button onclick="_closeSubModal()" class="btn btn-secondary" style="flex:1;">Keep Active</button>
-                    <button id="subCancelConfirmBtn" onclick="_confirmSubCancel()"
-                            class="btn" style="flex:1;background:#ef4444;color:#fff;border-color:#ef4444;">
-                        Cancel Subscription
-                    </button>
-                </div>
+        ${companies.length === 0 && individualSubs.length === 0 ? `
+        <div class="card">
+            <div class="card-body" style="text-align:center;padding:60px 24px;color:var(--text-muted);">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:16px;opacity:0.3;">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                </svg>
+                <h3 style="margin:0 0 8px;font-size:18px;color:var(--text-primary);">No Subscriptions Yet</h3>
+                <p style="margin:0;font-size:14px;">Company and individual subscriptions will appear here once customers subscribe.</p>
             </div>
-        </div>`;
+        </div>
+        ` : ''}
+        `;
 
     } catch (err) {
+        console.error('Render subscriptions error:', err);
         content.innerHTML = `<div style="padding:48px;text-align:center;color:var(--text-muted);">
             Error loading subscriptions: ${err.message}
         </div>`;
     }
+}
+
+function _buildIndividualSubRow(s) {
+    const statusConfig = {
+        active:    { label: 'Active',    bg: 'rgba(16,185,129,0.12)',  color: '#059669' },
+        canceling: { label: 'Canceling', bg: 'rgba(245,158,11,0.12)',  color: '#d97706' },
+        past_due:  { label: 'Past Due',  bg: 'rgba(239,68,68,0.12)',   color: '#dc2626' },
+        cancelled: { label: 'Cancelled', bg: 'var(--bg-tertiary)',     color: 'var(--text-muted)' }
+    };
+    const sc  = statusConfig[s.status] || statusConfig.cancelled;
+    const nm  = s.lead_name  || (s.lead_email ? s.lead_email.split('@')[0] : '—');
+    const em  = s.lead_email || '—';
+    const amt = parseFloat(s.monthly_total || 0).toFixed(2);
+
+    const periodEnd   = s.current_period_end ? new Date(s.current_period_end) : null;
+    const createdAt   = s.created_at         ? new Date(s.created_at)         : null;
+    const fmtShort    = d => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+    return `
+        <tr>
+            <td>
+                <div style="font-weight:600;color:var(--text-primary);">${nm}</div>
+                <div style="font-size:12px;color:var(--text-muted);">${em}</div>
+            </td>
+            <td>${s.package_name || '—'}</td>
+            <td style="text-align:center;font-weight:700;">${s.user_count || 1}</td>
+            <td style="font-weight:700;color:var(--text-primary);">$${amt}</td>
+            <td><span style="background:${sc.bg};color:${sc.color};padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;">${sc.label}</span></td>
+            <td style="color:var(--text-secondary);font-size:13px;">${fmtShort(periodEnd)}</td>
+            <td style="color:var(--text-muted);font-size:13px;">${fmtShort(createdAt)}</td>
+        </tr>
+    `;
 }
 
 function _buildSubRow(s) {

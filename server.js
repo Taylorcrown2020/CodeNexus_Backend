@@ -9885,14 +9885,10 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
                     [leadId]
                 );
 
-                // Opens on follow-up and marketing emails count as strong engagement → hot
-                if (emailType === 'follow-up' || emailType === 'marketing') {
-                    console.log(`[TRACKING] 🔥 ${emailType} email opened — promoting lead ${leadId} to HOT`);
-                    await trackEngagement(leadId, 'email_click_hot', `Opened ${emailType} email (ID: ${emailLogId})`);
-                } else {
-                    // All other email types (invoice, subscription, appointment) just log engagement
-                    await trackEngagement(leadId, 'email_open', 5);
-                }
+                // Email opens just log engagement - do NOT convert to hot
+                // ONLY clicks and form fills convert to hot
+                await trackEngagement(leadId, 'email_open', 5);
+                console.log(`[TRACKING] Email opened by lead ${leadId} — engagement logged (does NOT convert to hot)`);
                 console.log(`[TRACKING] ✅ Lead ${leadId} engagement tracked`);
             }
         }
@@ -11968,6 +11964,8 @@ app.post('/api/client/tickets/:id/responses', authenticateClient, async (req, re
 // GET  /api/client/subscription   — view current subscription(s)
 app.get('/api/client/subscription', authenticateClient, async (req, res) => {
     try {
+        console.log('[CLIENT SUB API] Fetching subscriptions for:', req.user.email);
+        
         const result = await pool.query(`
             SELECT cs.*, se.event_type, se.amount, se.description, se.created_at AS event_date
             FROM crm_subscriptions cs
@@ -11981,6 +11979,8 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
             WHERE cs.lead_email = $1
             ORDER BY cs.created_at DESC
         `, [req.user.email]);
+        
+        console.log('[CLIENT SUB API] Query returned', result.rows.length, 'rows');
 
         // Group events per subscription
         const subMap = {};
@@ -12014,10 +12014,12 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
         });
 
         const subscriptions = Object.values(subMap);
+        console.log('[CLIENT SUB API] Returning', subscriptions.length, 'subscription(s)');
         res.json({ success: true, subscriptions });
     } catch (error) {
-        console.error('[CLIENT SUB] Get error:', error);
-        res.status(500).json({ success: false, message: 'Failed to load subscription' });
+        console.error('[CLIENT SUB API] ERROR:', error.message);
+        console.error('[CLIENT SUB API] Stack:', error.stack);
+        res.status(500).json({ success: false, message: 'Failed to load subscription', error: error.message });
     }
 });
 

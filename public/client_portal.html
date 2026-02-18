@@ -2964,6 +2964,8 @@ async function submitTicketResponse(ticketId) {
                         </a>
                     </div>`;
                 return;
+            container.innerHTML = html;
+
             }
 
             const statusConfig = {
@@ -3144,6 +3146,9 @@ async function submitTicketResponse(ticketId) {
                         </div>`).join('')}
                     </div>
                 </div>` : '');
+
+            // Set the HTML content
+            container.innerHTML = html;
 
             // Attach modal HTML
             if (!document.getElementById('clientSubModals')) {

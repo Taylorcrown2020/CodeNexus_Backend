@@ -8382,12 +8382,11 @@ async function processSubscriptionWebhook(event) {
                     is_customer, customer_status, status, created_at, updated_at
                 )
                 VALUES ($1, $2, 'subscription-direct', 'hot', $3, TRUE, 'active', 'closed', NOW(), NOW())
-                RETURNING id, name, email, is_customer, customer_status, status
+                RETURNING id, name, email
             `, [leadEmail, leadEmail.split('@')[0], customerId]);
             
             lead = newCustomerResult.rows[0];
-            console.log(`[SUB WEBHOOK] ✅ Created new CUSTOMER ${lead.id} (${leadEmail})`);
-            console.log(`[SUB WEBHOOK] Customer details: is_customer=${lead.is_customer}, customer_status=${lead.customer_status}, status=${lead.status}`);
+            console.log(`[SUB WEBHOOK] ✅ Created new CUSTOMER ${lead.id} (${leadEmail}) - NOT a lead`);
         }
 
         await pool.query(`
@@ -11969,8 +11968,6 @@ app.post('/api/client/tickets/:id/responses', authenticateClient, async (req, re
 // GET  /api/client/subscription   — view current subscription(s)
 app.get('/api/client/subscription', authenticateClient, async (req, res) => {
     try {
-        console.log('[CLIENT SUB] Fetching subscriptions for:', req.user.email);
-        
         const result = await pool.query(`
             SELECT cs.*, se.event_type, se.amount, se.description, se.created_at AS event_date
             FROM crm_subscriptions cs
@@ -12017,7 +12014,6 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
         });
 
         const subscriptions = Object.values(subMap);
-        console.log('[CLIENT SUB] Found', subscriptions.length, 'subscription(s) for', req.user.email);
         res.json({ success: true, subscriptions });
     } catch (error) {
         console.error('[CLIENT SUB] Get error:', error);

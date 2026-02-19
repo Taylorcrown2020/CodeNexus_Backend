@@ -1713,49 +1713,21 @@ tr:hover .row-actions { opacity: 1; }
             <button class="modal-close" onclick="closeModal('addUserModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="modal-body">
-            <!-- Mode selector -->
-            <div style="display:flex;gap:8px;margin-bottom:20px;">
-                <button id="addUserModeSetup" class="btn btn-white" style="flex:1;font-size:12px;" onclick="setAddUserMode('setup')">
-                    Set Up Included User
-                </button>
-                <button id="addUserModeNew" class="btn btn-default" style="flex:1;font-size:12px;" onclick="setAddUserMode('new')">
-                    Purchase Additional Seat
-                </button>
-            </div>
-            <div id="addUserModeSetupDesc" style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:12px;color:#4ade80;">
-                You're setting up a user slot already included in your company subscription. No additional charge.
-            </div>
-            <div id="addUserModeNewDesc" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:12px;color:#f87171;display:none;">
-                This will create a new subscription seat billed to your company account.
-            </div>
+            <!-- Seat availability banner -->
+            <div id="addUserSeatBanner" style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:13px;color:#4ade80;"></div>
             <div class="form-row">
                 <div class="form-field"><label class="form-label">Full Name</label><input class="form-input" id="addUserName" placeholder="Team member name"></div>
                 <div class="form-field"><label class="form-label">Username / Login</label><input class="form-input" id="addUserUsername" placeholder="username (no spaces)"></div>
             </div>
             <div class="form-row">
                 <div class="form-field"><label class="form-label">Login Email</label><input class="form-input" id="addUserEmail" type="email" placeholder="member@company.com"></div>
-                <div class="form-field"><label class="form-label">Sending Email <span style="color:var(--text-3);font-weight:400;">(EmailJS/Brevo)</span></label><input class="form-input" id="addUserSendingEmail" type="email" placeholder="user@sendingdomain.com"></div>
+                <div class="form-field"><label class="form-label">Sending Email <span style="color:var(--text-3);font-weight:400;">(optional)</span></label><input class="form-input" id="addUserSendingEmail" type="email" placeholder="user@sendingdomain.com"></div>
             </div>
             <div class="form-field"><label class="form-label">User Label (optional)</label><input class="form-input" id="addUserLabel" placeholder="e.g., Sales Rep, Manager..."></div>
-            <div id="addUserPlanSection" style="display:none;">
-                <div class="form-field">
-                    <label class="form-label">Plan</label>
-                    <select class="form-select" id="addUserPlan">
-                        <option value="crm-essential">Essential CRM — $19.99/mo</option>
-                        <option value="crm-professional" selected>Professional CRM — $49.99/mo</option>
-                        <option value="crm-enterprise">Enterprise CRM — $64.99/mo</option>
-                    </select>
-                </div>
-                <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;margin-top:4px;">
-                    <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">Billing update</div>
-                    <div style="font-size:14px;font-weight:600;color:var(--text-0);" id="addUserBillingPreview">Select a plan to see pricing</div>
-                    <div style="font-size:12px;color:var(--text-3);margin-top:4px;">New user will be charged starting today.</div>
-                </div>
-            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('addUserModal')">Cancel</button>
-            <button class="btn btn-white" id="addUserBtn" onclick="addCompanyUser()">Set Up User</button>
+            <button class="btn btn-white" id="addUserBtn" onclick="addCompanyUser()">Add Team Member</button>
         </div>
     </div>
 </div>
@@ -3862,58 +3834,40 @@ async function loadCompany() {
     }
 }
 
-function setAddUserMode(mode) {
-    const isSetup = mode === 'setup';
-    document.getElementById('addUserModeSetup').className = isSetup ? 'btn btn-white' : 'btn btn-default';
-    document.getElementById('addUserModeSetup').style.flex = '1';
-    document.getElementById('addUserModeSetup').style.fontSize = '12px';
-    document.getElementById('addUserModeNew').className = isSetup ? 'btn btn-default' : 'btn btn-white';
-    document.getElementById('addUserModeNew').style.flex = '1';
-    document.getElementById('addUserModeNew').style.fontSize = '12px';
-    document.getElementById('addUserModeSetupDesc').style.display = isSetup ? 'block' : 'none';
-    document.getElementById('addUserModeNewDesc').style.display = isSetup ? 'none' : 'block';
-    document.getElementById('addUserPlanSection').style.display = isSetup ? 'none' : 'block';
-    const btn = document.getElementById('addUserBtn');
-    btn.textContent = isSetup ? 'Set Up User' : 'Add & Activate';
-    S._addUserMode = mode;
-}
-
-function setupAddUserPlanSelect() {
-    const sel = document.getElementById('addUserPlan');
-    if (!sel) return;
-    sel.addEventListener('change', () => updateAddUserPreview());
-}
-
-function updateAddUserPreview() {
-    const sel = document.getElementById('addUserPlan');
-    const plan = CRM_PLANS.find(p=>p.key===sel?.value);
-    const prev = document.getElementById('addUserBillingPreview');
-    if (plan && prev) {
-        prev.textContent = `$${plan.price.toFixed(2)}/month — billed to company account`;
-    }
-}
-
 function openAddUserModal() {
     if (!S.isAdmin) return;
     ['addUserName','addUserUsername','addUserEmail','addUserSendingEmail','addUserLabel'].forEach(id=>{
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
-    document.getElementById('addUserPlan').value = 'crm-professional';
-    S._addUserMode = 'setup';
-    setAddUserMode('setup');
-    updateAddUserPreview();
+    // Show seat availability in the banner
+    const company = S.companyData?.company;
+    const purchased = company?.purchasedSeats || 0;
+    const active = company?.totalActiveSeats || 0;
+    const available = Math.max(0, purchased - active);
+    const banner = document.getElementById('addUserSeatBanner');
+    if (banner) {
+        if (available > 0) {
+            banner.style.background = 'rgba(34,197,94,0.08)';
+            banner.style.borderColor = 'rgba(34,197,94,0.2)';
+            banner.style.color = '#4ade80';
+            banner.textContent = `✅ You have ${available} available seat${available !== 1 ? 's' : ''} included in your subscription — no extra charge to add this user.`;
+        } else {
+            banner.style.background = 'rgba(245,158,11,0.08)';
+            banner.style.borderColor = 'rgba(245,158,11,0.2)';
+            banner.style.color = '#fbbf24';
+            banner.textContent = `⚠️ All ${purchased} purchased seat${purchased !== 1 ? 's' : ''} are in use. Adding this user will increase your monthly bill.`;
+        }
+    }
     openModal('addUserModal');
 }
 
 async function addCompanyUser() {
-    const name          = document.getElementById('addUserName').value.trim();
-    const username      = document.getElementById('addUserUsername').value.trim();
-    const email         = document.getElementById('addUserEmail').value.trim();
-    const sendingEmail  = document.getElementById('addUserSendingEmail').value.trim();
-    const label         = document.getElementById('addUserLabel').value.trim();
-    const mode          = S._addUserMode || 'setup';
-    const plan          = document.getElementById('addUserPlan').value;
+    const name         = document.getElementById('addUserName').value.trim();
+    const username     = document.getElementById('addUserUsername').value.trim();
+    const email        = document.getElementById('addUserEmail').value.trim();
+    const sendingEmail = document.getElementById('addUserSendingEmail').value.trim();
+    const label        = document.getElementById('addUserLabel').value.trim();
 
     if (!name || !email) { toast('Name and email required', 'error'); return; }
     if (!S.companyData?.company?.clientPortalId) {
@@ -3921,18 +3875,17 @@ async function addCompanyUser() {
     }
 
     const btn = document.getElementById('addUserBtn');
-    btn.disabled = true; btn.textContent = 'Processing...';
+    btn.disabled = true; btn.textContent = 'Adding...';
 
     try {
         const res = await apiFetch('/client/company/add-user', 'POST', {
             name, username, email, sendingEmail,
-            userLabel: label, packageKey: plan,
-            mode,  // 'setup' = no new subscription, 'new' = create subscription seat
+            userLabel: label,
             clientPortalId: S.companyData.company.clientPortalId,
         });
         const data = await res.json();
         if (data.success) {
-            toast(mode === 'setup' ? 'User set up successfully!' : 'User added and subscription created!', 'success');
+            toast(data.message || 'Team member added successfully!', 'success');
             closeModal('addUserModal');
             await loadCompany();
         } else {
@@ -3941,8 +3894,7 @@ async function addCompanyUser() {
     } catch {
         toast('Error adding user', 'error');
     } finally {
-        btn.disabled = false;
-        btn.textContent = mode === 'setup' ? 'Set Up User' : 'Add & Activate';
+        btn.disabled = false; btn.textContent = 'Add Team Member';
     }
 }
 

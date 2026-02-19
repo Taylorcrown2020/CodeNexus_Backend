@@ -2460,25 +2460,6 @@ app.post('/api/scheduling/webhook', async (req, res) => {
             );
             
             console.log(`[SCHEDULING WEBHOOK] Created new hot lead: ${newLead.rows[0].id}`);
-
-            // Purge any stale company/subscription data for this email
-            try {
-                const stalePortals = await pool.query(
-                    `SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email) = LOWER($1)`,
-                    [inviteeEmail]
-                );
-                for (const row of stalePortals.rows) {
-                    const pid = row.client_portal_id;
-                    await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
-                    await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [pid]);
-                    await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]);
-                    console.log(`[SCHEDULING WEBHOOK] Purged stale company for reused email: ${inviteeEmail} (${pid})`);
-                }
-                await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [inviteeEmail]);
-                await pool.query(`DELETE FROM company_users WHERE LOWER(user_email) = LOWER($1)`, [inviteeEmail]);
-            } catch (purgeErr) {
-                console.error('[SCHEDULING WEBHOOK] Stale purge error (non-fatal):', purgeErr.message);
-            }
         } else {
             const lead = leadResult.rows[0];
             
@@ -4900,29 +4881,6 @@ app.post('/api/leads', async (req, res) => {
         );
 
         console.log('✅ New lead created:', result.rows[0].email);
-
-        // Purge any stale company/subscription data tied to this email from a previous
-        // deleted customer. If a row exists it is definitely orphaned — a freshly-created
-        // lead has no company yet.
-        try {
-            const stalePorals = await pool.query(
-                `SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email) = LOWER($1)`,
-                [email]
-            );
-            for (const row of stalePorals.rows) {
-                const pid = row.client_portal_id;
-                await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
-                await pool.query(`DELETE FROM subscription_events WHERE lead_email IN (SELECT user_email FROM company_users WHERE client_portal_id = $1)`, [pid]);
-                await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [pid]);
-                await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]);
-                console.log(`[NEW LEAD] Purged stale company data for reused email: ${email} (portal: ${pid})`);
-            }
-            // Also wipe any stale crm_subscriptions rows tied directly to this email
-            await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [email]);
-            await pool.query(`DELETE FROM company_users WHERE LOWER(user_email) = LOWER($1)`, [email]);
-        } catch (purgeErr) {
-            console.error('[NEW LEAD] Stale data purge error (non-fatal):', purgeErr.message);
-        }
         
         // If this is from the contact form (not admin), track engagement and make them hot
         if (!isAuthenticated) {
@@ -8564,6 +8522,7 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
                 cc.company_name,
                 cc.admin_email,
                 cc.total_active_seats,
+                cc.purchased_seats,
                 cc.monthly_total as company_monthly_total,
                 cc.created_at as company_created_at,
                 json_agg(
@@ -8585,7 +8544,7 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
             FROM client_companies cc
             LEFT JOIN company_users cu ON cc.client_portal_id = cu.client_portal_id
             GROUP BY cc.id, cc.client_portal_id, cc.company_name, cc.admin_email, 
-                     cc.total_active_seats, cc.monthly_total, cc.created_at
+                     cc.total_active_seats, cc.purchased_seats, cc.monthly_total, cc.created_at
             ORDER BY cc.created_at DESC
         `);
         
@@ -9257,6 +9216,8 @@ app.get('/api/client/company', authenticateClient, async (req, res) => {
                 companyName: company.company_name,
                 adminEmail: company.admin_email,
                 totalActiveSeats: company.total_active_seats,
+                purchasedSeats: parseInt(company.purchased_seats) || 0,
+                availableSeats: Math.max(0, (parseInt(company.purchased_seats) || 0) - (parseInt(company.total_active_seats) || 0)),
                 monthlyTotal: parseFloat(company.monthly_total || 0),
                 createdAt: company.created_at
             },
@@ -9458,16 +9419,19 @@ async function getCompanyMonthlyTotal(clientPortalId) {
 
 // ========================================
 // POST /api/client/company/add-user
-// Allows company admin to add a new user from within the CRM
-// Creates Stripe subscription directly & sends welcome email
+// Allows company admin to add a new user from within the CRM.
+// If the company has already purchased seats (purchased_seats > active users),
+// the user is set up for FREE (no new Stripe charge). Only if all purchased
+// seats are filled does it create a new paid subscription.
+// Company users are NEVER added to the leads table — they go to company_users only.
 // ========================================
 app.post('/api/client/company/add-user', authenticateClient, async (req, res) => {
     try {
-        const { name, email, userLabel, packageKey, clientPortalId } = req.body;
+        const { name, username, email, sendingEmail, userLabel, packageKey, clientPortalId, mode } = req.body;
         const requesterEmail = req.user.email;
 
-        if (!name || !email || !packageKey || !clientPortalId) {
-            return res.status(400).json({ success: false, message: 'name, email, packageKey, and clientPortalId are required' });
+        if (!name || !email || !clientPortalId) {
+            return res.status(400).json({ success: false, message: 'name, email, and clientPortalId are required' });
         }
 
         // Verify requester is admin of this company
@@ -9483,16 +9447,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             return res.status(403).json({ success: false, message: 'You can only add users to your own company' });
         }
 
-        // Validate package
-        const pkg = servicePackages[packageKey];
-        if (!pkg || pkg.category !== 'crm') {
-            return res.status(400).json({ success: false, message: 'Invalid CRM package key' });
-        }
-        if (!pkg.stripePriceId) {
-            return res.status(500).json({ success: false, message: 'Stripe price not configured for this package' });
-        }
-
-        // Get company info
+        // Get company info including purchased_seats
         const companyRes = await pool.query('SELECT * FROM client_companies WHERE client_portal_id = $1', [clientPortalId]);
         if (!companyRes.rows[0]) {
             return res.status(404).json({ success: false, message: 'Company not found' });
@@ -9508,81 +9463,132 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             return res.status(400).json({ success: false, message: 'This email already has an active seat in your company' });
         }
 
-        // Find or create Stripe customer for new user
-        let stripeCustomerId = null;
-        const existingLeadRes = await pool.query(
-            `SELECT id, stripe_customer_id FROM leads WHERE LOWER(email) = LOWER($1)`,
-            [email]
+        // Count currently active users (excluding admin)
+        const activeCountRes = await pool.query(
+            `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'`,
+            [clientPortalId]
         );
-        const existingLead = existingLeadRes.rows[0];
-        if (existingLead?.stripe_customer_id) {
-            stripeCustomerId = existingLead.stripe_customer_id;
-        } else {
-            const customer = await stripe.customers.create({ email, name });
-            stripeCustomerId = customer.id;
+        const activeUsers = parseInt(activeCountRes.rows[0].count) || 0;
+        const purchasedSeats = parseInt(company.purchased_seats) || 0;
+
+        // Determine if this seat is already paid for (within purchased quota)
+        // Setup mode = use an already-paid seat. New mode = bill for extra seat.
+        const hasAvailableSeat = activeUsers < purchasedSeats;
+        const effectiveMode = hasAvailableSeat ? 'setup' : 'new';
+
+        console.log(`[ADD-USER] ${email} → mode: ${effectiveMode} (${activeUsers} active / ${purchasedSeats} purchased)`);
+
+        // Get package for this company's subscription (use company's plan if not specified)
+        let pkg = null;
+        if (packageKey) {
+            pkg = servicePackages[packageKey];
+        }
+        if (!pkg) {
+            // Fall back to company's existing package
+            const existingSub = await pool.query(
+                `SELECT package_key FROM crm_subscriptions WHERE client_portal_id = $1 AND status = 'active' LIMIT 1`,
+                [clientPortalId]
+            );
+            if (existingSub.rows[0]) pkg = servicePackages[existingSub.rows[0].package_key];
+        }
+        if (!pkg) {
+            // Default fallback
+            pkg = { name: 'CRM', price: 0, category: 'crm' };
         }
 
-        // Create Stripe subscription directly
-        const subscription = await stripe.subscriptions.create({
-            customer: stripeCustomerId,
-            items: [{ price: pkg.stripePriceId, quantity: 1 }],
-            metadata: {
-                user_type: 'company-employee',
-                client_portal_id: clientPortalId,
-                user_name: name,
-                user_email: email,
-                user_label: userLabel || '',
-                added_by_admin: requesterEmail
+        let subscriptionId = null;
+        let stripeSubId = null;
+        let pricePerUser = effectiveMode === 'setup' ? 0 : (pkg.price || 0);
+
+        if (effectiveMode === 'new' && pkg.stripePriceId) {
+            // Need to charge for this extra seat — add to existing company Stripe subscription
+            // Find the company admin's Stripe customer to bill against
+            const adminLeadRes = await pool.query(
+                `SELECT stripe_customer_id FROM leads WHERE LOWER(email) = LOWER($1)`,
+                [company.admin_email]
+            );
+            const adminStripeCustomer = adminLeadRes.rows[0]?.stripe_customer_id;
+
+            if (!adminStripeCustomer) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'All purchased seats are in use. Please purchase additional seats to add more users.'
+                });
             }
-        });
 
-        const subItem = subscription.items.data[0];
-        const periodStart = subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : null;
-        const periodEnd   = subscription.current_period_end   ? new Date(subscription.current_period_end * 1000)   : null;
+            // Find existing subscription to add a seat to
+            const existingStripeSubRes = await pool.query(
+                `SELECT stripe_subscription_id FROM crm_subscriptions 
+                 WHERE client_portal_id = $1 AND status = 'active' 
+                 ORDER BY created_at ASC LIMIT 1`,
+                [clientPortalId]
+            );
 
-        // Create/update lead record
-        let leadId = existingLead?.id;
-        if (!leadId) {
-            const newLead = await pool.query(`
-                INSERT INTO leads (email, name, source, is_customer, customer_status, status, lead_temperature,
-                    stripe_customer_id, client_portal_id)
-                VALUES ($1, $2, 'company-admin-added', TRUE, 'active', 'closed', 'hot', $3, $4)
-                ON CONFLICT (email) DO UPDATE SET
-                    stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, leads.stripe_customer_id),
-                    is_customer = TRUE, customer_status = 'active', client_portal_id = $4,
-                    updated_at = NOW()
-                RETURNING id
-            `, [email, name, stripeCustomerId, clientPortalId]);
-            leadId = newLead.rows[0].id;
-        } else {
-            await pool.query(`
-                UPDATE leads SET is_customer = TRUE, customer_status = 'active',
-                    client_portal_id = $1, stripe_customer_id = COALESCE($2, stripe_customer_id), updated_at = NOW()
-                WHERE id = $3
-            `, [clientPortalId, stripeCustomerId, leadId]);
+            if (existingStripeSubRes.rows[0]?.stripe_subscription_id) {
+                // Add seat to existing subscription
+                const existingStripeSub = await stripe.subscriptions.retrieve(
+                    existingStripeSubRes.rows[0].stripe_subscription_id
+                );
+                const item = existingStripeSub.items.data[0];
+                await stripe.subscriptionItems.update(item.id, {
+                    quantity: item.quantity + 1
+                });
+                stripeSubId = existingStripeSub.id;
+                pricePerUser = pkg.price || 0;
+                // Update purchased_seats count
+                await pool.query(
+                    `UPDATE client_companies SET purchased_seats = purchased_seats + 1 WHERE client_portal_id = $1`,
+                    [clientPortalId]
+                );
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No active subscription found. Please purchase a plan first.'
+                });
+            }
         }
 
-        // Create crm_subscription record
+        // Create crm_subscription record for this user (setup mode = $0, new mode = full price)
         const subRecord = await pool.query(`
             INSERT INTO crm_subscriptions (lead_id, lead_email, lead_name, package_key, package_name,
-                user_count, price_per_user, monthly_total, stripe_customer_id, stripe_subscription_id,
-                stripe_price_id, status, current_period_start, current_period_end,
-                client_portal_id, is_company_subscription, user_label)
-            VALUES ($1,$2,$3,$4,$5,1,$6,$6,$7,$8,$9,'active',$10,$11,$12,TRUE,$13)
-            ON CONFLICT (stripe_subscription_id) DO UPDATE SET status = 'active', updated_at = NOW()
+                user_count, price_per_user, monthly_total,
+                stripe_subscription_id, status, client_portal_id, is_company_subscription, user_label)
+            VALUES (NULL, $1, $2, $3, $4, 1, $5, $5, $6, 'active', $7, TRUE, $8)
             RETURNING id
-        `, [leadId, email, name, packageKey, pkg.name, pkg.price,
-            stripeCustomerId, subscription.id, subItem.price.id,
-            periodStart, periodEnd, clientPortalId, userLabel || null]);
+        `, [email, name, pkg.key || packageKey || 'crm', pkg.name, pricePerUser,
+            stripeSubId, clientPortalId, userLabel || null]);
 
-        const subscriptionId = subRecord.rows[0]?.id;
+        subscriptionId = subRecord.rows[0]?.id;
 
-        // Add to company_users
-        await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, subscription.id, packageKey, pkg.name, pkg.price);
+        // Add to company_users — NOT to leads table
+        await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser);
 
-        // Generate temp password
+        // Update company monthly total and active seats
+        await pool.query(`
+            UPDATE client_companies 
+            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
+                monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
+                updated_at = NOW()
+            WHERE client_portal_id = $1
+        `, [clientPortalId]);
+
+        // Create portal login for the new user (using leads table only for auth, not as a CRM lead)
         const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        // Upsert a minimal leads record purely for portal auth — hidden from CRM views
+        await pool.query(`
+            INSERT INTO leads (email, name, source, is_customer, customer_status, status, 
+                lead_temperature, client_portal_id, client_password, is_company_admin)
+            VALUES ($1, $2, 'company-user', TRUE, 'active', 'closed', 'cold', $3, $4, FALSE)
+            ON CONFLICT (email) DO UPDATE SET
+                client_portal_id = $3,
+                client_password = COALESCE(leads.client_password, EXCLUDED.client_password),
+                is_customer = TRUE,
+                customer_status = 'active',
+                updated_at = NOW()
+        `, [email, name, clientPortalId, hashedPassword]);
+
         await pool.query(`UPDATE leads SET client_password = $1 WHERE id = $2`, [hashedPassword, leadId]);
 
         // Send welcome email with credentials
@@ -10009,7 +10015,14 @@ async function processSubscriptionWebhook(event) {
                         SET client_portal_id = $1, is_company_admin = TRUE
                         WHERE id = $2
                     `, [clientPortalId, lead.id]);
-                    console.log(`[SUB WEBHOOK] ✅ Company admin linked: ${leadEmail} → ${clientPortalId}`);
+                    // Store how many seats were purchased so add-user can allow setup without extra charge
+                    const purchasedQty = parseInt(userCount) || 1;
+                    await pool.query(`
+                        UPDATE client_companies
+                        SET purchased_seats = purchased_seats + $1
+                        WHERE client_portal_id = $2
+                    `, [purchasedQty, clientPortalId]);
+                    console.log(`[SUB WEBHOOK] ✅ Company admin linked: ${leadEmail} → ${clientPortalId} (${purchasedQty} seats purchased)`);
                 }
                 
                 // Link company employees to company portal
@@ -19178,6 +19191,15 @@ async function startServer() {
         await addLeadSourceTracking();
         await initializeSubscriptionTables();
         await addLeadStripeCustomerColumn();
+
+        // Ensure client_companies has purchased_seats column
+        try {
+            await pool.query(`
+                ALTER TABLE client_companies
+                ADD COLUMN IF NOT EXISTS purchased_seats INTEGER NOT NULL DEFAULT 0
+            `);
+            console.log('[STARTUP] client_companies.purchased_seats ensured');
+        } catch(e) { console.warn('[STARTUP] purchased_seats migration skipped:', e.message); }
         
         // Migrate existing leads to temperature system
         await migrateExistingLeadsToTemperature();

@@ -7372,44 +7372,6 @@ if (typeof module !== 'undefined' && module.exports) {
 // Full subscriber list with cancel / reactivate / billing-portal actions
 // ═══════════════════════════════════════════════════════════════════
 
-async function deleteCompanyAccount(clientPortalId, companyName) {
-    if (!confirm(`Permanently delete company "${companyName}" (${clientPortalId}) and all its users and subscriptions? This cannot be undone.`)) return;
-    try {
-        const r = await fetch(`${API_URL}/api/admin/company/${clientPortalId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        const d = await r.json();
-        if (d.success) {
-            showToast(`Company "${companyName}" deleted`, 'success');
-            renderSubscriptions(document.getElementById('contentArea'));
-        } else {
-            showToast(d.message || 'Delete failed', 'error');
-        }
-    } catch (e) {
-        showToast('Error deleting company', 'error');
-    }
-}
-
-async function cleanupOrphanedCompanies() {
-    if (!confirm('This will permanently remove any company accounts whose customer has already been deleted. Continue?')) return;
-    try {
-        const r = await fetch(`${API_URL}/api/admin/cleanup-orphaned-companies`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        const d = await r.json();
-        if (d.success) {
-            showToast(d.message, 'success');
-            renderSubscriptions(document.getElementById('contentArea'));
-        } else {
-            showToast(d.message || 'Cleanup failed', 'error');
-        }
-    } catch (e) {
-        showToast('Error running cleanup', 'error');
-    }
-}
-
 async function renderSubscriptions(content) {
     content.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--text-muted);">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="animation:spin 1s linear infinite;margin-bottom:12px;">
@@ -7454,9 +7416,6 @@ async function renderSubscriptions(content) {
                     Manage all subscriptions — individual users and company accounts with their team members.
                 </p>
             </div>
-            <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="cleanupOrphanedCompanies()">
-                🧹 Remove Deleted Accounts
-            </button>
         </div>
 
         <!-- KPI strip -->
@@ -7527,9 +7486,6 @@ async function renderSubscriptions(content) {
                                     <div style="font-size:24px;font-weight:800;color:#059669;">$${parseFloat(company.company_monthly_total || 0).toFixed(2)}</div>
                                     <div style="font-size:11px;color:var(--text-muted);">Monthly Total</div>
                                     <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">${activeSeats} active / ${totalSeats} total seats</div>
-                                    <button onclick="deleteCompanyAccount('${company.client_portal_id}', '${(company.company_name || '').replace(/'/g, "\\'")}')" style="margin-top:10px;background:transparent;border:1px solid var(--danger,#ef4444);color:var(--danger,#ef4444);padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">
-                                        🗑 Delete Company
-                                    </button>
                                 </div>
                             </div>
 
@@ -7761,6 +7717,97 @@ function filterSubRows() {
 
 // ── Cancel modal state ─────────────────────────────────────────────
 let _subCancelId = null;
+
+const CRM_PLAN_PRICES = {
+    'crm-essential': { name: 'Essential CRM', price: 19.99 },
+    'crm-professional': { name: 'Professional CRM', price: 49.99 },
+    'crm-enterprise': { name: 'Enterprise CRM', price: 64.99 }
+};
+
+let _setupSubLeadId = null;
+let _setupSubType = 'individual';
+
+function openSetupSubscriptionModal(leadId) {
+    _setupSubLeadId = leadId;
+    _setupSubType = 'individual';
+    const lead = [...(state.leads||[]), ...(state.customers||[])].find(l => l.id === leadId);
+    const title = document.getElementById('setupSubModalTitle');
+    if (title && lead) title.textContent = `Set Up Subscription — ${lead.name}`;
+    setSetupSubType('individual');
+    updateSetupSubPreview();
+    document.getElementById('setupSubModal').style.display = 'flex';
+}
+
+function setSetupSubType(type) {
+    _setupSubType = type;
+    const isCompany = type === 'company';
+    const indBtn = document.getElementById('setupSubTypeIndividual');
+    const comBtn = document.getElementById('setupSubTypeCompany');
+    indBtn.style.borderColor = isCompany ? 'var(--border-color,#e5e7eb)' : '#818cf8';
+    indBtn.style.background = isCompany ? 'transparent' : 'rgba(99,102,241,0.12)';
+    indBtn.style.color = isCompany ? 'var(--text-muted)' : '#818cf8';
+    comBtn.style.borderColor = isCompany ? '#818cf8' : 'var(--border-color,#e5e7eb)';
+    comBtn.style.background = isCompany ? 'rgba(99,102,241,0.12)' : 'transparent';
+    comBtn.style.color = isCompany ? '#818cf8' : 'var(--text-muted)';
+    document.getElementById('setupSubCompanyRow').style.display = isCompany ? 'block' : 'none';
+    updateSetupSubPreview();
+}
+
+function updateSetupSubPreview() {
+    const plan = document.getElementById('setupSubPlan').value;
+    const seats = parseInt(document.getElementById('setupSubSeats').value) || 1;
+    const planData = CRM_PLAN_PRICES[plan] || { name: plan, price: 0 };
+    const total = (planData.price * seats).toFixed(2);
+    document.getElementById('setupSubPreviewAmount').textContent = `$${total}/mo`;
+    document.getElementById('setupSubPreviewNote').textContent =
+        `${seats} user${seats !== 1 ? 's' : ''} · ${planData.name}${_setupSubType === 'company' ? ' · Company Account' : ''}`;
+}
+
+async function launchAdminSubscriptionCheckout() {
+    if (!_setupSubLeadId) return;
+    const plan = document.getElementById('setupSubPlan').value;
+    const seats = parseInt(document.getElementById('setupSubSeats').value) || 1;
+    const companyName = document.getElementById('setupSubCompanyName').value.trim();
+    const btn = document.getElementById('setupSubBtn');
+
+    if (_setupSubType === 'company' && !companyName) {
+        showToast('Please enter a company name', 'error'); return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Generating...';
+    try {
+        const body = {
+            packageKey: plan,
+            userCount: seats,
+            leadId: _setupSubLeadId,
+            successUrl: window.location.origin + '/admin_portal.html',
+            cancelUrl: window.location.origin + '/admin_portal.html'
+        };
+        if (_setupSubType === 'company') {
+            body.userType = 'company-new';
+            body.companyName = companyName;
+        }
+
+        const r = await fetch(`${API_URL}/api/subscriptions/checkout`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const d = await r.json();
+        if (d.success && d.checkoutUrl) {
+            document.getElementById('setupSubModal').style.display = 'none';
+            // Open checkout in new tab so admin can share link or complete on behalf of customer
+            window.open(d.checkoutUrl, '_blank');
+            showToast('Checkout link opened in new tab. Share with customer or complete payment.', 'success');
+        } else {
+            showToast(d.message || 'Failed to create checkout', 'error');
+        }
+    } catch(e) {
+        showToast('Error: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false; btn.textContent = 'Generate Checkout Link';
+    }
+}
 
 function _openSubCancelModal(subId, subName, planName) {
     _subCancelId = subId;
@@ -10654,6 +10701,12 @@ async function openDetailModal(type, id) {
                     Create Invoice
                 </button>
             `}
+            <button class="btn btn-secondary" onclick="openSetupSubscriptionModal(${id})" style="background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.3);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+                Set Up Subscription
+            </button>
             <button class="btn btn-danger" onclick="deleteLead(${id})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6"/>
@@ -20984,6 +21037,58 @@ async function sendMarketingBlast() {
 <!-- ═══════════════════════════════════════════════════════════════════
      SUBSCRIPTION CANCEL MODAL (with admin password validation)
      ═══════════════════════════════════════════════════════════════════ -->
+<!-- Setup Subscription Modal -->
+<div id="setupSubModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+    <div style="background:var(--bg-primary,#fff);border-radius:12px;padding:32px;max-width:520px;width:calc(100% - 32px);box-shadow:0 20px 60px rgba(0,0,0,0.3);border:1px solid var(--border-color,#e5e7eb);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <div>
+                <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:4px;">Admin</div>
+                <h3 style="font-size:18px;font-weight:800;margin:0;color:var(--text-primary);" id="setupSubModalTitle">Set Up Subscription</h3>
+            </div>
+            <button onclick="document.getElementById('setupSubModal').style.display='none'" style="background:transparent;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;line-height:1;">✕</button>
+        </div>
+        <div style="margin-bottom:20px;">
+            <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px;">Subscription Type</label>
+            <div style="display:flex;gap:8px;">
+                <button id="setupSubTypeIndividual" onclick="setSetupSubType('individual')" style="flex:1;padding:10px;border-radius:8px;border:2px solid #818cf8;background:rgba(99,102,241,0.12);color:#818cf8;font-weight:700;font-size:13px;cursor:pointer;">
+                    Individual
+                </button>
+                <button id="setupSubTypeCompany" onclick="setSetupSubType('company')" style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--border-color,#e5e7eb);background:transparent;color:var(--text-muted);font-weight:700;font-size:13px;cursor:pointer;">
+                    Company
+                </button>
+            </div>
+        </div>
+        <div style="margin-bottom:16px;">
+            <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px;">Plan</label>
+            <select id="setupSubPlan" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color,#e5e7eb);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;" onchange="updateSetupSubPreview()">
+                <option value="crm-essential">Essential CRM — $19.99/user/mo</option>
+                <option value="crm-professional" selected>Professional CRM — $49.99/user/mo</option>
+                <option value="crm-enterprise">Enterprise CRM — $64.99/user/mo</option>
+            </select>
+        </div>
+        <div id="setupSubSeatsRow" style="margin-bottom:16px;">
+            <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px;">Number of Users / Seats</label>
+            <input type="number" id="setupSubSeats" min="1" max="100" value="1" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color,#e5e7eb);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;" oninput="updateSetupSubPreview()">
+        </div>
+        <div id="setupSubCompanyRow" style="margin-bottom:16px;display:none;">
+            <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px;">Company Name</label>
+            <input type="text" id="setupSubCompanyName" placeholder="Company name" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color,#e5e7eb);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;">
+        </div>
+        <div id="setupSubPreview" style="background:var(--bg-secondary);border-radius:8px;padding:16px;margin-bottom:20px;">
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;">Monthly total</div>
+            <div id="setupSubPreviewAmount" style="font-size:24px;font-weight:800;color:var(--text-primary);">$49.99/mo</div>
+            <div id="setupSubPreviewNote" style="font-size:12px;color:var(--text-muted);margin-top:4px;">1 user · Professional CRM</div>
+        </div>
+        <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:#818cf8;">
+            A Stripe Checkout link will be generated and opened for the customer. Once they complete payment, their subscription and portal access will be automatically activated.
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button onclick="document.getElementById('setupSubModal').style.display='none'" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border-color);background:transparent;color:var(--text-muted);font-weight:600;cursor:pointer;">Cancel</button>
+            <button id="setupSubBtn" onclick="launchAdminSubscriptionCheckout()" style="padding:10px 24px;border-radius:8px;border:none;background:#818cf8;color:#fff;font-weight:700;cursor:pointer;">Generate Checkout Link</button>
+        </div>
+    </div>
+</div>
+
 <div id="subCancelModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
     <div style="background:var(--bg-primary,#fff);border-radius:12px;padding:32px;max-width:460px;width:calc(100% - 32px);box-shadow:0 20px 60px rgba(0,0,0,0.3);border:1px solid var(--border-color,#e5e7eb);">
         <!-- Header -->

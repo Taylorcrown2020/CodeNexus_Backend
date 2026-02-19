@@ -3325,38 +3325,158 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
     try {
         const leadId = req.params.id;
 
-        // Get lead email first
-        const leadResult = await pool.query('SELECT email FROM leads WHERE id = $1', [leadId]);
+        // Get full lead/customer info
+        const leadResult = await pool.query(`
+            SELECT email, stripe_customer_id, client_portal_id, is_company_admin 
+            FROM leads WHERE id = $1
+        `, [leadId]);
+        
         if (leadResult.rows.length === 0) {
             return res.status(404).json({ 
                 success: false, 
-                message: 'Lead not found.' 
+                message: 'Lead/Customer not found.' 
             });
         }
         
-        const leadEmail = leadResult.rows[0].email;
-
-        // Delete all appointments associated with this lead
-        await pool.query('DELETE FROM appointments WHERE LOWER(lead_email) = LOWER($1)', [leadEmail]);
-        console.log(`🗑️ Deleted appointments for lead ${leadId} (${leadEmail})`);
-
-        // Delete all notes associated with the lead
-        await pool.query('DELETE FROM lead_notes WHERE lead_id = $1', [leadId]);
+        const lead = leadResult.rows[0];
+        const leadEmail = lead.email;
+        const stripeCustomerId = lead.stripe_customer_id;
+        const clientPortalId = lead.client_portal_id;
+        const isCompanyAdmin = lead.is_company_admin;
         
-        // Then delete the lead/customer
-        const result = await pool.query('DELETE FROM leads WHERE id = $1 RETURNING *', [leadId]);
-
-        console.log(`✅ Lead/Customer ${leadId} deleted with all associated appointments`);
+        console.log(`[DELETE CUSTOMER] Starting complete wipe for ${leadEmail} (ID: ${leadId})`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 1. IMMEDIATELY CANCEL ALL STRIPE SUBSCRIPTIONS
+        // ══════════════════════════════════════════════════════════════
+        if (stripeCustomerId) {
+            try {
+                const subscriptions = await stripe.subscriptions.list({
+                    customer: stripeCustomerId,
+                    status: 'all'
+                });
+                
+                for (const sub of subscriptions.data) {
+                    if (sub.status === 'active' || sub.status === 'past_due' || sub.status === 'trialing') {
+                        await stripe.subscriptions.cancel(sub.id);
+                        console.log(`[DELETE] Cancelled Stripe subscription: ${sub.id}`);
+                    }
+                }
+                
+                // Delete the Stripe customer entirely
+                await stripe.customers.del(stripeCustomerId);
+                console.log(`[DELETE] Deleted Stripe customer: ${stripeCustomerId}`);
+            } catch (stripeErr) {
+                console.error('[DELETE] Stripe deletion error:', stripeErr.message);
+                // Continue with database deletion even if Stripe fails
+            }
+        }
+        
+        // ══════════════════════════════════════════════════════════════
+        // 2. IF COMPANY ADMIN - DELETE ENTIRE COMPANY
+        // ══════════════════════════════════════════════════════════════
+        if (isCompanyAdmin && clientPortalId) {
+            console.log(`[DELETE] Deleting entire company: ${clientPortalId}`);
+            
+            // Get all company users
+            const companyUsers = await pool.query(
+                `SELECT user_email, stripe_subscription_id FROM company_users WHERE client_portal_id = $1`,
+                [clientPortalId]
+            );
+            
+            // Cancel all company user subscriptions in Stripe
+            for (const user of companyUsers.rows) {
+                if (user.stripe_subscription_id) {
+                    try {
+                        await stripe.subscriptions.cancel(user.stripe_subscription_id);
+                        console.log(`[DELETE] Cancelled company user subscription: ${user.stripe_subscription_id}`);
+                    } catch (err) {
+                        console.error(`[DELETE] Error cancelling ${user.user_email}:`, err.message);
+                    }
+                }
+            }
+            
+            // Delete company_users records
+            await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [clientPortalId]);
+            console.log(`[DELETE] Deleted ${companyUsers.rows.length} company user records`);
+            
+            // Delete company record
+            await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [clientPortalId]);
+            console.log(`[DELETE] Deleted company record: ${clientPortalId}`);
+        }
+        
+        // ══════════════════════════════════════════════════════════════
+        // 3. DELETE ALL CRM DATA
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM client_contacts WHERE client_id = $1`, [leadId]);
+        await pool.query(`DELETE FROM client_deals WHERE client_id = $1`, [leadId]);
+        await pool.query(`DELETE FROM client_tasks WHERE client_id = $1`, [leadId]);
+        await pool.query(`DELETE FROM client_activity WHERE client_id = $1`, [leadId]);
+        await pool.query(`DELETE FROM client_notes WHERE client_id = $1`, [leadId]);
+        console.log(`[DELETE] Wiped all CRM data`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 4. DELETE ALL SUBSCRIPTION RECORDS
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM crm_subscriptions WHERE lead_id = $1`, [leadId]);
+        await pool.query(`DELETE FROM crm_subscriptions WHERE lead_email = $1`, [leadEmail]);
+        await pool.query(`DELETE FROM subscription_events WHERE customer_email = $1`, [leadEmail]);
+        console.log(`[DELETE] Wiped all subscription records`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 5. DELETE ALL PROJECT DATA
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM project_timeline_items WHERE lead_id = $1`, [leadId]);
+        await pool.query(`DELETE FROM project_files WHERE lead_id = $1`, [leadId]);
+        console.log(`[DELETE] Wiped all project data`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 6. DELETE ALL INVOICES
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM invoices WHERE lead_id = $1`, [leadId]);
+        console.log(`[DELETE] Wiped all invoices`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 7. DELETE ALL APPOINTMENTS
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM appointments WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]);
+        console.log(`[DELETE] Wiped all appointments`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 8. DELETE ALL NOTES
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM lead_notes WHERE lead_id = $1`, [leadId]);
+        console.log(`[DELETE] Wiped all notes`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 9. DELETE ALL EMAIL TRACKING
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM email_events WHERE lead_id = $1`, [leadId]);
+        console.log(`[DELETE] Wiped all email tracking`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 10. DELETE ALL ENGAGEMENT DATA
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM lead_engagement WHERE lead_id = $1`, [leadId]);
+        console.log(`[DELETE] Wiped all engagement data`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 11. FINALLY DELETE THE LEAD/CUSTOMER RECORD
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM leads WHERE id = $1`, [leadId]);
+        console.log(`[DELETE] Deleted lead/customer record`);
+        
+        console.log(`✅ [DELETE COMPLETE] Customer ${leadEmail} completely wiped from system`);
 
         res.json({
             success: true,
-            message: 'Lead/Customer deleted successfully.'
+            message: 'Customer and all associated data permanently deleted.'
         });
     } catch (error) {
-        console.error('Delete lead error:', error);
+        console.error('[DELETE CUSTOMER] Error:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Server error.' 
+            message: 'Server error during deletion: ' + error.message
         });
     }
 });
@@ -8467,6 +8587,289 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
     }
 });
 
+
+// ========================================
+// CRM DATA ENDPOINTS - SHARED ACROSS COMPANY
+// ========================================
+
+// Helper to get all user IDs in a company (for shared data access)
+async function getCompanyUserIds(userId) {
+    const userResult = await pool.query(
+        `SELECT client_portal_id FROM leads WHERE id = $1`,
+        [userId]
+    );
+    
+    const clientPortalId = userResult.rows[0]?.client_portal_id;
+    
+    if (clientPortalId) {
+        // User is in a company - get all company user IDs
+        const companyUsersResult = await pool.query(
+            `SELECT l.id FROM leads l WHERE l.client_portal_id = $1`,
+            [clientPortalId]
+        );
+        return companyUsersResult.rows.map(r => r.id);
+    } else {
+        // Individual user
+        return [userId];
+    }
+}
+
+// GET /api/client/contacts - List all contacts (shared within company)
+app.get('/api/client/contacts', authenticateClient, async (req, res) => {
+    try {
+        const userIds = await getCompanyUserIds(req.user.id);
+        
+        const result = await pool.query(
+            `SELECT * FROM client_contacts 
+             WHERE client_id = ANY($1)
+             ORDER BY created_at DESC`,
+            [userIds]
+        );
+        
+        res.json({ success: true, contacts: result.rows });
+    } catch (error) {
+        console.error('[CONTACTS] List error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// POST /api/client/contacts - Create contact
+app.post('/api/client/contacts', authenticateClient, async (req, res) => {
+    try {
+        const { name, email, phone, company, notes } = req.body;
+        
+        const result = await pool.query(
+            `INSERT INTO client_contacts (
+                client_id, name, email, phone, company, notes, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+            RETURNING *`,
+            [req.user.id, name, email, phone, company, notes]
+        );
+        
+        res.json({ success: true, contact: result.rows[0] });
+    } catch (error) {
+        console.error('[CONTACTS] Create error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// PUT /api/client/contacts/:id - Update contact
+app.put('/api/client/contacts/:id', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, phone, company, notes } = req.body;
+        const userIds = await getCompanyUserIds(req.user.id);
+        
+        const result = await pool.query(
+            `UPDATE client_contacts 
+             SET name = $1, email = $2, phone = $3, company = $4, notes = $5, updated_at = NOW()
+             WHERE id = $6 AND client_id = ANY($7)
+             RETURNING *`,
+            [name, email, phone, company, notes, id, userIds]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Contact not found' });
+        }
+        
+        res.json({ success: true, contact: result.rows[0] });
+    } catch (error) {
+        console.error('[CONTACTS] Update error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// DELETE /api/client/contacts/:id - Delete contact
+app.delete('/api/client/contacts/:id', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userIds = await getCompanyUserIds(req.user.id);
+        
+        await pool.query(
+            `DELETE FROM client_contacts WHERE id = $1 AND client_id = ANY($2)`,
+            [id, userIds]
+        );
+        
+        res.json({ success: true, message: 'Contact deleted' });
+    } catch (error) {
+        console.error('[CONTACTS] Delete error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// GET /api/client/deals - List all deals (shared within company)
+app.get('/api/client/deals', authenticateClient, async (req, res) => {
+    try {
+        const userIds = await getCompanyUserIds(req.user.id);
+        
+        const result = await pool.query(
+            `SELECT d.*, c.name as contact_name 
+             FROM client_deals d
+             LEFT JOIN client_contacts c ON d.contact_id = c.id
+             WHERE d.client_id = ANY($1)
+             ORDER BY d.created_at DESC`,
+            [userIds]
+        );
+        
+        res.json({ success: true, deals: result.rows });
+    } catch (error) {
+        console.error('[DEALS] List error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// POST /api/client/deals - Create deal
+app.post('/api/client/deals', authenticateClient, async (req, res) => {
+    try {
+        const { name, amount, stage, contactId, probability, expectedCloseDate, notes } = req.body;
+        
+        const result = await pool.query(
+            `INSERT INTO client_deals (
+                client_id, name, amount, stage, contact_id, probability, 
+                expected_close_date, notes, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+            RETURNING *`,
+            [req.user.id, name, amount, stage, contactId, probability, expectedCloseDate, notes]
+        );
+        
+        res.json({ success: true, deal: result.rows[0] });
+    } catch (error) {
+        console.error('[DEALS] Create error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// PUT /api/client/deals/:id - Update deal
+app.put('/api/client/deals/:id', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, amount, stage, contactId, probability, expectedCloseDate, notes } = req.body;
+        const userIds = await getCompanyUserIds(req.user.id);
+        
+        const result = await pool.query(
+            `UPDATE client_deals 
+             SET name = $1, amount = $2, stage = $3, contact_id = $4, 
+                 probability = $5, expected_close_date = $6, notes = $7, updated_at = NOW()
+             WHERE id = $8 AND client_id = ANY($9)
+             RETURNING *`,
+            [name, amount, stage, contactId, probability, expectedCloseDate, notes, id, userIds]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Deal not found' });
+        }
+        
+        res.json({ success: true, deal: result.rows[0] });
+    } catch (error) {
+        console.error('[DEALS] Update error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// DELETE /api/client/deals/:id - Delete deal
+app.delete('/api/client/deals/:id', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userIds = await getCompanyUserIds(req.user.id);
+        
+        await pool.query(
+            `DELETE FROM client_deals WHERE id = $1 AND client_id = ANY($2)`,
+            [id, userIds]
+        );
+        
+        res.json({ success: true, message: 'Deal deleted' });
+    } catch (error) {
+        console.error('[DEALS] Delete error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// GET /api/client/tasks - List tasks
+app.get('/api/client/tasks', authenticateClient, async (req, res) => {
+    try {
+        const userIds = await getCompanyUserIds(req.user.id);
+        
+        const result = await pool.query(
+            `SELECT * FROM client_tasks 
+             WHERE client_id = ANY($1)
+             ORDER BY completed ASC, due_date ASC NULLS LAST, created_at DESC`,
+            [userIds]
+        );
+        
+        res.json({ success: true, tasks: result.rows });
+    } catch (error) {
+        console.error('[TASKS] List error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// POST /api/client/tasks - Create task
+app.post('/api/client/tasks', authenticateClient, async (req, res) => {
+    try {
+        const { title, description, dueDate, priority, relatedToType, relatedToId } = req.body;
+        
+        const result = await pool.query(
+            `INSERT INTO client_tasks (
+                client_id, title, description, due_date, priority, 
+                related_to_type, related_to_id, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            RETURNING *`,
+            [req.user.id, title, description, dueDate, priority, relatedToType, relatedToId]
+        );
+        
+        res.json({ success: true, task: result.rows[0] });
+    } catch (error) {
+        console.error('[TASKS] Create error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// PUT /api/client/tasks/:id - Update task
+app.put('/api/client/tasks/:id', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, dueDate, priority, completed } = req.body;
+        const userIds = await getCompanyUserIds(req.user.id);
+        
+        const result = await pool.query(
+            `UPDATE client_tasks 
+             SET title = $1, description = $2, due_date = $3, priority = $4, 
+                 completed = $5, completed_at = CASE WHEN $5 = TRUE THEN NOW() ELSE NULL END,
+                 updated_at = NOW()
+             WHERE id = $6 AND client_id = ANY($7)
+             RETURNING *`,
+            [title, description, dueDate, priority, completed, id, userIds]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Task not found' });
+        }
+        
+        res.json({ success: true, task: result.rows[0] });
+    } catch (error) {
+        console.error('[TASKS] Update error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// DELETE /api/client/tasks/:id - Delete task
+app.delete('/api/client/tasks/:id', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userIds = await getCompanyUserIds(req.user.id);
+        
+        await pool.query(
+            `DELETE FROM client_tasks WHERE id = $1 AND client_id = ANY($2)`,
+            [id, userIds]
+        );
+        
+        res.json({ success: true, message: 'Task deleted' });
+    } catch (error) {
+        console.error('[TASKS] Delete error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // ========================================
 // COMPANY MANAGEMENT API ENDPOINTS
 // ========================================
@@ -8630,6 +9033,59 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
                     success: false,
                     message: 'Failed to cancel subscription in Stripe'
                 });
+            }
+        }
+        
+        // Reassign all user's CRM data to company admin before cancelling
+        const adminResult = await pool.query(
+            `SELECT l.id FROM leads l
+             JOIN client_companies cc ON l.email = cc.admin_email
+             WHERE cc.client_portal_id = $1`,
+            [clientPortalId]
+        );
+        
+        const adminLeadId = adminResult.rows[0]?.id;
+        
+        if (adminLeadId) {
+            const cancelledUserResult = await pool.query(
+                `SELECT id FROM leads WHERE email = $1`,
+                [user.user_email]
+            );
+            
+            const cancelledUserId = cancelledUserResult.rows[0]?.id;
+            
+            if (cancelledUserId) {
+                console.log(`[CANCEL] Reassigning data from user ${cancelledUserId} to admin ${adminLeadId}`);
+                
+                // Reassign contacts
+                await pool.query(
+                    `UPDATE client_contacts SET client_id = $1, updated_at = NOW() 
+                     WHERE client_id = $2`,
+                    [adminLeadId, cancelledUserId]
+                );
+                
+                // Reassign deals
+                await pool.query(
+                    `UPDATE client_deals SET client_id = $1, updated_at = NOW() 
+                     WHERE client_id = $2`,
+                    [adminLeadId, cancelledUserId]
+                );
+                
+                // Reassign tasks
+                await pool.query(
+                    `UPDATE client_tasks SET client_id = $1, updated_at = NOW() 
+                     WHERE client_id = $2`,
+                    [adminLeadId, cancelledUserId]
+                );
+                
+                // Reassign activity
+                await pool.query(
+                    `UPDATE client_activity SET client_id = $1 
+                     WHERE client_id = $2`,
+                    [adminLeadId, cancelledUserId]
+                );
+                
+                console.log(`[CANCEL] ✅ All CRM data reassigned to admin`);
             }
         }
         
@@ -8909,9 +9365,9 @@ async function processSubscriptionWebhook(event) {
 
         // Multiple subscriptions are allowed - customer can have separate subscriptions for different teams
 
-                // If no lead/customer exists, create them as a CUSTOMER (not a lead)
+                // ALWAYS create/update lead record - needed for invoice generation
         if (!lead && leadEmail) {
-            console.log(`[SUB WEBHOOK] No existing customer/lead found for ${leadEmail} - creating new CUSTOMER`);
+            console.log(`[SUB WEBHOOK] No existing lead found for ${leadEmail} - creating record`);
             
             const newCustomerResult = await pool.query(`
                 INSERT INTO leads (
@@ -8919,11 +9375,16 @@ async function processSubscriptionWebhook(event) {
                     is_customer, customer_status, status, created_at, updated_at
                 )
                 VALUES ($1, $2, 'subscription-direct', 'hot', $3, TRUE, 'active', 'closed', NOW(), NOW())
+                ON CONFLICT (email) DO UPDATE SET
+                    stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, leads.stripe_customer_id),
+                    is_customer = TRUE,
+                    customer_status = 'active',
+                    updated_at = NOW()
                 RETURNING id, name, email
             `, [leadEmail, leadEmail.split('@')[0], customerId]);
             
             lead = newCustomerResult.rows[0];
-            console.log(`[SUB WEBHOOK] ✅ Created new CUSTOMER ${lead.id} (${leadEmail}) - NOT a lead`);
+            console.log(`[SUB WEBHOOK] ✅ Lead record ensured: ${lead.id} (${leadEmail})`);
         }
 
         await pool.query(`
@@ -8998,17 +9459,16 @@ async function processSubscriptionWebhook(event) {
                     console.log(`[SUB WEBHOOK] ✅ Company admin linked: ${leadEmail} → ${clientPortalId}`);
                 }
                 
-                // If this is a company-employee, do NOT mark them as a customer in leads table
-                // They exist only as company_users, not as standalone customers
+                // Link company employees to company portal
                 if (userType === 'company-employee' && lead && lead.id) {
                     await pool.query(`
                         UPDATE leads 
-                        SET is_customer = FALSE,
-                            customer_status = NULL,
-                            status = 'closed'
-                        WHERE id = $1
-                    `, [lead.id]);
-                    console.log(`[SUB WEBHOOK] ✅ Company employee NOT marked as customer: ${leadEmail}`);
+                        SET client_portal_id = $1,
+                            is_customer = TRUE,
+                            customer_status = 'active'
+                        WHERE id = $2
+                    `, [clientPortalId, lead.id]);
+                    console.log(`[SUB WEBHOOK] ✅ Company employee linked: ${leadEmail} → ${clientPortalId}`);
                 }
                 
                 console.log(`[SUB WEBHOOK] ✅ Company user added to ${clientPortalId}`);
@@ -13145,6 +13605,122 @@ app.post('/api/client/login', async (req, res) => {
             success: false, 
             message: 'Server error during login. Please try again.' 
         });
+    }
+});
+
+
+// POST /api/client/company/promote-admin - Promote user to co-admin
+app.post('/api/client/company/promote-admin', authenticateClient, async (req, res) => {
+    try {
+        const { userId } = req.body; // company_users.id
+        const email = req.user.email;
+        
+        // Verify requester is admin or co-admin
+        const adminCheck = await pool.query(
+            `SELECT client_portal_id, is_company_admin, is_co_admin 
+             FROM leads WHERE email = $1`,
+            [email]
+        );
+        
+        if (!adminCheck.rows[0]?.is_company_admin && !adminCheck.rows[0]?.is_co_admin) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Only admins can promote users' 
+            });
+        }
+        
+        const clientPortalId = adminCheck.rows[0].client_portal_id;
+        
+        // Get user to promote
+        const userResult = await pool.query(
+            `SELECT * FROM company_users WHERE id = $1 AND client_portal_id = $2`,
+            [userId, clientPortalId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        
+        const user = userResult.rows[0];
+        
+        // Update company_users
+        await pool.query(
+            `UPDATE company_users SET is_admin = TRUE WHERE id = $1`,
+            [userId]
+        );
+        
+        // Update/create lead record as co-admin
+        await pool.query(`
+            UPDATE leads 
+            SET is_co_admin = TRUE,
+                client_portal_id = $1,
+                is_customer = TRUE,
+                customer_status = 'active'
+            WHERE email = $2
+        `, [clientPortalId, user.user_email]);
+        
+        console.log(`[CO-ADMIN] Promoted ${user.user_email} to co-admin`);
+        
+        res.json({ 
+            success: true, 
+            message: `${user.user_name} promoted to co-admin` 
+        });
+    } catch (error) {
+        console.error('[CO-ADMIN] Promotion error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// POST /api/client/company/demote-admin - Remove co-admin status
+app.post('/api/client/company/demote-admin', authenticateClient, async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const email = req.user.email;
+        
+        // Verify requester is company admin (not co-admin)
+        const adminCheck = await pool.query(
+            `SELECT client_portal_id, is_company_admin FROM leads WHERE email = $1`,
+            [email]
+        );
+        
+        if (!adminCheck.rows[0]?.is_company_admin) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Only company admins can demote co-admins' 
+            });
+        }
+        
+        const clientPortalId = adminCheck.rows[0].client_portal_id;
+        
+        // Get user
+        const userResult = await pool.query(
+            `SELECT * FROM company_users WHERE id = $1 AND client_portal_id = $2`,
+            [userId, clientPortalId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        
+        const user = userResult.rows[0];
+        
+        // Update tables
+        await pool.query(
+            `UPDATE company_users SET is_admin = FALSE WHERE id = $1`,
+            [userId]
+        );
+        
+        await pool.query(
+            `UPDATE leads SET is_co_admin = FALSE WHERE email = $1`,
+            [user.user_email]
+        );
+        
+        console.log(`[CO-ADMIN] Demoted ${user.user_email}`);
+        
+        res.json({ success: true, message: `${user.user_name} removed from co-admin` });
+    } catch (error) {
+        console.error('[CO-ADMIN] Demotion error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 

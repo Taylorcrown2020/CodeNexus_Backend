@@ -641,10 +641,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 // Send email via Brevo
 async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, html) {
-    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-    apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, brevoApiKey);
+    const { TransactionalEmailsApi, SendSmtpEmail, TransactionalEmailsApiApiKeys } = SibApiV3Sdk;
+    const apiInstance = new TransactionalEmailsApi();
+    apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, brevoApiKey);
     
-    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    const sendSmtpEmail = new SendSmtpEmail();
     sendSmtpEmail.sender = { email: senderEmail, name: senderName || 'Diamondback Coding' };
     sendSmtpEmail.to = [{ email: to }];
     sendSmtpEmail.subject = subject;

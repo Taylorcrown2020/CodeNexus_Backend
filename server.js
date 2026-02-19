@@ -641,20 +641,18 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 // Send email via Brevo
 async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, html, attachments = []) {
-    // @getbrevo/brevo SDK: classes live directly on the module object
-    // API key is set via authentications, NOT setApiKey()
-    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-    apiInstance.authentications['api-key'].apiKey = brevoApiKey;
-    
-    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-    sendSmtpEmail.sender = { email: senderEmail, name: senderName || 'Diamondback Coding' };
-    sendSmtpEmail.to = [{ email: to }];
-    sendSmtpEmail.subject = subject;
-    sendSmtpEmail.htmlContent = html;
-    
-    // Support attachments via Brevo (base64 encoded)
+    // Use Brevo REST API directly — no SDK dependency, no constructor issues.
+    const https = require('https');
+
+    const payload = {
+        sender: { email: senderEmail, name: senderName || 'Diamondback Coding' },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html
+    };
+
     if (attachments && attachments.length > 0) {
-        sendSmtpEmail.attachment = attachments.map(att => ({
+        payload.attachment = attachments.map(att => ({
             name: att.filename,
             content: Buffer.isBuffer(att.content)
                 ? att.content.toString('base64')
@@ -662,33 +660,51 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
         }));
     }
 
-    // CRITICAL: Enable Brevo's built-in open and click tracking
-    // Without this, Brevo won't send webhook events!
-    sendSmtpEmail.params = {
-        TRACKING_ENABLED: 'true'
-    };
-    
-    console.log('[BREVO] Sending email with Brevo tracking ENABLED' + (attachments.length > 0 ? ` + ${attachments.length} attachment(s)` : ''));
-    
-    try {
-        const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        // response.body.messageId is the Brevo message ID (e.g. "<xxx@smtp-relay.mailin.fr>")
-        const messageId = response?.body?.messageId || response?.messageId || null;
-        console.log('[BREVO] ✅ Email accepted by Brevo. Message ID:', messageId);
-        return { response, messageId };
-    } catch (error) {
-        // Extract detailed error information from Brevo API
-        const errorMessage = error.response?.body?.message || error.message || 'Unknown Brevo error';
-        const errorCode = error.response?.body?.code || error.statusCode;
-        console.error('[BREVO] ❌ Failed to send email:', {
-            to,
-            subject,
-            error: errorMessage,
-            code: errorCode
+    const body = JSON.stringify(payload);
+    console.log('[BREVO] Sending via REST API' + (attachments.length > 0 ? ` + ${attachments.length} attachment(s)` : ''));
+
+    return new Promise((resolve, reject) => {
+        const options = {
+            hostname: 'api.brevo.com',
+            path: '/v3/smtp/email',
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'api-key': brevoApiKey,
+                'content-type': 'application/json',
+                'content-length': Buffer.byteLength(body)
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(data);
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        const messageId = parsed.messageId || null;
+                        console.log('[BREVO] ✅ Email accepted. Message ID:', messageId);
+                        resolve({ messageId });
+                    } else {
+                        const errMsg = parsed.message || parsed.error || `HTTP ${res.statusCode}`;
+                        console.error('[BREVO] ❌ API error:', errMsg);
+                        reject(new Error(`Brevo send failed: ${errMsg}`));
+                    }
+                } catch (e) {
+                    reject(new Error(`Brevo response parse error: ${e.message}`));
+                }
+            });
         });
-        // Re-throw with more context so sendTrackedEmail can catch it
-        throw new Error(`Brevo send failed: ${errorMessage}`);
-    }
+
+        req.on('error', (e) => {
+            console.error('[BREVO] ❌ Request error:', e.message);
+            reject(new Error(`Brevo request failed: ${e.message}`));
+        });
+
+        req.write(body);
+        req.end();
+    });
 }
 
 // Validate email domain has mail servers BEFORE sending
@@ -19709,17 +19725,15 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
     // ── Try Brevo first (server-side, full tracking) ──────────────
     if (settings?.brevo_api_key && fromEmail) {
         try {
-            const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-            apiInstance.authentications['api-key'].apiKey = settings.brevo_api_key;
-
-            const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-            sendSmtpEmail.sender = { email: fromEmail, name: fromName };
-            sendSmtpEmail.to = [{ email: leadEmail }];
-            sendSmtpEmail.subject = subject;
-            sendSmtpEmail.htmlContent = html;
-
-            const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
-            const msgId = result?.body?.messageId || result?.messageId;
+            const brevoResult = await sendViaBrevo(
+                settings.brevo_api_key,
+                fromEmail,
+                fromName,
+                leadEmail,
+                subject,
+                html
+            );
+            const msgId = brevoResult?.messageId || null;
 
             await pool.query(`
                 UPDATE client_email_log
@@ -20798,6 +20812,47 @@ app.post('/api/client/leads/:leadId/auto-reply', authenticateClient, async (req,
     } catch (e) {
         // Column may not exist — return success silently
         res.json({ success: true, enabled: !!req.body.enabled });
+    }
+});
+
+// DELETE /api/admin/company/:clientPortalId — hard-delete a company account and all its data
+app.delete('/api/admin/company/:clientPortalId', authenticateToken, async (req, res) => {
+    try {
+        const { clientPortalId } = req.params;
+
+        // Cancel all Stripe subscriptions for company users
+        const users = await pool.query(
+            `SELECT user_email, stripe_subscription_id FROM company_users WHERE client_portal_id = $1`,
+            [clientPortalId]
+        );
+        for (const u of users.rows) {
+            if (u.stripe_subscription_id) {
+                try {
+                    await stripe.subscriptions.cancel(u.stripe_subscription_id);
+                    console.log(`[DELETE COMPANY] Cancelled Stripe sub: ${u.stripe_subscription_id}`);
+                } catch (err) {
+                    console.error(`[DELETE COMPANY] Stripe cancel error for ${u.user_email}:`, err.message);
+                }
+            }
+        }
+
+        // Delete all related records
+        await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]);
+        await pool.query(`DELETE FROM subscription_events WHERE lead_email IN (SELECT user_email FROM company_users WHERE client_portal_id = $1)`, [clientPortalId]);
+        await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [clientPortalId]);
+        await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [clientPortalId]);
+
+        // Also clear client_portal_id from any leads pointing at this company
+        await pool.query(
+            `UPDATE leads SET client_portal_id = NULL, is_company_admin = FALSE, updated_at = NOW() WHERE client_portal_id = $1`,
+            [clientPortalId]
+        );
+
+        console.log(`[DELETE COMPANY] ✅ Fully deleted company: ${clientPortalId}`);
+        res.json({ success: true, message: `Company ${clientPortalId} deleted.` });
+    } catch (e) {
+        console.error('[DELETE COMPANY] Error:', e);
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 

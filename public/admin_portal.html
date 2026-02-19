@@ -7372,6 +7372,25 @@ if (typeof module !== 'undefined' && module.exports) {
 // Full subscriber list with cancel / reactivate / billing-portal actions
 // ═══════════════════════════════════════════════════════════════════
 
+async function deleteCompanyAccount(clientPortalId, companyName) {
+    if (!confirm(`Permanently delete company "${companyName}" (${clientPortalId}) and all its users and subscriptions? This cannot be undone.`)) return;
+    try {
+        const r = await fetch(`${API_URL}/api/admin/company/${clientPortalId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const d = await r.json();
+        if (d.success) {
+            showToast(`Company "${companyName}" deleted`, 'success');
+            renderSubscriptions(document.getElementById('contentArea'));
+        } else {
+            showToast(d.message || 'Delete failed', 'error');
+        }
+    } catch (e) {
+        showToast('Error deleting company', 'error');
+    }
+}
+
 async function cleanupOrphanedCompanies() {
     if (!confirm('This will permanently remove any company accounts whose customer has already been deleted. Continue?')) return;
     try {
@@ -7508,6 +7527,9 @@ async function renderSubscriptions(content) {
                                     <div style="font-size:24px;font-weight:800;color:#059669;">$${parseFloat(company.company_monthly_total || 0).toFixed(2)}</div>
                                     <div style="font-size:11px;color:var(--text-muted);">Monthly Total</div>
                                     <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">${activeSeats} active / ${totalSeats} total seats</div>
+                                    <button onclick="deleteCompanyAccount('${company.client_portal_id}', '${(company.company_name || '').replace(/'/g, "\\'")}')" style="margin-top:10px;background:transparent;border:1px solid var(--danger,#ef4444);color:var(--danger,#ef4444);padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'">
+                                        🗑 Delete Company
+                                    </button>
                                 </div>
                             </div>
 

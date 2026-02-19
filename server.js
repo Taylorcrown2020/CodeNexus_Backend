@@ -3420,7 +3420,7 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         // ══════════════════════════════════════════════════════════════
         await pool.query(`DELETE FROM crm_subscriptions WHERE lead_id = $1`, [leadId]);
         await pool.query(`DELETE FROM crm_subscriptions WHERE lead_email = $1`, [leadEmail]);
-        await pool.query(`DELETE FROM subscription_events WHERE customer_email = $1`, [leadEmail]);
+        await pool.query(`DELETE FROM subscription_events WHERE lead_email = $1`, [leadEmail]);
         console.log(`[DELETE] Wiped all subscription records`);
         
         // ══════════════════════════════════════════════════════════════

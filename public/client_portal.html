@@ -1029,24 +1029,68 @@ tr:hover .row-actions { opacity: 1; }
             <div class="page-header">
                 <div class="page-title-group">
                     <div class="page-title">Follow-ups</div>
-                    <div class="page-subtitle">Cold &amp; hot lead outreach queue</div>
+                    <div class="page-subtitle">Cold &amp; hot lead outreach queue — temperature set by email engagement</div>
                 </div>
                 <div class="page-actions">
                     <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);cursor:pointer;">
                         <input type="checkbox" id="fuMineOnly" onchange="loadFollowups()" style="accent-color:var(--text-0);">
                         My leads only
                     </label>
+                    <button class="btn btn-default" onclick="setFUMainTab('templates',this)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                        Templates
+                    </button>
+                    <button class="btn btn-default" onclick="setFUMainTab('chains',this)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        Chains
+                    </button>
                 </div>
             </div>
             <div class="page-body">
-                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-                    <button class="btn btn-default fu-tab active-tab" onclick="setFUTab('all',this)">All Due</button>
-                    <button class="btn btn-default fu-tab" onclick="setFUTab('hot',this)">🔥 Hot</button>
-                    <button class="btn btn-default fu-tab" onclick="setFUTab('cold',this)">❄️ Cold</button>
-                    <button class="btn btn-default fu-tab" onclick="setFUTab('overdue',this)">⚠️ Overdue</button>
+                <!-- Main tab row -->
+                <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0;" id="fuMainTabBar">
+                    <button class="btn btn-ghost fu-main-tab active-fu-main-tab" onclick="setFUMainTab('queue',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">Queue</button>
+                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('templates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Templates</button>
+                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Automated Chains</button>
                 </div>
-                <div id="followupsContent">
-                    <div class="empty-state"><div class="spinner"></div></div>
+
+                <!-- Queue sub-tab content -->
+                <div id="fuQueueSection">
+                    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                        <button class="btn btn-default fu-tab active-tab" onclick="setFUTab('all',this)">All Due</button>
+                        <button class="btn btn-default fu-tab" onclick="setFUTab('hot',this)">🔥 Hot</button>
+                        <button class="btn btn-default fu-tab" onclick="setFUTab('cold',this)">❄️ Cold</button>
+                        <button class="btn btn-default fu-tab" onclick="setFUTab('overdue',this)">⚠️ Overdue</button>
+                    </div>
+                    <div id="followupsContent">
+                        <div class="empty-state"><div class="spinner"></div></div>
+                    </div>
+                </div>
+
+                <!-- Templates sub-tab content -->
+                <div id="fuTemplatesSection" style="display:none;">
+                    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+                        <button class="btn btn-default" onclick="openFUTemplateBuilder(null)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New Follow-up Template
+                        </button>
+                    </div>
+                    <div id="fuTemplatesContent">
+                        <div class="empty-state"><div class="spinner"></div></div>
+                    </div>
+                </div>
+
+                <!-- Chains sub-tab content -->
+                <div id="fuChainsSection" style="display:none;">
+                    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+                        <button class="btn btn-default" onclick="openFUChainBuilder()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New Follow-up Chain
+                        </button>
+                    </div>
+                    <div id="fuChainsContent">
+                        <div class="empty-state"><div class="spinner"></div></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1090,6 +1134,10 @@ tr:hover .row-actions { opacity: 1; }
                     <div class="page-title">Scheduling</div>
                 </div>
                 <div class="page-actions">
+                    <button class="btn btn-default" onclick="openAddAppointmentModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Appointment
+                    </button>
                     <button class="btn btn-default" onclick="copySchedulingLink()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                         Copy Booking Link
@@ -1331,27 +1379,51 @@ tr:hover .row-actions { opacity: 1; }
                 <!-- Brevo Integration -->
                 <div class="card" style="max-width:620px;margin-top:16px;">
                     <div class="card-header">
-                        <span class="card-title">Brevo Email Integration</span>
-                        <span style="font-size:11px;color:var(--text-3);margin-top:3px;display:block;">Required to send marketing emails, track opens &amp; clicks, and trigger hot lead conversions.</span>
+                        <span class="card-title">Email Provider</span>
+                        <span style="font-size:11px;color:var(--text-3);margin-top:3px;display:block;">Set up Brevo for full tracking, or use EmailJS as a fallback. Brevo takes priority when both are configured.</span>
                     </div>
                     <div class="card-body">
+                        <!-- Brevo Section -->
+                        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;">Brevo (Primary)</div>
                         <div style="background:#6366f111;border:1px solid #6366f133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
                             <strong style="color:var(--text-0);">How it works:</strong> Get your API key from <a href="https://app.brevo.com/settings/keys/api" target="_blank" style="color:#6366f1;">brevo.com → Settings → API Keys</a>.
-                            Then set your Brevo webhook URL to: <code style="background:var(--bg-3);padding:2px 6px;border-radius:3px;font-size:11px;">${location.origin}/api/client-brevo/webhook/YOUR_PORTAL_ID</code>
+                            Track email opens &amp; clicks — when a lead clicks the Schedule button, they automatically become a Hot lead.
                         </div>
                         <div class="form-row">
                             <div class="form-field">
-                                <label class="form-label">Brevo API Key <span style="color:#ef4444;">*</span></label>
+                                <label class="form-label">Brevo API Key</label>
                                 <input class="form-input" id="settingsBrevoKey" type="password" placeholder="xkeysib-...">
                             </div>
                             <div class="form-field">
-                                <label class="form-label">Sender Email <span style="color:#ef4444;">*</span></label>
+                                <label class="form-label">Sender Email</label>
                                 <input class="form-input" id="settingsSenderEmail" type="email" placeholder="hello@yourcompany.com">
                             </div>
                         </div>
                         <div class="form-field">
                             <label class="form-label">Sender Name</label>
                             <input class="form-input" id="settingsSenderName" placeholder="Acme Corp">
+                        </div>
+
+                        <!-- EmailJS fallback section -->
+                        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
+                            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;">EmailJS (Fallback — used when Brevo is not configured)</div>
+                            <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
+                                <strong style="color:var(--text-0);">EmailJS:</strong> Get your credentials from <a href="https://www.emailjs.com" target="_blank" style="color:#3b82f6;">emailjs.com</a>. Emails will send from each user's configured sending email address.
+                            </div>
+                            <div class="form-row">
+                                <div class="form-field">
+                                    <label class="form-label">EmailJS Service ID</label>
+                                    <input class="form-input" id="settingsEmailJSService" placeholder="service_xxxxxxx">
+                                </div>
+                                <div class="form-field">
+                                    <label class="form-label">EmailJS Template ID</label>
+                                    <input class="form-input" id="settingsEmailJSTemplate" placeholder="template_xxxxxxx">
+                                </div>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">EmailJS Public Key</label>
+                                <input class="form-input" id="settingsEmailJSPublicKey" placeholder="your_public_key">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1441,6 +1513,9 @@ tr:hover .row-actions { opacity: 1; }
             <button class="modal-close" onclick="closeModal('addLeadModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="modal-body">
+            <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:12px;color:#a5b4fc;">
+                New leads are automatically added to the Follow-ups queue as Cold leads. Temperature updates based on email engagement.
+            </div>
             <div class="form-row">
                 <div class="form-field"><label class="form-label">Name</label><input class="form-input" id="leadName" placeholder="Full name"></div>
                 <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="leadEmail" type="email" placeholder="email@example.com"></div>
@@ -1450,12 +1525,25 @@ tr:hover .row-actions { opacity: 1; }
                 <div class="form-field"><label class="form-label">Company</label><input class="form-input" id="leadCompany" placeholder="Company name"></div>
             </div>
             <div class="form-field">
-                <label class="form-label">Status</label>
+                <label class="form-label">Source / Pipeline Stage</label>
                 <select class="form-select" id="leadStatus">
                     <option value="new">New</option>
                     <option value="contacted">Contacted</option>
                     <option value="pending">Pending</option>
                     <option value="qualified">Qualified</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label class="form-label">Follow-up Mode</label>
+                <select class="form-select" id="leadFollowupMode">
+                    <option value="manual">Manual — I'll follow up myself</option>
+                    <option value="automatic">Automatic — enroll in a follow-up chain</option>
+                </select>
+            </div>
+            <div class="form-field" id="leadChainField" style="display:none;">
+                <label class="form-label">Select Chain</label>
+                <select class="form-select" id="leadChainSelect">
+                    <option value="">Loading chains...</option>
                 </select>
             </div>
             <div class="form-field">
@@ -1625,29 +1713,49 @@ tr:hover .row-actions { opacity: 1; }
             <button class="modal-close" onclick="closeModal('addUserModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="modal-body">
-            <p style="font-size:13px;color:var(--text-3);margin-bottom:20px;">Adding a new team member will create a Stripe subscription seat and send them login credentials automatically.</p>
+            <!-- Mode selector -->
+            <div style="display:flex;gap:8px;margin-bottom:20px;">
+                <button id="addUserModeSetup" class="btn btn-white" style="flex:1;font-size:12px;" onclick="setAddUserMode('setup')">
+                    Set Up Included User
+                </button>
+                <button id="addUserModeNew" class="btn btn-default" style="flex:1;font-size:12px;" onclick="setAddUserMode('new')">
+                    Purchase Additional Seat
+                </button>
+            </div>
+            <div id="addUserModeSetupDesc" style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:12px;color:#4ade80;">
+                You're setting up a user slot already included in your company subscription. No additional charge.
+            </div>
+            <div id="addUserModeNewDesc" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:12px;color:#f87171;display:none;">
+                This will create a new subscription seat billed to your company account.
+            </div>
             <div class="form-row">
-                <div class="form-field"><label class="form-label">Name</label><input class="form-input" id="addUserName" placeholder="Team member name"></div>
-                <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="addUserEmail" type="email" placeholder="member@company.com"></div>
+                <div class="form-field"><label class="form-label">Full Name</label><input class="form-input" id="addUserName" placeholder="Team member name"></div>
+                <div class="form-field"><label class="form-label">Username / Login</label><input class="form-input" id="addUserUsername" placeholder="username (no spaces)"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-field"><label class="form-label">Login Email</label><input class="form-input" id="addUserEmail" type="email" placeholder="member@company.com"></div>
+                <div class="form-field"><label class="form-label">Sending Email <span style="color:var(--text-3);font-weight:400;">(EmailJS/Brevo)</span></label><input class="form-input" id="addUserSendingEmail" type="email" placeholder="user@sendingdomain.com"></div>
             </div>
             <div class="form-field"><label class="form-label">User Label (optional)</label><input class="form-input" id="addUserLabel" placeholder="e.g., Sales Rep, Manager..."></div>
-            <div class="form-field">
-                <label class="form-label">Plan</label>
-                <select class="form-select" id="addUserPlan">
-                    <option value="crm-essential">Essential CRM — $19.99/mo</option>
-                    <option value="crm-professional" selected>Professional CRM — $49.99/mo</option>
-                    <option value="crm-enterprise">Enterprise CRM — $64.99/mo</option>
-                </select>
-            </div>
-            <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;margin-top:4px;">
-                <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">Billing update</div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-0);" id="addUserBillingPreview">Select a plan to see pricing</div>
-                <div style="font-size:12px;color:var(--text-3);margin-top:4px;">New user will be charged starting today. Invoice sent to admin email.</div>
+            <div id="addUserPlanSection" style="display:none;">
+                <div class="form-field">
+                    <label class="form-label">Plan</label>
+                    <select class="form-select" id="addUserPlan">
+                        <option value="crm-essential">Essential CRM — $19.99/mo</option>
+                        <option value="crm-professional" selected>Professional CRM — $49.99/mo</option>
+                        <option value="crm-enterprise">Enterprise CRM — $64.99/mo</option>
+                    </select>
+                </div>
+                <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;margin-top:4px;">
+                    <div style="font-size:12px;color:var(--text-3);margin-bottom:6px;">Billing update</div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text-0);" id="addUserBillingPreview">Select a plan to see pricing</div>
+                    <div style="font-size:12px;color:var(--text-3);margin-top:4px;">New user will be charged starting today.</div>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('addUserModal')">Cancel</button>
-            <button class="btn btn-white" id="addUserBtn" onclick="addCompanyUser()">Add & Activate</button>
+            <button class="btn btn-white" id="addUserBtn" onclick="addCompanyUser()">Set Up User</button>
         </div>
     </div>
 </div>
@@ -1949,7 +2057,11 @@ function navigate(page) {
         case 'leads':       loadLeads();       break;
         case 'myleads':     loadMyLeads();     break;
         case 'contacts':    loadContacts();    break;
-        case 'followups':   loadFollowups();   break;
+        case 'followups':
+            // Initialize to queue tab
+            const fuQueueBtn = document.querySelector('.fu-main-tab');
+            setFUMainTab('queue', fuQueueBtn);
+            break;
         case 'marketing':   loadMarketing();   break;
         case 'invoices':    loadInvoices();    break;
         case 'analytics':   loadAnalytics();   break;
@@ -2078,6 +2190,12 @@ async function loadLeads() {
 function renderLeads() {
     const tab = S.leadTab;
     let filtered = S.leads;
+
+    // Filter out the logged-in user from the leads list (admin should not see themselves as a lead)
+    if (S.user?.email) {
+        filtered = filtered.filter(l => (l.email || '').toLowerCase() !== S.user.email.toLowerCase());
+    }
+
     if (tab !== 'all') {
         filtered = filtered.filter(l => (l.status||l.lead_temperature||'new').toLowerCase() === tab ||
             (tab === 'converted' && l.is_customer));
@@ -2150,6 +2268,26 @@ function setLeadTab(tab, el) {
 function openAddLeadModal() {
     ['leadName','leadEmail','leadPhone','leadCompany','leadNotes'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('leadStatus').value = 'new';
+    document.getElementById('leadFollowupMode').value = 'manual';
+    document.getElementById('leadChainField').style.display = 'none';
+
+    // Load chains for the automatic follow-up option
+    apiFetch('/client/email-chains').then(r=>r.json()).then(d=>{
+        const chains = d.chains || [];
+        const sel = document.getElementById('leadChainSelect');
+        if (sel) {
+            sel.innerHTML = chains.length
+                ? chains.map(c=>`<option value="${c.id}">${escHtml(c.name)} (${c.steps?.length||0} steps)</option>`).join('')
+                : '<option value="">No chains yet — create one in Follow-ups → Chains</option>';
+        }
+    }).catch(()=>{});
+
+    // Toggle chain field visibility
+    const modeEl = document.getElementById('leadFollowupMode');
+    modeEl.onchange = function() {
+        document.getElementById('leadChainField').style.display = this.value === 'automatic' ? 'block' : 'none';
+    };
+
     openModal('addLeadModal');
 }
 
@@ -2158,12 +2296,18 @@ async function saveLead() {
     const email = document.getElementById('leadEmail').value.trim();
     if (!name || !email) { toast('Name and email required', 'error'); return; }
 
+    const followupMode = document.getElementById('leadFollowupMode')?.value || 'manual';
+    const chainId = document.getElementById('leadChainSelect')?.value || null;
+
     try {
         const res = await apiFetch('/client/leads', 'POST', {
             name, email,
             phone: document.getElementById('leadPhone').value,
             company: document.getElementById('leadCompany').value,
             status: document.getElementById('leadStatus').value,
+            lead_temperature: 'cold',  // Always start as cold — auto-updated by engagement
+            followup_mode: followupMode,
+            chain_id: followupMode === 'automatic' && chainId ? parseInt(chainId) : null,
             notes: document.getElementById('leadNotes').value,
             createdBy: S.user.name || S.user.email,
         });
@@ -2759,7 +2903,7 @@ function renderFollowups() {
                             <td style="font-weight:500;cursor:pointer;" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">${escHtml(l.name||'—')}</td>
                             <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
                             <td>
-                                <span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;background:${isHot?'#ef444422':'#6366f122'};color:${isHot?'#ef4444':'#6366f1'};">
+                                <span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;background:${isHot?'#ef444422':'#6366f122'};color:${isHot?'#ef4444':'#6366f1'};" title="Temperature set automatically by email engagement">
                                     ${isHot ? '🔥 Hot' : '❄️ Cold'}
                                 </span>
                             </td>
@@ -2790,6 +2934,141 @@ function setFUTab(tab, el) {
     });
     el.classList.add('active-tab');
     renderFollowups();
+}
+
+// Follow-ups main tab (Queue / Templates / Chains)
+const FU_MK = { templates: [], chains: [] };
+
+function setFUMainTab(tab, el) {
+    document.querySelectorAll('.fu-main-tab').forEach(b => {
+        b.classList.remove('active-fu-main-tab');
+        b.style.borderBottom = '';
+    });
+    if (el) { el.classList.add('active-fu-main-tab'); el.style.borderBottom = '2px solid var(--text-0)'; }
+
+    document.getElementById('fuQueueSection').style.display    = tab === 'queue'     ? 'block' : 'none';
+    document.getElementById('fuTemplatesSection').style.display = tab === 'templates' ? 'block' : 'none';
+    document.getElementById('fuChainsSection').style.display   = tab === 'chains'    ? 'block' : 'none';
+
+    if (tab === 'templates') loadFUTemplates();
+    if (tab === 'chains')    loadFUChains();
+    if (tab === 'queue')     loadFollowups();
+}
+
+async function loadFUTemplates() {
+    const el = document.getElementById('fuTemplatesContent');
+    el.innerHTML = `<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>`;
+    try {
+        const r = await apiFetch('/client/email-templates');
+        const d = await r.json();
+        FU_MK.templates = d.templates || [];
+        renderFUTemplates();
+    } catch { el.innerHTML = '<div class="empty-state"><p>Could not load templates</p></div>'; }
+}
+
+function renderFUTemplates() {
+    const el = document.getElementById('fuTemplatesContent');
+    if (!FU_MK.templates.length) {
+        el.innerHTML = `<div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <h3>No follow-up templates</h3>
+            <p>Create a template to use in follow-up chains and manual sends</p>
+        </div>`;
+        return;
+    }
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+        ${FU_MK.templates.map(t => `
+            <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                    <div>
+                        <div style="font-size:14px;font-weight:700;color:var(--text-0);">${escHtml(t.name)}</div>
+                        <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${escHtml(t.topic||'custom')}</div>
+                    </div>
+                    ${t.is_automated ? `<span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:20px;background:#6366f122;color:#6366f1;">Auto</span>` : ''}
+                </div>
+                <div style="font-size:12px;color:var(--text-2);margin-bottom:14px;font-style:italic;">"${escHtml(t.subject)}"</div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-ghost btn-xs" onclick="openFUTemplateBuilder(${JSON.stringify(t).replace(/"/g,'&quot;')})">Edit</button>
+                    <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteFUTemplate(${t.id})">Delete</button>
+                </div>
+            </div>`).join('')}
+    </div>`;
+}
+
+function openFUTemplateBuilder(existing) {
+    // Delegate to the shared template builder — same builder used for marketing
+    // but tagged as follow-up template
+    openTemplateBuilder(existing);
+}
+
+async function deleteFUTemplate(id) {
+    if (!confirm('Delete this template?')) return;
+    try {
+        await apiFetch(`/client/email-templates/${id}`, 'DELETE');
+        toast('Template deleted', 'success');
+        await loadFUTemplates();
+    } catch { toast('Error', 'error'); }
+}
+
+async function loadFUChains() {
+    const el = document.getElementById('fuChainsContent');
+    el.innerHTML = `<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>`;
+    try {
+        const r = await apiFetch('/client/email-chains');
+        const d = await r.json();
+        FU_MK.chains = d.chains || [];
+        renderFUChains();
+    } catch { el.innerHTML = '<div class="empty-state"><p>Could not load chains</p></div>'; }
+}
+
+function renderFUChains() {
+    const el = document.getElementById('fuChainsContent');
+    if (!FU_MK.chains.length) {
+        el.innerHTML = `<div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <h3>No follow-up chains</h3>
+            <p>Build a chain to automatically send a sequence of emails to leads set to Automatic follow-up</p>
+        </div>`;
+        return;
+    }
+    el.innerHTML = FU_MK.chains.map(c => `
+        <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <div>
+                    <div style="font-size:15px;font-weight:700;">${escHtml(c.name)}</div>
+                    <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${c.steps?.length||0} steps · ${c.loop?'Loops indefinitely':'Runs once'}</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-ghost btn-xs" onclick="enrollInChain(${c.id},'${escHtml(c.name)}')">Enroll Leads</button>
+                    <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteFUChain(${c.id})">Delete</button>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;">
+                ${(c.steps||[]).map((s,i) => `
+                    <div style="display:flex;align-items:center;">
+                        <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 14px;font-size:12px;">
+                            <div style="font-weight:700;color:var(--text-0);">Step ${i+1}</div>
+                            <div style="color:var(--text-2);">${escHtml(s.template_name||'?')}</div>
+                            ${i > 0 ? `<div style="font-size:10px;color:var(--text-3);">After ${s.delay_days}d</div>` : ''}
+                        </div>
+                        ${i < (c.steps.length-1) ? `<div style="padding:0 6px;color:var(--text-3);">→</div>` : c.loop ? `<div style="padding:0 6px;color:#6366f1;font-size:11px;font-weight:700;">→ 🔄</div>` : ''}
+                    </div>`).join('')}
+            </div>
+        </div>`).join('');
+}
+
+function openFUChainBuilder() {
+    // Reuse the same chain builder modal
+    openChainBuilder();
+}
+
+async function deleteFUChain(id) {
+    if (!confirm('Delete this chain?')) return;
+    try {
+        await apiFetch(`/client/email-chains/${id}`, 'DELETE');
+        toast('Chain deleted', 'success');
+        await loadFUChains();
+    } catch { toast('Error', 'error'); }
 }
 
 // Quick send-email modal from follow-up queue
@@ -2943,18 +3222,160 @@ async function loadScheduling() {
         const res = await apiFetch('/client/appointments');
         const data = await res.json();
         const appts = data.appointments || [];
-        if (!appts.length) return;
+        if (!appts.length) {
+            listEl.innerHTML = `<div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <h3>No appointments</h3><p>Share your booking link to get started</p>
+            </div>`;
+            return;
+        }
         listEl.innerHTML = `<div class="table-wrap"><table>
-            <thead><tr><th>Client</th><th>Date</th><th>Status</th></tr></thead>
+            <thead><tr><th>Client</th><th>Email</th><th>Date & Time</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
                 ${appts.map(a=>`<tr>
                     <td style="font-weight:500;">${escHtml(a.name||a.client_name||'—')}</td>
+                    <td style="color:var(--text-2);font-size:12px;">${escHtml(a.client_email||a.email||'—')}</td>
                     <td style="font-size:13px;">${fmtDateTime(a.scheduled_at||a.date)}</td>
                     <td>${statusBadge(a.status||'scheduled')}</td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-ghost btn-xs" onclick="openRescheduleModal(${a.id},'${escHtml(a.name||a.client_name||'')}','${escHtml(a.client_email||a.email||'')}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                Reschedule
+                            </button>
+                            ${a.status !== 'cancelled' ? `<button class="btn btn-danger btn-xs" onclick="cancelAppointment(${a.id},'${escHtml(a.name||a.client_name||'')}','${escHtml(a.client_email||a.email||'')}')">Cancel</button>` : ''}
+                        </div>
+                    </td>
                 </tr>`).join('')}
             </tbody>
         </table></div>`;
     } catch {}
+}
+
+async function openAddAppointmentModal() {
+    let modal = document.getElementById('addApptModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'addApptModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if(e.target===modal) closeModal('addApptModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:480px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Add Appointment</div>
+                <button class="modal-close" onclick="closeModal('addApptModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-field"><label class="form-label">Client Name</label><input class="form-input" id="apptClientName" placeholder="Full name"></div>
+                    <div class="form-field"><label class="form-label">Client Email</label><input class="form-input" id="apptClientEmail" type="email" placeholder="client@example.com"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field"><label class="form-label">Date</label><input class="form-input" type="date" id="apptDate"></div>
+                    <div class="form-field"><label class="form-label">Time</label><input class="form-input" type="time" id="apptTime"></div>
+                </div>
+                <div class="form-field"><label class="form-label">Notes</label><textarea class="form-input" id="apptNotes" placeholder="Meeting notes..."></textarea></div>
+                <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:10px 14px;font-size:12px;color:#4ade80;">
+                    A confirmation email will automatically be sent to the client.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('addApptModal')">Cancel</button>
+                <button class="btn btn-white" onclick="saveNewAppointment()">Add Appointment</button>
+            </div>
+        </div>`;
+    openModal('addApptModal');
+}
+
+async function saveNewAppointment() {
+    const name  = document.getElementById('apptClientName')?.value.trim();
+    const email = document.getElementById('apptClientEmail')?.value.trim();
+    const date  = document.getElementById('apptDate')?.value;
+    const time  = document.getElementById('apptTime')?.value;
+    if (!name || !date || !time) { toast('Name, date and time required', 'error'); return; }
+
+    const scheduledAt = new Date(`${date}T${time}`).toISOString();
+
+    try {
+        const res = await apiFetch('/client/appointments', 'POST', {
+            clientName: name, clientEmail: email,
+            scheduled_at: scheduledAt,
+            notes: document.getElementById('apptNotes')?.value,
+            sendConfirmation: true,
+        });
+        const data = await res.json();
+        if (data.success || data.appointment) {
+            toast('Appointment added — confirmation email sent', 'success');
+            closeModal('addApptModal');
+            await loadScheduling();
+        } else { toast(data.message||'Failed', 'error'); }
+    } catch { toast('Error adding appointment', 'error'); }
+}
+
+async function openRescheduleModal(apptId, clientName, clientEmail) {
+    let modal = document.getElementById('rescheduleModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'rescheduleModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if(e.target===modal) closeModal('rescheduleModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:400px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Reschedule Appointment</div>
+                <div style="font-size:13px;color:var(--text-3);">${escHtml(clientName)}</div>
+                <button class="modal-close" onclick="closeModal('rescheduleModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-field"><label class="form-label">New Date</label><input class="form-input" type="date" id="reschedDate"></div>
+                    <div class="form-field"><label class="form-label">New Time</label><input class="form-input" type="time" id="reschedTime"></div>
+                </div>
+                <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:var(--r-md);padding:10px 14px;font-size:12px;color:#fbbf24;">
+                    A reschedule confirmation email will be sent to ${escHtml(clientEmail || 'the client')}.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('rescheduleModal')">Cancel</button>
+                <button class="btn btn-white" onclick="confirmReschedule(${apptId},'${escHtml(clientEmail)}')">Reschedule & Notify</button>
+            </div>
+        </div>`;
+    openModal('rescheduleModal');
+}
+
+async function confirmReschedule(apptId, clientEmail) {
+    const date = document.getElementById('reschedDate')?.value;
+    const time = document.getElementById('reschedTime')?.value;
+    if (!date || !time) { toast('Date and time required', 'error'); return; }
+
+    const scheduledAt = new Date(`${date}T${time}`).toISOString();
+    try {
+        const res = await apiFetch(`/client/appointments/${apptId}/reschedule`, 'POST', {
+            scheduled_at: scheduledAt, sendConfirmation: true
+        });
+        const data = await res.json();
+        if (data.success) {
+            toast('Appointment rescheduled — confirmation email sent', 'success');
+            closeModal('rescheduleModal');
+            await loadScheduling();
+        } else { toast(data.message||'Failed', 'error'); }
+    } catch { toast('Error rescheduling', 'error'); }
+}
+
+async function cancelAppointment(apptId, clientName, clientEmail) {
+    if (!confirm(`Cancel appointment with ${clientName}? A cancellation email will be sent.`)) return;
+    try {
+        const res = await apiFetch(`/client/appointments/${apptId}/cancel`, 'POST', { sendConfirmation: true });
+        const data = await res.json();
+        if (data.success) {
+            toast('Appointment cancelled — confirmation email sent', 'success');
+            await loadScheduling();
+        } else { toast(data.message||'Failed', 'error'); }
+    } catch { toast('Error cancelling appointment', 'error'); }
 }
 
 function copySchedulingLink() {
@@ -3441,6 +3862,22 @@ async function loadCompany() {
     }
 }
 
+function setAddUserMode(mode) {
+    const isSetup = mode === 'setup';
+    document.getElementById('addUserModeSetup').className = isSetup ? 'btn btn-white' : 'btn btn-default';
+    document.getElementById('addUserModeSetup').style.flex = '1';
+    document.getElementById('addUserModeSetup').style.fontSize = '12px';
+    document.getElementById('addUserModeNew').className = isSetup ? 'btn btn-default' : 'btn btn-white';
+    document.getElementById('addUserModeNew').style.flex = '1';
+    document.getElementById('addUserModeNew').style.fontSize = '12px';
+    document.getElementById('addUserModeSetupDesc').style.display = isSetup ? 'block' : 'none';
+    document.getElementById('addUserModeNewDesc').style.display = isSetup ? 'none' : 'block';
+    document.getElementById('addUserPlanSection').style.display = isSetup ? 'none' : 'block';
+    const btn = document.getElementById('addUserBtn');
+    btn.textContent = isSetup ? 'Set Up User' : 'Add & Activate';
+    S._addUserMode = mode;
+}
+
 function setupAddUserPlanSelect() {
     const sel = document.getElementById('addUserPlan');
     if (!sel) return;
@@ -3458,17 +3895,25 @@ function updateAddUserPreview() {
 
 function openAddUserModal() {
     if (!S.isAdmin) return;
-    ['addUserName','addUserEmail','addUserLabel'].forEach(id=>document.getElementById(id).value='');
+    ['addUserName','addUserUsername','addUserEmail','addUserSendingEmail','addUserLabel'].forEach(id=>{
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
     document.getElementById('addUserPlan').value = 'crm-professional';
+    S._addUserMode = 'setup';
+    setAddUserMode('setup');
     updateAddUserPreview();
     openModal('addUserModal');
 }
 
 async function addCompanyUser() {
-    const name  = document.getElementById('addUserName').value.trim();
-    const email = document.getElementById('addUserEmail').value.trim();
-    const label = document.getElementById('addUserLabel').value.trim();
-    const plan  = document.getElementById('addUserPlan').value;
+    const name          = document.getElementById('addUserName').value.trim();
+    const username      = document.getElementById('addUserUsername').value.trim();
+    const email         = document.getElementById('addUserEmail').value.trim();
+    const sendingEmail  = document.getElementById('addUserSendingEmail').value.trim();
+    const label         = document.getElementById('addUserLabel').value.trim();
+    const mode          = S._addUserMode || 'setup';
+    const plan          = document.getElementById('addUserPlan').value;
 
     if (!name || !email) { toast('Name and email required', 'error'); return; }
     if (!S.companyData?.company?.clientPortalId) {
@@ -3480,12 +3925,14 @@ async function addCompanyUser() {
 
     try {
         const res = await apiFetch('/client/company/add-user', 'POST', {
-            name, email, userLabel: label, packageKey: plan,
+            name, username, email, sendingEmail,
+            userLabel: label, packageKey: plan,
+            mode,  // 'setup' = no new subscription, 'new' = create subscription seat
             clientPortalId: S.companyData.company.clientPortalId,
         });
         const data = await res.json();
         if (data.success) {
-            toast('User added and subscription created!', 'success');
+            toast(mode === 'setup' ? 'User set up successfully!' : 'User added and subscription created!', 'success');
             closeModal('addUserModal');
             await loadCompany();
         } else {
@@ -3494,7 +3941,8 @@ async function addCompanyUser() {
     } catch {
         toast('Error adding user', 'error');
     } finally {
-        btn.disabled = false; btn.textContent = 'Add & Activate';
+        btn.disabled = false;
+        btn.textContent = mode === 'setup' ? 'Set Up User' : 'Add & Activate';
     }
 }
 
@@ -4326,6 +4774,25 @@ function openTemplateBuilder(existing) {
                     </div>
                 </div>
 
+                <!-- Schedule button -->
+                <div style="border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-top:4px;margin-bottom:12px;">
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:10px;">Schedule Appointment Button</div>
+                    <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">A "Book a Time" button will appear in the email. When a cold lead clicks it, they automatically become a Hot lead.</div>
+                    <div class="form-row">
+                        <div class="form-field" style="margin:0;">
+                            <label>Button Label</label>
+                            <input class="form-input" id="tb_schedule_label" value="${escHtml(t.schedule_btn_label||'📅 Book a Time')}" placeholder="📅 Book a Time">
+                        </div>
+                        <div class="form-field" style="margin:0;">
+                            <label>Include in Email?</label>
+                            <select class="form-select" id="tb_include_schedule">
+                                <option value="yes" ${t.include_schedule_btn !== false ? 'selected' : ''}>Yes — include schedule button</option>
+                                <option value="no" ${t.include_schedule_btn === false ? 'selected' : ''}>No — skip schedule button</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px;">
                     <input type="checkbox" id="tb_automated" ${t.is_automated?'checked':''}>
                     Mark as automated (for use in chains)
@@ -4384,10 +4851,12 @@ async function saveTemplate(existingId) {
 
     const payload = {
         name, subject, body_html,
-        topic:        document.getElementById('tb_topic').value,
-        eyebrow:      document.getElementById('tb_eyebrow').value.trim(),
-        headline:     document.getElementById('tb_headline').value.trim(),
-        cta_label:    document.getElementById('tb_cta').value.trim(),
+        topic:                document.getElementById('tb_topic').value,
+        eyebrow:              document.getElementById('tb_eyebrow').value.trim(),
+        headline:             document.getElementById('tb_headline').value.trim(),
+        cta_label:            document.getElementById('tb_cta').value.trim(),
+        schedule_btn_label:   document.getElementById('tb_schedule_label')?.value.trim() || '📅 Book a Time',
+        include_schedule_btn: document.getElementById('tb_include_schedule')?.value !== 'no',
         is_automated: document.getElementById('tb_automated').checked,
     };
 
@@ -4640,15 +5109,18 @@ async function loadSettings() {
         const s    = data.settings || {};
         MK.settings = s;
         const fill = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-        fill('settingsBrevoKey',     s.brevo_api_key_set ? '••••••••••••••••' : (s.brevo_api_key||''));
-        fill('settingsSenderEmail',  s.sender_email);
-        fill('settingsSenderName',   s.sender_name);
-        fill('settingsCompanyName',  s.company_name);
-        fill('settingsCompanyPhone', s.company_phone);
-        fill('settingsCompanyEmail', s.company_email);
-        fill('settingsCompanyAddr',  s.company_address);
-        fill('settingsWebsiteUrl',   s.website_url);
-        fill('settingsAccentColor',  s.accent_color || '#FF6B35');
+        fill('settingsBrevoKey',          s.brevo_api_key_set ? '••••••••••••••••' : (s.brevo_api_key||''));
+        fill('settingsSenderEmail',        s.sender_email);
+        fill('settingsSenderName',         s.sender_name);
+        fill('settingsCompanyName',        s.company_name);
+        fill('settingsCompanyPhone',       s.company_phone);
+        fill('settingsCompanyEmail',       s.company_email);
+        fill('settingsCompanyAddr',        s.company_address);
+        fill('settingsWebsiteUrl',         s.website_url);
+        fill('settingsAccentColor',        s.accent_color || '#FF6B35');
+        fill('settingsEmailJSService',     s.emailjs_service_id);
+        fill('settingsEmailJSTemplate',    s.emailjs_template_id);
+        fill('settingsEmailJSPublicKey',   s.emailjs_public_key);
         const colorPicker = document.getElementById('settingsColorPicker');
         if (colorPicker) colorPicker.value = s.accent_color || '#FF6B35';
 
@@ -4665,14 +5137,17 @@ async function loadSettings() {
 async function saveEmailSettings() {
     const brevoKey = document.getElementById('settingsBrevoKey')?.value?.trim();
     const payload  = {
-        sender_email:    document.getElementById('settingsSenderEmail')?.value?.trim(),
-        sender_name:     document.getElementById('settingsSenderName')?.value?.trim(),
-        company_name:    document.getElementById('settingsCompanyName')?.value?.trim(),
-        company_phone:   document.getElementById('settingsCompanyPhone')?.value?.trim(),
-        company_email:   document.getElementById('settingsCompanyEmail')?.value?.trim(),
-        company_address: document.getElementById('settingsCompanyAddr')?.value?.trim(),
-        website_url:     document.getElementById('settingsWebsiteUrl')?.value?.trim(),
-        accent_color:    document.getElementById('settingsAccentColor')?.value?.trim(),
+        sender_email:          document.getElementById('settingsSenderEmail')?.value?.trim(),
+        sender_name:           document.getElementById('settingsSenderName')?.value?.trim(),
+        company_name:          document.getElementById('settingsCompanyName')?.value?.trim(),
+        company_phone:         document.getElementById('settingsCompanyPhone')?.value?.trim(),
+        company_email:         document.getElementById('settingsCompanyEmail')?.value?.trim(),
+        company_address:       document.getElementById('settingsCompanyAddr')?.value?.trim(),
+        website_url:           document.getElementById('settingsWebsiteUrl')?.value?.trim(),
+        accent_color:          document.getElementById('settingsAccentColor')?.value?.trim(),
+        emailjs_service_id:    document.getElementById('settingsEmailJSService')?.value?.trim(),
+        emailjs_template_id:   document.getElementById('settingsEmailJSTemplate')?.value?.trim(),
+        emailjs_public_key:    document.getElementById('settingsEmailJSPublicKey')?.value?.trim(),
     };
     // Only include brevo key if user typed a non-masked value
     if (brevoKey && !brevoKey.includes('•')) payload.brevo_api_key = brevoKey;
@@ -4775,6 +5250,68 @@ function toast(message, type='success') {
     el.innerHTML = icon + `<span>${escHtml(message)}</span>`;
     container.appendChild(el);
     setTimeout(() => el.remove(), 3500);
+}
+
+// ============================================================
+// EMAIL SENDING — Brevo primary, EmailJS fallback
+// ============================================================
+async function sendEmailWithFallback(leadId, leadEmail, leadName, templateId, scheduleConversion) {
+    const settings = MK.settings || {};
+    const hasBrevo  = settings.brevo_api_key_set || settings.brevo_api_key;
+    const hasEmailJS = settings.emailjs_service_id && settings.emailjs_template_id && settings.emailjs_public_key;
+
+    if (hasBrevo) {
+        // Use Brevo via server
+        const res = await apiFetch('/client/email/send', 'POST', {
+            template_id: parseInt(templateId),
+            lead_ids: [leadId],
+            schedule_conversion: scheduleConversion || false,
+        });
+        return res.json();
+    } else if (hasEmailJS) {
+        // EmailJS fallback — send from user's configured sending email
+        if (typeof emailjs === 'undefined') {
+            // Dynamically load EmailJS SDK
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+                s.onload = resolve; s.onerror = reject;
+                document.head.appendChild(s);
+            });
+        }
+        emailjs.init(settings.emailjs_public_key);
+
+        const senderEmail = S.user.sending_email || S.user.email;
+        const scheduleLink = `${window.location.origin}/schedule.html?uid=${S.user.id}&lid=${leadId}&hot=1`;
+
+        try {
+            await emailjs.send(settings.emailjs_service_id, settings.emailjs_template_id, {
+                to_name:        leadName,
+                to_email:       leadEmail,
+                from_name:      settings.sender_name || S.user.name,
+                from_email:     senderEmail,
+                schedule_link:  scheduleLink,
+                template_id:    templateId,
+                reply_to:       senderEmail,
+            });
+            // Record the send via API for tracking
+            await apiFetch('/client/email/record-send', 'POST', { lead_id: leadId, template_id: templateId }).catch(()=>{});
+            return { success: true, sent: 1, skipped: 0, errors: 0, provider: 'emailjs' };
+        } catch(e) {
+            return { success: false, message: 'EmailJS error: ' + (e?.text || e?.message || 'Unknown') };
+        }
+    } else {
+        return { success: false, message: 'No email provider configured. Set up Brevo or EmailJS in Settings.' };
+    }
+}
+
+// When a lead clicks the schedule link in an email, they become hot
+async function convertLeadToHot(leadId) {
+    try {
+        const res = await apiFetch(`/client/leads/${leadId}/temperature`, 'POST', { temperature: 'hot', reason: 'schedule_button_click' });
+        const data = await res.json();
+        return data.success;
+    } catch { return false; }
 }
 
 // ============================================================

@@ -3165,6 +3165,7 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
+            WHERE (l.source IS NULL OR l.source != 'company-user')
             ORDER BY l.created_at DESC
         `);
 
@@ -8735,8 +8736,8 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
 
         const result = await pool.query(`
             INSERT INTO leads (name, email, phone, company, status, notes, source,
-                client_portal_id, crm_assigned_to, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, 'crm-portal', $7, $8, NOW(), NOW())
+                lead_temperature, client_portal_id, crm_assigned_to, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, 'crm-portal', 'cold', $7, $8, NOW(), NOW())
             RETURNING *
         `, [name, email || null, phone || null, company || null,
             status || 'new', notes || null, clientPortalId, assignedTo]);
@@ -9232,6 +9233,8 @@ app.get('/api/client/company', authenticateClient, async (req, res) => {
                 packageName: u.package_name,
                 pricePerUser: parseFloat(u.price_per_user || 0),
                 status: u.status,
+                isAdmin: u.is_admin || false,
+                accessUntil: u.access_until || null,
                 addedDate: u.added_date,
                 cancelledDate: u.cancelled_date
             }))
@@ -9318,18 +9321,28 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
         
         const user = userResult.rows[0];
         
-        // Cancel the Stripe subscription
+        // Schedule the Stripe subscription to cancel at period end (not immediately)
+        let accessUntil = null;
         if (user.stripe_subscription_id) {
             try {
-                await stripe.subscriptions.cancel(user.stripe_subscription_id);
-                console.log(`[COMPANY API] Cancelled subscription ${user.stripe_subscription_id} for user ${user.user_email}`);
+                const stripeSub = await stripe.subscriptions.update(user.stripe_subscription_id, {
+                    cancel_at_period_end: true
+                });
+                // access_until = current period end date
+                if (stripeSub.current_period_end) {
+                    accessUntil = new Date(stripeSub.current_period_end * 1000);
+                }
+                console.log(`[COMPANY API] Scheduled cancellation at period end for ${user.stripe_subscription_id}`);
             } catch (stripeErr) {
-                console.error('[COMPANY API] Stripe cancellation error:', stripeErr);
+                console.error('[COMPANY API] Stripe cancellation scheduling error:', stripeErr);
                 return res.status(500).json({
                     success: false,
-                    message: 'Failed to cancel subscription in Stripe'
+                    message: 'Failed to schedule subscription cancellation in Stripe'
                 });
             }
+        } else {
+            // No Stripe sub - access ends now (setup/free user)
+            accessUntil = new Date();
         }
         
         // Reassign all assigned leads to company admin before cancelling
@@ -9358,10 +9371,10 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
         // created by this user — it stays in the portal for the admin to review.
         // We only reassign CRM ownership so nothing falls through the cracks.
         
-        // Update user status
+        // Mark user as cancelling (they still have access until period end)
         await pool.query(
-            `UPDATE company_users SET status = 'cancelled', cancelled_date = NOW() WHERE id = $1`,
-            [id]
+            `UPDATE company_users SET status = 'cancelling', cancelled_date = NOW(), access_until = $1 WHERE id = $2`,
+            [accessUntil, id]
         );
         
         // Send notification to admin
@@ -9399,11 +9412,54 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
         
         res.json({
             success: true,
-            message: 'User subscription cancelled',
+            message: `User subscription scheduled for cancellation. ${user.user_name} will retain access until ${accessUntil ? accessUntil.toLocaleDateString() : 'the end of the billing period'}.`,
+            accessUntil: accessUntil ? accessUntil.toISOString() : null,
             newMonthlyTotal: await getCompanyMonthlyTotal(clientPortalId)
         });
     } catch (error) {
         console.error('[COMPANY API] Cancel user error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// POST /api/client/company/user/:id/reinstate — Reinstate a cancelling/cancelled user
+app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const requesterEmail = req.user.email;
+        const requester = await pool.query(
+            `SELECT client_portal_id, is_company_admin, is_co_admin FROM leads WHERE LOWER(email) = LOWER($1)`,
+            [requesterEmail]
+        );
+        const reqUser = requester.rows[0];
+        if (!reqUser?.is_company_admin && !reqUser?.is_co_admin) {
+            return res.status(403).json({ success: false, message: 'Admin access required' });
+        }
+        const clientPortalId = reqUser.client_portal_id;
+        const userResult = await pool.query(
+            `SELECT * FROM company_users WHERE id = $1 AND client_portal_id = $2`,
+            [id, clientPortalId]
+        );
+        const cuUser = userResult.rows[0];
+        if (!cuUser) return res.status(404).json({ success: false, message: 'User not found' });
+        if (cuUser.status === 'active') {
+            return res.status(400).json({ success: false, message: 'User is already active' });
+        }
+        if (cuUser.stripe_subscription_id) {
+            try {
+                await stripe.subscriptions.update(cuUser.stripe_subscription_id, { cancel_at_period_end: false });
+                console.log(`[COMPANY API] Reactivated Stripe subscription ${cuUser.stripe_subscription_id}`);
+            } catch (stripeErr) {
+                console.error('[COMPANY API] Stripe reactivation error:', stripeErr.message);
+            }
+        }
+        await pool.query(
+            `UPDATE company_users SET status = 'active', cancelled_date = NULL, access_until = NULL WHERE id = $1`,
+            [id]
+        );
+        res.json({ success: true, message: `${cuUser.user_name}'s subscription has been reinstated.` });
+    } catch (error) {
+        console.error('[COMPANY API] Reinstate user error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
@@ -9777,8 +9833,8 @@ async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, su
                 client_portal_id, user_label, user_name, user_email,
                 subscription_id, stripe_subscription_id,
                 package_key, package_name, price_per_user,
-                status, added_date
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active', NOW())
+                is_admin, status, added_date
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE, 'active', NOW())
             ON CONFLICT (client_portal_id, user_email) 
             DO UPDATE SET
                 user_label = EXCLUDED.user_label,

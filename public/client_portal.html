@@ -184,6 +184,7 @@ body {
     padding: 1px 6px; border-radius: 10px;
 }
 .nav-item-admin-only { display: none; }
+.settings-admin-only { display: none; }
 .sidebar-footer {
     padding: 12px 8px;
     border-top: 1px solid var(--border);
@@ -765,7 +766,7 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                     Dashboard
                 </div>
-                <div class="nav-item" data-page="leads">
+                <div class="nav-item nav-item-admin-only" data-page="leads">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     Leads
                 </div>
@@ -773,19 +774,19 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M12 14v7"/><path d="M9 17h6"/></svg>
                     My Leads
                 </div>
-                <div class="nav-item" data-page="contacts">
+                <div class="nav-item nav-item-admin-only" data-page="contacts">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     Contacts
                 </div>
-                <div class="nav-item" data-page="followups">
+                <div class="nav-item nav-item-admin-only" data-page="followups">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     Follow-ups
                 </div>
-                <div class="nav-item" data-page="marketing">
+                <div class="nav-item nav-item-admin-only" data-page="marketing">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                     Marketing
                 </div>
-                <div class="nav-item" data-page="scheduling">
+                <div class="nav-item nav-item-admin-only" data-page="scheduling">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     Scheduling
                 </div>
@@ -794,11 +795,11 @@ tr:hover .row-actions { opacity: 1; }
             <!-- FINANCIALS -->
             <div class="nav-section">
                 <div class="nav-section-title">Financials</div>
-                <div class="nav-item" data-page="invoices">
+                <div class="nav-item nav-item-admin-only" data-page="invoices">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     Invoices
                 </div>
-                <div class="nav-item" data-page="analytics">
+                <div class="nav-item nav-item-admin-only" data-page="analytics">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     Analytics
                 </div>
@@ -830,7 +831,7 @@ tr:hover .row-actions { opacity: 1; }
                     Support
                     <span class="nav-badge" id="ticketBadge" style="display:none;"></span>
                 </div>
-                <div class="nav-item" data-page="subscription">
+                <div class="nav-item nav-item-admin-only" data-page="subscription">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                     Subscription
                 </div>
@@ -1377,7 +1378,7 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
 
                 <!-- Brevo Integration -->
-                <div class="card" style="max-width:620px;margin-top:16px;">
+                <div class="card settings-admin-only" style="max-width:620px;margin-top:16px;">
                     <div class="card-header">
                         <span class="card-title">Email Provider</span>
                         <span style="font-size:11px;color:var(--text-3);margin-top:3px;display:block;">Set up Brevo for full tracking, or use EmailJS as a fallback. Brevo takes priority when both are configured.</span>
@@ -1429,7 +1430,7 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
 
                 <!-- Company Info -->
-                <div class="card" style="max-width:620px;margin-top:16px;">
+                <div class="settings-admin-only card" style="max-width:620px;margin-top:16px;">
                     <div class="card-header">
                         <span class="card-title">Company Info</span>
                         <span style="font-size:11px;color:var(--text-3);margin-top:3px;display:block;">Used in email template footers and auto-filled when building templates.</span>
@@ -1977,6 +1978,11 @@ function showApp() {
     // Show/hide admin-only nav items
     document.querySelectorAll('.nav-item-admin-only').forEach(el => {
         el.style.display = S.isAdmin ? 'flex' : 'none';
+    });
+
+    // Show/hide admin-only settings sections
+    document.querySelectorAll('.settings-admin-only').forEach(el => {
+        el.style.display = S.isAdmin ? '' : 'none';
     });
 
     // Files and Support always visible
@@ -3774,7 +3780,7 @@ async function loadCompany() {
 
         const company = data.company || {};
         const users = data.users || [];
-        const monthlyTotal = users.filter(u=>u.status==='active').reduce((s,u)=>s+parseFloat(u.pricePerUser||0),0);
+        const monthlyTotal = company.monthlyTotal || users.filter(u=>u.status==='active'||u.status==='cancelling').reduce((s,u)=>s+parseFloat(u.pricePerUser||0),0);
 
         el.innerHTML = `
             <!-- Company Info -->
@@ -3814,7 +3820,7 @@ async function loadCompany() {
                                 <td style="color:var(--text-2);font-size:12px;">${escHtml(u.userEmail||'—')}</td>
                                 <td style="font-size:12px;color:var(--text-2);">${escHtml(u.packageName||'—')}</td>
                                 <td style="font-weight:600;">$${parseFloat(u.pricePerUser||0).toFixed(2)}/mo</td>
-                                <td><span class="badge ${u.status==='active'?'badge-green':'badge-red'}">${u.status||'active'}</span></td>
+                                <td><span class="badge ${u.status==='active'?'badge-green':u.status==='cancelling'?'badge-yellow':'badge-red'}">${u.status==='cancelling'?'Cancelling':u.status||'active'}</span></td>
                                 <td>${u.isAdmin?'<span class="badge badge-purple">Admin</span>':'—'}</td>
                                 <td style="font-size:11px;color:var(--text-3);">${fmtDate(u.addedDate||u.created_at)}</td>
                                 <td>
@@ -3822,6 +3828,7 @@ async function loadCompany() {
                                         ${S.isTrueAdmin && !u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="promoteUser(${u.id})">Admin+</button>` : ''}
                                         ${S.isTrueAdmin && u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="demoteUser(${u.id})">Remove</button>` : ''}
                                         ${u.status==='active' ? `<button class="btn btn-danger btn-xs" onclick="cancelCompanyUser(${u.id},'${escHtml(u.userName||'')}')">Cancel</button>` : ''}
+                                        ${u.status==='cancelling' ? `<button class="btn btn-ghost btn-xs" style="color:var(--green);" onclick="reinstateCompanyUser(${u.id},'${escHtml(u.userName||'')}')">Reinstate</button>` : ''}
                                     </div>
                                 </td>
                             </tr>`).join('')}
@@ -3905,7 +3912,17 @@ async function cancelCompanyUser(userId, name) {
     try {
         const res = await apiFetch(`/client/company/user/${userId}/cancel`, 'POST', {});
         const data = await res.json();
-        toast(data.success ? 'User subscription cancelled' : (data.message||'Failed'), data.success?'success':'error');
+        toast(data.success ? (data.message || `${name}'s subscription scheduled for cancellation. They will retain access until the end of the billing period.`) : (data.message||'Failed'), data.success?'success':'error');
+        if (data.success) loadCompany();
+    } catch { toast('Error', 'error'); }
+}
+
+async function reinstateCompanyUser(userId, name) {
+    if (!confirm(`Reinstate ${name}'s subscription? They will continue being billed normally.`)) return;
+    try {
+        const res = await apiFetch(`/client/company/user/${userId}/reinstate`, 'POST', {});
+        const data = await res.json();
+        toast(data.success ? (data.message || `${name}'s subscription reinstated.`) : (data.message||'Failed'), data.success?'success':'error');
         if (data.success) loadCompany();
     } catch { toast('Error', 'error'); }
 }

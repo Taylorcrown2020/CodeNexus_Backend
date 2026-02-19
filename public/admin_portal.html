@@ -7728,14 +7728,24 @@ let _setupSubLeadId = null;
 let _setupSubType = 'individual';
 
 function openSetupSubscriptionModal(leadId) {
-    _setupSubLeadId = leadId;
-    _setupSubType = 'individual';
-    const lead = [...(state.leads||[]), ...(state.customers||[])].find(l => l.id === leadId);
-    const title = document.getElementById('setupSubModalTitle');
-    if (title && lead) title.textContent = `Set Up Subscription — ${lead.name}`;
-    setSetupSubType('individual');
-    updateSetupSubPreview();
-    document.getElementById('setupSubModal').style.display = 'flex';
+    try {
+        _setupSubLeadId = leadId;
+        _setupSubType = 'individual';
+        const lead = [...(state.leads||[]), ...(state.customers||[])].find(l => l.id === leadId || l.id === parseInt(leadId));
+        const title = document.getElementById('setupSubModalTitle');
+        if (title) title.textContent = lead ? `Set Up Subscription — ${lead.name}` : 'Set Up Subscription';
+        setSetupSubType('individual');
+        updateSetupSubPreview();
+        const modal = document.getElementById('setupSubModal');
+        if (modal) {
+            modal.style.display = 'flex';
+        } else {
+            console.error('setupSubModal not found in DOM');
+        }
+    } catch(e) {
+        console.error('openSetupSubscriptionModal error:', e);
+        showToast('Error opening subscription modal: ' + e.message, 'error');
+    }
 }
 
 function setSetupSubType(type) {
@@ -7743,13 +7753,18 @@ function setSetupSubType(type) {
     const isCompany = type === 'company';
     const indBtn = document.getElementById('setupSubTypeIndividual');
     const comBtn = document.getElementById('setupSubTypeCompany');
-    indBtn.style.borderColor = isCompany ? 'var(--border-color,#e5e7eb)' : '#818cf8';
-    indBtn.style.background = isCompany ? 'transparent' : 'rgba(99,102,241,0.12)';
-    indBtn.style.color = isCompany ? 'var(--text-muted)' : '#818cf8';
-    comBtn.style.borderColor = isCompany ? '#818cf8' : 'var(--border-color,#e5e7eb)';
-    comBtn.style.background = isCompany ? 'rgba(99,102,241,0.12)' : 'transparent';
-    comBtn.style.color = isCompany ? '#818cf8' : 'var(--text-muted)';
-    document.getElementById('setupSubCompanyRow').style.display = isCompany ? 'block' : 'none';
+    if (indBtn) {
+        indBtn.style.borderColor = isCompany ? 'var(--border-color,#e5e7eb)' : '#818cf8';
+        indBtn.style.background = isCompany ? 'transparent' : 'rgba(99,102,241,0.12)';
+        indBtn.style.color = isCompany ? 'var(--text-muted)' : '#818cf8';
+    }
+    if (comBtn) {
+        comBtn.style.borderColor = isCompany ? '#818cf8' : 'var(--border-color,#e5e7eb)';
+        comBtn.style.background = isCompany ? 'rgba(99,102,241,0.12)' : 'transparent';
+        comBtn.style.color = isCompany ? '#818cf8' : 'var(--text-muted)';
+    }
+    const companyRow = document.getElementById('setupSubCompanyRow');
+    if (companyRow) companyRow.style.display = isCompany ? 'block' : 'none';
     updateSetupSubPreview();
 }
 

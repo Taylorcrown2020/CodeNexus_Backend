@@ -4522,6 +4522,23 @@ app.post('/api/admin/change-password', authenticateToken, async (req, res) => {
     }
 });
 
+// Validate admin password (used for sensitive action confirmation in UI)
+app.post('/api/admin/validate-password', authenticateToken, async (req, res) => {
+    try {
+        const { password } = req.body;
+        if (!password) return res.status(400).json({ success: false, valid: false, message: 'Password required' });
+
+        const result = await pool.query('SELECT password_hash FROM admin_users WHERE email = $1', [req.user.email]);
+        if (!result.rows[0]) return res.status(404).json({ success: false, valid: false, message: 'Admin user not found' });
+
+        const valid = await bcrypt.compare(password, result.rows[0].password_hash);
+        res.json({ success: valid, valid, message: valid ? 'Verified' : 'Incorrect password' });
+    } catch (error) {
+        console.error('[ADMIN VALIDATE-PW] Error:', error);
+        res.status(500).json({ success: false, valid: false, message: 'Server error' });
+    }
+});
+
 // Get active sessions
 app.get('/api/admin/sessions', authenticateToken, async (req, res) => {
     try {
@@ -9147,6 +9164,251 @@ async function getCompanyMonthlyTotal(clientPortalId) {
     );
     return parseFloat(result.rows[0]?.monthly_total || 0);
 }
+
+// ========================================
+// POST /api/client/company/add-user
+// Allows company admin to add a new user from within the CRM
+// Creates Stripe subscription directly & sends welcome email
+// ========================================
+app.post('/api/client/company/add-user', authenticateClient, async (req, res) => {
+    try {
+        const { name, email, userLabel, packageKey, clientPortalId } = req.body;
+        const requesterEmail = req.user.email;
+
+        if (!name || !email || !packageKey || !clientPortalId) {
+            return res.status(400).json({ success: false, message: 'name, email, packageKey, and clientPortalId are required' });
+        }
+
+        // Verify requester is admin of this company
+        const adminCheck = await pool.query(
+            `SELECT client_portal_id, is_company_admin, is_co_admin FROM leads WHERE LOWER(email) = LOWER($1)`,
+            [requesterEmail]
+        );
+        const requester = adminCheck.rows[0];
+        if (!requester?.is_company_admin && !requester?.is_co_admin) {
+            return res.status(403).json({ success: false, message: 'Only company admins can add users' });
+        }
+        if (requester.client_portal_id !== clientPortalId) {
+            return res.status(403).json({ success: false, message: 'You can only add users to your own company' });
+        }
+
+        // Validate package
+        const pkg = servicePackages[packageKey];
+        if (!pkg || pkg.category !== 'crm') {
+            return res.status(400).json({ success: false, message: 'Invalid CRM package key' });
+        }
+        if (!pkg.stripePriceId) {
+            return res.status(500).json({ success: false, message: 'Stripe price not configured for this package' });
+        }
+
+        // Get company info
+        const companyRes = await pool.query('SELECT * FROM client_companies WHERE client_portal_id = $1', [clientPortalId]);
+        if (!companyRes.rows[0]) {
+            return res.status(404).json({ success: false, message: 'Company not found' });
+        }
+        const company = companyRes.rows[0];
+
+        // Check if email already active in company
+        const existing = await pool.query(
+            `SELECT id FROM company_users WHERE client_portal_id = $1 AND LOWER(user_email) = LOWER($2) AND status = 'active'`,
+            [clientPortalId, email]
+        );
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ success: false, message: 'This email already has an active seat in your company' });
+        }
+
+        // Find or create Stripe customer for new user
+        let stripeCustomerId = null;
+        const existingLeadRes = await pool.query(
+            `SELECT id, stripe_customer_id FROM leads WHERE LOWER(email) = LOWER($1)`,
+            [email]
+        );
+        const existingLead = existingLeadRes.rows[0];
+        if (existingLead?.stripe_customer_id) {
+            stripeCustomerId = existingLead.stripe_customer_id;
+        } else {
+            const customer = await stripe.customers.create({ email, name });
+            stripeCustomerId = customer.id;
+        }
+
+        // Create Stripe subscription directly
+        const subscription = await stripe.subscriptions.create({
+            customer: stripeCustomerId,
+            items: [{ price: pkg.stripePriceId, quantity: 1 }],
+            metadata: {
+                user_type: 'company-employee',
+                client_portal_id: clientPortalId,
+                user_name: name,
+                user_email: email,
+                user_label: userLabel || '',
+                added_by_admin: requesterEmail
+            }
+        });
+
+        const subItem = subscription.items.data[0];
+        const periodStart = subscription.current_period_start ? new Date(subscription.current_period_start * 1000) : null;
+        const periodEnd   = subscription.current_period_end   ? new Date(subscription.current_period_end * 1000)   : null;
+
+        // Create/update lead record
+        let leadId = existingLead?.id;
+        if (!leadId) {
+            const newLead = await pool.query(`
+                INSERT INTO leads (email, name, source, is_customer, customer_status, status, lead_temperature,
+                    stripe_customer_id, client_portal_id)
+                VALUES ($1, $2, 'company-admin-added', TRUE, 'active', 'closed', 'hot', $3, $4)
+                ON CONFLICT (email) DO UPDATE SET
+                    stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, leads.stripe_customer_id),
+                    is_customer = TRUE, customer_status = 'active', client_portal_id = $4,
+                    updated_at = NOW()
+                RETURNING id
+            `, [email, name, stripeCustomerId, clientPortalId]);
+            leadId = newLead.rows[0].id;
+        } else {
+            await pool.query(`
+                UPDATE leads SET is_customer = TRUE, customer_status = 'active',
+                    client_portal_id = $1, stripe_customer_id = COALESCE($2, stripe_customer_id), updated_at = NOW()
+                WHERE id = $3
+            `, [clientPortalId, stripeCustomerId, leadId]);
+        }
+
+        // Create crm_subscription record
+        const subRecord = await pool.query(`
+            INSERT INTO crm_subscriptions (lead_id, lead_email, lead_name, package_key, package_name,
+                user_count, price_per_user, monthly_total, stripe_customer_id, stripe_subscription_id,
+                stripe_price_id, status, current_period_start, current_period_end,
+                client_portal_id, is_company_subscription, user_label)
+            VALUES ($1,$2,$3,$4,$5,1,$6,$6,$7,$8,$9,'active',$10,$11,$12,TRUE,$13)
+            ON CONFLICT (stripe_subscription_id) DO UPDATE SET status = 'active', updated_at = NOW()
+            RETURNING id
+        `, [leadId, email, name, packageKey, pkg.name, pkg.price,
+            stripeCustomerId, subscription.id, subItem.price.id,
+            periodStart, periodEnd, clientPortalId, userLabel || null]);
+
+        const subscriptionId = subRecord.rows[0]?.id;
+
+        // Add to company_users
+        await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, subscription.id, packageKey, pkg.name, pkg.price);
+
+        // Generate temp password
+        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        await pool.query(`UPDATE leads SET client_password = $1 WHERE id = $2`, [hashedPassword, leadId]);
+
+        // Send welcome email with credentials
+        try {
+            const welcomeHtml = buildEmailHTML(`
+                <p>Hi ${name},</p>
+                <p>You've been added to <strong>${company.company_name}</strong>'s CRM workspace. Your account is now active.</p>
+                <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:28px 0;">
+                    <div style="font-size:12px;font-weight:800;color:#666;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Your Login Credentials</div>
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td style="padding:8px 0;font-size:13px;color:#888;">Portal URL</td>
+                            <td style="padding:8px 0;font-size:13px;font-weight:700;color:#222;text-align:right;">${BASE_URL}/client_portal.html</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Email</td>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;font-weight:700;color:#222;text-align:right;">${email}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Temporary Password</td>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:14px;font-weight:700;color:#FF6B35;font-family:monospace;text-align:right;">${tempPassword}</td>
+                        </tr>
+                    </table>
+                </div>
+                <p style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:14px;font-size:13px;color:#856404;">
+                    <strong>Action required:</strong> Please log in and change your password immediately.
+                </p>
+                <p style="font-size:13px;color:#888;margin-top:20px;">Questions? Contact your workspace admin or call (512) 980-0393.</p>
+            `, {
+                eyebrow: 'WELCOME TO THE TEAM',
+                headline: 'Your CRM account is ready.',
+                accentColor: '#FF6B35',
+                ctaLabel: 'Access Your CRM',
+                ctaUrl: `${BASE_URL}/client_portal.html`
+            });
+
+            await sendTrackedEmail({
+                leadId,
+                to: email,
+                subject: `Welcome to ${company.company_name} CRM — Your Login`,
+                html: welcomeHtml,
+                emailType: 'subscription_welcome'
+            });
+        } catch (emailErr) {
+            console.error('[ADD-USER] Welcome email failed:', emailErr.message);
+        }
+
+        // Notify company admin
+        try {
+            const adminLeadRes = await pool.query(`SELECT id, name FROM leads WHERE LOWER(email) = LOWER($1)`, [requesterEmail]);
+            const adminUser = adminLeadRes.rows[0];
+            const notifyHtml = buildEmailHTML(`
+                <p>Hi ${adminUser?.name || 'Admin'},</p>
+                <p>A new user has been added to your company workspace:</p>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;border:1px solid #e8e8e8;border-radius:8px;overflow:hidden;">
+                    <tr><td style="padding:10px 16px;background:#f7f9fb;font-size:12px;font-weight:700;text-transform:uppercase;color:#888;">User Added</td></tr>
+                    <tr><td style="padding:12px 16px;">
+                        <strong>Name:</strong> ${name}<br>
+                        <strong>Email:</strong> ${email}<br>
+                        <strong>Label:</strong> ${userLabel || 'None'}<br>
+                        <strong>Plan:</strong> ${pkg.name} — $${pkg.price.toFixed(2)}/mo<br>
+                        <strong>Added By:</strong> ${requesterEmail}
+                    </td></tr>
+                </table>
+                <p style="font-size:13px;color:#888;">Your monthly total has been updated to reflect this new seat.</p>
+            `, {
+                eyebrow: 'COMPANY WORKSPACE',
+                headline: 'New team member added.',
+                accentColor: '#059669',
+                ctaLabel: 'View Team',
+                ctaUrl: `${BASE_URL}/client_portal.html`
+            });
+            await sendTrackedEmail({
+                leadId: adminUser?.id || null,
+                to: requesterEmail,
+                subject: `New team member added: ${name} — Diamondback CRM`,
+                html: notifyHtml,
+                emailType: 'subscription_change'
+            });
+        } catch (notifyErr) {
+            console.error('[ADD-USER] Admin notification failed:', notifyErr.message);
+        }
+
+        console.log(`[ADD-USER] Successfully added ${email} to ${clientPortalId}`);
+        res.json({
+            success: true,
+            message: `${name} has been added successfully. They'll receive login credentials via email.`,
+            user: { name, email, packageKey, packageName: pkg.name, pricePerUser: pkg.price }
+        });
+
+    } catch (error) {
+        console.error('[ADD-USER] Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to add user: ' + error.message });
+    }
+});
+
+// ========================================
+// POST /api/client/validate-password
+// Used by admin validation modal before sensitive actions
+// ========================================
+app.post('/api/client/validate-password', authenticateClient, async (req, res) => {
+    try {
+        const { password } = req.body;
+        const email = req.user.email;
+        if (!password) return res.status(400).json({ success: false, message: 'Password required' });
+
+        const result = await pool.query('SELECT client_password FROM leads WHERE LOWER(email) = LOWER($1)', [email]);
+        const lead = result.rows[0];
+        if (!lead?.client_password) return res.status(404).json({ success: false, message: 'Account not found' });
+
+        const valid = await bcrypt.compare(password, lead.client_password);
+        res.json({ success: valid, valid, message: valid ? 'Verified' : 'Incorrect password' });
+    } catch (error) {
+        console.error('[VALIDATE-PW] Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
 
 // ========================================
 // COMPANY SUBSCRIPTION HELPERS

@@ -7538,6 +7538,7 @@ async function renderSubscriptions(content) {
                         <th>Status</th>
                         <th>Next Billing</th>
                         <th>Subscribed</th>
+                        <th style="text-align:right;">Actions</th>
                     </tr></thead>
                     <tbody>
                         ${individualSubs.map(s => _buildIndividualSubRow(s)).join('')}
@@ -7584,8 +7585,12 @@ function _buildIndividualSubRow(s) {
     const createdAt   = s.created_at         ? new Date(s.created_at)         : null;
     const fmtShort    = d => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
+    const canCancel     = ['active', 'past_due'].includes(s.status);
+    const canReactivate = s.status === 'canceling';
+    const hasBilling    = !!s.stripe_customer_id;
+
     return `
-        <tr>
+        <tr data-sub-status="${s.status}">
             <td>
                 <div style="font-weight:600;color:var(--text-primary);">${nm}</div>
                 <div style="font-size:12px;color:var(--text-muted);">${em}</div>
@@ -7596,6 +7601,24 @@ function _buildIndividualSubRow(s) {
             <td><span style="background:${sc.bg};color:${sc.color};padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;">${sc.label}</span></td>
             <td style="color:var(--text-secondary);font-size:13px;">${fmtShort(periodEnd)}</td>
             <td style="color:var(--text-muted);font-size:13px;">${fmtShort(createdAt)}</td>
+            <td>
+                <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
+                    ${canCancel ? `
+                    <button onclick="_openSubCancelModal(${s.id}, '${(nm).replace(/'/g,"\\'").replace(/"/g,'&quot;')}', '${(s.package_name||'CRM').replace(/'/g,"\\'")}')"\n                        style="padding:5px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.3);">
+                        Cancel
+                    </button>` : ''}
+                    ${canReactivate ? `
+                    <button onclick="_reactivateSub(${s.id})"
+                        style="padding:5px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;background:rgba(16,185,129,0.1);color:#059669;border:1px solid rgba(16,185,129,0.3);">
+                        Reactivate
+                    </button>` : ''}
+                    ${hasBilling ? `
+                    <button onclick="_openBillingPortal(${s.id})"
+                        style="padding:5px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color);">
+                        Billing
+                    </button>` : ''}
+                </div>
+            </td>
         </tr>
     `;
 }
@@ -7682,40 +7705,7 @@ function _openSubCancelModal(subId, subName, planName) {
     if (modal) modal.style.display = 'flex';
 }
 
-function _closeSubModal() {
-    _subCancelId = null;
-    const modal = document.getElementById('subCancelModal');
-    if (modal) modal.style.display = 'none';
-}
-
-async function _confirmSubCancel() {
-    if (!_subCancelId) return;
-    const immediate = document.getElementById('subCancelImmediate')?.checked || false;
-    const btn       = document.getElementById('subCancelConfirmBtn');
-
-    if (btn) { btn.disabled = true; btn.textContent = 'Cancelling…'; }
-
-    try {
-        const res  = await fetch(`${API_URL}/api/subscriptions/${_subCancelId}/cancel`, {
-            method:  'POST',
-            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ immediate })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-            _closeSubModal();
-            showToast(immediate ? 'Subscription cancelled immediately.' : 'Cancellation scheduled — access continues until end of period.', 'success');
-            renderSubscriptions(document.getElementById('mainContent'));
-        } else {
-            showToast(data.message || 'Cancellation failed', 'error');
-        }
-    } catch (err) {
-        showToast('Network error: ' + err.message, 'error');
-    } finally {
-        if (btn) { btn.disabled = false; btn.textContent = 'Cancel Subscription'; }
-    }
-}
+// _closeSubModal and _confirmSubCancel are defined at bottom of file (with password validation)
 
 async function _reactivateSub(subId) {
     if (!confirm('Remove the scheduled cancellation and keep this subscription active?')) return;
@@ -20914,6 +20904,128 @@ async function sendMarketingBlast() {
     }
 }
 
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SUBSCRIPTION CANCEL MODAL (with admin password validation)
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="subCancelModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+    <div style="background:var(--bg-primary,#fff);border-radius:12px;padding:32px;max-width:460px;width:calc(100% - 32px);box-shadow:0 20px 60px rgba(0,0,0,0.3);border:1px solid var(--border-color,#e5e7eb);">
+        <!-- Header -->
+        <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;">
+            <div style="width:40px;height:40px;border-radius:8px;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <div>
+                <div style="font-size:16px;font-weight:800;color:var(--text-primary,#111);margin-bottom:4px;">Cancel Subscription</div>
+                <div id="subCancelDesc" style="font-size:13px;color:var(--text-muted,#888);line-height:1.5;"></div>
+            </div>
+        </div>
+
+        <!-- Timing option -->
+        <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border-color,#e5e7eb);border-radius:8px;cursor:pointer;margin-bottom:20px;font-size:13px;color:var(--text-secondary,#444);">
+            <input type="checkbox" id="subCancelImmediate" style="width:15px;height:15px;accent-color:#dc2626;">
+            <div>
+                <div style="font-weight:600;">Cancel immediately</div>
+                <div style="font-size:12px;color:var(--text-muted,#888);margin-top:1px;">Access ends now. Unchecked = access continues until period end.</div>
+            </div>
+        </label>
+
+        <!-- Admin password validation -->
+        <div style="margin-bottom:20px;">
+            <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted,#888);margin-bottom:8px;">Admin Password Required</label>
+            <input type="password" id="subCancelAdminPw" placeholder="Enter your admin password to confirm"
+                style="width:100%;box-sizing:border-box;padding:10px 14px;border:1px solid var(--border-color,#e5e7eb);border-radius:8px;font-size:13px;color:var(--text-primary,#111);background:var(--bg-secondary,#f9fafb);outline:none;"
+                onkeydown="if(event.key==='Enter')_confirmSubCancel()">
+            <div id="subCancelPwError" style="color:#dc2626;font-size:12px;margin-top:6px;display:none;"></div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:10px;">
+            <button type="button" onclick="_closeSubModal()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border-color,#e5e7eb);background:var(--bg-secondary,#f9fafb);color:var(--text-secondary,#444);font-size:13px;font-weight:600;cursor:pointer;">
+                Keep Subscription
+            </button>
+            <button type="button" id="subCancelConfirmBtn" onclick="_confirmSubCancel()" style="flex:1;padding:10px;border-radius:8px;border:none;background:#dc2626;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">
+                Cancel Subscription
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Admin password validation before subscription cancel ──────────
+async function _confirmSubCancel() {
+    if (!_subCancelId) return;
+    const immediate = document.getElementById('subCancelImmediate')?.checked || false;
+    const pw        = document.getElementById('subCancelAdminPw')?.value?.trim();
+    const btn       = document.getElementById('subCancelConfirmBtn');
+    const errEl     = document.getElementById('subCancelPwError');
+
+    if (!pw) {
+        if (errEl) { errEl.textContent = 'Admin password is required.'; errEl.style.display = 'block'; }
+        return;
+    }
+    if (errEl) errEl.style.display = 'none';
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Verifying…'; }
+
+    try {
+        // Step 1: Validate admin password
+        const pwRes  = await fetch(`${API_URL}/api/admin/validate-password`, {
+            method:  'POST',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ password: pw })
+        });
+        const pwData = await pwRes.json();
+
+        if (!pwData.valid) {
+            if (errEl) { errEl.textContent = 'Incorrect password. Please try again.'; errEl.style.display = 'block'; }
+            if (btn) { btn.disabled = false; btn.textContent = 'Cancel Subscription'; }
+            return;
+        }
+
+        // Step 2: Proceed with cancellation
+        if (btn) { btn.textContent = 'Cancelling…'; }
+
+        const res  = await fetch(`${API_URL}/api/subscriptions/${_subCancelId}/cancel`, {
+            method:  'POST',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ immediate, adminOverride: true })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            _closeSubModal();
+            showToast(immediate ? 'Subscription cancelled immediately.' : 'Cancellation scheduled — access continues until period end.', 'success');
+            renderSubscriptions(document.getElementById('mainContent'));
+        } else {
+            showToast(data.message || 'Cancellation failed', 'error');
+        }
+    } catch (err) {
+        showToast('Network error: ' + err.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Cancel Subscription'; }
+    }
+}
+
+function _closeSubModal() {
+    _subCancelId = null;
+    const modal = document.getElementById('subCancelModal');
+    if (modal) modal.style.display = 'none';
+    const pw = document.getElementById('subCancelAdminPw');
+    if (pw) pw.value = '';
+    const err = document.getElementById('subCancelPwError');
+    if (err) err.style.display = 'none';
+    const chk = document.getElementById('subCancelImmediate');
+    if (chk) chk.checked = false;
+}
+
+// Close on backdrop click
+document.getElementById('subCancelModal').addEventListener('click', function(e) {
+    if (e.target === this) _closeSubModal();
+});
 </script>
 </body>
 </html>

@@ -6363,10 +6363,25 @@ function selectSubscriptionType(type) {
     const companyNewFields = document.getElementById('companyNewFields');
     const companyEmployeeFields = document.getElementById('companyEmployeeFields');
     const individualFields = document.getElementById('individualFields');
+    const userCountField = document.getElementById('userCountField');
+    const individualUserNote = document.getElementById('individualUserNote');
     
     companyNewFields.style.display = type === 'company-new' ? 'block' : 'none';
     companyEmployeeFields.style.display = type === 'company-employee' ? 'block' : 'none';
     individualFields.style.display = type === 'individual' ? 'block' : 'none';
+    
+    // For individual: lock at 1 user, hide the quantity control
+    if (type === 'individual') {
+        if (userCountField) userCountField.style.display = 'none';
+        if (individualUserNote) individualUserNote.style.display = 'block';
+        // Always force qty to 1 for individual
+        const qtyInput = document.getElementById('crmUserCount');
+        if (qtyInput) { qtyInput.value = 1; }
+        updateCRMTotal();
+    } else {
+        if (userCountField) userCountField.style.display = 'block';
+        if (individualUserNote) individualUserNote.style.display = 'none';
+    }
     
     // Update title
     const titles = {
@@ -6426,6 +6441,8 @@ function closeCRMModal(e) {
 }
 
 function changeCRMQty(delta) {
+    // Individual accounts are locked to 1 user
+    if (window._subscriptionType === 'individual') return;
     const input = document.getElementById('crmUserCount');
     const current = parseInt(input.value) || 1;
     const next = Math.max(1, current + delta);

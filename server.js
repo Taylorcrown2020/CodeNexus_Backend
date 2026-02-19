@@ -2460,6 +2460,25 @@ app.post('/api/scheduling/webhook', async (req, res) => {
             );
             
             console.log(`[SCHEDULING WEBHOOK] Created new hot lead: ${newLead.rows[0].id}`);
+
+            // Purge any stale company/subscription data for this email
+            try {
+                const stalePortals = await pool.query(
+                    `SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email) = LOWER($1)`,
+                    [inviteeEmail]
+                );
+                for (const row of stalePortals.rows) {
+                    const pid = row.client_portal_id;
+                    await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
+                    await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [pid]);
+                    await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]);
+                    console.log(`[SCHEDULING WEBHOOK] Purged stale company for reused email: ${inviteeEmail} (${pid})`);
+                }
+                await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [inviteeEmail]);
+                await pool.query(`DELETE FROM company_users WHERE LOWER(user_email) = LOWER($1)`, [inviteeEmail]);
+            } catch (purgeErr) {
+                console.error('[SCHEDULING WEBHOOK] Stale purge error (non-fatal):', purgeErr.message);
+            }
         } else {
             const lead = leadResult.rows[0];
             
@@ -3423,72 +3442,56 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         
         // ══════════════════════════════════════════════════════════════
         // 2. DELETE COMPANY DATA
-        // Always clean up company_users by email (covers non-admin members).
-        // If this lead is a company admin, delete the entire company.
+        // Look up ALL companies where this email is the admin — covers
+        // cases where client_portal_id is NULL on the lead record.
         // ══════════════════════════════════════════════════════════════
 
-        // Remove this person from any company they belong to (as a user)
-        const userSubResult = await pool.query(
-            `SELECT stripe_subscription_id FROM company_users WHERE LOWER(user_email) = LOWER($1)`,
+        // Find every company this person administers (by email, not just portal id)
+        const adminCompanies = await pool.query(
+            `SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email) = LOWER($1)`,
             [leadEmail]
         );
-        for (const row of userSubResult.rows) {
-            if (row.stripe_subscription_id) {
-                try {
-                    await stripe.subscriptions.cancel(row.stripe_subscription_id);
-                    console.log(`[DELETE] Cancelled company_user subscription: ${row.stripe_subscription_id}`);
-                } catch (err) {
-                    console.error(`[DELETE] Error cancelling company_user sub:`, err.message);
-                }
-            }
-        }
-        await pool.query(`DELETE FROM company_users WHERE LOWER(user_email) = LOWER($1)`, [leadEmail]);
-        console.log(`[DELETE] Removed ${userSubResult.rows.length} company_users rows for ${leadEmail}`);
+        // Also include the portal id stored on the lead record itself
+        const portalIdsToDelete = new Set(
+            adminCompanies.rows.map(r => r.client_portal_id).filter(Boolean)
+        );
+        if (clientPortalId) portalIdsToDelete.add(clientPortalId);
 
-        if (isCompanyAdmin && clientPortalId) {
-            console.log(`[DELETE] Deleting entire company: ${clientPortalId}`);
-            
-            // Get all remaining company users for this portal
+        for (const pid of portalIdsToDelete) {
+            // Cancel all Stripe subscriptions for company users
             const companyUsers = await pool.query(
                 `SELECT user_email, stripe_subscription_id FROM company_users WHERE client_portal_id = $1`,
-                [clientPortalId]
+                [pid]
             );
-            
-            // Cancel all remaining company user subscriptions in Stripe
             for (const user of companyUsers.rows) {
                 if (user.stripe_subscription_id) {
                     try {
                         await stripe.subscriptions.cancel(user.stripe_subscription_id);
                         console.log(`[DELETE] Cancelled company user subscription: ${user.stripe_subscription_id}`);
                     } catch (err) {
-                        console.error(`[DELETE] Error cancelling ${user.user_email}:`, err.message);
+                        console.error(`[DELETE] Stripe cancel error for ${user.user_email}:`, err.message);
                     }
                 }
             }
-            
-            // Delete all remaining company_users records
-            await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [clientPortalId]);
-            console.log(`[DELETE] Deleted ${companyUsers.rows.length} remaining company user records`);
-            
-            // Delete the company record itself
-            await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [clientPortalId]);
-            console.log(`[DELETE] Deleted company record: ${clientPortalId}`);
+            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
+            await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [pid]);
+            await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]);
+            await pool.query(`UPDATE leads SET client_portal_id = NULL, is_company_admin = FALSE, updated_at = NOW() WHERE client_portal_id = $1`, [pid]);
+            console.log(`[DELETE] Wiped company: ${pid}`);
+        }
 
-            // Also clean up any crm_subscriptions tied to this portal
-            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]);
-            console.log(`[DELETE] Deleted crm_subscriptions for portal: ${clientPortalId}`);
-        } else if (clientPortalId) {
-            // Non-admin member — if no more users remain in the company, clean up the company record too
-            const remaining = await pool.query(
-                `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'`,
-                [clientPortalId]
-            );
-            if (parseInt(remaining.rows[0].count) === 0) {
-                await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [clientPortalId]);
-                await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]);
-                console.log(`[DELETE] Cleaned up empty company: ${clientPortalId}`);
+        // Also remove this person as a member of any OTHER company's user list
+        const memberSubs = await pool.query(
+            `SELECT stripe_subscription_id FROM company_users WHERE LOWER(user_email) = LOWER($1)`,
+            [leadEmail]
+        );
+        for (const row of memberSubs.rows) {
+            if (row.stripe_subscription_id) {
+                try { await stripe.subscriptions.cancel(row.stripe_subscription_id); } catch (_) {}
             }
         }
+        await pool.query(`DELETE FROM company_users WHERE LOWER(user_email) = LOWER($1)`, [leadEmail]);
+        console.log(`[DELETE] Removed all company_users rows for ${leadEmail}`);
         
         // ══════════════════════════════════════════════════════════════
         // 3. DELETE ALL CRM DATA
@@ -3503,14 +3506,11 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         // ══════════════════════════════════════════════════════════════
         // 4. DELETE ALL SUBSCRIPTION RECORDS
         // ══════════════════════════════════════════════════════════════
-        // Delete all subscription records — use both lead_id and case-insensitive email
-        // to catch any records where lead_id may have been stored as NULL
         await pool.query(`DELETE FROM crm_subscriptions WHERE lead_id = $1`, [leadId]);
         await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]);
         await pool.query(`DELETE FROM subscription_events WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]);
-        // Also clean up any subscription rows tied to this lead's portal (catches company subs not yet deleted above)
-        if (clientPortalId) {
-            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]);
+        for (const pid of portalIdsToDelete) {
+            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
         }
         console.log(`[DELETE] Wiped all subscription records`);
         
@@ -4900,6 +4900,29 @@ app.post('/api/leads', async (req, res) => {
         );
 
         console.log('✅ New lead created:', result.rows[0].email);
+
+        // Purge any stale company/subscription data tied to this email from a previous
+        // deleted customer. If a row exists it is definitely orphaned — a freshly-created
+        // lead has no company yet.
+        try {
+            const stalePorals = await pool.query(
+                `SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email) = LOWER($1)`,
+                [email]
+            );
+            for (const row of stalePorals.rows) {
+                const pid = row.client_portal_id;
+                await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
+                await pool.query(`DELETE FROM subscription_events WHERE lead_email IN (SELECT user_email FROM company_users WHERE client_portal_id = $1)`, [pid]);
+                await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [pid]);
+                await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]);
+                console.log(`[NEW LEAD] Purged stale company data for reused email: ${email} (portal: ${pid})`);
+            }
+            // Also wipe any stale crm_subscriptions rows tied directly to this email
+            await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [email]);
+            await pool.query(`DELETE FROM company_users WHERE LOWER(user_email) = LOWER($1)`, [email]);
+        } catch (purgeErr) {
+            console.error('[NEW LEAD] Stale data purge error (non-fatal):', purgeErr.message);
+        }
         
         // If this is from the contact form (not admin), track engagement and make them hot
         if (!isAuthenticated) {
@@ -8561,11 +8584,6 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
                 ) as users
             FROM client_companies cc
             LEFT JOIN company_users cu ON cc.client_portal_id = cu.client_portal_id
-            WHERE EXISTS (
-                SELECT 1 FROM leads l
-                WHERE LOWER(l.email) = LOWER(cc.admin_email)
-                   OR l.client_portal_id = cc.client_portal_id
-            )
             GROUP BY cc.id, cc.client_portal_id, cc.company_name, cc.admin_email, 
                      cc.total_active_seats, cc.monthly_total, cc.created_at
             ORDER BY cc.created_at DESC

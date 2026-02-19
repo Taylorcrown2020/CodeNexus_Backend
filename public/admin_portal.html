@@ -7372,6 +7372,25 @@ if (typeof module !== 'undefined' && module.exports) {
 // Full subscriber list with cancel / reactivate / billing-portal actions
 // ═══════════════════════════════════════════════════════════════════
 
+async function cleanupOrphanedCompanies() {
+    if (!confirm('This will permanently remove any company accounts whose customer has already been deleted. Continue?')) return;
+    try {
+        const r = await fetch(`${API_URL}/api/admin/cleanup-orphaned-companies`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const d = await r.json();
+        if (d.success) {
+            showToast(d.message, 'success');
+            renderSubscriptions(document.getElementById('contentArea'));
+        } else {
+            showToast(d.message || 'Cleanup failed', 'error');
+        }
+    } catch (e) {
+        showToast('Error running cleanup', 'error');
+    }
+}
+
 async function renderSubscriptions(content) {
     content.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--text-muted);">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="animation:spin 1s linear infinite;margin-bottom:12px;">
@@ -7416,6 +7435,9 @@ async function renderSubscriptions(content) {
                     Manage all subscriptions — individual users and company accounts with their team members.
                 </p>
             </div>
+            <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px;" onclick="cleanupOrphanedCompanies()">
+                🧹 Remove Deleted Accounts
+            </button>
         </div>
 
         <!-- KPI strip -->

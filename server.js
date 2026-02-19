@@ -641,11 +641,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 // Send email via Brevo
 async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, html, attachments = []) {
-    const { TransactionalEmailsApi, SendSmtpEmail, TransactionalEmailsApiApiKeys } = SibApiV3Sdk;
-    const apiInstance = new TransactionalEmailsApi();
-    apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, brevoApiKey);
+    // @getbrevo/brevo SDK: classes live directly on the module object
+    // API key is set via authentications, NOT setApiKey()
+    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+    apiInstance.authentications['api-key'].apiKey = brevoApiKey;
     
-    const sendSmtpEmail = new SendSmtpEmail();
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
     sendSmtpEmail.sender = { email: senderEmail, name: senderName || 'Diamondback Coding' };
     sendSmtpEmail.to = [{ email: to }];
     sendSmtpEmail.subject = subject;
@@ -3450,9 +3451,11 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         // ══════════════════════════════════════════════════════════════
         // 4. DELETE ALL SUBSCRIPTION RECORDS
         // ══════════════════════════════════════════════════════════════
+        // Delete all subscription records — use both lead_id and case-insensitive email
+        // to catch any records where lead_id may have been stored as NULL
         await pool.query(`DELETE FROM crm_subscriptions WHERE lead_id = $1`, [leadId]);
-        await pool.query(`DELETE FROM crm_subscriptions WHERE lead_email = $1`, [leadEmail]);
-        await pool.query(`DELETE FROM subscription_events WHERE lead_email = $1`, [leadEmail]);
+        await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]);
+        await pool.query(`DELETE FROM subscription_events WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]);
         console.log(`[DELETE] Wiped all subscription records`);
         
         // ══════════════════════════════════════════════════════════════
@@ -19660,11 +19663,10 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
     // ── Try Brevo first (server-side, full tracking) ──────────────
     if (settings?.brevo_api_key && fromEmail) {
         try {
-            const { TransactionalEmailsApi, SendSmtpEmail, TransactionalEmailsApiApiKeys } = SibApiV3Sdk;
-            const apiInstance = new TransactionalEmailsApi();
-            apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, settings.brevo_api_key);
+            const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+            apiInstance.authentications['api-key'].apiKey = settings.brevo_api_key;
 
-            const sendSmtpEmail = new SendSmtpEmail();
+            const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
             sendSmtpEmail.sender = { email: fromEmail, name: fromName };
             sendSmtpEmail.to = [{ email: leadEmail }];
             sendSmtpEmail.subject = subject;

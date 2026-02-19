@@ -5394,25 +5394,31 @@ async function deleteLead(leadId) {
     if (!confirm('Delete this lead?')) return;
     
     try {
-        const response = await fetch(`/api/leads/${leadId}`, {
+        const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                'Authorization': `Bearer ${authToken || localStorage.getItem('adminToken')}`
             }
         });
         
         const data = await response.json();
         
         if (data.success) {
-            showNotification('Lead deleted', 'success');
+            showToast('Lead deleted successfully', 'success');
             await loadLeads();
-            renderSection(state.currentSection);
+            updateBadges();
+            closeDetailModal();
+            if (state.currentSection === 'subscriptions') {
+                renderSubscriptions(document.getElementById('contentArea'));
+            } else {
+                renderSection(state.currentSection);
+            }
         } else {
-            showNotification(data.message, 'error');
+            showToast(data.message || 'Failed to delete', 'error');
         }
     } catch (error) {
         console.error('Delete error:', error);
-        showNotification('Failed to delete', 'error');
+        showToast('Failed to delete', 'error');
     }
 }
 
@@ -12026,7 +12032,13 @@ try {
     updateBadges();
     closeDetailModal();
     showToast('Lead deleted successfully', 'success');
-    renderSection(state.currentSection);
+    // Always re-render current section, but also force subscriptions to refresh
+    // by navigating away and back if we're on subscriptions
+    if (state.currentSection === 'subscriptions') {
+        renderSubscriptions(document.getElementById('contentArea'));
+    } else {
+        renderSection(state.currentSection);
+    }
 } catch (e) {
     showToast('Error deleting lead', 'error');
 }

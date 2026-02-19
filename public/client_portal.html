@@ -769,6 +769,10 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     Leads
                 </div>
+                <div class="nav-item" data-page="myleads">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M12 14v7"/><path d="M9 17h6"/></svg>
+                    My Leads
+                </div>
                 <div class="nav-item" data-page="contacts">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     Contacts
@@ -950,8 +954,47 @@ tr:hover .row-actions { opacity: 1; }
         </div>
 
         <!-- ==============================
-             CONTACTS
+             MY LEADS
         ============================== -->
+        <div class="page" id="page-myleads">
+            <div class="page-header">
+                <div class="page-title-group">
+                    <div class="page-title">My Leads</div>
+                    <div class="page-subtitle" id="myLeadsSubtitle">Leads & customers assigned to you</div>
+                </div>
+                <div class="page-actions">
+                    <div class="search-input">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="myLeadsSearch" placeholder="Search my leads..." oninput="filterMyLeads()">
+                    </div>
+                </div>
+            </div>
+            <div class="page-body">
+                <!-- Analytics bar chart -->
+                <div id="myLeadsAnalytics" style="margin-bottom:20px;"></div>
+
+                <!-- Status tabs -->
+                <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0;">
+                    <button class="btn btn-ghost my-lead-tab active-tab" onclick="setMyLeadTab('all',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">All</button>
+                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('new',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">New</button>
+                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('contacted',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Contacted</button>
+                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('qualified',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Qualified</button>
+                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('proposal',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Proposal</button>
+                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('closed',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Closed</button>
+                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('lost',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Lost</button>
+                </div>
+
+                <div class="table-wrap" id="myLeadsTable">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <h3>No leads assigned to you yet</h3>
+                        <p>Leads assigned to you will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
         <div class="page" id="page-contacts">
             <div class="page-header">
                 <div class="page-title-group">
@@ -986,54 +1029,55 @@ tr:hover .row-actions { opacity: 1; }
             <div class="page-header">
                 <div class="page-title-group">
                     <div class="page-title">Follow-ups</div>
-                    <div class="page-subtitle">Automated lead nurturing queue</div>
+                    <div class="page-subtitle">Cold &amp; hot lead outreach queue</div>
                 </div>
                 <div class="page-actions">
-                    <button class="btn btn-default" onclick="openAutoReplyBuilder()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        Auto-Reply Templates
-                    </button>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);cursor:pointer;">
+                        <input type="checkbox" id="fuMineOnly" onchange="loadFollowups()" style="accent-color:var(--text-0);">
+                        My leads only
+                    </label>
                 </div>
             </div>
             <div class="page-body">
                 <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-                    <button class="btn btn-default fu-tab active-tab" onclick="setFUTab('queue',this)">Queue</button>
-                    <button class="btn btn-default fu-tab" onclick="setFUTab('auto',this)">Auto-Reply Active</button>
-                    <button class="btn btn-default fu-tab" onclick="setFUTab('unsubscribed',this)">Unsubscribed</button>
+                    <button class="btn btn-default fu-tab active-tab" onclick="setFUTab('all',this)">All Due</button>
+                    <button class="btn btn-default fu-tab" onclick="setFUTab('hot',this)">🔥 Hot</button>
+                    <button class="btn btn-default fu-tab" onclick="setFUTab('cold',this)">❄️ Cold</button>
+                    <button class="btn btn-default fu-tab" onclick="setFUTab('overdue',this)">⚠️ Overdue</button>
                 </div>
-                <div id="followupsContent"></div>
+                <div id="followupsContent">
+                    <div class="empty-state"><div class="spinner"></div></div>
+                </div>
             </div>
         </div>
 
         <!-- ==============================
-             MARKETING
+             MARKETING / EMAIL
         ============================== -->
         <div class="page" id="page-marketing">
             <div class="page-header">
                 <div class="page-title-group">
-                    <div class="page-title">Marketing</div>
+                    <div class="page-title">Email Marketing</div>
+                    <div class="page-subtitle">Templates, campaigns &amp; automated chains</div>
                 </div>
                 <div class="page-actions">
-                    <button class="btn btn-white" onclick="openNewCampaignModal()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        New Campaign
+                    <button class="btn btn-ghost" onclick="setMKTab('chains',document.querySelector('[data-mktab=chains]'))">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        Chains
+                    </button>
+                    <button class="btn btn-default" onclick="openTemplateBuilder(null)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        New Template
                     </button>
                 </div>
             </div>
             <div class="page-body">
-                <div style="display:flex;gap:8px;margin-bottom:16px;">
-                    <button class="btn btn-default mk-tab active-tab" onclick="setMKTab('all',this)">All</button>
-                    <button class="btn btn-default mk-tab" onclick="setMKTab('leads',this)">Leads</button>
-                    <button class="btn btn-default mk-tab" onclick="setMKTab('customers',this)">Customers</button>
-                    <button class="btn btn-default mk-tab" onclick="setMKTab('contacts',this)">Contacts</button>
+                <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);">
+                    <button class="btn btn-ghost mk-tab active-tab" data-mktab="templates" onclick="setMKTab('templates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">Templates</button>
+                    <button class="btn btn-ghost mk-tab" data-mktab="send" onclick="setMKTab('send',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Send Campaign</button>
+                    <button class="btn btn-ghost mk-tab" data-mktab="chains" onclick="setMKTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Automated Chains</button>
                 </div>
-                <div id="marketingContent">
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                        <h3>No campaigns yet</h3>
-                        <p>Create your first marketing campaign</p>
-                    </div>
-                </div>
+                <div id="marketingContent"></div>
             </div>
         </div>
 
@@ -1060,8 +1104,7 @@ tr:hover .row-actions { opacity: 1; }
                             <div class="card-body" id="schedulingList">
                                 <div class="empty-state">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                    <h3>No appointments</h3>
-                                    <p>Share your booking link to get started</p>
+                                    <h3>No appointments</h3><p>Share your booking link to get started</p>
                                 </div>
                             </div>
                         </div>
@@ -1099,8 +1142,7 @@ tr:hover .row-actions { opacity: 1; }
                 <div class="table-wrap" id="invoicesTableWrap">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
-                        <h3>No invoices</h3>
-                        <p>Create your first invoice</p>
+                        <h3>No invoices</h3><p>Create your first invoice</p>
                     </div>
                 </div>
             </div>
@@ -1113,24 +1155,19 @@ tr:hover .row-actions { opacity: 1; }
             <div class="page-header">
                 <div class="page-title-group">
                     <div class="page-title">Analytics</div>
+                    <div class="page-subtitle" id="analyticsSubtitle">Your performance metrics</div>
+                </div>
+                <div class="page-actions" id="analyticsAdminControls" style="display:none;">
+                    <select id="analyticsUserSelect" onchange="loadAnalytics()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-1);color:var(--text-0);font-size:13px;min-width:180px;">
+                        <option value="">My Analytics</option>
+                    </select>
                 </div>
             </div>
-            <div class="page-body">
-                <div class="stats-row" id="analyticsStats">
-                    <div class="stat-cell"><div class="stat-label">Total Revenue</div><div class="stat-value" id="aStat1">—</div></div>
-                    <div class="stat-cell"><div class="stat-label">Leads This Month</div><div class="stat-value" id="aStat2">—</div></div>
-                    <div class="stat-cell"><div class="stat-label">Conversion Rate</div><div class="stat-value" id="aStat3">—</div></div>
-                    <div class="stat-cell"><div class="stat-label">Avg. Deal Size</div><div class="stat-value" id="aStat4">—</div></div>
-                </div>
-                <div id="analyticsContent">
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                        <h3>Building your analytics</h3>
-                        <p>Data will appear as you use the CRM</p>
-                    </div>
-                </div>
+            <div class="page-body" id="analyticsContent">
+                <div class="empty-state"><div class="spinner"></div></div>
             </div>
         </div>
+
 
         <!-- ==============================
              TASKS
@@ -1275,7 +1312,8 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
             </div>
             <div class="page-body">
-                <div class="card" style="max-width:560px;">
+                <!-- Profile -->
+                <div class="card" style="max-width:620px;">
                     <div class="card-header"><span class="card-title">Profile</span></div>
                     <div class="card-body">
                         <div class="form-field">
@@ -1289,7 +1327,79 @@ tr:hover .row-actions { opacity: 1; }
                         <button class="btn btn-white" onclick="saveProfile()">Save Changes</button>
                     </div>
                 </div>
-                <div class="card" style="max-width:560px;">
+
+                <!-- Brevo Integration -->
+                <div class="card" style="max-width:620px;margin-top:16px;">
+                    <div class="card-header">
+                        <span class="card-title">Brevo Email Integration</span>
+                        <span style="font-size:11px;color:var(--text-3);margin-top:3px;display:block;">Required to send marketing emails, track opens &amp; clicks, and trigger hot lead conversions.</span>
+                    </div>
+                    <div class="card-body">
+                        <div style="background:#6366f111;border:1px solid #6366f133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
+                            <strong style="color:var(--text-0);">How it works:</strong> Get your API key from <a href="https://app.brevo.com/settings/keys/api" target="_blank" style="color:#6366f1;">brevo.com → Settings → API Keys</a>.
+                            Then set your Brevo webhook URL to: <code style="background:var(--bg-3);padding:2px 6px;border-radius:3px;font-size:11px;">${location.origin}/api/client-brevo/webhook/YOUR_PORTAL_ID</code>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-field">
+                                <label class="form-label">Brevo API Key <span style="color:#ef4444;">*</span></label>
+                                <input class="form-input" id="settingsBrevoKey" type="password" placeholder="xkeysib-...">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Sender Email <span style="color:#ef4444;">*</span></label>
+                                <input class="form-input" id="settingsSenderEmail" type="email" placeholder="hello@yourcompany.com">
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Sender Name</label>
+                            <input class="form-input" id="settingsSenderName" placeholder="Acme Corp">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Company Info -->
+                <div class="card" style="max-width:620px;margin-top:16px;">
+                    <div class="card-header">
+                        <span class="card-title">Company Info</span>
+                        <span style="font-size:11px;color:var(--text-3);margin-top:3px;display:block;">Used in email template footers and auto-filled when building templates.</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row">
+                            <div class="form-field">
+                                <label class="form-label">Company Name</label>
+                                <input class="form-input" id="settingsCompanyName" placeholder="Acme Corp">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Company Phone</label>
+                                <input class="form-input" id="settingsCompanyPhone" placeholder="(555) 000-0000">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-field">
+                                <label class="form-label">Company Email</label>
+                                <input class="form-input" id="settingsCompanyEmail" type="email" placeholder="info@yourcompany.com">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Website URL <span style="color:var(--text-3);font-weight:400;">(link that triggers hot conversion)</span></label>
+                                <input class="form-input" id="settingsWebsiteUrl" placeholder="https://yourwebsite.com">
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Company Address</label>
+                            <input class="form-input" id="settingsCompanyAddr" placeholder="123 Main St, Austin TX 78701">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Email Accent Color</label>
+                            <div style="display:flex;gap:10px;align-items:center;">
+                                <input type="color" id="settingsColorPicker" value="#FF6B35" oninput="document.getElementById('settingsAccentColor').value=this.value" style="width:44px;height:38px;border:none;border-radius:var(--r-sm);cursor:pointer;padding:2px;">
+                                <input class="form-input" id="settingsAccentColor" placeholder="#FF6B35" oninput="document.getElementById('settingsColorPicker').value=this.value" style="max-width:120px;">
+                            </div>
+                        </div>
+                        <button class="btn btn-white" onclick="saveEmailSettings()">Save Email Settings</button>
+                    </div>
+                </div>
+
+                <!-- Change Password -->
+                <div class="card" style="max-width:620px;margin-top:16px;">
                     <div class="card-header"><span class="card-title">Change Password</span></div>
                     <div class="card-body">
                         <div class="form-field">
@@ -1309,6 +1419,7 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
             </div>
         </div>
+
 
     </main><!-- end .main -->
 </div><!-- end #app -->
@@ -1836,8 +1947,10 @@ function navigate(page) {
     switch(page) {
         case 'dashboard':   loadDashboard();   break;
         case 'leads':       loadLeads();       break;
+        case 'myleads':     loadMyLeads();     break;
         case 'contacts':    loadContacts();    break;
         case 'followups':   loadFollowups();   break;
+        case 'marketing':   loadMarketing();   break;
         case 'invoices':    loadInvoices();    break;
         case 'analytics':   loadAnalytics();   break;
         case 'tasks':       loadTasks();       break;
@@ -1990,17 +2103,27 @@ function renderLeads() {
         <table>
             <thead><tr>
                 <th>Name</th><th>Email</th><th>Company</th>
-                <th>Status</th><th>Added</th><th></th>
+                <th>Status</th><th>Assigned To</th><th>Added</th><th></th>
             </tr></thead>
             <tbody>
                 ${filtered.map(l=>`<tr>
-                    <td style="font-weight:500;">${escHtml(l.name||'—')}</td>
+                    <td style="font-weight:500;cursor:pointer;" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">${escHtml(l.name||'—')}</td>
                     <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
                     <td style="color:var(--text-2);">${escHtml(l.company||'—')}</td>
                     <td>${statusBadge(l.status||l.lead_temperature||'new')}</td>
+                    <td>
+                        ${l.assigned_to_name
+                            ? `<span style="font-size:12px;background:var(--bg-1);padding:3px 8px;border-radius:4px;white-space:nowrap;">${escHtml(l.assigned_to_name)}</span>`
+                            : `<span style="font-size:12px;color:var(--text-3);">Unassigned</span>`
+                        }
+                    </td>
                     <td style="color:var(--text-3);font-size:12px;">${fmtDate(l.created_at)}</td>
                     <td>
                         <div class="row-actions">
+                            <button class="btn btn-ghost btn-xs" onclick="openAssignModal(${l.id},'${escHtml(l.name||'')}',${l.crm_assigned_to||'null'})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                                Assign
+                            </button>
                             <button class="btn btn-ghost btn-xs" onclick="sendFollowUpEmail(${l.id},'${escHtml(l.email||'')}')">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                                 Email
@@ -2072,6 +2195,411 @@ async function sendFollowUpEmail(leadId, email) {
         toast(data.success ? 'Follow-up email sent' : (data.message||'Failed'), data.success?'success':'error');
     } catch {
         toast('Error sending email', 'error');
+    }
+}
+
+// ============================================================
+// MY LEADS — personal view with analytics
+// ============================================================
+const ML = { leads: [], analytics: null, tab: 'all', teamMembers: [] };
+
+async function loadMyLeads() {
+    const el = document.getElementById('myLeadsTable');
+    el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-3);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="animation:spin 1s linear infinite;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto;"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke-opacity=".2"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>Loading...</div>`;
+
+    try {
+        const [leadsRes, membersRes] = await Promise.all([
+            apiFetch('/client/leads?mine=1').then(r => r.json()),
+            apiFetch('/client/team-members').then(r => r.json()).catch(() => ({ members: [] }))
+        ]);
+        ML.leads = leadsRes.leads || [];
+        ML.analytics = leadsRes.analytics || null;
+        ML.teamMembers = membersRes.members || [];
+    } catch(e) {
+        ML.leads = []; ML.analytics = null;
+    }
+
+    renderMyLeadsAnalytics();
+    renderMyLeads();
+}
+
+function renderMyLeadsAnalytics() {
+    const el = document.getElementById('myLeadsAnalytics');
+    if (!el || !ML.analytics) { el && (el.innerHTML = ''); return; }
+    const a = ML.analytics;
+    const total = parseInt(a.total) || 0;
+    if (total === 0) { el.innerHTML = ''; return; }
+
+    const statuses = [
+        { key: 'new',         label: 'New',          color: '#6366f1' },
+        { key: 'contacted',   label: 'Contacted',    color: '#3b82f6' },
+        { key: 'qualified',   label: 'Qualified',    color: '#f59e0b' },
+        { key: 'proposal',    label: 'Proposal',     color: '#8b5cf6' },
+        { key: 'negotiation', label: 'Negotiation',  color: '#ec4899' },
+        { key: 'closed',      label: 'Closed',       color: '#10b981' },
+        { key: 'lost',        label: 'Lost',         color: '#ef4444' },
+    ];
+
+    const maxVal = Math.max(...statuses.map(s => parseInt(a[s.key]) || 0), 1);
+
+    el.innerHTML = `
+        <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:4px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;">
+                <div style="font-size:13px;font-weight:700;color:var(--text-0);">Pipeline Overview</div>
+                <div style="font-size:13px;color:var(--text-2);">${total} total assigned</div>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:10px;height:80px;">
+                ${statuses.map(s => {
+                    const val = parseInt(a[s.key]) || 0;
+                    const pct = maxVal > 0 ? Math.round((val / maxVal) * 100) : 0;
+                    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;cursor:pointer;" onclick="setMyLeadTab('${s.key}', document.querySelector('[onclick*=\\'${s.key}\\']'))">
+                        <div style="font-size:11px;font-weight:700;color:var(--text-1);">${val}</div>
+                        <div style="width:100%;background:${s.color};border-radius:3px 3px 0 0;height:${Math.max(pct, val > 0 ? 8 : 2)}%;opacity:0.85;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85"></div>
+                        <div style="font-size:10px;color:var(--text-3);white-space:nowrap;">${s.label}</div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+}
+
+function renderMyLeads() {
+    const el = document.getElementById('myLeadsTable');
+    const q  = (document.getElementById('myLeadsSearch')||{}).value?.toLowerCase() || '';
+    const tab = ML.tab;
+
+    let filtered = ML.leads;
+    if (tab !== 'all') {
+        filtered = filtered.filter(l => {
+            const s = (l.status || l.lead_temperature || 'new').toLowerCase();
+            if (tab === 'closed') return s === 'closed' || l.is_customer;
+            return s === tab;
+        });
+    }
+    if (q) {
+        filtered = filtered.filter(l =>
+            (l.name||'').toLowerCase().includes(q) ||
+            (l.email||'').toLowerCase().includes(q) ||
+            (l.company||'').toLowerCase().includes(q)
+        );
+    }
+
+    if (!filtered.length) {
+        el.innerHTML = `<div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <h3>${tab === 'all' ? 'No leads assigned to you' : 'No ' + tab + ' leads'}</h3>
+            <p>${tab === 'all' ? 'Leads assigned to you will appear here' : 'Try a different filter'}</p></div>`;
+        return;
+    }
+
+    // Split active vs closed
+    const active = filtered.filter(l => (l.status||'').toLowerCase() !== 'closed' && !l.is_customer || tab !== 'all');
+    const closed = tab === 'all' ? filtered.filter(l => (l.status||'').toLowerCase() === 'closed' || l.is_customer) : [];
+
+    const buildRows = (rows) => rows.map(l => `
+        <tr style="cursor:pointer;" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">
+            <td style="font-weight:500;">${escHtml(l.name||'—')}</td>
+            <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
+            <td style="color:var(--text-2);">${escHtml(l.company||'—')}</td>
+            <td>${statusBadge(l.status||l.lead_temperature||'new')}</td>
+            <td style="color:var(--text-3);font-size:12px;">${fmtDate(l.updated_at||l.created_at)}</td>
+            <td>
+                <div class="row-actions" onclick="event.stopPropagation()">
+                    <button class="btn btn-ghost btn-xs" onclick="openAssignModal(${l.id},'${escHtml(l.name||'')}',${l.crm_assigned_to||'null'})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        Assign
+                    </button>
+                </div>
+            </td>
+        </tr>`).join('');
+
+    const thead = `<thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Status</th><th>Updated</th><th></th></tr></thead>`;
+
+    let html = `<table>${thead}<tbody>${buildRows(tab === 'all' ? (active.length ? active : []) : filtered)}</tbody></table>`;
+
+    if (tab === 'all' && closed.length) {
+        html += `
+            <div style="margin-top:24px;">
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);padding:0 4px 10px;">
+                    Closed / Customers (${closed.length})
+                </div>
+                <div style="opacity:0.7;">
+                    <table>${thead}<tbody>${buildRows(closed)}</tbody></table>
+                </div>
+            </div>`;
+    }
+
+    el.innerHTML = html;
+}
+
+function filterMyLeads() { renderMyLeads(); }
+
+function setMyLeadTab(tab, el) {
+    ML.tab = tab;
+    document.querySelectorAll('.my-lead-tab').forEach(b => {
+        b.classList.toggle('active-tab', b === el);
+        b.style.borderBottom = b === el ? '2px solid var(--text-0)' : '';
+    });
+    renderMyLeads();
+}
+
+// ============================================================
+// LEAD PROFILE MODAL — full info view
+// ============================================================
+function openLeadProfile(lead) {
+    let modal = document.getElementById('leadProfileModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'leadProfileModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = (e) => { if (e.target === modal) closeModal('leadProfileModal'); };
+        document.body.appendChild(modal);
+    }
+
+    const statusColors = {
+        new: '#6366f1', contacted: '#3b82f6', qualified: '#f59e0b',
+        proposal: '#8b5cf6', negotiation: '#ec4899', closed: '#10b981',
+        lost: '#ef4444', hot: '#ef4444', cold: '#6366f1', warm: '#f59e0b'
+    };
+    const st = (lead.status || lead.lead_temperature || 'new').toLowerCase();
+    const stColor = statusColors[st] || '#6366f1';
+    const isHot = lead.lead_temperature === 'hot';
+
+    const field = (label, value) => value
+        ? `<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px;">${label}</div><div style="font-size:14px;color:var(--text-1);">${escHtml(String(value))}</div></div>`
+        : '';
+
+    modal.innerHTML = `
+        <div class="modal" style="max-width:580px;width:calc(100% - 32px);">
+            <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:44px;height:44px;border-radius:50%;background:${stColor}22;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:${stColor};">
+                        ${(lead.name||'?').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div style="font-size:17px;font-weight:800;color:var(--text-0);">${escHtml(lead.name||'Unnamed')}</div>
+                        <div style="font-size:12px;color:var(--text-3);">${escHtml(lead.email||'')}</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="background:${isHot?'#ef444422':'#6366f122'};color:${isHot?'#ef4444':'#6366f1'};padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;">
+                        ${isHot ? '🔥 Hot' : '❄️ Cold'}
+                    </span>
+                    <button class="modal-close" onclick="closeModal('leadProfileModal')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <!-- Temperature toggle -->
+                <div style="display:flex;gap:8px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
+                    <button class="btn btn-xs ${isHot ? 'btn-ghost' : 'btn-default'}" style="font-size:12px;" onclick="toggleLeadTemperature(${lead.id},'cold','leadProfileModal')">
+                        ❄️ Mark Cold
+                    </button>
+                    <button class="btn btn-xs ${isHot ? 'btn-default' : 'btn-ghost'}" style="font-size:12px;background:${isHot?'#ef4444':''};color:${isHot?'#fff':''};" onclick="toggleLeadTemperature(${lead.id},'hot','leadProfileModal')">
+                        🔥 Mark Hot
+                    </button>
+                    ${isHot ? `<button class="btn btn-xs btn-ghost" style="font-size:12px;margin-left:auto;" onclick="openHotChainEnrollModal(${lead.id},'${escHtml(lead.name||'')}')">
+                        ⚡ Start Hot Sequence
+                    </button>` : ''}
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;">
+                    ${field('Phone', lead.phone)}
+                    ${field('Company', lead.company)}
+                    ${field('Source', lead.source)}
+                    ${field('Assigned To', lead.assigned_to_name || 'Unassigned')}
+                    ${field('Follow-up Count', lead.follow_up_count !== undefined ? lead.follow_up_count : null)}
+                    ${field('Last Contact', lead.last_contact_date ? new Date(lead.last_contact_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'Never')}
+                    ${field('Became Hot', lead.became_hot_at ? new Date(lead.became_hot_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : null)}
+                    ${field('Customer Status', lead.customer_status)}
+                    ${field('Created', lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : null)}
+                </div>
+                ${lead.notes ? `<div style="margin-top:4px;padding:14px;background:var(--bg-1);border-radius:var(--r-md);"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:6px;">Notes</div><div style="font-size:13px;color:var(--text-1);white-space:pre-wrap;">${escHtml(lead.notes)}</div></div>` : ''}
+                ${lead.address_line1 ? `<div style="margin-top:14px;">${field('Address', [lead.address_line1, lead.address_line2, lead.city, lead.state, lead.zip_code].filter(Boolean).join(', '))}</div>` : ''}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('leadProfileModal')">Close</button>
+                <button class="btn btn-ghost" onclick="closeModal('leadProfileModal');openAssignModal(${lead.id},'${escHtml(lead.name||'')}',${lead.crm_assigned_to||'null'})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                    Reassign
+                </button>
+                <button class="btn btn-default" onclick="closeModal('leadProfileModal');openEditLeadModal(${JSON.stringify(lead).replace(/"/g,'&quot;')})">Edit Lead</button>
+            </div>
+        </div>`;
+
+    openModal('leadProfileModal');
+}
+
+// Toggle lead temperature (hot ↔ cold) from profile modal
+async function toggleLeadTemperature(leadId, newTemp, closeModalId) {
+    try {
+        const res  = await apiFetch(`/client/leads/${leadId}`, 'PATCH', { lead_temperature: newTemp });
+        const data = await res.json();
+        if (data.success) {
+            const action = newTemp === 'hot' ? '🔥 Lead marked Hot' : '❄️ Lead marked Cold';
+            toast(action + (newTemp === 'hot' ? ' — timeline reset, cold chains paused' : ' — hot chains paused, timeline reset'), 'success');
+            if (closeModalId) closeModal(closeModalId);
+            // Refresh whichever view is active
+            if (S.currentPage === 'followups') loadFollowups();
+            else if (S.currentPage === 'leads') loadLeads();
+            else if (S.currentPage === 'myleads') loadMyLeads();
+        } else {
+            toast(data.message || 'Could not update temperature', 'error');
+        }
+    } catch(e) { toast('Error updating lead', 'error'); }
+}
+
+// Hot-lead chain enrollment modal (start a specific chain as a hot-lead sequence)
+async function openHotChainEnrollModal(leadId, leadName) {
+    let chains = [];
+    try {
+        const r = await apiFetch('/client/email-chains');
+        const d = await r.json();
+        chains = d.chains || [];
+    } catch {}
+
+    let modal = document.getElementById('hotChainModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'hotChainModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('hotChainModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:420px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Start Hot Lead Sequence</div>
+                <div style="font-size:13px;color:var(--text-3);">${escHtml(leadName)} — 🔥 Hot</div>
+                <button class="modal-close" onclick="closeModal('hotChainModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Select an email chain to run for this hot lead. Their cold sequences will be stopped and this one starts immediately on the hot lead (3.5/7 day) timing.</p>
+                ${chains.length === 0
+                    ? `<p style="color:var(--text-3);font-size:13px;">No chains yet. <a href="#" onclick="navigateTo('marketing')" style="color:var(--text-0);">Build one in Email Marketing →</a></p>`
+                    : `<div class="form-field">
+                        <label>Choose Chain</label>
+                        <select id="hotChainSelect">
+                            <option value="">— Select a chain —</option>
+                            ${chains.map(c=>`<option value="${c.id}">${escHtml(c.name)} (${c.steps?.length||0} steps${c.loop?' · loops':''})</option>`).join('')}
+                        </select>
+                       </div>`
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('hotChainModal')">Cancel</button>
+                ${chains.length ? `<button class="btn btn-default" style="background:#ef4444;border-color:#ef4444;" onclick="confirmHotChainEnroll(${leadId})">🔥 Start Sequence</button>` : ''}
+            </div>
+        </div>`;
+    openModal('hotChainModal');
+}
+
+async function confirmHotChainEnroll(leadId) {
+    const chainId = document.getElementById('hotChainSelect')?.value;
+    if (!chainId) { toast('Select a chain', 'error'); return; }
+    try {
+        const res  = await apiFetch(`/client/leads/${leadId}/hot-enroll`, 'POST', { chain_id: parseInt(chainId) });
+        const data = await res.json();
+        if (data.success) {
+            toast('Hot lead sequence started', 'success');
+            closeModal('hotChainModal');
+        } else { toast(data.message || 'Failed', 'error'); }
+    } catch { toast('Error starting sequence', 'error'); }
+}
+
+
+
+// ============================================================
+// ASSIGN MODAL — assign any lead to any team member
+// ============================================================
+let _assignLeadId = null;
+
+async function openAssignModal(leadId, leadName, currentAssigneeId) {
+    _assignLeadId = leadId;
+
+    // Fetch team members if not loaded
+    if (!ML.teamMembers.length) {
+        try {
+            const r = await apiFetch('/client/team-members').then(res => res.json());
+            ML.teamMembers = r.members || [];
+        } catch {}
+    }
+
+    let modal = document.getElementById('assignLeadModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'assignLeadModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = (e) => { if (e.target === modal) closeModal('assignLeadModal'); };
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div class="modal" style="max-width:420px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Assign Lead</div>
+                <div style="font-size:13px;color:var(--text-3);margin-top:2px;">${escHtml(leadName)}</div>
+                <button class="modal-close" onclick="closeModal('assignLeadModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field">
+                    <label>Assign to team member</label>
+                    <select id="assigneeSelect">
+                        <option value="">— Unassigned —</option>
+                        ${ML.teamMembers.map(m => `
+                            <option value="${m.id}" ${parseInt(currentAssigneeId) === m.id ? 'selected' : ''}>
+                                ${escHtml(m.user_label ? m.user_label + ' — ' : '')}${escHtml(m.user_name)}${m.is_admin ? ' (Admin)' : ''}
+                            </option>`).join('')}
+                    </select>
+                </div>
+                ${ML.teamMembers.length === 0 ? '<p style="color:var(--text-3);font-size:13px;">No team members found. This may be an individual account.</p>' : ''}
+                <div style="margin-top:8px;">
+                    <button class="btn btn-ghost btn-sm" onclick="selfAssignLead(${leadId})" style="font-size:12px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Assign to myself
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('assignLeadModal')">Cancel</button>
+                <button class="btn btn-default" onclick="saveAssignment()">Save Assignment</button>
+            </div>
+        </div>`;
+
+    openModal('assignLeadModal');
+}
+
+async function selfAssignLead(leadId) {
+    // Find this user's company_users record
+    const myEntry = ML.teamMembers.find(m => m.user_email === S.user?.email);
+    if (!myEntry) {
+        toast('Could not find your team profile — make sure you are logged in as a company user', 'error');
+        return;
+    }
+    document.getElementById('assigneeSelect').value = myEntry.id;
+}
+
+async function saveAssignment() {
+    if (!_assignLeadId) return;
+    const sel = document.getElementById('assigneeSelect');
+    const companyUserId = sel.value ? parseInt(sel.value) : null;
+
+    try {
+        const res = await apiFetch(`/client/leads/${_assignLeadId}/assign`, 'POST', { companyUserId });
+        const data = await res.json();
+        if (data.success) {
+            toast(data.message || 'Assignment saved', 'success');
+            closeModal('assignLeadModal');
+            // Refresh whichever view is active
+            if (S.page === 'leads') await loadLeads();
+            if (S.page === 'myleads') await loadMyLeads();
+        } else {
+            toast(data.message || 'Failed to save assignment', 'error');
+        }
+    } catch(e) {
+        toast('Error saving assignment', 'error');
     }
 }
 
@@ -2155,53 +2683,174 @@ async function saveContact() {
 // ============================================================
 // FOLLOW-UPS
 // ============================================================
+// ============================================================
+// FOLLOW-UPS — cold/hot lead outreach queue
+// ============================================================
+const FU = { data: null, tab: 'all' };
+
 async function loadFollowups() {
+    const mine = document.getElementById('fuMineOnly')?.checked ? '1' : '0';
+    document.getElementById('followupsContent').innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-3);"><div class="spinner" style="margin:0 auto 8px;"></div>Loading...</div>`;
     try {
-        const res = await apiFetch('/client/followups');
+        const res  = await apiFetch(`/client/follow-ups?mine=${mine}`);
         const data = await res.json();
-        renderFollowups(data.leads || data.followups || []);
-    } catch {
-        document.getElementById('followupsContent').innerHTML = `<div class="empty-state"><p>Could not load follow-ups</p></div>`;
+        FU.data = data;
+        renderFollowups();
+    } catch(e) {
+        document.getElementById('followupsContent').innerHTML = `<div class="empty-state"><p>Could not load follow-ups. ${e.message}</p></div>`;
     }
 }
 
-function renderFollowups(leads) {
-    const el = document.getElementById('followupsContent');
+function renderFollowups() {
+    const el  = document.getElementById('followupsContent');
+    if (!FU.data) return;
+    const hot  = FU.data.hot  || [];
+    const cold = FU.data.cold || [];
+    const all  = [...hot, ...cold];
+    const tab  = FU.tab;
+
+    let leads = tab === 'hot'     ? hot
+              : tab === 'cold'    ? cold
+              : tab === 'overdue' ? all.filter(l => l.is_due && l.days_until_due === 0)
+              : all;
+
     if (!leads.length) {
         el.innerHTML = `<div class="empty-state">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            <h3>Queue is clear</h3><p>No pending follow-ups</p></div>`;
+            <h3>${tab === 'overdue' ? 'No overdue outreach' : 'Queue is clear'}</h3>
+            <p>${tab === 'all' ? 'All leads are up to date' : 'Switch tabs to see other leads'}</p></div>`;
         return;
     }
-    el.innerHTML = `<div class="table-wrap">
-        <table>
-            <thead><tr><th>Lead</th><th>Email</th><th>Status</th><th>Due</th><th>Auto-Reply</th><th></th></tr></thead>
-            <tbody>
-                ${leads.map(l=>`<tr>
-                    <td style="font-weight:500;">${escHtml(l.name||'—')}</td>
-                    <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
-                    <td>${statusBadge(l.status||'new')}</td>
-                    <td style="font-size:12px;color:var(--text-3);">${fmtDate(l.next_follow_up||l.follow_up_date)}</td>
-                    <td>
-                        ${l.auto_reply_active ? `<span class="badge badge-green">Active</span>` : `<span class="badge badge-gray">Off</span>`}
-                    </td>
-                    <td>
-                        <div class="row-actions">
-                            <button class="btn btn-ghost btn-xs" onclick="sendFollowUpEmail(${l.id},'${escHtml(l.email||'')}')">Send</button>
-                            <button class="btn btn-ghost btn-xs" onclick="toggleAutoReply(${l.id}, ${l.auto_reply_active?'false':'true'})">${l.auto_reply_active?'Disable':'Auto-Reply'}</button>
-                        </div>
-                    </td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
-    </div>`;
+
+    // Stats bar
+    const overdue   = all.filter(l => l.is_due && l.days_until_due === 0).length;
+    const dueSoon   = all.filter(l => !l.is_due || l.days_until_due > 0).length;
+
+    el.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+            ${[
+                ['Hot Leads',   hot.length,   '#ef4444'],
+                ['Cold Leads',  cold.length,  '#6366f1'],
+                ['Overdue',     overdue,      '#f59e0b'],
+                ['Due Soon',    dueSoon,      '#10b981'],
+            ].map(([label,val,color])=>`
+                <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 20px;">
+                    <div style="font-size:26px;font-weight:800;color:${color};">${val}</div>
+                    <div style="font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">${label}</div>
+                </div>`).join('')}
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr>
+                    <th>Lead</th><th>Email</th><th>Temp</th>
+                    <th>Last Contact</th><th>Follow-ups</th><th>Next Due</th><th></th>
+                </tr></thead>
+                <tbody>
+                    ${leads.map(l => {
+                        const isHot     = l.lead_temperature === 'hot';
+                        const isOverdue = l.is_due && (parseFloat(l.days_until_due) === 0 || parseFloat(l.days_until_due) < 0);
+                        const daysVal   = parseFloat(l.days_until_due);
+                        const daysLabel = l.last_contact_date === null
+                            ? `<span style="color:#10b981;font-weight:700;">Now</span>`
+                            : isOverdue
+                                ? `<span style="color:#ef4444;font-weight:700;">⚠ Overdue</span>`
+                                : `<span style="color:var(--text-2);">${daysVal === Math.floor(daysVal) ? daysVal : daysVal.toFixed(1)}d</span>`;
+                        return `<tr>
+                            <td style="font-weight:500;cursor:pointer;" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">${escHtml(l.name||'—')}</td>
+                            <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
+                            <td>
+                                <span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;background:${isHot?'#ef444422':'#6366f122'};color:${isHot?'#ef4444':'#6366f1'};">
+                                    ${isHot ? '🔥 Hot' : '❄️ Cold'}
+                                </span>
+                            </td>
+                            <td style="font-size:12px;color:var(--text-3);">${l.last_contact_date ? new Date(l.last_contact_date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</td>
+                            <td style="font-size:12px;color:var(--text-2);">${l.follow_up_count||0}</td>
+                            <td>${daysLabel}</td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="btn btn-ghost btn-xs" onclick="openSendEmailModal(${l.id},'${escHtml(l.email||'')}','${escHtml(l.name||'')}')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                        Send
+                                    </button>
+                                    ${isHot ? `<button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="openHotChainEnrollModal(${l.id},'${escHtml(l.name||'')}')">⚡ Sequence</button>` : ''}
+                                </div>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
 }
 
 function setFUTab(tab, el) {
-    document.querySelectorAll('.fu-tab').forEach(b => b.classList.remove('active-tab'));
+    FU.tab = tab;
+    document.querySelectorAll('.fu-tab').forEach(b => {
+        b.classList.remove('active-tab');
+        b.style.background = '';
+    });
     el.classList.add('active-tab');
-    loadFollowups();
+    renderFollowups();
 }
+
+// Quick send-email modal from follow-up queue
+async function openSendEmailModal(leadId, leadEmail, leadName) {
+    // Load templates
+    let templates = [];
+    try {
+        const r = await apiFetch('/client/email-templates');
+        const d = await r.json();
+        templates = d.templates || [];
+    } catch {}
+
+    let modal = document.getElementById('quickSendModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'quickSendModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('quickSendModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:460px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Send Email</div>
+                <div style="font-size:13px;color:var(--text-3);">${escHtml(leadName)} — ${escHtml(leadEmail)}</div>
+                <button class="modal-close" onclick="closeModal('quickSendModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                ${templates.length === 0
+                    ? `<p style="color:var(--text-3);font-size:13px;">No templates yet. <a href="#" onclick="navigateTo('marketing')">Create one in Email Marketing →</a></p>`
+                    : `<div class="form-field">
+                        <label>Choose Template</label>
+                        <select id="quickSendTemplate">
+                            <option value="">— Select a template —</option>
+                            ${templates.map(t=>`<option value="${t.id}">${escHtml(t.name)} — ${escHtml(t.subject)}</option>`).join('')}
+                        </select>
+                       </div>`
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('quickSendModal')">Cancel</button>
+                ${templates.length ? `<button class="btn btn-default" onclick="quickSendEmail(${leadId})">Send Email</button>` : ''}
+            </div>
+        </div>`;
+    openModal('quickSendModal');
+}
+
+async function quickSendEmail(leadId) {
+    const templateId = document.getElementById('quickSendTemplate')?.value;
+    if (!templateId) { toast('Select a template', 'error'); return; }
+    try {
+        const res = await apiFetch('/client/email/send', 'POST', { template_id: parseInt(templateId), lead_ids: [leadId] });
+        const data = await res.json();
+        if (data.success) {
+            toast(`Email sent (${data.sent} sent, ${data.skipped} skipped)`, 'success');
+            closeModal('quickSendModal');
+            await loadFollowups();
+        } else { toast(data.message||'Failed to send', 'error'); }
+    } catch(e) { toast('Error sending email', 'error'); }
+}
+
 
 async function toggleAutoReply(leadId, enable) {
     try {
@@ -2425,50 +3074,131 @@ async function emailInvoice(invoiceId) {
 // ANALYTICS
 // ============================================================
 async function loadAnalytics() {
+    const el = document.getElementById('analyticsContent');
+    el.innerHTML = `<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto 8px;"></div>Loading...</div>`;
+
+    // Show admin controls if admin
+    if (S.isAdmin) {
+        const adminBar = document.getElementById('analyticsAdminControls');
+        if (adminBar) {
+            adminBar.style.display = '';
+            // Populate team members dropdown if empty
+            const sel = document.getElementById('analyticsUserSelect');
+            if (sel && sel.options.length <= 1) {
+                try {
+                    const r = await apiFetch('/client/team-members');
+                    const d = await r.json();
+                    (d.members||[]).forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.user_email;
+                        opt.textContent = (m.user_label ? m.user_label + ' — ' : '') + m.user_name;
+                        sel.appendChild(opt);
+                    });
+                } catch {}
+            }
+        }
+    }
+
+    const selectedEmail = document.getElementById('analyticsUserSelect')?.value || '';
+    const url = '/client/analytics' + (selectedEmail ? `?user_email=${encodeURIComponent(selectedEmail)}` : '');
+
     try {
-        const invoices = S.invoices.length ? S.invoices : (await (await apiFetch('/client/invoices')).json()).invoices || [];
-        const leads    = S.leads.length ? S.leads : [];
+        const [analyticsRes, teamRes] = await Promise.all([
+            apiFetch(url).then(r => r.json()),
+            S.isAdmin ? apiFetch('/client/analytics/team').then(r => r.json()).catch(()=>({team:[]})) : Promise.resolve({team:[]})
+        ]);
 
-        const totalRevenue = invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+parseFloat(i.total_amount||i.amount||0),0);
-        const now = new Date();
-        const thisMonth = leads.filter(l => {
-            const d = new Date(l.created_at);
-            return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
-        }).length;
-        const converted = leads.filter(l=>l.is_customer||l.status==='converted').length;
-        const rate = leads.length ? ((converted/leads.length)*100).toFixed(1)+'%' : '—';
-        const paidInvs = invoices.filter(i=>i.status==='paid');
-        const avgDeal = paidInvs.length ? '$'+(totalRevenue/paidInvs.length).toFixed(0) : '—';
+        const a = analyticsRes.analytics || {};
+        const em = a.email || {};
+        const le = a.leads || {};
 
-        document.getElementById('aStat1').textContent = '$' + totalRevenue.toFixed(0);
-        document.getElementById('aStat2').textContent = thisMonth;
-        document.getElementById('aStat3').textContent = rate;
-        document.getElementById('aStat4').textContent = avgDeal;
+        const subtitle = document.getElementById('analyticsSubtitle');
+        if (subtitle) subtitle.textContent = selectedEmail ? `Viewing: ${a.user_name || selectedEmail}` : 'Your performance metrics';
 
-        document.getElementById('analyticsContent').innerHTML = `
-            <div class="card">
-                <div class="card-header"><span class="card-title">Lead Pipeline Breakdown</span></div>
-                <div class="card-body">
-                    ${[['New', leads.filter(l=>!l.status||l.status==='new').length, 'var(--text-0)'],
-                       ['Contacted', leads.filter(l=>l.status==='contacted').length, 'var(--blue)'],
-                       ['Pending', leads.filter(l=>l.status==='pending').length, 'var(--yellow)'],
-                       ['Converted', converted, 'var(--green)'],
-                    ].map(([label,count,color])=>{
-                        const pct = leads.length ? Math.round((count/leads.length)*100) : 0;
-                        return `<div style="margin-bottom:16px;">
-                            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                                <span style="font-size:13px;font-weight:500;color:var(--text-1);">${label}</span>
-                                <span style="font-size:13px;font-weight:600;color:var(--text-0);">${count}</span>
-                            </div>
-                            <div class="progress"><div class="progress-bar" style="width:${pct}%;background:${color};"></div></div>
-                        </div>`;
-                    }).join('')}
+        const metricCard = (label, value, sub, color='var(--text-0)') => `
+            <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;">
+                <div style="font-size:28px;font-weight:800;color:${color};">${value}</div>
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-top:4px;">${label}</div>
+                ${sub ? `<div style="font-size:11px;color:var(--text-3);margin-top:4px;">${sub}</div>` : ''}
+            </div>`;
+
+        const barRow = (label, val, max, color) => {
+            const pct = max > 0 ? Math.round((val/max)*100) : 0;
+            return `<div style="margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+                    <span style="font-size:13px;color:var(--text-1);">${label}</span>
+                    <span style="font-size:13px;font-weight:700;color:var(--text-0);">${val}</span>
+                </div>
+                <div style="height:6px;background:var(--bg-3);border-radius:3px;">
+                    <div style="height:6px;width:${pct}%;background:${color};border-radius:3px;transition:width .4s;"></div>
                 </div>
             </div>`;
+        };
+
+        let teamHtml = '';
+        if (S.isAdmin && teamRes.team?.length) {
+            teamHtml = `
+                <div style="margin-top:24px;">
+                    <div style="font-size:13px;font-weight:700;color:var(--text-0);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">Team Overview</div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr>
+                                <th>Team Member</th><th>Leads</th><th>Hot</th><th>Closed</th>
+                                <th>Close Rate</th><th>Emails Sent</th><th>Open Rate</th><th>Click Rate</th>
+                            </tr></thead>
+                            <tbody>
+                                ${teamRes.team.map(m => `<tr style="cursor:pointer;" onclick="document.getElementById('analyticsUserSelect').value='${m.user_email}';loadAnalytics()">
+                                    <td>
+                                        <div style="font-weight:600;">${escHtml(m.user_name)}</div>
+                                        ${m.user_label ? `<div style="font-size:11px;color:var(--text-3);">${escHtml(m.user_label)}</div>` : ''}
+                                    </td>
+                                    <td>${m.total_leads}</td>
+                                    <td><span style="color:#ef4444;font-weight:700;">${m.hot_leads}</span></td>
+                                    <td><span style="color:#10b981;font-weight:700;">${m.closed_leads}</span></td>
+                                    <td>${m.close_rate}%</td>
+                                    <td>${m.sent}</td>
+                                    <td>${m.open_rate}%</td>
+                                    <td>${m.click_rate}%</td>
+                                </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        el.innerHTML = `
+            <!-- Email metrics -->
+            <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);">Email Performance</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+                ${metricCard('Emails Sent', em.sent||0, 'Total sent via Brevo')}
+                ${metricCard('Open Rate', (em.open_rate||0)+'%', `${em.opened||0} opened`, em.open_rate >= 25 ? '#10b981' : em.open_rate >= 15 ? '#f59e0b' : '#ef4444')}
+                ${metricCard('Click Rate', (em.click_rate||0)+'%', `${em.clicked||0} clicked`, em.click_rate >= 5 ? '#10b981' : em.click_rate >= 2 ? '#f59e0b' : '#ef4444')}
+            </div>
+
+            <!-- Lead metrics -->
+            <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);">Lead Pipeline</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+                ${metricCard('Assigned Leads', le.total_assigned||0, 'Total in your name')}
+                ${metricCard('Hot Leads', le.hot||0, 'Clicked your website', '#ef4444')}
+                ${metricCard('Closed', le.closed||0, 'Converted to customers', '#10b981')}
+                ${metricCard('Close Rate', (le.close_rate||0)+'%', 'Leads → customers', le.close_rate >= 20 ? '#10b981' : le.close_rate >= 10 ? '#f59e0b' : '#ef4444')}
+            </div>
+
+            <!-- Pipeline breakdown bars -->
+            <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:20px;">
+                <div style="font-size:13px;font-weight:700;margin-bottom:16px;">Pipeline Breakdown</div>
+                ${barRow('New', le.new||0, le.total_assigned||1, '#6366f1')}
+                ${barRow('Hot', le.hot||0, le.total_assigned||1, '#ef4444')}
+                ${barRow('Closed', le.closed||0, le.total_assigned||1, '#10b981')}
+                ${barRow('Lost', le.lost||0, le.total_assigned||1, '#9ca3af')}
+            </div>
+
+            ${teamHtml}`;
     } catch(e) {
-        console.error('Analytics error:', e);
+        el.innerHTML = `<div class="empty-state"><p>Could not load analytics. ${e.message}</p></div>`;
     }
 }
+
 
 // ============================================================
 // TASKS
@@ -3245,12 +3975,717 @@ async function openBillingPortal(subId) {
 }
 
 // ============================================================
+// EMAIL MARKETING — template builder, campaigns, chains
+// ============================================================
+const MK = { templates: [], chains: [], tab: 'templates', settings: null };
+
+const EMAIL_TOPICS = [
+    { value: 'intro',         label: 'Introduction / First Contact' },
+    { value: 'followup',      label: 'Follow-up / Check-in' },
+    { value: 'offer',         label: 'Special Offer / Promotion' },
+    { value: 'value',         label: 'Value / Tips & Insights' },
+    { value: 'testimonial',   label: 'Case Study / Testimonial' },
+    { value: 'reengagement',  label: 'Re-engagement / Win-back' },
+    { value: 'newsletter',    label: 'Newsletter / Update' },
+    { value: 'announcement',  label: 'Announcement / New Service' },
+    { value: 'holiday',       label: 'Holiday / Seasonal' },
+    { value: 'custom',        label: 'Custom (write your own)' },
+];
+
+// Pre-built body content per topic
+const TOPIC_TEMPLATES = {
+    intro: {
+        eyebrow: 'REACHING OUT',
+        headline: 'We\'d love to connect.',
+        body: `<p>Hi there,</p>
+<p>I wanted to take a moment to introduce myself and let you know what we're all about. We specialize in delivering <strong>results-driven solutions</strong> that help businesses like yours grow, save time, and reach new customers.</p>
+<p>Whether you're looking to scale, streamline, or simply explore what's possible — we're here to help. We'd love to learn more about your goals and show you how we can make a real difference.</p>
+<p>Would you be open to a quick 15-minute call this week?</p>
+<p>Looking forward to connecting,<br><strong>The Team</strong></p>`,
+        cta: 'Schedule a Call'
+    },
+    followup: {
+        eyebrow: 'CHECKING IN',
+        headline: 'Just wanted to follow up.',
+        body: `<p>Hi,</p>
+<p>I wanted to circle back after our recent conversation. I know things get busy, and I didn't want our discussion to get lost in the shuffle.</p>
+<p>We genuinely believe we can add <strong>real value</strong> to what you're building — and I'd love the chance to show you how. Even a 10-minute conversation can open up a lot of possibilities.</p>
+<p>What does your schedule look like this week? I'm flexible and happy to work around you.</p>`,
+        cta: 'Let\'s Talk'
+    },
+    offer: {
+        eyebrow: 'LIMITED TIME',
+        headline: 'An exclusive offer for you.',
+        body: `<p>Hi,</p>
+<p>We're running a <strong>special promotion</strong> this month and wanted to make sure you knew about it before it ends.</p>
+<p>For a limited time, we're offering new clients an exclusive deal that makes getting started easier than ever. This is our way of saying we're confident in what we deliver — and we want to prove it to you.</p>
+<p>Spots are limited, so don't wait too long. Click below to learn more and take advantage of this offer.</p>`,
+        cta: 'Claim Your Offer'
+    },
+    value: {
+        eyebrow: 'QUICK TIP',
+        headline: 'Something we thought you\'d find useful.',
+        body: `<p>Hi,</p>
+<p>We're always looking for ways to add value to the people we work with — even before they become clients. So here's something we wanted to share.</p>
+<p><strong>Did you know</strong> that most businesses leave significant revenue on the table simply by not following up consistently with leads? Studies show it takes an average of 8 touch points before a prospect converts — but most businesses give up after just 2.</p>
+<p>We've built our entire process around solving exactly this problem. And we'd love to show you how it works for your business specifically.</p>`,
+        cta: 'See How It Works'
+    },
+    testimonial: {
+        eyebrow: 'SUCCESS STORY',
+        headline: 'Real results from real clients.',
+        body: `<p>Hi,</p>
+<p>We talk a lot about what we do — but we think our clients say it better than we ever could.</p>
+<p>"Working with this team completely transformed how we handle leads. Within the first 90 days, our conversion rate improved by over 40%. I only wish we'd started sooner." <em>— Recent client</em></p>
+<p>Results like this don't happen by accident. They come from a proven process, dedicated support, and a team that genuinely cares about your growth.</p>
+<p>Ready to write your own success story?</p>`,
+        cta: 'Get Started Today'
+    },
+    reengagement: {
+        eyebrow: 'WE MISS YOU',
+        headline: 'It\'s been a while.',
+        body: `<p>Hi,</p>
+<p>We noticed it's been some time since we last connected, and we wanted to reach out to see how things are going on your end.</p>
+<p>A lot has changed since we last spoke — we've added new services, improved our process, and helped even more businesses like yours hit their goals. We'd love the chance to show you what's new.</p>
+<p>No pressure at all — just a friendly check-in. If now isn't the right time, no worries. But if you're open to it, we'd love to reconnect.</p>`,
+        cta: 'Let\'s Reconnect'
+    },
+    newsletter: {
+        eyebrow: 'THIS MONTH',
+        headline: 'What\'s new and what\'s coming.',
+        body: `<p>Hi,</p>
+<p>Here's a quick roundup of what's been happening and what we're excited about this month:</p>
+<p><strong>📈 Industry Update:</strong> The market continues to shift, and businesses that adapt early are seeing the biggest gains. Here's what we're watching closely.</p>
+<p><strong>🚀 What We've Been Up To:</strong> We've been heads down building and improving — and we can't wait to share what's coming.</p>
+<p><strong>💡 Tip of the Month:</strong> Consistency beats intensity. Showing up for your leads and customers regularly, even in small ways, builds trust faster than any one-time big move.</p>`,
+        cta: 'Read More'
+    },
+    announcement: {
+        eyebrow: 'EXCITING NEWS',
+        headline: 'Something new is here.',
+        body: `<p>Hi,</p>
+<p>We're thrilled to announce something we've been working hard on — and we wanted you to be among the first to know.</p>
+<p>We've just launched <strong>a new service</strong> designed specifically to help businesses like yours move faster, grow smarter, and win more clients. It's built from real feedback from real clients, and we're incredibly proud of it.</p>
+<p>We'd love to walk you through it personally and show you exactly how it applies to your situation.</p>`,
+        cta: 'Learn More'
+    },
+    holiday: {
+        eyebrow: 'SEASON\'S GREETINGS',
+        headline: 'Wishing you a wonderful season.',
+        body: `<p>Hi,</p>
+<p>As the season winds down and we look ahead to a new year, we wanted to take a moment to reach out and say thank you.</p>
+<p>Thank you for your time, your trust, and your consideration. It genuinely means a lot to us, and we don't take it for granted.</p>
+<p>We wish you and your team a wonderful holiday season filled with rest, joy, and exciting plans for the year ahead.</p>
+<p>We look forward to connecting in the new year — there's a lot of exciting things on the horizon, and we can't wait to share them with you.</p>`,
+        cta: 'Visit Our Website'
+    },
+    custom: {
+        eyebrow: '',
+        headline: '',
+        body: `<p>Write your message here...</p>`,
+        cta: 'Learn More'
+    }
+};
+
+async function loadMarketing() {
+    // Load settings + templates + chains in parallel
+    try {
+        const [settingsRes, templatesRes, chainsRes] = await Promise.all([
+            apiFetch('/client/email-settings').then(r=>r.json()).catch(()=>({})),
+            apiFetch('/client/email-templates').then(r=>r.json()).catch(()=>({})),
+            apiFetch('/client/email-chains').then(r=>r.json()).catch(()=>({chains:[]}))
+        ]);
+        MK.settings  = settingsRes.settings || {};
+        MK.templates = templatesRes.templates || [];
+        MK.chains    = chainsRes.chains || [];
+    } catch {}
+    renderMarketing();
+}
+
+function setMKTab(tab, el) {
+    MK.tab = tab;
+    document.querySelectorAll('.mk-tab').forEach(b => {
+        b.classList.remove('active-tab');
+        b.style.borderBottom = '';
+    });
+    if (el) {
+        el.classList.add('active-tab');
+        el.style.borderBottom = '2px solid var(--text-0)';
+    }
+    renderMarketing();
+}
+
+function renderMarketing() {
+    const el = document.getElementById('marketingContent');
+    if (!el) return;
+
+    const brevoMissing = !MK.settings?.brevo_api_key_set && !MK.settings?.brevo_api_key;
+    const brevoWarning = brevoMissing ? `
+        <div style="background:#f59e0b22;border:1px solid #f59e0b44;border-radius:var(--r-md);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="width:18px;height:18px;flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span style="font-size:13px;color:#f59e0b;font-weight:600;">Brevo not configured. <a href="#" onclick="navigateTo('settings')" style="color:#f59e0b;text-decoration:underline;">Set up in Settings →</a></span>
+        </div>` : '';
+
+    if (MK.tab === 'templates') {
+        el.innerHTML = brevoWarning + `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+                <div onclick="openTemplateBuilder(null)" style="border:2px dashed var(--border);border-radius:var(--r-lg);padding:28px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-3);transition:border-color .2s;" onmouseover="this.style.borderColor='var(--text-0)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span style="font-size:13px;font-weight:600;">New Template</span>
+                </div>
+                ${MK.templates.map(t => `
+                    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                            <div>
+                                <div style="font-size:14px;font-weight:700;color:var(--text-0);">${escHtml(t.name)}</div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${escHtml(t.topic||'custom')}</div>
+                            </div>
+                            ${t.is_automated ? `<span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:20px;background:#6366f122;color:#6366f1;">Auto</span>` : ''}
+                        </div>
+                        <div style="font-size:12px;color:var(--text-2);margin-bottom:14px;font-style:italic;">"${escHtml(t.subject)}"</div>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-ghost btn-xs" onclick="openTemplateBuilder(${JSON.stringify(t).replace(/"/g,'&quot;')})">Edit</button>
+                            <button class="btn btn-ghost btn-xs" onclick="sendTemplateNow(${t.id},'${escHtml(t.name)}')">Send</button>
+                            <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteTemplate(${t.id})">Delete</button>
+                        </div>
+                    </div>`).join('')}
+                ${MK.templates.length === 0 ? `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-3);font-size:13px;">No templates yet. Click the card above to create your first one.</div>` : ''}
+            </div>`;
+    } else if (MK.tab === 'send') {
+        el.innerHTML = brevoWarning + `
+            <div style="max-width:640px;">
+                <div class="card">
+                    <div class="card-header"><span class="card-title">Send to Leads</span></div>
+                    <div class="card-body">
+                        <div class="form-field">
+                            <label>Template</label>
+                            <select id="sendTemplate">
+                                <option value="">— Choose a template —</option>
+                                ${MK.templates.map(t=>`<option value="${t.id}">${escHtml(t.name)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label>Recipients</label>
+                            <select id="sendRecipientType" onchange="updateRecipientCount()">
+                                <option value="all">All leads</option>
+                                <option value="cold">Cold leads only</option>
+                                <option value="hot">Hot leads only</option>
+                                <option value="mine">My assigned leads</option>
+                                <option value="uncontacted">Never contacted</option>
+                            </select>
+                        </div>
+                        <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--text-2);" id="recipientCountInfo">
+                            Loading recipient count...
+                        </div>
+                        <button class="btn btn-default" onclick="sendCampaignNow()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            Send Campaign
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        updateRecipientCount();
+    } else if (MK.tab === 'chains') {
+        el.innerHTML = brevoWarning + `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+                <button class="btn btn-default" onclick="openChainBuilder()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    New Chain
+                </button>
+            </div>
+            ${MK.chains.length === 0
+                ? `<div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    <h3>No chains yet</h3>
+                    <p>Build a chain to automate a sequence of emails that sends on a schedule and loops indefinitely.</p>
+                   </div>`
+                : MK.chains.map(c => `
+                    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                            <div>
+                                <div style="font-size:15px;font-weight:700;">${escHtml(c.name)}</div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${c.steps?.length||0} steps · ${c.loop?'Loops indefinitely':'Runs once'}</div>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn btn-ghost btn-xs" onclick="enrollInChain(${c.id},'${escHtml(c.name)}')">Enroll Leads</button>
+                                <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteChain(${c.id})">Delete</button>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;">
+                            ${(c.steps||[]).map((s,i) => `
+                                <div style="display:flex;align-items:center;">
+                                    <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 14px;font-size:12px;">
+                                        <div style="font-weight:700;color:var(--text-0);">Step ${i+1}</div>
+                                        <div style="color:var(--text-2);">${escHtml(s.template_name||'?')}</div>
+                                        ${i > 0 ? `<div style="font-size:10px;color:var(--text-3);">After ${s.delay_days}d</div>` : ''}
+                                    </div>
+                                    ${i < (c.steps.length-1) ? `<div style="padding:0 6px;color:var(--text-3);">→</div>` : c.loop ? `<div style="padding:0 6px;color:#6366f1;font-size:11px;font-weight:700;">→ 🔄</div>` : ''}
+                                </div>`).join('')}
+                        </div>
+                    </div>`).join('')
+            }`;
+    }
+}
+
+// ── Template Builder Modal ────────────────────────────────────────
+function openTemplateBuilder(existing) {
+    let modal = document.getElementById('templateBuilderModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'templateBuilderModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('templateBuilderModal'); };
+        document.body.appendChild(modal);
+    }
+
+    const s = MK.settings || {};
+    const t = existing || {};
+
+    modal.innerHTML = `
+        <div class="modal" style="max-width:700px;width:calc(100% - 32px);max-height:90vh;overflow-y:auto;">
+            <div class="modal-header">
+                <div class="modal-title">${existing ? 'Edit Template' : 'New Email Template'}</div>
+                <button class="modal-close" onclick="closeModal('templateBuilderModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Company info (pre-filled from settings) -->
+                <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-md);padding:16px 18px;margin-bottom:20px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:12px;">Your Company Info (from Settings)</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="form-field" style="margin:0;">
+                            <label>Company Name</label>
+                            <input class="form-input" id="tb_company" value="${escHtml(s.company_name||'')}" placeholder="Acme Corp">
+                        </div>
+                        <div class="form-field" style="margin:0;">
+                            <label>Phone</label>
+                            <input class="form-input" id="tb_phone" value="${escHtml(s.company_phone||'')}" placeholder="(555) 000-0000">
+                        </div>
+                        <div class="form-field" style="margin:0;">
+                            <label>Email</label>
+                            <input class="form-input" id="tb_email" value="${escHtml(s.company_email||'')}" placeholder="hello@yourco.com">
+                        </div>
+                        <div class="form-field" style="margin:0;">
+                            <label>Website URL</label>
+                            <input class="form-input" id="tb_website" value="${escHtml(s.website_url||'')}" placeholder="https://yourwebsite.com">
+                        </div>
+                        <div class="form-field" style="margin:0;grid-column:1/-1;">
+                            <label>Company Address</label>
+                            <input class="form-input" id="tb_address" value="${escHtml(s.company_address||'')}" placeholder="123 Main St, Austin TX 78701">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template details -->
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Template Name</label>
+                        <input class="form-input" id="tb_name" value="${escHtml(t.name||'')}" placeholder="e.g. First Touch, Follow-up #2">
+                    </div>
+                    <div class="form-field">
+                        <label>Email Subject Line</label>
+                        <input class="form-input" id="tb_subject" value="${escHtml(t.subject||'')}" placeholder="Quick question for you">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label>Topic — choose one to auto-generate a template</label>
+                    <select id="tb_topic" onchange="applyTopicTemplate()">
+                        <option value="">— Select a topic —</option>
+                        ${EMAIL_TOPICS.map(o=>`<option value="${o.value}" ${t.topic===o.value?'selected':''}>${o.label}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Eyebrow Text <span style="color:var(--text-3);font-weight:400;">(small caps above headline)</span></label>
+                        <input class="form-input" id="tb_eyebrow" value="${escHtml(t.eyebrow||'')}" placeholder="REACHING OUT">
+                    </div>
+                    <div class="form-field">
+                        <label>Headline</label>
+                        <input class="form-input" id="tb_headline" value="${escHtml(t.headline||'')}" placeholder="We'd love to connect.">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label>Email Body <span style="color:var(--text-3);font-weight:400;">(HTML supported)</span></label>
+                    <textarea class="form-input" id="tb_body" rows="8" style="resize:vertical;font-family:var(--font-mono);font-size:12px;">${escHtml(t.body_html||'')}</textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>CTA Button Label</label>
+                        <input class="form-input" id="tb_cta" value="${escHtml(t.cta_label||'Learn More')}" placeholder="Visit Our Website">
+                    </div>
+                    <div class="form-field">
+                        <label>Accent Color</label>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="color" id="tb_color" value="${s.accent_color||'#FF6B35'}" style="width:44px;height:38px;border:none;border-radius:var(--r-sm);cursor:pointer;padding:2px;">
+                            <input class="form-input" id="tb_color_hex" value="${s.accent_color||'#FF6B35'}" placeholder="#FF6B35" style="flex:1;" oninput="document.getElementById('tb_color').value=this.value">
+                        </div>
+                    </div>
+                </div>
+
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px;">
+                    <input type="checkbox" id="tb_automated" ${t.is_automated?'checked':''}>
+                    Mark as automated (for use in chains)
+                </label>
+
+                <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+                    <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">✓ Unsubscribe link will be automatically added to every email footer.</div>
+                    <div style="font-size:11px;color:var(--text-3);">✓ Website button click triggers cold → hot lead conversion.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('templateBuilderModal')">Cancel</button>
+                <button class="btn btn-ghost" onclick="previewTemplate()">Preview</button>
+                <button class="btn btn-default" onclick="saveTemplate(${existing ? existing.id : 'null'})">Save Template</button>
+            </div>
+        </div>`;
+
+    // Sync color hex field with color picker
+    document.getElementById('tb_color').addEventListener('input', function() {
+        document.getElementById('tb_color_hex').value = this.value;
+    });
+
+    openModal('templateBuilderModal');
+}
+
+function applyTopicTemplate() {
+    const topic = document.getElementById('tb_topic').value;
+    if (!topic || topic === 'custom') return;
+    const tmpl = TOPIC_TEMPLATES[topic];
+    if (!tmpl) return;
+    if (tmpl.eyebrow)  document.getElementById('tb_eyebrow').value  = tmpl.eyebrow;
+    if (tmpl.headline) document.getElementById('tb_headline').value = tmpl.headline;
+    if (tmpl.body)     document.getElementById('tb_body').value     = tmpl.body;
+    if (tmpl.cta)      document.getElementById('tb_cta').value      = tmpl.cta;
+}
+
+async function saveTemplate(existingId) {
+    const name     = document.getElementById('tb_name').value.trim();
+    const subject  = document.getElementById('tb_subject').value.trim();
+    const body_html= document.getElementById('tb_body').value.trim();
+    if (!name)     { toast('Template name required', 'error'); return; }
+    if (!subject)  { toast('Subject line required', 'error');  return; }
+    if (!body_html){ toast('Email body required', 'error');    return; }
+
+    // Save company info back to settings if changed
+    const settingsPayload = {
+        company_name:    document.getElementById('tb_company').value.trim(),
+        company_phone:   document.getElementById('tb_phone').value.trim(),
+        company_email:   document.getElementById('tb_email').value.trim(),
+        company_address: document.getElementById('tb_address').value.trim(),
+        website_url:     document.getElementById('tb_website').value.trim(),
+        accent_color:    document.getElementById('tb_color_hex').value.trim(),
+    };
+    apiFetch('/client/email-settings', 'PUT', settingsPayload).catch(()=>{});
+    Object.assign(MK.settings, settingsPayload);
+
+    const payload = {
+        name, subject, body_html,
+        topic:        document.getElementById('tb_topic').value,
+        eyebrow:      document.getElementById('tb_eyebrow').value.trim(),
+        headline:     document.getElementById('tb_headline').value.trim(),
+        cta_label:    document.getElementById('tb_cta').value.trim(),
+        is_automated: document.getElementById('tb_automated').checked,
+    };
+
+    try {
+        const method = existingId ? 'PUT' : 'POST';
+        const url    = existingId ? `/client/email-templates/${existingId}` : '/client/email-templates';
+        const res = await apiFetch(url, method, payload);
+        const data = await res.json();
+        if (data.success || data.template) {
+            toast('Template saved', 'success');
+            closeModal('templateBuilderModal');
+            await loadMarketing();
+        } else { toast(data.message||'Failed to save', 'error'); }
+    } catch(e) { toast('Error saving template', 'error'); }
+}
+
+async function deleteTemplate(id) {
+    if (!confirm('Delete this template?')) return;
+    try {
+        await apiFetch(`/client/email-templates/${id}`, 'DELETE');
+        toast('Template deleted', 'success');
+        await loadMarketing();
+    } catch { toast('Error', 'error'); }
+}
+
+async function sendTemplateNow(templateId, templateName) {
+    if (!confirm(`Send "${templateName}" to your selected leads?`)) return;
+    document.getElementById('sendTemplate').value = templateId;
+    setMKTab('send', document.querySelector('[data-mktab=send]'));
+}
+
+// ── Campaign send ─────────────────────────────────────────────────
+let _campaignLeadIds = [];
+
+async function updateRecipientCount() {
+    const el = document.getElementById('recipientCountInfo');
+    if (!el) return;
+    const type = document.getElementById('sendRecipientType')?.value || 'all';
+    try {
+        const res  = await apiFetch('/client/leads');
+        const data = await res.json();
+        let leads  = data.leads || [];
+        if (type === 'cold')        leads = leads.filter(l => l.lead_temperature !== 'hot');
+        if (type === 'hot')         leads = leads.filter(l => l.lead_temperature === 'hot');
+        if (type === 'mine')        leads = leads.filter(l => l.assigned_to_email === S.user?.email);
+        if (type === 'uncontacted') leads = leads.filter(l => !l.last_contact_date);
+        _campaignLeadIds = leads.map(l => l.id);
+        el.innerHTML = `<strong>${leads.length}</strong> recipient${leads.length !== 1 ? 's' : ''} will receive this campaign.`;
+    } catch { el.textContent = 'Could not load recipient count'; }
+}
+
+async function sendCampaignNow() {
+    const templateId = document.getElementById('sendTemplate')?.value;
+    if (!templateId) { toast('Select a template first', 'error'); return; }
+    if (!_campaignLeadIds.length) { toast('No recipients found', 'error'); return; }
+    if (!confirm(`Send to ${_campaignLeadIds.length} leads?`)) return;
+    try {
+        const res = await apiFetch('/client/email/send', 'POST', { template_id: parseInt(templateId), lead_ids: _campaignLeadIds });
+        const data = await res.json();
+        if (data.success) {
+            toast(`Campaign sent — ${data.sent} delivered, ${data.skipped} skipped, ${data.errors} errors`, 'success');
+        } else { toast(data.message||'Failed', 'error'); }
+    } catch(e) { toast('Error sending campaign', 'error'); }
+}
+
+// ── Chain Builder Modal ───────────────────────────────────────────
+let _chainSteps = [];
+
+async function openChainBuilder() {
+    _chainSteps = [];
+    let modal = document.getElementById('chainBuilderModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'chainBuilderModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('chainBuilderModal'); };
+        document.body.appendChild(modal);
+    }
+    renderChainBuilderModal(modal);
+    openModal('chainBuilderModal');
+}
+
+function renderChainBuilderModal(modal) {
+    modal.innerHTML = `
+        <div class="modal" style="max-width:600px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Build Email Chain</div>
+                <button class="modal-close" onclick="closeModal('chainBuilderModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field">
+                    <label>Chain Name</label>
+                    <input class="form-input" id="chainName" placeholder="e.g. New Lead Nurture Sequence">
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:16px;">
+                    <input type="checkbox" id="chainLoop" checked>
+                    Loop indefinitely (repeats after last step)
+                </label>
+
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:10px;">Steps</div>
+                <div id="chainStepsList">
+                    ${_chainSteps.length === 0 ? `<p style="color:var(--text-3);font-size:13px;">No steps yet. Add a template below.</p>` : ''}
+                </div>
+
+                <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-top:12px;">
+                    <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:10px;">Add Step</div>
+                    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                        <div class="form-field" style="flex:2;min-width:160px;margin:0;">
+                            <label>Template</label>
+                            <select id="chainAddTemplate">
+                                <option value="">— Choose —</option>
+                                ${MK.templates.map(t=>`<option value="${t.id}" data-name="${escHtml(t.name)}">${escHtml(t.name)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-field" style="width:110px;margin:0;">
+                            <label>Delay (days)</label>
+                            <input class="form-input" id="chainAddDelay" type="number" min="1" max="365" value="3" placeholder="3">
+                        </div>
+                        <button class="btn btn-ghost" style="margin-bottom:2px;" onclick="addChainStep()">Add</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('chainBuilderModal')">Cancel</button>
+                <button class="btn btn-default" onclick="saveChain()">Save Chain</button>
+            </div>
+        </div>`;
+    renderChainStepsList();
+}
+
+function renderChainStepsList() {
+    const el = document.getElementById('chainStepsList');
+    if (!el) return;
+    if (!_chainSteps.length) { el.innerHTML = `<p style="color:var(--text-3);font-size:13px;">No steps yet.</p>`; return; }
+    el.innerHTML = _chainSteps.map((s, i) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:6px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text-3);width:20px;">S${i+1}</div>
+            <div style="flex:1;font-size:13px;font-weight:600;">${escHtml(s.name)}</div>
+            <div style="font-size:12px;color:var(--text-3);">${i === 0 ? 'Immediate' : `After ${s.delay_days}d`}</div>
+            <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="_chainSteps.splice(${i},1);renderChainStepsList()">✕</button>
+        </div>`).join('');
+}
+
+function addChainStep() {
+    const sel   = document.getElementById('chainAddTemplate');
+    const delay = parseInt(document.getElementById('chainAddDelay').value) || 3;
+    const id    = sel.value;
+    const name  = sel.options[sel.selectedIndex]?.dataset?.name || sel.options[sel.selectedIndex]?.text || '?';
+    if (!id) { toast('Select a template', 'error'); return; }
+    _chainSteps.push({ template_id: parseInt(id), name, delay_days: delay });
+    renderChainStepsList();
+}
+
+async function saveChain() {
+    const name = document.getElementById('chainName')?.value.trim();
+    const loop = document.getElementById('chainLoop')?.checked !== false;
+    if (!name) { toast('Chain name required', 'error'); return; }
+    if (_chainSteps.length < 2) { toast('A chain needs at least 2 steps', 'error'); return; }
+    try {
+        const res  = await apiFetch('/client/email-chains', 'POST', { name, loop, steps: _chainSteps });
+        const data = await res.json();
+        if (data.success || data.chain) {
+            toast('Chain saved', 'success');
+            closeModal('chainBuilderModal');
+            await loadMarketing();
+        } else { toast(data.message||'Failed', 'error'); }
+    } catch { toast('Error saving chain', 'error'); }
+}
+
+async function deleteChain(id) {
+    if (!confirm('Delete this chain?')) return;
+    try {
+        await apiFetch(`/client/email-chains/${id}`, 'DELETE');
+        toast('Chain deleted', 'success');
+        await loadMarketing();
+    } catch { toast('Error', 'error'); }
+}
+
+// ── Enroll leads in chain ─────────────────────────────────────────
+async function enrollInChain(chainId, chainName) {
+    const res  = await apiFetch('/client/leads');
+    const data = await res.json();
+    const leads = data.leads || [];
+
+    let modal = document.getElementById('enrollModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'enrollModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('enrollModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:460px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Enroll in Chain</div>
+                <div style="font-size:13px;color:var(--text-3);">${escHtml(chainName)}</div>
+                <button class="modal-close" onclick="closeModal('enrollModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field">
+                    <label>Enroll which leads?</label>
+                    <select id="enrollType">
+                        <option value="all">All leads (${leads.length})</option>
+                        <option value="cold">Cold leads (${leads.filter(l=>l.lead_temperature!=='hot').length})</option>
+                        <option value="hot">Hot leads (${leads.filter(l=>l.lead_temperature==='hot').length})</option>
+                        <option value="mine">My assigned leads (${leads.filter(l=>l.assigned_to_email===S.user?.email).length})</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('enrollModal')">Cancel</button>
+                <button class="btn btn-default" onclick="confirmEnroll(${chainId})">Enroll</button>
+            </div>
+        </div>`;
+    openModal('enrollModal');
+    // Store leads for enroll
+    window._enrollLeads = leads;
+    window._enrollChainId = chainId;
+}
+
+async function confirmEnroll(chainId) {
+    const type  = document.getElementById('enrollType').value;
+    let leads   = window._enrollLeads || [];
+    if (type === 'cold') leads = leads.filter(l => l.lead_temperature !== 'hot');
+    if (type === 'hot')  leads = leads.filter(l => l.lead_temperature === 'hot');
+    if (type === 'mine') leads = leads.filter(l => l.assigned_to_email === S.user?.email);
+    if (!leads.length) { toast('No leads match', 'error'); return; }
+    try {
+        const res  = await apiFetch('/client/email/enroll', 'POST', { chain_id: chainId, lead_ids: leads.map(l=>l.id) });
+        const data = await res.json();
+        if (data.success) {
+            toast(`${data.enrolled} leads enrolled in chain`, 'success');
+            closeModal('enrollModal');
+        } else { toast(data.message||'Failed', 'error'); }
+    } catch { toast('Error enrolling leads', 'error'); }
+}
+
+// ============================================================
 // SETTINGS
 // ============================================================
-function loadSettings() {
-    document.getElementById('settingsName').value = S.user.name || '';
+async function loadSettings() {
+    document.getElementById('settingsName').value  = S.user.name  || '';
     document.getElementById('settingsEmail').value = S.user.email || '';
+
+    // Load Brevo settings
+    try {
+        const res  = await apiFetch('/client/email-settings');
+        const data = await res.json();
+        const s    = data.settings || {};
+        MK.settings = s;
+        const fill = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+        fill('settingsBrevoKey',     s.brevo_api_key_set ? '••••••••••••••••' : (s.brevo_api_key||''));
+        fill('settingsSenderEmail',  s.sender_email);
+        fill('settingsSenderName',   s.sender_name);
+        fill('settingsCompanyName',  s.company_name);
+        fill('settingsCompanyPhone', s.company_phone);
+        fill('settingsCompanyEmail', s.company_email);
+        fill('settingsCompanyAddr',  s.company_address);
+        fill('settingsWebsiteUrl',   s.website_url);
+        fill('settingsAccentColor',  s.accent_color || '#FF6B35');
+        const colorPicker = document.getElementById('settingsColorPicker');
+        if (colorPicker) colorPicker.value = s.accent_color || '#FF6B35';
+
+        if (s.brevo_api_key_set) {
+            const keyInput = document.getElementById('settingsBrevoKey');
+            if (keyInput) {
+                keyInput.placeholder = 'API key is set — type new key to update';
+                keyInput.style.fontFamily = 'var(--font-mono)';
+            }
+        }
+    } catch {}
 }
+
+async function saveEmailSettings() {
+    const brevoKey = document.getElementById('settingsBrevoKey')?.value?.trim();
+    const payload  = {
+        sender_email:    document.getElementById('settingsSenderEmail')?.value?.trim(),
+        sender_name:     document.getElementById('settingsSenderName')?.value?.trim(),
+        company_name:    document.getElementById('settingsCompanyName')?.value?.trim(),
+        company_phone:   document.getElementById('settingsCompanyPhone')?.value?.trim(),
+        company_email:   document.getElementById('settingsCompanyEmail')?.value?.trim(),
+        company_address: document.getElementById('settingsCompanyAddr')?.value?.trim(),
+        website_url:     document.getElementById('settingsWebsiteUrl')?.value?.trim(),
+        accent_color:    document.getElementById('settingsAccentColor')?.value?.trim(),
+    };
+    // Only include brevo key if user typed a non-masked value
+    if (brevoKey && !brevoKey.includes('•')) payload.brevo_api_key = brevoKey;
+
+    try {
+        const res  = await apiFetch('/client/email-settings', 'PUT', payload);
+        const data = await res.json();
+        toast(data.success ? 'Settings saved' : (data.message||'Failed'), data.success ? 'success' : 'error');
+        if (data.success) await loadSettings();
+    } catch { toast('Error saving settings', 'error'); }
+}
+
+
 
 async function saveProfile() {
     const name = document.getElementById('settingsName').value.trim();

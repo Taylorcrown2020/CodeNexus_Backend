@@ -5257,51 +5257,66 @@ function toast(message, type='success') {
 // ============================================================
 async function sendEmailWithFallback(leadId, leadEmail, leadName, templateId, scheduleConversion) {
     const settings = MK.settings || {};
-    const hasBrevo  = settings.brevo_api_key_set || settings.brevo_api_key;
+    const hasBrevo   = settings.brevo_api_key_set || settings.brevo_api_key;
     const hasEmailJS = settings.emailjs_service_id && settings.emailjs_template_id && settings.emailjs_public_key;
 
-    if (hasBrevo) {
-        // Use Brevo via server
-        const res = await apiFetch('/client/email/send', 'POST', {
-            template_id: parseInt(templateId),
-            lead_ids: [leadId],
-            schedule_conversion: scheduleConversion || false,
+    // Always try the server route first — it handles Brevo and returns
+    // an emailjsQueue if EmailJS fallback is needed.
+    const res  = await apiFetch('/client/email/send', 'POST', {
+        template_id: parseInt(templateId),
+        lead_ids: [leadId],
+        schedule_conversion: scheduleConversion || false,
+    });
+    const data = await res.json();
+
+    // If server returned EmailJS payloads, send them from the browser now
+    if (data.emailjsQueue && data.emailjsQueue.length > 0) {
+        await _flushEmailJSQueue(data.emailjsQueue);
+        // Count the EmailJS sends as "sent" for the UI
+        data.sent = (data.sent || 0) + data.emailjsQueue.length;
+    }
+
+    return data;
+}
+
+// Sends all EmailJS payloads returned by the server (client-side only)
+async function _flushEmailJSQueue(queue) {
+    if (!queue || !queue.length) return;
+    const settings = MK.settings || {};
+
+    // Dynamically load EmailJS SDK if not already loaded
+    if (typeof emailjs === 'undefined') {
+        await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+            s.onload = resolve; s.onerror = reject;
+            document.head.appendChild(s);
         });
-        return res.json();
-    } else if (hasEmailJS) {
-        // EmailJS fallback — send from user's configured sending email
-        if (typeof emailjs === 'undefined') {
-            // Dynamically load EmailJS SDK
-            await new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
-                s.onload = resolve; s.onerror = reject;
-                document.head.appendChild(s);
-            });
-        }
-        emailjs.init(settings.emailjs_public_key);
+    }
+    emailjs.init(settings.emailjs_public_key);
 
-        const senderEmail = S.user.sending_email || S.user.email;
-        const scheduleLink = `${window.location.origin}/schedule.html?uid=${S.user.id}&lid=${leadId}&hot=1`;
+    // The "from" email is always the logged-in user's sending email
+    const senderEmail = S.user.sending_email || S.user.email;
 
+    for (const item of queue) {
         try {
-            await emailjs.send(settings.emailjs_service_id, settings.emailjs_template_id, {
-                to_name:        leadName,
-                to_email:       leadEmail,
-                from_name:      settings.sender_name || S.user.name,
-                from_email:     senderEmail,
-                schedule_link:  scheduleLink,
-                template_id:    templateId,
-                reply_to:       senderEmail,
+            await emailjs.send(item.serviceId, item.templateId, {
+                ...item.templateParams,
+                // Override from_email with the actual logged-in user's email
+                from_email:  senderEmail,
+                from_name:   S.user.name || senderEmail,
+                reply_to:    senderEmail,
+                to_name:     item.leadName || item.leadEmail,
+                to_email:    item.leadEmail,
+                subject:     item.templateParams?.subject || '',
             });
-            // Record the send via API for tracking
-            await apiFetch('/client/email/record-send', 'POST', { lead_id: leadId, template_id: templateId }).catch(()=>{});
-            return { success: true, sent: 1, skipped: 0, errors: 0, provider: 'emailjs' };
+            // Record the EmailJS send so analytics are tracked
+            await apiFetch('/client/email/record-send', 'POST', {
+                lead_id: item.leadId, template_id: item.templateId || null, log_id: item.logId
+            }).catch(() => {});
         } catch(e) {
-            return { success: false, message: 'EmailJS error: ' + (e?.text || e?.message || 'Unknown') };
+            console.error('[EmailJS] Send failed for', item.leadEmail, e?.text || e?.message || e);
         }
-    } else {
-        return { success: false, message: 'No email provider configured. Set up Brevo or EmailJS in Settings.' };
     }
 }
 

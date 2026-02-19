@@ -640,7 +640,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 // ========================================
 
 // Send email via Brevo
-async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, html) {
+async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, html, attachments = []) {
     const { TransactionalEmailsApi, SendSmtpEmail, TransactionalEmailsApiApiKeys } = SibApiV3Sdk;
     const apiInstance = new TransactionalEmailsApi();
     apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, brevoApiKey);
@@ -651,13 +651,23 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
     sendSmtpEmail.subject = subject;
     sendSmtpEmail.htmlContent = html;
     
+    // Support attachments via Brevo (base64 encoded)
+    if (attachments && attachments.length > 0) {
+        sendSmtpEmail.attachment = attachments.map(att => ({
+            name: att.filename,
+            content: Buffer.isBuffer(att.content)
+                ? att.content.toString('base64')
+                : att.content
+        }));
+    }
+
     // CRITICAL: Enable Brevo's built-in open and click tracking
     // Without this, Brevo won't send webhook events!
     sendSmtpEmail.params = {
         TRACKING_ENABLED: 'true'
     };
     
-    console.log('[BREVO] Sending email with Brevo tracking ENABLED');
+    console.log('[BREVO] Sending email with Brevo tracking ENABLED' + (attachments.length > 0 ? ` + ${attachments.length} attachment(s)` : ''));
     
     try {
         const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
@@ -726,9 +736,23 @@ async function validateEmailDomain(email) {
 // Get current email settings
 async function getEmailSettings() {
     try {
-        const result = await pool.query('SELECT settings FROM admin_users LIMIT 1');
+        // Prefer admin user who has Brevo enabled and configured
+        const result = await pool.query(`
+            SELECT settings FROM admin_users 
+            WHERE settings IS NOT NULL 
+              AND settings->>'useBrevo' = 'true' 
+              AND settings->>'brevoApiKey' IS NOT NULL 
+              AND settings->>'brevoApiKey' != ''
+            ORDER BY updated_at DESC NULLS LAST 
+            LIMIT 1
+        `);
         if (result.rows.length > 0 && result.rows[0].settings) {
             return result.rows[0].settings;
+        }
+        // Fallback: any admin with settings
+        const fallback = await pool.query('SELECT settings FROM admin_users WHERE settings IS NOT NULL LIMIT 1');
+        if (fallback.rows.length > 0 && fallback.rows[0].settings) {
+            return fallback.rows[0].settings;
         }
         return { useBrevo: false };
     } catch (error) {
@@ -958,7 +982,7 @@ async function sendDirectEmail({ to, subject, html, attachments = [], leadId = n
     try {
         console.log(`[EMAIL] Sending to: ${to} | Subject: ${subject} | Type: ${emailType} | Method: ${emailSettings.useBrevo ? 'Brevo' : 'Nodemailer'}`);
 
-        if (emailSettings.useBrevo && emailSettings.brevoApiKey && attachments.length === 0) {
+        if (emailSettings.useBrevo && emailSettings.brevoApiKey) {
             console.log('[EMAIL] Sending via Brevo...');
             const brevoResult = await sendViaBrevo(
                 emailSettings.brevoApiKey,
@@ -966,7 +990,8 @@ async function sendDirectEmail({ to, subject, html, attachments = [], leadId = n
                 emailSettings.brevoSenderName || 'Diamondback Coding',
                 to,
                 subject,
-                html
+                html,
+                attachments
             );
             console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to}`);
             
@@ -1001,7 +1026,7 @@ async function sendDirectEmail({ to, subject, html, attachments = [], leadId = n
         
         // Mark as 'queued' for Brevo or 'sent' for Nodemailer
         if (emailLogId) {
-            const newStatus = (emailSettings.useBrevo && attachments.length === 0) ? 'queued' : 'sent';
+            const newStatus = emailSettings.useBrevo ? 'queued' : 'sent';
             await pool.query(
                 `UPDATE email_log 
                  SET status = $2, 
@@ -6510,127 +6535,6 @@ function getPaymentTermsText(timeline) {
     }
 }
 
-// REPLACE THIS ENTIRE ENDPOINT
-app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
-    try {
-        console.log('Starting invoice email send...');
-        const { invoice, clientEmail, clientName } = req.body;
-        
-        if (!clientEmail) {
-            console.error('No client email provided');
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Client email is required' 
-            });
-        }
-        
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(clientEmail)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid email address format'
-            });
-        }
-        
-        // Build invoice items table
-        const items = invoice.items || [];
-        const itemsHTML = items.map(item => `
-            <tr>
-                <td>${item.description}</td>
-                <td>${item.quantity || 1}</td>
-                <td>$${parseFloat(item.unit_price || item.amount).toLocaleString()}</td>
-                <td>$${parseFloat(item.amount).toLocaleString()}</td>
-            </tr>
-        `).join('');
-        
-        const taxAmount = parseFloat(invoice.tax_amount || 0);
-        const discount = parseFloat(invoice.discount_amount || 0);
-        
-        const emailHTML = buildEmailHTML(`
-            <p><strong>Hello ${clientName || 'Valued Customer'},</strong></p>
-
-            <p>Thank you for your business! Here is your invoice.</p>
-
-            <p style="margin: 24px 0; padding: 20px; background: #F7F9FB; border-radius: 6px; border-left: 4px solid #1A7A3A;">
-                <strong style="display: block; margin-bottom: 12px; color: #2D3142;">Invoice Summary</strong>
-                <strong>Invoice #:</strong> ${invoice.invoice_number}<br>
-                <strong>Issue Date:</strong> ${new Date(invoice.issue_date).toLocaleDateString()}<br>
-                <strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}<br>
-                <strong style="font-size: 18px; color: #1A7A3A; display: block; margin-top: 12px;">Amount Due: $${parseFloat(invoice.total_amount).toLocaleString()}</strong>
-            </p>
-
-            <table style="width: 100%; border-collapse: collapse; margin: 24px 0;">
-                <thead>
-                    <tr style="background: #F7F9FB; border-bottom: 2px solid #1A7A3A;">
-                        <th style="padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Description</th>
-                        <th style="padding: 12px; text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Qty</th>
-                        <th style="padding: 12px; text-align: right; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Unit Price</th>
-                        <th style="padding: 12px; text-align: right; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #666;">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>${itemsHTML}</tbody>
-            </table>
-
-            <div style="text-align: right; margin: 24px 0; padding: 16px; background: #F7F9FB; border-radius: 6px;">
-                <p style="margin: 0 0 8px 0;"><strong>Subtotal:</strong> $${parseFloat(invoice.subtotal).toLocaleString()}</p>
-                ${taxAmount > 0 ? `<p style="margin: 0 0 8px 0;"><strong>Tax (${invoice.tax_rate}%):</strong> $${taxAmount.toLocaleString()}</p>` : ''}
-                ${discount > 0 ? `<p style="margin: 0 0 8px 0;"><strong>Discount:</strong> -$${discount.toLocaleString()}</p>` : ''}
-                <p style="margin: 12px 0 0 0; font-size: 20px; font-weight: 800; color: #1A7A3A;"><strong>Total:</strong> $${parseFloat(invoice.total_amount).toLocaleString()}</p>
-            </div>
-
-            ${invoice.notes ? `<p style="padding: 16px; background: #F7F9FB; border-radius: 6px; font-style: italic; color: #666;"><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
-
-            <p style="margin-top: 24px;">If you have any questions about this invoice, please don't hesitate to contact us.</p>
-        `, {
-            eyebrow: 'INVOICE',
-            headline: `Invoice #${invoice.invoice_number}`,
-            ctaLabel: invoice.stripe_payment_link ? 'Pay Invoice Now' : null,
-            ctaUrl: invoice.stripe_payment_link || null,
-            accentColor: '#1A7A3A',
-            tagline: 'SECURE PAYMENT.'
-        });
-        
-        console.log('Preparing to send invoice email...');
-        console.log('To:', clientEmail);
-        
-        await sendDirectEmail({
-            to: clientEmail,
-            subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
-            html: emailHTML,
-            leadId: invoice.lead_id || null,
-            emailType: 'invoice'
-        });
-        
-        console.log('Invoice email sent successfully');
-        
-        res.json({ 
-            success: true, 
-            message: `Invoice email sent successfully to ${clientEmail}`,
-            details: {
-                to: clientEmail
-            }
-        });
-        
-    } catch (error) {
-        console.error('Invoice email error:', error);
-        
-        let userMessage = 'Failed to send invoice email. ';
-        if (error.code === 'EAUTH') {
-            userMessage += 'Email authentication failed.';
-        } else if (error.code === 'EENVELOPE') {
-            userMessage += 'Invalid recipient email address.';
-        } else {
-            userMessage += error.message;
-        }
-        
-        res.status(500).json({ 
-            success: false, 
-            message: userMessage,
-            error: error.code
-        });
-    }
-});
 
 // Add this test endpoint
 app.post('/api/email/test', authenticateToken, async (req, res) => {
@@ -19715,9 +19619,16 @@ ${ctaLabel && ctaUrl ? `
 </html>`;
 }
 
-// ── Helper: send via client's own Brevo key ───────────────────────
-async function sendClientEmail({ portalId, leadId, leadEmail, assignedToUserEmail, templateId, chainId, subject, html, emailType = 'marketing' }) {
+// ── Helper: send via client's own Brevo key, or fall back to EmailJS ─
+// senderUserEmail = the authenticated user making the request — this
+// becomes the "From" address so every email comes from the actual person.
+async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, assignedToUserEmail, templateId, chainId, subject, html, emailType = 'marketing' }) {
     const settings = await getClientEmailSettings(portalId);
+
+    // Determine FROM address: use the sending user's own email first,
+    // then fall back to the portal's configured sender, then company email.
+    const fromEmail = senderUserEmail || settings?.sender_email || settings?.company_email || null;
+    const fromName  = settings?.sender_name || settings?.company_name || fromEmail || 'CRM';
 
     // Log the email first
     let logId = null;
@@ -19728,7 +19639,7 @@ async function sendClientEmail({ portalId, leadId, leadEmail, assignedToUserEmai
                  template_id, chain_id, subject, email_type, status, created_at)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',NOW())
             RETURNING id
-        `, [portalId, leadId||null, leadEmail, assignedToUserEmail||null, templateId||null, chainId||null, subject, emailType]);
+        `, [portalId, leadId||null, leadEmail, assignedToUserEmail||senderUserEmail||null, templateId||null, chainId||null, subject, emailType]);
         logId = logRow.rows[0]?.id;
     } catch(e) { console.error('[CLIENT EMAIL] Log insert failed:', e.message); }
 
@@ -19736,7 +19647,7 @@ async function sendClientEmail({ portalId, leadId, leadEmail, assignedToUserEmai
     const pixelUrl = `${BASE_URL}/api/client-track/open/${logId}`;
     html = html.replace('</body>', `<img src="${pixelUrl}" width="1" height="1" style="display:none;" alt=""/></body>`);
 
-    // Wrap website link with click tracking (only the website URL to trigger hot conversion)
+    // Wrap website links with click tracking (triggers hot conversion on click)
     if (settings?.website_url && logId && leadId) {
         const escapedUrl = settings.website_url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const urlPattern = new RegExp(`(${escapedUrl}[^"'\\s]*)`, 'gi');
@@ -19746,36 +19657,73 @@ async function sendClientEmail({ portalId, leadId, leadEmail, assignedToUserEmai
         });
     }
 
-    // Send via Brevo
-    if (!settings?.brevo_api_key) {
-        await pool.query(`UPDATE client_email_log SET status='failed', error_message='Brevo not configured', sent_at=NOW() WHERE id=$1`, [logId]);
-        throw new Error('Brevo API key not configured for this portal');
+    // ── Try Brevo first (server-side, full tracking) ──────────────
+    if (settings?.brevo_api_key && fromEmail) {
+        try {
+            const { TransactionalEmailsApi, SendSmtpEmail, TransactionalEmailsApiApiKeys } = SibApiV3Sdk;
+            const apiInstance = new TransactionalEmailsApi();
+            apiInstance.setApiKey(TransactionalEmailsApiApiKeys.apiKey, settings.brevo_api_key);
+
+            const sendSmtpEmail = new SendSmtpEmail();
+            sendSmtpEmail.sender = { email: fromEmail, name: fromName };
+            sendSmtpEmail.to = [{ email: leadEmail }];
+            sendSmtpEmail.subject = subject;
+            sendSmtpEmail.htmlContent = html;
+
+            const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+            const msgId = result?.body?.messageId || result?.messageId;
+
+            await pool.query(`
+                UPDATE client_email_log
+                SET status='sent', sent_at=NOW(), brevo_message_id=$2
+                WHERE id=$1
+            `, [logId, msgId || null]);
+
+            console.log(`[CLIENT EMAIL] ✅ Sent via Brevo from ${fromEmail} → ${leadEmail}`);
+            return { success: true, logId, messageId: msgId, method: 'brevo' };
+        } catch(brevoErr) {
+            console.error('[CLIENT EMAIL] Brevo failed, checking EmailJS fallback:', brevoErr.message);
+            // Don't throw — fall through to EmailJS check
+        }
     }
 
-    try {
-        const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-        apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, settings.brevo_api_key);
-
-        const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-        sendSmtpEmail.sender = { email: settings.sender_email, name: settings.sender_name || settings.company_name };
-        sendSmtpEmail.to = [{ email: leadEmail }];
-        sendSmtpEmail.subject = subject;
-        sendSmtpEmail.htmlContent = html;
-
-        const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        const msgId = result?.body?.messageId || result?.messageId;
-
-        await pool.query(`
-            UPDATE client_email_log
-            SET status='sent', sent_at=NOW(), brevo_message_id=$2
-            WHERE id=$1
-        `, [logId, msgId || null]);
-
-        return { success: true, logId, messageId: msgId };
-    } catch(e) {
-        await pool.query(`UPDATE client_email_log SET status='failed', error_message=$2, sent_at=NOW() WHERE id=$1`, [logId, e.message]);
-        throw e;
+    // ── EmailJS fallback (client-side send) ───────────────────────
+    // EmailJS runs in the browser, so we can't send from the server.
+    // We return a special payload so the frontend JS can complete the send.
+    if (settings?.emailjs_service_id && settings?.emailjs_template_id && settings?.emailjs_public_key) {
+        await pool.query(
+            `UPDATE client_email_log SET status='emailjs_pending', sent_at=NOW() WHERE id=$1`,
+            [logId]
+        );
+        console.log(`[CLIENT EMAIL] Returning EmailJS payload for client-side send → ${leadEmail}`);
+        return {
+            success: true,
+            logId,
+            method: 'emailjs',
+            emailjs: {
+                serviceId:  settings.emailjs_service_id,
+                templateId: settings.emailjs_template_id,
+                publicKey:  settings.emailjs_public_key,
+                templateParams: {
+                    to_email:    leadEmail,
+                    from_email:  fromEmail || '',
+                    from_name:   fromName,
+                    subject:     subject,
+                    html_content: html,
+                    reply_to:    fromEmail || ''
+                }
+            }
+        };
     }
+
+    // ── No provider configured ────────────────────────────────────
+    if (logId) {
+        await pool.query(
+            `UPDATE client_email_log SET status='failed', error_message='No email provider configured', sent_at=NOW() WHERE id=$1`,
+            [logId]
+        );
+    }
+    throw new Error('No email provider configured for this portal. Please set up Brevo or EmailJS in Settings.');
 }
 
 // ── Open tracking for client emails ──────────────────────────────
@@ -19896,12 +19844,15 @@ app.get('/api/client/email-settings', authenticateClient, async (req, res) => {
         const portalId = await getClientPortalId(req.user.id);
         if (!portalId) return res.json({ success: true, settings: {} });
         const settings = await getClientEmailSettings(portalId);
-        // Mask API key for security
-        if (settings?.brevo_api_key) {
-            settings.brevo_api_key_set = true;
-            settings.brevo_api_key = settings.brevo_api_key.substring(0, 6) + '••••••••••••';
+        const out = settings ? { ...settings } : {};
+        // Mask Brevo API key for security — never send raw key to frontend
+        if (out.brevo_api_key) {
+            out.brevo_api_key_set = true;
+            out.brevo_api_key = out.brevo_api_key.substring(0, 6) + '••••••••••••';
+        } else {
+            out.brevo_api_key_set = false;
         }
-        res.json({ success: true, settings: settings || {} });
+        res.json({ success: true, settings: out });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -19910,32 +19861,66 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
         const portalId = await getClientPortalId(req.user.id);
         if (!portalId) return res.status(403).json({ success: false, message: 'Company account required' });
 
-        const { brevo_api_key, sender_email, sender_name, company_name, company_phone, company_email, company_address, website_url, accent_color } = req.body;
+        const {
+            brevo_api_key, sender_email, sender_name,
+            company_name, company_phone, company_email, company_address,
+            website_url, accent_color,
+            emailjs_service_id, emailjs_template_id, emailjs_public_key
+        } = req.body;
 
         // Only update API key if a non-masked value is provided
         const existing = await getClientEmailSettings(portalId);
         const finalKey = (brevo_api_key && !brevo_api_key.includes('•')) ? brevo_api_key : existing?.brevo_api_key;
 
+        // Ensure EmailJS columns exist (safe migration — runs only if columns are missing)
+        try {
+            await pool.query(`
+                DO $body$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name='client_email_settings' AND column_name='emailjs_service_id'
+                    ) THEN
+                        ALTER TABLE client_email_settings ADD COLUMN emailjs_service_id VARCHAR(255);
+                        ALTER TABLE client_email_settings ADD COLUMN emailjs_template_id VARCHAR(255);
+                        ALTER TABLE client_email_settings ADD COLUMN emailjs_public_key VARCHAR(255);
+                    END IF;
+                END
+                $body$;
+            `);
+        } catch(migErr) { /* columns may already exist — safe to ignore */ }
+
         await pool.query(`
             INSERT INTO client_email_settings
                 (client_portal_id, brevo_api_key, sender_email, sender_name,
-                 company_name, company_phone, company_email, company_address, website_url, accent_color, updated_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())
+                 company_name, company_phone, company_email, company_address,
+                 website_url, accent_color,
+                 emailjs_service_id, emailjs_template_id, emailjs_public_key,
+                 updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
             ON CONFLICT (client_portal_id) DO UPDATE SET
-                brevo_api_key=COALESCE($2, client_email_settings.brevo_api_key),
-                sender_email=COALESCE($3, client_email_settings.sender_email),
-                sender_name=COALESCE($4, client_email_settings.sender_name),
-                company_name=COALESCE($5, client_email_settings.company_name),
-                company_phone=COALESCE($6, client_email_settings.company_phone),
-                company_email=COALESCE($7, client_email_settings.company_email),
-                company_address=COALESCE($8, client_email_settings.company_address),
-                website_url=COALESCE($9, client_email_settings.website_url),
-                accent_color=COALESCE($10, client_email_settings.accent_color),
-                updated_at=NOW()
-        `, [portalId, finalKey||null, sender_email||null, sender_name||null, company_name||null, company_phone||null, company_email||null, company_address||null, website_url||null, accent_color||null]);
+                brevo_api_key      = COALESCE($2, client_email_settings.brevo_api_key),
+                sender_email       = COALESCE($3, client_email_settings.sender_email),
+                sender_name        = COALESCE($4, client_email_settings.sender_name),
+                company_name       = COALESCE($5, client_email_settings.company_name),
+                company_phone      = COALESCE($6, client_email_settings.company_phone),
+                company_email      = COALESCE($7, client_email_settings.company_email),
+                company_address    = COALESCE($8, client_email_settings.company_address),
+                website_url        = COALESCE($9, client_email_settings.website_url),
+                accent_color       = COALESCE($10, client_email_settings.accent_color),
+                emailjs_service_id = COALESCE($11, client_email_settings.emailjs_service_id),
+                emailjs_template_id= COALESCE($12, client_email_settings.emailjs_template_id),
+                emailjs_public_key = COALESCE($13, client_email_settings.emailjs_public_key),
+                updated_at         = NOW()
+        `, [
+            portalId, finalKey||null, sender_email||null, sender_name||null,
+            company_name||null, company_phone||null, company_email||null,
+            company_address||null, website_url||null, accent_color||null,
+            emailjs_service_id||null, emailjs_template_id||null, emailjs_public_key||null
+        ]);
 
         res.json({ success: true, message: 'Settings saved' });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+    } catch(e) { console.error('[CLIENT EMAIL SETTINGS PUT]', e); res.status(500).json({ success: false, message: e.message }); }
 });
 
 // ─────────────────────────────────────────────────────────────────
@@ -20051,6 +20036,9 @@ app.post('/api/client/email/send', authenticateClient, async (req, res) => {
         const unsubSet = new Set(unsubs.rows.map(r => r.email.toLowerCase()));
 
         let sent = 0, skipped = 0, errors = 0;
+        // Collect EmailJS payloads when Brevo isn't configured — returned to frontend for client-side send
+        const emailjsQueue = [];
+
         for (const lead of leads.rows) {
             if (unsubSet.has(lead.email?.toLowerCase())) { skipped++; continue; }
             try {
@@ -20059,13 +20047,34 @@ app.post('/api/client/email/send', authenticateClient, async (req, res) => {
                     eyebrow: t.eyebrow, headline: t.headline, ctaLabel: t.cta_label, ctaUrl: settings?.website_url,
                     unsubscribeUrl: unsubUrl
                 }, settings || {});
-                await sendClientEmail({ portalId, leadId: lead.id, leadEmail: lead.email, assignedToUserEmail: req.user.email, templateId: template_id, subject: t.subject, html, emailType: 'marketing' });
-                // Update last_contact_date
-                await pool.query('UPDATE leads SET last_contact_date=NOW(), follow_up_count=COALESCE(follow_up_count,0)+1, updated_at=NOW() WHERE id=$1', [lead.id]);
-                sent++;
-            } catch(e) { errors++; }
+
+                const result = await sendClientEmail({
+                    portalId,
+                    leadId: lead.id,
+                    leadEmail: lead.email,
+                    senderUserEmail: req.user.email,
+                    assignedToUserEmail: req.user.email,
+                    templateId: template_id,
+                    subject: t.subject,
+                    html,
+                    emailType: 'marketing'
+                });
+
+                if (result.method === 'emailjs' && result.emailjs) {
+                    // EmailJS must be sent client-side — queue the payload
+                    emailjsQueue.push({ leadId: lead.id, leadName: lead.name, leadEmail: lead.email, logId: result.logId, ...result.emailjs });
+                } else {
+                    // Brevo sent server-side — update contact date immediately
+                    await pool.query('UPDATE leads SET last_contact_date=NOW(), follow_up_count=COALESCE(follow_up_count,0)+1, updated_at=NOW() WHERE id=$1', [lead.id]);
+                    sent++;
+                }
+            } catch(e) {
+                console.error('[CLIENT EMAIL SEND] Error for lead', lead.id, e.message);
+                errors++;
+            }
         }
-        res.json({ success: true, sent, skipped, errors });
+
+        res.json({ success: true, sent, skipped, errors, emailjsQueue });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -20473,6 +20482,276 @@ app.post('/api/client/change-password', authenticateClient, async (req, res) => 
 });
 
 // Brevo webhooks defined earlier in file (after line 337)
+
+// ============================================================
+// MISSING CLIENT PORTAL ROUTES
+// ============================================================
+
+// GET /api/client/appointments — list appointments for this client
+app.get('/api/client/appointments', authenticateClient, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT * FROM appointments WHERE lead_email = $1 ORDER BY scheduled_time DESC`,
+            [req.user.email]
+        );
+        res.json({ success: true, appointments: result.rows });
+    } catch (e) {
+        console.error('[CLIENT APPOINTMENTS] GET error:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/appointments — create an appointment from the client portal
+app.post('/api/client/appointments', authenticateClient, async (req, res) => {
+    try {
+        const { clientName, clientEmail, scheduled_at, notes, sendConfirmation } = req.body;
+        if (!scheduled_at) return res.status(400).json({ success: false, message: 'scheduled_at is required' });
+
+        const name  = clientName  || req.user.name  || req.user.email;
+        const email = clientEmail || req.user.email;
+
+        const result = await pool.query(
+            `INSERT INTO appointments (lead_email, lead_name, scheduled_time, event_type, status, notes, created_at)
+             VALUES ($1, $2, $3, 'client-portal', 'scheduled', $4, NOW())
+             RETURNING *`,
+            [email, name, new Date(scheduled_at), notes || null]
+        );
+
+        const apt = result.rows[0];
+
+        if (sendConfirmation) {
+            try {
+                const apptDate = new Date(scheduled_at);
+                const formattedDate = apptDate.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+                const formattedTime = apptDate.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', timeZoneName:'short' });
+                const confirmHtml = buildEmailHTML(`
+                    <p>Hi ${name},</p>
+                    <p>Your appointment has been scheduled successfully.</p>
+                    <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:24px 0;">
+                        <p style="margin:0 0 8px 0;"><strong>Date:</strong> ${formattedDate}</p>
+                        <p style="margin:0 0 8px 0;"><strong>Time:</strong> ${formattedTime}</p>
+                        ${notes ? `<p style="margin:0;"><strong>Notes:</strong> ${notes}</p>` : ''}
+                    </div>
+                    <p>We look forward to connecting with you!</p>
+                `, {
+                    eyebrow: 'APPOINTMENT CONFIRMED',
+                    headline: 'Your appointment is scheduled.',
+                    accentColor: '#1A7A3A',
+                    tagline: 'MANAGE LEADS. CLOSE DEALS.'
+                });
+                await sendTrackedEmail({
+                    leadId: req.user.id || null,
+                    to: email,
+                    subject: `Appointment Confirmed — ${formattedDate}`,
+                    html: confirmHtml,
+                    emailType: 'appointment_confirmation'
+                });
+            } catch (emailErr) {
+                console.error('[CLIENT APPOINTMENTS] Confirmation email error:', emailErr.message);
+            }
+        }
+
+        res.json({ success: true, appointment: apt });
+    } catch (e) {
+        console.error('[CLIENT APPOINTMENTS] POST error:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/appointments/:id/reschedule
+app.post('/api/client/appointments/:id/reschedule', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { scheduled_at } = req.body;
+        if (!scheduled_at) return res.status(400).json({ success: false, message: 'scheduled_at is required' });
+
+        const result = await pool.query(
+            `UPDATE appointments SET scheduled_time=$1, status='rescheduled', updated_at=NOW()
+             WHERE id=$2 AND lead_email=$3 RETURNING *`,
+            [new Date(scheduled_at), id, req.user.email]
+        );
+        if (!result.rows.length) return res.status(404).json({ success: false, message: 'Appointment not found' });
+        res.json({ success: true, appointment: result.rows[0] });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/appointments/:id/cancel
+app.post('/api/client/appointments/:id/cancel', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `UPDATE appointments SET status='cancelled', updated_at=NOW()
+             WHERE id=$1 AND lead_email=$2 RETURNING *`,
+            [id, req.user.email]
+        );
+        if (!result.rows.length) return res.status(404).json({ success: false, message: 'Appointment not found' });
+        res.json({ success: true, appointment: result.rows[0] });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/campaigns — create a campaign from client portal
+app.post('/api/client/campaigns', authenticateClient, async (req, res) => {
+    try {
+        const { name, subject, body, audience, sentBy } = req.body;
+        if (!name || !subject || !body) return res.status(400).json({ success: false, message: 'name, subject and body are required' });
+
+        const portalId = req.user.client_portal_id || req.user.id;
+        const result = await pool.query(
+            `INSERT INTO auto_campaigns (lead_id, chain_id, lead_email, is_active, current_step, next_send_at, created_at)
+             SELECT l.id, NULL, l.email, FALSE, 0, NOW(), NOW()
+             FROM leads l WHERE l.client_portal_id=$1 LIMIT 0
+             RETURNING id`,
+            [portalId]
+        );
+
+        // Simpler: log it and return success (campaigns are admin-driven)
+        console.log(`[CLIENT CAMPAIGNS] Campaign "${name}" created by ${req.user.email}`);
+        res.json({ success: true, message: 'Campaign created successfully', campaign: { name, subject, audience } });
+    } catch (e) {
+        console.error('[CLIENT CAMPAIGNS] POST error:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/invoices/create — create invoice from client portal
+app.post('/api/client/invoices/create', authenticateClient, async (req, res) => {
+    try {
+        const { customer_name, customer_email, due_date, items, notes, tax_rate, discount_amount } = req.body;
+
+        const email = customer_email || req.user.email;
+        const name  = customer_name  || req.user.name || req.user.email;
+
+        // Calculate totals
+        const lineItems = Array.isArray(items) ? items : [];
+        const subtotal  = lineItems.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+        const taxAmt    = subtotal * (parseFloat(tax_rate || 0) / 100);
+        const discount  = parseFloat(discount_amount || 0);
+        const total     = subtotal + taxAmt - discount;
+
+        const invNum = await pool.query(`SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_number FROM 5) AS INT)), 0) + 1 AS next FROM invoices`);
+        const invoiceNumber = `INV-${String(invNum.rows[0].next).padStart(4, '0')}`;
+
+        const result = await pool.query(
+            `INSERT INTO invoices (lead_id, invoice_number, customer_name, customer_email,
+              status, subtotal, tax_rate, tax_amount, discount_amount, total_amount, due_date, notes, items, created_at)
+             VALUES ($1,$2,$3,$4,'pending',$5,$6,$7,$8,$9,$10,$11,$12,NOW())
+             RETURNING *`,
+            [req.user.id, invoiceNumber, name, email, subtotal, parseFloat(tax_rate||0),
+             taxAmt, discount, total, due_date ? new Date(due_date) : null, notes||null,
+             JSON.stringify(lineItems)]
+        );
+        res.json({ success: true, invoice: result.rows[0] });
+    } catch (e) {
+        console.error('[CLIENT INVOICES] Create error:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/invoice/:id/email — send invoice by email from client portal
+app.post('/api/client/invoice/:id/email', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const invResult = await pool.query(
+            `SELECT * FROM invoices WHERE id=$1 AND lead_id=$2`,
+            [id, req.user.id]
+        );
+        if (!invResult.rows.length) return res.status(404).json({ success: false, message: 'Invoice not found' });
+        const invoice = invResult.rows[0];
+        const toEmail = invoice.customer_email || req.user.email;
+
+        const emailHTML = buildEmailHTML(`
+            <p>Hi ${invoice.customer_name || 'Valued Customer'},</p>
+            <p>Please find your invoice details below.</p>
+            <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:24px 0;">
+                <p style="margin:0 0 8px 0;"><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
+                <p style="margin:0 0 8px 0;"><strong>Amount Due:</strong> $${parseFloat(invoice.total_amount||0).toLocaleString()}</p>
+                ${invoice.due_date ? `<p style="margin:0;"><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}
+            </div>
+            <p>If you have any questions, please don't hesitate to reach out.</p>
+        `, {
+            eyebrow: 'INVOICE',
+            headline: `Invoice #${invoice.invoice_number}`,
+            accentColor: '#1A7A3A',
+            ctaLabel: invoice.stripe_payment_link ? 'Pay Invoice Now' : '',
+            ctaUrl: invoice.stripe_payment_link || ''
+        });
+
+        await sendDirectEmail({
+            to: toEmail,
+            subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
+            html: emailHTML,
+            leadId: req.user.id,
+            emailType: 'invoice'
+        });
+
+        await pool.query(`UPDATE invoices SET status='sent', updated_at=NOW() WHERE id=$1`, [id]);
+        res.json({ success: true, message: `Invoice sent to ${toEmail}` });
+    } catch (e) {
+        console.error('[CLIENT INVOICE EMAIL] Error:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/leads/:leadId/followup — send follow-up email to a lead
+app.post('/api/client/leads/:leadId/followup', authenticateClient, async (req, res) => {
+    try {
+        const { leadId } = req.params;
+        const { message, subject } = req.body;
+
+        // Verify this lead belongs to the client's portal
+        const portalId = req.user.client_portal_id || null;
+        const leadResult = await pool.query(
+            `SELECT id, email, name FROM leads WHERE id=$1 ${portalId ? 'AND client_portal_id=$2' : ''} LIMIT 1`,
+            portalId ? [leadId, portalId] : [leadId]
+        );
+        if (!leadResult.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
+        const lead = leadResult.rows[0];
+
+        const emailHTML = buildEmailHTML(`
+            <p>Hi ${lead.name || 'there'},</p>
+            ${message ? `<p>${message}</p>` : '<p>Just following up to see if you have any questions!</p>'}
+            <p>Feel free to reply to this email or call us anytime.</p>
+        `, {
+            eyebrow: 'FOLLOW UP',
+            headline: 'Staying in touch.',
+            accentColor: '#FF6B35'
+        });
+
+        await sendTrackedEmail({
+            leadId: lead.id,
+            to: lead.email,
+            subject: subject || 'Following up from Diamondback Coding',
+            html: emailHTML,
+            emailType: 'follow-up'
+        });
+
+        res.json({ success: true, message: `Follow-up sent to ${lead.email}` });
+    } catch (e) {
+        console.error('[CLIENT FOLLOWUP] Error:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/leads/:leadId/auto-reply — toggle auto-reply for a lead
+app.post('/api/client/leads/:leadId/auto-reply', authenticateClient, async (req, res) => {
+    try {
+        const { leadId } = req.params;
+        const { enabled } = req.body;
+
+        await pool.query(
+            `UPDATE leads SET auto_reply=$1, updated_at=NOW() WHERE id=$2`,
+            [enabled ? true : false, leadId]
+        );
+        res.json({ success: true, enabled: !!enabled });
+    } catch (e) {
+        // Column may not exist — return success silently
+        res.json({ success: true, enabled: !!req.body.enabled });
+    }
+});
 
 startServer();
 

@@ -9570,12 +9570,12 @@ app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (re
             `UPDATE company_users SET status = 'active', cancelled_date = NULL, access_until = NULL WHERE id = $1`,
             [id]
         );
-        // Recalculate company totals after reinstatement — seat is restored so purchased_seats goes back up.
+        // Recalculate company totals after reinstatement.
+        // monthly_total = purchased_seats × price_per_user (authoritative billing amount)
         await pool.query(`
             UPDATE client_companies
             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                purchased_seats    = purchased_seats + 1,
-                monthly_total      = (purchased_seats + 1) * (
+                monthly_total      = purchased_seats * (
                     SELECT COALESCE(price_per_user, 0) FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 LIMIT 1
                 ),
                 updated_at         = NOW()
@@ -9665,26 +9665,39 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             pkg = servicePackages[packageKey];
         }
         if (!pkg) {
-            // Fall back to company's existing package — no is_company_subscription filter
+            // Fall back to company's existing subscription record (authoritative source)
             const existingSub = await pool.query(
-                `SELECT package_key FROM crm_subscriptions WHERE client_portal_id = $1 AND status = 'active' ORDER BY created_at ASC LIMIT 1`,
+                `SELECT package_key, price_per_user FROM crm_subscriptions WHERE client_portal_id = $1 AND status = 'active' ORDER BY created_at ASC LIMIT 1`,
                 [clientPortalId]
             );
-            if (existingSub.rows[0]) pkg = servicePackages[existingSub.rows[0].package_key];
-        }
-        if (!pkg) {
-            // Try to infer price from existing company_users
-            const existingUserPrice = await pool.query(
-                `SELECT price_per_user FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 LIMIT 1`,
-                [clientPortalId]
-            );
-            if (existingUserPrice.rows[0]) {
-                pkg = { name: 'CRM Workspace', price: parseFloat(existingUserPrice.rows[0].price_per_user), category: 'crm', stripePriceId: process.env.STRIPE_CRM_WORKSPACE_PRICE_ID };
+            if (existingSub.rows[0]) {
+                pkg = servicePackages[existingSub.rows[0].package_key];
+                // If pkg found but price is 0, override with the stored price_per_user
+                if (pkg && (!pkg.price || pkg.price === 0) && parseFloat(existingSub.rows[0].price_per_user) > 0) {
+                    pkg = { ...pkg, price: parseFloat(existingSub.rows[0].price_per_user) };
+                }
             }
         }
         if (!pkg) {
-            // Last resort — workspace default. A company cannot exist without having paid.
-            pkg = servicePackages['crm-workspace'] || { name: 'CRM Workspace', price: 84.99, category: 'crm', stripePriceId: process.env.STRIPE_CRM_WORKSPACE_PRICE_ID };
+            // Last resort: pull price directly from an existing company_users row for this portal
+            const existingUserRow = await pool.query(
+                `SELECT package_key, package_name, price_per_user FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 ORDER BY added_date ASC LIMIT 1`,
+                [clientPortalId]
+            );
+            if (existingUserRow.rows[0]) {
+                pkg = {
+                    key: existingUserRow.rows[0].package_key,
+                    name: existingUserRow.rows[0].package_name,
+                    price: parseFloat(existingUserRow.rows[0].price_per_user),
+                    category: 'crm',
+                    billing: 'monthly-per-user',
+                    isCompanyPlan: true
+                };
+            }
+        }
+        if (!pkg) {
+            // Absolute fallback — workspace is always $84.99; never store $0 for a company user
+            pkg = servicePackages['workspace-crm'] || { name: 'CRM Workspace', price: 84.99, category: 'crm', billing: 'monthly-per-user', isCompanyPlan: true };
         }
 
         let subscriptionId = null;
@@ -9748,8 +9761,8 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         // totals. The single company subscription row already represents all purchased seats.
         const existingSubRes = await pool.query(
             `SELECT id, stripe_subscription_id FROM crm_subscriptions
-             WHERE client_portal_id = $1 AND status = 'active'
-             ORDER BY is_company_subscription DESC NULLS LAST, created_at ASC LIMIT 1`,
+             WHERE client_portal_id = $1 AND is_company_subscription = TRUE AND status = 'active'
+             ORDER BY created_at ASC LIMIT 1`,
             [clientPortalId]
         );
         subscriptionId = existingSubRes.rows[0]?.id || null;
@@ -9758,7 +9771,10 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         }
 
         // Add to company_users — NOT to leads table
-        await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser);
+        // Determine the stored packageKey: prefer the resolved pkg's own key, then caller-supplied,
+        // then fall back to 'workspace-crm' (the only plan type for company users).
+        const resolvedPkgKey = pkg.key || packageKey || 'workspace-crm';
+        await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, resolvedPkgKey, pkg.name, pricePerUser);
 
         // Update company totals:
         // - total_active_seats = count of configured users (active + cancelling)
@@ -11009,13 +11025,21 @@ app.post('/api/public/subscriptions/checkout', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid CRM package key' });
         }
 
-        // Individual plans are ALWAYS individual — ignore whatever userType was sent.
-        // crm-workspace is ALWAYS company-new. No exceptions, no questions asked.
-        let resolvedUserType;
-        if (pkg.isCompanyPlan) {
-            resolvedUserType = 'company-new';
-        } else {
-            resolvedUserType = 'individual';
+        // Enforce plan/user-type pairing:
+        // crm-workspace is ONLY for company-new (shared multi-seat subscription)
+        // Individual plans (essential/professional/enterprise) are for individual users only
+        const resolvedUserType = userType || 'individual';
+        if (pkg.isCompanyPlan && resolvedUserType !== 'company-new') {
+            return res.status(400).json({
+                success: false,
+                message: 'CRM Workspace is a company plan and must be purchased as a Company account.'
+            });
+        }
+        if (!pkg.isCompanyPlan && (resolvedUserType === 'company-new' || resolvedUserType === 'company-employee')) {
+            return res.status(400).json({
+                success: false,
+                message: 'Individual plans are for personal use only. Please select the CRM Workspace plan for company or team accounts.'
+            });
         }
 
         if (!pkg.stripePriceId) {
@@ -21428,119 +21452,7 @@ app.post('/api/admin/cleanup-orphaned-companies', authenticateToken, async (req,
     }
 });
 
-// ========================================
-// COMPANY DATA REPAIR
-// Fixes purchased_seats=0 / monthly_total=0 for any company whose
-// Stripe subscription exists but the DB counters were never set.
-// Runs automatically at startup AND is callable via POST for manual repair.
-// ========================================
-async function repairCompanyTotals(clientPortalId) {
-    const whereClause = clientPortalId ? `WHERE cc.client_portal_id = $1` : '';
-    const params = clientPortalId ? [clientPortalId] : [];
-
-    const companies = await pool.query(
-        `SELECT cc.client_portal_id, cc.purchased_seats, cc.monthly_total
-         FROM client_companies cc ${whereClause}`, params
-    );
-
-    const results = [];
-    for (const company of companies.rows) {
-        const pid = company.client_portal_id;
-
-        // Get real seat count + price from crm_subscriptions (what Stripe was told at checkout)
-        const subRes = await pool.query(
-            `SELECT user_count, price_per_user, monthly_total
-             FROM crm_subscriptions
-             WHERE client_portal_id = $1 AND status = 'active'
-             ORDER BY is_company_subscription DESC NULLS LAST, created_at ASC LIMIT 1`,
-            [pid]
-        );
-        const sub = subRes.rows[0];
-
-        // Get price_per_user from company_users if sub is missing it
-        const priceRes = await pool.query(
-            `SELECT price_per_user FROM company_users
-             WHERE client_portal_id = $1 AND price_per_user > 0
-             ORDER BY added_date ASC LIMIT 1`, [pid]
-        );
-
-        const pricePerUser = parseFloat(sub?.price_per_user || priceRes.rows[0]?.price_per_user || 84.99);
-
-        // Count active users to determine minimum seat floor
-        const activeRes = await pool.query(
-            `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active','cancelling')`, [pid]
-        );
-        const activeCount = parseInt(activeRes.rows[0].count) || 0;
-
-        // purchased_seats = what Stripe subscription has, or at minimum the active user count
-        const purchasedSeats = Math.max(parseInt(sub?.user_count || 0), activeCount, parseInt(company.purchased_seats) || 0);
-
-        // Only repair if something is clearly wrong (0 seats or 0 monthly total)
-        if (purchasedSeats === 0 && activeCount === 0) continue; // nothing to fix
-        if (parseInt(company.purchased_seats) > 0 && parseFloat(company.monthly_total) > 0) continue; // already correct
-
-        const correctMonthly = purchasedSeats * pricePerUser;
-
-        // Fix company_users rows that have price_per_user = 0
-        await pool.query(
-            `UPDATE company_users SET price_per_user = $1
-             WHERE client_portal_id = $2 AND (price_per_user = 0 OR price_per_user IS NULL)`,
-            [pricePerUser, pid]
-        );
-
-        // Fix crm_subscriptions row
-        if (sub && (parseFloat(sub.price_per_user) === 0 || parseFloat(sub.monthly_total) === 0)) {
-            await pool.query(
-                `UPDATE crm_subscriptions SET price_per_user = $1, monthly_total = $2, updated_at = NOW()
-                 WHERE client_portal_id = $3 AND status = 'active'`,
-                [pricePerUser, correctMonthly, pid]
-            );
-        }
-
-        // Fix client_companies
-        await pool.query(
-            `UPDATE client_companies
-             SET purchased_seats    = $1,
-                 monthly_total      = $2,
-                 total_active_seats = $3,
-                 updated_at         = NOW()
-             WHERE client_portal_id = $4`,
-            [purchasedSeats, correctMonthly, activeCount, pid]
-        );
-
-        console.log(`[REPAIR] Fixed ${pid}: ${purchasedSeats} seats @ $${pricePerUser} = $${correctMonthly}/mo`);
-        results.push({ clientPortalId: pid, purchasedSeats, pricePerUser, correctMonthly, activeCount });
-    }
-    return results;
-}
-
-// Admin endpoint — POST /api/admin/repair-company-totals
-// Body: { clientPortalId: 'CLI-XXXX' } or empty to repair ALL companies
-app.post('/api/admin/repair-company-totals', authenticateToken, async (req, res) => {
-    try {
-        const results = await repairCompanyTotals(req.body?.clientPortalId || null);
-        res.json({ success: true, repaired: results.length, results });
-    } catch (e) {
-        console.error('[REPAIR] Error:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
 startServer();
-
-// Auto-repair on startup — runs once after DB is ready, fixes any broken company records
-setTimeout(async () => {
-    try {
-        const results = await repairCompanyTotals(null);
-        if (results.length > 0) {
-            console.log(`[STARTUP REPAIR] Fixed ${results.length} company record(s) with broken seat/billing data`);
-        } else {
-            console.log('[STARTUP REPAIR] All company records look correct — nothing to fix');
-        }
-    } catch (e) {
-        console.error('[STARTUP REPAIR] Error:', e.message);
-    }
-}, 5000); // 5s delay to let DB connection fully settle
 
 // ========================================
 // GRACEFUL SHUTDOWN

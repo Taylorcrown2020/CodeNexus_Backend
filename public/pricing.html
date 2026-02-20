@@ -1600,16 +1600,16 @@ body.crm-active .hero,
         </p>
     </div>
 
-    <!-- Row 1: Individual Plans -->
-    <div class="services-grid crm-grid-three" style="max-width:1280px;margin:0 auto 32px;">
-
-        <!-- Essential Plan -->
+    <div class="services-grid crm-grid-top">
+        <!-- Starter Plan -->
         <div class="service-card">
             <div class="service-badge">STARTER</div>
-            <div class="service-price">$19.99<span class="price-unit"> / mo</span></div>
-            <div class="service-period">per user, billed monthly</div>
+            <div class="service-price">$19.99 / User</div>
+            <div class="service-period">per month, billed monthly</div>
             <h3 class="service-name">Essential CRM</h3>
-            <p class="service-description">Perfect for solo users and small businesses getting started with lead management.</p>
+            <p class="service-description">
+                Perfect for small businesses getting started with customer relationship management.
+            </p>
             <ul class="service-features">
                 <li>Up to 1,000 contacts</li>
                 <li>Basic lead management</li>
@@ -1619,21 +1619,23 @@ body.crm-active .hero,
                 <li>Email support</li>
             </ul>
             <div class="crm-subscribe-group">
-                <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-essential', 'Essential CRM', 19.99, false)">
+                <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-essential', 'Essential CRM', 19.99)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                     SUBSCRIBE
                 </button>
-                <div class="crm-subscribe-note">Individual account. No contracts.</div>
+                <div class="crm-subscribe-note">No contracts. Cancel anytime.</div>
             </div>
         </div>
 
         <!-- Professional Plan (Featured) -->
         <div class="service-card featured">
             <div class="service-badge">MOST POPULAR</div>
-            <div class="service-price">$49.99<span class="price-unit"> / mo</span></div>
-            <div class="service-period">per user, billed monthly</div>
+            <div class="service-price">$49.99 / User</div>
+            <div class="service-period">per month, billed monthly</div>
             <h3 class="service-name">Professional CRM</h3>
-            <p class="service-description">Advanced features for growing businesses that need automation and deeper insights.</p>
+            <p class="service-description">
+                Advanced features for growing businesses that need automation and deeper insights.
+            </p>
             <ul class="service-features">
                 <li>Up to 10,000 contacts</li>
                 <li>Advanced lead scoring</li>
@@ -1644,21 +1646,23 @@ body.crm-active .hero,
                 <li>API access</li>
             </ul>
             <div class="crm-subscribe-group">
-                <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-professional', 'Professional CRM', 49.99, false)">
+                <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-professional', 'Professional CRM', 49.99)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                     SUBSCRIBE
                 </button>
-                <div class="crm-subscribe-note">Individual account. No contracts.</div>
+                <div class="crm-subscribe-note">No contracts. Cancel anytime.</div>
             </div>
         </div>
 
         <!-- Enterprise Plan -->
         <div class="service-card">
             <div class="service-badge">ENTERPRISE</div>
-            <div class="service-price">$64.99<span class="price-unit"> / mo</span></div>
-            <div class="service-period">per user, billed monthly</div>
+            <div class="service-price">$64.99 / User</div>
+            <div class="service-period">per month, billed monthly</div>
             <h3 class="service-name">Enterprise CRM</h3>
-            <p class="service-description">Full-featured solution with dedicated support for high-volume operations.</p>
+            <p class="service-description">
+                Fully customized solution with dedicated support for large-scale operations.
+            </p>
             <ul class="service-features">
                 <li>Unlimited contacts</li>
                 <li>Custom integrations</li>
@@ -1669,32 +1673,26 @@ body.crm-active .hero,
                 <li>SLA guarantee</li>
             </ul>
             <div class="crm-subscribe-group">
-                <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-enterprise', 'Enterprise CRM', 64.99, false)">
+                <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-enterprise', 'Enterprise CRM', 64.99)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                     SUBSCRIBE
                 </button>
-                <div class="crm-subscribe-note">Individual account. No contracts.</div>
+                <div class="crm-subscribe-note">No contracts. Cancel anytime.</div>
             </div>
         </div>
-    </div>
 
-    <!-- Divider -->
-    <div style="max-width:1280px;margin:0 auto 32px;display:flex;align-items:center;gap:20px;">
-        <div style="flex:1;height:1px;background:var(--grey-300);"></div>
-        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--grey-600);white-space:nowrap;">Team &amp; Custom Solutions</div>
-        <div style="flex:1;height:1px;background:var(--grey-300);"></div>
-    </div>
+    </div><!-- end crm-grid-top -->
 
-    <!-- Row 2: Team + Custom -->
-    <div class="services-grid crm-grid-two" style="max-width:1280px;margin:0 auto;">
-
-        <!-- CRM Workspace -->
-        <div class="service-card workspace-card" style="border:2px solid #FF6B35;">
+    <div class="services-grid crm-grid-bottom">
+        <!-- CRM Workspace — Company / Team Plan -->
+        <div class="service-card workspace-card" style="border:2px solid #FF6B35;position:relative;overflow:visible;">
             <div class="service-badge" style="background:#FF6B35;color:#fff;">TEAM PLAN</div>
-            <div class="service-price" style="color:#FF6B35;">$84.99<span class="price-unit" style="color:#FF6B35;"> / mo</span></div>
-            <div class="service-period">per user, billed monthly</div>
+            <div class="service-price" style="color:#FF6B35;">$84.99 / User</div>
+            <div class="service-period">per month, billed monthly</div>
             <h3 class="service-name">CRM Workspace</h3>
-            <p class="service-description">One shared account for your whole team. The admin purchases seats, adds users, and manages everything from one dashboard. All billing in one place.</p>
+            <p class="service-description">
+                One shared account for your whole team. Add or remove users anytime. All billing in one place.
+            </p>
             <ul class="service-features">
                 <li>Unlimited contacts &amp; storage</li>
                 <li>Centralized team billing</li>
@@ -1710,7 +1708,7 @@ body.crm-active .hero,
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     GET WORKSPACE
                 </button>
-                <div class="crm-subscribe-note">Company account. Admin manages all users.</div>
+                <div class="crm-subscribe-note">No contracts. Cancel anytime.</div>
             </div>
         </div>
 
@@ -1718,12 +1716,14 @@ body.crm-active .hero,
         <div class="service-card crm-custom-card">
             <div class="service-badge custom-badge">CUSTOM BUILD</div>
             <div class="service-price custom-price">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle;margin-right:8px;opacity:0.7;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle;margin-right:8px;opacity:0.7;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                 Custom
             </div>
             <div class="service-period">quoted per project</div>
             <h3 class="service-name">Custom CRM Build</h3>
-            <p class="service-description">A fully bespoke CRM engineered around your exact workflows. Built from scratch to your specifications — you own the source code.</p>
+            <p class="service-description">
+                A fully bespoke CRM engineered around your exact workflows — not the other way around.
+            </p>
             <ul class="service-features">
                 <li>Built from scratch to your specs</li>
                 <li>Unique database &amp; data model</li>
@@ -1738,7 +1738,7 @@ body.crm-active .hero,
                 GET A QUOTE
             </button>
         </div>
-    </div>
+    </div><!-- end crm-grid-bottom -->
 
     <!-- CRM Subscribe Modal -->
     <div id="crmSubscribeModal" class="crm-modal-overlay" onclick="closeCRMModal(event)" style="display:none;">
@@ -1782,15 +1782,8 @@ body.crm-active .hero,
                 </div>
                 
                 <!-- Individual Fields -->
-                <div id="individualFields" style="display:none;margin-bottom:20px;">
-                    <div class="crm-modal-field">
-                        <label class="crm-modal-label">Your Name</label>
-                        <input type="text" id="individualNameInput" placeholder="John Doe" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;">
-                    </div>
-                    <div class="crm-modal-field">
-                        <label class="crm-modal-label">Your Email</label>
-                        <input type="email" id="individualEmailInput" placeholder="john@example.com" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;">
-                    </div>
+                <div id="individualFields" style="display:none;">
+                    <p class="crm-modal-subtitle">Choose your user count and proceed to checkout.</p>
                 </div>
                 
                 <!-- Company New Fields -->
@@ -2139,27 +2132,29 @@ body.crm-active .hero,
     background: #e6b86b;
 }
 
-/* ── CRM grid layouts ─────────────────────────────────────── */
-.crm-grid-three {
+/* ── CRM 4-column grid ─────────────────────────────────────── */
+.crm-grid-top {
     grid-template-columns: repeat(3, 1fr) !important;
-    gap: 28px;
+    margin-bottom: 32px !important;
 }
-.crm-grid-two {
+.crm-grid-bottom {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 28px;
+    margin-top: 0 !important;
+    max-width: 880px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
-@media (max-width: 1024px) {
-    .crm-grid-three { grid-template-columns: repeat(2, 1fr) !important; }
-    .crm-grid-two   { grid-template-columns: 1fr !important; }
+@media (max-width: 900px) {
+    .crm-grid-top { grid-template-columns: repeat(2, 1fr) !important; }
+    .crm-grid-bottom { grid-template-columns: repeat(2, 1fr) !important; max-width: 100% !important; }
 }
-@media (max-width: 640px) {
-    .crm-grid-three { grid-template-columns: 1fr !important; }
+@media (max-width: 600px) {
+    .crm-grid-top { grid-template-columns: 1fr !important; }
+    .crm-grid-bottom { grid-template-columns: 1fr !important; }
 }
-.price-unit {
-    font-size: 20px;
-    font-weight: 400;
-    letter-spacing: 0;
-    color: var(--grey-600);
+.crm-grid-four {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
 }
 
 /* Custom CRM card accent */
@@ -6394,15 +6389,18 @@ function openCRMSubscribeModal(packageKey, packageName, pricePerUser, isCompanyP
     document.getElementById('crmUserCount').value = '1';
     updateCRMTotal();
 
-    // Workspace → company-new directly. Individual → details directly. No type screen ever shown for individual.
+    // For company/workspace plan → go straight to company account screen
+    // For individual plans → go straight to individual checkout (no type selection needed)
     if (isCompanyPlan) {
         window._isCompanyPlan = true;
+        // Skip the type screen entirely — workspace is always company-new
         selectSubscriptionType('company-new');
         document.getElementById('subscriptionDetailsScreen').style.display = 'block';
         document.getElementById('subscriptionTypeScreen').style.display = 'none';
     } else {
         window._isCompanyPlan = false;
-        // Individual plans are ALWAYS individual — skip type screen entirely
+        // Individual plans are ALWAYS individual accounts — skip the type selection screen
+        // and go directly to the checkout details screen as an individual user.
         selectSubscriptionType('individual');
         document.getElementById('subscriptionDetailsScreen').style.display = 'block';
         document.getElementById('subscriptionTypeScreen').style.display = 'none';
@@ -6431,35 +6429,38 @@ function selectSubscriptionType(type) {
     window._subscriptionType = type;
     document.getElementById('subscriptionTypeScreen').style.display = 'none';
     document.getElementById('subscriptionDetailsScreen').style.display = 'block';
-
-    // Show/hide field sections
+    
+    // Show/hide relevant fields
     const companyNewFields = document.getElementById('companyNewFields');
     const companyEmployeeFields = document.getElementById('companyEmployeeFields');
     const individualFields = document.getElementById('individualFields');
+    const userCountField = document.getElementById('userCountField');
+    const individualUserNote = document.getElementById('individualUserNote');
+    
     companyNewFields.style.display = type === 'company-new' ? 'block' : 'none';
     companyEmployeeFields.style.display = type === 'company-employee' ? 'block' : 'none';
     individualFields.style.display = type === 'individual' ? 'block' : 'none';
-
-    // Update modal title
-    const titles = {
-        'individual':       'Complete Your Subscription',
-        'company-new':      'Set Up Your CRM Workspace',
-        'company-employee': 'Join Your Company'
-    };
-    document.getElementById('crmModalDetailsTitle').textContent = titles[type] || 'Complete Your Subscription';
-
-    // For individual: lock qty to 1, hide qty control and total row
-    const qtyField = document.querySelector('.crm-modal-field:has(#crmUserCount)');
-    const totalRow = document.querySelector('.crm-modal-total-row');
+    
+    // For individual: lock at 1 user, hide the quantity control
     if (type === 'individual') {
-        document.getElementById('crmUserCount').value = 1;
-        if (qtyField) qtyField.style.display = 'none';
-        if (totalRow) totalRow.style.display = 'none';
+        if (userCountField) userCountField.style.display = 'none';
+        if (individualUserNote) individualUserNote.style.display = 'block';
+        // Always force qty to 1 for individual
+        const qtyInput = document.getElementById('crmUserCount');
+        if (qtyInput) { qtyInput.value = 1; }
         updateCRMTotal();
     } else {
-        if (qtyField) qtyField.style.display = 'block';
-        if (totalRow) totalRow.style.display = 'flex';
+        if (userCountField) userCountField.style.display = 'block';
+        if (individualUserNote) individualUserNote.style.display = 'none';
     }
+    
+    // Update title
+    const titles = {
+        'individual': 'Complete Your Subscription',
+        'company-new': window._isCompanyPlan ? 'Set Up Your CRM Workspace' : 'Create Company Account',
+        'company-employee': 'Join Your Company'
+    };
+    document.getElementById('crmModalDetailsTitle').textContent = titles[type];
 }
 
 // Validate company portal ID
@@ -6553,14 +6554,7 @@ async function submitCRMSubscription() {
         
         // Add type-specific fields
         if (userType === 'individual') {
-            payload.name  = document.getElementById('individualNameInput').value.trim();
-            payload.email = document.getElementById('individualEmailInput').value.trim();
-            if (!payload.name || !payload.email) {
-                alert('Please enter your name and email to continue.');
-                btn.disabled = false;
-                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:-3px;"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Subscribe Now';
-                return;
-            }
+            // Individual - no extra fields needed
         } else if (userType === 'company-new') {
             payload.companyName = document.getElementById('companyNameInput').value.trim();
             payload.name = document.getElementById('adminNameInput').value.trim();

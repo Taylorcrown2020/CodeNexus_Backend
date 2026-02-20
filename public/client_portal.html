@@ -766,27 +766,23 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                     Dashboard
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="leads">
+                <div class="nav-item" data-page="leads">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     Leads
                 </div>
-                <div class="nav-item" data-page="myleads">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M12 14v7"/><path d="M9 17h6"/></svg>
-                    My Leads
-                </div>
-                <div class="nav-item nav-item-admin-only" data-page="contacts">
+                <div class="nav-item" data-page="contacts">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     Contacts
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="followups">
+                <div class="nav-item" data-page="followups">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     Follow-ups
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="marketing">
+                <div class="nav-item" data-page="marketing">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                     Marketing
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="scheduling">
+                <div class="nav-item" data-page="scheduling">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     Scheduling
                 </div>
@@ -923,8 +919,14 @@ tr:hover .row-actions { opacity: 1; }
             <div class="page-header">
                 <div class="page-title-group">
                     <div class="page-title">Leads</div>
+                    <div class="page-subtitle" id="leadsSubtitle">All leads in your workspace</div>
                 </div>
                 <div class="page-actions">
+                    <!-- Scope toggle: All vs Mine -->
+                    <div style="display:flex;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;">
+                        <button id="scopeBtnAll" onclick="setLeadScope('all')" style="padding:6px 14px;font-size:12px;font-weight:500;font-family:var(--font);background:var(--text-0);color:var(--bg-0);border:none;cursor:pointer;transition:all 0.15s;">All Leads</button>
+                        <button id="scopeBtnMine" onclick="setLeadScope('mine')" style="padding:6px 14px;font-size:12px;font-weight:500;font-family:var(--font);background:transparent;color:var(--text-2);border:none;cursor:pointer;transition:all 0.15s;">My Leads</button>
+                    </div>
                     <div class="search-input">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="leadsSearch" placeholder="Search leads..." oninput="filterLeads()">
@@ -936,12 +938,17 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
             </div>
             <div class="page-body">
-                <!-- Tabs -->
+                <!-- Analytics bar (visible in My Leads scope) -->
+                <div id="leadsAnalyticsBar" style="display:none;margin-bottom:20px;"></div>
+                <!-- Status tabs -->
                 <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0;">
                     <button class="btn btn-ghost lead-tab active-tab" onclick="setLeadTab('all',this)" data-tab="all" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">All</button>
                     <button class="btn btn-ghost lead-tab" onclick="setLeadTab('new',this)" data-tab="new" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">New</button>
                     <button class="btn btn-ghost lead-tab" onclick="setLeadTab('contacted',this)" data-tab="contacted" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Contacted</button>
+                    <button class="btn btn-ghost lead-tab" onclick="setLeadTab('qualified',this)" data-tab="qualified" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Qualified</button>
                     <button class="btn btn-ghost lead-tab" onclick="setLeadTab('pending',this)" data-tab="pending" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Pending</button>
+                    <button class="btn btn-ghost lead-tab" onclick="setLeadTab('cold',this)" data-tab="cold" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Cold</button>
+                    <button class="btn btn-ghost lead-tab" onclick="setLeadTab('hot',this)" data-tab="hot" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Hot</button>
                     <button class="btn btn-ghost lead-tab" onclick="setLeadTab('converted',this)" data-tab="converted" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Converted</button>
                 </div>
                 <div class="table-wrap" id="leadsTable">
@@ -953,48 +960,6 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
             </div>
         </div>
-
-        <!-- ==============================
-             MY LEADS
-        ============================== -->
-        <div class="page" id="page-myleads">
-            <div class="page-header">
-                <div class="page-title-group">
-                    <div class="page-title">My Leads</div>
-                    <div class="page-subtitle" id="myLeadsSubtitle">Leads & customers assigned to you</div>
-                </div>
-                <div class="page-actions">
-                    <div class="search-input">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="myLeadsSearch" placeholder="Search my leads..." oninput="filterMyLeads()">
-                    </div>
-                </div>
-            </div>
-            <div class="page-body">
-                <!-- Analytics bar chart -->
-                <div id="myLeadsAnalytics" style="margin-bottom:20px;"></div>
-
-                <!-- Status tabs -->
-                <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0;">
-                    <button class="btn btn-ghost my-lead-tab active-tab" onclick="setMyLeadTab('all',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">All</button>
-                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('new',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">New</button>
-                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('contacted',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Contacted</button>
-                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('qualified',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Qualified</button>
-                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('proposal',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Proposal</button>
-                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('closed',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Closed</button>
-                    <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('lost',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Lost</button>
-                </div>
-
-                <div class="table-wrap" id="myLeadsTable">
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        <h3>No leads assigned to you yet</h3>
-                        <p>Leads assigned to you will appear here</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
 
         <div class="page" id="page-contacts">
             <div class="page-header">
@@ -1059,8 +1024,14 @@ tr:hover .row-actions { opacity: 1; }
                 <div id="fuQueueSection">
                     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
                         <button class="btn btn-default fu-tab active-tab" onclick="setFUTab('all',this)">All Due</button>
-                        <button class="btn btn-default fu-tab" onclick="setFUTab('hot',this)">🔥 Hot</button>
-                        <button class="btn btn-default fu-tab" onclick="setFUTab('cold',this)">❄️ Cold</button>
+                        <button class="btn btn-default fu-tab" onclick="setFUTab('hot',this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;color:#ef4444;"><path d="M12 2c0 6-5 8-5 13a5 5 0 0 0 10 0c0-5-5-7-5-13z"/><circle cx="12" cy="18" r="1" fill="#ef4444" stroke="none"/></svg>
+                            Hot
+                        </button>
+                        <button class="btn btn-default fu-tab" onclick="setFUTab('cold',this)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;color:#6366f1;"><path d="M12 22a8 8 0 0 1-8-8c0-3 1-5 3-8l2 2c-1 2-1 3-1 5a5 5 0 0 0 10 0c0-4-3-7-3-11"/><path d="M9 8l3-6 3 6"/></svg>
+                            Cold
+                        </button>
                         <button class="btn btn-default fu-tab" onclick="setFUTab('overdue',this)">⚠️ Overdue</button>
                     </div>
                     <div id="followupsContent">
@@ -2015,19 +1986,21 @@ function showApp() {
     document.getElementById('app').classList.add('visible');
 
     const user = S.user;
-    // Determine role
+    // Determine role — the subscribing email is always the company admin
     S.isAdmin = user.isCompanyAdmin || user.isCoAdmin || false;
     S.isTrueAdmin = user.isCompanyAdmin || false;
     S.isCompanyMember = !!(user.clientPortalId);
     S.isIndividual = !S.isCompanyMember;
 
-    // Update sidebar
+    // Update sidebar identity
     const initials = (user.name || 'U').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
     document.getElementById('sidebarAvatar').textContent = initials;
     document.getElementById('sidebarName').textContent = user.name || user.email;
     document.getElementById('sidebarRole').textContent = S.isTrueAdmin ? 'Admin' : S.isAdmin ? 'Co-Admin' : 'Member';
 
-    // Show/hide admin-only nav items
+    // WORKSPACE items — ALL users see all workspace tabs (Leads, Contacts, Follow-ups, Marketing, Scheduling)
+    // The scope toggle (All / My Leads) inside the Leads page handles individual vs team views.
+    // nav-item-admin-only only hides items in the ACCOUNT and FINANCIALS sections.
     document.querySelectorAll('.nav-item-admin-only').forEach(el => {
         el.style.display = S.isAdmin ? 'flex' : 'none';
     });
@@ -2038,8 +2011,8 @@ function showApp() {
     });
 
     // Files and Support always visible
-    document.getElementById('navFiles').style.display = 'flex';
-    document.getElementById('navSupport').style.display = 'flex';
+    if (document.getElementById('navFiles'))    document.getElementById('navFiles').style.display    = 'flex';
+    if (document.getElementById('navSupport'))  document.getElementById('navSupport').style.display  = 'flex';
 
     // Greet
     const hour = new Date().getHours();
@@ -2085,7 +2058,6 @@ function navigate(page) {
     switch(page) {
         case 'dashboard':   loadDashboard();   break;
         case 'leads':       loadLeads();       break;
-        case 'myleads':     loadMyLeads();     break;
         case 'contacts':    loadContacts();    break;
         case 'followups':
             // Initialize to queue tab
@@ -2093,8 +2065,8 @@ function navigate(page) {
             setFUMainTab('queue', fuQueueBtn);
             break;
         case 'marketing':   loadMarketing();   break;
-        case 'invoices':    loadInvoices();    break;
-        case 'analytics':   loadAnalytics();   break;
+        case 'invoices':    if(S.isAdmin) loadInvoices(); break;
+        case 'analytics':   if(S.isAdmin) loadAnalytics(); break;
         case 'tasks':       loadTasks();       break;
         case 'team':        if(S.isAdmin) loadTeam(); break;
         case 'company':     if(S.isAdmin) loadCompany(); break;
@@ -2202,38 +2174,140 @@ async function loadDashboard() {
 }
 
 // ============================================================
-// LEADS
+// LEADS — unified view with All / My Leads scope toggle
 // ============================================================
+const LeadsState = {
+    allLeads:   [],   // all portal leads
+    mineLeads:  [],   // leads assigned to this user
+    mineAnalytics: null,
+    teamMembers: [],
+    scope: 'all',     // 'all' | 'mine'
+    tab:   'all',
+};
+
+// Switch scope between "All Leads" and "My Leads"
+async function setLeadScope(scope) {
+    LeadsState.scope = scope;
+    // Update toggle button styles
+    const btnAll  = document.getElementById('scopeBtnAll');
+    const btnMine = document.getElementById('scopeBtnMine');
+    if (btnAll && btnMine) {
+        if (scope === 'all') {
+            btnAll.style.cssText  = 'padding:6px 14px;font-size:12px;font-weight:500;font-family:var(--font);background:var(--text-0);color:var(--bg-0);border:none;cursor:pointer;transition:all 0.15s;';
+            btnMine.style.cssText = 'padding:6px 14px;font-size:12px;font-weight:500;font-family:var(--font);background:transparent;color:var(--text-2);border:none;cursor:pointer;transition:all 0.15s;';
+        } else {
+            btnAll.style.cssText  = 'padding:6px 14px;font-size:12px;font-weight:500;font-family:var(--font);background:transparent;color:var(--text-2);border:none;cursor:pointer;transition:all 0.15s;';
+            btnMine.style.cssText = 'padding:6px 14px;font-size:12px;font-weight:500;font-family:var(--font);background:var(--text-0);color:var(--bg-0);border:none;cursor:pointer;transition:all 0.15s;';
+        }
+    }
+    // Update subtitle
+    const sub = document.getElementById('leadsSubtitle');
+    if (sub) sub.textContent = scope === 'all' ? 'All leads in your workspace' : 'Leads assigned to you';
+
+    // Show/hide analytics bar
+    const bar = document.getElementById('leadsAnalyticsBar');
+    if (bar) bar.style.display = scope === 'mine' ? '' : 'none';
+
+    // Load data if not already loaded for this scope
+    if (scope === 'mine' && !LeadsState.mineLeads.length) {
+        await loadLeadsData();
+    }
+    renderLeads();
+    if (scope === 'mine') renderLeadsMineAnalytics();
+}
+
 async function loadLeadsData() {
     try {
-        const res = await apiFetch('/client/leads');
-        const data = await res.json();
-        S.leads = data.leads || data.contacts || [];
-    } catch {}
+        const [allRes, mineRes, membersRes] = await Promise.all([
+            apiFetch('/client/leads').then(r => r.json()),
+            apiFetch('/client/leads?mine=1').then(r => r.json()),
+            apiFetch('/client/team-members').then(r => r.json()).catch(() => ({ members: [] }))
+        ]);
+        LeadsState.allLeads       = allRes.leads  || allRes.contacts || [];
+        LeadsState.mineLeads      = mineRes.leads || [];
+        LeadsState.mineAnalytics  = mineRes.analytics || null;
+        LeadsState.teamMembers    = membersRes.members || [];
+        // Keep S.leads in sync for dashboard and other consumers
+        S.leads = LeadsState.allLeads;
+        ML.teamMembers = LeadsState.teamMembers;
+    } catch(e) {
+        LeadsState.allLeads = []; LeadsState.mineLeads = []; LeadsState.mineAnalytics = null;
+    }
 }
 
 async function loadLeads() {
+    const el = document.getElementById('leadsTable');
+    if (el) el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-3);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 0.8s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px;"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke-opacity=".2"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>Loading...</div>`;
     await loadLeadsData();
     renderLeads();
+    if (LeadsState.scope === 'mine') renderLeadsMineAnalytics();
+}
+
+function renderLeadsMineAnalytics() {
+    const el = document.getElementById('leadsAnalyticsBar');
+    if (!el) return;
+    const a = LeadsState.mineAnalytics;
+    if (!a) { el.innerHTML = ''; return; }
+    const total = parseInt(a.total) || 0;
+    if (total === 0) { el.innerHTML = ''; return; }
+
+    const statuses = [
+        { key: 'new',         label: 'New',         color: '#6366f1' },
+        { key: 'contacted',   label: 'Contacted',   color: '#3b82f6' },
+        { key: 'qualified',   label: 'Qualified',   color: '#f59e0b' },
+        { key: 'proposal',    label: 'Proposal',    color: '#8b5cf6' },
+        { key: 'negotiation', label: 'Negotiation', color: '#ec4899' },
+        { key: 'closed',      label: 'Closed',      color: '#10b981' },
+        { key: 'lost',        label: 'Lost',        color: '#ef4444' },
+    ];
+    const maxVal = Math.max(...statuses.map(s => parseInt(a[s.key]) || 0), 1);
+
+    el.innerHTML = `
+        <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;">
+                <div style="font-size:13px;font-weight:700;color:var(--text-0);">My Pipeline</div>
+                <div style="font-size:13px;color:var(--text-2);">${total} assigned to you</div>
+            </div>
+            <div style="display:flex;align-items:flex-end;gap:10px;height:80px;">
+                ${statuses.map(s => {
+                    const val = parseInt(a[s.key]) || 0;
+                    const pct = maxVal > 0 ? Math.round((val / maxVal) * 100) : 0;
+                    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;">
+                        <div style="font-size:11px;font-weight:700;color:var(--text-1);">${val||''}</div>
+                        <div style="width:100%;background:${s.color};border-radius:3px 3px 0 0;height:${Math.max(pct, val > 0 ? 8 : 2)}%;opacity:0.85;"></div>
+                        <div style="font-size:10px;color:var(--text-3);white-space:nowrap;">${s.label}</div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
 }
 
 function renderLeads() {
-    const tab = S.leadTab;
-    let filtered = S.leads;
+    const scope = LeadsState.scope;
+    const tab   = LeadsState.tab;
+    let leads   = scope === 'mine' ? LeadsState.mineLeads : LeadsState.allLeads;
 
-    // Filter out the logged-in user from the leads list (admin should not see themselves as a lead)
+    // Never show the logged-in user as a lead in their own list
     if (S.user?.email) {
-        filtered = filtered.filter(l => (l.email || '').toLowerCase() !== S.user.email.toLowerCase());
+        leads = leads.filter(l => (l.email || '').toLowerCase() !== S.user.email.toLowerCase());
     }
 
+    // Tab filtering
     if (tab !== 'all') {
-        filtered = filtered.filter(l => (l.status||l.lead_temperature||'new').toLowerCase() === tab ||
-            (tab === 'converted' && l.is_customer));
+        leads = leads.filter(l => {
+            const st = (l.status || '').toLowerCase();
+            const temp = (l.lead_temperature || '').toLowerCase();
+            if (tab === 'converted') return !!l.is_customer;
+            if (tab === 'hot')  return temp === 'hot';
+            if (tab === 'cold') return temp === 'cold' || temp === '';
+            return st === tab;
+        });
     }
-    // Search filter
+
+    // Search
     const q = (document.getElementById('leadsSearch')||{}).value?.toLowerCase() || '';
     if (q) {
-        filtered = filtered.filter(l =>
+        leads = leads.filter(l =>
             (l.name||'').toLowerCase().includes(q) ||
             (l.email||'').toLowerCase().includes(q) ||
             (l.company||'').toLowerCase().includes(q)
@@ -2241,45 +2315,55 @@ function renderLeads() {
     }
 
     const el = document.getElementById('leadsTable');
-    if (!filtered.length) {
+    if (!leads.length) {
         el.innerHTML = `<div class="empty-state">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-            <h3>No leads found</h3><p>Try a different filter</p></div>`;
+            <h3>${scope === 'mine' ? 'No leads assigned to you' : 'No leads found'}</h3>
+            <p>${scope === 'mine' ? 'Use the Assign button on any lead to assign it to yourself' : 'Try a different filter or add a lead'}</p>
+        </div>`;
         return;
     }
+
     el.innerHTML = `
         <table>
             <thead><tr>
                 <th>Name</th><th>Email</th><th>Company</th>
-                <th>Status</th><th>Assigned To</th><th>Added</th><th></th>
+                <th>Status</th><th>Temp</th><th>Assigned To</th><th>Added</th><th></th>
             </tr></thead>
             <tbody>
-                ${filtered.map(l=>`<tr>
-                    <td style="font-weight:500;cursor:pointer;" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">${escHtml(l.name||'—')}</td>
-                    <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
-                    <td style="color:var(--text-2);">${escHtml(l.company||'—')}</td>
-                    <td>${statusBadge(l.status||l.lead_temperature||'new')}</td>
-                    <td>
-                        ${l.assigned_to_name
+                ${leads.map(l => {
+                    const temp = (l.lead_temperature||'').toLowerCase();
+                    const tempBadge = temp === 'hot'
+                        ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(239,68,68,0.12);color:#ef4444;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:10px;height:10px;"><path d="M12 2c0 6-5 8-5 13a5 5 0 0 0 10 0c0-5-5-7-5-13z"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/></svg>Hot</span>`
+                        : `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(99,102,241,0.12);color:#6366f1;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:10px;height:10px;"><path d="M12 22a8 8 0 0 1-8-8c0-3 1-5 3-8l2 2c-1 2-1 3-1 5a5 5 0 0 0 10 0c0-4-3-7-3-11"/><path d="M9 8l3-6 3 6"/></svg>Cold</span>`;
+                    return `<tr>
+                        <td style="font-weight:500;cursor:pointer;" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">${escHtml(l.name||'—')}</td>
+                        <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
+                        <td style="color:var(--text-2);">${escHtml(l.company||'—')}</td>
+                        <td>${statusBadge(l.status||'new')}</td>
+                        <td>${tempBadge}</td>
+                        <td>${l.assigned_to_name
                             ? `<span style="font-size:12px;background:var(--bg-1);padding:3px 8px;border-radius:4px;white-space:nowrap;">${escHtml(l.assigned_to_name)}</span>`
-                            : `<span style="font-size:12px;color:var(--text-3);">Unassigned</span>`
-                        }
-                    </td>
-                    <td style="color:var(--text-3);font-size:12px;">${fmtDate(l.created_at)}</td>
-                    <td>
-                        <div class="row-actions">
-                            <button class="btn btn-ghost btn-xs" onclick="openAssignModal(${l.id},'${escHtml(l.name||'')}',${l.crm_assigned_to||'null'})">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                                Assign
-                            </button>
-                            <button class="btn btn-ghost btn-xs" onclick="sendFollowUpEmail(${l.id},'${escHtml(l.email||'')}')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                                Email
-                            </button>
-                            <button class="btn btn-ghost btn-xs" onclick="openEditLeadModal(${JSON.stringify(l).replace(/'/g,'&#39;')})">Edit</button>
-                        </div>
-                    </td>
-                </tr>`).join('')}
+                            : `<span style="font-size:12px;color:var(--text-3);">Unassigned</span>`}</td>
+                        <td style="color:var(--text-3);font-size:12px;">${fmtDate(l.created_at)}</td>
+                        <td>
+                            <div class="row-actions">
+                                <button class="btn btn-ghost btn-xs" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    View
+                                </button>
+                                <button class="btn btn-ghost btn-xs" onclick="openAssignModal(${l.id},'${escHtml(l.name||'')}',${l.crm_assigned_to||'null'})">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                                    Assign
+                                </button>
+                                <button class="btn btn-ghost btn-xs" onclick="sendFollowUpEmail(${l.id},'${escHtml(l.email||'')}')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                    Email
+                                </button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('')}
             </tbody>
         </table>`;
 }
@@ -2287,13 +2371,21 @@ function renderLeads() {
 function filterLeads() { renderLeads(); }
 
 function setLeadTab(tab, el) {
-    S.leadTab = tab;
+    LeadsState.tab = tab;
+    S.leadTab = tab; // keep legacy compat
     document.querySelectorAll('.lead-tab').forEach(b => {
         b.classList.toggle('active-tab', b === el);
         b.style.borderBottom = b === el ? '2px solid var(--text-0)' : '';
     });
     renderLeads();
 }
+
+// Legacy ML object — kept so any older references still work
+const ML = { leads: [], analytics: null, tab: 'all', teamMembers: [] };
+function loadMyLeads() { return setLeadScope('mine'); }
+function filterMyLeads() { renderLeads(); }
+function setMyLeadTab(tab, el) { setLeadTab(tab, el); }
+function renderMyLeadsAnalytics() { renderLeadsMineAnalytics(); }
 
 function openAddLeadModal() {
     ['leadName','leadEmail','leadPhone','leadCompany','leadNotes'].forEach(id=>document.getElementById(id).value='');
@@ -2373,150 +2465,6 @@ async function sendFollowUpEmail(leadId, email) {
 }
 
 // ============================================================
-// MY LEADS — personal view with analytics
-// ============================================================
-const ML = { leads: [], analytics: null, tab: 'all', teamMembers: [] };
-
-async function loadMyLeads() {
-    const el = document.getElementById('myLeadsTable');
-    el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-3);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="animation:spin 1s linear infinite;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto;"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" stroke-opacity=".2"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>Loading...</div>`;
-
-    try {
-        const [leadsRes, membersRes] = await Promise.all([
-            apiFetch('/client/leads?mine=1').then(r => r.json()),
-            apiFetch('/client/team-members').then(r => r.json()).catch(() => ({ members: [] }))
-        ]);
-        ML.leads = leadsRes.leads || [];
-        ML.analytics = leadsRes.analytics || null;
-        ML.teamMembers = membersRes.members || [];
-    } catch(e) {
-        ML.leads = []; ML.analytics = null;
-    }
-
-    renderMyLeadsAnalytics();
-    renderMyLeads();
-}
-
-function renderMyLeadsAnalytics() {
-    const el = document.getElementById('myLeadsAnalytics');
-    if (!el || !ML.analytics) { el && (el.innerHTML = ''); return; }
-    const a = ML.analytics;
-    const total = parseInt(a.total) || 0;
-    if (total === 0) { el.innerHTML = ''; return; }
-
-    const statuses = [
-        { key: 'new',         label: 'New',          color: '#6366f1' },
-        { key: 'contacted',   label: 'Contacted',    color: '#3b82f6' },
-        { key: 'qualified',   label: 'Qualified',    color: '#f59e0b' },
-        { key: 'proposal',    label: 'Proposal',     color: '#8b5cf6' },
-        { key: 'negotiation', label: 'Negotiation',  color: '#ec4899' },
-        { key: 'closed',      label: 'Closed',       color: '#10b981' },
-        { key: 'lost',        label: 'Lost',         color: '#ef4444' },
-    ];
-
-    const maxVal = Math.max(...statuses.map(s => parseInt(a[s.key]) || 0), 1);
-
-    el.innerHTML = `
-        <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:4px;">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px;">
-                <div style="font-size:13px;font-weight:700;color:var(--text-0);">Pipeline Overview</div>
-                <div style="font-size:13px;color:var(--text-2);">${total} total assigned</div>
-            </div>
-            <div style="display:flex;align-items:flex-end;gap:10px;height:80px;">
-                ${statuses.map(s => {
-                    const val = parseInt(a[s.key]) || 0;
-                    const pct = maxVal > 0 ? Math.round((val / maxVal) * 100) : 0;
-                    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;cursor:pointer;" onclick="setMyLeadTab('${s.key}', document.querySelector('[onclick*=\\'${s.key}\\']'))">
-                        <div style="font-size:11px;font-weight:700;color:var(--text-1);">${val}</div>
-                        <div style="width:100%;background:${s.color};border-radius:3px 3px 0 0;height:${Math.max(pct, val > 0 ? 8 : 2)}%;opacity:0.85;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85"></div>
-                        <div style="font-size:10px;color:var(--text-3);white-space:nowrap;">${s.label}</div>
-                    </div>`;
-                }).join('')}
-            </div>
-        </div>`;
-}
-
-function renderMyLeads() {
-    const el = document.getElementById('myLeadsTable');
-    const q  = (document.getElementById('myLeadsSearch')||{}).value?.toLowerCase() || '';
-    const tab = ML.tab;
-
-    let filtered = ML.leads;
-    if (tab !== 'all') {
-        filtered = filtered.filter(l => {
-            const s = (l.status || l.lead_temperature || 'new').toLowerCase();
-            if (tab === 'closed') return s === 'closed' || l.is_customer;
-            return s === tab;
-        });
-    }
-    if (q) {
-        filtered = filtered.filter(l =>
-            (l.name||'').toLowerCase().includes(q) ||
-            (l.email||'').toLowerCase().includes(q) ||
-            (l.company||'').toLowerCase().includes(q)
-        );
-    }
-
-    if (!filtered.length) {
-        el.innerHTML = `<div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <h3>${tab === 'all' ? 'No leads assigned to you' : 'No ' + tab + ' leads'}</h3>
-            <p>${tab === 'all' ? 'Leads assigned to you will appear here' : 'Try a different filter'}</p></div>`;
-        return;
-    }
-
-    // Split active vs closed
-    const active = filtered.filter(l => (l.status||'').toLowerCase() !== 'closed' && !l.is_customer || tab !== 'all');
-    const closed = tab === 'all' ? filtered.filter(l => (l.status||'').toLowerCase() === 'closed' || l.is_customer) : [];
-
-    const buildRows = (rows) => rows.map(l => `
-        <tr style="cursor:pointer;" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">
-            <td style="font-weight:500;">${escHtml(l.name||'—')}</td>
-            <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
-            <td style="color:var(--text-2);">${escHtml(l.company||'—')}</td>
-            <td>${statusBadge(l.status||l.lead_temperature||'new')}</td>
-            <td style="color:var(--text-3);font-size:12px;">${fmtDate(l.updated_at||l.created_at)}</td>
-            <td>
-                <div class="row-actions" onclick="event.stopPropagation()">
-                    <button class="btn btn-ghost btn-xs" onclick="openAssignModal(${l.id},'${escHtml(l.name||'')}',${l.crm_assigned_to||'null'})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                        Assign
-                    </button>
-                </div>
-            </td>
-        </tr>`).join('');
-
-    const thead = `<thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Status</th><th>Updated</th><th></th></tr></thead>`;
-
-    let html = `<table>${thead}<tbody>${buildRows(tab === 'all' ? (active.length ? active : []) : filtered)}</tbody></table>`;
-
-    if (tab === 'all' && closed.length) {
-        html += `
-            <div style="margin-top:24px;">
-                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);padding:0 4px 10px;">
-                    Closed / Customers (${closed.length})
-                </div>
-                <div style="opacity:0.7;">
-                    <table>${thead}<tbody>${buildRows(closed)}</tbody></table>
-                </div>
-            </div>`;
-    }
-
-    el.innerHTML = html;
-}
-
-function filterMyLeads() { renderMyLeads(); }
-
-function setMyLeadTab(tab, el) {
-    ML.tab = tab;
-    document.querySelectorAll('.my-lead-tab').forEach(b => {
-        b.classList.toggle('active-tab', b === el);
-        b.style.borderBottom = b === el ? '2px solid var(--text-0)' : '';
-    });
-    renderMyLeads();
-}
-
-// ============================================================
 // LEAD PROFILE MODAL — full info view
 // ============================================================
 function openLeadProfile(lead) {
@@ -2555,8 +2503,10 @@ function openLeadProfile(lead) {
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <span style="background:${isHot?'#ef444422':'#6366f122'};color:${isHot?'#ef4444':'#6366f1'};padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;">
-                        ${isHot ? '🔥 Hot' : '❄️ Cold'}
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:${isHot?'rgba(239,68,68,0.12)':'rgba(99,102,241,0.12)'};color:${isHot?'#ef4444':'#6366f1'};padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;text-transform:uppercase;">
+                        ${isHot
+                            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px;"><path d="M12 2c0 6-5 8-5 13a5 5 0 0 0 10 0c0-5-5-7-5-13z"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/></svg>Hot`
+                            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px;"><path d="M12 22a8 8 0 0 1-8-8c0-3 1-5 3-8l2 2c-1 2-1 3-1 5a5 5 0 0 0 10 0c0-4-3-7-3-11"/><path d="M9 8l3-6 3 6"/></svg>Cold`}
                     </span>
                     <button class="modal-close" onclick="closeModal('leadProfileModal')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2566,14 +2516,17 @@ function openLeadProfile(lead) {
             <div class="modal-body">
                 <!-- Temperature toggle -->
                 <div style="display:flex;gap:8px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
-                    <button class="btn btn-xs ${isHot ? 'btn-ghost' : 'btn-default'}" style="font-size:12px;" onclick="toggleLeadTemperature(${lead.id},'cold','leadProfileModal')">
-                        ❄️ Mark Cold
+                    <button class="btn btn-xs ${isHot ? 'btn-ghost' : 'btn-default'}" style="font-size:12px;display:inline-flex;align-items:center;gap:5px;" onclick="toggleLeadTemperature(${lead.id},'cold','leadProfileModal')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M12 22a8 8 0 0 1-8-8c0-3 1-5 3-8l2 2c-1 2-1 3-1 5a5 5 0 0 0 10 0c0-4-3-7-3-11"/><path d="M9 8l3-6 3 6"/></svg>
+                        Mark Cold
                     </button>
-                    <button class="btn btn-xs ${isHot ? 'btn-default' : 'btn-ghost'}" style="font-size:12px;background:${isHot?'#ef4444':''};color:${isHot?'#fff':''};" onclick="toggleLeadTemperature(${lead.id},'hot','leadProfileModal')">
-                        🔥 Mark Hot
+                    <button class="btn btn-xs ${isHot ? 'btn-default' : 'btn-ghost'}" style="font-size:12px;${isHot?'background:#ef4444;color:#fff;border-color:#ef4444;':''}display:inline-flex;align-items:center;gap:5px;" onclick="toggleLeadTemperature(${lead.id},'hot','leadProfileModal')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M12 2c0 6-5 8-5 13a5 5 0 0 0 10 0c0-5-5-7-5-13z"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+                        Mark Hot
                     </button>
-                    ${isHot ? `<button class="btn btn-xs btn-ghost" style="font-size:12px;margin-left:auto;" onclick="openHotChainEnrollModal(${lead.id},'${escHtml(lead.name||'')}')">
-                        ⚡ Start Hot Sequence
+                    ${isHot ? `<button class="btn btn-xs btn-ghost" style="font-size:12px;margin-left:auto;display:inline-flex;align-items:center;gap:5px;" onclick="openHotChainEnrollModal(${lead.id},'${escHtml(lead.name||'')}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Start Hot Sequence
                     </button>` : ''}
                 </div>
 
@@ -2610,13 +2563,12 @@ async function toggleLeadTemperature(leadId, newTemp, closeModalId) {
         const res  = await apiFetch(`/client/leads/${leadId}`, 'PATCH', { lead_temperature: newTemp });
         const data = await res.json();
         if (data.success) {
-            const action = newTemp === 'hot' ? '🔥 Lead marked Hot' : '❄️ Lead marked Cold';
+            const action = newTemp === 'hot' ? 'Lead marked Hot' : 'Lead marked Cold';
             toast(action + (newTemp === 'hot' ? ' — timeline reset, cold chains paused' : ' — hot chains paused, timeline reset'), 'success');
             if (closeModalId) closeModal(closeModalId);
             // Refresh whichever view is active
             if (S.currentPage === 'followups') loadFollowups();
             else if (S.currentPage === 'leads') loadLeads();
-            else if (S.currentPage === 'myleads') loadMyLeads();
         } else {
             toast(data.message || 'Could not update temperature', 'error');
         }
@@ -2644,7 +2596,7 @@ async function openHotChainEnrollModal(leadId, leadName) {
         <div class="modal" style="max-width:420px;width:calc(100% - 32px);">
             <div class="modal-header">
                 <div class="modal-title">Start Hot Lead Sequence</div>
-                <div style="font-size:13px;color:var(--text-3);">${escHtml(leadName)} — 🔥 Hot</div>
+                <div style="font-size:13px;color:var(--text-3);">${escHtml(leadName)} — <span style="display:inline-flex;align-items:center;gap:3px;color:#ef4444;font-weight:700;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px;"><path d="M12 2c0 6-5 8-5 13a5 5 0 0 0 10 0c0-5-5-7-5-13z"/></svg>Hot</span></div>
                 <button class="modal-close" onclick="closeModal('hotChainModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div class="modal-body">
@@ -2662,7 +2614,7 @@ async function openHotChainEnrollModal(leadId, leadName) {
             </div>
             <div class="modal-footer">
                 <button class="btn btn-ghost" onclick="closeModal('hotChainModal')">Cancel</button>
-                ${chains.length ? `<button class="btn btn-default" style="background:#ef4444;border-color:#ef4444;" onclick="confirmHotChainEnroll(${leadId})">🔥 Start Sequence</button>` : ''}
+                ${chains.length ? `<button class="btn btn-default" style="background:#ef4444;border-color:#ef4444;display:inline-flex;align-items:center;gap:6px;" onclick="confirmHotChainEnroll(${leadId})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Start Sequence</button>` : ''}
             </div>
         </div>`;
     openModal('hotChainModal');
@@ -2766,9 +2718,8 @@ async function saveAssignment() {
         if (data.success) {
             toast(data.message || 'Assignment saved', 'success');
             closeModal('assignLeadModal');
-            // Refresh whichever view is active
-            if (S.page === 'leads') await loadLeads();
-            if (S.page === 'myleads') await loadMyLeads();
+            // Refresh the leads view
+            if (S.currentPage === 'leads') await loadLeads();
         } else {
             toast(data.message || 'Failed to save assignment', 'error');
         }
@@ -2933,8 +2884,10 @@ function renderFollowups() {
                             <td style="font-weight:500;cursor:pointer;" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">${escHtml(l.name||'—')}</td>
                             <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
                             <td>
-                                <span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;background:${isHot?'#ef444422':'#6366f122'};color:${isHot?'#ef4444':'#6366f1'};" title="Temperature set automatically by email engagement">
-                                    ${isHot ? '🔥 Hot' : '❄️ Cold'}
+                                <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:0.04em;background:${isHot?'rgba(239,68,68,0.12)':'rgba(99,102,241,0.12)'};color:${isHot?'#ef4444':'#6366f1'};" title="Temperature set automatically by email engagement">
+                                    ${isHot
+                                        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:9px;height:9px;"><path d="M12 2c0 6-5 8-5 13a5 5 0 0 0 10 0c0-5-5-7-5-13z"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/></svg>Hot`
+                                        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:9px;height:9px;"><path d="M12 22a8 8 0 0 1-8-8c0-3 1-5 3-8l2 2c-1 2-1 3-1 5a5 5 0 0 0 10 0c0-4-3-7-3-11"/><path d="M9 8l3-6 3 6"/></svg>Cold`}
                                 </span>
                             </td>
                             <td style="font-size:12px;color:var(--text-3);">${l.last_contact_date ? new Date(l.last_contact_date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</td>
@@ -2946,7 +2899,7 @@ function renderFollowups() {
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                                         Send
                                     </button>
-                                    ${isHot ? `<button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="openHotChainEnrollModal(${l.id},'${escHtml(l.name||'')}')">⚡ Sequence</button>` : ''}
+                                    ${isHot ? `<button class="btn btn-ghost btn-xs" style="color:#ef4444;display:inline-flex;align-items:center;gap:4px;" onclick="openHotChainEnrollModal(${l.id},'${escHtml(l.name||'')}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Sequence</button>` : ''}
                                 </div>
                             </td>
                         </tr>`;

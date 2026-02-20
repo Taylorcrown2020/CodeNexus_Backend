@@ -10144,13 +10144,16 @@ async function processSubscriptionWebhook(event) {
         }
 
         // Convert lead to customer (whether they were cold, warm, or hot lead)
+        // For company-new admins, also ensure is_company_admin is set in the same query.
         if (lead && lead.id) {
+            const isCompanyNewAdmin = userType === 'company-new' && clientPortalId;
             await pool.query(`
                 UPDATE leads 
                 SET is_customer = TRUE, 
                     customer_status = 'active',
                     status = 'closed',
                     lead_temperature = 'hot',
+                    ${isCompanyNewAdmin ? `is_company_admin = TRUE, client_portal_id = '${clientPortalId}',` : ''}
                     updated_at = NOW() 
                 WHERE id = $1
             `, [lead.id]);
@@ -14213,6 +14216,83 @@ app.post('/api/client/subscription/:id/billing-portal', authenticateClient, asyn
 });
 
 // Client Login
+// ========================================
+// POST /api/admin/repair-company-admin
+// Fixes company accounts where the subscribing email is not flagged as admin.
+// Called from the admin portal when a client reports they can't access their CRM.
+// ========================================
+app.post('/api/admin/repair-company-admin', authenticateToken, async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ success: false, message: 'email is required' });
+
+        // Find the lead
+        const leadRes = await pool.query(
+            `SELECT id, email, name, is_company_admin, client_portal_id, is_customer, customer_status FROM leads WHERE LOWER(email) = LOWER($1)`,
+            [email]
+        );
+        if (!leadRes.rows.length) return res.status(404).json({ success: false, message: 'No lead found with that email' });
+        const lead = leadRes.rows[0];
+
+        // Find the company where this email is the admin_email
+        const companyRes = await pool.query(
+            `SELECT client_portal_id, company_name FROM client_companies WHERE LOWER(admin_email) = LOWER($1)`,
+            [email]
+        );
+
+        if (!companyRes.rows.length) {
+            return res.status(404).json({
+                success: false,
+                message: `No company found with ${email} as admin. Verify the subscription was completed.`
+            });
+        }
+
+        const company = companyRes.rows[0];
+
+        // Repair the lead record
+        await pool.query(`
+            UPDATE leads SET
+                is_company_admin = TRUE,
+                is_co_admin = FALSE,
+                client_portal_id = $1,
+                is_customer = TRUE,
+                customer_status = 'active',
+                status = 'closed',
+                updated_at = NOW()
+            WHERE id = $2
+        `, [company.client_portal_id, lead.id]);
+
+        // Ensure they also have a company_users record (some setups miss this)
+        await pool.query(`
+            INSERT INTO company_users (client_portal_id, user_name, user_email, user_label, is_admin, status, added_date)
+            VALUES ($1, $2, $3, 'Admin', TRUE, 'active', NOW())
+            ON CONFLICT (client_portal_id, user_email) DO UPDATE SET
+                is_admin = TRUE,
+                status = 'active',
+                updated_at = NOW()
+        `, [company.client_portal_id, lead.name || email.split('@')[0], email]);
+
+        console.log(`[REPAIR] Fixed admin for ${email} → ${company.client_portal_id} (${company.company_name})`);
+        res.json({
+            success: true,
+            message: `Admin access repaired for ${email}. They can now log in to ${company.company_name}.`,
+            details: {
+                email,
+                companyName: company.company_name,
+                clientPortalId: company.client_portal_id,
+                wasAdmin: lead.is_company_admin,
+                wasCustomer: lead.is_customer,
+                wasCustomerStatus: lead.customer_status
+            }
+        });
+
+    } catch (error) {
+        console.error('[REPAIR ADMIN] Error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
 app.post('/api/client/login', async (req, res) => {
     const { email, password } = req.body;
     

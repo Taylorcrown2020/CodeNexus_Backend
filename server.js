@@ -202,8 +202,8 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
             const invoiceId = session.metadata?.invoice_id;
             
             if (!invoiceId) {
-                // No invoice_id means this is a subscription checkout (not an invoice payment).
-                // Do NOT return here — fall through so processSubscriptionWebhook() runs below.
+                // No invoice_id = subscription checkout (not an invoice payment).
+                // Do NOT return — fall through so processSubscriptionWebhook() runs below.
                 console.log('[WEBHOOK] No invoice_id in metadata — subscription checkout, continuing to processSubscriptionWebhook');
                 break;
             }
@@ -4736,81 +4736,56 @@ app.delete('/api/admin/sessions/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// ── Admin: Repair company purchased_seats / monthly_total ──────────────────
-// POST /api/admin/repair-company-seats
-// Fixes companies where purchased_seats=0 despite having an active subscription.
-// Can also target a specific portal ID to repair just one company.
+// POST /api/admin/repair-company-seats — Fix purchased_seats/monthly_total for a specific or all companies
 app.post('/api/admin/repair-company-seats', authenticateToken, async (req, res) => {
     try {
-        const { clientPortalId } = req.body; // optional — if omitted, repairs all broken companies
-
-        let repairQuery;
-        let params;
-
+        const { clientPortalId } = req.body;
+        let repairQuery, params;
         if (clientPortalId) {
-            // Repair a specific company by portal ID — pull values from crm_subscriptions
             repairQuery = `
                 UPDATE client_companies cc
                 SET purchased_seats = COALESCE((
-                        SELECT s.user_count
-                        FROM crm_subscriptions s
+                        SELECT s.user_count FROM crm_subscriptions s
                         WHERE s.client_portal_id = cc.client_portal_id
-                          AND s.status = 'active'
-                          AND s.is_company_subscription = TRUE
+                          AND s.status = 'active' AND s.is_company_subscription = TRUE
                         ORDER BY s.created_at ASC LIMIT 1
                     ), cc.purchased_seats),
                     monthly_total = COALESCE((
-                        SELECT s.monthly_total
-                        FROM crm_subscriptions s
+                        SELECT s.monthly_total FROM crm_subscriptions s
                         WHERE s.client_portal_id = cc.client_portal_id
-                          AND s.status = 'active'
-                          AND s.is_company_subscription = TRUE
+                          AND s.status = 'active' AND s.is_company_subscription = TRUE
                         ORDER BY s.created_at ASC LIMIT 1
                     ), cc.monthly_total)
                 WHERE cc.client_portal_id = $1
-                RETURNING client_portal_id, company_name, purchased_seats, monthly_total
-            `;
+                RETURNING client_portal_id, company_name, purchased_seats, monthly_total`;
             params = [clientPortalId];
         } else {
-            // Repair all companies with purchased_seats=0 that have active subscriptions
             repairQuery = `
                 UPDATE client_companies cc
                 SET purchased_seats = COALESCE((
-                        SELECT s.user_count
-                        FROM crm_subscriptions s
+                        SELECT s.user_count FROM crm_subscriptions s
                         WHERE s.client_portal_id = cc.client_portal_id
-                          AND s.status = 'active'
-                          AND s.is_company_subscription = TRUE
+                          AND s.status = 'active' AND s.is_company_subscription = TRUE
                         ORDER BY s.created_at ASC LIMIT 1
                     ), cc.purchased_seats),
                     monthly_total = COALESCE((
-                        SELECT s.monthly_total
-                        FROM crm_subscriptions s
+                        SELECT s.monthly_total FROM crm_subscriptions s
                         WHERE s.client_portal_id = cc.client_portal_id
-                          AND s.status = 'active'
-                          AND s.is_company_subscription = TRUE
+                          AND s.status = 'active' AND s.is_company_subscription = TRUE
                         ORDER BY s.created_at ASC LIMIT 1
                     ), cc.monthly_total)
                 WHERE cc.purchased_seats = 0
                   AND EXISTS (
                       SELECT 1 FROM crm_subscriptions s
                       WHERE s.client_portal_id = cc.client_portal_id
-                        AND s.status = 'active'
-                        AND s.is_company_subscription = TRUE
+                        AND s.status = 'active' AND s.is_company_subscription = TRUE
                   )
-                RETURNING client_portal_id, company_name, purchased_seats, monthly_total
-            `;
+                RETURNING client_portal_id, company_name, purchased_seats, monthly_total`;
             params = [];
         }
-
         const result = await pool.query(repairQuery, params);
         console.log('[REPAIR] Company seats repaired:', result.rows);
-
-        res.json({
-            success: true,
-            repaired: result.rowCount,
-            companies: result.rows
-        });
+        res.json({ success: true, repaired: result.rowCount, companies: result.rows });
     } catch (err) {
         console.error('[REPAIR] Error:', err);
         res.status(500).json({ success: false, message: err.message });
@@ -9742,27 +9717,25 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
 
         console.log(`[ADD-USER] ${email} → mode: ${effectiveMode} (${activeUsers} active / ${purchasedSeats} purchased)`);
 
-        // Get package for this company's subscription (use company's plan if not specified)
+        // Get package for this company's subscription. Never fall back to price=0.
+        // 4-step lookup: caller key → active subscription record → existing user row → workspace default.
         let pkg = null;
         if (packageKey) {
             pkg = servicePackages[packageKey];
         }
         if (!pkg) {
-            // Fall back to company's existing subscription record (authoritative source)
             const existingSub = await pool.query(
                 `SELECT package_key, price_per_user FROM crm_subscriptions WHERE client_portal_id = $1 AND status = 'active' ORDER BY created_at ASC LIMIT 1`,
                 [clientPortalId]
             );
             if (existingSub.rows[0]) {
                 pkg = servicePackages[existingSub.rows[0].package_key];
-                // If pkg found but price is 0, override with the stored price_per_user
                 if (pkg && (!pkg.price || pkg.price === 0) && parseFloat(existingSub.rows[0].price_per_user) > 0) {
                     pkg = { ...pkg, price: parseFloat(existingSub.rows[0].price_per_user) };
                 }
             }
         }
         if (!pkg) {
-            // Last resort: pull price directly from an existing company_users row for this portal
             const existingUserRow = await pool.query(
                 `SELECT package_key, package_name, price_per_user FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 ORDER BY added_date ASC LIMIT 1`,
                 [clientPortalId]
@@ -9779,7 +9752,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             }
         }
         if (!pkg) {
-            // Absolute fallback — workspace is always $84.99; never store $0 for a company user
+            // Absolute fallback — company users are always $84.99; never store $0
             pkg = servicePackages['workspace-crm'] || { name: 'CRM Workspace', price: 84.99, category: 'crm', billing: 'monthly-per-user', isCompanyPlan: true };
         }
 
@@ -9854,8 +9827,6 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         }
 
         // Add to company_users — NOT to leads table
-        // Determine the stored packageKey: prefer the resolved pkg's own key, then caller-supplied,
-        // then fall back to 'workspace-crm' (the only plan type for company users).
         const resolvedPkgKey = pkg.key || packageKey || 'workspace-crm';
         await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, resolvedPkgKey, pkg.name, pricePerUser);
 
@@ -10457,17 +10428,15 @@ async function processSubscriptionWebhook(event) {
                         WHERE id = $2
                     `, [clientPortalId, lead.id]);
                     // Store how many seats were purchased so add-user can allow setup without extra charge.
-                    // NOTE: monthly_total is computed AFTER purchased_seats is updated using a subquery,
-                    // because PostgreSQL evaluates all SET expressions against the PRE-update row values.
+                    // Two-pass update: PostgreSQL evaluates all SET expressions against the pre-update row,
+                    // so monthly_total must be recalculated in a second query after purchased_seats is committed.
                     const purchasedQty = parseInt(userCount) || 1;
                     await pool.query(`
                         UPDATE client_companies
                         SET purchased_seats = purchased_seats + $1,
-                            monthly_total   = (purchased_seats + $1) * $3,
                             updated_at      = NOW()
                         WHERE client_portal_id = $2
-                    `, [purchasedQty, clientPortalId, pkg.price]);
-                    // Recalculate monthly_total in a second pass to ensure it reflects the NEW purchased_seats value
+                    `, [purchasedQty, clientPortalId]);
                     await pool.query(`
                         UPDATE client_companies
                         SET monthly_total = purchased_seats * $1
@@ -19790,33 +19759,28 @@ async function startServer() {
             console.log('[STARTUP] client_companies.purchased_seats ensured');
         } catch(e) { console.warn('[STARTUP] purchased_seats migration skipped:', e.message); }
 
-        // ── DATA REPAIR: Fix companies where purchased_seats=0 but active subscription exists ──
-        // This happens when the webhook early-returned before running the purchased_seats update.
+        // DATA REPAIR: Fix companies where purchased_seats=0 but an active subscription exists.
+        // This corrects records broken by the now-fixed webhook early-return bug.
         try {
             const repairResult = await pool.query(`
                 UPDATE client_companies cc
                 SET purchased_seats = COALESCE((
-                        SELECT s.user_count
-                        FROM crm_subscriptions s
+                        SELECT s.user_count FROM crm_subscriptions s
                         WHERE s.client_portal_id = cc.client_portal_id
-                          AND s.status = 'active'
-                          AND s.is_company_subscription = TRUE
+                          AND s.status = 'active' AND s.is_company_subscription = TRUE
                         ORDER BY s.created_at ASC LIMIT 1
                     ), cc.purchased_seats),
                     monthly_total = COALESCE((
-                        SELECT s.monthly_total
-                        FROM crm_subscriptions s
+                        SELECT s.monthly_total FROM crm_subscriptions s
                         WHERE s.client_portal_id = cc.client_portal_id
-                          AND s.status = 'active'
-                          AND s.is_company_subscription = TRUE
+                          AND s.status = 'active' AND s.is_company_subscription = TRUE
                         ORDER BY s.created_at ASC LIMIT 1
                     ), cc.monthly_total)
                 WHERE cc.purchased_seats = 0
                   AND EXISTS (
                       SELECT 1 FROM crm_subscriptions s
                       WHERE s.client_portal_id = cc.client_portal_id
-                        AND s.status = 'active'
-                        AND s.is_company_subscription = TRUE
+                        AND s.status = 'active' AND s.is_company_subscription = TRUE
                   )
             `);
             if (repairResult.rowCount > 0) {

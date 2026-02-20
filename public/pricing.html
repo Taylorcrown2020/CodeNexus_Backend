@@ -2139,17 +2139,16 @@ body.crm-active .hero,
 }
 .crm-grid-bottom {
     grid-template-columns: repeat(2, 1fr) !important;
-    margin-top: 0 !important;
     max-width: 880px !important;
     margin-left: auto !important;
     margin-right: auto !important;
 }
 @media (max-width: 900px) {
-    .crm-grid-top { grid-template-columns: repeat(2, 1fr) !important; }
+    .crm-grid-top    { grid-template-columns: repeat(2, 1fr) !important; }
     .crm-grid-bottom { grid-template-columns: repeat(2, 1fr) !important; max-width: 100% !important; }
 }
 @media (max-width: 600px) {
-    .crm-grid-top { grid-template-columns: 1fr !important; }
+    .crm-grid-top    { grid-template-columns: 1fr !important; }
     .crm-grid-bottom { grid-template-columns: 1fr !important; }
 }
 .crm-grid-four {
@@ -6390,17 +6389,16 @@ function openCRMSubscribeModal(packageKey, packageName, pricePerUser, isCompanyP
     updateCRMTotal();
 
     // For company/workspace plan → go straight to company account screen
-    // For individual plans → go straight to individual checkout (no type selection needed)
+    // For individual plans → go directly to individual checkout — no type selection needed.
+    //   Individual plans are always individual accounts; there is nothing to ask.
     if (isCompanyPlan) {
         window._isCompanyPlan = true;
-        // Skip the type screen entirely — workspace is always company-new
         selectSubscriptionType('company-new');
         document.getElementById('subscriptionDetailsScreen').style.display = 'block';
         document.getElementById('subscriptionTypeScreen').style.display = 'none';
     } else {
         window._isCompanyPlan = false;
-        // Individual plans are ALWAYS individual accounts — skip the type selection screen
-        // and go directly to the checkout details screen as an individual user.
+        // Skip the type screen — go straight to individual checkout
         selectSubscriptionType('individual');
         document.getElementById('subscriptionDetailsScreen').style.display = 'block';
         document.getElementById('subscriptionTypeScreen').style.display = 'none';

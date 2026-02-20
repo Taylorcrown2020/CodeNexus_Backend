@@ -3981,14 +3981,13 @@ function openAddUserModal() {
     const planSection = document.getElementById('addUserPlanSection');
 
     if (available > 0) {
-        // Seats available — green banner, no plan selector needed
-        // The admin already paid for these seats; filling one does NOT change their monthly total.
+        // Seats available — filling this seat does NOT change the monthly total; it was already paid for.
         banner.style.cssText = 'background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#4ade80;';
         banner.innerHTML = `✅ You have <strong>${available}</strong> available seat${available !== 1 ? 's' : ''} remaining in your subscription. This user will fill one of those seats — your monthly total will not change.`;
         if (planSection) planSection.style.display = 'none';
     } else {
-        // All purchased seats are occupied — adding a user will increase the subscription by 1 seat ($84.99/mo).
-        // Never show "no subscription" — if the admin is here, they have a subscription.
+        // All purchased seats occupied — adding 1 seat increases the monthly bill by $84.99.
+        // Never show "no subscription" — if the admin reached this screen, they have a subscription.
         banner.style.cssText = 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#fbbf24;';
         banner.innerHTML = `⚠️ All <strong>${purchased || '0'}</strong> purchased seat${(purchased !== 1) ? 's' : ''} are currently in use. Adding this user will add 1 seat to your subscription and increase your monthly total by <strong>$84.99/mo</strong>.`;
         if (planSection) planSection.style.display = 'none';
@@ -4017,8 +4016,8 @@ async function addCompanyUser() {
     const occupied  = parseInt(company?.totalActiveSeats) || 0;
     const isOverQuota = occupied >= purchased;
 
-    // No plan selection needed — the server always looks up the correct package/price
-    // from the existing company subscription. For over-quota users the server adds 1 seat.
+    // No plan selection needed — the server resolves the correct package/price from the
+    // existing company subscription. For over-quota seats the server adds 1 seat automatically.
     let selectedPlan = null;
 
     const btn = document.getElementById('addUserBtn');

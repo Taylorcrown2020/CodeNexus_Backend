@@ -9703,20 +9703,31 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
 
         // Upsert a minimal leads record purely for portal auth — hidden from CRM views
         // is_company_admin and is_co_admin are explicitly FALSE so new users are always basic users
-        const newLeadRes = await pool.query(`
-            INSERT INTO leads (email, name, source, is_customer, customer_status, status, 
-                lead_temperature, client_portal_id, client_password, is_company_admin, is_co_admin)
-            VALUES ($1, $2, 'company-user', TRUE, 'active', 'closed', 'cold', $3, $4, FALSE, FALSE)
-            ON CONFLICT (email) DO UPDATE SET
-                client_portal_id = $3,
-                client_password = EXCLUDED.client_password,
-                is_customer = TRUE,
-                is_company_admin = FALSE,
-                is_co_admin = FALSE,
-                customer_status = 'active',
-                updated_at = NOW()
-            RETURNING id
-        `, [email, name, clientPortalId, hashedPassword]);
+        const existingLead = await pool.query(
+            `SELECT id FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1`, [email]
+        );
+        let newLeadRes;
+        if (existingLead.rows.length > 0) {
+            newLeadRes = await pool.query(`
+                UPDATE leads SET
+                    client_portal_id = $1,
+                    client_password  = $2,
+                    is_customer      = TRUE,
+                    is_company_admin = FALSE,
+                    is_co_admin      = FALSE,
+                    customer_status  = 'active',
+                    updated_at       = NOW()
+                WHERE LOWER(email) = LOWER($3)
+                RETURNING id
+            `, [clientPortalId, hashedPassword, email]);
+        } else {
+            newLeadRes = await pool.query(`
+                INSERT INTO leads (email, name, source, is_customer, customer_status, status,
+                    lead_temperature, client_portal_id, client_password, is_company_admin, is_co_admin)
+                VALUES ($1, $2, 'company-user', TRUE, 'active', 'closed', 'cold', $3, $4, FALSE, FALSE)
+                RETURNING id
+            `, [email, name, clientPortalId, hashedPassword]);
+        }
         const leadId = newLeadRes.rows[0]?.id || null;
 
         // Send welcome email with credentials — use admin portal Brevo (not logged to analytics)
@@ -13957,6 +13968,8 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
                     created_at:        row.created_at,
                     cancelled_at:      row.cancelled_at,
                     stripe_customer_id: row.stripe_customer_id,
+                    client_portal_id:  row.client_portal_id,
+                    is_company_subscription: row.is_company_subscription,
                     events: []
                 };
             }
@@ -13971,6 +13984,32 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
         });
 
         const subscriptions = Object.values(subMap);
+
+        // For company admins: override monthly_total on the primary subscription with the
+        // true company total from client_companies (sum of all active seats).
+        // This ensures the Subscription tab always shows the real billing amount.
+        const leadRes = await pool.query(
+            `SELECT client_portal_id, is_company_admin, is_co_admin FROM leads WHERE LOWER(email)=LOWER($1)`,
+            [req.user.email]
+        );
+        const lead = leadRes.rows[0];
+        if (lead?.client_portal_id && (lead.is_company_admin || lead.is_co_admin)) {
+            const companyRes = await pool.query(
+                `SELECT monthly_total, total_active_seats, purchased_seats FROM client_companies WHERE client_portal_id=$1`,
+                [lead.client_portal_id]
+            );
+            const company = companyRes.rows[0];
+            if (company) {
+                // Apply real totals to the primary (newest active) subscription row
+                const primary = subscriptions.find(s => s.status === 'active' && s.is_company_subscription) || subscriptions[0];
+                if (primary) {
+                    primary.monthly_total  = parseFloat(company.monthly_total || 0);
+                    primary.user_count     = parseInt(company.total_active_seats || 0);
+                    primary.purchased_seats = parseInt(company.purchased_seats || 0);
+                }
+            }
+        }
+
         console.log('[CLIENT SUB API] Returning', subscriptions.length, 'subscription(s)');
         res.json({ success: true, subscriptions });
     } catch (error) {
@@ -14444,25 +14483,35 @@ app.post('/api/client/subscription/convert-to-company', authenticateClient, asyn
         );
 
         // 5. Add admin to company_users as is_admin=TRUE
-        await pool.query(`
-            INSERT INTO company_users (
-                client_portal_id, user_label, user_name, user_email,
-                subscription_id, stripe_subscription_id,
-                package_key, package_name, price_per_user,
-                is_admin, status, added_date
-            ) VALUES ($1,'Admin',$2,$3,$4,$5,$6,$7,$8,TRUE,'active',NOW())
-            ON CONFLICT (client_portal_id, user_email) DO UPDATE
-                SET is_admin=TRUE, status='active', updated_at=NOW()
-        `, [
-            portalId,
-            lead.name || email.split('@')[0],
-            email,
-            sub.id,
-            sub.stripe_subscription_id,
-            sub.package_key,
-            sub.package_name,
-            parseFloat(sub.price_per_user || 0)
-        ]);
+        const existingAdminUser = await pool.query(
+            `SELECT id FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2)`,
+            [portalId, email]
+        );
+        if (existingAdminUser.rows.length > 0) {
+            await pool.query(
+                `UPDATE company_users SET is_admin=TRUE, status='active', updated_at=NOW()
+                 WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2)`,
+                [portalId, email]
+            );
+        } else {
+            await pool.query(`
+                INSERT INTO company_users (
+                    client_portal_id, user_label, user_name, user_email,
+                    subscription_id, stripe_subscription_id,
+                    package_key, package_name, price_per_user,
+                    is_admin, status, added_date
+                ) VALUES ($1,'Admin',$2,$3,$4,$5,$6,$7,$8,TRUE,'active',NOW())
+            `, [
+                portalId,
+                lead.name || email.split('@')[0],
+                email,
+                sub.id,
+                sub.stripe_subscription_id,
+                sub.package_key,
+                sub.package_name,
+                parseFloat(sub.price_per_user || 0)
+            ]);
+        }
 
         // 6. Update Stripe quantity if seats > 1
         if (seatCount > 1 && sub.stripe_subscription_id) {

@@ -3780,7 +3780,9 @@ async function loadCompany() {
 
         const company = data.company || {};
         const users = data.users || [];
-        const monthlyTotal = company.monthlyTotal || users.filter(u=>u.status==='active'||u.status==='cancelling').reduce((s,u)=>s+parseFloat(u.pricePerUser||0),0);
+        // True monthly total = what the company is actually billed (from company record, includes all purchased seats)
+        // This is calculated server-side as sum of all active+cancelling users' price_per_user
+        const monthlyTotal = parseFloat(company.monthlyTotal || 0);
 
         el.innerHTML = `
             <!-- Company Info -->

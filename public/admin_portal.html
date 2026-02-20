@@ -7769,12 +7769,17 @@ function setSetupSubType(type) {
 }
 
 function updateSetupSubPreview() {
-    const plan = document.getElementById('setupSubPlan').value;
-    const seats = parseInt(document.getElementById('setupSubSeats').value) || 1;
+    const planEl = document.getElementById('setupSubPlan');
+    const seatsEl = document.getElementById('setupSubSeats');
+    const amountEl = document.getElementById('setupSubPreviewAmount');
+    const noteEl = document.getElementById('setupSubPreviewNote');
+    if (!planEl || !seatsEl || !amountEl || !noteEl) return;
+    const plan = planEl.value;
+    const seats = parseInt(seatsEl.value) || 1;
     const planData = CRM_PLAN_PRICES[plan] || { name: plan, price: 0 };
     const total = (planData.price * seats).toFixed(2);
-    document.getElementById('setupSubPreviewAmount').textContent = `$${total}/mo`;
-    document.getElementById('setupSubPreviewNote').textContent =
+    amountEl.textContent = `$${total}/mo`;
+    noteEl.textContent =
         `${seats} user${seats !== 1 ? 's' : ''} · ${planData.name}${_setupSubType === 'company' ? ' · Company Account' : ''}`;
 }
 

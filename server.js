@@ -3141,6 +3141,7 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
                 COUNT(*) FILTER (WHERE status = 'contacted' AND is_customer = FALSE) as contacted,
                 COUNT(*) FILTER (WHERE status = 'closed' OR is_customer = TRUE) as closed
             FROM leads
+            WHERE (source IS NULL OR source != 'company-user')
         `);
 
         res.json({
@@ -3191,6 +3192,7 @@ app.get('/api/leads/all-complete', authenticateToken, async (req, res) => {
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
+            WHERE (l.source IS NULL OR l.source != 'company-user')
             ORDER BY l.created_at DESC
         `);
 
@@ -3237,6 +3239,7 @@ app.get('/api/leads/followup-all', authenticateToken, async (req, res) => {
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
+            AND (l.source IS NULL OR l.source != 'company-user')
             AND NOT EXISTS (
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
@@ -9174,14 +9177,14 @@ app.get('/api/client/company', authenticateClient, async (req, res) => {
     try {
         const email = req.user.email;
         
-        // Check if user is a company admin
+        // Check if user is a company admin or co-admin
         const leadResult = await pool.query(
-            `SELECT id, email, is_company_admin, client_portal_id FROM leads WHERE email = $1`,
+            `SELECT id, email, is_company_admin, is_co_admin, client_portal_id FROM leads WHERE email = $1`,
             [email]
         );
         
         const lead = leadResult.rows[0];
-        if (!lead || !lead.is_company_admin || !lead.client_portal_id) {
+        if (!lead || (!lead.is_company_admin && !lead.is_co_admin) || !lead.client_portal_id) {
             return res.status(403).json({
                 success: false,
                 message: 'Not a company admin'
@@ -9376,6 +9379,15 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
             `UPDATE company_users SET status = 'cancelling', cancelled_date = NOW(), access_until = $1 WHERE id = $2`,
             [accessUntil, id]
         );
+
+        // Update company totals: monthly_total still includes cancelling users (they still bill this period)
+        await pool.query(`
+            UPDATE client_companies
+            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
+                monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
+                updated_at = NOW()
+            WHERE client_portal_id = $1
+        `, [clientPortalId]);
         
         // Send notification to admin
         try {
@@ -9457,7 +9469,15 @@ app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (re
             `UPDATE company_users SET status = 'active', cancelled_date = NULL, access_until = NULL WHERE id = $1`,
             [id]
         );
-        res.json({ success: true, message: `${cuUser.user_name}'s subscription has been reinstated.` });
+        // Recalculate company totals after reinstatement
+        await pool.query(`
+            UPDATE client_companies
+            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
+                monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
+                updated_at = NOW()
+            WHERE client_portal_id = $1
+        `, [clientPortalId]);
+        res.json({ success: true, message: `${cuUser.user_name}'s subscription has been reinstated. Billing has been adjusted back to include this user.` });
     } catch (error) {
         console.error('[COMPANY API] Reinstate user error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -9620,10 +9640,12 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser);
 
         // Update company monthly total and active seats
+        // monthly_total = sum of ALL company_users price_per_user (active or cancelling)
+        // This reflects the TRUE billing amount including seats not yet cancelled
         await pool.query(`
             UPDATE client_companies 
             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
-                monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
+                monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
                 updated_at = NOW()
             WHERE client_portal_id = $1
         `, [clientPortalId]);
@@ -9633,19 +9655,20 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
         // Upsert a minimal leads record purely for portal auth — hidden from CRM views
+        // is_company_admin and is_co_admin are explicitly FALSE so new users are always basic users
         await pool.query(`
             INSERT INTO leads (email, name, source, is_customer, customer_status, status, 
-                lead_temperature, client_portal_id, client_password, is_company_admin)
-            VALUES ($1, $2, 'company-user', TRUE, 'active', 'closed', 'cold', $3, $4, FALSE)
+                lead_temperature, client_portal_id, client_password, is_company_admin, is_co_admin)
+            VALUES ($1, $2, 'company-user', TRUE, 'active', 'closed', 'cold', $3, $4, FALSE, FALSE)
             ON CONFLICT (email) DO UPDATE SET
                 client_portal_id = $3,
-                client_password = COALESCE(leads.client_password, EXCLUDED.client_password),
+                client_password = EXCLUDED.client_password,
                 is_customer = TRUE,
+                is_company_admin = FALSE,
+                is_co_admin = FALSE,
                 customer_status = 'active',
                 updated_at = NOW()
         `, [email, name, clientPortalId, hashedPassword]);
-
-        await pool.query(`UPDATE leads SET client_password = $1 WHERE id = $2`, [hashedPassword, leadId]);
 
         // Send welcome email with credentials
         try {
@@ -14216,6 +14239,7 @@ app.post('/api/client/login', async (req, res) => {
                 email: lead.email,
                 company: lead.company,
                 isCompanyAdmin: lead.is_company_admin || false,
+                isCoAdmin: lead.is_co_admin || false,
                 clientPortalId: lead.client_portal_id || null
             }
         });
@@ -20377,6 +20401,7 @@ app.get('/api/client/follow-ups', authenticateClient, async (req, res) => {
             LEFT JOIN company_users cu ON l.crm_assigned_to = cu.id
             WHERE ${whereExtra}
               AND (l.status IS NULL OR l.status NOT IN ('closed','lost'))
+              AND (l.source IS NULL OR l.source != 'company-user')
             ORDER BY
                 CASE l.lead_temperature WHEN 'hot' THEN 1 ELSE 2 END,
                 l.last_contact_date ASC NULLS FIRST
@@ -20402,6 +20427,19 @@ app.get('/api/client/analytics', authenticateClient, async (req, res) => {
         const me = userInfo.rows[0];
         const isAdmin = me?.is_company_admin || me?.is_co_admin;
         const targetEmail = (user_email && isAdmin) ? user_email : me?.email;
+
+        // If no portal, return empty analytics
+        if (!portalId) {
+            return res.json({
+                success: true,
+                analytics: {
+                    user_email: targetEmail,
+                    user_name: me?.name || targetEmail,
+                    email: { sent: 0, open_rate: 0, click_rate: 0, opened: 0, clicked: 0 },
+                    leads: { total_assigned: 0, hot: 0, cold: 0, new: 0, closed: 0, lost: 0, close_rate: 0 }
+                }
+            });
+        }
 
         const cuRec = await pool.query(
             `SELECT cu.* FROM company_users cu WHERE LOWER(cu.user_email)=LOWER($1) AND cu.client_portal_id=$2 LIMIT 1`,

@@ -9571,11 +9571,13 @@ app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (re
             [id]
         );
         // Recalculate company totals after reinstatement.
-        // monthly_total = purchased_seats × price_per_user (authoritative billing amount)
+        // Reinstatement restores the seat — purchased_seats goes back up by 1 and
+        // monthly_total = purchased_seats × price_per_user
         await pool.query(`
             UPDATE client_companies
             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                monthly_total      = purchased_seats * (
+                purchased_seats    = purchased_seats + 1,
+                monthly_total      = (purchased_seats + 1) * (
                     SELECT COALESCE(price_per_user, 0) FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 LIMIT 1
                 ),
                 updated_at         = NOW()
@@ -9665,16 +9667,27 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             pkg = servicePackages[packageKey];
         }
         if (!pkg) {
-            // Fall back to company's existing package
+            // Fall back to company's existing package — no is_company_subscription filter
+            // so older rows created before that flag existed are still found
             const existingSub = await pool.query(
-                `SELECT package_key FROM crm_subscriptions WHERE client_portal_id = $1 AND status = 'active' LIMIT 1`,
+                `SELECT package_key FROM crm_subscriptions WHERE client_portal_id = $1 AND status = 'active' ORDER BY created_at ASC LIMIT 1`,
                 [clientPortalId]
             );
             if (existingSub.rows[0]) pkg = servicePackages[existingSub.rows[0].package_key];
         }
         if (!pkg) {
-            // Default fallback
-            pkg = { name: 'CRM', price: 0, category: 'crm' };
+            // Try to infer the price from an existing company_user in this portal
+            const existingUserPrice = await pool.query(
+                `SELECT price_per_user FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 LIMIT 1`,
+                [clientPortalId]
+            );
+            if (existingUserPrice.rows[0]) {
+                pkg = { name: 'CRM Workspace', price: parseFloat(existingUserPrice.rows[0].price_per_user), category: 'crm', stripePriceId: process.env.STRIPE_CRM_WORKSPACE_PRICE_ID };
+            }
+        }
+        if (!pkg) {
+            // Last resort: workspace default. A company cannot exist without having paid.
+            pkg = servicePackages['crm-workspace'] || { name: 'CRM Workspace', price: 84.99, category: 'crm', stripePriceId: process.env.STRIPE_CRM_WORKSPACE_PRICE_ID };
         }
 
         let subscriptionId = null;
@@ -9738,8 +9751,8 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         // totals. The single company subscription row already represents all purchased seats.
         const existingSubRes = await pool.query(
             `SELECT id, stripe_subscription_id FROM crm_subscriptions
-             WHERE client_portal_id = $1 AND is_company_subscription = TRUE AND status = 'active'
-             ORDER BY created_at ASC LIMIT 1`,
+             WHERE client_portal_id = $1 AND status = 'active'
+             ORDER BY is_company_subscription DESC NULLS LAST, created_at ASC LIMIT 1`,
             [clientPortalId]
         );
         subscriptionId = existingSubRes.rows[0]?.id || null;
@@ -9751,10 +9764,12 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser);
 
         // Update company totals:
-        // - total_active_seats = count of configured users (active + cancelling)
-        // - monthly_total      = purchased_seats × price_per_user  (what was actually PAID FOR)
-        //   This is the authoritative billing amount regardless of how many seats have been filled.
-        //   If 3 seats were purchased but only 1 user is set up, monthly total is still 3 × $84.99.
+        // - total_active_seats always updates (we just added a user)
+        // - monthly_total = purchased_seats × price_per_user
+        //   In 'setup' mode: purchased_seats didn't change, so monthly_total doesn't change.
+        //   In 'new' mode:   purchased_seats was already incremented above, so the
+        //                    multiplication naturally reflects the new total.
+        //   Either way, the same formula is correct.
         await pool.query(`
             UPDATE client_companies 
             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
@@ -11000,20 +11015,16 @@ app.post('/api/public/subscriptions/checkout', async (req, res) => {
         }
 
         // Enforce plan/user-type pairing:
-        // crm-workspace is ONLY for company-new (shared multi-seat subscription)
-        // Individual plans (essential/professional/enterprise) are for individual users only
-        const resolvedUserType = userType || 'individual';
-        if (pkg.isCompanyPlan && resolvedUserType !== 'company-new') {
-            return res.status(400).json({
-                success: false,
-                message: 'CRM Workspace is a company plan and must be purchased as a Company account.'
-            });
-        }
-        if (!pkg.isCompanyPlan && (resolvedUserType === 'company-new' || resolvedUserType === 'company-employee')) {
-            return res.status(400).json({
-                success: false,
-                message: 'Individual plans are for personal use only. Please select the CRM Workspace plan for company or team accounts.'
-            });
+        // crm-workspace is ONLY for company-new (shared multi-seat subscription).
+        // Individual plans (essential/professional/enterprise) are ALWAYS individual accounts —
+        // the userType from the frontend is ignored and forced to 'individual' so the pricing
+        // page never needs to ask and can never accidentally route an individual plan as a company.
+        let resolvedUserType;
+        if (pkg.isCompanyPlan) {
+            resolvedUserType = 'company-new';
+        } else {
+            // Individual plan — always individual, no matter what the frontend sent
+            resolvedUserType = 'individual';
         }
 
         if (!pkg.stripePriceId) {

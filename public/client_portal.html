@@ -1913,116 +1913,12 @@ tr:hover .row-actions { opacity: 1; }
 <!-- ============================================================
      UPGRADE TO COMPANY MODAL
 ============================================================ -->
-<div class="modal-overlay" id="upgradeToCompanyModal" onclick="closeOnOverlay(event,'upgradeToCompanyModal')">
-    <div class="modal" style="max-width:520px;">
-        <div class="modal-header">
-            <span class="modal-title">Upgrade to Company Account</span>
-            <button class="modal-close" onclick="closeModal('upgradeToCompanyModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-        </div>
-        <div class="modal-body">
-            <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:var(--r-md);padding:14px 16px;margin-bottom:20px;font-size:13px;color:var(--text-1);line-height:1.6;">
-                <strong style="color:var(--text-0);">What happens:</strong> Your existing subscription becomes the foundation of a company account. You become the designated admin and gain access to Team, Company, and all management tools. You can invite team members right away.
-            </div>
-            <div class="form-field">
-                <label class="form-label">Company Name</label>
-                <input class="form-input" id="upgradeCompanyName" placeholder="Acme Corp, Smith Agency...">
-            </div>
-            <div class="form-field">
-                <label class="form-label">Total Seats to Purchase</label>
-                <div class="qty-control">
-                    <button class="qty-btn" onclick="adjustUpgradeSeats(-1)">−</button>
-                    <input type="number" class="qty-input" id="upgradeSeats" value="1" min="1" max="50" oninput="updateUpgradeCost()">
-                    <button class="qty-btn" onclick="adjustUpgradeSeats(1)">+</button>
-                </div>
-                <div style="font-size:12px;color:var(--text-3);margin-top:6px;">1 seat = just you. Each extra seat lets you add one more team member at your current plan rate.</div>
-            </div>
-            <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-top:4px;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                    <span style="font-size:13px;color:var(--text-3);">Plan rate</span>
-                    <span style="font-size:13px;font-weight:600;color:var(--text-1);" id="upgradePlanRate">—</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                    <span style="font-size:13px;color:var(--text-3);">Seats</span>
-                    <span style="font-size:13px;font-weight:600;color:var(--text-1);" id="upgradeSeatsDisplay">1</span>
-                </div>
-                <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;justify-content:space-between;">
-                    <span style="font-size:14px;font-weight:600;color:var(--text-0);">New Monthly Total</span>
-                    <span style="font-size:20px;font-weight:700;color:var(--green);" id="upgradeTotalAmt">—</span>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('upgradeToCompanyModal')">Cancel</button>
-            <button class="btn btn-white" id="confirmUpgradeCompanyBtn" onclick="confirmUpgradeToCompany()">Create Company Account</button>
-        </div>
-    </div>
-</div>
+<!-- upgradeToCompanyModal removed — individual plans are standalone; team accounts must purchase CRM Workspace directly -->
 
 <!-- ============================================================
      CHANGE USER PLAN MODAL (admin changes a team member's plan)
 ============================================================ -->
-<div class="modal-overlay" id="changeUserPlanModal" onclick="closeOnOverlay(event,'changeUserPlanModal')">
-    <div class="modal" style="max-width:500px;">
-        <div class="modal-header">
-            <span class="modal-title">Change Member Plan</span>
-            <button class="modal-close" onclick="closeModal('changeUserPlanModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-        </div>
-        <div class="modal-body">
-            <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;">Changing plan for: <strong id="changeUserPlanTargetName">—</strong></p>
-            <div id="changeUserPlanOptions" style="display:grid;gap:8px;margin-bottom:16px;"></div>
-            <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                    <span style="font-size:13px;color:var(--text-3);">Current</span>
-                    <span style="font-size:13px;font-weight:600;color:var(--text-1);" id="changeUserCurrentPlan">—</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;">
-                    <span style="font-size:14px;font-weight:600;color:var(--text-0);">New Monthly Rate</span>
-                    <span style="font-size:20px;font-weight:700;color:var(--green);" id="changeUserNewAmt">—</span>
-                </div>
-            </div>
-            <div id="changeUserPlanNotice" style="display:none;margin-top:10px;padding:10px 14px;border-radius:var(--r-sm);font-size:12px;background:rgba(245,158,11,0.1);color:var(--yellow);border:1px solid rgba(245,158,11,0.25);">
-                Upgrade charges prorate immediately. Downgrade takes effect at next billing period.
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('changeUserPlanModal')">Cancel</button>
-            <button class="btn btn-white" id="confirmChangeUserPlanBtn" onclick="confirmChangeUserPlan()">Confirm Change</button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================================
-     COMPANY ADMIN OWN SUBSCRIPTION CHANGE MODAL
-============================================================ -->
-<div class="modal-overlay" id="companySubChangeModal" onclick="closeOnOverlay(event,'companySubChangeModal')">
-    <div class="modal" style="max-width:600px;">
-        <div class="modal-header">
-            <span class="modal-title">Change Company Plan</span>
-            <button class="modal-close" onclick="closeModal('companySubChangeModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-        </div>
-        <div class="modal-body">
-            <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;">Select a new plan tier. This changes the per-seat rate for your entire company subscription.</p>
-            <div id="companySubPlanOptions" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;"></div>
-            <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-md);padding:16px;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                    <span style="font-size:13px;color:var(--text-3);">Current</span>
-                    <span style="font-size:13px;font-weight:600;color:var(--text-1);" id="companySubCurrentAmt">—</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;">
-                    <span style="font-size:14px;font-weight:600;color:var(--text-0);">New Monthly Total</span>
-                    <span style="font-size:20px;font-weight:700;color:var(--green);" id="companySubNewAmt">—</span>
-                </div>
-            </div>
-            <div style="margin-top:10px;padding:10px 14px;border-radius:var(--r-sm);font-size:12px;background:rgba(245,158,11,0.1);color:var(--yellow);border:1px solid rgba(245,158,11,0.25);">
-                Upgrade charges prorate immediately. Downgrade takes effect at your next billing period.
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('companySubChangeModal')">Cancel</button>
-            <button class="btn btn-white" id="confirmCompanySubChangeBtn" onclick="confirmCompanySubChange()">Confirm Change</button>
-        </div>
-    </div>
-</div>
+<!-- changeUserPlanModal and companySubChangeModal removed — company subscription is a fixed $84.99/user rate, no plan changes permitted -->
 
 <!-- ============================================================
      JAVASCRIPT
@@ -4012,8 +3908,8 @@ async function loadCompany() {
                                 <button class="btn btn-ghost btn-xs" onclick="navigator.clipboard.writeText('${escHtml(company.clientPortalId||'')}').then(()=>toast('Copied!','success'))">Copy</button>
                             </div>
                         </div>
-                        <div><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Active Users</div><div style="font-weight:600;">${users.filter(u=>u.status==='active').length}</div></div>
-                        <div><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Monthly Total</div><div style="font-weight:600;color:var(--green);">$${monthlyTotal.toFixed(2)}</div></div>
+                        <div><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Active Users</div><div style="font-weight:600;">${users.filter(u=>u.status==='active').length} of ${company.purchasedSeats||0} seats</div></div>
+                        <div><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Monthly Total</div><div style="font-weight:600;color:var(--green);">$${monthlyTotal.toFixed(2)}</div><div style="font-size:10px;color:var(--text-3);">${company.purchasedSeats||0} purchased seat${(company.purchasedSeats||0)!==1?'s':''}</div></div>
                     </div>
                     <div style="margin-top:14px;padding:12px;background:var(--bg-3);border-radius:var(--r-sm);border:1px solid var(--border);font-size:12px;color:var(--text-3);">
                         Share your Portal ID <strong style="color:var(--text-1);">${escHtml(company.clientPortalId||'—')}</strong> with team members so they can join your company account on the pricing page.
@@ -4043,7 +3939,7 @@ async function loadCompany() {
                                 <td style="font-size:11px;color:var(--text-3);">${fmtDate(u.addedDate||u.created_at)}</td>
                                 <td>
                                     <div class="row-actions">
-                                        ${S.isTrueAdmin ? `<button class="btn btn-ghost btn-xs" onclick="openChangeUserPlanModal(${u.id},'${escHtml(u.userLabel||u.userName||'')}','${escHtml(u.packageKey||'')}',${parseFloat(u.pricePerUser||0)})">Plan</button>` : ''}
+                                        ${S.isTrueAdmin ? `` : ''}
                                         ${S.isTrueAdmin && !u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="promoteUser(${u.id})">Admin+</button>` : ''}
                                         ${S.isTrueAdmin && u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="demoteUser(${u.id})">Remove</button>` : ''}
                                         ${S.isTrueAdmin && !u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="openResetUserPasswordModal(${u.id},'${escHtml(u.userName||u.userEmail||'')}')">Reset PW</button>` : ''}
@@ -4162,9 +4058,20 @@ async function addCompanyUser() {
         });
         const data = await res.json();
         if (data.success) {
-            toast(data.message || 'Team member added successfully!', 'success');
-            closeModal('addUserModal');
-            await loadCompany();
+            if (!data.emailSent && data.tempPassword) {
+                // Email failed — show credentials directly in the portal so the admin can relay them
+                toast(data.message || 'User added (email failed — see credentials below)', 'warning');
+                closeModal('addUserModal');
+                await loadCompany();
+                // Show a persistent alert with the credentials since email couldn't deliver them
+                setTimeout(() => {
+                    alert(`⚠️ Welcome email failed to send.\n\nPlease share these credentials manually with ${name}:\n\nLogin Email: ${email}\nPassword: ${data.tempPassword}\nPortal URL: ${window.location.origin}/client_portal.html`);
+                }, 300);
+            } else {
+                toast(data.message || 'Team member added successfully!', 'success');
+                closeModal('addUserModal');
+                await loadCompany();
+            }
         } else {
             toast(data.message || 'Failed to add user', 'error');
         }
@@ -4531,7 +4438,6 @@ function renderSubscription(subs) {
         const sub = active.sort((a,b)=>parseFloat(b.monthly_total)-parseFloat(a.monthly_total))[0];
         const sc = sCfg[sub.status] || sCfg.cancelled;
         const canCancel = ['active','past_due'].includes(sub.status);
-        const canChange = ['active','canceling'].includes(sub.status);
 
         html += `
         <div class="card" style="margin-bottom:16px;">
@@ -4554,26 +4460,6 @@ function renderSubscription(subs) {
                     <div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Per Seat</div><div style="font-size:12px;font-weight:500;">$${parseFloat(sub.price_per_user||0).toFixed(2)}/seat/mo</div></div>
                     <div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Member Since</div><div style="font-size:12px;font-weight:500;">${fmtDate2(sub.created_at)}</div></div>
                 </div>
-
-                ${canChange?`
-                <div style="margin-bottom:16px;">
-                    <div style="font-size:12px;font-weight:600;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-                        <span>Change Company Plan</span>
-                        <span style="font-size:11px;font-weight:400;">Applies to all seats</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-                        ${CRM_PLANS.map(plan=>{
-                            const isCur = plan.key===sub.package_key;
-                            const curPkg = CRM_PLANS.find(p=>p.key===sub.package_key);
-                            const arrow = plan.price>(curPkg?.price||0)?'↑ Upgrade':plan.price<(curPkg?.price||0)?'↓ Downgrade':'';
-                            return `<div class="plan-card ${isCur?'current':''}" onclick="${isCur?'':(`openCompanySubChange(${sub.id},'${plan.key}','${plan.name}',${plan.price},${sub.user_count||1},'${sub.package_key}',${parseFloat(sub.monthly_total||0)})`)}" style="${isCur?'cursor:default;':''}">
-                                <div class="plan-name">${plan.name}</div>
-                                <div class="plan-price">$${plan.price.toFixed(2)}<span>/seat/mo</span></div>
-                                ${isCur?'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600;">CURRENT</div>':`<div style="font-size:11px;color:var(--text-3);margin-top:4px;">${arrow}</div>`}
-                            </div>`;
-                        }).join('')}
-                    </div>
-                </div>`:''}
 
                 <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border);">
                     <button class="btn btn-default btn-sm" onclick="openBillingPortal(${sub.id})">
@@ -4650,39 +4536,6 @@ function renderSubscription(subs) {
             </div>`;
         });
 
-        // Upgrade-to-company offer card — only shown when there is an active sub
-        const activeSub = active.find(s=>s.status==='active');
-        if (activeSub) {
-            html += `
-            <div class="card" style="border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.04);">
-                <div class="card-header">
-                    <div>
-                        <span class="card-title">Upgrade to Company Account</span>
-                        <div style="font-size:13px;color:var(--text-3);margin-top:4px;">Add team members, manage their plans, and collaborate — all inside this portal.</div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
-                        <div style="text-align:center;padding:12px;background:var(--bg-3);border-radius:var(--r-md);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:20px;height:20px;margin:0 auto 8px;color:var(--accent);display:block;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            <div style="font-size:11px;color:var(--text-2);font-weight:500;">Team Members</div>
-                        </div>
-                        <div style="text-align:center;padding:12px;background:var(--bg-3);border-radius:var(--r-md);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:20px;height:20px;margin:0 auto 8px;color:var(--accent);display:block;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                            <div style="font-size:11px;color:var(--text-2);font-weight:500;">Shared Workspace</div>
-                        </div>
-                        <div style="text-align:center;padding:12px;background:var(--bg-3);border-radius:var(--r-md);">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:20px;height:20px;margin:0 auto 8px;color:var(--accent);display:block;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                            <div style="font-size:11px;color:var(--text-2);font-weight:500;">Team Analytics</div>
-                        </div>
-                    </div>
-                    <button class="btn btn-white" onclick="openUpgradeToCompany(${activeSub.id},'${escHtml(activeSub.package_key)}',${parseFloat(activeSub.price_per_user||0)},${activeSub.user_count||1})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                        Upgrade to Company
-                    </button>
-                </div>
-            </div>`;
-        }
     }
 
     // Past subscriptions
@@ -4701,61 +4554,6 @@ function renderSubscription(subs) {
     }
 
     el.innerHTML = html;
-}
-
-// ── Upgrade to Company ─────────────────────────────────────────────────────
-let _upgradeSubState = {};
-
-function openUpgradeToCompany(subId, packageKey, pricePerUser, currentSeats) {
-    _upgradeSubState = { subId, packageKey, pricePerUser: parseFloat(pricePerUser)||0, currentSeats };
-    document.getElementById('upgradeCompanyName').value = '';
-    document.getElementById('upgradeSeats').value = currentSeats || 1;
-    const planName = CRM_PLANS.find(p=>p.key===packageKey)?.name || 'Current Plan';
-    document.getElementById('upgradePlanRate').textContent = `$${(parseFloat(pricePerUser)||0).toFixed(2)}/seat/mo (${planName})`;
-    updateUpgradeCost();
-    openModal('upgradeToCompanyModal');
-}
-
-function adjustUpgradeSeats(delta) {
-    const inp = document.getElementById('upgradeSeats');
-    inp.value = Math.max(1, parseInt(inp.value||1) + delta);
-    updateUpgradeCost();
-}
-
-function updateUpgradeCost() {
-    const seats = parseInt(document.getElementById('upgradeSeats')?.value||1);
-    const price = _upgradeSubState.pricePerUser || 0;
-    document.getElementById('upgradeSeatsDisplay').textContent = seats;
-    document.getElementById('upgradeTotalAmt').textContent = '$' + (seats * price).toFixed(2) + '/mo';
-}
-
-async function confirmUpgradeToCompany() {
-    const companyName = document.getElementById('upgradeCompanyName').value.trim();
-    const seats       = parseInt(document.getElementById('upgradeSeats').value||1);
-    if (!companyName) { toast('Enter a company name', 'error'); return; }
-
-    const btn = document.getElementById('confirmUpgradeCompanyBtn');
-    btn.disabled = true; btn.textContent = 'Creating...';
-
-    try {
-        const res  = await apiFetch('/client/subscription/convert-to-company', 'POST', { companyName, seats });
-        const data = await res.json();
-        if (data.success) {
-            toast(data.message || 'Company account created!', 'success');
-            closeModal('upgradeToCompanyModal');
-            // Update local user state so nav re-renders correctly
-            S.user.isCompanyAdmin = true;
-            S.user.clientPortalId = data.clientPortalId;
-            localStorage.setItem('clientUser', JSON.stringify(S.user));
-            // Re-run showApp to reveal Team/Company tabs, then stay on subscription page
-            showApp();
-            navigate('subscription');
-            await loadSubscription();
-        } else {
-            toast(data.message || 'Failed to create company account', 'error');
-        }
-    } catch { toast('Error upgrading account', 'error'); }
-    finally { btn.disabled = false; btn.textContent = 'Create Company Account'; }
 }
 
 // ── Individual / Admin own-plan change (existing changePlanModal) ──────────
@@ -4817,117 +4615,6 @@ async function confirmPlanChange() {
 }
 
 // ── Company Admin — change their own company subscription tier ─────────────
-let _companySubState = {};
-
-// Company plan change — only CRM Workspace plans allowed.
-// Under Option A (shared subscription), changing the plan swaps the price ID
-// for ALL seats at once via /api/client/company/upgrade-plan.
-function openCompanySubChange(subId, planKey, planName, price, currentQty, currentPlanKey, currentTotal) {
-    _companySubState = { subId, selectedKey: currentPlanKey, selectedPrice: price, currentQty };
-    // Only show COMPANY_PLANS (crm-workspace) in the company change modal
-    const plans = COMPANY_PLANS;
-    const opts = plans.map(p => {
-        const isCur = p.key === currentPlanKey;
-        const curPkg = plans.find(x=>x.key===currentPlanKey);
-        const arrow = p.price>(curPkg?.price||0)?'↑ Upgrade':p.price<(curPkg?.price||0)?'↓ Downgrade':'';
-        return `<div class="plan-card ${isCur?'current':''}" id="csopt-${p.key}" onclick="selectCompanySubPlan('${p.key}',${p.price},${currentQty})">
-            <div class="plan-name">${p.name}</div>
-            <div class="plan-price">$${p.price.toFixed(2)}<span>/seat/mo</span></div>
-            ${isCur?'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600;">CURRENT</div>':`<div style="font-size:11px;color:var(--text-3);margin-top:4px;">${arrow||'Same tier'}</div>`}
-        </div>`;
-    }).join('');
-    document.getElementById('companySubPlanOptions').innerHTML = opts;
-    document.getElementById('companySubCurrentAmt').textContent = '$' + parseFloat(currentTotal||0).toFixed(2) + '/mo (total)';
-    document.getElementById('companySubNewAmt').textContent = '—';
-    openModal('companySubChangeModal');
-}
-
-function selectCompanySubPlan(key, price, qty) {
-    _companySubState.selectedKey = key; _companySubState.selectedPrice = price;
-    COMPANY_PLANS.forEach(p => { const el = document.getElementById('csopt-'+p.key); if(el) el.classList.toggle('selected', p.key===key); });
-    document.getElementById('companySubNewAmt').textContent = '$' + (price * (qty || _companySubState.currentQty || 1)).toFixed(2) + '/mo';
-}
-
-async function confirmCompanySubChange() {
-    if (!_companySubState.selectedKey) { toast('Select a plan','error'); return; }
-    const btn = document.getElementById('confirmCompanySubChangeBtn');
-    btn.disabled = true; btn.textContent = 'Processing...';
-    try {
-        // Uses the company-level upgrade endpoint — changes price for ALL seats at once
-        const res = await apiFetch('/client/company/upgrade-plan', 'POST', {
-            newPackageKey: _companySubState.selectedKey
-        });
-        const data = await res.json();
-        if(data.success) {
-            toast(data.message||'Company plan updated','success');
-            closeModal('companySubChangeModal');
-            await loadSubscription();
-            if(S.currentPage==='company') await loadCompany();
-        } else { toast(data.message||'Failed','error'); }
-    } catch { toast('Error','error'); }
-    finally { btn.disabled=false; btn.textContent='Confirm Change'; }
-}
-
-// ── Admin change a team member's plan ─────────────────────────────────────
-let _changeUserPlanState = {};
-
-function openChangeUserPlanModal(userId, userName, currentPlanKey, currentPricePerUser) {
-    _changeUserPlanState = { userId, selectedKey: null };
-    document.getElementById('changeUserPlanTargetName').textContent = userName;
-    document.getElementById('changeUserCurrentPlan').textContent =
-        (CRM_PLANS.find(p=>p.key===currentPlanKey)?.name || currentPlanKey || '—') +
-        ` ($${parseFloat(currentPricePerUser||0).toFixed(2)}/mo)`;
-    const opts = CRM_PLANS.map(p => {
-        const isCur = p.key === currentPlanKey;
-        const curPkg = CRM_PLANS.find(x=>x.key===currentPlanKey);
-        const arrow = p.price>(curPkg?.price||0)?'↑ Upgrade':p.price<(curPkg?.price||0)?'↓ Downgrade':'';
-        return `<label style="display:flex;align-items:center;gap:12px;border:1px solid ${isCur?'var(--accent)':'var(--border)'};border-radius:var(--r-md);padding:12px 14px;cursor:${isCur?'default':'pointer'};background:${isCur?'rgba(212,168,71,0.06)':''};transition:border-color .15s,background .15s;" id="cupo-${p.key}" onclick="${isCur?'':'selectUserPlan(\''+p.key+'\','+p.price+')'}">
-            <input type="radio" name="changeUserPlanRadio" value="${p.key}" style="accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;" ${isCur?'checked':''}>
-            <div style="flex:1;">
-                <div style="font-weight:600;font-size:14px;">${p.name}${isCur?' <span style="font-size:10px;color:var(--green);font-weight:700;">CURRENT</span>':''}</div>
-                <div style="font-size:12px;color:var(--text-3);">${arrow||'No change'}</div>
-            </div>
-            <div style="font-weight:700;font-size:15px;color:var(--accent);">$${p.price.toFixed(2)}<span style="font-weight:400;font-size:11px;color:var(--text-3);">/mo</span></div>
-        </label>`;
-    }).join('');
-    document.getElementById('changeUserPlanOptions').innerHTML = opts;
-    document.getElementById('changeUserNewAmt').textContent = '—';
-    document.getElementById('changeUserPlanNotice').style.display = 'block';
-    openModal('changeUserPlanModal');
-}
-
-function selectUserPlan(key, price) {
-    _changeUserPlanState.selectedKey = key; _changeUserPlanState.selectedPrice = price;
-    CRM_PLANS.forEach(p => {
-        const el = document.getElementById('cupo-'+p.key); if (!el) return;
-        const radio = el.querySelector('input[type=radio]');
-        if (radio) radio.checked = p.key===key;
-        el.style.borderColor = p.key===key?'var(--accent)':'var(--border)';
-        el.style.background  = p.key===key?'rgba(212,168,71,0.06)':'';
-    });
-    document.getElementById('changeUserNewAmt').textContent = '$' + price.toFixed(2) + '/mo';
-}
-
-async function confirmChangeUserPlan() {
-    if (!_changeUserPlanState.selectedKey) { toast('Select a plan','error'); return; }
-    const btn = document.getElementById('confirmChangeUserPlanBtn');
-    btn.disabled = true; btn.textContent = 'Processing...';
-    try {
-        const res = await apiFetch(`/client/company/user/${_changeUserPlanState.userId}/change-plan`, 'POST', {
-            newPackageKey: _changeUserPlanState.selectedKey
-        });
-        const data = await res.json();
-        if(data.success) {
-            toast(data.message||'Plan updated','success');
-            closeModal('changeUserPlanModal');
-            await loadCompany();
-            if(S.currentPage==='subscription') await loadSubscription();
-        } else { toast(data.message||'Failed','error'); }
-    } catch { toast('Error','error'); }
-    finally { btn.disabled=false; btn.textContent='Confirm Change'; }
-}
-
-
 // ── Cancel subscription ────────────────────────────────────────────────────
 let _cancelSubId = null;
 

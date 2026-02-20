@@ -776,29 +776,34 @@ async function validateEmailDomain(email) {
 async function sendSystemEmail({ to, subject, html }) {
     // Always use the platform-level (admin portal) Brevo credentials
     const emailSettings = await getEmailSettings();
+
+    // Hard-coded platform sender — always Diamondback, never the admin's personal email
+    const PLATFORM_SENDER_EMAIL = 'contact@diamondbackcoding.com';
+    const PLATFORM_SENDER_NAME  = 'Diamondback Coding';
+
     try {
         if (emailSettings.useBrevo && emailSettings.brevoApiKey) {
-            console.log(`[SYSTEM EMAIL] Sending via admin Brevo to: ${to} | Subject: ${subject}`);
+            console.log(`[SYSTEM EMAIL] Sending via Brevo | TO: ${to} | FROM: ${PLATFORM_SENDER_EMAIL} | Subject: ${subject}`);
             await sendViaBrevo(
                 emailSettings.brevoApiKey,
-                emailSettings.brevoSenderEmail || process.env.EMAIL_USER,
-                emailSettings.brevoSenderName || 'Diamondback Coding',
-                to,
+                PLATFORM_SENDER_EMAIL,
+                PLATFORM_SENDER_NAME,
+                to,       // <-- always the new user, never the admin
                 subject,
                 html,
                 []
             );
-            console.log(`[SYSTEM EMAIL] ✅ Sent to ${to}`);
+            console.log(`[SYSTEM EMAIL] ✅ Brevo accepted delivery to: ${to}`);
         } else {
             // Fallback to nodemailer
-            console.log(`[SYSTEM EMAIL] Sending via Nodemailer to: ${to}`);
+            console.log(`[SYSTEM EMAIL] Brevo not configured — sending via Nodemailer | TO: ${to} | Subject: ${subject}`);
             await transporter.sendMail({
-                from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                from: `"${PLATFORM_SENDER_NAME}" <${process.env.EMAIL_USER || PLATFORM_SENDER_EMAIL}>`,
                 to,
                 subject,
                 html
             });
-            console.log(`[SYSTEM EMAIL] ✅ Sent via Nodemailer to ${to}`);
+            console.log(`[SYSTEM EMAIL] ✅ Nodemailer delivered to: ${to}`);
         }
     } catch (err) {
         console.error(`[SYSTEM EMAIL] ❌ Failed to send to ${to}:`, err.message);
@@ -2247,7 +2252,8 @@ async function logActivity(userEmail, action, resourceType = null, resourceId = 
 }
 
 
-// POST /api/client/subscription/:id/change-plan — Change subscription plan
+// POST /api/client/subscription/:id/change-plan — Change subscription plan (individual plans only)
+// Company workspace subscriptions are fixed at $84.99/user — no plan changes permitted.
 app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (req, res) => {
     try {
         const { id } = req.params;
@@ -2264,6 +2270,15 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
         }
         
         const sub = subResult.rows[0];
+
+        // Block plan changes for company workspace subscriptions
+        const currentPkgMeta = servicePackages[sub.package_key];
+        if (currentPkgMeta?.isCompanyPlan) {
+            return res.status(400).json({
+                success: false,
+                message: 'Company workspace subscriptions cannot be changed. The plan is fixed at $84.99/user. To cancel, use the Cancel Subscription option.'
+            });
+        }
         
         if (!['active', 'past_due'].includes(sub.status)) {
             return res.status(400).json({ 
@@ -2277,6 +2292,11 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
         
         if (!newPlan || !newPlan.stripePriceId) {
             return res.status(400).json({ success: false, message: 'Invalid plan selected' });
+        }
+
+        // Prevent switching to a company plan via this endpoint
+        if (newPlan.isCompanyPlan) {
+            return res.status(400).json({ success: false, message: 'Cannot switch to a company plan. Please contact support.' });
         }
         
         const isUpgrade = newPlan.price > currentPlan.price;
@@ -9456,12 +9476,17 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
             [accessUntil, id]
         );
 
-        // Update company totals: monthly_total still includes cancelling users (they still bill this period)
+        // Update company totals after cancellation.
+        // monthly_total = purchased_seats × price_per_user (seats already paid for, even if cancelling)
+        // total_active_seats = users still occupying a seat (active + cancelling)
         await pool.query(`
             UPDATE client_companies
             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                updated_at = NOW()
+                monthly_total      = GREATEST(purchased_seats - 1, 0) * (
+                    SELECT COALESCE(price_per_user, 0) FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 LIMIT 1
+                ),
+                purchased_seats    = GREATEST(purchased_seats - 1, 0),
+                updated_at         = NOW()
             WHERE client_portal_id = $1
         `, [clientPortalId]);
         
@@ -9545,12 +9570,15 @@ app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (re
             `UPDATE company_users SET status = 'active', cancelled_date = NULL, access_until = NULL WHERE id = $1`,
             [id]
         );
-        // Recalculate company totals after reinstatement
+        // Recalculate company totals after reinstatement.
+        // monthly_total = purchased_seats × price_per_user (authoritative billing amount)
         await pool.query(`
             UPDATE client_companies
             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                updated_at = NOW()
+                monthly_total      = purchased_seats * (
+                    SELECT COALESCE(price_per_user, 0) FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 LIMIT 1
+                ),
+                updated_at         = NOW()
             WHERE client_portal_id = $1
         `, [clientPortalId]);
         res.json({ success: true, message: `${cuUser.user_name}'s subscription has been reinstated. Billing has been adjusted back to include this user.` });
@@ -9704,31 +9732,36 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             }
         }
 
-        // Create crm_subscription record for this user at their real plan price
-        const subRecord = await pool.query(`
-            INSERT INTO crm_subscriptions (lead_id, lead_email, lead_name, package_key, package_name,
-                user_count, price_per_user, monthly_total,
-                stripe_subscription_id, status, client_portal_id, is_company_subscription, user_label)
-            VALUES (NULL, $1, $2, $3, $4, 1, $5, $5, $6, 'active', $7, TRUE, $8)
-            RETURNING id
-        `, [email, name, pkg.key || packageKey || 'crm', pkg.name, pricePerUser,
-            stripeSubId, clientPortalId, userLabel || null]);
-
-        subscriptionId = subRecord.rows[0]?.id;
+        // For setup mode: link to the existing company subscription (no new billing record).
+        // For new mode: a new Stripe seat was added above; we still link to the same shared sub.
+        // In both cases, we do NOT create a new crm_subscriptions row — that would inflate billing
+        // totals. The single company subscription row already represents all purchased seats.
+        const existingSubRes = await pool.query(
+            `SELECT id, stripe_subscription_id FROM crm_subscriptions
+             WHERE client_portal_id = $1 AND is_company_subscription = TRUE AND status = 'active'
+             ORDER BY created_at ASC LIMIT 1`,
+            [clientPortalId]
+        );
+        subscriptionId = existingSubRes.rows[0]?.id || null;
+        if (!stripeSubId) {
+            stripeSubId = existingSubRes.rows[0]?.stripe_subscription_id || null;
+        }
 
         // Add to company_users — NOT to leads table
         await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser);
 
-        // Update company monthly total and active seats
-        // monthly_total = sum of ALL company_users price_per_user (active or cancelling)
-        // This reflects the TRUE billing amount including seats not yet cancelled
+        // Update company totals:
+        // - total_active_seats = count of configured users (active + cancelling)
+        // - monthly_total      = purchased_seats × price_per_user  (what was actually PAID FOR)
+        //   This is the authoritative billing amount regardless of how many seats have been filled.
+        //   If 3 seats were purchased but only 1 user is set up, monthly total is still 3 × $84.99.
         await pool.query(`
             UPDATE client_companies 
             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                updated_at = NOW()
+                monthly_total      = purchased_seats * $2,
+                updated_at         = NOW()
             WHERE client_portal_id = $1
-        `, [clientPortalId]);
+        `, [clientPortalId, pricePerUser]);
 
         // Create portal login for the new user (using leads table only for auth, not as a CRM lead)
         // Use admin-provided password if supplied, otherwise generate a secure temp password
@@ -9767,6 +9800,8 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         const leadId = newLeadRes.rows[0]?.id || null;
 
         // Send welcome email with credentials — use admin portal Brevo (not logged to analytics)
+        let emailSent = false;
+        let emailError = null;
         try {
             const welcomeHtml = buildEmailHTML(`
                 <p>Hi ${name},</p>
@@ -9804,13 +9839,14 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
                 ctaUrl: `${BASE_URL}/client_portal.html`
             });
 
-            // Use sendSystemEmail so this never appears in email analytics
             await sendSystemEmail({
                 to: email,
                 subject: `Welcome to ${company.company_name} CRM — Your Login`,
                 html: welcomeHtml
             });
+            emailSent = true;
         } catch (emailErr) {
+            emailError = emailErr.message;
             console.error('[ADD-USER] Welcome email failed:', emailErr.message);
         }
 
@@ -9848,10 +9884,14 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             console.error('[ADD-USER] Admin notification failed:', notifyErr.message);
         }
 
-        console.log(`[ADD-USER] Successfully added ${email} to ${clientPortalId}`);
+        console.log(`[ADD-USER] Successfully added ${email} to ${clientPortalId} | Email sent: ${emailSent}`);
         res.json({
             success: true,
-            message: `${name} has been added successfully. They'll receive login credentials via email.`,
+            message: emailSent
+                ? `${name} has been added successfully and will receive their login credentials via email.`
+                : `${name} has been added successfully, but the welcome email could not be sent (${emailError || 'unknown error'}). Their login: email = ${email}, password = ${tempPassword}`,
+            emailSent,
+            tempPassword: emailSent ? undefined : tempPassword,  // expose password in response only if email failed
             user: { name, email, packageKey, packageName: pkg.name, pricePerUser: pkg.price }
         });
 
@@ -10311,10 +10351,12 @@ async function processSubscriptionWebhook(event) {
                     const purchasedQty = parseInt(userCount) || 1;
                     await pool.query(`
                         UPDATE client_companies
-                        SET purchased_seats = purchased_seats + $1
+                        SET purchased_seats = purchased_seats + $1,
+                            monthly_total   = (purchased_seats + $1) * $3,
+                            updated_at      = NOW()
                         WHERE client_portal_id = $2
-                    `, [purchasedQty, clientPortalId]);
-                    console.log(`[SUB WEBHOOK] ✅ Company admin linked: ${leadEmail} → ${clientPortalId} (${purchasedQty} seats purchased)`);
+                    `, [purchasedQty, clientPortalId, pkg.price]);
+                    console.log(`[SUB WEBHOOK] ✅ Company admin linked: ${leadEmail} → ${clientPortalId} (${purchasedQty} seats purchased @ $${pkg.price}/seat = $${purchasedQty * pkg.price}/mo)`);
                 }
                 
                 // Link company employees to company portal
@@ -10967,10 +11009,10 @@ app.post('/api/public/subscriptions/checkout', async (req, res) => {
                 message: 'CRM Workspace is a company plan and must be purchased as a Company account.'
             });
         }
-        if (!pkg.isCompanyPlan && resolvedUserType === 'company-new') {
+        if (!pkg.isCompanyPlan && (resolvedUserType === 'company-new' || resolvedUserType === 'company-employee')) {
             return res.status(400).json({
                 success: false,
-                message: 'Please select the CRM Workspace plan for company accounts.'
+                message: 'Individual plans are for personal use only. Please select the CRM Workspace plan for company or team accounts.'
             });
         }
 
@@ -14046,8 +14088,9 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
         const subscriptions = Object.values(subMap);
 
         // For company admins: override monthly_total on the primary subscription with the
-        // true company total from client_companies (sum of all active seats).
-        // This ensures the Subscription tab always shows the real billing amount.
+        // true billing amount = purchased_seats × price_per_user.
+        // This ensures the Subscription tab always shows what was actually purchased, not
+        // just what's been configured so far.
         const leadRes = await pool.query(
             `SELECT client_portal_id, is_company_admin, is_co_admin FROM leads WHERE LOWER(email)=LOWER($1)`,
             [req.user.email]
@@ -14063,8 +14106,8 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
                 // Apply real totals to the primary (newest active) subscription row
                 const primary = subscriptions.find(s => s.status === 'active' && s.is_company_subscription) || subscriptions[0];
                 if (primary) {
-                    primary.monthly_total  = parseFloat(company.monthly_total || 0);
-                    primary.user_count     = parseInt(company.total_active_seats || 0);
+                    primary.monthly_total   = parseFloat(company.monthly_total || 0);
+                    primary.user_count      = parseInt(company.purchased_seats || 0);  // show purchased, not just configured
                     primary.purchased_seats = parseInt(company.purchased_seats || 0);
                 }
             }
@@ -14287,7 +14330,8 @@ app.post('/api/client/subscription/:id/cancel', authenticateClient, async (req, 
     }
 });
 
-// POST /api/client/subscription/:id/change-plan — upgrade or downgrade
+// POST /api/client/subscription/:id/change-plan — upgrade or downgrade (individual plans only)
+// Company workspace subscriptions are a fixed $84.99/user plan — no plan changes permitted.
 app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (req, res) => {
     try {
         const { id } = req.params;
@@ -14320,20 +14364,29 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
 
         const sub = subResult.rows[0];
 
+        // Company workspace subscriptions are a fixed $84.99/user plan — no plan changes allowed.
+        // The only option for a company subscription is to cancel it.
+        const currentPkgMeta = servicePackages[sub.package_key];
+        if (currentPkgMeta?.isCompanyPlan) {
+            return res.status(400).json({
+                success: false,
+                message: 'Company workspace subscriptions cannot be changed. The plan is $84.99/user. To cancel, use the Cancel Subscription option.'
+            });
+        }
+
         if (!['active', 'canceling'].includes(sub.status)) {
             return res.status(400).json({ success: false, message: 'Subscription must be active to change plans' });
         }
 
-        // Validate new plan
+        // Validate new plan — individual plans only
         const validPlans = ['crm-essential', 'crm-professional', 'crm-enterprise', 'crm-workspace'];
         if (newPackageKey && !validPlans.includes(newPackageKey)) {
             return res.status(400).json({ success: false, message: 'Invalid plan' });
         }
-        // Prevent switching a company workspace subscription to an individual plan and vice versa
-        const currentPkgMeta = servicePackages[sub.package_key];
+        // Prevent switching an individual plan to a company plan and vice versa
         const newPkgMeta = servicePackages[newPackageKey || sub.package_key];
-        if (currentPkgMeta?.isCompanyPlan !== newPkgMeta?.isCompanyPlan) {
-            return res.status(400).json({ success: false, message: 'Cannot switch between individual and company plans. Please contact support.' });
+        if (newPkgMeta?.isCompanyPlan) {
+            return res.status(400).json({ success: false, message: 'Cannot switch to a company plan via this endpoint. Please contact support.' });
         }
 
         const targetPkgKey  = newPackageKey || sub.package_key;
@@ -14472,249 +14525,27 @@ app.post('/api/client/subscription/:id/billing-portal', authenticateClient, asyn
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// POST /api/client/subscription/convert-to-company
-// Converts an individual subscriber into a company account entirely inside
-// the portal — no redirect to pricing page.
-//
-// Flow:
-//  1. Verify caller is individual (no client_portal_id yet)
-//  2. Create client_companies record with generated portal ID
-//  3. Set leads.is_company_admin=TRUE, leads.client_portal_id=new ID
-//  4. Migrate existing crm_subscriptions row to company
-//  5. Add admin to company_users (is_admin=TRUE)
-//  6. Update Stripe subscription quantity if seats > 1
-//
-// Body: { companyName, seats }
-// ═══════════════════════════════════════════════════════════════════════════
+// POST /api/client/subscription/convert-to-company — DISABLED
+// Individual plans are standalone; company accounts must be purchased separately
+// as a CRM Workspace ($84.99/user) from the pricing page.
 app.post('/api/client/subscription/convert-to-company', authenticateClient, async (req, res) => {
-    try {
-        const { companyName, seats = 1 } = req.body;
-        const email = req.user.email;
-
-        if (!companyName || !companyName.trim()) {
-            return res.status(400).json({ success: false, message: 'Company name is required' });
-        }
-
-        // Verify caller exists and has no company yet
-        const leadRes = await pool.query(
-            `SELECT id, name, email, stripe_customer_id, client_portal_id, is_company_admin
-             FROM leads WHERE LOWER(email) = LOWER($1) AND is_customer = TRUE`,
-            [email]
-        );
-        if (!leadRes.rows.length) {
-            return res.status(404).json({ success: false, message: 'Account not found' });
-        }
-        const lead = leadRes.rows[0];
-
-        if (lead.client_portal_id || lead.is_company_admin) {
-            return res.status(400).json({ success: false, message: 'Your account is already a company account.' });
-        }
-
-        // Get current active subscription
-        const subRes = await pool.query(
-            `SELECT * FROM crm_subscriptions
-             WHERE lead_email = $1 AND status IN ('active','canceling','past_due')
-             ORDER BY created_at DESC LIMIT 1`,
-            [email]
-        );
-        if (!subRes.rows.length) {
-            return res.status(400).json({ success: false, message: 'No active subscription found. You need an active subscription to create a company account.' });
-        }
-        const sub = subRes.rows[0];
-        const seatCount = Math.max(1, parseInt(seats) || 1);
-
-        // 1. Create company record
-        const company = await createCompany(companyName.trim(), email, lead.name || email.split('@')[0]);
-        const portalId = company.client_portal_id;
-
-        // 2. Promote lead to company admin
-        await pool.query(
-            `UPDATE leads SET is_company_admin=TRUE, client_portal_id=$1, updated_at=NOW() WHERE id=$2`,
-            [portalId, lead.id]
-        );
-
-        // 3. Migrate subscription to company
-        await pool.query(
-            `UPDATE crm_subscriptions
-             SET client_portal_id=$1, is_company_subscription=TRUE,
-                 user_count=$2, monthly_total=price_per_user*$2, updated_at=NOW()
-             WHERE id=$3`,
-            [portalId, seatCount, sub.id]
-        );
-
-        // 4. Set purchased_seats on company
-        await pool.query(
-            `UPDATE client_companies SET purchased_seats=$1, updated_at=NOW() WHERE client_portal_id=$2`,
-            [seatCount, portalId]
-        );
-
-        // 5. Add admin to company_users as is_admin=TRUE
-        const existingAdminUser = await pool.query(
-            `SELECT id FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2)`,
-            [portalId, email]
-        );
-        if (existingAdminUser.rows.length > 0) {
-            await pool.query(
-                `UPDATE company_users SET is_admin=TRUE, status='active', updated_at=NOW()
-                 WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2)`,
-                [portalId, email]
-            );
-        } else {
-            await pool.query(`
-                INSERT INTO company_users (
-                    client_portal_id, user_label, user_name, user_email,
-                    subscription_id, stripe_subscription_id,
-                    package_key, package_name, price_per_user,
-                    is_admin, status, added_date
-                ) VALUES ($1,'Admin',$2,$3,$4,$5,$6,$7,$8,TRUE,'active',NOW())
-            `, [
-                portalId,
-                lead.name || email.split('@')[0],
-                email,
-                sub.id,
-                sub.stripe_subscription_id,
-                sub.package_key,
-                sub.package_name,
-                parseFloat(sub.price_per_user || 0)
-            ]);
-        }
-
-        // 6. Update Stripe quantity if seats > 1
-        if (seatCount > 1 && sub.stripe_subscription_id) {
-            try {
-                const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
-                const item = stripeSub.items.data[0];
-                if (item && item.quantity !== seatCount) {
-                    await stripe.subscriptionItems.update(item.id, { quantity: seatCount });
-                }
-            } catch (stripeErr) {
-                console.error('[CONVERT-COMPANY] Stripe seat update error:', stripeErr.message);
-                // Non-fatal — company created, admin can adjust via Stripe portal
-            }
-        }
-
-        // Recalculate company totals
-        await pool.query(`
-            UPDATE client_companies
-            SET monthly_total=(SELECT COALESCE(SUM(price_per_user),0) FROM company_users WHERE client_portal_id=$1 AND status IN ('active','cancelling')),
-                total_active_seats=(SELECT COUNT(*) FROM company_users WHERE client_portal_id=$1 AND status IN ('active','cancelling')),
-                updated_at=NOW()
-            WHERE client_portal_id=$1
-        `, [portalId]);
-
-        console.log(`[CONVERT-COMPANY] ✅ ${email} → company admin for "${companyName}" (portal: ${portalId})`);
-
-        res.json({
-            success: true,
-            message: `Company account "${companyName.trim()}" created. You now have full company access.`,
-            clientPortalId: portalId,
-            companyName: companyName.trim()
-        });
-    } catch (error) {
-        console.error('[CONVERT-COMPANY] Error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
+    return res.status(400).json({
+        success: false,
+        message: 'Converting an individual subscription to a company account is not supported. To get a company account, please purchase a CRM Workspace plan from our pricing page.'
+    });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// POST /api/client/company/upgrade-plan
-// Company admin upgrades or downgrades the ENTIRE company workspace plan.
-// Under Option A (shared subscription model), ALL seats share one Stripe
-// subscription at one price. Changing the plan swaps the price ID for ALL
-// seats at once — quantity stays the same.
-// Body: { newPackageKey }  (must be 'crm-workspace' only)
+// POST /api/client/company/upgrade-plan — DISABLED
+// Company workspace subscription is a fixed $84.99/user plan.
+// Plan changes are not permitted. The only action is Cancel Subscription.
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/api/client/company/upgrade-plan', authenticateClient, async (req, res) => {
-    try {
-        const { newPackageKey } = req.body;
-        const requesterEmail = req.user.email;
-
-        // Only company admin can do this
-        const adminRes = await pool.query(
-            `SELECT client_portal_id, is_company_admin FROM leads WHERE LOWER(email)=LOWER($1)`,
-            [requesterEmail]
-        );
-        const admin = adminRes.rows[0];
-        if (!admin?.is_company_admin) {
-            return res.status(403).json({ success: false, message: 'Only the company admin can change the company plan.' });
-        }
-        const portalId = admin.client_portal_id;
-
-        // Only allow workspace plan changes via this endpoint
-        const newPkg = servicePackages[newPackageKey];
-        if (!newPkg || !newPkg.isCompanyPlan || !newPkg.stripePriceId) {
-            return res.status(400).json({ success: false, message: 'Invalid company plan. Only CRM Workspace plans are supported.' });
-        }
-
-        // Find the company's active Stripe subscription
-        const subRes = await pool.query(
-            `SELECT * FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE ORDER BY created_at ASC LIMIT 1`,
-            [portalId]
-        );
-        if (!subRes.rows.length) {
-            return res.status(404).json({ success: false, message: 'No active company subscription found.' });
-        }
-        const sub = subRes.rows[0];
-        if (!sub.stripe_subscription_id) {
-            return res.status(400).json({ success: false, message: 'No Stripe subscription linked. Please contact support.' });
-        }
-
-        const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
-        const item = stripeSub.items.data[0];
-        const qty = item.quantity; // Keep the same number of seats
-        const currentPrice = parseFloat(sub.price_per_user || 0);
-        const isUpgrade = newPkg.price > currentPrice;
-
-        // Swap price ID on the shared subscription — quantity unchanged
-        await stripe.subscriptions.update(sub.stripe_subscription_id, {
-            items: [{ id: item.id, price: newPkg.stripePriceId, quantity: qty }],
-            proration_behavior: isUpgrade ? 'always_invoice' : 'none',
-            billing_cycle_anchor: 'unchanged',
-            cancel_at_period_end: false
-        });
-
-        const newMonthly = newPkg.price * qty;
-
-        // Update ALL company_users rows to new plan/price
-        await pool.query(
-            `UPDATE company_users SET package_key=$1, package_name=$2, price_per_user=$3, updated_at=NOW()
-             WHERE client_portal_id=$4 AND status IN ('active','cancelling')`,
-            [newPackageKey, newPkg.name, newPkg.price, portalId]
-        );
-
-        // Update the primary crm_subscriptions row
-        await pool.query(
-            `UPDATE crm_subscriptions SET package_key=$1, package_name=$2, price_per_user=$3,
-             monthly_total=$4, stripe_price_id=$5, user_count=$6, updated_at=NOW()
-             WHERE id=$7`,
-            [newPackageKey, newPkg.name, newPkg.price, newMonthly, newPkg.stripePriceId, qty, sub.id]
-        );
-
-        // Recalculate company totals
-        await pool.query(`
-            UPDATE client_companies
-            SET monthly_total=(SELECT COALESCE(SUM(price_per_user),0) FROM company_users WHERE client_portal_id=$1 AND status IN ('active','cancelling')),
-                updated_at=NOW()
-            WHERE client_portal_id=$1
-        `, [portalId]);
-
-        await logSubscriptionEvent(sub.stripe_subscription_id, sub.lead_email, 'subscription_updated', newMonthly,
-            `Company plan ${isUpgrade ? 'upgraded' : 'downgraded'} to ${newPkg.name} (${qty} seats) by admin`);
-
-        console.log(`[COMPANY-UPGRADE] ${requesterEmail} changed company plan to ${newPackageKey} × ${qty} seats`);
-        res.json({
-            success: true,
-            message: `Company plan updated to ${newPkg.name}. All ${qty} seats now bill at $${newPkg.price}/mo each. New monthly total: $${newMonthly.toFixed(2)}.`
-        });
-    } catch (error) {
-        console.error('[COMPANY-UPGRADE] Error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
+    return res.status(400).json({
+        success: false,
+        message: 'Company workspace subscriptions cannot be changed. The plan is fixed at $84.99/user/month. To cancel, use the Cancel Subscription option in your portal.'
+    });
 });
-
-// Also patch the existing change-plan endpoint to allow company admins to change
-// their own company subscription tier (previously blocked by lead_email check)
-// ─── This is handled below by also checking client_portal_id ownership ───
 
 // Client Login
 app.post('/api/client/login', async (req, res) => {
@@ -19841,6 +19672,16 @@ async function startServer() {
             `);
             console.log('[STARTUP] client_companies.purchased_seats ensured');
         } catch(e) { console.warn('[STARTUP] purchased_seats migration skipped:', e.message); }
+
+        // Ensure company_users has access_until and cancelled_date columns
+        try {
+            await pool.query(`
+                ALTER TABLE company_users
+                ADD COLUMN IF NOT EXISTS access_until TIMESTAMP,
+                ADD COLUMN IF NOT EXISTS cancelled_date TIMESTAMP
+            `);
+            console.log('[STARTUP] company_users.access_until + cancelled_date ensured');
+        } catch(e) { console.warn('[STARTUP] company_users column migration skipped:', e.message); }
         
         // Migrate existing leads to temperature system
         await migrateExistingLeadsToTemperature();

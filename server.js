@@ -2177,25 +2177,6 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
         
         console.log('✅ Database migrations completed');
 
-        // Migration: Ensure UNIQUE constraint on company_users(client_portal_id, user_email)
-        // This is required for the ON CONFLICT upsert in addCompanyUser() to work correctly.
-        await client.query(`
-            DO $$ BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_constraint
-                    WHERE conname = 'uq_company_users_portal_email'
-                ) THEN
-                    -- Only add if the table exists
-                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'company_users') THEN
-                        ALTER TABLE company_users
-                            ADD CONSTRAINT uq_company_users_portal_email
-                            UNIQUE (client_portal_id, user_email);
-                        RAISE NOTICE 'Added UNIQUE constraint uq_company_users_portal_email';
-                    END IF;
-                END IF;
-            END $$;
-        `);
-
         await client.query('COMMIT');
         console.log('✅ Database tables initialized');
 
@@ -9634,7 +9615,11 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
 
         let subscriptionId = null;
         let stripeSubId = null;
-        let pricePerUser = effectiveMode === 'setup' ? 0 : (pkg.price || 0);
+        // Always record the real per-user price regardless of mode.
+        // 'setup' mode = seat already paid for (no new Stripe charge needed), but the
+        // user still costs money as part of the existing subscription. Storing $0 was
+        // causing users to appear free in the company table and incorrect monthly totals.
+        let pricePerUser = pkg.price || 0;
 
         if (effectiveMode === 'new' && pkg.stripePriceId) {
             // Need to charge for this extra seat — add to existing company Stripe subscription
@@ -9670,7 +9655,6 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
                     quantity: item.quantity + 1
                 });
                 stripeSubId = existingStripeSub.id;
-                pricePerUser = pkg.price || 0;
                 // Update purchased_seats count
                 await pool.query(
                     `UPDATE client_companies SET purchased_seats = purchased_seats + 1 WHERE client_portal_id = $1`,
@@ -9684,7 +9668,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             }
         }
 
-        // Create crm_subscription record for this user (setup mode = $0, new mode = full price)
+        // Create crm_subscription record for this user at their real plan price
         const subRecord = await pool.query(`
             INSERT INTO crm_subscriptions (lead_id, lead_email, lead_name, package_key, package_name,
                 user_count, price_per_user, monthly_total,
@@ -10009,28 +9993,44 @@ async function createCompany(companyName, adminEmail, adminName) {
 // Add user to company
 async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser) {
     try {
-        const result = await pool.query(`
-            INSERT INTO company_users (
-                client_portal_id, user_label, user_name, user_email,
-                subscription_id, stripe_subscription_id,
-                package_key, package_name, price_per_user,
-                is_admin, status, added_date
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE, 'active', NOW())
-            ON CONFLICT (client_portal_id, user_email) 
-            DO UPDATE SET
-                user_label = EXCLUDED.user_label,
-                user_name = EXCLUDED.user_name,
-                subscription_id = EXCLUDED.subscription_id,
-                stripe_subscription_id = EXCLUDED.stripe_subscription_id,
-                package_key = EXCLUDED.package_key,
-                package_name = EXCLUDED.package_name,
-                price_per_user = EXCLUDED.price_per_user,
-                status = 'active',
-                cancelled_date = NULL
-            RETURNING *
-        `, [clientPortalId, userLabel, userName, userEmail, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser]);
-        
-        console.log(`[COMPANY] Added user to ${clientPortalId}: ${userName} (${userEmail})`);
+        // Check if an existing row exists (cancelled users can be re-added)
+        const existing = await pool.query(
+            `SELECT id FROM company_users WHERE client_portal_id = $1 AND LOWER(user_email) = LOWER($2)`,
+            [clientPortalId, userEmail]
+        );
+
+        let result;
+        if (existing.rows.length > 0) {
+            // Update the existing row (e.g. re-adding a previously cancelled user)
+            result = await pool.query(`
+                UPDATE company_users SET
+                    user_label = $1,
+                    user_name = $2,
+                    subscription_id = $3,
+                    stripe_subscription_id = $4,
+                    package_key = $5,
+                    package_name = $6,
+                    price_per_user = $7,
+                    status = 'active',
+                    cancelled_date = NULL,
+                    added_date = NOW()
+                WHERE client_portal_id = $8 AND LOWER(user_email) = LOWER($9)
+                RETURNING *
+            `, [userLabel, userName, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser, clientPortalId, userEmail]);
+        } else {
+            // Fresh insert — no conflict possible since we checked above
+            result = await pool.query(`
+                INSERT INTO company_users (
+                    client_portal_id, user_label, user_name, user_email,
+                    subscription_id, stripe_subscription_id,
+                    package_key, package_name, price_per_user,
+                    is_admin, status, added_date
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE, 'active', NOW())
+                RETURNING *
+            `, [clientPortalId, userLabel, userName, userEmail, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser]);
+        }
+
+        console.log(`[COMPANY] Added/updated user in ${clientPortalId}: ${userName} (${userEmail})`);
         return result.rows[0];
     } catch (err) {
         console.error('[COMPANY] Error adding user:', err);

@@ -45,13 +45,14 @@ const servicePackages = {
         category: 'web-development',
         description: 'Unlimited pages • Fully custom • Advanced integrations'
     },
-    // CRM Packages (monthly per user)
+    // CRM Packages — Individual (monthly per user, single-seat subscriptions)
     'crm-essential': {
         name: 'Essential CRM',
         price: 19.99,
         isFree: false,
         category: 'crm',
         billing: 'monthly-per-user',
+        isCompanyPlan: false,
         stripePriceId: process.env.STRIPE_CRM_ESSENTIAL_PRICE_ID,
         description: 'Up to 1,000 contacts • Basic lead management'
     },
@@ -61,6 +62,7 @@ const servicePackages = {
         isFree: false,
         category: 'crm',
         billing: 'monthly-per-user',
+        isCompanyPlan: false,
         stripePriceId: process.env.STRIPE_CRM_PROFESSIONAL_PRICE_ID,
         description: 'Up to 10,000 contacts • Sales automation'
     },
@@ -70,8 +72,23 @@ const servicePackages = {
         isFree: false,
         category: 'crm',
         billing: 'monthly-per-user',
+        isCompanyPlan: false,
         stripePriceId: process.env.STRIPE_CRM_ENTERPRISE_PRICE_ID,
         description: 'Unlimited contacts • Custom integrations'
+    },
+    // CRM Workspace — Company plan (multi-seat, quantity-based, shared Stripe subscription)
+    // All team members share ONE Stripe subscription; seats managed by adjusting quantity.
+    // Admin adds/removes users from the Company tab. Upgrade/downgrade changes price ID
+    // for ALL seats at once. Cancel reduces quantity by 1 per removed user.
+    'crm-workspace': {
+        name: 'CRM Workspace',
+        price: 84.99,
+        isFree: false,
+        category: 'crm',
+        billing: 'monthly-per-user',
+        isCompanyPlan: true,
+        stripePriceId: process.env.STRIPE_CRM_WORKSPACE_PRICE_ID,
+        description: 'Multi-user shared workspace • Centralized billing • Team management'
     },
     // Custom CRM — bespoke builds, quoted per project
     'crm-custom': {
@@ -137,10 +154,11 @@ const servicePackages = {
     'starter-website': { name: 'Starter Package', price: 0, isFree: false, category: 'web-development' },
     'professional-website': { name: 'Professional Package', price: 0, isFree: false, category: 'web-development' },
     'enterprise-website': { name: 'Enterprise Package', price: 0, isFree: false, category: 'web-development' },
-    'essential-crm': { name: 'Essential CRM', price: 19.99, isFree: false, category: 'crm', billing: 'monthly-per-user' },
-    'professional-crm': { name: 'Professional CRM', price: 49.99, isFree: false, category: 'crm', billing: 'monthly-per-user' },
-    'enterprise-crm': { name: 'Enterprise CRM', price: 64.99, isFree: false, category: 'crm', billing: 'monthly-per-user' },
-    'custom-crm': { name: 'Custom CRM Build', price: 0, isFree: false, category: 'crm', billing: 'custom', needsQuote: true },
+    'essential-crm': { name: 'Essential CRM', price: 19.99, isFree: false, category: 'crm', billing: 'monthly-per-user', isCompanyPlan: false },
+    'professional-crm': { name: 'Professional CRM', price: 49.99, isFree: false, category: 'crm', billing: 'monthly-per-user', isCompanyPlan: false },
+    'enterprise-crm': { name: 'Enterprise CRM', price: 64.99, isFree: false, category: 'crm', billing: 'monthly-per-user', isCompanyPlan: false },
+    'custom-crm': { name: 'Custom CRM Build', price: 0, isFree: false, category: 'crm', billing: 'custom', needsQuote: true, isCompanyPlan: false },
+    'workspace-crm': { name: 'CRM Workspace', price: 84.99, isFree: false, category: 'crm', billing: 'monthly-per-user', isCompanyPlan: true, stripePriceId: process.env.STRIPE_CRM_WORKSPACE_PRICE_ID },
     'local-seo': { name: 'Local SEO', price: 199, isFree: false, category: 'seo', billing: 'monthly' },
     'growth-seo': { name: 'Growth SEO', price: 499, isFree: false, category: 'seo', billing: 'monthly' },
     'enterprise-seo': { name: 'Enterprise SEO', price: 999, isFree: false, category: 'seo', billing: 'monthly' }
@@ -9364,27 +9382,45 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
         
         const user = userResult.rows[0];
         
-        // Schedule the Stripe subscription to cancel at period end (not immediately)
+        // For company (workspace) subscriptions all users share ONE Stripe subscription.
+        // Removing a user = reduce quantity by 1 on that shared subscription.
+        // The user loses access immediately when quantity is reduced — Stripe prorates the refund.
+        // For any legacy individual-per-user subs, cancel_at_period_end still applies.
         let accessUntil = null;
         if (user.stripe_subscription_id) {
             try {
-                const stripeSub = await stripe.subscriptions.update(user.stripe_subscription_id, {
-                    cancel_at_period_end: true
-                });
-                // access_until = current period end date
-                if (stripeSub.current_period_end) {
+                const stripeSub = await stripe.subscriptions.retrieve(user.stripe_subscription_id);
+                const item = stripeSub.items.data[0];
+                const currentQty = item?.quantity || 1;
+
+                if (currentQty > 1) {
+                    // Shared company subscription — reduce quantity by 1
+                    await stripe.subscriptionItems.update(item.id, { quantity: currentQty - 1 });
+                    // Also decrement purchased_seats on the company record
+                    await pool.query(
+                        `UPDATE client_companies SET purchased_seats = GREATEST(purchased_seats - 1, 0) WHERE client_portal_id = $1`,
+                        [clientPortalId]
+                    );
+                    console.log(`[COMPANY API] Reduced Stripe quantity ${currentQty} → ${currentQty - 1} for ${user.stripe_subscription_id}`);
+                    // Access ends at period end (they've already paid for this period)
                     accessUntil = new Date(stripeSub.current_period_end * 1000);
+                } else {
+                    // Last seat — cancel the whole subscription at period end
+                    const updated = await stripe.subscriptions.update(user.stripe_subscription_id, {
+                        cancel_at_period_end: true
+                    });
+                    accessUntil = new Date(updated.current_period_end * 1000);
+                    console.log(`[COMPANY API] Last seat — scheduled subscription cancellation at period end`);
                 }
-                console.log(`[COMPANY API] Scheduled cancellation at period end for ${user.stripe_subscription_id}`);
             } catch (stripeErr) {
-                console.error('[COMPANY API] Stripe cancellation scheduling error:', stripeErr);
+                console.error('[COMPANY API] Stripe seat reduction error:', stripeErr);
                 return res.status(500).json({
                     success: false,
-                    message: 'Failed to schedule subscription cancellation in Stripe'
+                    message: 'Failed to update subscription in Stripe: ' + stripeErr.message
                 });
             }
         } else {
-            // No Stripe sub - access ends now (setup/free user)
+            // No Stripe sub - access ends immediately
             accessUntil = new Date();
         }
         
@@ -10178,21 +10214,27 @@ async function processSubscriptionWebhook(event) {
         if (!lead && leadEmail) {
             console.log(`[SUB WEBHOOK] No existing lead found for ${leadEmail} - creating record`);
             
-            const newCustomerResult = await pool.query(`
-                INSERT INTO leads (
-                    email, name, source, lead_temperature, stripe_customer_id, 
-                    is_customer, customer_status, status, created_at, updated_at
-                )
-                VALUES ($1, $2, 'subscription-direct', 'hot', $3, TRUE, 'active', 'closed', NOW(), NOW())
-                ON CONFLICT (email) DO UPDATE SET
-                    stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, leads.stripe_customer_id),
-                    is_customer = TRUE,
-                    customer_status = 'active',
-                    updated_at = NOW()
-                RETURNING id, name, email
-            `, [leadEmail, leadEmail.split('@')[0], customerId]);
+            // Check if lead already exists before inserting (no unique constraint on email)
+            const existingLeadCheck = await pool.query(
+                `SELECT id, name, email FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+                [leadEmail]
+            );
+            if (existingLeadCheck.rows.length > 0) {
+                await pool.query(
+                    `UPDATE leads SET stripe_customer_id=COALESCE($1,stripe_customer_id), is_customer=TRUE, customer_status='active', updated_at=NOW() WHERE LOWER(email)=LOWER($2)`,
+                    [customerId, leadEmail]
+                );
+                lead = existingLeadCheck.rows[0];
+            } else {
+                const newCustomerResult = await pool.query(`
+                    INSERT INTO leads (email, name, source, lead_temperature, stripe_customer_id, is_customer, customer_status, status, created_at, updated_at)
+                    VALUES ($1, $2, 'subscription-direct', 'hot', $3, TRUE, 'active', 'closed', NOW(), NOW())
+                    RETURNING id, name, email
+                `, [leadEmail, leadEmail.split('@')[0], customerId]);
+                lead = newCustomerResult.rows[0];
+            }
             
-            lead = newCustomerResult.rows[0];
+            lead = lead;
             console.log(`[SUB WEBHOOK] ✅ Lead record ensured: ${lead.id} (${leadEmail})`);
         }
 
@@ -10814,6 +10856,7 @@ function resolvePackageFromPrice(priceId) {
     if (priceId === process.env.STRIPE_CRM_ESSENTIAL_PRICE_ID)    return 'crm-essential';
     if (priceId === process.env.STRIPE_CRM_PROFESSIONAL_PRICE_ID) return 'crm-professional';
     if (priceId === process.env.STRIPE_CRM_ENTERPRISE_PRICE_ID)   return 'crm-enterprise';
+    if (priceId === process.env.STRIPE_CRM_WORKSPACE_PRICE_ID)    return 'crm-workspace';
     return null;
 }
 
@@ -10912,6 +10955,23 @@ app.post('/api/public/subscriptions/checkout', async (req, res) => {
         const pkg = servicePackages[packageKey];
         if (!pkg || pkg.category !== 'crm' || pkg.billing !== 'monthly-per-user') {
             return res.status(400).json({ success: false, message: 'Invalid CRM package key' });
+        }
+
+        // Enforce plan/user-type pairing:
+        // crm-workspace is ONLY for company-new (shared multi-seat subscription)
+        // Individual plans (essential/professional/enterprise) are for individual users only
+        const resolvedUserType = userType || 'individual';
+        if (pkg.isCompanyPlan && resolvedUserType !== 'company-new') {
+            return res.status(400).json({
+                success: false,
+                message: 'CRM Workspace is a company plan and must be purchased as a Company account.'
+            });
+        }
+        if (!pkg.isCompanyPlan && resolvedUserType === 'company-new') {
+            return res.status(400).json({
+                success: false,
+                message: 'Please select the CRM Workspace plan for company accounts.'
+            });
         }
 
         if (!pkg.stripePriceId) {
@@ -14265,9 +14325,15 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
         }
 
         // Validate new plan
-        const validPlans = ['crm-essential', 'crm-professional', 'crm-enterprise'];
+        const validPlans = ['crm-essential', 'crm-professional', 'crm-enterprise', 'crm-workspace'];
         if (newPackageKey && !validPlans.includes(newPackageKey)) {
             return res.status(400).json({ success: false, message: 'Invalid plan' });
+        }
+        // Prevent switching a company workspace subscription to an individual plan and vice versa
+        const currentPkgMeta = servicePackages[sub.package_key];
+        const newPkgMeta = servicePackages[newPackageKey || sub.package_key];
+        if (currentPkgMeta?.isCompanyPlan !== newPkgMeta?.isCompanyPlan) {
+            return res.status(400).json({ success: false, message: 'Cannot switch between individual and company plans. Please contact support.' });
         }
 
         const targetPkgKey  = newPackageKey || sub.package_key;
@@ -14551,102 +14617,80 @@ app.post('/api/client/subscription/convert-to-company', authenticateClient, asyn
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// POST /api/client/company/user/:id/change-plan
-// Company admin changes any team member's plan (including their own).
-// Pass id='self' to change the admin's own seat.
-// Body: { newPackageKey }
+// POST /api/client/company/upgrade-plan
+// Company admin upgrades or downgrades the ENTIRE company workspace plan.
+// Under Option A (shared subscription model), ALL seats share one Stripe
+// subscription at one price. Changing the plan swaps the price ID for ALL
+// seats at once — quantity stays the same.
+// Body: { newPackageKey }  (must be 'crm-workspace' only)
 // ═══════════════════════════════════════════════════════════════════════════
-app.post('/api/client/company/user/:id/change-plan', authenticateClient, async (req, res) => {
+app.post('/api/client/company/upgrade-plan', authenticateClient, async (req, res) => {
     try {
-        const { id } = req.params;
         const { newPackageKey } = req.body;
         const requesterEmail = req.user.email;
 
-        // Verify requester is company admin or co-admin
+        // Only company admin can do this
         const adminRes = await pool.query(
-            `SELECT client_portal_id, is_company_admin, is_co_admin FROM leads WHERE LOWER(email)=LOWER($1)`,
+            `SELECT client_portal_id, is_company_admin FROM leads WHERE LOWER(email)=LOWER($1)`,
             [requesterEmail]
         );
         const admin = adminRes.rows[0];
-        if (!admin?.is_company_admin && !admin?.is_co_admin) {
-            return res.status(403).json({ success: false, message: 'Company admin access required' });
+        if (!admin?.is_company_admin) {
+            return res.status(403).json({ success: false, message: 'Only the company admin can change the company plan.' });
         }
         const portalId = admin.client_portal_id;
 
-        // Validate plan
+        // Only allow workspace plan changes via this endpoint
         const newPkg = servicePackages[newPackageKey];
-        if (!newPkg || !newPkg.stripePriceId) {
-            return res.status(400).json({ success: false, message: 'Invalid plan selected' });
+        if (!newPkg || !newPkg.isCompanyPlan || !newPkg.stripePriceId) {
+            return res.status(400).json({ success: false, message: 'Invalid company plan. Only CRM Workspace plans are supported.' });
         }
 
-        // Resolve 'self' → admin's own company_users row
-        let targetUserId = id;
-        if (id === 'self') {
-            const selfRes = await pool.query(
-                `SELECT id FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) LIMIT 1`,
-                [portalId, requesterEmail]
-            );
-            if (!selfRes.rows.length) {
-                return res.status(404).json({ success: false, message: 'Your company user record was not found' });
-            }
-            targetUserId = selfRes.rows[0].id;
-        }
-
-        // Get target user record
-        const userRes = await pool.query(
-            `SELECT cu.*, cs.stripe_subscription_id AS sub_stripe_id, cs.id AS sub_id, cs.user_count
-             FROM company_users cu
-             LEFT JOIN crm_subscriptions cs ON cu.subscription_id=cs.id
-             WHERE cu.id=$1 AND cu.client_portal_id=$2`,
-            [targetUserId, portalId]
+        // Find the company's active Stripe subscription
+        const subRes = await pool.query(
+            `SELECT * FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE ORDER BY created_at ASC LIMIT 1`,
+            [portalId]
         );
-        if (!userRes.rows.length) {
-            return res.status(404).json({ success: false, message: 'Team member not found in your company' });
+        if (!subRes.rows.length) {
+            return res.status(404).json({ success: false, message: 'No active company subscription found.' });
         }
-        const user = userRes.rows[0];
-        const stripeSubId = user.sub_stripe_id || user.stripe_subscription_id;
-
-        if (!stripeSubId) {
-            // Free/setup seat — just update DB price record
-            await pool.query(
-                `UPDATE company_users SET package_key=$1, package_name=$2, price_per_user=$3, updated_at=NOW() WHERE id=$4`,
-                [newPackageKey, newPkg.name, newPkg.price, targetUserId]
-            );
-            if (user.sub_id) {
-                await pool.query(
-                    `UPDATE crm_subscriptions SET package_key=$1, package_name=$2, price_per_user=$3, monthly_total=$3, stripe_price_id=$4, updated_at=NOW() WHERE id=$5`,
-                    [newPackageKey, newPkg.name, newPkg.price, newPkg.stripePriceId, user.sub_id]
-                );
-            }
-        } else {
-            // Has Stripe subscription — swap the price
-            const isUpgrade = newPkg.price > parseFloat(user.price_per_user || 0);
-            const stripeSub  = await stripe.subscriptions.retrieve(stripeSubId);
-            const item  = stripeSub.items.data[0];
-            const qty   = item.quantity || user.user_count || 1;
-
-            await stripe.subscriptions.update(stripeSubId, {
-                items: [{ id: item.id, price: newPkg.stripePriceId, quantity: qty }],
-                proration_behavior: isUpgrade ? 'always_invoice' : 'none',
-            });
-
-            const newMonthly = newPkg.price * qty;
-
-            await pool.query(
-                `UPDATE company_users SET package_key=$1, package_name=$2, price_per_user=$3, updated_at=NOW() WHERE id=$4`,
-                [newPackageKey, newPkg.name, newPkg.price, targetUserId]
-            );
-            if (user.sub_id) {
-                await pool.query(
-                    `UPDATE crm_subscriptions SET package_key=$1, package_name=$2, price_per_user=$3, monthly_total=$4, stripe_price_id=$5, updated_at=NOW() WHERE id=$6`,
-                    [newPackageKey, newPkg.name, newPkg.price, newMonthly, newPkg.stripePriceId, user.sub_id]
-                );
-            }
-            await logSubscriptionEvent(stripeSubId, user.user_email, 'subscription_updated', newMonthly,
-                `Plan changed to ${newPkg.name} by company admin`);
+        const sub = subRes.rows[0];
+        if (!sub.stripe_subscription_id) {
+            return res.status(400).json({ success: false, message: 'No Stripe subscription linked. Please contact support.' });
         }
 
-        // Recalculate company monthly total
+        const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+        const item = stripeSub.items.data[0];
+        const qty = item.quantity; // Keep the same number of seats
+        const currentPrice = parseFloat(sub.price_per_user || 0);
+        const isUpgrade = newPkg.price > currentPrice;
+
+        // Swap price ID on the shared subscription — quantity unchanged
+        await stripe.subscriptions.update(sub.stripe_subscription_id, {
+            items: [{ id: item.id, price: newPkg.stripePriceId, quantity: qty }],
+            proration_behavior: isUpgrade ? 'always_invoice' : 'none',
+            billing_cycle_anchor: 'unchanged',
+            cancel_at_period_end: false
+        });
+
+        const newMonthly = newPkg.price * qty;
+
+        // Update ALL company_users rows to new plan/price
+        await pool.query(
+            `UPDATE company_users SET package_key=$1, package_name=$2, price_per_user=$3, updated_at=NOW()
+             WHERE client_portal_id=$4 AND status IN ('active','cancelling')`,
+            [newPackageKey, newPkg.name, newPkg.price, portalId]
+        );
+
+        // Update the primary crm_subscriptions row
+        await pool.query(
+            `UPDATE crm_subscriptions SET package_key=$1, package_name=$2, price_per_user=$3,
+             monthly_total=$4, stripe_price_id=$5, user_count=$6, updated_at=NOW()
+             WHERE id=$7`,
+            [newPackageKey, newPkg.name, newPkg.price, newMonthly, newPkg.stripePriceId, qty, sub.id]
+        );
+
+        // Recalculate company totals
         await pool.query(`
             UPDATE client_companies
             SET monthly_total=(SELECT COALESCE(SUM(price_per_user),0) FROM company_users WHERE client_portal_id=$1 AND status IN ('active','cancelling')),
@@ -14654,10 +14698,16 @@ app.post('/api/client/company/user/:id/change-plan', authenticateClient, async (
             WHERE client_portal_id=$1
         `, [portalId]);
 
-        console.log(`[CHANGE-USER-PLAN] ${requesterEmail} → ${user.user_email} plan: ${newPackageKey}`);
-        res.json({ success: true, message: `${user.user_name}'s plan updated to ${newPkg.name} ($${newPkg.price}/mo).` });
+        await logSubscriptionEvent(sub.stripe_subscription_id, sub.lead_email, 'subscription_updated', newMonthly,
+            `Company plan ${isUpgrade ? 'upgraded' : 'downgraded'} to ${newPkg.name} (${qty} seats) by admin`);
+
+        console.log(`[COMPANY-UPGRADE] ${requesterEmail} changed company plan to ${newPackageKey} × ${qty} seats`);
+        res.json({
+            success: true,
+            message: `Company plan updated to ${newPkg.name}. All ${qty} seats now bill at $${newPkg.price}/mo each. New monthly total: $${newMonthly.toFixed(2)}.`
+        });
     } catch (error) {
-        console.error('[CHANGE-USER-PLAN] Error:', error);
+        console.error('[COMPANY-UPGRADE] Error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });

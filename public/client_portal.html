@@ -2069,10 +2069,15 @@ const S = {
     validationCallback: null,
 };
 
+// Individual CRM plans (solo users — do NOT use for company/workspace subscriptions)
 const CRM_PLANS = [
-    { key: 'crm-essential',    name: 'Essential',    price: 19.99 },
-    { key: 'crm-professional', name: 'Professional', price: 49.99 },
-    { key: 'crm-enterprise',   name: 'Enterprise',   price: 64.99 },
+    { key: 'crm-essential',    name: 'Essential',    price: 19.99, isCompanyPlan: false },
+    { key: 'crm-professional', name: 'Professional', price: 49.99, isCompanyPlan: false },
+    { key: 'crm-enterprise',   name: 'Enterprise',   price: 64.99, isCompanyPlan: false },
+];
+// Company workspace plan (multi-seat shared subscription)
+const COMPANY_PLANS = [
+    { key: 'crm-workspace', name: 'CRM Workspace', price: 84.99, isCompanyPlan: true }
 ];
 
 // setupAddUserPlanSelect: plan is inherited from company subscription — no UI select needed
@@ -4814,39 +4819,43 @@ async function confirmPlanChange() {
 // ── Company Admin — change their own company subscription tier ─────────────
 let _companySubState = {};
 
+// Company plan change — only CRM Workspace plans allowed.
+// Under Option A (shared subscription), changing the plan swaps the price ID
+// for ALL seats at once via /api/client/company/upgrade-plan.
 function openCompanySubChange(subId, planKey, planName, price, currentQty, currentPlanKey, currentTotal) {
-    _companySubState = { subId, selectedKey: planKey, selectedPrice: price, currentQty };
-    const opts = CRM_PLANS.map(p => {
+    _companySubState = { subId, selectedKey: currentPlanKey, selectedPrice: price, currentQty };
+    // Only show COMPANY_PLANS (crm-workspace) in the company change modal
+    const plans = COMPANY_PLANS;
+    const opts = plans.map(p => {
         const isCur = p.key === currentPlanKey;
-        const isSel = p.key === planKey;
-        const curPkg = CRM_PLANS.find(x=>x.key===currentPlanKey);
+        const curPkg = plans.find(x=>x.key===currentPlanKey);
         const arrow = p.price>(curPkg?.price||0)?'↑ Upgrade':p.price<(curPkg?.price||0)?'↓ Downgrade':'';
-        return `<div class="plan-card ${isCur?'current':''} ${isSel&&!isCur?'selected':''}" id="csopt-${p.key}" onclick="selectCompanySubPlan('${p.key}',${p.price},${currentQty})">
+        return `<div class="plan-card ${isCur?'current':''}" id="csopt-${p.key}" onclick="selectCompanySubPlan('${p.key}',${p.price},${currentQty})">
             <div class="plan-name">${p.name}</div>
             <div class="plan-price">$${p.price.toFixed(2)}<span>/seat/mo</span></div>
-            ${isCur?'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600;">CURRENT</div>':`<div style="font-size:11px;color:var(--text-3);margin-top:4px;">${arrow}</div>`}
+            ${isCur?'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600;">CURRENT</div>':`<div style="font-size:11px;color:var(--text-3);margin-top:4px;">${arrow||'Same tier'}</div>`}
         </div>`;
     }).join('');
     document.getElementById('companySubPlanOptions').innerHTML = opts;
-    document.getElementById('companySubCurrentAmt').textContent = '$' + parseFloat(currentTotal||0).toFixed(2) + '/mo';
-    document.getElementById('companySubNewAmt').textContent = '$' + (price * currentQty).toFixed(2) + '/mo';
+    document.getElementById('companySubCurrentAmt').textContent = '$' + parseFloat(currentTotal||0).toFixed(2) + '/mo (total)';
+    document.getElementById('companySubNewAmt').textContent = '—';
     openModal('companySubChangeModal');
 }
 
 function selectCompanySubPlan(key, price, qty) {
     _companySubState.selectedKey = key; _companySubState.selectedPrice = price;
-    CRM_PLANS.forEach(p => { const el = document.getElementById('csopt-'+p.key); if(el) el.classList.toggle('selected', p.key===key); });
+    COMPANY_PLANS.forEach(p => { const el = document.getElementById('csopt-'+p.key); if(el) el.classList.toggle('selected', p.key===key); });
     document.getElementById('companySubNewAmt').textContent = '$' + (price * (qty || _companySubState.currentQty || 1)).toFixed(2) + '/mo';
 }
 
 async function confirmCompanySubChange() {
-    if (!_companySubState.subId || !_companySubState.selectedKey) { toast('Select a plan','error'); return; }
+    if (!_companySubState.selectedKey) { toast('Select a plan','error'); return; }
     const btn = document.getElementById('confirmCompanySubChangeBtn');
     btn.disabled = true; btn.textContent = 'Processing...';
     try {
-        const res = await apiFetch(`/client/subscription/${_companySubState.subId}/change-plan`, 'POST', {
-            newPackageKey: _companySubState.selectedKey,
-            newUserCount: _companySubState.currentQty,
+        // Uses the company-level upgrade endpoint — changes price for ALL seats at once
+        const res = await apiFetch('/client/company/upgrade-plan', 'POST', {
+            newPackageKey: _companySubState.selectedKey
         });
         const data = await res.json();
         if(data.success) {

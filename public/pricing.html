@@ -1596,11 +1596,11 @@ body.crm-active .hero,
         <div class="section-subtitle">FLEXIBLE PRICING</div>
         <h2 class="section-title">Choose Your CRM Solution</h2>
         <p class="section-description">
-            Powerful CRM tools designed for businesses nationwide. Cancel anytime.
+            Individual plans for solo users. CRM Workspace for teams — one shared account, centralized billing.
         </p>
     </div>
 
-    <div class="services-grid crm-grid-four">
+    <div class="services-grid crm-grid-five">
         <!-- Starter Plan -->
         <div class="service-card">
             <div class="service-badge">STARTER</div>
@@ -1676,6 +1676,34 @@ body.crm-active .hero,
                 <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-enterprise', 'Enterprise CRM', 64.99)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                     SUBSCRIBE
+                </button>
+                <div class="crm-subscribe-note">No contracts. Cancel anytime.</div>
+            </div>
+        </div>
+
+        <!-- CRM Workspace — Company / Team Plan -->
+        <div class="service-card workspace-card" style="border:2px solid #FF6B35;position:relative;overflow:visible;">
+            <div class="service-badge" style="background:#FF6B35;color:#fff;">TEAM PLAN</div>
+            <div class="service-price" style="color:#FF6B35;">$84.99 / User</div>
+            <div class="service-period">per month, billed monthly</div>
+            <h3 class="service-name">CRM Workspace</h3>
+            <p class="service-description">
+                One shared account for your whole team. Add or remove users anytime. All billing in one place.
+            </p>
+            <ul class="service-features">
+                <li>Unlimited contacts &amp; storage</li>
+                <li>Centralized team billing</li>
+                <li>Add / remove users anytime</li>
+                <li>Company admin dashboard</li>
+                <li>Role-based access control</li>
+                <li>Shared leads &amp; pipelines</li>
+                <li>24/7 dedicated support</li>
+                <li>SLA guarantee</li>
+            </ul>
+            <div class="crm-subscribe-group">
+                <button class="service-btn crm-subscribe-btn" style="background:#FF6B35;" onclick="openCRMSubscribeModal('crm-workspace', 'CRM Workspace', 84.99, true)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    GET WORKSPACE
                 </button>
                 <div class="crm-subscribe-note">No contracts. Cancel anytime.</div>
             </div>
@@ -2102,7 +2130,19 @@ body.crm-active .hero,
 }
 
 /* ── CRM 4-column grid ─────────────────────────────────────── */
-.crm-grid-four {
+.crm-grid-five {
+            grid-template-columns: repeat(5, 1fr) !important;
+        }
+        @media (max-width: 1200px) {
+            .crm-grid-five { grid-template-columns: repeat(3, 1fr) !important; }
+        }
+        @media (max-width: 900px) {
+            .crm-grid-five { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 600px) {
+            .crm-grid-five { grid-template-columns: 1fr !important; }
+        }
+        .crm-grid-four {
     grid-template-columns: repeat(4, 1fr);
     gap: 24px;
 }
@@ -6331,7 +6371,7 @@ window.testButton = function() {
 // ── CRM Subscribe Modal ──────────────────────────────────────────────────
 let _crmPkg = { key: '', name: '', price: 0 };
 
-function openCRMSubscribeModal(packageKey, packageName, pricePerUser) {
+function openCRMSubscribeModal(packageKey, packageName, pricePerUser, isCompanyPlan) {
     _crmPkg = { key: packageKey, name: packageName, price: pricePerUser };
 
     document.getElementById('crmModalTitle').textContent = 'Subscribe to ' + packageName;
@@ -6339,18 +6379,36 @@ function openCRMSubscribeModal(packageKey, packageName, pricePerUser) {
     document.getElementById('crmUserCount').value = '1';
     updateCRMTotal();
 
-    // Reset to type selection screen
-    showSubscriptionTypeSelection();
+    // For company/workspace plan → go straight to company account screen
+    // For individual plans → show the type selection
+    if (isCompanyPlan) {
+        window._isCompanyPlan = true;
+        // Skip the type screen entirely — workspace is always company-new
+        selectSubscriptionType('company-new');
+        document.getElementById('subscriptionDetailsScreen').style.display = 'block';
+        document.getElementById('subscriptionTypeScreen').style.display = 'none';
+    } else {
+        window._isCompanyPlan = false;
+        // For individual plans, hide the company-new option since it requires workspace
+        showSubscriptionTypeSelection();
+    }
 
     const modal = document.getElementById('crmSubscribeModal');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
 
-// Show subscription type selection (Individual, Company New, Company Employee)
+// Show subscription type selection
+// For individual plans: hide company-new (workspace required for teams)
+// For company plans: this is bypassed entirely
 function showSubscriptionTypeSelection() {
     document.getElementById('subscriptionTypeScreen').style.display = 'block';
     document.getElementById('subscriptionDetailsScreen').style.display = 'none';
+    // Hide "Company (First Time)" for individual plans — must use CRM Workspace for teams
+    const companyNewBtn = document.querySelector('#subscriptionTypeScreen button[onclick*="company-new"]');
+    if (companyNewBtn) {
+        companyNewBtn.style.display = window._isCompanyPlan ? 'block' : 'none';
+    }
 }
 
 // Show details screen after type is selected
@@ -6386,7 +6444,7 @@ function selectSubscriptionType(type) {
     // Update title
     const titles = {
         'individual': 'Complete Your Subscription',
-        'company-new': 'Create Company Account',
+        'company-new': window._isCompanyPlan ? 'Set Up Your CRM Workspace' : 'Create Company Account',
         'company-employee': 'Join Your Company'
     };
     document.getElementById('crmModalDetailsTitle').textContent = titles[type];

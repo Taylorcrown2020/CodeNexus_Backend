@@ -750,6 +750,44 @@ async function validateEmailDomain(email) {
     }
 }
 
+// ========================================
+// sendSystemEmail — sends via the admin portal's Brevo account.
+// Used for user-management emails (welcome, password reset) so they
+// are NEVER logged to email_log and NEVER appear in email analytics.
+// ========================================
+async function sendSystemEmail({ to, subject, html }) {
+    // Always use the platform-level (admin portal) Brevo credentials
+    const emailSettings = await getEmailSettings();
+    try {
+        if (emailSettings.useBrevo && emailSettings.brevoApiKey) {
+            console.log(`[SYSTEM EMAIL] Sending via admin Brevo to: ${to} | Subject: ${subject}`);
+            await sendViaBrevo(
+                emailSettings.brevoApiKey,
+                emailSettings.brevoSenderEmail || process.env.EMAIL_USER,
+                emailSettings.brevoSenderName || 'Diamondback Coding',
+                to,
+                subject,
+                html,
+                []
+            );
+            console.log(`[SYSTEM EMAIL] ✅ Sent to ${to}`);
+        } else {
+            // Fallback to nodemailer
+            console.log(`[SYSTEM EMAIL] Sending via Nodemailer to: ${to}`);
+            await transporter.sendMail({
+                from: `"Diamondback Coding" <${process.env.EMAIL_USER}>`,
+                to,
+                subject,
+                html
+            });
+            console.log(`[SYSTEM EMAIL] ✅ Sent via Nodemailer to ${to}`);
+        }
+    } catch (err) {
+        console.error(`[SYSTEM EMAIL] ❌ Failed to send to ${to}:`, err.message);
+        throw err;
+    }
+}
+
 // Get current email settings
 async function getEmailSettings() {
     try {
@@ -2138,6 +2176,25 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
         `);
         
         console.log('✅ Database migrations completed');
+
+        // Migration: Ensure UNIQUE constraint on company_users(client_portal_id, user_email)
+        // This is required for the ON CONFLICT upsert in addCompanyUser() to work correctly.
+        await client.query(`
+            DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint
+                    WHERE conname = 'uq_company_users_portal_email'
+                ) THEN
+                    -- Only add if the table exists
+                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'company_users') THEN
+                        ALTER TABLE company_users
+                            ADD CONSTRAINT uq_company_users_portal_email
+                            UNIQUE (client_portal_id, user_email);
+                        RAISE NOTICE 'Added UNIQUE constraint uq_company_users_portal_email';
+                    END IF;
+                END IF;
+            END $$;
+        `);
 
         await client.query('COMMIT');
         console.log('✅ Database tables initialized');
@@ -9505,7 +9562,7 @@ async function getCompanyMonthlyTotal(clientPortalId) {
 // ========================================
 app.post('/api/client/company/add-user', authenticateClient, async (req, res) => {
     try {
-        const { name, username, email, sendingEmail, userLabel, packageKey, clientPortalId, mode } = req.body;
+        const { name, username, email, sendingEmail, userLabel, packageKey, clientPortalId, mode, password } = req.body;
         const requesterEmail = req.user.email;
 
         if (!name || !email || !clientPortalId) {
@@ -9654,7 +9711,10 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         `, [clientPortalId]);
 
         // Create portal login for the new user (using leads table only for auth, not as a CRM lead)
-        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
+        // Use admin-provided password if supplied, otherwise generate a secure temp password
+        const tempPassword = password && password.length >= 6
+            ? password
+            : (Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase());
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
         // Upsert a minimal leads record purely for portal auth — hidden from CRM views
@@ -9675,7 +9735,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         `, [email, name, clientPortalId, hashedPassword]);
         const leadId = newLeadRes.rows[0]?.id || null;
 
-        // Send welcome email with credentials
+        // Send welcome email with credentials — use admin portal Brevo (not logged to analytics)
         try {
             const welcomeHtml = buildEmailHTML(`
                 <p>Hi ${name},</p>
@@ -9688,18 +9748,22 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
                             <td style="padding:8px 0;font-size:13px;font-weight:700;color:#222;text-align:right;">${BASE_URL}/client_portal.html</td>
                         </tr>
                         <tr>
-                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Email</td>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Login Email</td>
                             <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;font-weight:700;color:#222;text-align:right;">${email}</td>
                         </tr>
+                        ${username ? `<tr>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Username</td>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;font-weight:700;color:#222;text-align:right;">${username}</td>
+                        </tr>` : ''}
                         <tr>
-                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Temporary Password</td>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Password</td>
                             <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:14px;font-weight:700;color:#FF6B35;font-family:monospace;text-align:right;">${tempPassword}</td>
                         </tr>
                     </table>
                 </div>
-                <p style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:14px;font-size:13px;color:#856404;">
-                    <strong>Action required:</strong> Please log in and change your password immediately.
-                </p>
+                ${!password ? `<p style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:14px;font-size:13px;color:#856404;">
+                    <strong>Tip:</strong> This is a temporary password. We recommend changing it after your first login in the Settings tab.
+                </p>` : ''}
                 <p style="font-size:13px;color:#888;margin-top:20px;">Questions? Contact your workspace admin or call (512) 980-0393.</p>
             `, {
                 eyebrow: 'WELCOME TO THE TEAM',
@@ -9709,18 +9773,17 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
                 ctaUrl: `${BASE_URL}/client_portal.html`
             });
 
-            await sendTrackedEmail({
-                leadId,
+            // Use sendSystemEmail so this never appears in email analytics
+            await sendSystemEmail({
                 to: email,
                 subject: `Welcome to ${company.company_name} CRM — Your Login`,
-                html: welcomeHtml,
-                emailType: 'subscription_welcome'
+                html: welcomeHtml
             });
         } catch (emailErr) {
             console.error('[ADD-USER] Welcome email failed:', emailErr.message);
         }
 
-        // Notify company admin
+        // Notify company admin — also via system email (not logged to analytics)
         try {
             const adminLeadRes = await pool.query(`SELECT id, name FROM leads WHERE LOWER(email) = LOWER($1)`, [requesterEmail]);
             const adminUser = adminLeadRes.rows[0];
@@ -9745,12 +9808,10 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
                 ctaLabel: 'View Team',
                 ctaUrl: `${BASE_URL}/client_portal.html`
             });
-            await sendTrackedEmail({
-                leadId: adminUser?.id || null,
+            await sendSystemEmail({
                 to: requesterEmail,
                 subject: `New team member added: ${name} — Diamondback CRM`,
-                html: notifyHtml,
-                emailType: 'subscription_change'
+                html: notifyHtml
             });
         } catch (notifyErr) {
             console.error('[ADD-USER] Admin notification failed:', notifyErr.message);
@@ -9770,9 +9831,101 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
 });
 
 // ========================================
-// POST /api/client/validate-password
-// Used by admin validation modal before sensitive actions
+// POST /api/client/company/user/:id/reset-password
+// Allows company admin to set a new password for a team member.
 // ========================================
+app.post('/api/client/company/user/:id/reset-password', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { newPassword } = req.body;
+        const requesterEmail = req.user.email;
+
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+        }
+
+        // Verify requester is a true company admin
+        const adminCheck = await pool.query(
+            `SELECT client_portal_id, is_company_admin FROM leads WHERE LOWER(email) = LOWER($1)`,
+            [requesterEmail]
+        );
+        const requester = adminCheck.rows[0];
+        if (!requester?.is_company_admin) {
+            return res.status(403).json({ success: false, message: 'Only the company admin can reset passwords' });
+        }
+
+        // Get the company user record
+        const userRes = await pool.query(
+            `SELECT user_email, user_name FROM company_users WHERE id = $1 AND client_portal_id = $2`,
+            [id, requester.client_portal_id]
+        );
+        if (!userRes.rows[0]) {
+            return res.status(404).json({ success: false, message: 'User not found in your company' });
+        }
+        const targetUser = userRes.rows[0];
+
+        // Update their password in leads table
+        const hashed = await bcrypt.hash(newPassword, 10);
+        const updateRes = await pool.query(
+            `UPDATE leads SET client_password=$1, updated_at=NOW() WHERE LOWER(email)=LOWER($2) RETURNING id`,
+            [hashed, targetUser.user_email]
+        );
+        if (!updateRes.rows.length) {
+            return res.status(404).json({ success: false, message: 'Portal account not found for this user' });
+        }
+
+        // Notify the user of their new password via system email
+        try {
+            const company = await pool.query(
+                `SELECT company_name FROM client_companies WHERE client_portal_id=$1`,
+                [requester.client_portal_id]
+            );
+            const companyName = company.rows[0]?.company_name || 'your workspace';
+            const html = buildEmailHTML(`
+                <p>Hi ${targetUser.user_name || targetUser.user_email},</p>
+                <p>Your password for the <strong>${companyName}</strong> CRM workspace has been reset by your admin.</p>
+                <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:28px 0;">
+                    <div style="font-size:12px;font-weight:800;color:#666;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">New Login Credentials</div>
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td style="padding:8px 0;font-size:13px;color:#888;">Portal URL</td>
+                            <td style="padding:8px 0;font-size:13px;font-weight:700;color:#222;text-align:right;">${BASE_URL}/client_portal.html</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">Login Email</td>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;font-weight:700;color:#222;text-align:right;">${targetUser.user_email}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:13px;color:#888;">New Password</td>
+                            <td style="padding:8px 0;border-top:1px solid #e8e8e8;font-size:14px;font-weight:700;color:#FF6B35;font-family:monospace;text-align:right;">${newPassword}</td>
+                        </tr>
+                    </table>
+                </div>
+                <p style="font-size:13px;color:#888;">If you did not request this, please contact your admin immediately.</p>
+            `, {
+                eyebrow: 'SECURITY NOTICE',
+                headline: 'Your password has been reset.',
+                accentColor: '#FF6B35',
+                ctaLabel: 'Log In Now',
+                ctaUrl: `${BASE_URL}/client_portal.html`
+            });
+            await sendSystemEmail({
+                to: targetUser.user_email,
+                subject: `Your CRM password has been reset — ${companyName}`,
+                html
+            });
+        } catch (emailErr) {
+            console.error('[RESET-PW] Notification email failed:', emailErr.message);
+        }
+
+        res.json({ success: true, message: `Password reset for ${targetUser.user_email}. They have been notified via email.` });
+    } catch (e) {
+        console.error('[RESET-PW] Error:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+
 app.post('/api/client/validate-password', authenticateClient, async (req, res) => {
     try {
         const { password } = req.body;

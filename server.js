@@ -202,8 +202,10 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
             const invoiceId = session.metadata?.invoice_id;
             
             if (!invoiceId) {
-                console.log('[WEBHOOK] No invoice_id in metadata, skipping');
-                return res.json({received: true});
+                // No invoice_id means this is a subscription checkout (not an invoice payment).
+                // Do NOT return here — fall through so processSubscriptionWebhook() runs below.
+                console.log('[WEBHOOK] No invoice_id in metadata — subscription checkout, continuing to processSubscriptionWebhook');
+                break;
             }
             
             try {
@@ -4731,6 +4733,87 @@ app.delete('/api/admin/sessions/:id', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Revoke session error:', error);
         res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// ── Admin: Repair company purchased_seats / monthly_total ──────────────────
+// POST /api/admin/repair-company-seats
+// Fixes companies where purchased_seats=0 despite having an active subscription.
+// Can also target a specific portal ID to repair just one company.
+app.post('/api/admin/repair-company-seats', authenticateToken, async (req, res) => {
+    try {
+        const { clientPortalId } = req.body; // optional — if omitted, repairs all broken companies
+
+        let repairQuery;
+        let params;
+
+        if (clientPortalId) {
+            // Repair a specific company by portal ID — pull values from crm_subscriptions
+            repairQuery = `
+                UPDATE client_companies cc
+                SET purchased_seats = COALESCE((
+                        SELECT s.user_count
+                        FROM crm_subscriptions s
+                        WHERE s.client_portal_id = cc.client_portal_id
+                          AND s.status = 'active'
+                          AND s.is_company_subscription = TRUE
+                        ORDER BY s.created_at ASC LIMIT 1
+                    ), cc.purchased_seats),
+                    monthly_total = COALESCE((
+                        SELECT s.monthly_total
+                        FROM crm_subscriptions s
+                        WHERE s.client_portal_id = cc.client_portal_id
+                          AND s.status = 'active'
+                          AND s.is_company_subscription = TRUE
+                        ORDER BY s.created_at ASC LIMIT 1
+                    ), cc.monthly_total)
+                WHERE cc.client_portal_id = $1
+                RETURNING client_portal_id, company_name, purchased_seats, monthly_total
+            `;
+            params = [clientPortalId];
+        } else {
+            // Repair all companies with purchased_seats=0 that have active subscriptions
+            repairQuery = `
+                UPDATE client_companies cc
+                SET purchased_seats = COALESCE((
+                        SELECT s.user_count
+                        FROM crm_subscriptions s
+                        WHERE s.client_portal_id = cc.client_portal_id
+                          AND s.status = 'active'
+                          AND s.is_company_subscription = TRUE
+                        ORDER BY s.created_at ASC LIMIT 1
+                    ), cc.purchased_seats),
+                    monthly_total = COALESCE((
+                        SELECT s.monthly_total
+                        FROM crm_subscriptions s
+                        WHERE s.client_portal_id = cc.client_portal_id
+                          AND s.status = 'active'
+                          AND s.is_company_subscription = TRUE
+                        ORDER BY s.created_at ASC LIMIT 1
+                    ), cc.monthly_total)
+                WHERE cc.purchased_seats = 0
+                  AND EXISTS (
+                      SELECT 1 FROM crm_subscriptions s
+                      WHERE s.client_portal_id = cc.client_portal_id
+                        AND s.status = 'active'
+                        AND s.is_company_subscription = TRUE
+                  )
+                RETURNING client_portal_id, company_name, purchased_seats, monthly_total
+            `;
+            params = [];
+        }
+
+        const result = await pool.query(repairQuery, params);
+        console.log('[REPAIR] Company seats repaired:', result.rows);
+
+        res.json({
+            success: true,
+            repaired: result.rowCount,
+            companies: result.rows
+        });
+    } catch (err) {
+        console.error('[REPAIR] Error:', err);
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -10373,7 +10456,9 @@ async function processSubscriptionWebhook(event) {
                         SET client_portal_id = $1, is_company_admin = TRUE
                         WHERE id = $2
                     `, [clientPortalId, lead.id]);
-                    // Store how many seats were purchased so add-user can allow setup without extra charge
+                    // Store how many seats were purchased so add-user can allow setup without extra charge.
+                    // NOTE: monthly_total is computed AFTER purchased_seats is updated using a subquery,
+                    // because PostgreSQL evaluates all SET expressions against the PRE-update row values.
                     const purchasedQty = parseInt(userCount) || 1;
                     await pool.query(`
                         UPDATE client_companies
@@ -10382,6 +10467,12 @@ async function processSubscriptionWebhook(event) {
                             updated_at      = NOW()
                         WHERE client_portal_id = $2
                     `, [purchasedQty, clientPortalId, pkg.price]);
+                    // Recalculate monthly_total in a second pass to ensure it reflects the NEW purchased_seats value
+                    await pool.query(`
+                        UPDATE client_companies
+                        SET monthly_total = purchased_seats * $1
+                        WHERE client_portal_id = $2
+                    `, [pkg.price, clientPortalId]);
                     console.log(`[SUB WEBHOOK] ✅ Company admin linked: ${leadEmail} → ${clientPortalId} (${purchasedQty} seats purchased @ $${pkg.price}/seat = $${purchasedQty * pkg.price}/mo)`);
                 }
                 
@@ -19698,6 +19789,40 @@ async function startServer() {
             `);
             console.log('[STARTUP] client_companies.purchased_seats ensured');
         } catch(e) { console.warn('[STARTUP] purchased_seats migration skipped:', e.message); }
+
+        // ── DATA REPAIR: Fix companies where purchased_seats=0 but active subscription exists ──
+        // This happens when the webhook early-returned before running the purchased_seats update.
+        try {
+            const repairResult = await pool.query(`
+                UPDATE client_companies cc
+                SET purchased_seats = COALESCE((
+                        SELECT s.user_count
+                        FROM crm_subscriptions s
+                        WHERE s.client_portal_id = cc.client_portal_id
+                          AND s.status = 'active'
+                          AND s.is_company_subscription = TRUE
+                        ORDER BY s.created_at ASC LIMIT 1
+                    ), cc.purchased_seats),
+                    monthly_total = COALESCE((
+                        SELECT s.monthly_total
+                        FROM crm_subscriptions s
+                        WHERE s.client_portal_id = cc.client_portal_id
+                          AND s.status = 'active'
+                          AND s.is_company_subscription = TRUE
+                        ORDER BY s.created_at ASC LIMIT 1
+                    ), cc.monthly_total)
+                WHERE cc.purchased_seats = 0
+                  AND EXISTS (
+                      SELECT 1 FROM crm_subscriptions s
+                      WHERE s.client_portal_id = cc.client_portal_id
+                        AND s.status = 'active'
+                        AND s.is_company_subscription = TRUE
+                  )
+            `);
+            if (repairResult.rowCount > 0) {
+                console.log('[STARTUP] Repaired ' + repairResult.rowCount + ' company record(s) with purchased_seats=0');
+            }
+        } catch(e) { console.warn('[STARTUP] purchased_seats data repair skipped:', e.message); }
 
         // Ensure company_users has access_until and cancelled_date columns
         try {

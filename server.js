@@ -3141,7 +3141,8 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
                 COUNT(*) FILTER (WHERE status = 'contacted' AND is_customer = FALSE) as contacted,
                 COUNT(*) FILTER (WHERE status = 'closed' OR is_customer = TRUE) as closed
             FROM leads
-            WHERE (source IS NULL OR source != 'company-user')
+            WHERE (source IS NULL OR (source != 'company-user' AND source != 'crm-portal'))
+              AND (client_portal_id IS NULL OR client_portal_id = '')
         `);
 
         res.json({
@@ -3166,7 +3167,8 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
-            WHERE (l.source IS NULL OR l.source != 'company-user')
+            WHERE (l.source IS NULL OR (l.source != 'company-user' AND l.source != 'crm-portal'))
+              AND (l.client_portal_id IS NULL OR l.client_portal_id = '')
             ORDER BY l.created_at DESC
         `);
 
@@ -3192,7 +3194,8 @@ app.get('/api/leads/all-complete', authenticateToken, async (req, res) => {
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
-            WHERE (l.source IS NULL OR l.source != 'company-user')
+            WHERE (l.source IS NULL OR (l.source != 'company-user' AND l.source != 'crm-portal'))
+              AND (l.client_portal_id IS NULL OR l.client_portal_id = '')
             ORDER BY l.created_at DESC
         `);
 
@@ -3239,7 +3242,8 @@ app.get('/api/leads/followup-all', authenticateToken, async (req, res) => {
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
-            AND (l.source IS NULL OR l.source != 'company-user')
+            AND (l.source IS NULL OR (l.source != 'company-user' AND l.source != 'crm-portal'))
+            AND (l.client_portal_id IS NULL OR l.client_portal_id = '')
             AND NOT EXISTS (
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
@@ -8718,6 +8722,16 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
         );
         const portalUser = userInfo.rows[0];
         const clientPortalId = portalUser?.client_portal_id || null;
+
+        // SAFETY: Never allow a lead to be created without a portal ID —
+        // that would cause it to bleed into the admin portal.
+        if (!clientPortalId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Your account is not linked to a client portal. Please contact support.'
+            });
+        }
+
 
         // Get the creator's company_users record for auto-assign
         let assignedTo = null;

@@ -1715,7 +1715,39 @@ tr:hover .row-actions { opacity: 1; }
         </div>
         <div class="modal-body">
             <!-- Seat availability banner -->
-            <div id="addUserSeatBanner" style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:13px;color:#4ade80;"></div>
+            <div id="addUserSeatBanner" style="border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;"></div>
+
+            <!-- Plan selector — shown ONLY when seats are maxed out -->
+            <div id="addUserPlanSection" style="display:none;margin-bottom:18px;">
+                <label class="form-label" style="margin-bottom:8px;display:block;">Choose a plan for this new seat <span style="color:var(--text-3);font-weight:400;">(billed monthly per user)</span></label>
+                <div style="display:grid;gap:8px;">
+                    <label id="addUserPlan-crm-essential" style="display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s;">
+                        <input type="radio" name="addUserPlan" value="crm-essential" style="accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;">
+                        <div style="flex:1;">
+                            <div style="font-weight:600;font-size:14px;">Essential</div>
+                            <div style="font-size:12px;color:var(--text-3);">Core CRM features — leads, tasks, invoices</div>
+                        </div>
+                        <div style="font-weight:700;font-size:15px;color:var(--accent);">$19.99<span style="font-weight:400;font-size:11px;color:var(--text-3);">/mo</span></div>
+                    </label>
+                    <label id="addUserPlan-crm-professional" style="display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s;">
+                        <input type="radio" name="addUserPlan" value="crm-professional" style="accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;">
+                        <div style="flex:1;">
+                            <div style="font-weight:600;font-size:14px;">Professional</div>
+                            <div style="font-size:12px;color:var(--text-3);">+ Email marketing, analytics, scheduling</div>
+                        </div>
+                        <div style="font-weight:700;font-size:15px;color:var(--accent);">$49.99<span style="font-weight:400;font-size:11px;color:var(--text-3);">/mo</span></div>
+                    </label>
+                    <label id="addUserPlan-crm-enterprise" style="display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s;">
+                        <input type="radio" name="addUserPlan" value="crm-enterprise" style="accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;">
+                        <div style="flex:1;">
+                            <div style="font-weight:600;font-size:14px;">Enterprise</div>
+                            <div style="font-size:12px;color:var(--text-3);">Full suite — all features + priority support</div>
+                        </div>
+                        <div style="font-weight:700;font-size:15px;color:var(--accent);">$64.99<span style="font-weight:400;font-size:11px;color:var(--text-3);">/mo</span></div>
+                    </label>
+                </div>
+            </div>
+
             <div class="form-row">
                 <div class="form-field"><label class="form-label">Full Name</label><input class="form-input" id="addUserName" placeholder="Team member name"></div>
                 <div class="form-field"><label class="form-label">Username / Login</label><input class="form-input" id="addUserUsername" placeholder="username (no spaces)"></div>
@@ -3865,29 +3897,59 @@ async function loadCompany() {
 
 function openAddUserModal() {
     if (!S.isAdmin) return;
+
+    // Reset all fields
     ['addUserName','addUserUsername','addUserEmail','addUserSendingEmail','addUserLabel'].forEach(id=>{
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
-    // Show seat availability in the banner
+    // Clear plan selection
+    document.querySelectorAll('input[name="addUserPlan"]').forEach(r => r.checked = false);
+    document.querySelectorAll('#addUserPlanSection label[id^="addUserPlan-"]').forEach(l => {
+        l.style.borderColor = 'var(--border)';
+        l.style.background = '';
+    });
+
     const company = S.companyData?.company;
-    const purchased = company?.purchasedSeats || 0;
-    const active = company?.totalActiveSeats || 0;
-    const available = Math.max(0, purchased - active);
-    const banner = document.getElementById('addUserSeatBanner');
-    if (banner) {
-        if (available > 0) {
-            banner.style.background = 'rgba(34,197,94,0.08)';
-            banner.style.borderColor = 'rgba(34,197,94,0.2)';
-            banner.style.color = '#4ade80';
-            banner.textContent = `✅ You have ${available} available seat${available !== 1 ? 's' : ''} included in your subscription — no extra charge to add this user.`;
-        } else {
-            banner.style.background = 'rgba(245,158,11,0.08)';
-            banner.style.borderColor = 'rgba(245,158,11,0.2)';
-            banner.style.color = '#fbbf24';
-            banner.textContent = `⚠️ All ${purchased} purchased seat${purchased !== 1 ? 's' : ''} are in use. Adding this user will increase your monthly bill.`;
-        }
+    const purchased = parseInt(company?.purchasedSeats) || 0;
+    const occupied  = parseInt(company?.totalActiveSeats) || 0; // active + cancelling
+    const available = Math.max(0, purchased - occupied);
+
+    const banner      = document.getElementById('addUserSeatBanner');
+    const planSection = document.getElementById('addUserPlanSection');
+
+    if (available > 0) {
+        // Seats available — green banner, no plan selector
+        banner.style.cssText = 'background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#4ade80;';
+        banner.innerHTML = `✅ You have <strong>${available}</strong> available seat${available !== 1 ? 's' : ''} included in your subscription — adding this user is free.`;
+        if (planSection) planSection.style.display = 'none';
+    } else if (purchased === 0) {
+        // No subscription at all
+        banner.style.cssText = 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#f87171;';
+        banner.innerHTML = `⚠️ No subscription found. Please contact support.`;
+        if (planSection) planSection.style.display = 'none';
+    } else {
+        // All seats in use — amber banner + plan selector
+        banner.style.cssText = 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#fbbf24;';
+        banner.innerHTML = `⚠️ All <strong>${purchased}</strong> purchased seat${purchased !== 1 ? 's' : ''} are in use. Adding this user will start a new subscription and increase your monthly bill. Choose a plan below:`;
+        if (planSection) planSection.style.display = 'block';
+
+        // Highlight plan card on radio change
+        document.querySelectorAll('input[name="addUserPlan"]').forEach(r => {
+            r.onchange = () => {
+                document.querySelectorAll('#addUserPlanSection label[id^="addUserPlan-"]').forEach(l => {
+                    l.style.borderColor = 'var(--border)';
+                    l.style.background = '';
+                });
+                const selectedLabel = document.getElementById(`addUserPlan-${r.value}`);
+                if (selectedLabel) {
+                    selectedLabel.style.borderColor = 'var(--accent)';
+                    selectedLabel.style.background = 'rgba(var(--accent-rgb,212,168,71),0.07)';
+                }
+            };
+        });
     }
+
     openModal('addUserModal');
 }
 
@@ -3903,6 +3965,22 @@ async function addCompanyUser() {
         toast('Company portal ID not found', 'error'); return;
     }
 
+    // Check if we're over quota — require a plan to be selected
+    const company   = S.companyData.company;
+    const purchased = parseInt(company?.purchasedSeats) || 0;
+    const occupied  = parseInt(company?.totalActiveSeats) || 0;
+    const isOverQuota = occupied >= purchased;
+
+    let selectedPlan = null;
+    if (isOverQuota) {
+        const planRadio = document.querySelector('input[name="addUserPlan"]:checked');
+        if (!planRadio) {
+            toast('Please select a subscription plan for this new seat', 'error');
+            return;
+        }
+        selectedPlan = planRadio.value;
+    }
+
     const btn = document.getElementById('addUserBtn');
     btn.disabled = true; btn.textContent = 'Adding...';
 
@@ -3910,7 +3988,8 @@ async function addCompanyUser() {
         const res = await apiFetch('/client/company/add-user', 'POST', {
             name, username, email, sendingEmail,
             userLabel: label,
-            clientPortalId: S.companyData.company.clientPortalId,
+            clientPortalId: company.clientPortalId,
+            packageKey: selectedPlan || null,   // null = use existing plan (seat already paid)
         });
         const data = await res.json();
         if (data.success) {

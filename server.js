@@ -9221,6 +9221,8 @@ app.get('/api/client/company', authenticateClient, async (req, res) => {
                 adminEmail: company.admin_email,
                 totalActiveSeats: company.total_active_seats,
                 purchasedSeats: parseInt(company.purchased_seats) || 0,
+                // Occupied = active + cancelling; a seat is only freed when Stripe fires subscription.deleted
+                occupiedSeats: parseInt(company.total_active_seats) || 0,
                 availableSeats: Math.max(0, (parseInt(company.purchased_seats) || 0) - (parseInt(company.total_active_seats) || 0)),
                 monthlyTotal: parseFloat(company.monthly_total || 0),
                 createdAt: company.created_at
@@ -9383,7 +9385,7 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
         // Update company totals: monthly_total still includes cancelling users (they still bill this period)
         await pool.query(`
             UPDATE client_companies
-            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
+            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
                 monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
                 updated_at = NOW()
             WHERE client_portal_id = $1
@@ -9472,7 +9474,7 @@ app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (re
         // Recalculate company totals after reinstatement
         await pool.query(`
             UPDATE client_companies
-            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
+            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
                 monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
                 updated_at = NOW()
             WHERE client_portal_id = $1
@@ -9539,9 +9541,10 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             return res.status(400).json({ success: false, message: 'This email already has an active seat in your company' });
         }
 
-        // Count currently active users (excluding admin)
+        // Count occupied seats: active + cancelling (cancelling users still hold their seat
+        // until Stripe fires subscription.deleted and they become fully 'cancelled')
         const activeCountRes = await pool.query(
-            `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'`,
+            `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')`,
             [clientPortalId]
         );
         const activeUsers = parseInt(activeCountRes.rows[0].count) || 0;
@@ -9644,7 +9647,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         // This reflects the TRUE billing amount including seats not yet cancelled
         await pool.query(`
             UPDATE client_companies 
-            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
+            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
                 monthly_total = (SELECT COALESCE(SUM(price_per_user), 0) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
                 updated_at = NOW()
             WHERE client_portal_id = $1
@@ -9991,8 +9994,10 @@ async function processSubscriptionWebhook(event) {
         const userLabel = metadata.user_label || null;
         const userName = metadata.user_name || null;
         const userEmail = metadata.user_email || null;
+        // user_count from metadata; falls back to Stripe quantity — this is the authoritative purchased seat count
+        const userCount = parseInt(metadata.user_count) || quantity;
         
-        console.log(`[SUB WEBHOOK] User type: ${userType}${clientPortalId ? ` | Portal ID: ${clientPortalId}` : ''}`);
+        console.log(`[SUB WEBHOOK] User type: ${userType}${clientPortalId ? ` | Portal ID: ${clientPortalId}` : ''} | seats: ${userCount}`);
 
         // Find lead by stripe_customer_id (set during checkout creation)
         const leadResult = await pool.query(
@@ -10597,6 +10602,42 @@ async function processSubscriptionWebhook(event) {
             } else if (hasOtherActiveSubs) {
                 console.log(`[SUB WEBHOOK] Customer ${email} still has ${otherSubs.rows[0].count} active subscription(s) — portal access maintained`);
             }
+        }
+
+        // Mark company_users row as fully cancelled and free the seat
+        try {
+            const cuRes = await pool.query(
+                `SELECT client_portal_id FROM company_users WHERE stripe_subscription_id = $1`,
+                [subId]
+            );
+            if (cuRes.rows.length > 0) {
+                const portalId = cuRes.rows[0].client_portal_id;
+                // Mark as cancelled
+                await pool.query(
+                    `UPDATE company_users SET status = 'cancelled', updated_at = NOW() WHERE stripe_subscription_id = $1`,
+                    [subId]
+                );
+                // Recalculate company totals:
+                // - total_active_seats = active + cancelling (seats still in use)
+                // - purchased_seats stays the same (seats bought); only decrements if company explicitly reduces seats
+                // - monthly_total = only active+cancelling (cancelled users no longer bill)
+                await pool.query(`
+                    UPDATE client_companies
+                    SET total_active_seats = (
+                            SELECT COUNT(*) FROM company_users
+                            WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')
+                        ),
+                        monthly_total = (
+                            SELECT COALESCE(SUM(price_per_user), 0) FROM company_users
+                            WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')
+                        ),
+                        updated_at = NOW()
+                    WHERE client_portal_id = $1
+                `, [portalId]);
+                console.log(`[SUB WEBHOOK] Company user fully cancelled for portal ${portalId}, seat freed`);
+            }
+        } catch (cuErr) {
+            console.error('[SUB WEBHOOK] Error freeing company seat on deletion:', cuErr.message);
         }
 
         console.log(`[SUB WEBHOOK] Subscription deleted: ${subId}`);

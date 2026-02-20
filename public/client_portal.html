@@ -1370,8 +1370,13 @@ tr:hover .row-actions { opacity: 1; }
                             <input class="form-input" id="settingsName" placeholder="Your name">
                         </div>
                         <div class="form-field">
-                            <label class="form-label">Email</label>
+                            <label class="form-label">Login Email <span style="color:var(--text-3);font-size:11px;">(cannot be changed)</span></label>
                             <input class="form-input" id="settingsEmail" disabled placeholder="your@email.com" style="opacity:0.5;">
+                        </div>
+                        <!-- Username display for basic users (read-only) -->
+                        <div class="form-field" id="settingsUsernameField" style="display:none;">
+                            <label class="form-label">Username <span style="color:var(--text-3);font-size:11px;">(cannot be changed)</span></label>
+                            <input class="form-input" id="settingsUsername" disabled style="opacity:0.5;" placeholder="—">
                         </div>
                         <button class="btn btn-white" onclick="saveProfile()">Save Changes</button>
                     </div>
@@ -1756,11 +1761,45 @@ tr:hover .row-actions { opacity: 1; }
                 <div class="form-field"><label class="form-label">Login Email</label><input class="form-input" id="addUserEmail" type="email" placeholder="member@company.com"></div>
                 <div class="form-field"><label class="form-label">Sending Email <span style="color:var(--text-3);font-weight:400;">(optional)</span></label><input class="form-input" id="addUserSendingEmail" type="email" placeholder="user@sendingdomain.com"></div>
             </div>
-            <div class="form-field"><label class="form-label">User Label (optional)</label><input class="form-input" id="addUserLabel" placeholder="e.g., Sales Rep, Manager..."></div>
+            <div class="form-row">
+                <div class="form-field">
+                    <label class="form-label">Password</label>
+                    <input class="form-input" id="addUserPassword" type="password" placeholder="Set their login password">
+                </div>
+                <div class="form-field">
+                    <label class="form-label">User Label (optional)</label>
+                    <input class="form-input" id="addUserLabel" placeholder="e.g., Sales Rep, Manager...">
+                </div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('addUserModal')">Cancel</button>
             <button class="btn btn-white" id="addUserBtn" onclick="addCompanyUser()">Add Team Member</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reset User Password Modal -->
+<div class="modal-overlay" id="resetUserPwModal" onclick="closeOnOverlay(event,'resetUserPwModal')">
+    <div class="modal" style="max-width:440px;">
+        <div class="modal-header">
+            <span class="modal-title">Reset User Password</span>
+            <button class="modal-close" onclick="closeModal('resetUserPwModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;">Set a new password for <strong id="resetUserPwName"></strong>. They will receive an email with the new credentials.</p>
+            <div class="form-field">
+                <label class="form-label">New Password</label>
+                <input class="form-input" type="password" id="resetUserPwInput" placeholder="Min. 6 characters">
+            </div>
+            <div class="form-field">
+                <label class="form-label">Confirm New Password</label>
+                <input class="form-input" type="password" id="resetUserPwConfirm" placeholder="Repeat password">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('resetUserPwModal')">Cancel</button>
+            <button class="btn btn-white" id="resetUserPwBtn" onclick="confirmResetUserPassword()">Reset Password</button>
         </div>
     </div>
 </div>
@@ -4002,6 +4041,7 @@ async function loadCompany() {
                                         ${S.isTrueAdmin ? `<button class="btn btn-ghost btn-xs" onclick="openChangeUserPlanModal(${u.id},'${escHtml(u.userLabel||u.userName||'')}','${escHtml(u.packageKey||'')}',${parseFloat(u.pricePerUser||0)})">Plan</button>` : ''}
                                         ${S.isTrueAdmin && !u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="promoteUser(${u.id})">Admin+</button>` : ''}
                                         ${S.isTrueAdmin && u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="demoteUser(${u.id})">Remove</button>` : ''}
+                                        ${S.isTrueAdmin && !u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="openResetUserPasswordModal(${u.id},'${escHtml(u.userName||u.userEmail||'')}')">Reset PW</button>` : ''}
                                         ${u.status==='active' ? `<button class="btn btn-danger btn-xs" onclick="cancelCompanyUser(${u.id},'${escHtml(u.userName||'')}')">Cancel</button>` : ''}
                                         ${u.status==='cancelling' ? `<button class="btn btn-ghost btn-xs" style="color:var(--green);" onclick="reinstateCompanyUser(${u.id},'${escHtml(u.userName||'')}')">Reinstate</button>` : ''}
                                     </div>
@@ -4020,7 +4060,7 @@ function openAddUserModal() {
     if (!S.isAdmin) return;
 
     // Reset all fields
-    ['addUserName','addUserUsername','addUserEmail','addUserSendingEmail','addUserLabel'].forEach(id=>{
+    ['addUserName','addUserUsername','addUserEmail','addUserSendingEmail','addUserPassword','addUserLabel'].forEach(id=>{
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -4079,9 +4119,11 @@ async function addCompanyUser() {
     const username     = document.getElementById('addUserUsername').value.trim();
     const email        = document.getElementById('addUserEmail').value.trim();
     const sendingEmail = document.getElementById('addUserSendingEmail').value.trim();
+    const password     = document.getElementById('addUserPassword').value;
     const label        = document.getElementById('addUserLabel').value.trim();
 
     if (!name || !email) { toast('Name and email required', 'error'); return; }
+    if (!password || password.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
     if (!S.companyData?.company?.clientPortalId) {
         toast('Company portal ID not found', 'error'); return;
     }
@@ -4108,6 +4150,7 @@ async function addCompanyUser() {
     try {
         const res = await apiFetch('/client/company/add-user', 'POST', {
             name, username, email, sendingEmail,
+            password,
             userLabel: label,
             clientPortalId: company.clientPortalId,
             packageKey: selectedPlan || null,   // null = use existing plan (seat already paid)
@@ -4125,6 +4168,38 @@ async function addCompanyUser() {
     } finally {
         btn.disabled = false; btn.textContent = 'Add Team Member';
     }
+}
+
+// ── Admin: Reset a team member's password ───────────────────────
+let _resetUserPwTargetId = null;
+function openResetUserPasswordModal(userId, userName) {
+    _resetUserPwTargetId = userId;
+    document.getElementById('resetUserPwName').textContent = userName;
+    document.getElementById('resetUserPwInput').value = '';
+    document.getElementById('resetUserPwConfirm').value = '';
+    openModal('resetUserPwModal');
+}
+
+async function confirmResetUserPassword() {
+    const newPw = document.getElementById('resetUserPwInput').value;
+    const confirm = document.getElementById('resetUserPwConfirm').value;
+    if (!newPw || newPw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+    if (newPw !== confirm) { toast('Passwords do not match', 'error'); return; }
+    if (!_resetUserPwTargetId) return;
+
+    const btn = document.getElementById('resetUserPwBtn');
+    btn.disabled = true; btn.textContent = 'Resetting...';
+    try {
+        const res = await apiFetch(`/client/company/user/${_resetUserPwTargetId}/reset-password`, 'POST', { newPassword: newPw });
+        const data = await res.json();
+        if (data.success) {
+            toast(data.message || 'Password reset successfully', 'success');
+            closeModal('resetUserPwModal');
+        } else {
+            toast(data.message || 'Failed to reset password', 'error');
+        }
+    } catch { toast('Error resetting password', 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Reset Password'; }
 }
 
 async function cancelCompanyUser(userId, name) {
@@ -5559,6 +5634,19 @@ async function confirmEnroll(chainId) {
 async function loadSettings() {
     document.getElementById('settingsName').value  = S.user.name  || '';
     document.getElementById('settingsEmail').value = S.user.email || '';
+
+    // Show username field (read-only) for basic (non-admin) users only
+    const usernameField = document.getElementById('settingsUsernameField');
+    const usernameInput = document.getElementById('settingsUsername');
+    if (!S.isAdmin && usernameField && usernameInput) {
+        // Username is typically the part before @ in email, or user may have a separate username
+        // Use S.user.username if available, otherwise email prefix
+        const uname = S.user.username || S.user.email || '';
+        usernameInput.value = uname;
+        usernameField.style.display = '';
+    } else if (usernameField) {
+        usernameField.style.display = 'none';
+    }
 
     // Load Brevo settings
     try {

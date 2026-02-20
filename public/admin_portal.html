@@ -6764,6 +6764,54 @@ async function selectEmailTemplate(templateId, leadId) {
     `;
 }
 
+// openEmailTemplateModal — "Back to Templates" from the final compose view.
+// Re-opens the full email modal (template chooser) for the given lead.
+function openEmailTemplateModal(leadId) {
+    const lead = [...(state.leads||[]), ...(state.customers||[])].find(l => l.id === leadId || l.id === parseInt(leadId));
+    if (!lead) { showToast('Lead not found', 'error'); return; }
+    // Close the createModal compose view
+    const createModal = document.getElementById('createModal');
+    if (createModal) createModal.style.display = 'none';
+    // Re-open the full email modal overlay (template select → compose flow)
+    showEmailModal(lead.id, lead.name, lead.email);
+}
+
+// uploadNewVersion — upload a new file version for a document
+async function uploadNewVersion(documentId) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt';
+    input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            showToast('Uploading new version...', 'info');
+            const res = await fetch(`${API_URL}/api/documents/${documentId}/version`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${authToken}` },
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('New version uploaded successfully!', 'success');
+                closeModal();
+            } else {
+                showToast(data.message || 'Upload failed', 'error');
+            }
+        } catch (e) {
+            showToast('Error uploading version', 'error');
+        }
+    };
+    input.click();
+}
+
+// editScoringRule — open the scoring rule modal pre-filled for editing
+function editScoringRule(ruleId) {
+    openScoringRuleModal(ruleId);
+}
+
 // Send the final email
 async function sendFinalEmail(leadId) {
     const subject = document.getElementById('finalSubject').value;

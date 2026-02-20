@@ -1890,6 +1890,26 @@ const CRM_PLANS = [
     { key: 'crm-enterprise',   name: 'Enterprise',   price: 64.99 },
 ];
 
+// setupAddUserPlanSelect: plan is inherited from company subscription — no UI select needed
+function setupAddUserPlanSelect() {
+    // Plan is determined server-side from the company's active subscription.
+    // Nothing to wire up here — kept for forward compatibility.
+}
+
+// navigateTo is an alias for navigate (used in inline onclick links)
+function navigateTo(page) { navigate(page); }
+
+// previewTemplate: shows a preview of the current template being built
+function previewTemplate() {
+    const subject = document.getElementById('templateSubject')?.value || '(no subject)';
+    const body    = document.getElementById('templateBody')?.value || '';
+    const preview = window.open('', '_blank', 'width=600,height=500');
+    if (preview) {
+        preview.document.write(`<html><head><title>Preview: ${subject}</title></head><body style="font-family:sans-serif;padding:24px;max-width:600px;margin:0 auto;"><h3 style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Subject</h3><p style="margin-bottom:24px;">${subject}</p><hr><div style="margin-top:24px;">${body.replace(/\n/g,'<br>')}</div></body></html>`);
+        preview.document.close();
+    }
+}
+
 // ============================================================
 // INIT
 // ============================================================

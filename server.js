@@ -9656,7 +9656,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
 
         // Upsert a minimal leads record purely for portal auth — hidden from CRM views
         // is_company_admin and is_co_admin are explicitly FALSE so new users are always basic users
-        await pool.query(`
+        const newLeadRes = await pool.query(`
             INSERT INTO leads (email, name, source, is_customer, customer_status, status, 
                 lead_temperature, client_portal_id, client_password, is_company_admin, is_co_admin)
             VALUES ($1, $2, 'company-user', TRUE, 'active', 'closed', 'cold', $3, $4, FALSE, FALSE)
@@ -9668,7 +9668,9 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
                 is_co_admin = FALSE,
                 customer_status = 'active',
                 updated_at = NOW()
+            RETURNING id
         `, [email, name, clientPortalId, hashedPassword]);
+        const leadId = newLeadRes.rows[0]?.id || null;
 
         // Send welcome email with credentials
         try {

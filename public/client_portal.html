@@ -3892,18 +3892,18 @@ async function loadCompany() {
 
         const company = data.company || {};
         const users = data.users || [];
-        // True monthly total = what the company is actually billed (from company record, includes all purchased seats)
-        // This is calculated server-side as sum of all active+cancelling users' price_per_user
         const purchasedSeats = parseInt(company.purchasedSeats) || 0;
         const activeSeats    = parseInt(company.totalActiveSeats) || 0;
         const emptySeats     = Math.max(0, purchasedSeats - activeSeats);
-        let monthlyTotal = parseFloat(company.monthlyTotal || 0);
-        if (monthlyTotal === 0 && purchasedSeats > 0) {
-            // Server auto-repairs this, but guard client-side too so UI never shows $0 for paid plan
-            const anyUser = (data.users || []).find(u => parseFloat(u.pricePerUser) > 0);
-            const ppu = parseFloat(anyUser?.pricePerUser) || 84.99;
-            monthlyTotal = purchasedSeats * ppu;
-        }
+
+        // Always compute monthly total as purchasedSeats × per-seat price.
+        // Server now sends a freshly recalculated monthlyTotal, but we recompute
+        // client-side too so the UI is never stale even on a cached response.
+        const anyUser = (data.users || []).find(u => parseFloat(u.pricePerUser) > 0);
+        const pricePerSeat = parseFloat(anyUser?.pricePerUser) || 84.99;
+        const monthlyTotal = purchasedSeats > 0
+            ? purchasedSeats * pricePerSeat
+            : parseFloat(company.monthlyTotal || 0);
 
         el.innerHTML = `
             <!-- Company Info -->

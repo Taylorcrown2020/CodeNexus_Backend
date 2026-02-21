@@ -9299,24 +9299,25 @@ app.get('/api/client/company', authenticateClient, async (req, res) => {
         const liveActiveSeats = parseInt(liveCountRes.rows[0].count) || 0;
         const purchasedSeats  = Math.max(parseInt(company.purchased_seats) || 0, liveActiveSeats);
 
-        // If stored monthly_total is 0 but purchased_seats > 0, calculate from crm_subscriptions and repair DB
-        let monthlyTotal = parseFloat(company.monthly_total || 0);
-        if (monthlyTotal === 0 && purchasedSeats > 0) {
-            const subRes = await pool.query(
-                `SELECT price_per_user FROM crm_subscriptions
-                 WHERE client_portal_id = $1 AND status = 'active' AND is_company_subscription = TRUE
-                 ORDER BY created_at ASC LIMIT 1`,
-                [lead.client_portal_id]
-            );
-            const pricePerUser = parseFloat(subRes.rows[0]?.price_per_user) || 84.99;
-            monthlyTotal = purchasedSeats * pricePerUser;
-            // Repair DB so this never recurs
-            pool.query(
-                `UPDATE client_companies SET monthly_total = $1, purchased_seats = $2, total_active_seats = $3, updated_at = NOW() WHERE client_portal_id = $4`,
-                [monthlyTotal, purchasedSeats, liveActiveSeats, lead.client_portal_id]
-            ).catch(e => console.warn('[COMPANY] DB repair failed:', e.message));
-            console.log(`[COMPANY API] ✅ Auto-repaired CLI=${lead.client_portal_id}: monthly_total=$${monthlyTotal}, purchased_seats=${purchasedSeats}`);
-        }
+        // Always recalculate monthly_total live from purchased_seats × price_per_user.
+        // Trusting the stored value caused stale displays when the write failed mid-transaction.
+        const subPriceRes = await pool.query(
+            `SELECT COALESCE(CAST(price_per_user AS NUMERIC), 84.99) AS price
+             FROM crm_subscriptions
+             WHERE client_portal_id = $1 AND status = 'active' AND is_company_subscription = TRUE
+             ORDER BY created_at ASC LIMIT 1`,
+            [lead.client_portal_id]
+        );
+        const pricePerUser = parseFloat(subPriceRes.rows[0]?.price) || 84.99;
+        const monthlyTotal = purchasedSeats * pricePerUser;
+
+        // Keep DB in sync (fire-and-forget — don't block the response)
+        pool.query(
+            `UPDATE client_companies
+             SET monthly_total = $1, total_active_seats = $2, purchased_seats = $3, updated_at = NOW()
+             WHERE client_portal_id = $4`,
+            [monthlyTotal, liveActiveSeats, purchasedSeats, lead.client_portal_id]
+        ).catch(e => console.warn('[COMPANY] DB sync failed:', e.message));
 
         res.json({
             success: true,
@@ -9667,7 +9668,7 @@ app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (re
         await pool.query(
             `UPDATE client_companies
              SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
-                 monthly_total      = purchased_seats * $2,
+                 monthly_total      = purchased_seats::NUMERIC * $2,
                  updated_at         = NOW()
              WHERE client_portal_id = $1`,
             [clientPortalId, pricePerSeat]
@@ -9779,7 +9780,7 @@ app.post('/api/client/company/reduce-seat', authenticateClient, async (req, res)
         );
         const pricePerSeat = parseFloat(priceRes.rows[0]?.price || 84.99);
         await pool.query(
-            `UPDATE client_companies SET monthly_total = purchased_seats * $1, updated_at = NOW() WHERE client_portal_id = $2`,
+            `UPDATE client_companies SET monthly_total = purchased_seats::NUMERIC * $1, updated_at = NOW() WHERE client_portal_id = $2`,
             [pricePerSeat, clientPortalId]
         );
         await pool.query(
@@ -9997,7 +9998,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             [clientPortalId]
         );
         await pool.query(
-            `UPDATE client_companies SET monthly_total = purchased_seats * $1 WHERE client_portal_id = $2`,
+            `UPDATE client_companies SET monthly_total = purchased_seats::NUMERIC * $1 WHERE client_portal_id = $2`,
             [finalPrice, clientPortalId]
         );
         // Keep crm_subscriptions in sync so Subscription tab shows correct totals
@@ -10612,7 +10613,7 @@ async function processSubscriptionWebhook(event) {
                         [purchasedQty, clientPortalId]
                     );
                     await pool.query(
-                        `UPDATE client_companies SET monthly_total = purchased_seats * $1 WHERE client_portal_id = $2`,
+                        `UPDATE client_companies SET monthly_total = purchased_seats::NUMERIC * $1 WHERE client_portal_id = $2`,
                         [pkg.price, clientPortalId]
                     );
                     console.log(`[SUB WEBHOOK] ✅ Company admin linked: ${leadEmail} → ${clientPortalId} (${purchasedQty} seats purchased @ $${pkg.price}/seat = $${purchasedQty * pkg.price}/mo)`);

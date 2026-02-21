@@ -8581,14 +8581,15 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 100;
         
-        // Get all individual subscriptions (not part of a company)
+        // Get all individual subscriptions — anything NOT tied to an actual client_companies row
         const individualSubs = await pool.query(`
             SELECT 
                 cs.*,
                 l.name as lead_name
             FROM crm_subscriptions cs
             LEFT JOIN leads l ON cs.lead_id = l.id
-            WHERE (cs.is_company_subscription IS NULL OR cs.is_company_subscription = FALSE)
+            LEFT JOIN client_companies cc ON cs.client_portal_id = cc.client_portal_id
+            WHERE cc.id IS NULL
             ORDER BY cs.created_at DESC
             LIMIT $1
         `, [limit]);
@@ -10502,7 +10503,7 @@ async function processSubscriptionWebhook(event) {
         const periodStart = obj.current_period_start ? new Date(obj.current_period_start * 1000) : null;
         const periodEnd   = obj.current_period_end   ? new Date(obj.current_period_end * 1000)   : null;
 
-        // Use the actual Stripe price (unit_amount is cents), fall back to hardcoded only if unavailable
+        // Use actual Stripe price (unit_amount in cents), fall back to hardcoded only if missing
         const actualPricePerUser = (obj.items.data[0].price.unit_amount != null)
             ? obj.items.data[0].price.unit_amount / 100
             : pkg.price;
@@ -11072,15 +11073,16 @@ async function processSubscriptionWebhook(event) {
                 cancel_at_period_end = $2,
                 current_period_end = COALESCE($3, current_period_end),
                 user_count = $4,
-                monthly_total = $5,
-                price_per_user = COALESCE($5 / NULLIF($4, 0), price_per_user),
+                price_per_user = COALESCE($5, price_per_user),
+                monthly_total = COALESCE($6, monthly_total),
                 updated_at = NOW()
-            WHERE stripe_subscription_id = $6
+            WHERE stripe_subscription_id = $7
         `, [
             newStatus,
             isCanceling,
             periodEnd,
             newQuantity,
+            actualUpdatedPrice,
             actualUpdatedPrice != null ? actualUpdatedPrice * newQuantity : null,
             subId
         ]);

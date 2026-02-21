@@ -3895,14 +3895,12 @@ async function loadCompany() {
         // True monthly total = what the company is actually billed (from company record, includes all purchased seats)
         // This is calculated server-side as sum of all active+cancelling users' price_per_user
         const purchasedSeats = parseInt(company.purchasedSeats) || 0;
-        // If server returned $0 but we have purchased seats, calculate client-side as last resort
-        // (server auto-repairs DB, but this ensures the UI never shows $0 for a paid plan)
         let monthlyTotal = parseFloat(company.monthlyTotal || 0);
         if (monthlyTotal === 0 && purchasedSeats > 0) {
-            // Find per-user price from user list
+            // Server auto-repairs this, but guard client-side too so UI never shows $0 for paid plan
             const anyUser = (data.users || []).find(u => parseFloat(u.pricePerUser) > 0);
-            const pricePerUser = parseFloat(anyUser?.pricePerUser) || 84.99;
-            monthlyTotal = purchasedSeats * pricePerUser;
+            const ppu = parseFloat(anyUser?.pricePerUser) || 84.99;
+            monthlyTotal = purchasedSeats * ppu;
         }
 
         el.innerHTML = `
@@ -3969,7 +3967,6 @@ async function loadCompany() {
 async function openAddUserModal() {
     if (!S.isAdmin) return;
 
-    // Reset all fields
     ['addUserName','addUserUsername','addUserEmail','addUserSendingEmail','addUserPassword','addUserLabel'].forEach(id=>{
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -3983,32 +3980,31 @@ async function openAddUserModal() {
     const banner      = document.getElementById('addUserSeatBanner');
     const planSection = document.getElementById('addUserPlanSection');
 
-    // Show modal immediately with loading state
+    // Show modal with loading state immediately
     banner.style.cssText = 'background:rgba(100,100,100,0.06);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--text-2);';
     banner.innerHTML = 'Checking seat availability...';
     if (planSection) planSection.style.display = 'none';
     openModal('addUserModal');
 
-    // Always fetch fresh data — stale cache causes wrong seat counts
+    // Always fetch fresh data — cached S.companyData goes stale after add/cancel
     try {
         const res  = await apiFetch('/client/company');
         const data = await res.json();
         if (data.success) S.companyData = data;
-    } catch(e) { /* use cached data if fetch fails */ }
+    } catch(e) { /* fall back to cached data */ }
 
     const company   = S.companyData?.company || {};
     const purchased = parseInt(company.purchasedSeats) || 0;
     const occupied  = parseInt(company.totalActiveSeats) || 0;
     const available = Math.max(0, purchased - occupied);
-    const pricePerUser = 84.99; // workspace price
 
     if (available > 0) {
         banner.style.cssText = 'background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#4ade80;';
-        banner.innerHTML = `✅ You have <strong>${available}</strong> available seat${available !== 1 ? 's' : ''} remaining. This user fills one — your monthly total will not change.`;
+        banner.innerHTML = `✅ You have <strong>${available}</strong> available seat${available !== 1 ? 's' : ''} remaining. This user will fill one — your monthly total will not change.`;
         if (planSection) planSection.style.display = 'none';
     } else {
         banner.style.cssText = 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#fbbf24;';
-        banner.innerHTML = `⚠️ All <strong>${purchased}</strong> purchased seat${purchased !== 1 ? 's' : ''} are currently in use. Adding this user will add 1 seat ($${pricePerUser.toFixed(2)}/mo) to your subscription.`;
+        banner.innerHTML = `⚠️ All <strong>${purchased}</strong> purchased seat${purchased !== 1 ? 's' : ''} are currently in use. Adding this user will add 1 seat ($84.99/mo) to your subscription.`;
         if (planSection) planSection.style.display = 'none';
     }
 }

@@ -3895,6 +3895,8 @@ async function loadCompany() {
         // True monthly total = what the company is actually billed (from company record, includes all purchased seats)
         // This is calculated server-side as sum of all active+cancelling users' price_per_user
         const purchasedSeats = parseInt(company.purchasedSeats) || 0;
+        const activeSeats    = parseInt(company.totalActiveSeats) || 0;
+        const emptySeats     = Math.max(0, purchasedSeats - activeSeats);
         let monthlyTotal = parseFloat(company.monthlyTotal || 0);
         if (monthlyTotal === 0 && purchasedSeats > 0) {
             // Server auto-repairs this, but guard client-side too so UI never shows $0 for paid plan
@@ -3915,9 +3917,24 @@ async function loadCompany() {
                                 <button class="btn btn-ghost btn-xs" onclick="navigator.clipboard.writeText('${escHtml(company.clientPortalId||'')}').then(()=>toast('Copied!','success'))">Copy</button>
                             </div>
                         </div>
-                        <div><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Active Users</div><div style="font-weight:600;">${users.filter(u=>u.status==='active').length} of ${company.purchasedSeats||0} seats</div></div>
-                        <div><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Monthly Total</div><div style="font-weight:600;color:var(--green);">$${monthlyTotal.toFixed(2)}</div><div style="font-size:10px;color:var(--text-3);">${company.purchasedSeats||0} purchased seat${(company.purchasedSeats||0)!==1?'s':''}</div></div>
+                        <div>
+                            <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Seats</div>
+                            <div style="font-weight:600;">${activeSeats} active of ${purchasedSeats} purchased</div>
+                            ${emptySeats > 0 ? `<div style="font-size:11px;color:var(--green);margin-top:2px;">${emptySeats} open seat${emptySeats!==1?'s':''} — available to fill</div>` : ''}
+                            ${users.filter(u=>u.status==='cancelling').length > 0 ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px;">${users.filter(u=>u.status==='cancelling').length} user${users.filter(u=>u.status==='cancelling').length!==1?'s':''} cancelling (access until period end)</div>` : ''}
+                        </div>
+                        <div><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Monthly Total</div><div style="font-weight:600;color:var(--green);">$${monthlyTotal.toFixed(2)}</div><div style="font-size:10px;color:var(--text-3);">${purchasedSeats} purchased seat${purchasedSeats!==1?'s':''} × $84.99</div></div>
                     </div>
+                    ${emptySeats > 0 ? `
+                    <div style="margin-top:14px;padding:12px 16px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <div style="font-size:13px;color:var(--text-2);">
+                            <strong style="color:var(--text-1);">${emptySeats} unused seat${emptySeats!==1?'s':''}</strong> — you're paying for ${emptySeats} seat${emptySeats!==1?'s':''} with no one in ${emptySeats!==1?'them':'it'}.
+                            Remove ${emptySeats!==1?'them':'it'} to reduce your monthly bill by <strong>$${(emptySeats * 84.99).toFixed(2)}/mo</strong>.
+                        </div>
+                        <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:rgba(239,68,68,0.3);white-space:nowrap;" onclick="reduceUnusedSeat()">
+                            Remove Unused Seat
+                        </button>
+                    </div>` : ''}
                     <div style="margin-top:14px;padding:12px;background:var(--bg-3);border-radius:var(--r-sm);border:1px solid var(--border);font-size:12px;color:var(--text-3);">
                         Share your Portal ID <strong style="color:var(--text-1);">${escHtml(company.clientPortalId||'—')}</strong> with team members so they can join your company account on the pricing page.
                     </div>
@@ -3950,7 +3967,7 @@ async function loadCompany() {
                                         ${S.isTrueAdmin && !u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="promoteUser(${u.id})">Admin+</button>` : ''}
                                         ${S.isTrueAdmin && u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="demoteUser(${u.id})">Remove</button>` : ''}
                                         ${S.isTrueAdmin && !u.isAdmin ? `<button class="btn btn-ghost btn-xs" onclick="openResetUserPasswordModal(${u.id},'${escHtml(u.userName||u.userEmail||'')}')">Reset PW</button>` : ''}
-                                        ${u.status==='active' ? `<button class="btn btn-danger btn-xs" onclick="cancelCompanyUser(${u.id},'${escHtml(u.userName||'')}')">Cancel</button>` : ''}
+                                        ${u.status==='active' ? `<button class="btn btn-danger btn-xs" onclick="cancelCompanyUser(${u.id},'${escHtml(u.userName||'')}',${u.isAdmin||false})">Cancel</button>` : ''}
                                         ${u.status==='cancelling' ? `<button class="btn btn-ghost btn-xs" style="color:var(--green);" onclick="reinstateCompanyUser(${u.id},'${escHtml(u.userName||'')}')">Reinstate</button>` : ''}
                                     </div>
                                 </td>
@@ -4100,9 +4117,18 @@ async function confirmResetUserPassword() {
     finally { btn.disabled = false; btn.textContent = 'Reset Password'; }
 }
 
-async function cancelCompanyUser(userId, name) {
-    const confirmed = await requireValidation(`Confirm your password to cancel ${name}'s subscription.`);
-    if (!confirmed) return;
+async function cancelCompanyUser(userId, name, isAdmin) {
+    const confirmMsg = isAdmin
+        ? `You are about to cancel your own seat as ${name}. This will reduce your subscription by one seat and you will lose access at the end of the current billing period. Continue?`
+        : `Confirm your password to cancel ${name}'s subscription.`;
+
+    if (isAdmin) {
+        // Admin cancelling their own seat — use a simple confirm (no password re-entry needed since they're already authenticated)
+        if (!confirm(confirmMsg)) return;
+    } else {
+        const confirmed = await requireValidation(confirmMsg);
+        if (!confirmed) return;
+    }
 
     try {
         const res = await apiFetch(`/client/company/user/${userId}/cancel`, 'POST', {});
@@ -4113,13 +4139,38 @@ async function cancelCompanyUser(userId, name) {
 }
 
 async function reinstateCompanyUser(userId, name) {
-    if (!confirm(`Reinstate ${name}'s subscription? They will continue being billed normally.`)) return;
+    if (!confirm(`Reinstate ${name}? If all seats are filled you'll be asked to confirm an extra charge.`)) return;
     try {
         const res = await apiFetch(`/client/company/user/${userId}/reinstate`, 'POST', {});
         const data = await res.json();
-        toast(data.success ? (data.message || `${name}'s subscription reinstated.`) : (data.message||'Failed'), data.success?'success':'error');
-        if (data.success) loadCompany();
-    } catch { toast('Error', 'error'); }
+
+        if (data.requiresConfirmation) {
+            // All seats are filled — ask admin to confirm extra charge
+            const confirmed = confirm(
+                `All purchased seats are currently filled.\n\nReinstate ${name} will add 1 seat and increase your monthly subscription by $${data.pricePerSeat.toFixed(2)}/mo.\n\nDo you want to proceed?`
+            );
+            if (!confirmed) return;
+
+            // Re-send with confirmed flag
+            const res2 = await apiFetch(`/client/company/user/${userId}/reinstate`, 'POST', { confirmedExtraCost: true });
+            const data2 = await res2.json();
+            toast(data2.success ? (data2.message || `${name} reinstated`) : (data2.message || 'Failed'), data2.success ? 'success' : 'error');
+            if (data2.success) { S.companyData = null; await loadCompany(); }
+        } else {
+            toast(data.success ? (data.message || `${name}'s subscription reinstated.`) : (data.message || 'Failed'), data.success ? 'success' : 'error');
+            if (data.success) { S.companyData = null; await loadCompany(); }
+        }
+    } catch { toast('Error reinstating user', 'error'); }
+}
+
+async function reduceUnusedSeat() {
+    if (!confirm('Remove 1 unused seat from your subscription?\n\nThis will reduce your monthly bill by $84.99/mo starting next billing cycle. You currently have no one assigned to this seat.')) return;
+    try {
+        const res = await apiFetch('/client/company/reduce-seat', 'POST', {});
+        const data = await res.json();
+        toast(data.success ? (data.message || 'Unused seat removed.') : (data.message || 'Failed'), data.success ? 'success' : 'error');
+        if (data.success) { S.companyData = null; await loadCompany(); }
+    } catch { toast('Error removing seat', 'error'); }
 }
 
 // ============================================================

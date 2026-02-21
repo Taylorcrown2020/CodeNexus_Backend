@@ -9290,7 +9290,8 @@ app.get('/api/client/company', authenticateClient, async (req, res) => {
             [lead.client_portal_id]
         );
         
-        // Count live active users
+        // Count occupied seats: only 'active' users hold a seat.
+        // 'cancelling' users have been freed — their seat is open for a new user.
         const liveCountRes = await pool.query(
             `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'`,
             [lead.client_portal_id]
@@ -9429,46 +9430,31 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
         }
         
         const user = userResult.rows[0];
-        
-        // For company (workspace) subscriptions all users share ONE Stripe subscription.
-        // Removing a user = reduce quantity by 1 on that shared subscription.
-        // The user loses access immediately when quantity is reduced — Stripe prorates the refund.
-        // For any legacy individual-per-user subs, cancel_at_period_end still applies.
+
+        // How cancellation works:
+        // Cancelling a user does NOT immediately reduce the Stripe subscription quantity or
+        // purchased_seats. The seat is freed for a new user straight away, but the billing
+        // stays the same until the end of the current period (the company already paid for it).
+        // The admin can then either:
+        //   (a) Add a new user to fill that open seat at no extra charge, or
+        //   (b) Use "Remove Unused Seat" to explicitly drop the Stripe quantity (and billing) by 1.
+        // This gives the admin flexibility without surprise mid-cycle charges.
+
+        // Get the billing period end from Stripe so we know when access expires
         let accessUntil = null;
         if (user.stripe_subscription_id) {
             try {
                 const stripeSub = await stripe.subscriptions.retrieve(user.stripe_subscription_id);
-                const item = stripeSub.items.data[0];
-                const currentQty = item?.quantity || 1;
-
-                if (currentQty > 1) {
-                    // Shared company subscription — reduce quantity by 1
-                    await stripe.subscriptionItems.update(item.id, { quantity: currentQty - 1 });
-                    // Also decrement purchased_seats on the company record
-                    await pool.query(
-                        `UPDATE client_companies SET purchased_seats = GREATEST(purchased_seats - 1, 0) WHERE client_portal_id = $1`,
-                        [clientPortalId]
-                    );
-                    console.log(`[COMPANY API] Reduced Stripe quantity ${currentQty} → ${currentQty - 1} for ${user.stripe_subscription_id}`);
-                    // Access ends at period end (they've already paid for this period)
-                    accessUntil = new Date(stripeSub.current_period_end * 1000);
-                } else {
-                    // Last seat — cancel the whole subscription at period end
-                    const updated = await stripe.subscriptions.update(user.stripe_subscription_id, {
-                        cancel_at_period_end: true
-                    });
-                    accessUntil = new Date(updated.current_period_end * 1000);
-                    console.log(`[COMPANY API] Last seat — scheduled subscription cancellation at period end`);
-                }
+                // Access ends at current period end — they've already paid for this period
+                accessUntil = new Date(stripeSub.current_period_end * 1000);
+                console.log(`[COMPANY API] User ${user.user_email} access until period end: ${accessUntil.toISOString()}`);
             } catch (stripeErr) {
-                console.error('[COMPANY API] Stripe seat reduction error:', stripeErr);
-                return res.status(500).json({
-                    success: false,
-                    message: 'Failed to update subscription in Stripe: ' + stripeErr.message
-                });
+                console.error('[COMPANY API] Stripe retrieve error (non-fatal):', stripeErr.message);
+                // Fall through — accessUntil stays null, handled below
             }
-        } else {
-            // No Stripe sub - access ends immediately
+        }
+        if (!accessUntil) {
+            // No Stripe sub on record — access ends immediately
             accessUntil = new Date();
         }
         
@@ -9498,57 +9484,77 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
         // created by this user — it stays in the portal for the admin to review.
         // We only reassign CRM ownership so nothing falls through the cracks.
         
-        // Mark user as cancelling (they still have access until period end)
+        // Mark user as cancelling (they still have portal access until period end)
         await pool.query(
             `UPDATE company_users SET status = 'cancelling', cancelled_date = NOW(), access_until = $1 WHERE id = $2`,
             [accessUntil, id]
         );
 
-        // Two-pass: decrement purchased_seats first, then calculate monthly_total from the new value
-        await pool.query(
-            `UPDATE client_companies SET purchased_seats = GREATEST(purchased_seats - 1, 0), updated_at=NOW() WHERE client_portal_id=$1`,
-            [clientPortalId]
-        );
+        // purchased_seats does NOT change — the billing quantity stays the same until the admin
+        // explicitly removes the unused seat (or the period ends). The seat is simply available
+        // for a new user to fill at no extra charge.
+        // total_active_seats reflects only 'active' users since 'cancelling' seats are now free.
         const priceForCancel = await pool.query(
             `SELECT COALESCE(CAST(price_per_user AS NUMERIC), 84.99) AS price FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE ORDER BY created_at ASC LIMIT 1`,
             [clientPortalId]
         );
         const cancelPrice = parseFloat(priceForCancel.rows[0]?.price || 84.99);
         await pool.query(
-            `UPDATE client_companies SET total_active_seats=(SELECT COUNT(*) FROM company_users WHERE client_portal_id=$1 AND status='active'), monthly_total=purchased_seats*$2 WHERE client_portal_id=$1`,
-            [clientPortalId, cancelPrice]
+            `UPDATE client_companies SET total_active_seats=(SELECT COUNT(*) FROM company_users WHERE client_portal_id=$1 AND status='active'), updated_at=NOW() WHERE client_portal_id=$1`,
+            [clientPortalId]
         );
         await pool.query(
-            `UPDATE crm_subscriptions SET user_count=(SELECT purchased_seats FROM client_companies WHERE client_portal_id=$1), monthly_total=(SELECT monthly_total FROM client_companies WHERE client_portal_id=$1), updated_at=NOW() WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE`,
+            `UPDATE crm_subscriptions SET user_count=(SELECT purchased_seats FROM client_companies WHERE client_portal_id=$1), updated_at=NOW() WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE`,
             [clientPortalId]
         );
         
+        // Fetch current totals for the notification email (billing unchanged after cancel)
+        const cancelTotalsRes = await pool.query(
+            `SELECT monthly_total, purchased_seats FROM client_companies WHERE client_portal_id = $1`,
+            [clientPortalId]
+        );
+        const cancelCurrentTotal = parseFloat(cancelTotalsRes.rows[0]?.monthly_total || 0);
+        const cancelCurrentSeats = parseInt(cancelTotalsRes.rows[0]?.purchased_seats || 0);
+        const cancelAccessDate = accessUntil
+            ? accessUntil.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+            : 'end of current billing period';
+
         // Send notification to admin
         try {
             const cancelEmail = buildEmailHTML(`
                 <p>Hi,</p>
-                <p>A user subscription in your company has been cancelled:</p>
+                <p>${user.user_name}'s seat has been cancelled. Here is a summary:</p>
                 <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px;margin:28px 0;">
-                    <div style="margin-bottom:12px;"><strong>User:</strong> ${user.user_name} (${user.user_email})</div>
-                    <div style="margin-bottom:12px;"><strong>Label:</strong> ${user.user_label || 'None'}</div>
-                    <div style="margin-bottom:12px;"><strong>Plan:</strong> ${user.package_name}</div>
-                    <div><strong>Monthly Cost:</strong> $${parseFloat(user.price_per_user || 0).toFixed(2)}</div>
+                    <div style="font-size:12px;font-weight:800;color:#666;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;">User Cancelled</div>
+                    <div style="margin-bottom:10px;"><strong>Name:</strong> ${user.user_name} (${user.user_email})</div>
+                    <div style="margin-bottom:10px;"><strong>Label:</strong> ${user.user_label || 'None'}</div>
+                    <div style="margin-bottom:10px;"><strong>Plan:</strong> ${user.package_name}</div>
+                    <div style="margin-bottom:0;"><strong>Portal access until:</strong> ${cancelAccessDate}</div>
                 </div>
-                <p>Your company's monthly total has been updated accordingly.</p>
+                <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:20px;margin:0 0 28px 0;">
+                    <div style="font-size:12px;font-weight:800;color:#92400e;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">What happens next</div>
+                    <div style="margin-bottom:10px;font-size:13px;color:#78350f;">
+                        <strong>Monthly billing is unchanged:</strong> $${cancelCurrentTotal.toFixed(2)}/mo (${cancelCurrentSeats} seats)<br>
+                        The freed seat is available — you can add a new user at no extra charge.
+                    </div>
+                    <div style="font-size:13px;color:#78350f;">
+                        <strong>Want to reduce your bill?</strong> Log into the Company tab and click <em>"Remove Unused Seat"</em> to drop your subscription by $${parseFloat(user.price_per_user || cancelPrice).toFixed(2)}/mo.
+                    </div>
+                </div>
                 <p style="font-size:13px;color:#888;">Questions? Call us at <strong>(512) 980-0393</strong></p>
             `, {
                 eyebrow: 'USER CANCELLED',
-                headline: 'Company user subscription cancelled',
+                headline: `${user.user_name}'s seat has been cancelled`,
                 accentColor: '#dc2626',
                 tagline: 'COMPANY MANAGEMENT',
                 ctaLabel: 'View Company Portal',
                 ctaUrl: `${BASE_URL}/client_portal.html`
             });
-            
+
             await sendTrackedEmail({
                 leadId: null,
                 to: adminEmail,
-                subject: 'Company User Cancelled - ' + user.user_name,
+                subject: `User Cancelled: ${user.user_name} — 1 seat now available`,
                 html: cancelEmail,
                 emailType: 'company_user_cancelled'
             });
@@ -9572,6 +9578,7 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
 app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (req, res) => {
     try {
         const { id } = req.params;
+        const { confirmedExtraCost } = req.body; // frontend sends true when admin confirmed the +$84.99 charge
         const requesterEmail = req.user.email;
         const requester = await pool.query(
             `SELECT client_portal_id, is_company_admin, is_co_admin FROM leads WHERE LOWER(email) = LOWER($1)`,
@@ -9591,30 +9598,90 @@ app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (re
         if (cuUser.status === 'active') {
             return res.status(400).json({ success: false, message: 'User is already active' });
         }
-        if (cuUser.stripe_subscription_id) {
-            try {
-                await stripe.subscriptions.update(cuUser.stripe_subscription_id, { cancel_at_period_end: false });
-                console.log(`[COMPANY API] Reactivated Stripe subscription ${cuUser.stripe_subscription_id}`);
-            } catch (stripeErr) {
-                console.error('[COMPANY API] Stripe reactivation error:', stripeErr.message);
+
+        // Check whether a seat is available or whether reinstating needs a new paid seat
+        const companyRes = await pool.query(
+            `SELECT purchased_seats FROM client_companies WHERE client_portal_id = $1`,
+            [clientPortalId]
+        );
+        const purchasedSeats = parseInt(companyRes.rows[0]?.purchased_seats || 0);
+        const activeCountRes = await pool.query(
+            `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'`,
+            [clientPortalId]
+        );
+        const activeUsers = parseInt(activeCountRes.rows[0]?.count || 0);
+        const hasFreeSeat = activeUsers < purchasedSeats;
+
+        if (!hasFreeSeat && !confirmedExtraCost) {
+            // All seats are filled — ask the frontend to confirm before charging
+            const priceRes = await pool.query(
+                `SELECT COALESCE(CAST(price_per_user AS NUMERIC), 84.99) AS price FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE ORDER BY created_at ASC LIMIT 1`,
+                [clientPortalId]
+            );
+            const pricePerSeat = parseFloat(priceRes.rows[0]?.price || 84.99);
+            return res.json({
+                success: false,
+                requiresConfirmation: true,
+                pricePerSeat,
+                message: `All ${purchasedSeats} seats are currently filled. Reinstating ${cuUser.user_name} will add 1 seat and increase your monthly subscription by $${pricePerSeat.toFixed(2)}.`
+            });
+        }
+
+        if (!hasFreeSeat && confirmedExtraCost) {
+            // Admin confirmed — add a seat to Stripe and increment purchased_seats
+            const existingStripeSubRes = await pool.query(
+                `SELECT stripe_subscription_id FROM crm_subscriptions
+                 WHERE client_portal_id = $1 AND status = 'active'
+                 ORDER BY created_at ASC LIMIT 1`,
+                [clientPortalId]
+            );
+            if (existingStripeSubRes.rows[0]?.stripe_subscription_id) {
+                try {
+                    const stripeSub = await stripe.subscriptions.retrieve(existingStripeSubRes.rows[0].stripe_subscription_id);
+                    const item = stripeSub.items.data[0];
+                    await stripe.subscriptionItems.update(item.id, { quantity: item.quantity + 1 });
+                    await pool.query(
+                        `UPDATE client_companies SET purchased_seats = purchased_seats + 1 WHERE client_portal_id = $1`,
+                        [clientPortalId]
+                    );
+                    console.log(`[COMPANY API] Added 1 seat to Stripe sub for reinstatement of ${cuUser.user_name}`);
+                } catch (stripeErr) {
+                    console.error('[COMPANY API] Stripe seat add error on reinstate:', stripeErr.message);
+                    return res.status(500).json({ success: false, message: 'Failed to add seat in Stripe: ' + stripeErr.message });
+                }
             }
         }
+
+        // Reactivate the user
         await pool.query(
             `UPDATE company_users SET status = 'active', cancelled_date = NULL, access_until = NULL WHERE id = $1`,
             [id]
         );
-        // Recalculate company totals after reinstatement.
-        // monthly_total = purchased_seats × price_per_user (authoritative billing amount)
-        await pool.query(`
-            UPDATE client_companies
-            SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                monthly_total      = purchased_seats * (
-                    SELECT COALESCE(price_per_user, 0) FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 LIMIT 1
-                ),
-                updated_at         = NOW()
-            WHERE client_portal_id = $1
-        `, [clientPortalId]);
-        res.json({ success: true, message: `${cuUser.user_name}'s subscription has been reinstated. Billing has been adjusted back to include this user.` });
+
+        // Recalculate company totals
+        const priceRes = await pool.query(
+            `SELECT COALESCE(CAST(price_per_user AS NUMERIC), 84.99) AS price FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE ORDER BY created_at ASC LIMIT 1`,
+            [clientPortalId]
+        );
+        const pricePerSeat = parseFloat(priceRes.rows[0]?.price || 84.99);
+        await pool.query(
+            `UPDATE client_companies
+             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'),
+                 monthly_total      = purchased_seats * $2,
+                 updated_at         = NOW()
+             WHERE client_portal_id = $1`,
+            [clientPortalId, pricePerSeat]
+        );
+        await pool.query(
+            `UPDATE crm_subscriptions SET user_count=(SELECT purchased_seats FROM client_companies WHERE client_portal_id=$1), monthly_total=(SELECT monthly_total FROM client_companies WHERE client_portal_id=$1), updated_at=NOW() WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE`,
+            [clientPortalId]
+        );
+
+        const msg = hasFreeSeat
+            ? `${cuUser.user_name} has been reinstated. They can log in immediately.`
+            : `${cuUser.user_name} has been reinstated. Your subscription has been increased by $${pricePerSeat.toFixed(2)}/mo.`;
+
+        res.json({ success: true, message: msg, addedSeat: !hasFreeSeat });
     } catch (error) {
         console.error('[COMPANY API] Reinstate user error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -9629,6 +9696,144 @@ async function getCompanyMonthlyTotal(clientPortalId) {
     );
     return parseFloat(result.rows[0]?.monthly_total || 0);
 }
+
+// ========================================
+// POST /api/client/company/reduce-seat
+// Removes one unused (unfilled) purchased seat from the Stripe subscription.
+// Only allowed when purchased_seats > active users (i.e., there is at least one empty seat).
+// This is the mechanism for an admin to reduce billing after cancelling a user
+// (or after buying more seats than they need at signup).
+// ========================================
+app.post('/api/client/company/reduce-seat', authenticateClient, async (req, res) => {
+    try {
+        const requesterEmail = req.user.email;
+
+        // Must be true company admin
+        const leadResult = await pool.query(
+            `SELECT client_portal_id, email FROM leads WHERE LOWER(email) = LOWER($1) AND is_company_admin = TRUE`,
+            [requesterEmail]
+        );
+        if (!leadResult.rows[0]) {
+            return res.status(403).json({ success: false, message: 'Only the company admin can remove seats' });
+        }
+        const clientPortalId = leadResult.rows[0].client_portal_id;
+        const adminEmail = leadResult.rows[0].email;
+
+        // Verify there is at least one unfilled seat
+        const companyRes = await pool.query(
+            `SELECT purchased_seats FROM client_companies WHERE client_portal_id = $1`,
+            [clientPortalId]
+        );
+        const purchasedSeats = parseInt(companyRes.rows[0]?.purchased_seats || 0);
+        const activeCountRes = await pool.query(
+            `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'`,
+            [clientPortalId]
+        );
+        const activeUsers = parseInt(activeCountRes.rows[0]?.count || 0);
+        const emptySeats = purchasedSeats - activeUsers;
+
+        if (emptySeats <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'All purchased seats are currently filled. Cancel a user first to free a seat before removing it.'
+            });
+        }
+
+        if (purchasedSeats <= 1) {
+            return res.status(400).json({
+                success: false,
+                message: 'You cannot remove the last seat. Use "Cancel Subscription" in the Subscription tab to end your plan entirely.'
+            });
+        }
+
+        // Reduce Stripe subscription quantity by 1
+        const stripeSubRes = await pool.query(
+            `SELECT stripe_subscription_id FROM crm_subscriptions
+             WHERE client_portal_id = $1 AND status = 'active' AND is_company_subscription = TRUE
+             ORDER BY created_at ASC LIMIT 1`,
+            [clientPortalId]
+        );
+        if (!stripeSubRes.rows[0]?.stripe_subscription_id) {
+            return res.status(400).json({ success: false, message: 'No active subscription found.' });
+        }
+
+        try {
+            const stripeSub = await stripe.subscriptions.retrieve(stripeSubRes.rows[0].stripe_subscription_id);
+            const item = stripeSub.items.data[0];
+            const currentQty = item?.quantity || 1;
+            await stripe.subscriptionItems.update(item.id, { quantity: currentQty - 1 });
+            console.log(`[REDUCE-SEAT] Stripe quantity ${currentQty} → ${currentQty - 1} for ${stripeSub.id}`);
+        } catch (stripeErr) {
+            console.error('[REDUCE-SEAT] Stripe error:', stripeErr.message);
+            return res.status(500).json({ success: false, message: 'Failed to update subscription in Stripe: ' + stripeErr.message });
+        }
+
+        // Decrement purchased_seats and recalculate monthly_total
+        await pool.query(
+            `UPDATE client_companies SET purchased_seats = purchased_seats - 1 WHERE client_portal_id = $1`,
+            [clientPortalId]
+        );
+        const priceRes = await pool.query(
+            `SELECT COALESCE(CAST(price_per_user AS NUMERIC), 84.99) AS price FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE ORDER BY created_at ASC LIMIT 1`,
+            [clientPortalId]
+        );
+        const pricePerSeat = parseFloat(priceRes.rows[0]?.price || 84.99);
+        await pool.query(
+            `UPDATE client_companies SET monthly_total = purchased_seats * $1, updated_at = NOW() WHERE client_portal_id = $2`,
+            [pricePerSeat, clientPortalId]
+        );
+        await pool.query(
+            `UPDATE crm_subscriptions SET user_count=(SELECT purchased_seats FROM client_companies WHERE client_portal_id=$1), monthly_total=(SELECT monthly_total FROM client_companies WHERE client_portal_id=$1), updated_at=NOW() WHERE client_portal_id=$1 AND status='active' AND is_company_subscription=TRUE`,
+            [clientPortalId]
+        );
+
+        const newTotalRes = await pool.query(
+            `SELECT monthly_total, purchased_seats FROM client_companies WHERE client_portal_id = $1`,
+            [clientPortalId]
+        );
+        const newTotal = parseFloat(newTotalRes.rows[0]?.monthly_total || 0);
+        const newSeats = parseInt(newTotalRes.rows[0]?.purchased_seats || 0);
+
+        // Email admin confirmation
+        try {
+            const html = buildEmailHTML(`
+                <p>Hi,</p>
+                <p>An unused seat has been removed from your subscription. Your billing has been updated.</p>
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:28px 0;">
+                    <div style="font-size:12px;font-weight:800;color:#166534;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;">Updated Subscription</div>
+                    <div style="margin-bottom:10px;font-size:22px;font-weight:800;color:#15803d;">$${newTotal.toFixed(2)}<span style="font-size:13px;font-weight:400;color:#166534;">/month</span></div>
+                    <div style="font-size:13px;color:#166534;"><strong>${newSeats} seat${newSeats !== 1 ? 's' : ''}</strong> × $${pricePerSeat.toFixed(2)}/mo</div>
+                </div>
+                <p style="font-size:13px;color:#888;">The change takes effect immediately. Questions? Call <strong>(512) 980-0393</strong>.</p>
+            `, {
+                eyebrow: 'SEAT REMOVED',
+                headline: 'Unused seat removed from subscription',
+                accentColor: '#059669',
+                ctaLabel: 'View Company Portal',
+                ctaUrl: `${BASE_URL}/client_portal.html`
+            });
+            await sendTrackedEmail({
+                leadId: null,
+                to: adminEmail,
+                subject: `Seat Removed — New Monthly Total $${newTotal.toFixed(2)}`,
+                html,
+                emailType: 'company_seat_removed'
+            });
+        } catch (emailErr) {
+            console.error('[REDUCE-SEAT] Email error:', emailErr.message);
+        }
+
+        res.json({
+            success: true,
+            message: `Unused seat removed. Your new monthly total is $${newTotal.toFixed(2)} (${newSeats} seat${newSeats !== 1 ? 's' : ''}).`,
+            newMonthlyTotal: newTotal,
+            newPurchasedSeats: newSeats
+        });
+    } catch (error) {
+        console.error('[REDUCE-SEAT] Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
 
 // ========================================
 // POST /api/client/company/add-user
@@ -9676,10 +9881,11 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             return res.status(400).json({ success: false, message: 'This email already has an active seat in your company' });
         }
 
-        // Count occupied seats: active + cancelling (cancelling users still hold their seat
-        // until Stripe fires subscription.deleted and they become fully 'cancelled')
+        // Count occupied seats: only 'active' users hold a seat.
+        // 'cancelling' users have been freed — their seat is available for a new user
+        // at no extra charge until the admin explicitly removes it via "Remove Unused Seat".
         const activeCountRes = await pool.query(
-            `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')`,
+            `SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status = 'active'`,
             [clientPortalId]
         );
         const activeUsers = parseInt(activeCountRes.rows[0].count) || 0;
@@ -9891,20 +10097,33 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         try {
             const adminLeadRes = await pool.query(`SELECT id, name FROM leads WHERE LOWER(email) = LOWER($1)`, [requesterEmail]);
             const adminUser = adminLeadRes.rows[0];
+
+            // Fetch updated totals so the email shows the exact new billing amount
+            const addTotalsRes = await pool.query(
+                `SELECT monthly_total, purchased_seats FROM client_companies WHERE client_portal_id = $1`,
+                [clientPortalId]
+            );
+            const addNewTotal = parseFloat(addTotalsRes.rows[0]?.monthly_total || 0);
+            const addNewSeats = parseInt(addTotalsRes.rows[0]?.purchased_seats || 0);
+            const isExtraSeat = effectiveMode === 'new';
+
             const notifyHtml = buildEmailHTML(`
                 <p>Hi ${adminUser?.name || 'Admin'},</p>
                 <p>A new user has been added to your company workspace:</p>
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;border:1px solid #e8e8e8;border-radius:8px;overflow:hidden;">
-                    <tr><td style="padding:10px 16px;background:#f7f9fb;font-size:12px;font-weight:700;text-transform:uppercase;color:#888;">User Added</td></tr>
-                    <tr><td style="padding:12px 16px;">
-                        <strong>Name:</strong> ${name}<br>
-                        <strong>Email:</strong> ${email}<br>
-                        <strong>Label:</strong> ${userLabel || 'None'}<br>
-                        <strong>Plan:</strong> ${pkg.name} — $${pkg.price.toFixed(2)}/mo<br>
-                        <strong>Added By:</strong> ${requesterEmail}
-                    </td></tr>
-                </table>
-                <p style="font-size:13px;color:#888;">Your monthly total has been updated to reflect this new seat.</p>
+                <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px;margin:20px 0;">
+                    <div style="font-size:12px;font-weight:800;color:#666;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;">User Added</div>
+                    <div style="margin-bottom:10px;"><strong>Name:</strong> ${name}</div>
+                    <div style="margin-bottom:10px;"><strong>Email:</strong> ${email}</div>
+                    <div style="margin-bottom:10px;"><strong>Label:</strong> ${userLabel || 'None'}</div>
+                    <div style="margin-bottom:0;"><strong>Plan:</strong> ${pkg.name} — $${pkg.price.toFixed(2)}/mo per seat</div>
+                </div>
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:0 0 28px 0;">
+                    <div style="font-size:12px;font-weight:800;color:#166534;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;">Updated Subscription</div>
+                    <div style="margin-bottom:10px;font-size:22px;font-weight:800;color:#15803d;">$${addNewTotal.toFixed(2)}<span style="font-size:13px;font-weight:400;color:#166534;">/month</span></div>
+                    <div style="margin-bottom:${isExtraSeat ? '10px' : '0'};font-size:13px;color:#166534;"><strong>${addNewSeats} seat${addNewSeats !== 1 ? 's' : ''}</strong> × $${pkg.price.toFixed(2)}/mo</div>
+                    ${isExtraSeat ? `<div style="font-size:13px;color:#166534;background:#dcfce7;border-radius:4px;padding:8px 12px;"><strong>+1 extra seat added</strong> — your subscription has been increased by $${pkg.price.toFixed(2)}/mo</div>` : ''}
+                </div>
+                <p style="font-size:13px;color:#888;">Added by: ${requesterEmail}</p>
             `, {
                 eyebrow: 'COMPANY WORKSPACE',
                 headline: 'New team member added.',
@@ -9914,7 +10133,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             });
             await sendSystemEmail({
                 to: requesterEmail,
-                subject: `New team member added: ${name} — Diamondback CRM`,
+                subject: `New team member added: ${name} — New Monthly Total $${addNewTotal.toFixed(2)}`,
                 html: notifyHtml
             });
         } catch (notifyErr) {
@@ -10444,8 +10663,11 @@ async function processSubscriptionWebhook(event) {
             );
 
             const leadForPortal = portalCheck.rows[0];
-            if (leadForPortal && !leadForPortal.client_password) {
-                // Generate temporary password
+            // Always (re-)generate credentials and send welcome email on a new company subscription.
+            // We used to skip this when client_password was already set, but that meant admins who
+            // already had a portal record never received the welcome email on purchase.
+            if (leadForPortal) {
+                // Generate (or regenerate) temporary password
                 const tempPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
                 const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
@@ -10454,7 +10676,7 @@ async function processSubscriptionWebhook(event) {
                     [hashedPassword, leadEmail]
                 );
 
-                console.log(`[SUB WEBHOOK] Client portal account created for ${leadEmail}`);
+                console.log(`[SUB WEBHOOK] Client portal credentials set for ${leadEmail}`);
 
                 // Send welcome email with login credentials
                 try {

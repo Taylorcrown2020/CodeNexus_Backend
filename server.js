@@ -4736,7 +4736,7 @@ app.delete('/api/admin/sessions/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// POST /api/admin/repair-company-seats — Fix purchased_seats/monthly_total for a specific or all companies
+// POST /api/admin/repair-company-seats — Fix purchased_seats/monthly_total for broken companies
 app.post('/api/admin/repair-company-seats', authenticateToken, async (req, res) => {
     try {
         const { clientPortalId } = req.body;
@@ -4784,10 +4784,8 @@ app.post('/api/admin/repair-company-seats', authenticateToken, async (req, res) 
             params = [];
         }
         const result = await pool.query(repairQuery, params);
-        console.log('[REPAIR] Company seats repaired:', result.rows);
         res.json({ success: true, repaired: result.rowCount, companies: result.rows });
     } catch (err) {
-        console.error('[REPAIR] Error:', err);
         res.status(500).json({ success: false, message: err.message });
     }
 });
@@ -9535,16 +9533,24 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
         );
 
         // Update company totals after cancellation.
-        // monthly_total = purchased_seats × price_per_user (seats already paid for, even if cancelling)
-        // total_active_seats = users still occupying a seat (active + cancelling)
+        // Step 1: decrement purchased_seats and refresh total_active_seats.
+        // Step 2: recalculate monthly_total using the NEW purchased_seats value.
+        // (Two-pass because PostgreSQL evaluates all SET expressions against pre-update row values.)
         await pool.query(`
             UPDATE client_companies
             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
-                monthly_total      = GREATEST(purchased_seats - 1, 0) * (
-                    SELECT COALESCE(price_per_user, 0) FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 LIMIT 1
-                ),
                 purchased_seats    = GREATEST(purchased_seats - 1, 0),
                 updated_at         = NOW()
+            WHERE client_portal_id = $1
+        `, [clientPortalId]);
+        await pool.query(`
+            UPDATE client_companies
+            SET monthly_total = purchased_seats * (
+                    SELECT COALESCE(CAST(price_per_user AS NUMERIC), 0)
+                    FROM company_users
+                    WHERE client_portal_id = $1 AND CAST(price_per_user AS NUMERIC) > 0
+                    LIMIT 1
+                )
             WHERE client_portal_id = $1
         `, [clientPortalId]);
         
@@ -9634,7 +9640,10 @@ app.post('/api/client/company/user/:id/reinstate', authenticateClient, async (re
             UPDATE client_companies
             SET total_active_seats = (SELECT COUNT(*) FROM company_users WHERE client_portal_id = $1 AND status IN ('active', 'cancelling')),
                 monthly_total      = purchased_seats * (
-                    SELECT COALESCE(price_per_user, 0) FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 LIMIT 1
+                    SELECT COALESCE(CAST(price_per_user AS NUMERIC), 0)
+                    FROM company_users
+                    WHERE client_portal_id = $1 AND CAST(price_per_user AS NUMERIC) > 0
+                    LIMIT 1
                 ),
                 updated_at         = NOW()
             WHERE client_portal_id = $1
@@ -9737,7 +9746,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         }
         if (!pkg) {
             const existingUserRow = await pool.query(
-                `SELECT package_key, package_name, price_per_user FROM company_users WHERE client_portal_id = $1 AND price_per_user > 0 ORDER BY added_date ASC LIMIT 1`,
+                `SELECT package_key, package_name, price_per_user FROM company_users WHERE client_portal_id = $1 AND CAST(price_per_user AS NUMERIC) > 0 ORDER BY added_date ASC LIMIT 1`,
                 [clientPortalId]
             );
             if (existingUserRow.rows[0]) {
@@ -9745,9 +9754,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
                     key: existingUserRow.rows[0].package_key,
                     name: existingUserRow.rows[0].package_name,
                     price: parseFloat(existingUserRow.rows[0].price_per_user),
-                    category: 'crm',
-                    billing: 'monthly-per-user',
-                    isCompanyPlan: true
+                    category: 'crm', billing: 'monthly-per-user', isCompanyPlan: true
                 };
             }
         }
@@ -10159,6 +10166,9 @@ async function createCompany(companyName, adminEmail, adminName) {
 
 // Add user to company
 async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser) {
+    // Always ensure pricePerUser is a proper float — the DB column is NUMERIC(10,2)
+    // and passing a string like "84.99" to what was an INTEGER column caused failures.
+    pricePerUser = parseFloat(pricePerUser) || 0;
     try {
         // Check if an existing row exists (cancelled users can be re-added)
         const existing = await pool.query(
@@ -10427,9 +10437,8 @@ async function processSubscriptionWebhook(event) {
                         SET client_portal_id = $1, is_company_admin = TRUE
                         WHERE id = $2
                     `, [clientPortalId, lead.id]);
-                    // Store how many seats were purchased so add-user can allow setup without extra charge.
-                    // Two-pass update: PostgreSQL evaluates all SET expressions against the pre-update row,
-                    // so monthly_total must be recalculated in a second query after purchased_seats is committed.
+                    // Store how many seats were purchased — two-pass update because PostgreSQL
+                    // evaluates all SET expressions against the pre-update row values.
                     const purchasedQty = parseInt(userCount) || 1;
                     await pool.query(`
                         UPDATE client_companies
@@ -19760,7 +19769,6 @@ async function startServer() {
         } catch(e) { console.warn('[STARTUP] purchased_seats migration skipped:', e.message); }
 
         // DATA REPAIR: Fix companies where purchased_seats=0 but an active subscription exists.
-        // This corrects records broken by the now-fixed webhook early-return bug.
         try {
             const repairResult = await pool.query(`
                 UPDATE client_companies cc
@@ -19797,6 +19805,17 @@ async function startServer() {
             `);
             console.log('[STARTUP] company_users.access_until + cancelled_date ensured');
         } catch(e) { console.warn('[STARTUP] company_users column migration skipped:', e.message); }
+
+        // Fix price_per_user column type: if it was created as INTEGER it rejects decimal values like 84.99.
+        // ALTER it to NUMERIC(10,2) so it stores the real price correctly.
+        try {
+            await pool.query(`
+                ALTER TABLE company_users
+                ALTER COLUMN price_per_user TYPE NUMERIC(10,2)
+                    USING CAST(price_per_user AS NUMERIC(10,2))
+            `);
+            console.log('[STARTUP] company_users.price_per_user ensured as NUMERIC(10,2)');
+        } catch(e) { console.warn('[STARTUP] company_users.price_per_user type migration skipped:', e.message); }
         
         // Migrate existing leads to temperature system
         await migrateExistingLeadsToTemperature();

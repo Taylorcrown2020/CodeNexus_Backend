@@ -3957,7 +3957,7 @@ async function loadCompany() {
     }
 }
 
-function openAddUserModal() {
+async function openAddUserModal() {
     if (!S.isAdmin) return;
 
     // Reset all fields
@@ -3965,20 +3965,35 @@ function openAddUserModal() {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
-    // Clear plan selection
     document.querySelectorAll('input[name="addUserPlan"]').forEach(r => r.checked = false);
     document.querySelectorAll('#addUserPlanSection label[id^="addUserPlan-"]').forEach(l => {
         l.style.borderColor = 'var(--border)';
         l.style.background = '';
     });
 
-    const company = S.companyData?.company;
-    const purchased = parseInt(company?.purchasedSeats) || 0;
-    const occupied  = parseInt(company?.totalActiveSeats) || 0; // active + cancelling
-    const available = Math.max(0, purchased - occupied);
-
     const banner      = document.getElementById('addUserSeatBanner');
     const planSection = document.getElementById('addUserPlanSection');
+
+    // Show a loading state while we fetch fresh seat data
+    banner.style.cssText = 'background:rgba(100,100,100,0.08);border:1px solid rgba(100,100,100,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:var(--text-2);';
+    banner.innerHTML = 'Loading seat information...';
+    if (planSection) planSection.style.display = 'none';
+    openModal('addUserModal');
+
+    // Always fetch fresh data so the seat count reflects the true current state
+    try {
+        const res  = await apiFetch('/client/company');
+        const data = await res.json();
+        if (data.success) {
+            S.companyData = data; // keep cache in sync
+        }
+    } catch(e) { /* use existing cache on network error */ }
+
+    const company   = S.companyData?.company;
+    const purchased = parseInt(company?.purchasedSeats) || 0;
+    // occupied = active + cancelling users (cancelling users still hold their seat until Stripe fires)
+    const occupied  = parseInt(company?.totalActiveSeats) || 0;
+    const available = Math.max(0, purchased - occupied);
 
     if (available > 0) {
         // Seats available — filling this seat does NOT change the monthly total; it was already paid for.
@@ -3989,11 +4004,9 @@ function openAddUserModal() {
         // All purchased seats occupied — adding 1 seat increases the monthly bill by $84.99.
         // Never show "no subscription" — if the admin reached this screen, they have a subscription.
         banner.style.cssText = 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#fbbf24;';
-        banner.innerHTML = `⚠️ All <strong>${purchased || '0'}</strong> purchased seat${(purchased !== 1) ? 's' : ''} are currently in use. Adding this user will add 1 seat to your subscription and increase your monthly total by <strong>$84.99/mo</strong>.`;
+        banner.innerHTML = `⚠️ All <strong>${purchased}</strong> purchased seat${purchased !== 1 ? 's' : ''} are currently in use. Adding this user will add 1 seat to your subscription and increase your monthly total by <strong>$84.99/mo</strong>.`;
         if (planSection) planSection.style.display = 'none';
     }
-
-    openModal('addUserModal');
 }
 
 async function addCompanyUser() {
@@ -4016,8 +4029,7 @@ async function addCompanyUser() {
     const occupied  = parseInt(company?.totalActiveSeats) || 0;
     const isOverQuota = occupied >= purchased;
 
-    // No plan selection needed — the server resolves the correct package/price from the
-    // existing company subscription. For over-quota seats the server adds 1 seat automatically.
+    // No plan selection needed — server resolves correct package/price from existing subscription.
     let selectedPlan = null;
 
     const btn = document.getElementById('addUserBtn');

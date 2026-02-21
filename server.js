@@ -8585,12 +8585,10 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
         const individualSubs = await pool.query(`
             SELECT 
                 cs.*,
-                l.name as lead_name,
-                NULL as client_portal_id,
-                FALSE as is_company_subscription
+                l.name as lead_name
             FROM crm_subscriptions cs
             LEFT JOIN leads l ON cs.lead_id = l.id
-            WHERE (cs.client_portal_id IS NULL OR cs.client_portal_id = '' OR cs.is_company_subscription = FALSE)
+            WHERE (cs.is_company_subscription IS NULL OR cs.is_company_subscription = FALSE)
             ORDER BY cs.created_at DESC
             LIMIT $1
         `, [limit]);
@@ -10504,6 +10502,11 @@ async function processSubscriptionWebhook(event) {
         const periodStart = obj.current_period_start ? new Date(obj.current_period_start * 1000) : null;
         const periodEnd   = obj.current_period_end   ? new Date(obj.current_period_end * 1000)   : null;
 
+        // Use the actual Stripe price (unit_amount is cents), fall back to hardcoded only if unavailable
+        const actualPricePerUser = (obj.items.data[0].price.unit_amount != null)
+            ? obj.items.data[0].price.unit_amount / 100
+            : pkg.price;
+
         // Extract company subscription metadata
         const metadata = obj.metadata || {};
         const userType = metadata.user_type || 'individual';
@@ -10574,8 +10577,8 @@ async function processSubscriptionWebhook(event) {
             packageKey,
             pkg.name,
             quantity,
-            pkg.price,
-            pkg.price * quantity,
+            actualPricePerUser,
+            actualPricePerUser * quantity,
             customerId,
             subId,
             priceId,
@@ -10583,7 +10586,7 @@ async function processSubscriptionWebhook(event) {
             periodEnd
         ]);
 
-        await logSubscriptionEvent(subId, leadEmail, 'subscription_created', pkg.price * quantity,
+        await logSubscriptionEvent(subId, leadEmail, 'subscription_created', actualPricePerUser * quantity,
             `${pkg.name} subscription started — ${quantity} user${quantity > 1 ? 's' : ''}`);
 
         // ── COMPANY SUBSCRIPTION HANDLING ──
@@ -11058,6 +11061,11 @@ async function processSubscriptionWebhook(event) {
         const packageKey = resolvePackageFromPrice(priceId);
         const pkg = packageKey ? servicePackages[packageKey] : null;
 
+        // Use actual Stripe unit_amount (cents → dollars), fall back to hardcoded if unavailable
+        const actualUpdatedPrice = (obj.items.data[0]?.price?.unit_amount != null)
+            ? obj.items.data[0].price.unit_amount / 100
+            : (pkg ? pkg.price : null);
+
         await pool.query(`
             UPDATE crm_subscriptions
             SET status = $1,
@@ -11065,6 +11073,7 @@ async function processSubscriptionWebhook(event) {
                 current_period_end = COALESCE($3, current_period_end),
                 user_count = $4,
                 monthly_total = $5,
+                price_per_user = COALESCE($5 / NULLIF($4, 0), price_per_user),
                 updated_at = NOW()
             WHERE stripe_subscription_id = $6
         `, [
@@ -11072,7 +11081,7 @@ async function processSubscriptionWebhook(event) {
             isCanceling,
             periodEnd,
             newQuantity,
-            pkg ? pkg.price * newQuantity : null,
+            actualUpdatedPrice != null ? actualUpdatedPrice * newQuantity : null,
             subId
         ]);
 

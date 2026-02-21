@@ -12503,9 +12503,10 @@ async function toggleTask(id) {
         showToast('Error updating task', 'error');
     }
 }
-function filterLeads(type) {
-state.currentFilter = type;
-renderSection(state.currentSection);
+function setLeadFilterFromBtn(type) {
+    state.currentFilter = type;
+    state.searchTerm = '';
+    renderSection(state.currentSection);
 }
 function handleInvoiceSearch(event) {
     state.searchQuery = event.target.value.toLowerCase();
@@ -12515,9 +12516,8 @@ function filterInvoices(status) {
     state.currentFilter = status;
     renderSection('invoices');
 }
-function handleSearch(query) {
-state.searchQuery = query.toLowerCase();
-renderSection(state.currentSection);
+function handleSearchLegacy(query) {
+    // Merged into handleSearch above - this duplicate intentionally neutered
 }
 async function toggleSetting(setting) {
     state.settings[setting] = !state.settings[setting];
@@ -14485,22 +14485,7 @@ function calculateConversionRate() {
 if (state.leads.length === 0) return 0;
 return Math.round((state.customers.length / (state.leads.length + state.customers.length)) * 100);
 }
-function filterLeads(data) {
-let filtered = data;
-if (state.currentFilter !== 'all') {
-    filtered = filtered.filter(l => l.status === state.currentFilter);
-}
-
-if (state.searchQuery) {
-    filtered = filtered.filter(l => 
-        l.name.toLowerCase().includes(state.searchQuery) ||
-        l.email.toLowerCase().includes(state.searchQuery) ||
-        (l.company && l.company.toLowerCase().includes(state.searchQuery))
-    );
-}
-
-return filtered;
-}
+// NOTE: filterLeads(data) is defined at line ~5078. Duplicate removed.
 
 // Preview Project Timeline
 function previewProjectTimeline() {
@@ -18156,51 +18141,6 @@ async function viewScoreHistory(leadId) {
         console.error('View score history error:', error);
         showToast('Error loading score history', 'error');
     }
-}
-
-// Note: renderLeadsTable and renderEmployees are defined earlier in this file.
-// The canonical implementations are above — do not re-declare them here.
-
-// Missing renderEmployees
-function renderEmployees(content) {
-    content.innerHTML = `
-        <div class="cards-grid">
-            ${state.employees.map(emp => `
-                <div class="card employee-card">
-                    <div class="card-header">
-                        <div class="employee-avatar-lg">${getInitials(emp.name)}</div>
-                        <div class="employee-details">
-                            <div class="employee-name">${emp.name}</div>
-                            <div class="employee-role">${emp.role || 'Team Member'}</div>
-                        </div>
-                    </div>
-                    <div class="employee-meta">
-                        <div class="employee-meta-item">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                            ${emp.email}
-                        </div>
-                        ${emp.phone ? `
-                            <div class="employee-meta-item">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
-                                </svg>
-                                ${emp.phone}
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn btn-sm btn-secondary" 
-                                onclick="openDetailModal('employee', ${emp.id})">View</button>
-                        <button class="btn btn-sm btn-danger" 
-                                onclick="deleteEmployee(${emp.id})">Delete</button>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
 }
 
 // Filter project timelines

@@ -3894,7 +3894,16 @@ async function loadCompany() {
         const users = data.users || [];
         // True monthly total = what the company is actually billed (from company record, includes all purchased seats)
         // This is calculated server-side as sum of all active+cancelling users' price_per_user
-        const monthlyTotal = parseFloat(company.monthlyTotal || 0);
+        const purchasedSeats = parseInt(company.purchasedSeats) || 0;
+        // If server returned $0 but we have purchased seats, calculate client-side as last resort
+        // (server auto-repairs DB, but this ensures the UI never shows $0 for a paid plan)
+        let monthlyTotal = parseFloat(company.monthlyTotal || 0);
+        if (monthlyTotal === 0 && purchasedSeats > 0) {
+            // Find per-user price from user list
+            const anyUser = (data.users || []).find(u => parseFloat(u.pricePerUser) > 0);
+            const pricePerUser = parseFloat(anyUser?.pricePerUser) || 84.99;
+            monthlyTotal = purchasedSeats * pricePerUser;
+        }
 
         el.innerHTML = `
             <!-- Company Info -->
@@ -3974,37 +3983,32 @@ async function openAddUserModal() {
     const banner      = document.getElementById('addUserSeatBanner');
     const planSection = document.getElementById('addUserPlanSection');
 
-    // Show a loading state while we fetch fresh seat data
-    banner.style.cssText = 'background:rgba(100,100,100,0.08);border:1px solid rgba(100,100,100,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:var(--text-2);';
-    banner.innerHTML = 'Loading seat information...';
+    // Show modal immediately with loading state
+    banner.style.cssText = 'background:rgba(100,100,100,0.06);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--text-2);';
+    banner.innerHTML = 'Checking seat availability...';
     if (planSection) planSection.style.display = 'none';
     openModal('addUserModal');
 
-    // Always fetch fresh data so the seat count reflects the true current state
+    // Always fetch fresh data — stale cache causes wrong seat counts
     try {
         const res  = await apiFetch('/client/company');
         const data = await res.json();
-        if (data.success) {
-            S.companyData = data; // keep cache in sync
-        }
-    } catch(e) { /* use existing cache on network error */ }
+        if (data.success) S.companyData = data;
+    } catch(e) { /* use cached data if fetch fails */ }
 
-    const company   = S.companyData?.company;
-    const purchased = parseInt(company?.purchasedSeats) || 0;
-    // occupied = active + cancelling users (cancelling users still hold their seat until Stripe fires)
-    const occupied  = parseInt(company?.totalActiveSeats) || 0;
+    const company   = S.companyData?.company || {};
+    const purchased = parseInt(company.purchasedSeats) || 0;
+    const occupied  = parseInt(company.totalActiveSeats) || 0;
     const available = Math.max(0, purchased - occupied);
+    const pricePerUser = 84.99; // workspace price
 
     if (available > 0) {
-        // Seats available — filling this seat does NOT change the monthly total; it was already paid for.
         banner.style.cssText = 'background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#4ade80;';
-        banner.innerHTML = `✅ You have <strong>${available}</strong> available seat${available !== 1 ? 's' : ''} remaining in your subscription. This user will fill one of those seats — your monthly total will not change.`;
+        banner.innerHTML = `✅ You have <strong>${available}</strong> available seat${available !== 1 ? 's' : ''} remaining. This user fills one — your monthly total will not change.`;
         if (planSection) planSection.style.display = 'none';
     } else {
-        // All purchased seats occupied — adding 1 seat increases the monthly bill by $84.99.
-        // Never show "no subscription" — if the admin reached this screen, they have a subscription.
         banner.style.cssText = 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#fbbf24;';
-        banner.innerHTML = `⚠️ All <strong>${purchased}</strong> purchased seat${purchased !== 1 ? 's' : ''} are currently in use. Adding this user will add 1 seat to your subscription and increase your monthly total by <strong>$84.99/mo</strong>.`;
+        banner.innerHTML = `⚠️ All <strong>${purchased}</strong> purchased seat${purchased !== 1 ? 's' : ''} are currently in use. Adding this user will add 1 seat ($${pricePerUser.toFixed(2)}/mo) to your subscription.`;
         if (planSection) planSection.style.display = 'none';
     }
 }
@@ -4029,8 +4033,7 @@ async function addCompanyUser() {
     const occupied  = parseInt(company?.totalActiveSeats) || 0;
     const isOverQuota = occupied >= purchased;
 
-    // No plan selection needed — server resolves correct package/price from existing subscription.
-    let selectedPlan = null;
+    let selectedPlan = null; // server resolves plan from existing subscription
 
     const btn = document.getElementById('addUserBtn');
     btn.disabled = true; btn.textContent = 'Adding...';
@@ -4108,8 +4111,8 @@ async function cancelCompanyUser(userId, name) {
     try {
         const res = await apiFetch(`/client/company/user/${userId}/cancel`, 'POST', {});
         const data = await res.json();
-        toast(data.success ? (data.message || `${name}'s subscription scheduled for cancellation. They will retain access until the end of the billing period.`) : (data.message||'Failed'), data.success?'success':'error');
-        if (data.success) loadCompany();
+        toast(data.success ? (data.message || name + ' has been removed.') : (data.message || 'Failed'), data.success ? 'success' : 'error');
+        if (data.success) { S.companyData = null; await loadCompany(); }
     } catch { toast('Error', 'error'); }
 }
 

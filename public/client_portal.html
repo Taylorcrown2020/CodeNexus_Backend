@@ -5040,23 +5040,60 @@ function openTemplateBuilder(existing) {
                     </div>
                 </div>
 
-                <!-- Schedule button -->
+                <!-- Footer / website button -->
                 <div style="border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-top:4px;margin-bottom:12px;">
-                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:10px;">Schedule Appointment Button</div>
-                    <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">A "Book a Time" button will appear in the email. When a cold lead clicks it, they automatically become a Hot lead.</div>
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:10px;">🌐 Website Footer Button</div>
+                    <div style="font-size:12px;color:var(--text-3);margin-bottom:10px;">Your website URL — used in the email footer as a clickable button. Leads who click it are automatically upgraded to Hot.</div>
                     <div class="form-row">
                         <div class="form-field" style="margin:0;">
-                            <label>Button Label</label>
-                            <input class="form-input" id="tb_schedule_label" value="${escHtml(t.schedule_btn_label||'📅 Book a Time')}" placeholder="📅 Book a Time">
+                            <label>What is your website URL?</label>
+                            <input class="form-input" id="tb_website_url" value="${escHtml(t.website_url||s.website_url||'')}" placeholder="https://yourwebsite.com">
                         </div>
                         <div class="form-field" style="margin:0;">
-                            <label>Include in Email?</label>
-                            <select class="form-select" id="tb_include_schedule">
-                                <option value="yes" ${t.include_schedule_btn !== false ? 'selected' : ''}>Yes — include schedule button</option>
-                                <option value="no" ${t.include_schedule_btn === false ? 'selected' : ''}>No — skip schedule button</option>
-                            </select>
+                            <label>Button Label</label>
+                            <input class="form-input" id="tb_website_btn_label" value="${escHtml(t.website_btn_label||'Visit Our Website')}" placeholder="Visit Our Website">
                         </div>
                     </div>
+                </div>
+
+                <!-- Conversion forms -->
+                <div style="border:1px solid var(--border);border-radius:var(--r-md);padding:16px;margin-top:4px;margin-bottom:12px;">
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:6px;">📋 Conversion Form Buttons</div>
+                    <div style="font-size:12px;color:var(--text-3);margin-bottom:14px;">Add a Contact Form, Scheduling Form, or both to your email. When a lead submits either form, they're automatically moved to the <strong>Hot Leads queue</strong> and you get a notification. Each form is automatically created and hosted — no setup needed.</div>
+                    
+                    <div class="form-row" style="margin-bottom:12px;">
+                        <div class="form-field" style="margin:0;">
+                            <label>Include a Contact Form?</label>
+                            <select class="form-select" id="tb_include_contact_form" onchange="toggleFormField('contact')">
+                                <option value="no" ${!t.include_contact_form ? 'selected' : ''}>No — skip contact form</option>
+                                <option value="yes" ${t.include_contact_form ? 'selected' : ''}>Yes — add a Contact Form button</option>
+                            </select>
+                        </div>
+                        <div class="form-field" style="margin:0;" id="tb_contact_form_label_wrap" style="display:${t.include_contact_form?'block':'none'}">
+                            <label>Contact Form Button Label</label>
+                            <input class="form-input" id="tb_contact_form_btn_label" value="${escHtml(t.contact_form_btn_label||'Contact Us')}" placeholder="Contact Us">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-field" style="margin:0;">
+                            <label>Include a Scheduling Form?</label>
+                            <select class="form-select" id="tb_include_scheduling_form" onchange="toggleFormField('scheduling')">
+                                <option value="no" ${!t.include_scheduling_form && t.include_schedule_btn === false ? 'selected' : ''}>No — skip scheduling form</option>
+                                <option value="yes" ${(t.include_scheduling_form || t.include_schedule_btn !== false) ? 'selected' : ''}>Yes — add a Scheduling Form button</option>
+                            </select>
+                        </div>
+                        <div class="form-field" style="margin:0;" id="tb_scheduling_form_label_wrap">
+                            <label>Scheduling Form Button Label</label>
+                            <input class="form-input" id="tb_scheduling_form_btn_label" value="${escHtml(t.scheduling_form_btn_label||t.schedule_btn_label||'📅 Book a Time')}" placeholder="📅 Book a Time">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule button (legacy — hidden, kept for compatibility) -->
+                <div style="display:none;">
+                    <input type="hidden" id="tb_schedule_label" value="${escHtml(t.schedule_btn_label||'📅 Book a Time')}">
+                    <input type="hidden" id="tb_include_schedule" value="${t.include_schedule_btn !== false ? 'yes' : 'no'}">
                 </div>
 
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px;">
@@ -5095,6 +5132,12 @@ function applyTopicTemplate() {
     if (tmpl.cta)      document.getElementById('tb_cta').value      = tmpl.cta;
 }
 
+function toggleFormField(type) {
+    const sel = document.getElementById(`tb_include_${type}_form`);
+    const wrap = document.getElementById(`tb_${type}_form_label_wrap`);
+    if (wrap) wrap.style.display = sel?.value === 'yes' ? 'block' : 'none';
+}
+
 async function saveTemplate(existingId) {
     const name     = document.getElementById('tb_name').value.trim();
     const subject  = document.getElementById('tb_subject').value.trim();
@@ -5109,20 +5152,33 @@ async function saveTemplate(existingId) {
         company_phone:   document.getElementById('tb_phone').value.trim(),
         company_email:   document.getElementById('tb_email').value.trim(),
         company_address: document.getElementById('tb_address').value.trim(),
-        website_url:     document.getElementById('tb_website').value.trim(),
+        website_url:     document.getElementById('tb_website').value.trim() || document.getElementById('tb_website_url')?.value.trim(),
         accent_color:    document.getElementById('tb_color_hex').value.trim(),
     };
     apiFetch('/client/email-settings', 'PUT', settingsPayload).catch(()=>{});
     Object.assign(MK.settings, settingsPayload);
 
+    const includeContactForm  = document.getElementById('tb_include_contact_form')?.value === 'yes';
+    const includeSchedulingForm = document.getElementById('tb_include_scheduling_form')?.value === 'yes';
+    const websiteUrl = document.getElementById('tb_website_url')?.value.trim() || settingsPayload.website_url || '';
+
     const payload = {
         name, subject, body_html,
-        topic:                document.getElementById('tb_topic').value,
-        eyebrow:              document.getElementById('tb_eyebrow').value.trim(),
-        headline:             document.getElementById('tb_headline').value.trim(),
-        cta_label:            document.getElementById('tb_cta').value.trim(),
-        schedule_btn_label:   document.getElementById('tb_schedule_label')?.value.trim() || '📅 Book a Time',
-        include_schedule_btn: document.getElementById('tb_include_schedule')?.value !== 'no',
+        topic:                    document.getElementById('tb_topic').value,
+        eyebrow:                  document.getElementById('tb_eyebrow').value.trim(),
+        headline:                 document.getElementById('tb_headline').value.trim(),
+        cta_label:                document.getElementById('tb_cta').value.trim(),
+        // New fields
+        website_url:              websiteUrl,
+        include_website_btn:      !!websiteUrl,
+        website_btn_label:        document.getElementById('tb_website_btn_label')?.value.trim() || 'Visit Our Website',
+        include_contact_form:     includeContactForm,
+        contact_form_btn_label:   document.getElementById('tb_contact_form_btn_label')?.value.trim() || 'Contact Us',
+        include_scheduling_form:  includeSchedulingForm,
+        scheduling_form_btn_label: document.getElementById('tb_scheduling_form_btn_label')?.value.trim() || '📅 Book a Time',
+        // Legacy compat
+        schedule_btn_label:       document.getElementById('tb_scheduling_form_btn_label')?.value.trim() || '📅 Book a Time',
+        include_schedule_btn:     includeSchedulingForm,
         is_automated: document.getElementById('tb_automated').checked,
     };
 

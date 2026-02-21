@@ -3244,7 +3244,8 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
-            WHERE (l.source IS NULL OR l.source != 'company-user')
+            WHERE (l.source IS NULL OR l.source NOT IN ('company-user','crm-portal'))
+              AND (l.client_portal_id IS NULL OR l.is_company_admin = TRUE)
             ORDER BY l.created_at DESC
         `);
 
@@ -12356,6 +12357,8 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
+            AND (l.source IS NULL OR l.source NOT IN ('company-user','crm-portal'))
+            AND (l.client_portal_id IS NULL OR l.is_company_admin = TRUE)
             AND NOT EXISTS (
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
@@ -20341,6 +20344,18 @@ app.post('/api/export/closings', authenticateToken, async (req, res) => {
                 subject VARCHAR(500) NOT NULL,
                 is_automated BOOLEAN DEFAULT FALSE,
                 created_by_user_email VARCHAR(255),
+                -- Footer / CTA enhancements
+                website_url VARCHAR(500),
+                include_website_btn BOOLEAN DEFAULT TRUE,
+                website_btn_label VARCHAR(100) DEFAULT 'Visit Our Website',
+                -- Conversion forms
+                include_contact_form BOOLEAN DEFAULT FALSE,
+                contact_form_btn_label VARCHAR(100) DEFAULT 'Contact Us',
+                include_scheduling_form BOOLEAN DEFAULT FALSE,
+                scheduling_form_btn_label VARCHAR(100) DEFAULT 'Book a Time',
+                -- Schedule appointment button (legacy)
+                schedule_btn_label VARCHAR(100) DEFAULT '📅 Book a Time',
+                include_schedule_btn BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
             );
@@ -20432,17 +20447,46 @@ async function getClientPortalId(userId) {
 }
 
 // ── Helper: build per-client email HTML (mirrors admin buildEmailHTML) ──
-function buildClientEmailHTML(bodyHTML, opts = {}, settings = {}) {
+function buildClientEmailHTML(bodyHTML, opts = {}, settings = {}, tmpl = {}) {
     const accentColor  = opts.accentColor  || settings.accent_color  || '#FF6B35';
     const eyebrow      = opts.eyebrow      || '';
     const headline     = opts.headline     || '';
     const ctaLabel     = opts.ctaLabel     || '';
-    const ctaUrl       = opts.ctaUrl       || settings.website_url   || '';
+    const ctaUrl       = opts.ctaUrl       || '';
+    // Template-specific website URL overrides settings
+    const websiteUrl   = tmpl.website_url  || settings.website_url   || '';
     const companyName  = settings.company_name  || 'Our Company';
     const companyPhone = settings.company_phone || '';
     const companyEmail = settings.company_email || '';
     const companyAddr  = settings.company_address || '';
     const unsubUrl     = opts.unsubscribeUrl || '';
+
+    // Build form buttons (contact form, scheduling form)
+    const portalId     = opts.portalId || '';
+    const templateId   = opts.templateId || '';
+    let formButtons = '';
+    if (tmpl.include_contact_form && portalId && templateId) {
+        const contactFormUrl = `${process.env.BASE_URL || 'https://diamondbackcoding.com'}/api/form/${portalId}/contact/${templateId}`;
+        formButtons += `
+<tr><td style="padding:8px 40px 0;" class="section-pad">
+  <table cellpadding="0" cellspacing="0" border="0">
+  <tr><td style="background:#2D3142;border-radius:3px;">
+    <a href="${contactFormUrl}" style="display:block;padding:14px 32px;font-size:14px;font-weight:800;color:#FFFFFF;text-decoration:none;letter-spacing:0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${tmpl.contact_form_btn_label || 'Contact Us'}</a>
+  </td></tr>
+  </table>
+</td></tr>`;
+    }
+    if ((tmpl.include_scheduling_form || tmpl.include_schedule_btn !== false) && portalId && templateId) {
+        const scheduleFormUrl = `${process.env.BASE_URL || 'https://diamondbackcoding.com'}/api/form/${portalId}/scheduling/${templateId}`;
+        formButtons += `
+<tr><td style="padding:8px 40px 0;" class="section-pad">
+  <table cellpadding="0" cellspacing="0" border="0">
+  <tr><td style="background:${accentColor};border-radius:3px;">
+    <a href="${scheduleFormUrl}" style="display:block;padding:14px 32px;font-size:14px;font-weight:800;color:#FFFFFF;text-decoration:none;letter-spacing:0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${tmpl.scheduling_form_btn_label || tmpl.schedule_btn_label || '📅 Book a Time'}</a>
+  </td></tr>
+  </table>
+</td></tr>`;
+    }
 
     return `<!DOCTYPE html>
 <html>
@@ -20500,6 +20544,8 @@ ${ctaLabel && ctaUrl ? `
   </table>
 </td></tr>` : ''}
 
+${formButtons}
+
 <!-- FOOTER -->
 <tr><td style="background:#2D3142;padding:32px 40px;border-radius:0 0 3px 3px;" class="section-pad">
   <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -20512,8 +20558,8 @@ ${ctaLabel && ctaUrl ? `
         ${companyEmail ? `<br>${companyEmail}` : ''}
       </p>
     </td>
-    ${settings.website_url ? `<td align="right" valign="top">
-      <p style="margin:0;"><a href="${settings.website_url}" style="color:#B8B8B8;font-size:11px;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Website</a></p>
+    ${websiteUrl ? `<td align="right" valign="top">
+      <p style="margin:0;"><a href="${websiteUrl}" style="color:#B8B8B8;font-size:11px;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${tmpl.website_btn_label || 'Website'}</a></p>
     </td>` : ''}
   </tr>
   ${unsubUrl ? `<tr><td colspan="2" style="padding-top:22px;border-top:1px solid #454B5F;">
@@ -20538,9 +20584,20 @@ ${ctaLabel && ctaUrl ? `
 async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, assignedToUserEmail, templateId, chainId, subject, html, emailType = 'marketing' }) {
     const settings = await getClientEmailSettings(portalId);
 
-    // Determine FROM address: use the sending user's own email first,
-    // then fall back to the portal's configured sender, then company email.
-    const fromEmail = senderUserEmail || settings?.sender_email || settings?.company_email || null;
+    // IMPORTANT: All emails from the portal must come from the ADMIN's email address,
+    // not the individual team member who triggered the send. This ensures consistent
+    // branding and prevents team members from having emails sent on their personal accounts.
+    // Priority: portal configured sender > admin email from client_companies > senderUserEmail fallback
+    let adminEmail = null;
+    try {
+        const adminRow = await pool.query(
+            `SELECT admin_email FROM client_companies WHERE client_portal_id = $1 LIMIT 1`,
+            [portalId]
+        );
+        adminEmail = adminRow.rows[0]?.admin_email || null;
+    } catch(e) { /* non-critical */ }
+
+    const fromEmail = settings?.sender_email || adminEmail || settings?.company_email || senderUserEmail || null;
     const fromName  = settings?.sender_name || settings?.company_name || fromEmail || 'CRM';
 
     // Log the email first
@@ -20834,6 +20891,243 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────
+// MIGRATION HELPER: add new template columns if they don't exist
+// ─────────────────────────────────────────────────────────────────
+let _templateColumnsMigrated = false;
+async function _migrateTemplateColumns() {
+    if (_templateColumnsMigrated) return;
+    try {
+        await pool.query(`
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_templates' AND column_name='website_url') THEN
+                    ALTER TABLE client_email_templates ADD COLUMN website_url VARCHAR(500);
+                    ALTER TABLE client_email_templates ADD COLUMN include_website_btn BOOLEAN DEFAULT TRUE;
+                    ALTER TABLE client_email_templates ADD COLUMN website_btn_label VARCHAR(100) DEFAULT 'Visit Our Website';
+                    ALTER TABLE client_email_templates ADD COLUMN include_contact_form BOOLEAN DEFAULT FALSE;
+                    ALTER TABLE client_email_templates ADD COLUMN contact_form_btn_label VARCHAR(100) DEFAULT 'Contact Us';
+                    ALTER TABLE client_email_templates ADD COLUMN include_scheduling_form BOOLEAN DEFAULT FALSE;
+                    ALTER TABLE client_email_templates ADD COLUMN scheduling_form_btn_label VARCHAR(100) DEFAULT 'Book a Time';
+                    ALTER TABLE client_email_templates ADD COLUMN schedule_btn_label VARCHAR(100) DEFAULT '📅 Book a Time';
+                    ALTER TABLE client_email_templates ADD COLUMN include_schedule_btn BOOLEAN DEFAULT TRUE;
+                END IF;
+            END $$;
+        `);
+        // Also ensure form_submissions table exists for hot-lead conversion tracking
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS client_form_submissions (
+                id SERIAL PRIMARY KEY,
+                client_portal_id VARCHAR(20) NOT NULL,
+                template_id INTEGER,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE SET NULL,
+                form_type VARCHAR(50) NOT NULL DEFAULT 'contact', -- 'contact' or 'scheduling'
+                submitter_name VARCHAR(255),
+                submitter_email VARCHAR(255),
+                submitter_phone VARCHAR(50),
+                submitter_message TEXT,
+                scheduled_at TIMESTAMP,
+                submitted_at TIMESTAMP DEFAULT NOW(),
+                converted_to_hot BOOLEAN DEFAULT FALSE
+            );
+            CREATE INDEX IF NOT EXISTS idx_cfs_portal ON client_form_submissions(client_portal_id);
+            CREATE INDEX IF NOT EXISTS idx_cfs_email ON client_form_submissions(submitter_email);
+        `);
+        _templateColumnsMigrated = true;
+    } catch(e) { console.error('[MIGRATE TEMPLATE COLS]', e.message); }
+}
+// Run migration on startup
+_migrateTemplateColumns();
+
+// ─────────────────────────────────────────────────────────────────
+// PUBLIC FORM PAGES — served to leads clicking form buttons in emails
+// ─────────────────────────────────────────────────────────────────
+
+// GET /api/form/:portalId/:type/:templateId — serve hosted contact/scheduling form
+app.get('/api/form/:portalId/:type/:templateId', async (req, res) => {
+    const { portalId, type, templateId } = req.params;
+    const formType = type === 'scheduling' ? 'scheduling' : 'contact';
+
+    // Get portal settings for branding
+    const settings = await getClientEmailSettings(portalId).catch(() => null);
+    const companyName = settings?.company_name || 'Us';
+    const accentColor = settings?.accent_color || '#FF6B35';
+    const companyEmail = settings?.company_email || '';
+    const companyPhone = settings?.company_phone || '';
+
+    // Get template to get button label
+    let tmpl = null;
+    try {
+        const r = await pool.query('SELECT * FROM client_email_templates WHERE id=$1 AND client_portal_id=$2', [templateId, portalId]);
+        tmpl = r.rows[0];
+    } catch(e) {}
+
+    const title = formType === 'scheduling' ? `Schedule a Time with ${companyName}` : `Contact ${companyName}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:#F7F9FB;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:40px;max-width:520px;width:100%}
+h1{font-size:26px;font-weight:800;color:#2D3142;margin-bottom:8px}
+.sub{font-size:14px;color:#888;margin-bottom:28px}
+.field{margin-bottom:16px}
+label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#555;margin-bottom:6px}
+input,textarea,select{width:100%;padding:12px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;color:#2D3142;outline:none;transition:border 0.2s}
+input:focus,textarea:focus,select:focus{border-color:${accentColor}}
+textarea{min-height:100px;resize:vertical}
+.btn{width:100%;padding:14px;background:${accentColor};color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:800;cursor:pointer;letter-spacing:0.3px;margin-top:8px}
+.btn:hover{opacity:0.9}
+.success{display:none;text-align:center;padding:32px}
+.success h2{font-size:22px;font-weight:800;color:#2D3142;margin-bottom:8px}
+.success p{color:#666;font-size:14px}
+.checkmark{font-size:48px;margin-bottom:16px}
+.branding{margin-top:24px;text-align:center;font-size:11px;color:#aaa}
+</style>
+</head>
+<body>
+<div class="card">
+    <div id="formView">
+        <h1>${title}</h1>
+        <p class="sub">${formType === 'scheduling' ? 'Pick a time that works for you and we\'ll confirm shortly.' : 'Fill out the form below and we\'ll be in touch soon.'}</p>
+        <form id="mainForm" onsubmit="handleSubmit(event)">
+            <div class="field"><label>Your Name *</label><input type="text" name="name" required placeholder="Jane Smith"></div>
+            <div class="field"><label>Email Address *</label><input type="email" name="email" required placeholder="jane@example.com"></div>
+            <div class="field"><label>Phone Number</label><input type="tel" name="phone" placeholder="(555) 000-0000"></div>
+            ${formType === 'scheduling' ? `
+            <div class="field"><label>Preferred Date & Time *</label><input type="datetime-local" name="scheduled_at" required></div>
+            <div class="field"><label>What would you like to discuss?</label><textarea name="message" placeholder="Brief description of what you'd like to cover..."></textarea></div>
+            ` : `
+            <div class="field"><label>How can we help? *</label><textarea name="message" required placeholder="Tell us about your project, question, or request..."></textarea></div>
+            `}
+            <button type="submit" class="btn">Submit</button>
+        </form>
+        ${companyEmail || companyPhone ? `<div class="branding">Questions? ${companyPhone ? `<a href="tel:${companyPhone}" style="color:${accentColor}">${companyPhone}</a>` : ''} ${companyEmail ? `<a href="mailto:${companyEmail}" style="color:${accentColor}">${companyEmail}</a>` : ''}</div>` : ''}
+    </div>
+    <div class="success" id="successView">
+        <div class="checkmark">✅</div>
+        <h2>You're all set!</h2>
+        <p>${formType === 'scheduling' ? `We've received your request. We'll confirm your appointment shortly.` : `We've received your message and will be in touch soon.`}</p>
+    </div>
+</div>
+<script>
+async function handleSubmit(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = Object.fromEntries(fd.entries());
+    const btn = e.target.querySelector('.btn');
+    btn.disabled = true; btn.textContent = 'Submitting...';
+    try {
+        const r = await fetch('/api/form/${portalId}/${type}/${templateId}/submit', {
+            method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+        });
+        const res = await r.json();
+        if (res.success) {
+            document.getElementById('formView').style.display = 'none';
+            document.getElementById('successView').style.display = 'block';
+        } else {
+            btn.disabled = false; btn.textContent = 'Submit';
+            alert(res.message || 'Error submitting form. Please try again.');
+        }
+    } catch(err) {
+        btn.disabled = false; btn.textContent = 'Submit';
+        alert('Network error. Please try again.');
+    }
+}
+</script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+});
+
+// POST /api/form/:portalId/:type/:templateId/submit — process form submission
+app.post('/api/form/:portalId/:type/:templateId/submit', async (req, res) => {
+    try {
+        const { portalId, type, templateId } = req.params;
+        const { name, email, phone, message, scheduled_at } = req.body;
+        const formType = type === 'scheduling' ? 'scheduling' : 'contact';
+
+        if (!name || !email) return res.status(400).json({ success: false, message: 'Name and email are required.' });
+
+        // Find or create lead in this portal
+        let leadId = null;
+        const existing = await pool.query(
+            `SELECT id, lead_temperature FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2 LIMIT 1`,
+            [email, portalId]
+        );
+
+        if (existing.rows.length > 0) {
+            leadId = existing.rows[0].id;
+            // Upgrade to hot if not already
+            if (existing.rows[0].lead_temperature !== 'hot') {
+                await pool.query(
+                    `UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at,NOW()),
+                     last_contact_date=NULL, follow_up_count=0, updated_at=NOW() WHERE id=$1`,
+                    [leadId]
+                );
+            }
+        } else {
+            // Create a new lead as hot (they filled out the form!)
+            const newLead = await pool.query(`
+                INSERT INTO leads (name, email, phone, status, lead_temperature, became_hot_at, source, client_portal_id, created_at, updated_at)
+                VALUES ($1, $2, $3, 'new', 'hot', NOW(), 'contact-form', $4, NOW(), NOW()) RETURNING id
+            `, [name, email, phone||null, portalId]);
+            leadId = newLead.rows[0].id;
+        }
+
+        // Record the submission
+        await pool.query(`
+            INSERT INTO client_form_submissions
+                (client_portal_id, template_id, lead_id, form_type, submitter_name, submitter_email, submitter_phone, submitter_message, scheduled_at, converted_to_hot)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE)
+        `, [portalId, templateId||null, leadId, formType, name, email, phone||null, message||null,
+            scheduled_at ? new Date(scheduled_at) : null]);
+
+        // Notify portal admin via Brevo
+        const settings = await getClientEmailSettings(portalId).catch(() => null);
+        if (settings?.brevo_api_key || settings?.sender_email) {
+            try {
+                // Get admin email
+                const adminRow = await pool.query(
+                    `SELECT admin_email FROM client_companies WHERE client_portal_id=$1 LIMIT 1`, [portalId]
+                );
+                const adminEmail = settings?.sender_email || adminRow.rows[0]?.admin_email;
+                const companyName = settings?.company_name || 'Your Company';
+
+                if (adminEmail) {
+                    const notifyHtml = `<p>A new <strong>${formType}</strong> form submission has arrived!</p>
+<ul>
+<li><strong>Name:</strong> ${name}</li>
+<li><strong>Email:</strong> ${email}</li>
+${phone ? `<li><strong>Phone:</strong> ${phone}</li>` : ''}
+${scheduled_at ? `<li><strong>Requested Time:</strong> ${new Date(scheduled_at).toLocaleString()}</li>` : ''}
+${message ? `<li><strong>Message:</strong> ${message}</li>` : ''}
+</ul>
+<p>This lead has been automatically marked as <strong>🔥 Hot</strong> in your CRM.</p>`;
+                    await sendViaBrevo(
+                        settings.brevo_api_key,
+                        settings.sender_email || adminEmail,
+                        companyName,
+                        adminEmail,
+                        `[New ${formType === 'scheduling' ? 'Scheduling' : 'Contact'} Request] ${name} — ${email}`,
+                        notifyHtml
+                    ).catch(e => console.error('[FORM NOTIFY]', e.message));
+                }
+            } catch(e) { console.error('[FORM NOTIFY]', e.message); }
+        }
+
+        res.json({ success: true, leadId, message: 'Form submitted successfully!' });
+    } catch(e) {
+        console.error('[FORM SUBMIT]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────
 // EMAIL TEMPLATES
 // ─────────────────────────────────────────────────────────────────
 app.get('/api/client/email-templates', authenticateClient, async (req, res) => {
@@ -20849,12 +21143,29 @@ app.post('/api/client/email-templates', authenticateClient, async (req, res) => 
     try {
         const portalId = await getClientPortalId(req.user.id);
         if (!portalId) return res.status(403).json({ success: false, message: 'Company required' });
-        const { name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated } = req.body;
+        const {
+            name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated,
+            website_url, include_website_btn, website_btn_label,
+            include_contact_form, contact_form_btn_label,
+            include_scheduling_form, scheduling_form_btn_label,
+            schedule_btn_label, include_schedule_btn
+        } = req.body;
         if (!name || !subject || !body_html) return res.status(400).json({ success: false, message: 'name, subject and body_html required' });
+        // Ensure new columns exist
+        await _migrateTemplateColumns();
         const r = await pool.query(`
-            INSERT INTO client_email_templates (client_portal_id, name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated, created_by_user_email)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
-        `, [portalId, name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject, is_automated||false, req.user.email]);
+            INSERT INTO client_email_templates
+                (client_portal_id, name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated, created_by_user_email,
+                 website_url, include_website_btn, website_btn_label,
+                 include_contact_form, contact_form_btn_label,
+                 include_scheduling_form, scheduling_form_btn_label,
+                 schedule_btn_label, include_schedule_btn)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *
+        `, [portalId, name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject, is_automated||false, req.user.email,
+            website_url||null, include_website_btn !== false, website_btn_label||'Visit Our Website',
+            include_contact_form||false, contact_form_btn_label||'Contact Us',
+            include_scheduling_form||false, scheduling_form_btn_label||'Book a Time',
+            schedule_btn_label||'📅 Book a Time', include_schedule_btn !== false]);
         res.json({ success: true, template: r.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -20862,11 +21173,29 @@ app.post('/api/client/email-templates', authenticateClient, async (req, res) => 
 app.put('/api/client/email-templates/:id', authenticateClient, async (req, res) => {
     try {
         const portalId = await getClientPortalId(req.user.id);
-        const { name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated } = req.body;
+        const {
+            name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated,
+            website_url, include_website_btn, website_btn_label,
+            include_contact_form, contact_form_btn_label,
+            include_scheduling_form, scheduling_form_btn_label,
+            schedule_btn_label, include_schedule_btn
+        } = req.body;
+        await _migrateTemplateColumns();
         const r = await pool.query(`
-            UPDATE client_email_templates SET name=$1,topic=$2,eyebrow=$3,headline=$4,body_html=$5,cta_label=$6,subject=$7,is_automated=$8,updated_at=NOW()
-            WHERE id=$9 AND client_portal_id=$10 RETURNING *
-        `, [name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject, is_automated||false, req.params.id, portalId]);
+            UPDATE client_email_templates SET
+                name=$1, topic=$2, eyebrow=$3, headline=$4, body_html=$5, cta_label=$6, subject=$7, is_automated=$8,
+                website_url=$9, include_website_btn=$10, website_btn_label=$11,
+                include_contact_form=$12, contact_form_btn_label=$13,
+                include_scheduling_form=$14, scheduling_form_btn_label=$15,
+                schedule_btn_label=$16, include_schedule_btn=$17,
+                updated_at=NOW()
+            WHERE id=$18 AND client_portal_id=$19 RETURNING *
+        `, [name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject, is_automated||false,
+            website_url||null, include_website_btn !== false, website_btn_label||'Visit Our Website',
+            include_contact_form||false, contact_form_btn_label||'Contact Us',
+            include_scheduling_form||false, scheduling_form_btn_label||'Book a Time',
+            schedule_btn_label||'📅 Book a Time', include_schedule_btn !== false,
+            req.params.id, portalId]);
         if (!r.rows[0]) return res.status(404).json({ success: false, message: 'Template not found' });
         res.json({ success: true, template: r.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
@@ -20955,8 +21284,8 @@ app.post('/api/client/email/send', authenticateClient, async (req, res) => {
                 const unsubUrl = `${BASE_URL}/api/client-unsub/${portalId}?email=${encodeURIComponent(lead.email)}`;
                 const html = buildClientEmailHTML(t.body_html, {
                     eyebrow: t.eyebrow, headline: t.headline, ctaLabel: t.cta_label, ctaUrl: settings?.website_url,
-                    unsubscribeUrl: unsubUrl
-                }, settings || {});
+                    unsubscribeUrl: unsubUrl, portalId, templateId: template_id
+                }, settings || {}, t);
 
                 const result = await sendClientEmail({
                     portalId,
@@ -21047,8 +21376,9 @@ async function processClientEmailChains() {
                 const unsubUrl = `${BASE_URL}/api/client-unsub/${item.client_portal_id}?email=${encodeURIComponent(item.lead_email)}`;
                 const html = buildClientEmailHTML(t.body_html, {
                     eyebrow: t.eyebrow, headline: t.headline, ctaLabel: t.cta_label,
-                    ctaUrl: settings?.website_url, unsubscribeUrl: unsubUrl
-                }, settings || {});
+                    ctaUrl: settings?.website_url, unsubscribeUrl: unsubUrl,
+                    portalId: item.client_portal_id, templateId: step.template_id
+                }, settings || {}, t);
                 await sendClientEmail({ portalId: item.client_portal_id, leadId: item.lead_id, leadEmail: item.lead_email, chainId: item.chain_id, templateId: step.template_id, subject: t.subject, html, emailType: 'marketing' });
                 await pool.query('UPDATE leads SET last_contact_date=NOW(), follow_up_count=COALESCE(follow_up_count,0)+1, updated_at=NOW() WHERE id=$1', [item.lead_id]);
 

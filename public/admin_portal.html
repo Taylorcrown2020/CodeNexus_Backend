@@ -18158,63 +18158,8 @@ async function viewScoreHistory(leadId) {
     }
 }
 
-function renderLeadsTable(content, type) {
-    const data = type === 'customers' ? state.customers : state.leads;
-    const filtered = filterLeads(data);
-    
-    content.innerHTML = `
-        <div class="controls-bar">
-            <!-- search and filters -->
-        </div>
-        <div class="table-container">
-            ${renderLeadsTableHTML(filtered)}
-        </div>
-    `;
-}
-
-function renderEmployees(content) {
-    content.innerHTML = `
-        <div class="cards-grid">
-            ${state.employees.map(emp => `
-                <div class="employee-card card">
-                    <!-- employee card HTML -->
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-// Missing renderLeadsTable
-function renderLeadsTable(content, type) {
-    const data = type === 'customers' ? state.customers : state.leads;
-    const filtered = filterLeads(data);
-    
-    content.innerHTML = `
-        <div class="controls-bar">
-            <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="m21 21-4.35-4.35"/>
-                </svg>
-                <input type="text" class="search-input" placeholder="Search..." 
-                       onkeyup="handleSearch(this.value)">
-            </div>
-            <div class="filter-group">
-                <button class="filter-btn ${state.currentFilter === 'all' ? 'active' : ''}" 
-                        onclick="filterLeads('all')">All</button>
-                <button class="filter-btn ${state.currentFilter === 'new' ? 'active' : ''}" 
-                        onclick="filterLeads('new')">New</button>
-                <button class="filter-btn ${state.currentFilter === 'pending' ? 'active' : ''}" 
-                        onclick="filterLeads('pending')">Pending</button>
-                <button class="filter-btn ${state.currentFilter === 'contacted' ? 'active' : ''}" 
-                        onclick="filterLeads('contacted')">Contacted</button>
-            </div>
-        </div>
-        <div class="table-container">
-            ${renderLeadsTableHTML(filtered)}
-        </div>
-    `;
-}
+// Note: renderLeadsTable and renderEmployees are defined earlier in this file.
+// The canonical implementations are above — do not re-declare them here.
 
 // Missing renderEmployees
 function renderEmployees(content) {

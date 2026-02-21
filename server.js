@@ -8590,7 +8590,7 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
                 FALSE as is_company_subscription
             FROM crm_subscriptions cs
             LEFT JOIN leads l ON cs.lead_id = l.id
-            WHERE (cs.client_portal_id IS NULL OR cs.client_portal_id = '')
+            WHERE (cs.client_portal_id IS NULL OR cs.client_portal_id = '' OR cs.is_company_subscription = FALSE)
             ORDER BY cs.created_at DESC
             LIMIT $1
         `, [limit]);

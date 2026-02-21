@@ -7496,7 +7496,7 @@ async function renderSubscriptions(content) {
             </div>
             <div class="stat-card" style="padding:18px 20px;">
                 <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Active Seats</div>
-                <div style="font-size:26px;font-weight:800;color:#f59e0b;">${companies.reduce((t,c) => t + (c.users||[]).filter(u => u.user_email && u.status === 'active').length, 0)}</div>
+                <div style="font-size:26px;font-weight:800;color:#f59e0b;">${companies.reduce((t,c) => t + (c.users||[]).filter(u => u.user_email && u.status?.toLowerCase() === 'active').length, 0)}</div>
                 <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Filled by active users</div>
             </div>
         </div>
@@ -7510,7 +7510,7 @@ async function renderSubscriptions(content) {
             <div class="card-body" style="padding:0;">
                 ${companies.map(company => {
                     const purchasedSeats = parseInt(company.purchased_seats) || 0;
-                    const activeSeats = (company.users || []).filter(u => u.user_email && u.status === 'active').length;
+                    const activeSeats = (company.users || []).filter(u => u.user_email && u.status?.toLowerCase() === 'active').length;
                     const cancellingSeats = (company.users || []).filter(u => u.user_email && u.status === 'cancelling').length;
                     const emptySeats = Math.max(0, purchasedSeats - activeSeats);
                     const pricePerSeat = parseFloat(company.price_per_seat || 84.99);

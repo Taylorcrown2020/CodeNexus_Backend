@@ -7490,14 +7490,14 @@ async function renderSubscriptions(content) {
                 <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Total subscriptions</div>
             </div>
             <div class="stat-card" style="padding:18px 20px;">
-                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Included Seats</div>
-                <div style="font-size:26px;font-weight:800;color:#818cf8;">${companies.reduce((t,c) => t + (c.users||[]).filter(u => u.mode === 'setup' || !parseFloat(u.price_per_user)).length, 0)}</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Set up (no extra charge)</div>
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Total Seats</div>
+                <div style="font-size:26px;font-weight:800;color:#818cf8;">${companies.reduce((t,c) => t + (parseInt(c.purchased_seats) || 0), 0)}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Purchased across all companies</div>
             </div>
             <div class="stat-card" style="padding:18px 20px;">
-                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Paid Seats</div>
-                <div style="font-size:26px;font-weight:800;color:#f59e0b;">${companies.reduce((t,c) => t + (c.users||[]).filter(u => u.mode !== 'setup' && parseFloat(u.price_per_user) > 0).length, 0)}</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Additional billed seats</div>
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);margin-bottom:6px;">Active Seats</div>
+                <div style="font-size:26px;font-weight:800;color:#f59e0b;">${companies.reduce((t,c) => t + (c.users||[]).filter(u => u.user_email && u.status === 'active').length, 0)}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Filled by active users</div>
             </div>
         </div>
 
@@ -7509,8 +7509,12 @@ async function renderSubscriptions(content) {
             </div>
             <div class="card-body" style="padding:0;">
                 ${companies.map(company => {
-                    const totalSeats = company.users ? company.users.filter(u => u.user_email).length : 0;
-                    const activeSeats = company.users ? company.users.filter(u => u.status === 'active').length : 0;
+                    const purchasedSeats = parseInt(company.purchased_seats) || 0;
+                    const activeSeats = (company.users || []).filter(u => u.user_email && u.status === 'active').length;
+                    const cancellingSeats = (company.users || []).filter(u => u.user_email && u.status === 'cancelling').length;
+                    const emptySeats = Math.max(0, purchasedSeats - activeSeats);
+                    const pricePerSeat = parseFloat(company.price_per_seat || 84.99);
+                    const monthlyTotal = purchasedSeats * pricePerSeat;
                     
                     return `
                         <div style="border-bottom:1px solid var(--border-color);padding:20px 24px;">
@@ -7532,9 +7536,13 @@ async function renderSubscriptions(content) {
                                     </div>
                                 </div>
                                 <div style="text-align:right;">
-                                    <div style="font-size:24px;font-weight:800;color:#059669;">$${parseFloat(company.company_monthly_total || 0).toFixed(2)}</div>
-                                    <div style="font-size:11px;color:var(--text-muted);">Monthly Total</div>
-                                    <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">${activeSeats} active / ${totalSeats} total seats</div>
+                                    <div style="font-size:24px;font-weight:800;color:#059669;">$${monthlyTotal.toFixed(2)}</div>
+                                    <div style="font-size:11px;color:var(--text-muted);">${purchasedSeats} seat${purchasedSeats!==1?'s':''} × $${pricePerSeat.toFixed(2)}/mo</div>
+                                    <div style="font-size:11px;margin-top:4px;">
+                                        <span style="color:#059669;font-weight:600;">${activeSeats} active</span>
+                                        ${cancellingSeats > 0 ? `<span style="color:#d97706;font-weight:600;margin-left:8px;">${cancellingSeats} cancelling</span>` : ''}
+                                        ${emptySeats > 0 ? `<span style="color:var(--text-muted);margin-left:8px;">${emptySeats} open</span>` : ''}
+                                    </div>
                                 </div>
                             </div>
 
@@ -7545,47 +7553,48 @@ async function renderSubscriptions(content) {
                                         <tr style="background:var(--bg-tertiary);border-bottom:1px solid var(--border-color);">
                                             <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Label / Name</th>
                                             <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Login Email</th>
-                                            <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Sending Email</th>
                                             <th style="padding:10px 16px;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Plan</th>
                                             <th style="padding:10px 16px;text-align:right;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Price/mo</th>
-                                            <th style="padding:10px 16px;text-align:center;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Mode</th>
+                                            <th style="padding:10px 16px;text-align:center;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Role</th>
                                             <th style="padding:10px 16px;text-align:center;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Status</th>
                                             <th style="padding:10px 16px;text-align:center;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;">Added</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        ${company.users && company.users.filter(u => u.user_email).map((user, idx) => {
-                                            const statusColors = {
-                                                active: { bg: 'rgba(16,185,129,0.12)', color: '#059669', label: 'Active' },
-                                                cancelled: { bg: 'var(--bg-tertiary)', color: 'var(--text-muted)', label: 'Cancelled' }
+                                        ${(company.users || []).filter(u => u.user_email).map((user, idx) => {
+                                            const statusConfig = {
+                                                active:     { bg: 'rgba(16,185,129,0.12)', color: '#059669', label: 'Active' },
+                                                cancelling: { bg: 'rgba(245,158,11,0.12)', color: '#d97706', label: 'Cancelling' },
+                                                cancelled:  { bg: 'var(--bg-tertiary)',     color: 'var(--text-muted)', label: 'Cancelled' }
                                             };
-                                            const sc = statusColors[user.status] || statusColors.cancelled;
-                                            const isSetup = user.mode === 'setup' || !user.price_per_user || parseFloat(user.price_per_user) === 0;
+                                            const sc = statusConfig[user.status] || statusConfig.cancelled;
+                                            const accessUntilStr = user.access_until
+                                                ? ' until ' + new Date(user.access_until).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                                : '';
                                             
                                             return `
                                                 <tr style="border-bottom:1px solid var(--border-color);">
                                                     <td style="padding:12px 16px;">
-                                                        <div style="font-weight:600;color:var(--text-primary);">${user.user_label || 'Unnamed'}</div>
-                                                        <div style="font-size:12px;color:var(--text-muted);">${user.user_name}${user.username ? ' · <code style="font-size:11px;">@' + user.username + '</code>' : ''}</div>
+                                                        <div style="font-weight:600;color:var(--text-primary);">${user.user_label || user.user_name || 'Unnamed'}</div>
+                                                        ${user.user_label ? `<div style="font-size:12px;color:var(--text-muted);">${user.user_name}</div>` : ''}
                                                     </td>
                                                     <td style="padding:12px 16px;color:var(--text-secondary);">${user.user_email}</td>
-                                                    <td style="padding:12px 16px;color:var(--text-secondary);font-size:12px;">${user.sending_email || '<span style="color:var(--text-muted);font-style:italic;">same as login</span>'}</td>
                                                     <td style="padding:12px 16px;color:var(--text-secondary);">${user.package_name || '—'}</td>
-                                                    <td style="padding:12px 16px;text-align:right;font-weight:700;color:var(--text-primary);">$${parseFloat(user.price_per_user || 0).toFixed(2)}</td>
+                                                    <td style="padding:12px 16px;text-align:right;font-weight:700;color:var(--text-primary);">$${parseFloat(user.price_per_user || pricePerSeat).toFixed(2)}</td>
                                                     <td style="padding:12px 16px;text-align:center;">
-                                                        <span style="background:${isSetup ? 'rgba(99,102,241,0.12)' : 'rgba(245,158,11,0.12)'};color:${isSetup ? '#818cf8' : '#f59e0b'};padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;">
-                                                            ${isSetup ? 'Included' : 'Paid Seat'}
+                                                        <span style="background:${user.is_admin ? 'rgba(139,92,246,0.12)' : 'var(--bg-tertiary)'};color:${user.is_admin ? '#8b5cf6' : 'var(--text-muted)'};padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;">
+                                                            ${user.is_admin ? 'Admin' : 'Member'}
                                                         </span>
                                                     </td>
                                                     <td style="padding:12px 16px;text-align:center;">
-                                                        <span style="background:${sc.bg};color:${sc.color};padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;">${sc.label}</span>
+                                                        <span style="background:${sc.bg};color:${sc.color};padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700;">${sc.label}${accessUntilStr}</span>
                                                     </td>
                                                     <td style="padding:12px 16px;text-align:center;color:var(--text-muted);font-size:12px;">
-                                                        ${new Date(user.added_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                        ${user.added_date ? new Date(user.added_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                                                     </td>
                                                 </tr>
                                             `;
-                                        }).join('') || '<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--text-muted);">No users</td></tr>'}
+                                        }).join('') || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text-muted);">No users</td></tr>'}
                                     </tbody>
                                 </table>
                             </div>

@@ -8605,7 +8605,23 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
                 cc.admin_email,
                 cc.total_active_seats,
                 cc.purchased_seats,
-                cc.monthly_total as company_monthly_total,
+                -- Always calculate live: purchased_seats × price from crm_subscriptions
+                cc.purchased_seats::NUMERIC * COALESCE((
+                    SELECT CAST(cs2.price_per_user AS NUMERIC)
+                    FROM crm_subscriptions cs2
+                    WHERE cs2.client_portal_id = cc.client_portal_id
+                      AND cs2.status = 'active'
+                      AND cs2.is_company_subscription = TRUE
+                    ORDER BY cs2.created_at ASC LIMIT 1
+                ), 84.99) as company_monthly_total,
+                COALESCE((
+                    SELECT CAST(cs3.price_per_user AS NUMERIC)
+                    FROM crm_subscriptions cs3
+                    WHERE cs3.client_portal_id = cc.client_portal_id
+                      AND cs3.status = 'active'
+                      AND cs3.is_company_subscription = TRUE
+                    ORDER BY cs3.created_at ASC LIMIT 1
+                ), 84.99) as price_per_seat,
                 cc.created_at as company_created_at,
                 json_agg(
                     json_build_object(
@@ -8613,14 +8629,18 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
                         'user_label', cu.user_label,
                         'user_name', cu.user_name,
                         'user_email', cu.user_email,
+                        'username', cu.username,
+                        'sending_email', cu.sending_email,
                         'subscription_id', cu.subscription_id,
                         'stripe_subscription_id', cu.stripe_subscription_id,
                         'package_key', cu.package_key,
                         'package_name', cu.package_name,
                         'price_per_user', cu.price_per_user,
                         'status', cu.status,
+                        'access_until', cu.access_until,
                         'added_date', cu.added_date,
-                        'cancelled_date', cu.cancelled_date
+                        'cancelled_date', cu.cancelled_date,
+                        'is_admin', cu.is_admin
                     ) ORDER BY cu.added_date DESC
                 ) as users
             FROM client_companies cc

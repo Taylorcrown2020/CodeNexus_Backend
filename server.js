@@ -8626,16 +8626,24 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
         `).catch(() => {});
         // ────────────────────────────────────────────────────────────────────
 
-        // Get all individual subscriptions (not part of a company)
+        // Get all individual subscriptions (not part of a company, OR company sub with no matching company record)
         const individualSubs = await pool.query(`
             SELECT 
                 cs.*,
                 l.name as lead_name,
-                NULL as client_portal_id,
-                FALSE as is_company_subscription
+                cs.client_portal_id,
+                cs.is_company_subscription
             FROM crm_subscriptions cs
             INNER JOIN leads l ON LOWER(l.email) = LOWER(cs.lead_email)
-            WHERE (cs.client_portal_id IS NULL OR cs.client_portal_id = '')
+            WHERE (
+                -- True individual: no portal ID
+                (cs.client_portal_id IS NULL OR cs.client_portal_id = '')
+                OR
+                -- Orphaned company sub: has portal ID but no matching client_companies row
+                (cs.client_portal_id IS NOT NULL AND cs.client_portal_id != '' AND NOT EXISTS (
+                    SELECT 1 FROM client_companies cc WHERE cc.client_portal_id = cs.client_portal_id
+                ))
+            )
             ORDER BY cs.created_at DESC
             LIMIT $1
         `, [limit]);
@@ -12566,6 +12574,7 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
                 WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
                 AND l.is_customer = FALSE
                 AND l.unsubscribed = FALSE
+                AND l.client_portal_id IS NULL
                 AND (
                     l.last_contact_date IS NULL
                     OR l.last_contact_date <= CURRENT_DATE - INTERVAL '1 day'
@@ -13712,6 +13721,7 @@ app.post('/api/admin/client-accounts', authenticateToken, async (req, res) => {
             SET email = $1,
                 client_password = $2,
                 customer_status = 'active',
+                is_company_admin = TRUE,
                 client_account_created_at = CURRENT_TIMESTAMP,
                 updated_at = NOW()
             WHERE id = $3
@@ -15707,6 +15717,7 @@ app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
             WHERE status IN ('new', 'contacted', 'qualified', 'pending')
             AND is_customer = FALSE
             AND unsubscribed = FALSE
+            AND client_portal_id IS NULL
         `);
         
         console.log('[FOLLOW-UP STATS]  Stats retrieved:', stats.rows[0]);
@@ -15747,6 +15758,7 @@ app.get('/api/follow-ups', authenticateToken, async (req, res) => {
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
+            AND l.client_portal_id IS NULL
             AND (
                 l.last_contact_date IS NULL
                 OR l.last_contact_date <= CURRENT_DATE - INTERVAL '3 days'
@@ -18604,6 +18616,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
             AND l.email IS NOT NULL
+            AND l.client_portal_id IS NULL
             AND (
                 CASE 
                     WHEN $1 = 'never_contacted' THEN l.last_contact_date IS NULL
@@ -18761,6 +18774,7 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
             AND l.email IS NOT NULL
+            AND l.client_portal_id IS NULL
             AND (
                 CASE 
                     WHEN $1 = 'never_contacted' THEN l.last_contact_date IS NULL

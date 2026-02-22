@@ -663,17 +663,244 @@ tr:hover .row-actions { opacity: 1; }
 .activity-time { font-size: 11px; color: var(--text-3); margin-top: 2px; }
 
 /* ============================================================
-   RESPONSIVE
+   RESPONSIVE — SUPER MOBILE FRIENDLY
 ============================================================ */
+
+/* ── Tablet ─────────────────────────────────────────────── */
 @media (max-width: 900px) {
     :root { --sidebar-w: 220px; }
     .col-8, .col-4, .col-6 { grid-column: span 12; }
     .page-body { padding: 16px; }
-    .page-header { padding: 16px; }
+    .page-header { padding: 14px 16px; }
+    .stats-row { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .form-row { grid-template-columns: 1fr; }
+    .detail-panel { width: 360px; }
 }
+
+/* ── Mobile ──────────────────────────────────────────────── */
 @media (max-width: 640px) {
-    .sidebar { display: none; }
-    .main { margin-left: 0; }
+
+    /* === SIDEBAR: hidden off-canvas, slides in === */
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 500;
+        width: 260px;
+    }
+    .sidebar.mobile-open {
+        transform: translateX(0);
+        box-shadow: 4px 0 32px rgba(0,0,0,0.6);
+    }
+
+    /* Backdrop when sidebar is open */
+    .sidebar-backdrop {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.55);
+        z-index: 499;
+        backdrop-filter: blur(2px);
+    }
+    .sidebar-backdrop.show { display: block; }
+
+    /* === MAIN: full width + bottom nav padding === */
+    .main { margin-left: 0; padding-bottom: 64px; }
+
+    /* === MOBILE TOP BAR === */
+    .mobile-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        background: var(--bg-0);
+        border-bottom: 1px solid var(--border);
+        position: sticky; top: 0; z-index: 400;
+        height: 52px;
+    }
+    .mobile-topbar-brand {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 14px; font-weight: 600; color: var(--text-0);
+    }
+    .mobile-topbar-brand-icon {
+        width: 26px; height: 26px; background: var(--text-0);
+        border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    }
+    .mobile-topbar-brand-icon svg { width: 13px; height: 13px; color: var(--bg-0); }
+    .mobile-topbar-title {
+        font-size: 15px; font-weight: 600; color: var(--text-0);
+        position: absolute; left: 50%; transform: translateX(-50%);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        max-width: 55%;
+    }
+    .mobile-menu-btn {
+        background: none; border: none; cursor: pointer;
+        color: var(--text-1); padding: 6px;
+        border-radius: var(--r-sm);
+    }
+    .mobile-menu-btn svg { width: 22px; height: 22px; display: block; }
+
+    /* === BOTTOM NAV BAR === */
+    .mobile-bottom-nav {
+        display: flex;
+        position: fixed; bottom: 0; left: 0; right: 0;
+        height: 60px;
+        background: var(--bg-0);
+        border-top: 1px solid var(--border);
+        z-index: 400;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .mobile-nav-item {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 3px; cursor: pointer;
+        color: var(--text-3); font-size: 9px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        transition: color 0.15s; padding: 6px 2px;
+        border: none; background: none; font-family: var(--font);
+        position: relative;
+    }
+    .mobile-nav-item svg { width: 20px; height: 20px; }
+    .mobile-nav-item.active { color: var(--text-0); }
+    .mobile-nav-item.active::before {
+        content: '';
+        position: absolute; top: 0; left: 15%; right: 15%;
+        height: 2px; background: var(--text-0);
+        border-radius: 0 0 2px 2px;
+    }
+    .mobile-nav-badge {
+        position: absolute; top: 5px; right: calc(50% - 20px);
+        background: var(--red); color: #fff;
+        font-size: 9px; font-weight: 700;
+        min-width: 15px; height: 15px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0 3px;
+    }
+    /* Mobile more-menu button */
+    .mobile-more-btn {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 3px; cursor: pointer;
+        color: var(--text-3); font-size: 9px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        border: none; background: none; font-family: var(--font);
+    }
+    .mobile-more-btn svg { width: 20px; height: 20px; }
+    .mobile-more-btn.active { color: var(--text-0); }
+
+    /* More menu drawer */
+    .mobile-more-menu {
+        display: none;
+        position: fixed; bottom: 60px; left: 0; right: 0;
+        background: var(--bg-0); border-top: 1px solid var(--border);
+        z-index: 401; padding: 8px;
+        flex-direction: column; gap: 2px;
+    }
+    .mobile-more-menu.show { display: flex; }
+    .mobile-more-menu-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 14px; border-radius: var(--r-md);
+        cursor: pointer; color: var(--text-1); font-size: 14px;
+        transition: background 0.1s;
+    }
+    .mobile-more-menu-item:hover, .mobile-more-menu-item.active {
+        background: var(--bg-active); color: var(--text-0);
+    }
+    .mobile-more-menu-item svg { width: 18px; height: 18px; color: var(--text-3); flex-shrink: 0; }
+    .mobile-more-menu-item.active svg { color: var(--text-0); }
+    .mobile-more-menu-item span { flex: 1; }
+
+    /* === PAGE LAYOUT === */
+    .page-header {
+        padding: 12px 16px;
+        flex-wrap: wrap; gap: 8px;
+        position: static;
+    }
+    .page-title { font-size: 15px; }
+    .page-subtitle { font-size: 12px; }
+    .page-actions { gap: 6px; flex-wrap: wrap; width: 100%; }
+    .page-body { padding: 12px 16px; }
+
+    /* === STATS ROW: 2-col grid === */
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .stat-cell { padding: 14px 16px; }
+    .stat-value { font-size: 22px; }
+
+    /* === TABLES: card rows on mobile === */
+    .table-wrap { border-radius: var(--r-md); overflow: hidden; }
+    .mobile-table-card table thead { display: none; }
+    .mobile-table-card table, .mobile-table-card tbody,
+    .mobile-table-card tr, .mobile-table-card td { display: block; width: 100%; }
+    .mobile-table-card tbody tr {
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+        position: relative;
+    }
+    .mobile-table-card tbody tr:last-child { border-bottom: none; }
+    .mobile-table-card td { padding: 2px 0; border-bottom: none; font-size: 13px; }
+    .mobile-table-card td[data-label]::before {
+        content: attr(data-label);
+        font-size: 10px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--text-3); display: block; margin-bottom: 1px;
+    }
+    .mobile-table-card td:first-child { font-size: 14px; font-weight: 600; color: var(--text-0); margin-bottom: 4px; }
+    .mobile-table-card td:first-child::before { display: none; }
+    .row-actions { opacity: 1; }
+
+    /* === FORMS === */
+    .form-row { grid-template-columns: 1fr; gap: 0; }
+    .form-input, .form-select { font-size: 16px; } /* prevents iOS zoom */
+    textarea.form-input { min-height: 80px; }
+
+    /* === MODALS: bottom sheet === */
+    .modal-overlay { padding: 0; align-items: flex-end; }
+    .modal {
+        max-width: 100%; border-radius: var(--r-lg) var(--r-lg) 0 0;
+        max-height: 88vh; animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
+    }
+    .modal-footer { flex-direction: column; }
+    .modal-footer .btn { width: 100%; justify-content: center; }
+
+    /* === DETAIL PANEL: full screen slide up === */
+    .detail-panel { width: 100%; top: 0; border-left: none; animation: slideUp 0.2s ease; }
+
+    /* === CARDS === */
+    .card-body { padding: 14px 16px; }
+    .card-header { padding: 12px 16px; }
+    .card[style*="max-width"] { max-width: 100% !important; }
+
+    /* === BUTTONS: bigger tap targets === */
+    .btn { min-height: 40px; }
+    .btn-sm { min-height: 36px; padding: 7px 12px; }
+    .btn-xs { min-height: 28px; font-size: 11px; }
+
+    /* === SEARCH === */
+    .search-input input { width: 100%; flex: 1; }
+
+    /* === KANBAN: swipeable === */
+    .kanban { scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+    .kanban-col { min-width: 82vw; scroll-snap-align: start; }
+
+    /* === TOAST: above bottom nav === */
+    .toast-container { right: 12px; left: 12px; bottom: 68px; }
+    .toast { max-width: 100%; }
+
+    /* === DASHBOARD GRID === */
+    .dash-grid { grid-template-columns: 1fr; gap: 12px; }
+    .col-8, .col-4, .col-6, .col-12 { grid-column: span 1; }
+
+    /* === FOLLOW-UP TABS: scrollable === */
+    #fuMainTabBar { overflow-x: auto; flex-wrap: nowrap; }
+    #fuMainTabBar .btn { white-space: nowrap; font-size: 12px; padding: 7px 10px; }
+
+    /* === EMPTY STATE === */
+    .empty-state { padding: 36px 16px; }
+
+    /* === QTY CONTROL === */
+    .qty-btn { width: 40px; height: 40px; }
 }
 
 /* ============================================================
@@ -739,6 +966,20 @@ tr:hover .row-actions { opacity: 1; }
 ============================================================ -->
 <div id="app" class="app">
 
+    <!-- MOBILE TOPBAR (hidden on desktop via JS-injected display) -->
+    <div class="mobile-topbar" id="mobileTopbar" style="display:none;">
+        <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+        </button>
+        <span class="mobile-topbar-title" id="mobilePageTitle">Dashboard</span>
+        <div style="width:34px;"></div><!-- spacer to center title -->
+    </div>
+
+    <!-- SIDEBAR BACKDROP -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>
+
     <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-top">
@@ -778,7 +1019,7 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     Contacts
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="followups">
+                <div class="nav-item" data-page="followups">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     Follow-ups
                 </div>
@@ -786,7 +1027,7 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                     Marketing
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="scheduling">
+                <div class="nav-item" data-page="scheduling">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     Scheduling
                 </div>
@@ -799,7 +1040,7 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     Invoices
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="analytics">
+                <div class="nav-item" data-page="analytics">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     Analytics
                 </div>
@@ -944,7 +1185,7 @@ tr:hover .row-actions { opacity: 1; }
                     <button class="btn btn-ghost lead-tab" onclick="setLeadTab('pending',this)" data-tab="pending" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Pending</button>
                     <button class="btn btn-ghost lead-tab" onclick="setLeadTab('converted',this)" data-tab="converted" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Converted</button>
                 </div>
-                <div class="table-wrap" id="leadsTable">
+                <div class="table-wrap mobile-table-card" id="leadsTable">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                         <h3>No leads yet</h3>
@@ -985,7 +1226,7 @@ tr:hover .row-actions { opacity: 1; }
                     <button class="btn btn-ghost my-lead-tab" onclick="setMyLeadTab('lost',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Lost</button>
                 </div>
 
-                <div class="table-wrap" id="myLeadsTable">
+                <div class="table-wrap mobile-table-card" id="myLeadsTable">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         <h3>No leads assigned to you yet</h3>
@@ -1013,7 +1254,7 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
             </div>
             <div class="page-body">
-                <div class="table-wrap" id="contactsTable">
+                <div class="table-wrap mobile-table-card" id="contactsTable">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         <h3>No contacts yet</h3>
@@ -1194,7 +1435,7 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
             </div>
             <div class="page-body">
-                <div class="table-wrap" id="invoicesTableWrap">
+                <div class="table-wrap mobile-table-card" id="invoicesTableWrap">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
                         <h3>No invoices</h3><p>Create your first invoice</p>
@@ -1997,7 +2238,80 @@ function previewTemplate() {
     const body    = document.getElementById('templateBody')?.value || '';
     const preview = window.open('', '_blank', 'width=600,height=500');
     if (preview) {
-        preview.document.write(`<html><head><title>Preview: ${subject}</title></head><body style="font-family:sans-serif;padding:24px;max-width:600px;margin:0 auto;"><h3 style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Subject</h3><p style="margin-bottom:24px;">${subject}</p><hr><div style="margin-top:24px;">${body.replace(/\n/g,'<br>')}</div></body></html>`);
+        preview.document.write(`<html><head><title>Preview: ${subject}</title></head><body style="font-family:sans-serif;padding:24px;max-width:600px;margin:0 auto;"><h3 style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Subject</h3><p style="margin-bottom:24px;">${subject}</p><hr><div style="margin-top:24px;">${body.replace(/\n/g,'<br>')}</div>
+<!-- MOBILE BOTTOM NAV (shown only on mobile via JS) -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav" style="display:none;">
+    <button class="mobile-nav-item active" data-mobile-page="dashboard" onclick="mobileNavigate('dashboard',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Home
+    </button>
+    <button class="mobile-nav-item" data-mobile-page="myleads" onclick="mobileNavigate('myleads',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        My Leads
+    </button>
+    <button class="mobile-nav-item" data-mobile-page="followups" onclick="mobileNavigate('followups',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Follow-ups
+    </button>
+    <button class="mobile-nav-item" data-mobile-page="tasks" onclick="mobileNavigate('tasks',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Tasks
+    </button>
+    <button class="mobile-more-btn" id="mobileMoreBtn" onclick="toggleMobileMoreMenu(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        More
+    </button>
+</nav>
+
+<!-- MOBILE MORE MENU -->
+<div class="mobile-more-menu" id="mobileMoreMenu">
+    <div class="mobile-more-menu-item" data-mobile-page="scheduling" onclick="mobileNavigate('scheduling')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Scheduling</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="analytics" onclick="mobileNavigate('analytics')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Analytics</span>
+    </div>
+    <div class="mobile-more-menu-item nav-item-admin-only" data-mobile-page="leads" onclick="mobileNavigate('leads')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>All Leads</span>
+    </div>
+    <div class="mobile-more-menu-item nav-item-admin-only" data-mobile-page="marketing" onclick="mobileNavigate('marketing')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span>Marketing</span>
+    </div>
+    <div class="mobile-more-menu-item nav-item-admin-only" data-mobile-page="invoices" onclick="mobileNavigate('invoices')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>Invoices</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="files" onclick="mobileNavigate('files')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span>Files</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="support" onclick="mobileNavigate('support')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Support</span>
+    </div>
+    <div class="mobile-more-menu-item nav-item-admin-only" data-mobile-page="team" onclick="mobileNavigate('team')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Team</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="subscription" onclick="mobileNavigate('subscription')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        <span>Subscription</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="settings" onclick="mobileNavigate('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+    </div>
+    <div class="mobile-more-menu-item" style="border-top:1px solid var(--border);margin-top:4px;padding-top:12px;color:var(--red);" onclick="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--red)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Sign Out</span>
+    </div>
+</div>
+
+</body></html>`);
         preview.document.close();
     }
 }
@@ -2010,6 +2324,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
     setupFileUpload();
     setupAddUserPlanSelect();
+    initMobileUI();
 
     // Auto-login from stored token
     const token = localStorage.getItem('clientToken');
@@ -2112,6 +2427,7 @@ function showApp() {
     const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     document.getElementById('dashGreeting').textContent = `${greet}, ${(user.name||'').split(' ')[0] || 'there'}`;
 
+    initMobileUI();
     navigate('dashboard');
     loadInitialData();
 }
@@ -2171,6 +2487,138 @@ function navigate(page) {
         case 'settings':    loadSettings();    break;
     }
 }
+
+// ============================================================
+// MOBILE NAVIGATION
+// ============================================================
+
+// Page display names for the mobile topbar title
+const MOBILE_PAGE_NAMES = {
+    dashboard:    'Dashboard',
+    leads:        'All Leads',
+    myleads:      'My Leads',
+    contacts:     'Contacts',
+    followups:    'Follow-ups',
+    marketing:    'Marketing',
+    scheduling:   'Scheduling',
+    invoices:     'Invoices',
+    analytics:    'Analytics',
+    tasks:        'Tasks',
+    team:         'Team',
+    company:      'Company',
+    files:        'Files',
+    support:      'Support',
+    subscription: 'Subscription',
+    settings:     'Settings',
+};
+
+function isMobile() { return window.innerWidth <= 640; }
+
+function initMobileUI() {
+    const mobile = isMobile();
+    const topbar = document.getElementById('mobileTopbar');
+    const bottomNav = document.getElementById('mobileBottomNav');
+    if (topbar)    topbar.style.display    = mobile ? 'flex'  : 'none';
+    if (bottomNav) bottomNav.style.display = mobile ? 'flex'  : 'none';
+}
+
+function mobileNavigate(page, btnEl) {
+    // Close more menu and sidebar
+    closeMobileMoreMenu();
+    closeMobileSidebar();
+
+    // Navigate
+    navigate(page);
+
+    // Sync bottom nav active state
+    document.querySelectorAll('.mobile-nav-item[data-mobile-page]').forEach(el => {
+        el.classList.toggle('active', el.dataset.mobilePage === page);
+    });
+    // If it came from more-menu, activate "More" btn
+    const moreBtn = document.getElementById('mobileMoreBtn');
+    const isInMoreMenu = !!document.querySelector(`.mobile-more-menu-item[data-mobile-page="${page}"]`);
+    if (moreBtn) moreBtn.classList.toggle('active', isInMoreMenu);
+
+    // Update topbar title
+    const titleEl = document.getElementById('mobilePageTitle');
+    if (titleEl) titleEl.textContent = MOBILE_PAGE_NAMES[page] || page;
+}
+
+// Keep desktop nav in sync — patch navigate() to update mobile UI too
+const _origNavigate = navigate;
+function navigate(page) {
+    _origNavigate(page);
+    // Update mobile topbar title
+    const titleEl = document.getElementById('mobilePageTitle');
+    if (titleEl) titleEl.textContent = MOBILE_PAGE_NAMES[page] || page;
+    // Sync bottom nav
+    document.querySelectorAll('.mobile-nav-item[data-mobile-page]').forEach(el => {
+        el.classList.toggle('active', el.dataset.mobilePage === page);
+    });
+    const moreBtn = document.getElementById('mobileMoreBtn');
+    const isInMore = !!document.querySelector(`.mobile-more-menu-item[data-mobile-page="${page}"]`);
+    if (moreBtn) moreBtn.classList.toggle('active', isInMore && !document.querySelector(`.mobile-nav-item[data-mobile-page="${page}"]`));
+}
+
+function toggleMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const isOpen = sidebar.classList.contains('mobile-open');
+    if (isOpen) {
+        closeMobileSidebar();
+    } else {
+        sidebar.classList.add('mobile-open');
+        if (backdrop) backdrop.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        closeMobileMoreMenu();
+    }
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    sidebar.classList.remove('mobile-open');
+    if (backdrop) backdrop.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function toggleMobileMoreMenu(btnEl) {
+    const menu = document.getElementById('mobileMoreMenu');
+    const isOpen = menu.classList.contains('show');
+    if (isOpen) {
+        closeMobileMoreMenu();
+    } else {
+        menu.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        closeMobileSidebar();
+    }
+}
+
+function closeMobileMoreMenu() {
+    const menu = document.getElementById('mobileMoreMenu');
+    if (menu) menu.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// Close more menu when tapping outside
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('mobileMoreMenu');
+    const moreBtn = document.getElementById('mobileMoreBtn');
+    if (menu && menu.classList.contains('show')) {
+        if (!menu.contains(e.target) && e.target !== moreBtn && !moreBtn?.contains(e.target)) {
+            closeMobileMoreMenu();
+        }
+    }
+});
+
+// Re-evaluate on resize
+window.addEventListener('resize', () => {
+    initMobileUI();
+    if (!isMobile()) {
+        closeMobileSidebar();
+        closeMobileMoreMenu();
+    }
+});
 
 // ============================================================
 // API HELPER
@@ -3363,7 +3811,7 @@ async function loadScheduling() {
             return;
         }
         const isMine = _apptView === 'mine';
-        listEl.innerHTML = `<div class="table-wrap"><table>
+        listEl.innerHTML = `<div class="table-wrap mobile-table-card"><table>
             <thead><tr><th>Client</th><th>Email</th><th>Date & Time</th><th>Status</th>${!isMine ? '<th>Assigned To</th>' : ''}<th>Actions</th></tr></thead>
             <tbody>
                 ${appts.map(a=>`<tr>
@@ -4336,7 +4784,7 @@ function renderTickets() {
             <h3>No support tickets</h3><p>Open a ticket if you need help</p></div>`;
         return;
     }
-    el.innerHTML = `<div class="table-wrap"><table>
+    el.innerHTML = `<div class="table-wrap mobile-table-card"><table>
         <thead><tr><th>Subject</th><th>Priority</th><th>Status</th><th>Created</th><th></th></tr></thead>
         <tbody>
             ${S.tickets.map(t=>{
@@ -5754,5 +6202,78 @@ function statusBadge(status) {
     return `<span class="badge ${map[status?.toLowerCase()]||'badge-gray'}">${escHtml(status||'—')}</span>`;
 }
 </script>
+
+<!-- MOBILE BOTTOM NAV (shown only on mobile via JS) -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav" style="display:none;">
+    <button class="mobile-nav-item active" data-mobile-page="dashboard" onclick="mobileNavigate('dashboard',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Home
+    </button>
+    <button class="mobile-nav-item" data-mobile-page="myleads" onclick="mobileNavigate('myleads',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        My Leads
+    </button>
+    <button class="mobile-nav-item" data-mobile-page="followups" onclick="mobileNavigate('followups',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Follow-ups
+    </button>
+    <button class="mobile-nav-item" data-mobile-page="tasks" onclick="mobileNavigate('tasks',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Tasks
+    </button>
+    <button class="mobile-more-btn" id="mobileMoreBtn" onclick="toggleMobileMoreMenu(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        More
+    </button>
+</nav>
+
+<!-- MOBILE MORE MENU -->
+<div class="mobile-more-menu" id="mobileMoreMenu">
+    <div class="mobile-more-menu-item" data-mobile-page="scheduling" onclick="mobileNavigate('scheduling')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Scheduling</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="analytics" onclick="mobileNavigate('analytics')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Analytics</span>
+    </div>
+    <div class="mobile-more-menu-item nav-item-admin-only" data-mobile-page="leads" onclick="mobileNavigate('leads')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>All Leads</span>
+    </div>
+    <div class="mobile-more-menu-item nav-item-admin-only" data-mobile-page="marketing" onclick="mobileNavigate('marketing')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span>Marketing</span>
+    </div>
+    <div class="mobile-more-menu-item nav-item-admin-only" data-mobile-page="invoices" onclick="mobileNavigate('invoices')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>Invoices</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="files" onclick="mobileNavigate('files')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span>Files</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="support" onclick="mobileNavigate('support')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Support</span>
+    </div>
+    <div class="mobile-more-menu-item nav-item-admin-only" data-mobile-page="team" onclick="mobileNavigate('team')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Team</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="subscription" onclick="mobileNavigate('subscription')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        <span>Subscription</span>
+    </div>
+    <div class="mobile-more-menu-item" data-mobile-page="settings" onclick="mobileNavigate('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+    </div>
+    <div class="mobile-more-menu-item" style="border-top:1px solid var(--border);margin-top:4px;padding-top:12px;color:var(--red);" onclick="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--red)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Sign Out</span>
+    </div>
+</div>
+
 </body>
 </html>

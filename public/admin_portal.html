@@ -5392,8 +5392,10 @@ async function saveCustomerEdit(event, leadId) {
 
 // 7. DELETE LEAD (MISSING)
 async function deleteLead(leadId) {
-    if (!confirm('Delete this lead?')) return;
-    
+    const isCustomer = state.customers?.some(c => c.id == leadId);
+    const label = isCustomer ? 'customer and their entire account' : 'lead';
+    if (!confirm(`Permanently delete this ${label}? This cannot be undone — all data, subscriptions, and portal access will be erased immediately.`)) return;
+
     try {
         const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
             method: 'DELETE',
@@ -5401,18 +5403,30 @@ async function deleteLead(leadId) {
                 'Authorization': `Bearer ${authToken || localStorage.getItem('adminToken')}`
             }
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
-            showToast('Lead deleted successfully', 'success');
-            await loadLeads();
-            updateBadges();
+            showToast('Deleted — all account data has been erased', 'success');
             closeDetailModal();
-            if (state.currentSection === 'subscriptions') {
+
+            // Full reload so analytics, subscriptions, and client portal all reflect the deletion
+            await Promise.all([
+                loadLeads(),
+                loadData?.() || Promise.resolve()
+            ]);
+            updateBadges();
+
+            // Re-render whichever section is currently visible
+            const section = state.currentSection;
+            if (section === 'subscriptions') {
                 renderSubscriptions(document.getElementById('contentArea'));
+            } else if (section === 'clientPortal' || section === 'client-portal') {
+                renderClientPortal();
+            } else if (section === 'analytics') {
+                renderSection('analytics');
             } else {
-                renderSection(state.currentSection);
+                renderSection(section);
             }
         } else {
             showToast(data.message || 'Failed to delete', 'error');
@@ -12207,31 +12221,7 @@ function formatFileSize(bytes) {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
-async function deleteLead(id) {
-if (!confirm('Are you sure you want to delete this lead?')) return;
-try {
-    const r = await fetch(`${API_URL}/api/leads/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${authToken}` }
-    });
-    
-    if (!r.ok) throw new Error('Failed to delete lead');
-    
-    await loadLeads();
-    updateBadges();
-    closeDetailModal();
-    showToast('Lead deleted successfully', 'success');
-    // Always re-render current section, but also force subscriptions to refresh
-    // by navigating away and back if we're on subscriptions
-    if (state.currentSection === 'subscriptions') {
-        renderSubscriptions(document.getElementById('contentArea'));
-    } else {
-        renderSection(state.currentSection);
-    }
-} catch (e) {
-    showToast('Error deleting lead', 'error');
-}
-}
+// deleteLead is defined above (line ~5394)
 async function deleteExpense(id) {
 if (!confirm('Are you sure you want to delete this expense?')) return;
 try {

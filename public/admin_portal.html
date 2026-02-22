@@ -4107,6 +4107,11 @@ async function loadLeads() {
     }
 }
 
+// Alias — customers live in the same /api/leads endpoint, so loadCustomers just calls loadLeads
+async function loadCustomers() {
+    return loadLeads();
+}
+
 async function loadEmployees() {
     try {
         const r = await fetch(`${API_URL}/api/employees`, {
@@ -5413,6 +5418,7 @@ async function deleteLead(leadId) {
             // Full reload so analytics, subscriptions, and client portal all reflect the deletion
             await Promise.all([
                 loadLeads(),
+                loadClientAccounts(),
                 loadData?.() || Promise.resolve()
             ]);
             updateBadges();

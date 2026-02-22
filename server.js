@@ -11908,7 +11908,15 @@ app.post('/api/subscriptions/:id/portal', authenticateToken, async (req, res) =>
 // MRR, subscriber counts, churn, growth
 app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
     try {
-        // Active subscriptions and MRR (counts ALL subscriptions, including multiple per customer)
+        // First, purge any orphaned crm_subscriptions whose lead no longer exists
+        await pool.query(`
+            DELETE FROM crm_subscriptions
+            WHERE NOT EXISTS (
+                SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+            )
+        `).catch(() => {});
+
+        // Active subscriptions and MRR — only for subscriptions whose lead still exists
         const mrrResult = await pool.query(`
             SELECT
                 COUNT(*) FILTER (WHERE status = 'active')                    AS active_count,
@@ -11919,8 +11927,7 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COALESCE(SUM(monthly_total) FILTER (WHERE status = 'past_due'), 0)              AS at_risk_mrr,
                 COUNT(DISTINCT lead_email) FILTER (WHERE status IN ('active','canceling','past_due')) AS unique_customers
             FROM crm_subscriptions
-            WHERE lead_id IS NOT NULL
-               OR EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
+            WHERE EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
         `);
 
         // New subscribers this month
@@ -11929,7 +11936,7 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
             FROM crm_subscriptions
             WHERE created_at >= DATE_TRUNC('month', NOW())
               AND status != 'cancelled'
-              AND (lead_id IS NOT NULL OR EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)))
+              AND EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
         `);
 
         // Churn this month
@@ -11949,7 +11956,7 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COALESCE(SUM(monthly_total) FILTER (WHERE status IN ('active','canceling')), 0) AS package_mrr,
                 AVG(user_count) FILTER (WHERE status IN ('active','canceling')) AS avg_users
             FROM crm_subscriptions
-            WHERE lead_id IS NOT NULL OR EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
+            WHERE EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
             GROUP BY package_key, package_name
             ORDER BY package_mrr DESC
         `);
@@ -11962,7 +11969,7 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COALESCE(SUM(monthly_total), 0) AS new_mrr
             FROM crm_subscriptions
             WHERE created_at >= NOW() - INTERVAL '12 months'
-              AND (lead_id IS NOT NULL OR EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)))
+              AND EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
             GROUP BY DATE_TRUNC('month', created_at)
             ORDER BY month ASC
         `);

@@ -4107,7 +4107,7 @@ async function loadLeads() {
     }
 }
 
-// Alias — customers live in the same /api/leads endpoint
+// Alias — customers are loaded from the same endpoint as leads
 async function loadCustomers() {
     return loadLeads();
 }
@@ -4226,15 +4226,41 @@ async function updateBadges() {
     const p = state.leads.filter(l => l.status === 'pending').length;
     const c = state.leads.filter(l => l.status === 'contacted').length;
     const unpaidInvoices = state.invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').length;
-    
+
     document.getElementById('leadsBadge').textContent = state.leads.length;
     document.getElementById('newBadge').textContent = n;
     document.getElementById('pendingBadge').textContent = p;
     document.getElementById('contactedBadge').textContent = c;
-    document.getElementById('customersBadge').textContent = state.customers.length;
     document.getElementById('invoicesBadge').textContent = unpaidInvoices;
 
-    // Fetch follow-ups count — uses same endpoint as the Follow-Ups page so badge always matches
+    // Always fetch fresh customer + client portal counts from server — never trust stale state
+    try {
+        const token = authToken || localStorage.getItem('adminToken');
+        const [leadsRes, clientRes] = await Promise.all([
+            fetch(`${API_URL}/api/leads`, { headers: { 'Authorization': `Bearer ${token}` } }),
+            fetch(`${API_URL}/api/admin/client-accounts`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+        if (leadsRes.ok) {
+            const leadsData = await leadsRes.json();
+            if (leadsData.success) {
+                state.leads = (leadsData.leads || []).filter(l => !l.is_customer);
+                state.customers = (leadsData.leads || []).filter(l => l.is_customer);
+                document.getElementById('customersBadge').textContent = state.customers.length;
+                document.getElementById('leadsBadge').textContent = state.leads.length;
+            }
+        }
+        if (clientRes.ok) {
+            const clientData = await clientRes.json();
+            if (clientData.success) {
+                state.clientAccounts = clientData.clients || [];
+                const activeClients = state.clientAccounts.filter(c => c.is_active).length;
+                const badge = document.getElementById('clientPortalBadge');
+                if (badge) badge.textContent = activeClients;
+            }
+        }
+    } catch (e) { /* non-fatal */ }
+
+    // Fetch follow-ups count
     try {
         const res = await fetch(`${API_URL}/api/follow-ups/by-temperature`, {
             headers: { 'Authorization': `Bearer ${state.authToken}`, 'Content-Type': 'application/json' }
@@ -4448,10 +4474,11 @@ function setupNavigation() {
             if (s) {
                 document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
                 this.classList.add('active');
-                // Always fetch fresh data before rendering sections that list customers/leads
-                if (['customers','leads','new','pending','contacted','followups','clientPortal','client-portal'].includes(s)) {
+                // Always fetch fresh from server before rendering any lead/customer/client section
+                if (['customers','leads','new','pending','contacted','followups'].includes(s)) {
                     await loadLeads();
-                    updateBadges();
+                } else if (s === 'clientPortal' || s === 'client-portal') {
+                    await loadClientAccounts();
                 }
                 renderSection(s);
             }
@@ -5420,12 +5447,12 @@ async function deleteLead(leadId) {
             showToast('Deleted — all account data has been erased', 'success');
             closeDetailModal();
 
-            // Full reload — re-fetch from server before ANY re-render so stale data never shows
+            // Full reload — fetch fresh from server before any re-render
             await Promise.all([
                 loadLeads(),
                 loadClientAccounts(),
             ]);
-            updateBadges();
+            await updateBadges();
 
             // Re-render whichever section is currently visible
             const section = state.currentSection;

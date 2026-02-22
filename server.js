@@ -3245,6 +3245,7 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
             WHERE (l.source IS NULL OR l.source != 'company-user')
+              AND l.client_portal_id IS NULL
             ORDER BY l.created_at DESC
         `);
 
@@ -3271,6 +3272,7 @@ app.get('/api/leads/all-complete', authenticateToken, async (req, res) => {
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
             WHERE (l.source IS NULL OR l.source != 'company-user')
+              AND l.client_portal_id IS NULL
             ORDER BY l.created_at DESC
         `);
 
@@ -8857,113 +8859,55 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
 app.patch('/api/client/leads/:id', authenticateClient, async (req, res) => {
     try {
         const userId = req.user.id;
-        const leadId = parseInt(req.params.id);
-        const { name, email, phone, company, status, notes, lead_temperature,
-                address_line1, city, state: stateVal, zip_code } = req.body;
+        const leadId = req.params.id;
+        const { name, email, phone, company, status, notes, lead_temperature } = req.body;
 
         // Verify this lead belongs to user's portal
-        const userInfo = await pool.query(
-            `SELECT client_portal_id, is_company_admin, is_co_admin FROM leads WHERE id = $1`, [userId]
-        );
+        const userInfo = await pool.query(`SELECT client_portal_id FROM leads WHERE id = $1`, [userId]);
         const clientPortalId = userInfo.rows[0]?.client_portal_id;
 
-        // Lead must belong to this portal
         const check = await pool.query(
-            `SELECT id, lead_temperature as current_temp FROM leads WHERE id = $1 AND client_portal_id = $2`,
-            [leadId, clientPortalId]
+            `SELECT id, lead_temperature as current_temp FROM leads WHERE id = $1 AND (client_portal_id = $2 OR id = $3)`,
+            [leadId, clientPortalId, userId]
         );
-        if (!check.rows.length) return res.status(404).json({ success: false, message: 'Lead not found in your portal' });
+        if (!check.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
 
         const currentTemp = check.rows[0].current_temp;
         const becomingHot = lead_temperature === 'hot' && currentTemp !== 'hot';
         const becomingCold = lead_temperature === 'cold' && currentTemp === 'hot';
 
+        // If manually marking hot: reset timeline so they show immediately in queue
+        // If manually marking cold: pause any active hot chains, reset timeline to cold sequence
         let extraFields = '';
         if (becomingHot) {
             extraFields = `, became_hot_at = COALESCE(became_hot_at, NOW()), last_contact_date = NULL, follow_up_count = 0`;
+            // Pause cold chain queue entries
             await pool.query(`UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1 AND is_active=TRUE`, [leadId]);
         } else if (becomingCold) {
             extraFields = `, became_hot_at = NULL, last_contact_date = NULL, follow_up_count = 0`;
+            // Pause any hot chain queue entries too - user must re-enroll in a cold sequence
             await pool.query(`UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1 AND is_active=TRUE`, [leadId]);
         }
 
         const result = await pool.query(`
             UPDATE leads SET
-                name            = COALESCE($1, name),
-                email           = COALESCE($2, email),
-                phone           = COALESCE($3, phone),
-                company         = COALESCE($4, company),
-                status          = COALESCE($5, status),
-                notes           = COALESCE($6, notes),
-                lead_temperature = COALESCE($7, lead_temperature),
-                address_line1   = COALESCE($8, address_line1),
-                city            = COALESCE($9, city),
-                state           = COALESCE($10, state),
-                zip_code        = COALESCE($11, zip_code)
+                name = COALESCE($1, name),
+                email = COALESCE($2, email),
+                phone = COALESCE($3, phone),
+                company = COALESCE($4, company),
+                status = COALESCE($5, status),
+                notes = COALESCE($6, notes),
+                lead_temperature = COALESCE($7, lead_temperature)
                 ${extraFields},
                 updated_at = NOW()
-            WHERE id = $12
+            WHERE id = $8
             RETURNING *
-        `, [
-            name || null, email || null, phone || null, company || null,
-            status || null, notes || null, lead_temperature || null,
-            address_line1 || null, city || null, stateVal || null, zip_code || null,
-            leadId
-        ]);
+        `, [name, email, phone, company, status, notes, lead_temperature || null, leadId]);
 
         res.json({ success: true, lead: result.rows[0] });
 
     } catch (error) {
         console.error('[CLIENT LEADS] PATCH error:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// ========================================
-// DELETE /api/client/leads/:id — Permanently delete a lead (admin/co-admin only)
-// ========================================
-app.delete('/api/client/leads/:id', authenticateClient, async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const leadId = parseInt(req.params.id);
-
-        // Only admins and co-admins can delete leads
-        const userInfo = await pool.query(
-            `SELECT client_portal_id, is_company_admin, is_co_admin FROM leads WHERE id = $1`, [userId]
-        );
-        const portalUser = userInfo.rows[0];
-        const isAdmin = portalUser?.is_company_admin || portalUser?.is_co_admin;
-
-        if (!isAdmin) {
-            return res.status(403).json({ success: false, message: 'Admin access required to delete leads' });
-        }
-
-        const clientPortalId = portalUser?.client_portal_id;
-        if (!clientPortalId) {
-            return res.status(403).json({ success: false, message: 'No portal associated with your account' });
-        }
-
-        // Verify the lead belongs to this portal
-        const check = await pool.query(
-            `SELECT id FROM leads WHERE id = $1 AND client_portal_id = $2`,
-            [leadId, clientPortalId]
-        );
-        if (!check.rows.length) {
-            return res.status(404).json({ success: false, message: 'Lead not found in your portal' });
-        }
-
-        // Clean up related data first
-        await pool.query(`DELETE FROM client_chain_queue WHERE lead_id = $1`, [leadId]).catch(() => {});
-        await pool.query(`DELETE FROM client_email_log WHERE lead_id = $1`, [leadId]).catch(() => {});
-        await pool.query(`DELETE FROM client_form_submissions WHERE lead_id = $1`, [leadId]).catch(() => {});
-
-        // Delete the lead
-        await pool.query(`DELETE FROM leads WHERE id = $1 AND client_portal_id = $2`, [leadId, clientPortalId]);
-
-        res.json({ success: true, message: 'Lead deleted' });
-
-    } catch (error) {
-        console.error('[CLIENT LEADS] DELETE error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
@@ -11614,6 +11558,51 @@ app.post('/api/subscriptions/checkout', authenticateToken, async (req, res) => {
 });
 
 // Get all subscriptions (admin view)
+app.get('/api/subscriptions', authenticateToken, async (req, res) => {
+    try {
+        const { status, page = 1, limit = 50 } = req.query;
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+
+        let whereClause = '';
+        const params = [];
+
+        if (status && status !== 'all') {
+            params.push(status);
+            whereClause = `WHERE cs.status = $${params.length}`;
+        }
+
+        params.push(parseInt(limit), offset);
+
+        const result = await pool.query(`
+            SELECT
+                cs.*,
+                l.name  AS lead_name_ref,
+                l.email AS lead_email_ref,
+                l.company
+            FROM crm_subscriptions cs
+            LEFT JOIN leads l ON cs.lead_id = l.id
+            ${whereClause}
+            ORDER BY cs.created_at DESC
+            LIMIT $${params.length - 1} OFFSET $${params.length}
+        `, params);
+
+        const countResult = await pool.query(`
+            SELECT COUNT(*) FROM crm_subscriptions cs ${whereClause}
+        `, params.slice(0, params.length - 2));
+
+        res.json({
+            success: true,
+            subscriptions: result.rows,
+            total: parseInt(countResult.rows[0].count),
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+    } catch (error) {
+        console.error('[SUBSCRIPTIONS] List error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // Get subscription details + billing history
 app.get('/api/subscriptions/:id', authenticateToken, async (req, res) => {
     try {
@@ -12138,6 +12127,7 @@ app.get('/api/follow-ups/dead-leads', authenticateToken, async (req, res) => {
             FROM leads l
             WHERE l.unsubscribed = TRUE
             AND l.is_customer = FALSE
+            AND l.client_portal_id IS NULL
             ORDER BY l.updated_at DESC NULLS LAST
         `);
         console.log(`[DEAD-LEADS] Found ${result.rows.length} unsubscribed leads`);
@@ -12369,6 +12359,7 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
+            AND l.client_portal_id IS NULL
             AND NOT EXISTS (
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
@@ -20390,6 +20381,8 @@ app.post('/api/export/closings', authenticateToken, async (req, res) => {
                 sent_at TIMESTAMP,
                 opened_at TIMESTAMP,
                 clicked_at TIMESTAMP,
+                lead_became_hot BOOLEAN DEFAULT FALSE,
+                to_email VARCHAR(255),
                 error_message TEXT,
                 created_at TIMESTAMP DEFAULT NOW()
             );
@@ -21502,13 +21495,53 @@ app.post('/api/client/appointments/:id/reschedule', authenticateClient, async (r
         const { scheduled_at } = req.body;
         if (!scheduled_at) return res.status(400).json({ success: false, message: 'scheduled_at is required' });
 
-        const result = await pool.query(
-            `UPDATE appointments SET scheduled_time=$1, status='rescheduled', updated_at=NOW()
-             WHERE id=$2 AND lead_email=$3 RETURNING *`,
-            [new Date(scheduled_at), id, req.user.email]
+        const userId = req.user.id;
+        const portalId = await getClientPortalId(userId);
+
+        // Try client_appointments first (portal-specific)
+        let result = await pool.query(
+            `UPDATE client_appointments SET scheduled_at=$1, status='rescheduled', updated_at=NOW()
+             WHERE id=$2 AND client_portal_id=$3 RETURNING *`,
+            [new Date(scheduled_at), id, portalId]
         );
+        // Fall back to main appointments table
+        if (!result.rows.length) {
+            result = await pool.query(
+                `UPDATE appointments SET scheduled_time=$1, status='rescheduled', updated_at=NOW()
+                 WHERE id=$2 RETURNING *`,
+                [new Date(scheduled_at), id]
+            );
+        }
         if (!result.rows.length) return res.status(404).json({ success: false, message: 'Appointment not found' });
-        res.json({ success: true, appointment: result.rows[0] });
+
+        const appt = result.rows[0];
+        const clientEmail = appt.client_email || appt.email;
+        const clientName = appt.client_name || appt.name || '';
+
+        // Send rescheduled notification email via admin's Brevo
+        if (clientEmail) {
+            try {
+                const settings = await getClientEmailSettings(portalId);
+                const adminBrevoKey = settings?.brevo_api_key;
+                if (adminBrevoKey) {
+                    const fromEmail = settings?.sender_email || 'noreply@example.com';
+                    const fromName = settings?.sender_name || 'Team';
+                    const newDt = new Date(scheduled_at).toLocaleString('en-US', { dateStyle:'long', timeStyle:'short' });
+                    await fetch('https://api.brevo.com/v3/smtp/email', {
+                        method: 'POST',
+                        headers: { 'api-key': adminBrevoKey, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sender: { email: fromEmail, name: fromName },
+                            to: [{ email: clientEmail, name: clientName }],
+                            subject: 'Your Appointment Has Been Rescheduled',
+                            htmlContent: `<p>Hi ${clientName || 'there'},</p><p>Your appointment has been rescheduled to <strong>${newDt}</strong>.</p><p>If you have any questions, please reply to this email.</p><br/><p>${fromName}</p>`,
+                        })
+                    });
+                }
+            } catch (emailErr) { console.error('[RESCHEDULE EMAIL]', emailErr.message); }
+        }
+
+        res.json({ success: true, appointment: appt });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }
@@ -21518,13 +21551,50 @@ app.post('/api/client/appointments/:id/reschedule', authenticateClient, async (r
 app.post('/api/client/appointments/:id/cancel', authenticateClient, async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(
-            `UPDATE appointments SET status='cancelled', updated_at=NOW()
-             WHERE id=$1 AND lead_email=$2 RETURNING *`,
-            [id, req.user.email]
+        const userId = req.user.id;
+        const portalId = await getClientPortalId(userId);
+
+        // Try client_appointments first
+        let result = await pool.query(
+            `UPDATE client_appointments SET status='cancelled', updated_at=NOW()
+             WHERE id=$1 AND client_portal_id=$2 RETURNING *`,
+            [id, portalId]
         );
+        if (!result.rows.length) {
+            result = await pool.query(
+                `UPDATE appointments SET status='cancelled', updated_at=NOW() WHERE id=$1 RETURNING *`,
+                [id]
+            );
+        }
         if (!result.rows.length) return res.status(404).json({ success: false, message: 'Appointment not found' });
-        res.json({ success: true, appointment: result.rows[0] });
+
+        const appt = result.rows[0];
+        const clientEmail = appt.client_email || appt.email;
+        const clientName = appt.client_name || appt.name || '';
+
+        // Send cancellation notification
+        if (clientEmail) {
+            try {
+                const settings = await getClientEmailSettings(portalId);
+                const adminBrevoKey = settings?.brevo_api_key;
+                if (adminBrevoKey) {
+                    const fromEmail = settings?.sender_email || 'noreply@example.com';
+                    const fromName = settings?.sender_name || 'Team';
+                    await fetch('https://api.brevo.com/v3/smtp/email', {
+                        method: 'POST',
+                        headers: { 'api-key': adminBrevoKey, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sender: { email: fromEmail, name: fromName },
+                            to: [{ email: clientEmail, name: clientName }],
+                            subject: 'Your Appointment Has Been Cancelled',
+                            htmlContent: `<p>Hi ${clientName || 'there'},</p><p>Your appointment has been cancelled. If you'd like to reschedule, please contact us.</p><br/><p>${fromName}</p>`,
+                        })
+                    });
+                }
+            } catch (emailErr) { console.error('[CANCEL EMAIL]', emailErr.message); }
+        }
+
+        res.json({ success: true, appointment: appt });
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }
@@ -21763,6 +21833,447 @@ app.post('/api/admin/cleanup-orphaned-companies', authenticateToken, async (req,
         console.error('[CLEANUP] Error:', e);
         res.status(500).json({ success: false, message: e.message });
     }
+});
+
+// ============================================================
+// CLIENT PORTAL — EMAIL ANALYTICS SPLIT (marketing vs follow-up)
+// GET /api/client/analytics/email?type=marketing|followup
+// ============================================================
+app.get('/api/client/analytics/email', authenticateClient, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const portalId = await getClientPortalId(userId);
+        const { user_email, type } = req.query;
+
+        const userInfo = await pool.query('SELECT is_company_admin, is_co_admin, email FROM leads WHERE id=$1', [userId]);
+        const me = userInfo.rows[0];
+        const isAdmin = me?.is_company_admin || me?.is_co_admin;
+        const targetEmail = (user_email && isAdmin) ? user_email : me?.email;
+
+        if (!portalId) return res.json({ success: true, marketing: { sent:0, opened:0, clicked:0, open_rate:0, click_rate:0, hot_conversions:0 }, followup: { sent:0, opened:0, clicked:0, open_rate:0, click_rate:0, hot_conversions:0 } });
+
+        const getStats = async (emailType) => {
+            const r = await pool.query(`
+                SELECT
+                    COUNT(*) FILTER (WHERE status='sent') as sent,
+                    COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
+                    COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked,
+                    COUNT(*) FILTER (WHERE lead_became_hot = TRUE) as hot_conversions
+                FROM client_email_log
+                WHERE client_portal_id=$1
+                  AND LOWER(assigned_to_user_email)=LOWER($2)
+                  AND email_type=$3
+            `, [portalId, targetEmail, emailType]);
+            const d = r.rows[0];
+            const sent = parseInt(d.sent)||0;
+            const opened = parseInt(d.opened)||0;
+            const clicked = parseInt(d.clicked)||0;
+            return {
+                sent, opened, clicked,
+                open_rate: sent > 0 ? parseFloat(((opened/sent)*100).toFixed(1)) : 0,
+                click_rate: sent > 0 ? parseFloat(((clicked/sent)*100).toFixed(1)) : 0,
+                hot_conversions: parseInt(d.hot_conversions)||0,
+            };
+        };
+
+        const [marketing, followup] = await Promise.all([
+            getStats('marketing'),
+            getStats('follow-up'),
+        ]);
+        res.json({ success: true, marketing, followup, target_email: targetEmail });
+    } catch(e) { console.error('[EMAIL ANALYTICS SPLIT]', e); res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// CLIENT PORTAL — SEQUENCE (chain) AUTO-ASSIGN TO LEAD
+// POST /api/client/leads/:leadId/assign-sequence
+// ============================================================
+app.post('/api/client/leads/:leadId/assign-sequence', authenticateClient, async (req, res) => {
+    try {
+        const { leadId } = req.params;
+        const chainId = req.body.chain_id || req.body.chainId;
+        const enabled = req.body.enabled !== undefined ? req.body.enabled : true; // default to enable
+        const sendNow = req.body.send_now !== undefined ? req.body.send_now : true;
+        const userId = req.user.id;
+        const portalId = await getClientPortalId(userId);
+
+        // Verify lead in portal
+        const check = await pool.query('SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2', [leadId, portalId]);
+        if (!check.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
+
+        if (!enabled) {
+            // Disable: deactivate all queue entries for this lead
+            await pool.query('UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1', [leadId]);
+            await pool.query('UPDATE leads SET auto_reply_chain_id=NULL, auto_reply_enabled=FALSE WHERE id=$1', [leadId]);
+            return res.json({ success: true, message: 'Auto-sequence disabled' });
+        }
+
+        // Get chain steps
+        const chainRes = await pool.query('SELECT * FROM client_email_chains WHERE id=$1 AND client_portal_id=$2', [chainId, portalId]);
+        if (!chainRes.rows.length) return res.status(404).json({ success: false, message: 'Chain not found' });
+        const chain = chainRes.rows[0];
+        const steps = chain.steps || [];
+        if (!steps.length) return res.status(400).json({ success: false, message: 'Chain has no steps' });
+
+        // Cancel existing active queue entries for this lead
+        await pool.query('UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1', [leadId]);
+
+        // Schedule first step immediately
+        const firstStep = steps[0];
+        await pool.query(`
+            INSERT INTO client_chain_queue (lead_id, chain_id, step_index, template_id, scheduled_at, client_portal_id, is_active)
+            VALUES ($1, $2, 0, $3, NOW(), $4, TRUE)
+            ON CONFLICT DO NOTHING
+        `, [leadId, chainId, firstStep.template_id, portalId]);
+
+        // Update lead
+        await pool.query('UPDATE leads SET auto_reply_chain_id=$1, auto_reply_enabled=TRUE WHERE id=$2', [chainId, leadId]);
+
+        res.json({ success: true, message: 'Sequence assigned — first email queued immediately' });
+    } catch(e) { console.error('[ASSIGN-SEQUENCE]', e); res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// CLIENT PORTAL — SCHEDULING SUBTABS (all / mine)
+// GET /api/client/appointments?view=all|mine
+// ============================================================
+app.get('/api/client/appointments', authenticateClient, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const portalId = await getClientPortalId(userId);
+        const { view } = req.query; // 'all' or 'mine'
+
+        const userInfo = await pool.query('SELECT email FROM leads WHERE id=$1', [userId]);
+        const userEmail = userInfo.rows[0]?.email;
+
+        let query, params;
+        if (view === 'mine') {
+            query = `SELECT a.* FROM client_appointments a WHERE a.client_portal_id=$1 AND LOWER(a.assigned_to_email)=LOWER($2) ORDER BY a.scheduled_at ASC NULLS LAST`;
+            params = [portalId, userEmail];
+        } else {
+            // 'all' (admin/co-admin) or default
+            if (portalId) {
+                query = `SELECT a.* FROM client_appointments a WHERE a.client_portal_id=$1 ORDER BY a.scheduled_at ASC NULLS LAST`;
+                params = [portalId];
+            } else {
+                query = `SELECT a.* FROM client_appointments a WHERE a.user_id=$1 ORDER BY a.scheduled_at ASC NULLS LAST`;
+                params = [userId];
+            }
+        }
+
+        const r = await pool.query(query, params);
+        res.json({ success: true, appointments: r.rows });
+    } catch(e) { console.error('[APPOINTMENTS]', e); res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// CLIENT PORTAL — CONTACT FORM SUBMISSION (public, generates lead)
+// POST /api/client-forms/contact
+// ============================================================
+app.post('/api/client-forms/contact', async (req, res) => {
+    try {
+        const { portalId, name, email, phone, message, formId } = req.body;
+        if (!portalId || !email) return res.status(400).json({ success: false, message: 'Missing required fields' });
+
+        // Get portal settings (brevo key, admin email)
+        const settingsRes = await pool.query('SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1', [portalId]);
+        const settings = settingsRes.rows[0] || {};
+
+        // Get portal admin lead info for the sender email
+        const adminRes = await pool.query(`
+            SELECT l.email as admin_email, cu.user_name as admin_name
+            FROM leads l
+            LEFT JOIN company_users cu ON LOWER(l.email) = LOWER(cu.user_email)
+            WHERE l.client_portal_id=$1 AND l.is_company_admin=TRUE LIMIT 1
+        `, [portalId]);
+        const adminEmail = adminRes.rows[0]?.admin_email || settings.sender_email;
+        const adminName = settings.sender_name || adminRes.rows[0]?.admin_name || 'Team';
+
+        // Check if lead exists for this portal
+        let lead;
+        const existingLead = await pool.query('SELECT * FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2', [email, portalId]);
+        if (existingLead.rows.length) {
+            lead = existingLead.rows[0];
+            // Update temperature to hot since they submitted a form
+            await pool.query(`UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at, NOW()), status='contacted', notes=CONCAT(COALESCE(notes,''), '\n[Form submission: ', $1, ']'), updated_at=NOW() WHERE id=$2`, [message||'contact form', lead.id]);
+        } else {
+            // Create new hot lead
+            const newLead = await pool.query(`
+                INSERT INTO leads (name, email, phone, notes, source, lead_temperature, became_hot_at, client_portal_id, status, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, 'contact-form', 'hot', NOW(), $5, 'new', NOW(), NOW()) RETURNING *
+            `, [name, email, phone||null, message||null, portalId]);
+            lead = newLead.rows[0];
+        }
+
+        // Track in client_email_log (form submission event)
+        await pool.query(`
+            INSERT INTO client_email_log (lead_id, client_portal_id, email_type, status, sent_at, lead_became_hot, subject, to_email)
+            VALUES ($1, $2, 'form-contact', 'submitted', NOW(), TRUE, 'Contact Form Submission', $3)
+        `, [lead.id, portalId, email]).catch(()=>{});
+
+        // Send confirmation email to lead (from admin's email via Brevo)
+        if (settings.brevo_api_key && adminEmail) {
+            try {
+                const brevoApiKey = settings.brevo_api_key;
+                await fetch('https://api.brevo.com/v3/smtp/email', {
+                    method: 'POST',
+                    headers: { 'api-key': brevoApiKey, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sender: { name: adminName, email: adminEmail },
+                        to: [{ email }],
+                        subject: `We received your message, ${name}!`,
+                        htmlContent: `<p>Hi ${name},</p><p>Thank you for reaching out! We've received your message and will be in touch shortly.</p><p>Best,<br>${adminName}</p>`
+                    })
+                });
+            } catch(e) { console.error('[CONTACT FORM] Brevo send error:', e.message); }
+        }
+
+        res.json({ success: true, leadId: lead.id, message: 'Form submitted — lead is now hot' });
+    } catch(e) { console.error('[CONTACT FORM]', e); res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// CLIENT PORTAL — SCHEDULING FORM SUBMISSION (public)
+// POST /api/client-forms/schedule
+// ============================================================
+app.post('/api/client-forms/schedule', async (req, res) => {
+    try {
+        const { portalId, name, email, phone, preferredDate, preferredTime, notes, formId } = req.body;
+        if (!portalId || !email) return res.status(400).json({ success: false, message: 'Missing required fields' });
+
+        const settingsRes = await pool.query('SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1', [portalId]);
+        const settings = settingsRes.rows[0] || {};
+        const adminRes = await pool.query(`
+            SELECT l.email as admin_email, cu.user_name as admin_name
+            FROM leads l LEFT JOIN company_users cu ON LOWER(l.email)=LOWER(cu.user_email)
+            WHERE l.client_portal_id=$1 AND l.is_company_admin=TRUE LIMIT 1
+        `, [portalId]);
+        const adminEmail = adminRes.rows[0]?.admin_email || settings.sender_email;
+        const adminName = settings.sender_name || adminRes.rows[0]?.admin_name || 'Team';
+
+        // Upsert lead as hot
+        let lead;
+        const existingLead = await pool.query('SELECT * FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2', [email, portalId]);
+        if (existingLead.rows.length) {
+            lead = existingLead.rows[0];
+            await pool.query(`UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at, NOW()), status='contacted', updated_at=NOW() WHERE id=$1`, [lead.id]);
+        } else {
+            const newLead = await pool.query(`
+                INSERT INTO leads (name, email, phone, notes, source, lead_temperature, became_hot_at, client_portal_id, status, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, 'schedule-form', 'hot', NOW(), $5, 'new', NOW(), NOW()) RETURNING *
+            `, [name, email, phone||null, notes||null, portalId]);
+            lead = newLead.rows[0];
+        }
+
+        // Create appointment record
+        const scheduledAt = preferredDate && preferredTime ? new Date(`${preferredDate}T${preferredTime}`).toISOString() : null;
+        await pool.query(`
+            INSERT INTO client_appointments (client_portal_id, client_name, client_email, client_phone, scheduled_at, notes, status, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW(), NOW())
+        `, [portalId, name, email, phone||null, scheduledAt, notes||null]).catch(()=>{});
+
+        // Track
+        await pool.query(`
+            INSERT INTO client_email_log (lead_id, client_portal_id, email_type, status, sent_at, lead_became_hot, subject, to_email)
+            VALUES ($1, $2, 'form-schedule', 'submitted', NOW(), TRUE, 'Schedule Form Submission', $3)
+        `, [lead.id, portalId, email]).catch(()=>{});
+
+        // Send confirmation from admin's email
+        if (settings.brevo_api_key && adminEmail) {
+            try {
+                const timeStr = scheduledAt ? new Date(scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : 'TBD';
+                await fetch('https://api.brevo.com/v3/smtp/email', {
+                    method: 'POST',
+                    headers: { 'api-key': settings.brevo_api_key, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sender: { name: adminName, email: adminEmail },
+                        to: [{ email }],
+                        subject: `Appointment request confirmed, ${name}!`,
+                        htmlContent: `<p>Hi ${name},</p><p>We've received your appointment request for <strong>${timeStr}</strong>. We'll confirm the details shortly!</p><p>Best,<br>${adminName}</p>`
+                    })
+                });
+            } catch(e) { console.error('[SCHEDULE FORM] Brevo send error:', e.message); }
+        }
+
+        res.json({ success: true, leadId: lead.id, message: 'Appointment request submitted — lead is now hot' });
+    } catch(e) { console.error('[SCHEDULE FORM]', e); res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// CLIENT PORTAL — EMAIL ANALYTICS per user (admin view)
+// GET /api/client/analytics/team-email
+// ============================================================
+app.get('/api/client/analytics/team-email', authenticateClient, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const portalId = await getClientPortalId(userId);
+        const userInfo = await pool.query('SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1', [userId]);
+        const me = userInfo.rows[0];
+        if (!me?.is_company_admin && !me?.is_co_admin) return res.status(403).json({ success: false, message: 'Admin only' });
+
+        const members = await pool.query('SELECT id, user_name, user_label, user_email FROM company_users WHERE client_portal_id=$1 AND status=$2 ORDER BY user_name', [portalId, 'active']);
+
+        const results = [];
+        for (const m of members.rows) {
+            const getTypeStats = async (emailType) => {
+                const r = await pool.query(`
+                    SELECT COUNT(*) FILTER(WHERE status='sent') as sent,
+                           COUNT(*) FILTER(WHERE opened_at IS NOT NULL) as opened,
+                           COUNT(*) FILTER(WHERE clicked_at IS NOT NULL) as clicked,
+                           COUNT(*) FILTER(WHERE lead_became_hot=TRUE) as hot
+                    FROM client_email_log WHERE client_portal_id=$1 AND LOWER(assigned_to_user_email)=LOWER($2) AND email_type=$3
+                `, [portalId, m.user_email, emailType]);
+                const d = r.rows[0];
+                const sent = parseInt(d.sent)||0, opened=parseInt(d.opened)||0, clicked=parseInt(d.clicked)||0;
+                return { sent, opened, clicked, open_rate: sent>0?+((opened/sent*100).toFixed(1)):0, click_rate: sent>0?+((clicked/sent*100).toFixed(1)):0, hot_conversions: parseInt(d.hot)||0 };
+            };
+            const [marketing, followup] = await Promise.all([getTypeStats('marketing'), getTypeStats('follow-up')]);
+            results.push({ ...m, marketing, followup });
+        }
+        res.json({ success: true, team: results });
+    } catch(e) { console.error('[TEAM EMAIL ANALYTICS]', e); res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// CLIENT PORTAL — ENSURE email_type column in client_email_log
+// and lead_became_hot column
+// ============================================================
+(async () => {
+    try {
+        await pool.query(`
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_log' AND column_name='email_type') THEN
+                    ALTER TABLE client_email_log ADD COLUMN email_type VARCHAR(50) DEFAULT 'follow-up';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_log' AND column_name='lead_became_hot') THEN
+                    ALTER TABLE client_email_log ADD COLUMN lead_became_hot BOOLEAN DEFAULT FALSE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_log' AND column_name='to_email') THEN
+                    ALTER TABLE client_email_log ADD COLUMN to_email VARCHAR(255);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='leads' AND column_name='auto_reply_chain_id') THEN
+                    ALTER TABLE leads ADD COLUMN auto_reply_chain_id INTEGER;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='leads' AND column_name='auto_reply_enabled') THEN
+                    ALTER TABLE leads ADD COLUMN auto_reply_enabled BOOLEAN DEFAULT FALSE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='client_appointments') THEN
+                    CREATE TABLE client_appointments (
+                        id SERIAL PRIMARY KEY,
+                        client_portal_id VARCHAR(64),
+                        user_id INTEGER,
+                        assigned_to_email VARCHAR(255),
+                        client_name VARCHAR(255),
+                        client_email VARCHAR(255),
+                        client_phone VARCHAR(50),
+                        scheduled_at TIMESTAMPTZ,
+                        notes TEXT,
+                        status VARCHAR(50) DEFAULT 'scheduled',
+                        confirmation_sent BOOLEAN DEFAULT FALSE,
+                        created_at TIMESTAMPTZ DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='client_chain_queue') THEN
+                    CREATE TABLE client_chain_queue (
+                        id SERIAL PRIMARY KEY,
+                        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                        chain_id INTEGER,
+                        step_index INTEGER DEFAULT 0,
+                        template_id INTEGER,
+                        scheduled_at TIMESTAMPTZ DEFAULT NOW(),
+                        sent_at TIMESTAMPTZ,
+                        client_portal_id VARCHAR(64),
+                        is_active BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMPTZ DEFAULT NOW()
+                    );
+                END IF;
+            END $$;
+        `);
+    } catch(e) { console.warn('[SCHEMA] Column check error (non-fatal):', e.message); }
+})();
+
+// ============================================================
+// CLIENT PORTAL — SEQUENCE RUNNER (cron-style, hit this endpoint)
+// POST /api/client/sequences/run (protected, internal use)
+// ============================================================
+app.post('/api/client/sequences/run', authenticateToken, async (req, res) => {
+    try {
+        // Find all due queue entries
+        const due = await pool.query(`
+            SELECT ccq.*, l.email as lead_email, l.name as lead_name, l.client_portal_id,
+                   ces.brevo_api_key, ces.sender_email, ces.sender_name
+            FROM client_chain_queue ccq
+            JOIN leads l ON ccq.lead_id = l.id
+            LEFT JOIN client_email_settings ces ON ccq.client_portal_id = ces.client_portal_id
+            WHERE ccq.is_active = TRUE
+              AND ccq.sent_at IS NULL
+              AND ccq.scheduled_at <= NOW()
+        `);
+
+        let processed = 0;
+        for (const row of due.rows) {
+            try {
+                // Get template
+                const tmplRes = await pool.query('SELECT * FROM client_email_templates WHERE id=$1', [row.template_id]);
+                const tmpl = tmplRes.rows[0];
+                if (!tmpl) { await pool.query('UPDATE client_chain_queue SET is_active=FALSE WHERE id=$1', [row.id]); continue; }
+
+                // Get admin email for this portal (follow-ups always come from admin's email)
+                const adminRes = await pool.query(`
+                    SELECT l.email FROM leads l WHERE l.client_portal_id=$1 AND l.is_company_admin=TRUE LIMIT 1
+                `, [row.client_portal_id]);
+                const senderEmail = adminRes.rows[0]?.email || row.sender_email;
+                const senderName = row.sender_name || 'Team';
+
+                // Build email HTML
+                const subject = tmpl.subject;
+                const html = tmpl.body_html?.replace(/\{\{name\}\}/gi, row.lead_name || 'there') || '';
+
+                // Send via Brevo if key available
+                if (row.brevo_api_key && senderEmail && row.lead_email) {
+                    await fetch('https://api.brevo.com/v3/smtp/email', {
+                        method: 'POST',
+                        headers: { 'api-key': row.brevo_api_key, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sender: { name: senderName, email: senderEmail },
+                            to: [{ email: row.lead_email, name: row.lead_name }],
+                            subject, htmlContent: html
+                        })
+                    });
+                }
+
+                // Mark sent
+                await pool.query('UPDATE client_chain_queue SET sent_at=NOW(), is_active=FALSE WHERE id=$1', [row.id]);
+
+                // Log it
+                await pool.query(`
+                    INSERT INTO client_email_log (lead_id, client_portal_id, email_type, status, sent_at, subject, to_email)
+                    VALUES ($1,$2,'follow-up','sent',NOW(),$3,$4)
+                `, [row.lead_id, row.client_portal_id, subject, row.lead_email]).catch(()=>{});
+
+                // Schedule next step in the chain
+                const chainRes = await pool.query('SELECT * FROM client_email_chains WHERE id=$1', [row.chain_id]);
+                const chain = chainRes.rows[0];
+                if (chain) {
+                    const steps = chain.steps || [];
+                    const nextIndex = row.step_index + 1;
+                    let actualNextIndex = nextIndex;
+                    if (nextIndex >= steps.length && chain.loop) actualNextIndex = 0;
+                    if (actualNextIndex < steps.length) {
+                        const nextStep = steps[actualNextIndex];
+                        const delayDays = nextStep.delay_days || 3;
+                        await pool.query(`
+                            INSERT INTO client_chain_queue (lead_id, chain_id, step_index, template_id, scheduled_at, client_portal_id, is_active)
+                            VALUES ($1, $2, $3, $4, NOW() + ($5 || ' days')::INTERVAL, $6, TRUE)
+                        `, [row.lead_id, row.chain_id, actualNextIndex, nextStep.template_id, delayDays, row.client_portal_id]);
+                    }
+                }
+                processed++;
+            } catch(e) { console.error('[SEQUENCE RUN] Item error:', e.message); }
+        }
+        res.json({ success: true, processed });
+    } catch(e) { console.error('[SEQUENCE RUN]', e); res.status(500).json({ success: false, message: e.message }); }
 });
 
 startServer();

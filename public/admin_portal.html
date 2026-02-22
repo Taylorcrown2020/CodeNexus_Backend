@@ -12503,10 +12503,9 @@ async function toggleTask(id) {
         showToast('Error updating task', 'error');
     }
 }
-function setLeadFilterFromBtn(type) {
-    state.currentFilter = type;
-    state.searchTerm = '';
-    renderSection(state.currentSection);
+function filterLeads(type) {
+state.currentFilter = type;
+renderSection(state.currentSection);
 }
 function handleInvoiceSearch(event) {
     state.searchQuery = event.target.value.toLowerCase();
@@ -12516,8 +12515,9 @@ function filterInvoices(status) {
     state.currentFilter = status;
     renderSection('invoices');
 }
-function handleSearchLegacy(query) {
-    // Merged into handleSearch above - this duplicate intentionally neutered
+function handleSearch(query) {
+state.searchQuery = query.toLowerCase();
+renderSection(state.currentSection);
 }
 async function toggleSetting(setting) {
     state.settings[setting] = !state.settings[setting];
@@ -14485,7 +14485,22 @@ function calculateConversionRate() {
 if (state.leads.length === 0) return 0;
 return Math.round((state.customers.length / (state.leads.length + state.customers.length)) * 100);
 }
-// NOTE: filterLeads(data) is defined at line ~5078. Duplicate removed.
+function filterLeads(data) {
+let filtered = data;
+if (state.currentFilter !== 'all') {
+    filtered = filtered.filter(l => l.status === state.currentFilter);
+}
+
+if (state.searchQuery) {
+    filtered = filtered.filter(l => 
+        l.name.toLowerCase().includes(state.searchQuery) ||
+        l.email.toLowerCase().includes(state.searchQuery) ||
+        (l.company && l.company.toLowerCase().includes(state.searchQuery))
+    );
+}
+
+return filtered;
+}
 
 // Preview Project Timeline
 function previewProjectTimeline() {

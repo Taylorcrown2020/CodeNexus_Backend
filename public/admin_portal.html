@@ -5445,6 +5445,8 @@ try {
     showToast('Deleted successfully', 'success');
     if (state.currentSection === 'subscriptions') {
         renderSubscriptions(document.getElementById('contentArea'));
+    } else if (state.currentSection === 'clientPortal') {
+        renderClientPortal();
     } else {
         renderSection(state.currentSection);
     }
@@ -5860,6 +5862,7 @@ function renderClientAccountsTable() {
             <td>
                 <button class="btn btn-sm btn-secondary" onclick="assignProject(${client.id})">Project</button>
                 <button class="btn btn-sm btn-secondary" onclick="resetClientPassword(${client.id})">Reset PW</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteLead(${client.id})">Delete</button>
             </td>
         </tr>
     `).join('');

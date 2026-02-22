@@ -3245,7 +3245,6 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
             WHERE (l.source IS NULL OR l.source != 'company-user')
-              AND l.client_portal_id IS NULL
             ORDER BY l.created_at DESC
         `);
 
@@ -3272,7 +3271,6 @@ app.get('/api/leads/all-complete', authenticateToken, async (req, res) => {
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
             WHERE (l.source IS NULL OR l.source != 'company-user')
-              AND l.client_portal_id IS NULL
             ORDER BY l.created_at DESC
         `);
 

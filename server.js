@@ -3531,6 +3531,14 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
             await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
             await pool.query(`DELETE FROM subscription_events WHERE client_portal_id = $1`, [pid]).catch(() => {});
             await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [pid]);
+            await pool.query(`DELETE FROM client_email_log WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_email_chain_steps WHERE chain_id IN (SELECT id FROM client_email_chains WHERE client_portal_id = $1)`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_chain_queue WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_email_chains WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_email_templates WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_email_settings WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_appointments WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_unsubscribes WHERE client_portal_id = $1`, [pid]).catch(() => {});
             await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]);
             await pool.query(`UPDATE leads SET client_portal_id = NULL, is_company_admin = FALSE, updated_at = NOW() WHERE client_portal_id = $1`, [pid]);
             console.log(`[DELETE] Wiped company: ${pid}`);
@@ -3612,6 +3620,32 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         // ══════════════════════════════════════════════════════════════
         await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(() => {});
         await pool.query(`DELETE FROM subscription_events WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(() => {});
+        // Also catch any crm_subscriptions tied to the lead's client_portal_id that may have survived
+        if (clientPortalId) {
+            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]).catch(() => {});
+            await pool.query(`DELETE FROM subscription_events WHERE client_portal_id = $1`, [clientPortalId]).catch(() => {});
+        }
+        // Global orphan purge: remove any crm_subscriptions/subscription_events whose lead no longer exists
+        await pool.query(`
+            DELETE FROM crm_subscriptions
+            WHERE lead_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM leads WHERE id = crm_subscriptions.lead_id)
+        `).catch(() => {});
+        await pool.query(`
+            DELETE FROM crm_subscriptions
+            WHERE lead_email IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM leads WHERE LOWER(email) = LOWER(crm_subscriptions.lead_email))
+        `).catch(() => {});
+        await pool.query(`
+            DELETE FROM subscription_events
+            WHERE lead_email IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM leads WHERE LOWER(email) = LOWER(subscription_events.lead_email))
+        `).catch(() => {});
+        // Remove any client_companies whose admin lead no longer exists
+        await pool.query(`
+            DELETE FROM client_companies
+            WHERE NOT EXISTS (SELECT 1 FROM leads WHERE LOWER(email) = LOWER(client_companies.admin_email))
+        `).catch(() => {});
         await pool.query(`DELETE FROM leads WHERE id = $1`, [leadId]);
         
         console.log(`✅ [DELETE COMPLETE] ${leadEmail} completely wiped from system`);
@@ -8569,7 +8603,28 @@ app.get('/api/analytics/sources', authenticateToken, async (req, res) => {
 app.get('/api/subscriptions', authenticateToken, async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 100;
-        
+
+        // ── Proactive orphan purge ──────────────────────────────────────────
+        // Remove crm_subscriptions whose lead no longer exists or is no longer a customer
+        await pool.query(`
+            DELETE FROM crm_subscriptions
+            WHERE NOT EXISTS (
+                SELECT 1 FROM leads l
+                WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+                AND l.is_customer = TRUE
+            )
+        `).catch(() => {});
+        // Remove client_companies whose admin lead no longer exists as a customer
+        await pool.query(`
+            DELETE FROM client_companies
+            WHERE NOT EXISTS (
+                SELECT 1 FROM leads l
+                WHERE LOWER(l.email) = LOWER(client_companies.admin_email)
+                AND l.is_customer = TRUE
+            )
+        `).catch(() => {});
+        // ────────────────────────────────────────────────────────────────────
+
         // Get all individual subscriptions (not part of a company)
         const individualSubs = await pool.query(`
             SELECT 
@@ -8634,9 +8689,9 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
                 ) as users
             FROM client_companies cc
             LEFT JOIN company_users cu ON cc.client_portal_id = cu.client_portal_id
-            -- Only show companies whose admin lead record still exists
+            -- Only show companies whose admin lead record still exists AND is still a customer
             WHERE EXISTS (
-                SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(cc.admin_email)
+                SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(cc.admin_email) AND l.is_customer = TRUE
             )
             GROUP BY cc.id, cc.client_portal_id, cc.company_name, cc.admin_email, 
                      cc.total_active_seats, cc.purchased_seats, cc.monthly_total, cc.created_at

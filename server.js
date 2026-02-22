@@ -3450,192 +3450,176 @@ app.put('/api/leads/:id', authenticateToken, async (req, res) => {
 // Delete lead/customer
 app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
     try {
-        const leadId = parseInt(req.params.id);
+        const leadId = req.params.id;
 
-        // ── Fetch everything we need before deleting ──────────────────
-        const leadResult = await pool.query(
-            `SELECT email, stripe_customer_id, client_portal_id, is_company_admin FROM leads WHERE id = $1`,
-            [leadId]
-        );
-        if (!leadResult.rows.length) {
-            return res.status(404).json({ success: false, message: 'Customer not found.' });
+        // Get full lead/customer info
+        const leadResult = await pool.query(`
+            SELECT email, stripe_customer_id, client_portal_id, is_company_admin 
+            FROM leads WHERE id = $1
+        `, [leadId]);
+        
+        if (leadResult.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Lead/Customer not found.' 
+            });
         }
-
-        const lead          = leadResult.rows[0];
-        const leadEmail     = lead.email;
-        const stripeCustId  = lead.stripe_customer_id;
+        
+        const lead = leadResult.rows[0];
+        const leadEmail = lead.email;
+        const stripeCustomerId = lead.stripe_customer_id;
         const clientPortalId = lead.client_portal_id;
 
-        // Safe-delete helper — skips tables that don't yet exist in this deployment
-        const sd = async (table, col, val) => {
+        // Helper: delete from a table that may not exist yet in this deployment
+        const _safeDelete = async (table, col, val) => {
             try { await pool.query(`DELETE FROM ${table} WHERE ${col} = $1`, [val]); }
-            catch (e) { if (e.code !== '42P01' && e.code !== '42703') throw e; }
+            catch (e) { if (e.code !== '42P01') throw e; /* 42P01 = table doesn't exist, skip */ }
         };
-        const sdEmail = async (table, col, val) => {
-            try { await pool.query(`DELETE FROM ${table} WHERE LOWER(${col}) = LOWER($1)`, [val]); }
-            catch (e) { if (e.code !== '42P01' && e.code !== '42703') throw e; }
-        };
-
-        console.log(`[DELETE] ▶ Starting full wipe for ${leadEmail} (id=${leadId})`);
-
-        // ══════════════════════════════════════════════════════════════════
-        // 1.  COLLECT ALL PORTAL IDs THIS CUSTOMER OWNS
-        //     (by client_portal_id on the lead + any company where admin_email matches)
-        // ══════════════════════════════════════════════════════════════════
+        
+        console.log(`[DELETE CUSTOMER] Starting complete wipe for ${leadEmail} (ID: ${leadId})`);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 1. IMMEDIATELY CANCEL ALL STRIPE SUBSCRIPTIONS
+        // ══════════════════════════════════════════════════════════════
+        if (stripeCustomerId) {
+            try {
+                const subscriptions = await stripe.subscriptions.list({
+                    customer: stripeCustomerId,
+                    status: 'all'
+                });
+                
+                for (const sub of subscriptions.data) {
+                    if (sub.status === 'active' || sub.status === 'past_due' || sub.status === 'trialing') {
+                        await stripe.subscriptions.cancel(sub.id);
+                        console.log(`[DELETE] Cancelled Stripe subscription: ${sub.id}`);
+                    }
+                }
+                
+                await stripe.customers.del(stripeCustomerId);
+                console.log(`[DELETE] Deleted Stripe customer: ${stripeCustomerId}`);
+            } catch (stripeErr) {
+                console.error('[DELETE] Stripe deletion error:', stripeErr.message);
+            }
+        }
+        
+        // ══════════════════════════════════════════════════════════════
+        // 2. DELETE COMPANY DATA
+        // ══════════════════════════════════════════════════════════════
         const adminCompanies = await pool.query(
             `SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email) = LOWER($1)`,
             [leadEmail]
-        ).catch(() => ({ rows: [] }));
+        );
+        const portalIdsToDelete = new Set(
+            adminCompanies.rows.map(r => r.client_portal_id).filter(Boolean)
+        );
+        if (clientPortalId) portalIdsToDelete.add(clientPortalId);
 
-        const portalIds = new Set(adminCompanies.rows.map(r => r.client_portal_id).filter(Boolean));
-        if (clientPortalId) portalIds.add(clientPortalId);
-
-        console.log(`[DELETE] Portal IDs to wipe: ${[...portalIds].join(', ') || 'none'}`);
-
-        // ══════════════════════════════════════════════════════════════════
-        // 2.  CANCEL & DELETE ALL STRIPE SUBSCRIPTIONS
-        // ══════════════════════════════════════════════════════════════════
-        if (stripeCustId) {
-            try {
-                const subs = await stripe.subscriptions.list({ customer: stripeCustId, status: 'all' });
-                for (const sub of subs.data) {
-                    if (['active', 'past_due', 'trialing'].includes(sub.status)) {
-                        await stripe.subscriptions.cancel(sub.id).catch(() => {});
+        for (const pid of portalIdsToDelete) {
+            const companyUsers = await pool.query(
+                `SELECT user_email, stripe_subscription_id FROM company_users WHERE client_portal_id = $1`,
+                [pid]
+            );
+            for (const user of companyUsers.rows) {
+                if (user.stripe_subscription_id) {
+                    try {
+                        await stripe.subscriptions.cancel(user.stripe_subscription_id);
+                    } catch (err) {
+                        console.error(`[DELETE] Stripe cancel error for ${user.user_email}:`, err.message);
                     }
                 }
-                await stripe.customers.del(stripeCustId).catch(() => {});
-                console.log(`[DELETE] Stripe customer ${stripeCustId} cancelled`);
-            } catch (e) { console.error('[DELETE] Stripe error:', e.message); }
+            }
+            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
+            await pool.query(`DELETE FROM subscription_events WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [pid]);
+            await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]);
+            await pool.query(`UPDATE leads SET client_portal_id = NULL, is_company_admin = FALSE, updated_at = NOW() WHERE client_portal_id = $1`, [pid]);
+            console.log(`[DELETE] Wiped company: ${pid}`);
         }
 
-        // Cancel Stripe subs for all company-seat users
-        for (const pid of portalIds) {
-            const cuRows = await pool.query(
-                `SELECT stripe_subscription_id FROM company_users WHERE client_portal_id = $1 AND stripe_subscription_id IS NOT NULL`,
-                [pid]
-            ).catch(() => ({ rows: [] }));
-            for (const row of cuRows.rows) {
-                await stripe.subscriptions.cancel(row.stripe_subscription_id).catch(() => {});
+        // Remove from any other company user list
+        const memberSubs = await pool.query(
+            `SELECT stripe_subscription_id FROM company_users WHERE LOWER(user_email) = LOWER($1)`,
+            [leadEmail]
+        );
+        for (const row of memberSubs.rows) {
+            if (row.stripe_subscription_id) {
+                try { await stripe.subscriptions.cancel(row.stripe_subscription_id); } catch (_) {}
             }
         }
-
-        // Also cancel subs for this person as a member of OTHER companies
-        const memberSubs = await pool.query(
-            `SELECT stripe_subscription_id FROM company_users WHERE LOWER(user_email) = LOWER($1) AND stripe_subscription_id IS NOT NULL`,
-            [leadEmail]
-        ).catch(() => ({ rows: [] }));
-        for (const row of memberSubs.rows) {
-            await stripe.subscriptions.cancel(row.stripe_subscription_id).catch(() => {});
+        await pool.query(`DELETE FROM company_users WHERE LOWER(user_email) = LOWER($1)`, [leadEmail]);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 3. DELETE ALL CRM DATA
+        // ══════════════════════════════════════════════════════════════
+        await _safeDelete('client_contacts', 'client_id', leadId);
+        await _safeDelete('client_deals', 'client_id', leadId);
+        await _safeDelete('client_tasks', 'client_id', leadId);
+        await _safeDelete('client_activity', 'client_id', leadId);
+        await _safeDelete('client_notes', 'client_id', leadId);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 4. DELETE ALL SUBSCRIPTION RECORDS
+        // ══════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM crm_subscriptions WHERE lead_id = $1`, [leadId]);
+        await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]);
+        await pool.query(`DELETE FROM subscription_events WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]);
+        for (const pid of portalIdsToDelete) {
+            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
         }
+        
+        // ══════════════════════════════════════════════════════════════
+        // 5. DELETE ALL PROJECT DATA
+        // ══════════════════════════════════════════════════════════════
+        await _safeDelete('project_timeline_items', 'lead_id', leadId);
+        await _safeDelete('project_files', 'lead_id', leadId);
+        await _safeDelete('client_projects', 'lead_id', leadId);
+        await _safeDelete('client_uploads', 'lead_id', leadId);
+        await _safeDelete('project_milestones', 'lead_id', leadId);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 6. DELETE ALL INVOICES & EXPENSES
+        // ══════════════════════════════════════════════════════════════
+        await _safeDelete('invoices', 'lead_id', leadId);
+        await _safeDelete('expenses', 'lead_id', leadId);
+        await _safeDelete('documents', 'lead_id', leadId);
+        
+        // ══════════════════════════════════════════════════════════════
+        // 7. DELETE ALL APPOINTMENTS
+        // ══════════════════════════════════════════════════════════════
+        try {
+            await pool.query(`DELETE FROM appointments WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]);
+        } catch (e) { if (e.code !== '42P01' && e.code !== '42703') throw e; }
+        
+        // ══════════════════════════════════════════════════════════════
+        // 8. DELETE ALL NOTES, EMAIL, ENGAGEMENT
+        // ══════════════════════════════════════════════════════════════
+        await _safeDelete('lead_notes', 'lead_id', leadId);
+        await _safeDelete('lead_scores', 'lead_id', leadId);
+        await _safeDelete('score_history', 'lead_id', leadId);
+        await _safeDelete('email_events', 'lead_id', leadId);
+        await _safeDelete('lead_engagement', 'lead_id', leadId);
+        await _safeDelete('tasks', 'lead_id', leadId);
+        await _safeDelete('support_tickets', 'lead_id', leadId);
+        await _safeDelete('ticket_responses', 'lead_id', leadId);
+        await _safeDelete('pipeline_deals', 'lead_id', leadId);
+        await _safeDelete('auto_campaigns', 'lead_id', leadId);
+        try { await pool.query(`DELETE FROM email_log WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]); } catch(_) {}
+        try { await pool.query(`DELETE FROM client_email_log WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]); } catch(_) {}
+        try { await pool.query(`DELETE FROM activity_log WHERE LOWER(user_email) = LOWER($1)`, [leadEmail]); } catch(_) {}
 
-        // ══════════════════════════════════════════════════════════════════
-        // 3.  WIPE ALL CLIENT-PORTAL DATA (per portal ID)
-        // ══════════════════════════════════════════════════════════════════
-        for (const pid of portalIds) {
-            // Email marketing system
-            await sd('client_email_log',       'client_portal_id', pid);
-            await sd('client_chain_queue',      'client_portal_id', pid);
-            // client_email_chain_steps CASCADE-deletes when chains are deleted
-            await sd('client_email_chains',    'client_portal_id', pid);
-            await sd('client_email_templates', 'client_portal_id', pid);
-            await sd('client_unsubscribes',    'client_portal_id', pid);
-            await sd('client_email_settings',  'client_portal_id', pid);
-
-            // Scheduling
-            await sd('client_appointments',    'client_portal_id', pid);
-
-            // Subscriptions
-            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]).catch(() => {});
-            await pool.query(`DELETE FROM subscription_events WHERE client_portal_id = $1`, [pid]).catch(() => {});
-
-            // Team / company
-            await pool.query(`DELETE FROM company_users   WHERE client_portal_id = $1`, [pid]).catch(() => {});
-            await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]).catch(() => {});
-
-            // Portal leads (the leads that BELONG TO this customer's CRM portal)
-            await pool.query(`DELETE FROM leads WHERE client_portal_id = $1`, [pid]).catch(() => {});
-
-            console.log(`[DELETE] Wiped portal: ${pid}`);
-        }
-
-        // ══════════════════════════════════════════════════════════════════
-        // 4.  WIPE THIS LEAD'S OWN RECORDS (by lead_id & email)
-        // ══════════════════════════════════════════════════════════════════
-
-        // Email tracking (main admin email log)
-        await sd('email_log',       'lead_id', leadId);
-        await sd('email_events',    'lead_id', leadId);
-        await sdEmail('email_log',  'lead_email', leadEmail);
-
-        // Client portal email log (by lead_id in case they had a portal membership)
-        await sd('client_email_log', 'lead_id', leadId);
-        await sdEmail('client_email_log', 'lead_email', leadEmail);
-
-        // Subscriptions — delete by every possible identifier so nothing survives
-        await pool.query(`DELETE FROM crm_subscriptions WHERE lead_id = $1`, [leadId]).catch(e => console.error('[DELETE] crm_sub lead_id:', e.message));
-        await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(e => console.error('[DELETE] crm_sub email:', e.message));
-        await pool.query(`DELETE FROM subscription_events WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(e => console.error('[DELETE] sub_events:', e.message));
-
-        // Remove from any OTHER company's user list
-        await sdEmail('company_users', 'user_email', leadEmail);
-
-        // Appointments (admin portal appointments table)
-        await sdEmail('appointments', 'lead_email', leadEmail);
-
-        // Client portal CRM-type data keyed by client_id (lead id used as client FK)
-        await sd('client_contacts',  'client_id', leadId);
-        await sd('client_deals',     'client_id', leadId);
-        await sd('client_tasks',     'client_id', leadId);
-        await sd('client_activity',  'client_id', leadId);
-        await sd('client_notes',     'client_id', leadId);
-
-        // Projects, files, invoices
-        await sd('client_projects',          'lead_id', leadId);
-        await sd('client_uploads',           'lead_id', leadId);
-        await sd('project_timeline_items',   'lead_id', leadId);
-        await sd('project_files',            'lead_id', leadId);
-        await sd('project_milestones',       'lead_id', leadId);
-        await sd('invoices',                 'lead_id', leadId);
-        await sd('invoice_items',            'invoice_id', -1); // CASCADE handles real items
-        await sd('expenses',   'lead_id', leadId);
-        await sd('documents',  'lead_id', leadId);
-
-        // Lead metadata
-        await sd('lead_notes',     'lead_id', leadId);
-        await sd('lead_scores',    'lead_id', leadId);
-        await sd('score_history',  'lead_id', leadId);
-        await sd('lead_engagement','lead_id', leadId);
-        await sd('lead_notes',     'lead_id', leadId);
-        await sd('tasks',          'lead_id', leadId);
-
-        // Support
-        await sd('support_tickets',  'lead_id', leadId);
-        await sd('ticket_responses', 'lead_id', leadId);
-
-        // Pipeline
-        await sd('pipeline_deals', 'lead_id', leadId);
-
-        // Auto campaigns / chains
-        await sd('auto_campaigns',  'lead_id', leadId);
-        await sd('client_chain_queue', 'lead_id', leadId);
-
-        // Activity logs
-        await sdEmail('activity_log', 'user_email', leadEmail);
-
-        console.log(`[DELETE] Wiped all per-lead records`);
-
-        // ══════════════════════════════════════════════════════════════════
-        // 5.  DELETE THE LEAD RECORD ITSELF
-        //     (crm_subscriptions.lead_id FK is CASCADE — row auto-deletes with lead)
-        //     Run one final sweep first to guarantee no orphans survive
-        // ══════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════
+        // 9. FINAL SWEEP — delete any surviving subscription rows, then delete the lead
+        // ══════════════════════════════════════════════════════════════
         await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(() => {});
         await pool.query(`DELETE FROM subscription_events WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(() => {});
         await pool.query(`DELETE FROM leads WHERE id = $1`, [leadId]);
-        console.log(`[DELETE]  Complete — ${leadEmail} fully erased`);
+        
+        console.log(`✅ [DELETE COMPLETE] ${leadEmail} completely wiped from system`);
 
-        res.json({ success: true, message: 'Customer and all associated data permanently deleted.' });
-
+        res.json({
+            success: true,
+            message: 'Customer and all associated data permanently deleted.'
+        });
     } catch (error) {
         console.error('[DELETE CUSTOMER] Error:', error);
         res.status(500).json({ success: false, message: 'Server error during deletion: ' + error.message });
@@ -11908,15 +11892,17 @@ app.post('/api/subscriptions/:id/portal', authenticateToken, async (req, res) =>
 // MRR, subscriber counts, churn, growth
 app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
     try {
-        // First, purge any orphaned crm_subscriptions whose lead no longer exists
+        // Purge any crm_subscriptions where the lead no longer exists OR is no longer a customer
         await pool.query(`
             DELETE FROM crm_subscriptions
             WHERE NOT EXISTS (
-                SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+                SELECT 1 FROM leads l
+                WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+                AND l.is_customer = TRUE
             )
         `).catch(() => {});
 
-        // Active subscriptions and MRR — only for subscriptions whose lead still exists
+        // Active subscriptions and MRR — only for active customers
         const mrrResult = await pool.query(`
             SELECT
                 COUNT(*) FILTER (WHERE status = 'active')                    AS active_count,
@@ -11927,7 +11913,11 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COALESCE(SUM(monthly_total) FILTER (WHERE status = 'past_due'), 0)              AS at_risk_mrr,
                 COUNT(DISTINCT lead_email) FILTER (WHERE status IN ('active','canceling','past_due')) AS unique_customers
             FROM crm_subscriptions
-            WHERE EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
+            WHERE EXISTS (
+                SELECT 1 FROM leads l
+                WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+                AND l.is_customer = TRUE
+            )
         `);
 
         // New subscribers this month
@@ -11936,7 +11926,11 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
             FROM crm_subscriptions
             WHERE created_at >= DATE_TRUNC('month', NOW())
               AND status != 'cancelled'
-              AND EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
+              AND EXISTS (
+                SELECT 1 FROM leads l
+                WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+                AND l.is_customer = TRUE
+              )
         `);
 
         // Churn this month
@@ -11956,7 +11950,11 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COALESCE(SUM(monthly_total) FILTER (WHERE status IN ('active','canceling')), 0) AS package_mrr,
                 AVG(user_count) FILTER (WHERE status IN ('active','canceling')) AS avg_users
             FROM crm_subscriptions
-            WHERE EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
+            WHERE EXISTS (
+                SELECT 1 FROM leads l
+                WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+                AND l.is_customer = TRUE
+            )
             GROUP BY package_key, package_name
             ORDER BY package_mrr DESC
         `);
@@ -11969,7 +11967,11 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COALESCE(SUM(monthly_total), 0) AS new_mrr
             FROM crm_subscriptions
             WHERE created_at >= NOW() - INTERVAL '12 months'
-              AND EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
+              AND EXISTS (
+                SELECT 1 FROM leads l
+                WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+                AND l.is_customer = TRUE
+              )
             GROUP BY DATE_TRUNC('month', created_at)
             ORDER BY month ASC
         `);

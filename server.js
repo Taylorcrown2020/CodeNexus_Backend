@@ -175,7 +175,7 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     
     if (!webhookSecret) {
-        console.error('⚠️ STRIPE_WEBHOOK_SECRET not set - webhooks will fail!');
+        console.error('️ STRIPE_WEBHOOK_SECRET not set - webhooks will fail!');
         return res.status(500).send('Webhook secret not configured');
     }
     
@@ -185,7 +185,7 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
         event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
         console.log(`[WEBHOOK] Received event: ${event.type}`);
     } catch (err) {
-        console.error('⚠️  Webhook signature verification failed:', err.message);
+        console.error('️  Webhook signature verification failed:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
     
@@ -228,7 +228,7 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
                     return res.json({received: true});
                 }
                 
-                console.log(`[WEBHOOK] ✅ Invoice ${invoiceId} marked as PAID`);
+                console.log(`[WEBHOOK]  Invoice ${invoiceId} marked as PAID`);
                 
                 // Get invoice and customer details
                 const invoiceResult = await pool.query(
@@ -259,7 +259,7 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
                          WHERE id = $1`,
                         [invoice.lead_id]
                     );
-                    console.log(`[WEBHOOK] ✅ Lead converted to ACTIVE CUSTOMER: ${invoice.name}`);
+                    console.log(`[WEBHOOK]  Lead converted to ACTIVE CUSTOMER: ${invoice.name}`);
                 } else {
                     // Make sure customer is active
                     await pool.query(
@@ -269,7 +269,7 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
                          WHERE id = $1`,
                         [invoice.lead_id]
                     );
-                    console.log(`[WEBHOOK] ✅ Customer status updated to ACTIVE: ${invoice.name}`);
+                    console.log(`[WEBHOOK]  Customer status updated to ACTIVE: ${invoice.name}`);
                 }
                 
                 // Update lifetime value
@@ -290,7 +290,7 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
                 
                 console.log('');
                 console.log('========================================');
-                console.log('✅ PAYMENT PROCESSED SUCCESSFULLY');
+                console.log(' PAYMENT PROCESSED SUCCESSFULLY');
                 console.log('========================================');
                 console.log(`   Invoice: ${invoice.invoice_number}`);
                 console.log(`   Amount: $${parseFloat(invoice.total_amount).toLocaleString()}`);
@@ -309,11 +309,11 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
             break;
             
         case 'payment_intent.succeeded':
-            console.log('[WEBHOOK] 💳 Payment intent succeeded:', event.data.object.id);
+            console.log('[WEBHOOK]  Payment intent succeeded:', event.data.object.id);
             break;
             
         case 'payment_intent.payment_failed':
-            console.log('[WEBHOOK] ❌ Payment failed:', event.data.object.id);
+            console.log('[WEBHOOK]  Payment failed:', event.data.object.id);
             break;
             
         default:
@@ -385,7 +385,7 @@ app.post('/api/brevo/webhook', async (req, res) => {
         const event = req.body;
         
         console.log(`\n========================================`);
-        console.log(`[BREVO WEBHOOK] 📨 Received event: ${event.event}`);
+        console.log(`[BREVO WEBHOOK]  Received event: ${event.event}`);
         console.log(`[BREVO WEBHOOK] Email: ${event.email}`);
         console.log(`[BREVO WEBHOOK] Message ID: ${event['message-id']}`);
         console.log(`[BREVO WEBHOOK] Full event data:`, JSON.stringify(event, null, 2));
@@ -394,7 +394,7 @@ app.post('/api/brevo/webhook', async (req, res) => {
         const incomingMsgId = event['message-id'];
         
         if (!incomingMsgId) {
-            console.log(`[BREVO WEBHOOK] ⚠️ WARNING: No message-id in event`);
+            console.log(`[BREVO WEBHOOK] ️ WARNING: No message-id in event`);
             return res.json({ received: true, warning: 'No message-id provided' });
         }
 
@@ -410,26 +410,26 @@ app.post('/api/brevo/webhook', async (req, res) => {
         );
 
         if (emailLogResult.rows.length === 0) {
-            console.log(`[BREVO WEBHOOK] ⚠️ No email_log found for message-id: ${incomingMsgId}`);
+            console.log(`[BREVO WEBHOOK] ️ No email_log found for message-id: ${incomingMsgId}`);
             return res.json({ received: true, warning: 'No matching email_log found' });
         }
 
         const emailLog = emailLogResult.rows[0];
-        console.log(`[BREVO WEBHOOK] ✅ MATCHED: email_log ${emailLog.id} | Lead: ${emailLog.name} | Type: ${emailLog.email_type}`);
+        console.log(`[BREVO WEBHOOK]  MATCHED: email_log ${emailLog.id} | Lead: ${emailLog.name} | Type: ${emailLog.email_type}`);
         
         // Handle DELIVERED event
         if (event.event === 'delivered') {
-            console.log(`[BREVO WEBHOOK] 📬 EMAIL DELIVERED`);
+            console.log(`[BREVO WEBHOOK]  EMAIL DELIVERED`);
             await pool.query(
                 `UPDATE email_log SET status = 'sent' WHERE id = $1`,
                 [emailLog.id]
             );
-            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as SENT`);
+            console.log(`[BREVO WEBHOOK]  Email_log ${emailLog.id} marked as SENT`);
         }
         
         // Handle OPENED event
         else if (event.event === 'opened' || event.event === 'unique_opened') {
-            console.log(`[BREVO WEBHOOK] 📧 EMAIL OPENED`);
+            console.log(`[BREVO WEBHOOK]  EMAIL OPENED`);
             await pool.query(
                 `UPDATE email_log 
                  SET opened_at = COALESCE(opened_at, CURRENT_TIMESTAMP),
@@ -437,7 +437,7 @@ app.post('/api/brevo/webhook', async (req, res) => {
                  WHERE id = $1`,
                 [emailLog.id]
             );
-            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as OPENED`);
+            console.log(`[BREVO WEBHOOK]  Email_log ${emailLog.id} marked as OPENED`);
             
             // Track engagement for the lead
             if (emailLog.lead_id) {
@@ -447,7 +447,7 @@ app.post('/api/brevo/webhook', async (req, res) => {
         
         // Handle CLICKED event
         else if (event.event === 'click' || event.event === 'unique_click') {
-            console.log(`[BREVO WEBHOOK] 🖱️ EMAIL LINK CLICKED`);
+            console.log(`[BREVO WEBHOOK] ️ EMAIL LINK CLICKED`);
             const clickUrl = event.link || event.url || 'unknown';
             await pool.query(
                 `UPDATE email_log 
@@ -457,29 +457,29 @@ app.post('/api/brevo/webhook', async (req, res) => {
                  WHERE id = $1`,
                 [emailLog.id]
             );
-            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as CLICKED`);
+            console.log(`[BREVO WEBHOOK]  Email_log ${emailLog.id} marked as CLICKED`);
             
             // Convert to hot if follow-up email
             if (emailLog.email_type === 'follow-up' && emailLog.lead_id) {
-                console.log(`[BREVO WEBHOOK] 🔥 FOLLOW-UP CLICKED - Converting lead ${emailLog.lead_id} to HOT`);
+                console.log(`[BREVO WEBHOOK]  FOLLOW-UP CLICKED - Converting lead ${emailLog.lead_id} to HOT`);
                 await trackEngagement(emailLog.lead_id, 'email_click_hot', `Clicked via Brevo: ${clickUrl}`);
             }
         }
         
         // Handle FAILURE events
         else if (['hard_bounce', 'soft_bounce', 'blocked', 'spam', 'invalid_email', 'error'].includes(event.event)) {
-            console.log(`[BREVO WEBHOOK] ❌ EMAIL FAILED - Event: ${event.event}`);
+            console.log(`[BREVO WEBHOOK]  EMAIL FAILED - Event: ${event.event}`);
             const errorMsg = `${event.event}: ${event.reason || 'No reason'}`;
             await pool.query(
                 `UPDATE email_log SET status = 'failed', error_message = $2 WHERE id = $1`,
                 [emailLog.id, errorMsg]
             );
-            console.log(`[BREVO WEBHOOK] ✅ Email_log ${emailLog.id} marked as FAILED`);
+            console.log(`[BREVO WEBHOOK]  Email_log ${emailLog.id} marked as FAILED`);
         }
         
         res.json({ received: true, processed: true });
     } catch (error) {
-        console.error('[BREVO WEBHOOK] ❌ Error:', error);
+        console.error('[BREVO WEBHOOK]  Error:', error);
         res.json({ received: true, error: error.message });
     }
 });
@@ -492,7 +492,7 @@ function generateBookingWidgetHTML(leadEmail = '') {
 <tr><td style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); border-radius: 12px; padding: 32px 28px; border: 2px solid #D4A847;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0">
     <tr><td align="center" style="padding-bottom: 20px;">
-        <span style="color: #D4A847; font-size: 22px; font-weight: 700; font-family: Arial, sans-serif; display: block; margin-bottom: 8px;">📅 Schedule Your Free Consultation</span>
+        <span style="color: #D4A847; font-size: 22px; font-weight: 700; font-family: Arial, sans-serif; display: block; margin-bottom: 8px;"> Schedule Your Free Consultation</span>
         <span style="color: #c4c4c4; font-size: 14px; font-family: Arial, sans-serif; display: block; line-height: 1.5;">Pick a time that works for you - we'll discuss your project and answer questions.</span>
     </td></tr>
     <tr><td align="center">
@@ -641,9 +641,9 @@ const pool = new Pool({  // Create pool FIRST
 // Test database connection
 pool.connect((err, client, release) => {
     if (err) {
-        console.error('❌ Error connecting to database:', err.stack);
+        console.error(' Error connecting to database:', err.stack);
     } else {
-        console.log('✅ Database connected successfully');
+        console.log(' Database connected successfully');
         release();
     }
 });
@@ -704,11 +704,11 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
                     const parsed = JSON.parse(data);
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         const messageId = parsed.messageId || null;
-                        console.log('[BREVO] ✅ Email accepted. Message ID:', messageId);
+                        console.log('[BREVO]  Email accepted. Message ID:', messageId);
                         resolve({ messageId });
                     } else {
                         const errMsg = parsed.message || parsed.error || `HTTP ${res.statusCode}`;
-                        console.error('[BREVO] ❌ API error:', errMsg);
+                        console.error('[BREVO]  API error:', errMsg);
                         reject(new Error(`Brevo send failed: ${errMsg}`));
                     }
                 } catch (e) {
@@ -718,7 +718,7 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
         });
 
         req.on('error', (e) => {
-            console.error('[BREVO] ❌ Request error:', e.message);
+            console.error('[BREVO]  Request error:', e.message);
             reject(new Error(`Brevo request failed: ${e.message}`));
         });
 
@@ -760,7 +760,7 @@ async function validateEmailDomain(email) {
         
         // Don't do DNS validation - it causes too many false failures
         // Let the mail server handle validation instead
-        console.log(`[EMAIL-VALIDATION] ✅ Email format valid: ${email}`);
+        console.log(`[EMAIL-VALIDATION]  Email format valid: ${email}`);
         return { valid: true };
         
     } catch (error) {
@@ -795,7 +795,7 @@ async function sendSystemEmail({ to, subject, html }) {
                 html,
                 []
             );
-            console.log(`[SYSTEM EMAIL] ✅ Brevo accepted delivery to: ${to}`);
+            console.log(`[SYSTEM EMAIL]  Brevo accepted delivery to: ${to}`);
         } else {
             // Fallback to nodemailer
             console.log(`[SYSTEM EMAIL] Brevo not configured — sending via Nodemailer | TO: ${to} | Subject: ${subject}`);
@@ -805,10 +805,10 @@ async function sendSystemEmail({ to, subject, html }) {
                 subject,
                 html
             });
-            console.log(`[SYSTEM EMAIL] ✅ Nodemailer delivered to: ${to}`);
+            console.log(`[SYSTEM EMAIL]  Nodemailer delivered to: ${to}`);
         }
     } catch (err) {
-        console.error(`[SYSTEM EMAIL] ❌ Failed to send to ${to}:`, err.message);
+        console.error(`[SYSTEM EMAIL]  Failed to send to ${to}:`, err.message);
         throw err;
     }
 }
@@ -880,7 +880,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
     
     if (!validation.valid) {
         console.error(`\n========================================`);
-        console.error(`[EMAIL] ❌❌❌ EMAIL VALIDATION FAILED ❌❌❌`);
+        console.error(`[EMAIL]  EMAIL VALIDATION FAILED `);
         console.error(`[EMAIL] To: ${to}`);
         console.error(`[EMAIL] Reason: ${validation.reason}`);
         if (validation.suggestion) {
@@ -898,16 +898,16 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                  WHERE id = $1`,
                 [emailLogId, `Email validation failed: ${validation.reason}`]
             );
-            console.log(`[EMAIL] ❌ Email_log ${emailLogId} marked as FAILED (validation failed)`);
+            console.log(`[EMAIL]  Email_log ${emailLogId} marked as FAILED (validation failed)`);
         }
         
-        console.log(`[FOLLOW-UP] ❌ Lead ${leadId} NOT advanced - email validation failed\n`);
+        console.log(`[FOLLOW-UP]  Lead ${leadId} NOT advanced - email validation failed\n`);
         throw new Error(`Email validation failed: ${validation.reason}`);
     }
     
-    console.log(`[EMAIL] ✅ Email validation passed for ${to}`);
+    console.log(`[EMAIL]  Email validation passed for ${to}`);
     if (validation.warning) {
-        console.warn(`[EMAIL] ⚠️  Warning: ${validation.warning}`);
+        console.warn(`[EMAIL] ️  Warning: ${validation.warning}`);
     }
 
     // 4. Inject 1×1 open-tracking pixel (skip for confirmation emails)
@@ -949,7 +949,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 subject,
                 html
             );
-            console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to}`);
+            console.log(`[EMAIL]  Email accepted by Brevo for ${to}`);
             // Store Brevo's message-id so the webhook can look up the exact row
             if (emailLogId && brevoResult?.messageId) {
                 await pool.query(
@@ -975,7 +975,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 throw new Error(`Email rejected by mail server: ${info.rejected.join(', ')}`);
             }
             
-            console.log(`[EMAIL] ✅ Email accepted by mail server for ${to}`);
+            console.log(`[EMAIL]  Email accepted by mail server for ${to}`);
         }
         
         // 7. Mark as 'queued' for Brevo (awaiting bounce window) or 'sent' for Nodemailer
@@ -988,7 +988,7 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                  WHERE id = $1`,
                 [emailLogId, newStatus]
             );
-            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as ${newStatus.toUpperCase()}`);
+            console.log(`[EMAIL]  Email_log ${emailLogId} marked as ${newStatus.toUpperCase()}`);
         }
         
         // 8. Update follow-up tracking since email was successfully sent
@@ -1005,12 +1005,12 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                  WHERE id = $1`,
                 [leadId]
             );
-            console.log(`[FOLLOW-UP] ✅ Lead ${leadId} advanced - email sent successfully`);
+            console.log(`[FOLLOW-UP]  Lead ${leadId} advanced - email sent successfully`);
         }
         
     } catch (error) {
         console.error(`\n========================================`);
-        console.error(`[EMAIL] ❌❌❌ SEND FAILED ❌❌❌`);
+        console.error(`[EMAIL]  SEND FAILED `);
         console.error(`[EMAIL] To: ${to}`);
         console.error(`[EMAIL] Subject: ${subject}`);
         console.error(`[EMAIL] Error: ${error.message}`);
@@ -1022,10 +1022,10 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
                 `UPDATE email_log SET status = 'failed', sent_at = CURRENT_TIMESTAMP, error_message = $2 WHERE id = $1`,
                 [emailLogId, error.message]
             );
-            console.log(`[EMAIL] ❌ Email_log ${emailLogId} marked as FAILED`);
+            console.log(`[EMAIL]  Email_log ${emailLogId} marked as FAILED`);
         }
         
-        console.log(`[FOLLOW-UP] ❌ Lead ${leadId} NOT advanced - email failed to send\n`);
+        console.log(`[FOLLOW-UP]  Lead ${leadId} NOT advanced - email failed to send\n`);
         
         throw error;
     }
@@ -1073,7 +1073,7 @@ async function sendDirectEmail({ to, subject, html, attachments = [], leadId = n
                 html,
                 attachments
             );
-            console.log(`[EMAIL] ✅ Email accepted by Brevo for ${to}`);
+            console.log(`[EMAIL]  Email accepted by Brevo for ${to}`);
             
             // Store Brevo message-id for webhook tracking
             if (emailLogId && brevoResult?.messageId) {
@@ -1101,7 +1101,7 @@ async function sendDirectEmail({ to, subject, html, attachments = [], leadId = n
                 throw new Error(`Email rejected by mail server: ${info.rejected.join(', ')}`);
             }
             
-            console.log(`[EMAIL] ✅ Email accepted by mail server for ${to}`);
+            console.log(`[EMAIL]  Email accepted by mail server for ${to}`);
         }
         
         // Mark as 'queued' for Brevo or 'sent' for Nodemailer
@@ -1114,12 +1114,12 @@ async function sendDirectEmail({ to, subject, html, attachments = [], leadId = n
                  WHERE id = $1`,
                 [emailLogId, newStatus]
             );
-            console.log(`[EMAIL] ✅ Email_log ${emailLogId} marked as ${newStatus.toUpperCase()}`);
+            console.log(`[EMAIL]  Email_log ${emailLogId} marked as ${newStatus.toUpperCase()}`);
         }
         
     } catch (error) {
         console.error(`\n========================================`);
-        console.error(`[EMAIL] ❌❌❌ SEND FAILED ❌❌❌`);
+        console.error(`[EMAIL]  SEND FAILED `);
         console.error(`[EMAIL] To: ${to}`);
         console.error(`[EMAIL] Subject: ${subject}`);
         console.error(`[EMAIL] Type: ${emailType}`);
@@ -1132,7 +1132,7 @@ async function sendDirectEmail({ to, subject, html, attachments = [], leadId = n
                 `UPDATE email_log SET status = 'failed', sent_at = CURRENT_TIMESTAMP, error_message = $2 WHERE id = $1`,
                 [emailLogId, error.message]
             );
-            console.log(`[EMAIL] ❌ Email_log ${emailLogId} marked as FAILED`);
+            console.log(`[EMAIL]  Email_log ${emailLogId} marked as FAILED`);
         }
         
         throw error;
@@ -1270,7 +1270,7 @@ await client.query(`
     END $$;
 `);
 
-console.log('✅ Follow-up tracking columns initialized');
+console.log(' Follow-up tracking columns initialized');
 
         // Client uploads table
 await client.query(`
@@ -1898,7 +1898,7 @@ await client.query(`CREATE TABLE IF NOT EXISTS client_uploads (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`);
 
-console.log('✅ Client portal tables initialized');
+console.log(' Client portal tables initialized');
 
 await client.query(`CREATE TABLE IF NOT EXISTS auto_campaigns (
     id SERIAL PRIMARY KEY,
@@ -1931,7 +1931,7 @@ await client.query(`
 `);
 await client.query(`CREATE INDEX IF NOT EXISTS idx_auto_campaigns_lead ON auto_campaigns(lead_id)`);
 await client.query(`CREATE INDEX IF NOT EXISTS idx_auto_campaigns_active ON auto_campaigns(is_active) WHERE is_active = TRUE`);
-console.log('✅ Auto-campaigns table initialized');
+console.log(' Auto-campaigns table initialized');
 
 // ── Recruitment: jobs & applications ──
 await client.query(`CREATE TABLE IF NOT EXISTS jobs (
@@ -1974,12 +1974,12 @@ await client.query(`CREATE TABLE IF NOT EXISTS applications (
 )`);
 await client.query(`CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id)`);
 await client.query(`CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status)`);
-console.log('✅ Recruitment tables (jobs, applications) initialized');
+console.log(' Recruitment tables (jobs, applications) initialized');
 
         // ========================================
         // DATABASE MIGRATIONS
         // ========================================
-        console.log('🔄 Running database migrations...');
+        console.log(' Running database migrations...');
         
         // Migration 1: Add user_name column to ticket_responses if it doesn't exist
         await client.query(`
@@ -2200,10 +2200,10 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             CREATE INDEX IF NOT EXISTS idx_activity_created_at ON activity_log(created_at)
         `);
         
-        console.log('✅ Database migrations completed');
+        console.log(' Database migrations completed');
 
         await client.query('COMMIT');
-        console.log('✅ Database tables initialized');
+        console.log(' Database tables initialized');
 
         // Create default admin user if none exists
         const adminCheck = await pool.query('SELECT * FROM admin_users LIMIT 1');
@@ -2219,16 +2219,16 @@ console.log('✅ Recruitment tables (jobs, applications) initialized');
             
             console.log('');
             console.log('========================================');
-            console.log('✅ Default admin user created');
+            console.log(' Default admin user created');
             console.log('   Username: admin');
             console.log('   Password: Admin123!');
-            console.log('   ⚠️  CHANGE THIS PASSWORD IMMEDIATELY!');
+            console.log('   ️  CHANGE THIS PASSWORD IMMEDIATELY!');
             console.log('========================================');
             console.log('');
         }
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('❌ Database initialization error:', error);
+        console.error(' Database initialization error:', error);
         throw error;
     } finally {
         client.release();
@@ -2549,10 +2549,10 @@ app.post('/api/scheduling/webhook', async (req, res) => {
                          last_contact_date = NOW(),
                          notes = COALESCE(notes || E'\\n\\n', '') || $1
                      WHERE id = $2`,
-                    [`✅ Scheduled ${eventType} for ${scheduledTime}`, lead.id]
+                    [` Scheduled ${eventType} for ${scheduledTime}`, lead.id]
                 );
                 
-                console.log(`[SCHEDULING WEBHOOK] ✅ Promoted lead ${lead.id} from COLD to HOT`);
+                console.log(`[SCHEDULING WEBHOOK]  Promoted lead ${lead.id} from COLD to HOT`);
             } else {
                 // Already hot, just update notes
                 await pool.query(
@@ -2560,7 +2560,7 @@ app.post('/api/scheduling/webhook', async (req, res) => {
                      SET last_contact_date = NOW(),
                          notes = COALESCE(notes || E'\\n\\n', '') || $1
                      WHERE id = $2`,
-                    [`📅 Scheduled ${eventType} for ${scheduledTime}`, lead.id]
+                    [` Scheduled ${eventType} for ${scheduledTime}`, lead.id]
                 );
                 
                 console.log(`[SCHEDULING WEBHOOK] Updated existing lead ${lead.id} (already ${lead.lead_temperature})`);
@@ -2575,7 +2575,7 @@ app.post('/api/scheduling/webhook', async (req, res) => {
             [inviteeEmail, inviteeName, scheduledTime, eventType]
         );
         
-        console.log('[SCHEDULING WEBHOOK] ✅ Appointment stored successfully');
+        console.log('[SCHEDULING WEBHOOK]  Appointment stored successfully');
         
         // Send confirmation email
         const appointmentDate = new Date(scheduledTime);
@@ -2632,7 +2632,7 @@ app.post('/api/scheduling/webhook', async (req, res) => {
                 subject: `Consultation Confirmed - ${formattedDate} at ${formattedTime}`,
                 html: confirmationEmail
             });
-            console.log('[SCHEDULING WEBHOOK] ✅ Confirmation email sent to:', inviteeEmail);
+            console.log('[SCHEDULING WEBHOOK]  Confirmation email sent to:', inviteeEmail);
         } catch (emailError) {
             console.error('[SCHEDULING WEBHOOK] Failed to send confirmation email:', emailError);
             // Don't fail the whole request if email fails
@@ -2792,7 +2792,7 @@ app.post('/api/appointments/admin-create', authenticateToken, async (req, res) =
                 ? `, notes = COALESCE(notes || E'\\n\\n', '') || $2`
                 : '';
             const params = notes
-                ? [resolvedLeadId, `📅 Scheduled ${eventType} for ${new Date(scheduledTime).toLocaleString('en-US', { timeZone: 'America/Chicago' })} — ${notes}`]
+                ? [resolvedLeadId, ` Scheduled ${eventType} for ${new Date(scheduledTime).toLocaleString('en-US', { timeZone: 'America/Chicago' })} — ${notes}`]
                 : [resolvedLeadId];
 
             await pool.query(`
@@ -3571,10 +3571,10 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         await sd('client_email_log', 'lead_id', leadId);
         await sdEmail('client_email_log', 'lead_email', leadEmail);
 
-        // Subscriptions
-        await pool.query(`DELETE FROM crm_subscriptions   WHERE lead_id   = $1`,          [leadId]).catch(() => {});
-        await sdEmail('crm_subscriptions',   'lead_email', leadEmail);
-        await sdEmail('subscription_events', 'lead_email', leadEmail);
+        // Subscriptions — delete by every possible identifier so nothing survives
+        await pool.query(`DELETE FROM crm_subscriptions WHERE lead_id = $1`, [leadId]).catch(e => console.error('[DELETE] crm_sub lead_id:', e.message));
+        await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(e => console.error('[DELETE] crm_sub email:', e.message));
+        await pool.query(`DELETE FROM subscription_events WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(e => console.error('[DELETE] sub_events:', e.message));
 
         // Remove from any OTHER company's user list
         await sdEmail('company_users', 'user_email', leadEmail);
@@ -3626,9 +3626,13 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
 
         // ══════════════════════════════════════════════════════════════════
         // 5.  DELETE THE LEAD RECORD ITSELF
+        //     (crm_subscriptions.lead_id FK is CASCADE — row auto-deletes with lead)
+        //     Run one final sweep first to guarantee no orphans survive
         // ══════════════════════════════════════════════════════════════════
+        await pool.query(`DELETE FROM crm_subscriptions WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(() => {});
+        await pool.query(`DELETE FROM subscription_events WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]).catch(() => {});
         await pool.query(`DELETE FROM leads WHERE id = $1`, [leadId]);
-        console.log(`[DELETE] ✅ Complete — ${leadEmail} fully erased`);
+        console.log(`[DELETE]  Complete — ${leadEmail} fully erased`);
 
         res.json({ success: true, message: 'Customer and all associated data permanently deleted.' });
 
@@ -3657,7 +3661,7 @@ app.patch('/api/leads/:id/status', authenticateToken, async (req, res) => {
                 [status, true, customerStatus || 'onboarding', leadId]
             );
             
-            console.log(`✅ Lead ${leadId} converted to customer`);
+            console.log(` Lead ${leadId} converted to customer`);
         } 
         // If updating to 'contacted' status with last_contacted timestamp
         else if (status === 'contacted' && last_contacted) {
@@ -3670,7 +3674,7 @@ app.patch('/api/leads/:id/status', authenticateToken, async (req, res) => {
                 [status, last_contacted, leadId]
             );
             
-            console.log(`✅ Lead ${leadId} marked as contacted at ${last_contacted}`);
+            console.log(` Lead ${leadId} marked as contacted at ${last_contacted}`);
         }
         // Regular status update
         else {
@@ -3704,7 +3708,7 @@ app.patch('/api/leads/:id/customer-status', authenticateToken, async (req, res) 
             [customerStatus, leadId]
         );
 
-        console.log(`✅ Customer ${leadId} status updated to ${customerStatus}`);
+        console.log(` Customer ${leadId} status updated to ${customerStatus}`);
 
         res.json({
             success: true,
@@ -3796,7 +3800,7 @@ app.post('/api/cookie-consent', async (req, res) => {
             [userId || null, consentType, JSON.stringify(preferences || {}), ipAddress, userAgent]
         );
 
-        console.log('✅ Cookie consent saved:', result.rows[0]);
+        console.log(' Cookie consent saved:', result.rows[0]);
 
         res.json({
             success: true,
@@ -4002,7 +4006,7 @@ app.get('/book', (req, res) => {
 </head>
 <body>
     <div class="container">
-        <h1>📅 Schedule Your Consultation</h1>
+        <h1> Schedule Your Consultation</h1>
         <p class="subtitle">Let's discuss your project - pick a time that works for you</p>
         
         <div id="bookingForm">
@@ -4044,12 +4048,12 @@ app.get('/book', (req, res) => {
         </div>
         
         <div id="successMessage" style="display:none;" class="success">
-            <h2>✅ Booking Confirmed!</h2>
+            <h2> Booking Confirmed!</h2>
             <p>You'll receive a confirmation email shortly. We look forward to speaking with you!</p>
         </div>
         
         <div id="errorMessage" style="display:none;" class="error">
-            <h2>❌ Booking Failed</h2>
+            <h2> Booking Failed</h2>
             <p id="errorText"></p>
         </div>
     </div>
@@ -4303,7 +4307,7 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
         
         const { name, email, phone, role, start_date, end_date, notes } = req.body;
         
-        console.log('📝 Creating employee:', { name, email, phone, role, start_date, end_date });
+        console.log(' Creating employee:', { name, email, phone, role, start_date, end_date });
 
         if (!name || !email) {
             return res.status(400).json({
@@ -4327,7 +4331,7 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
             ]
         );
 
-        console.log('✅ New employee created:', result.rows[0]);
+        console.log(' New employee created:', result.rows[0]);
 
         res.json({
             success: true,
@@ -4335,7 +4339,7 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
             employee: result.rows[0]
         });
     } catch (error) {
-        console.error('❌ Create employee error:', error);
+        console.error(' Create employee error:', error);
         
         if (error.code === '23505') {
             return res.status(400).json({
@@ -4376,7 +4380,7 @@ app.patch('/api/employees/:id', authenticateToken, async (req, res) => {
             });
         }
 
-        console.log('✅ Employee updated:', employeeId);
+        console.log(' Employee updated:', employeeId);
 
         res.json({
             success: true,
@@ -4799,10 +4803,10 @@ app.post('/api/leads', async (req, res) => {
         if (existingLead.rows.length > 0 && !isAuthenticated) {
             const existing = existingLead.rows[0];
             
-            console.log('📧 Existing lead re-engaged via contact form:', email);
+            console.log(' Existing lead re-engaged via contact form:', email);
             
             // Track this engagement (will automatically make them hot)
-            console.log(`[CONTACT FORM] 📝 Tracking re-engagement for existing lead ${existing.id}`);
+            console.log(`[CONTACT FORM]  Tracking re-engagement for existing lead ${existing.id}`);
             const trackResult = await trackEngagement(existing.id, 'form_fill', 'Submitted contact form again');
             console.log(`[CONTACT FORM] Track result:`, trackResult);
             
@@ -4849,14 +4853,14 @@ app.post('/api/leads', async (req, res) => {
                     [existing.id, `Lead re-engaged via contact form. New message: ${message || details || 'No message provided'}`]
                 );
             } catch (noteError) {
-                console.error('⚠️ Failed to create note (non-critical):', noteError);
+                console.error('️ Failed to create note (non-critical):', noteError);
                 // Continue anyway - this is not critical to the lead update
             }
 
             // Send notification email to admin about re-engagement
             try {
                 const notificationHTML = buildEmailHTML(`
-                    <h2 style="color: #D4A847; margin-bottom: 20px;">🔔 Existing Lead Re-Engaged!</h2>
+                    <h2 style="color: #D4A847; margin-bottom: 20px;"> Existing Lead Re-Engaged!</h2>
                     
                     <p style="font-size: 16px; color: #333; margin-bottom: 24px;">
                         An existing lead has filled out your contact form again. Here are the details:
@@ -4882,7 +4886,7 @@ app.post('/api/leads', async (req, res) => {
 
                     <div style="margin-top: 32px; padding: 20px; background: #f0f7ff; border-radius: 4px;">
                         <p style="margin: 0 0 12px 0; color: #0066cc;">
-                            <strong>👉 Action Required:</strong> This lead has already been in your system and is now reaching out again.
+                            <strong> Action Required:</strong> This lead has already been in your system and is now reaching out again.
                         </p>
                         <p style="margin: 0; color: #555;">
                             Their status has been updated to "contacted" and their information has been merged with any new details they provided.
@@ -4905,18 +4909,18 @@ app.post('/api/leads', async (req, res) => {
                 const mailOptions = {
                     from: `"Diamondback Coding CRM" <${process.env.EMAIL_USER}>`,
                     to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
-                    subject: `🔔 Lead Re-Engaged: ${fullName} submitted contact form again`,
+                    subject: ` Lead Re-Engaged: ${fullName} submitted contact form again`,
                     html: notificationHTML
                 };
 
                 await transporter.sendMail(mailOptions);
-                console.log('📧 Re-engagement notification email sent to admin');
+                console.log(' Re-engagement notification email sent to admin');
             } catch (emailError) {
-                console.error('⚠️ Failed to send re-engagement notification email:', emailError);
+                console.error('️ Failed to send re-engagement notification email:', emailError);
                 // Don't fail the request if email fails
             }
 
-            console.log('✅ Existing lead updated with new contact form data:', existing.email);
+            console.log(' Existing lead updated with new contact form data:', existing.email);
 
             return res.json({
                 success: true,
@@ -4928,7 +4932,7 @@ app.post('/api/leads', async (req, res) => {
 
         // If lead exists but this is from authenticated admin, reject duplicate
         if (existingLead.rows.length > 0 && isAuthenticated) {
-            console.log('❌ Admin attempted duplicate lead creation:', email);
+            console.log(' Admin attempted duplicate lead creation:', email);
             return res.status(409).json({
                 success: false,
                 message: `A lead with email ${email} already exists in the system (${existingLead.rows[0].name}). Please use a different email or update the existing lead.`
@@ -4936,7 +4940,7 @@ app.post('/api/leads', async (req, res) => {
         }
 
         // No existing lead - create new one
-        console.log('📝 New lead submission:', { name: fullName, email, phone, company, project_type, message });
+        console.log(' New lead submission:', { name: fullName, email, phone, company, project_type, message });
 
         const result = await pool.query(
             `INSERT INTO leads (
@@ -4963,11 +4967,11 @@ app.post('/api/leads', async (req, res) => {
             ]
         );
 
-        console.log('✅ New lead created:', result.rows[0].email);
+        console.log(' New lead created:', result.rows[0].email);
         
         // If this is from the contact form (not admin), track engagement and make them hot
         if (!isAuthenticated) {
-            console.log(`[CONTACT FORM] 📝 Tracking engagement for new lead ${result.rows[0].id}`);
+            console.log(`[CONTACT FORM]  Tracking engagement for new lead ${result.rows[0].id}`);
             const trackResult = await trackEngagement(result.rows[0].id, 'form_fill', 'Initial contact form submission');
             console.log(`[CONTACT FORM] Track result:`, trackResult);
         }
@@ -4979,7 +4983,7 @@ app.post('/api/leads', async (req, res) => {
             updated: false  // Flag to indicate this was a new creation
         });
     } catch (error) {
-        console.error('❌ Create lead error:', error);
+        console.error(' Create lead error:', error);
         console.error('Request body:', req.body);
         res.status(500).json({ 
             success: false, 
@@ -5026,7 +5030,7 @@ app.put('/api/employees/:id', authenticateToken, async (req, res) => {
         const employeeId = req.params.id;
         const { name, email, phone, role, start_date, end_date, notes, is_active } = req.body;
         
-        console.log('📝 Updating employee:', employeeId, { name, email, phone, role, start_date, end_date, is_active });
+        console.log(' Updating employee:', employeeId, { name, email, phone, role, start_date, end_date, is_active });
 
         if (!name || !email) {
             return res.status(400).json({
@@ -5068,7 +5072,7 @@ app.put('/api/employees/:id', authenticateToken, async (req, res) => {
             });
         }
 
-        console.log('✅ Employee updated:', result.rows[0]);
+        console.log(' Employee updated:', result.rows[0]);
 
         res.json({
             success: true,
@@ -5111,7 +5115,7 @@ app.patch('/api/leads/:id/assign', authenticateToken, async (req, res) => {
             });
         }
 
-        console.log(`✅ Lead ${leadId} ${employeeId ? 'assigned to employee ' + employeeId : 'unassigned'}`);
+        console.log(` Lead ${leadId} ${employeeId ? 'assigned to employee ' + employeeId : 'unassigned'}`);
 
         res.json({
             success: true,
@@ -5182,7 +5186,7 @@ app.post('/api/leads/:id/expenses', authenticateToken, async (req, res) => {
             [leadId, description, amount, quantity || 1, expenseDate || new Date(), category, isBillable !== false, notes, userId]
         );
 
-        console.log('✅ Expense added to lead:', leadId);
+        console.log(' Expense added to lead:', leadId);
 
         res.json({
             success: true,
@@ -5465,7 +5469,7 @@ app.post('/api/invoices', authenticateToken, async (req, res) => {
 
         await client.query('COMMIT');
 
-        console.log('✅ Invoice created:', invoice_number);
+        console.log(' Invoice created:', invoice_number);
 
         // Return complete invoice data with address
         const fullInvoice = {
@@ -5571,7 +5575,7 @@ app.patch('/api/invoices/:id', authenticateToken, async (req, res) => {
             });
         }
 
-        console.log(`✅ Invoice ${result.rows[0].invoice_number} updated`);
+        console.log(` Invoice ${result.rows[0].invoice_number} updated`);
 
         res.json({
             success: true,
@@ -5674,7 +5678,7 @@ app.delete('/api/invoices/:id', authenticateToken, async (req, res) => {
 
         await client.query('COMMIT');
 
-        console.log(`✅ Invoice ${invoice.invoice_number} deleted successfully`);
+        console.log(` Invoice ${invoice.invoice_number} deleted successfully`);
 
         res.json({
             success: true,
@@ -5758,7 +5762,7 @@ app.patch('/api/invoices/:id/status', authenticateToken, async (req, res) => {
                      WHERE id = $1`,
                     [invoice.lead_id]
                 );
-                console.log(`✅ Lead ${invoice.name} converted to ACTIVE CUSTOMER`);
+                console.log(` Lead ${invoice.name} converted to ACTIVE CUSTOMER`);
             } else {
                 // 3. If already a customer, ensure they're active
                 if (invoice.customer_status !== 'active') {
@@ -5769,7 +5773,7 @@ app.patch('/api/invoices/:id/status', authenticateToken, async (req, res) => {
                          WHERE id = $1`,
                         [invoice.lead_id]
                     );
-                    console.log(`✅ Customer ${invoice.name} status set to ACTIVE`);
+                    console.log(` Customer ${invoice.name} status set to ACTIVE`);
                 }
             }
 
@@ -5818,10 +5822,10 @@ app.patch('/api/invoices/:id/status', authenticateToken, async (req, res) => {
                 [lifetimeValue.rows[0].total, paidAt, invoice.lead_id]
             );
 
-            console.log(`✅ Invoice ${invoice.invoice_number} marked as PAID`);
-            console.log(`   💰 Amount: $${parseFloat(invoice.total_amount).toLocaleString()}`);
-            console.log(`   👤 Customer: ${invoice.name}`);
-            console.log(`   📊 Lifetime Value: $${parseFloat(lifetimeValue.rows[0].total).toLocaleString()}`);
+            console.log(` Invoice ${invoice.invoice_number} marked as PAID`);
+            console.log(`    Amount: $${parseFloat(invoice.total_amount).toLocaleString()}`);
+            console.log(`    Customer: ${invoice.name}`);
+            console.log(`    Lifetime Value: $${parseFloat(lifetimeValue.rows[0].total).toLocaleString()}`);
 
         } else if (status === 'void' || status === 'cancelled') {
             // Handle VOID/CANCELLED - Unmark expenses so they can be invoiced again
@@ -5835,7 +5839,7 @@ app.patch('/api/invoices/:id/status', authenticateToken, async (req, res) => {
                 [status, invoiceId]
             );
 
-            console.log(`✅ Invoice ${invoice.invoice_number} marked as ${status.toUpperCase()}`);
+            console.log(` Invoice ${invoice.invoice_number} marked as ${status.toUpperCase()}`);
 
         } else {
             // Standard status update
@@ -5844,7 +5848,7 @@ app.patch('/api/invoices/:id/status', authenticateToken, async (req, res) => {
                 [status, invoiceId]
             );
 
-            console.log(`✅ Invoice ${invoice.invoice_number} status updated to ${status.toUpperCase()}`);
+            console.log(` Invoice ${invoice.invoice_number} status updated to ${status.toUpperCase()}`);
         }
 
         await client.query('COMMIT');
@@ -5991,7 +5995,7 @@ async function initializeExpenseTables() {
         await client.query('CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)');
 
         await client.query('COMMIT');
-        console.log('✅ Expense and invoice tables initialized');
+        console.log(' Expense and invoice tables initialized');
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -6012,7 +6016,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
     try {
         const invoiceId = req.params.id;
         
-        console.log('🔍 Starting payment link creation for invoice:', invoiceId);
+        console.log(' Starting payment link creation for invoice:', invoiceId);
         
         // Get invoice details with customer address
         const invoiceResult = await pool.query(`
@@ -6024,7 +6028,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
         `, [invoiceId]);
         
         if (invoiceResult.rows.length === 0) {
-            console.error('❌ Invoice not found:', invoiceId);
+            console.error(' Invoice not found:', invoiceId);
             return res.status(404).json({ 
                 success: false, 
                 message: 'Invoice not found.' 
@@ -6032,7 +6036,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
         }
         
         const invoice = invoiceResult.rows[0];
-        console.log('📋 Invoice details:', {
+        console.log(' Invoice details:', {
             id: invoice.id,
             number: invoice.invoice_number,
             amount: invoice.total_amount,
@@ -6051,7 +6055,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
         
         const description = invoice.short_description || `Invoice ${invoice.invoice_number}`;
         
-        console.log('💳 Creating Stripe price...');
+        console.log(' Creating Stripe price...');
         
         // Create Stripe Price
         const price = await stripe.prices.create({
@@ -6066,8 +6070,8 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
             },
         });
         
-        console.log('✅ Stripe price created:', price.id);
-        console.log('🔗 Creating payment link...');
+        console.log(' Stripe price created:', price.id);
+        console.log(' Creating payment link...');
         
         // Create Payment Link
         const paymentLink = await stripe.paymentLinks.create({
@@ -6106,7 +6110,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
             billing_address_collection: 'auto'
         });
         
-        console.log('✅ Payment link created successfully:', paymentLink.url);
+        console.log(' Payment link created successfully:', paymentLink.url);
         
         // Store payment link in database
         await pool.query(
@@ -6114,7 +6118,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
             [paymentLink.url, invoiceId]
         );
         
-        console.log('✅ Payment link saved to database');
+        console.log(' Payment link saved to database');
         
         res.json({
             success: true,
@@ -6123,7 +6127,7 @@ app.post('/api/invoices/:id/payment-link', authenticateToken, async (req, res) =
         });
         
     } catch (error) {
-        console.error('❌ Stripe API error details:', {
+        console.error(' Stripe API error details:', {
             message: error.message,
             type: error.type,
             code: error.code,
@@ -6773,11 +6777,11 @@ function generateInvoiceEmailHTML(invoice) {
 
 app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
     try {
-        console.log('📧 Starting invoice email send...');
+        console.log(' Starting invoice email send...');
         const { invoice, clientEmail, clientName } = req.body;
         
         if (!clientEmail) {
-            console.error('❌ No client email provided');
+            console.error(' No client email provided');
             return res.status(400).json({ 
                 success: false, 
                 message: 'Client email is required' 
@@ -6793,12 +6797,12 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             });
         }
         
-        console.log('📝 Generating invoice PDF...');
+        console.log(' Generating invoice PDF...');
         const pdfHTML = generateInvoicePDFHTML(invoice);
         const pdfBuffer = await generatePDFFromHTML(pdfHTML);
-        console.log('✅ PDF generated successfully');
+        console.log(' PDF generated successfully');
         
-        console.log('📧 Creating email HTML...');
+        console.log(' Creating email HTML...');
         const emailHTML = buildEmailHTML(`
             <p><strong style="font-size:16px;">Hello ${clientName || 'Valued Customer'},</strong></p>
 
@@ -6832,7 +6836,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             ` : ''}
 
             <div class="attachment-box">
-                <strong>📎 PDF Attached</strong> — Your complete invoice is attached to this email for your records.
+                <strong> PDF Attached</strong> — Your complete invoice is attached to this email for your records.
             </div>
 
             <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
@@ -6843,8 +6847,8 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             </div>
         `);
         
-        console.log('📤 Preparing to send invoice email with PDF...');
-        console.log('📧 To:', clientEmail);
+        console.log(' Preparing to send invoice email with PDF...');
+        console.log(' To:', clientEmail);
         
         await sendDirectEmail({
             to: clientEmail,
@@ -6861,8 +6865,8 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
             emailType: 'invoice'
         });
         
-        console.log('✅ Invoice email sent successfully');
-        console.log('📬 To:', clientEmail);
+        console.log(' Invoice email sent successfully');
+        console.log(' To:', clientEmail);
         
         res.json({ 
             success: true, 
@@ -6873,7 +6877,7 @@ app.post('/api/email/send-invoice', authenticateToken, async (req, res) => {
         });
         
     } catch (error) {
-        console.error('❌ Invoice email error:', error);
+        console.error(' Invoice email error:', error);
         console.error('Error details:', {
             message: error.message,
             code: error.code,
@@ -8252,7 +8256,7 @@ const puppeteer = require('puppeteer');
 async function generatePDFFromHTML(html) {
     let browser;
     try {
-        console.log('🚀 Launching browser...');
+        console.log(' Launching browser...');
         
         const launchOptions = {
             headless: 'new',
@@ -8269,7 +8273,7 @@ async function generatePDFFromHTML(html) {
         };
 
         browser = await puppeteer.launch(launchOptions);
-        console.log('✅ Browser launched successfully');
+        console.log(' Browser launched successfully');
         
         const page = await browser.newPage();
         await page.setContent(html, { 
@@ -8288,11 +8292,11 @@ async function generatePDFFromHTML(html) {
             }
         });
         
-        console.log('✅ PDF generated successfully');
+        console.log(' PDF generated successfully');
         return pdf;
         
     } catch (error) {
-        console.error('❌ PDF generation error:', error);
+        console.error(' PDF generation error:', error);
         throw new Error('Failed to generate PDF: ' + error.message);
     } finally {
         if (browser) {
@@ -8590,7 +8594,7 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
                 NULL as client_portal_id,
                 FALSE as is_company_subscription
             FROM crm_subscriptions cs
-            LEFT JOIN leads l ON cs.lead_id = l.id
+            INNER JOIN leads l ON LOWER(l.email) = LOWER(cs.lead_email)
             WHERE (cs.client_portal_id IS NULL OR cs.client_portal_id = '')
             ORDER BY cs.created_at DESC
             LIMIT $1
@@ -9503,7 +9507,7 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
                  WHERE crm_assigned_to = $2`,
                 [adminPortalUserId, user.id]
             );
-            console.log(`[CANCEL] ✅ All assigned leads rerouted to company admin`);
+            console.log(`[CANCEL]  All assigned leads rerouted to company admin`);
         }
 
         // NOTE: We do NOT delete notes, invoices, contacts or any other data
@@ -10473,6 +10477,49 @@ async function initializeSubscriptionTables() {
         await client.query(`CREATE INDEX IF NOT EXISTS idx_crm_subs_status ON crm_subscriptions(status)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_sub_events_sub_id ON subscription_events(subscription_id)`);
 
+        // ── Migrate lead_id FK from SET NULL → CASCADE so deleting a lead auto-cleans subscriptions ──
+        try {
+            // Drop the old SET NULL constraint and replace with CASCADE
+            await client.query(`
+                DO $$
+                BEGIN
+                    -- Only migrate if the constraint still uses SET NULL
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.referential_constraints rc
+                        JOIN information_schema.key_column_usage kcu
+                            ON rc.constraint_name = kcu.constraint_name
+                        WHERE kcu.table_name = 'crm_subscriptions'
+                          AND kcu.column_name = 'lead_id'
+                          AND rc.delete_rule = 'SET NULL'
+                    ) THEN
+                        ALTER TABLE crm_subscriptions DROP CONSTRAINT IF EXISTS crm_subscriptions_lead_id_fkey;
+                        ALTER TABLE crm_subscriptions
+                            ADD CONSTRAINT crm_subscriptions_lead_id_fkey
+                            FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE;
+                        RAISE NOTICE '[MIGRATION] crm_subscriptions.lead_id FK changed to ON DELETE CASCADE';
+                    END IF;
+                END $$;
+            `);
+        } catch (migErr) {
+            console.error('[SUBSCRIPTIONS] FK migration warning (non-fatal):', migErr.message);
+        }
+
+        // ── Purge any orphaned crm_subscriptions rows (lead deleted but row survived) ──
+        try {
+            const orphanResult = await client.query(`
+                DELETE FROM crm_subscriptions
+                WHERE lead_id IS NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+                  )
+            `);
+            if (orphanResult.rowCount > 0) {
+                console.log(`[SUBSCRIPTIONS] Purged ${orphanResult.rowCount} orphaned subscription row(s)`);
+            }
+        } catch (cleanErr) {
+            console.error('[SUBSCRIPTIONS] Orphan cleanup warning (non-fatal):', cleanErr.message);
+        }
+
         await client.query('COMMIT');
         console.log('[SUBSCRIPTIONS] Tables initialized');
     } catch (error) {
@@ -10557,7 +10604,7 @@ async function processSubscriptionWebhook(event) {
             }
             
             lead = lead;
-            console.log(`[SUB WEBHOOK] ✅ Lead record ensured: ${lead.id} (${leadEmail})`);
+            console.log(`[SUB WEBHOOK]  Lead record ensured: ${lead.id} (${leadEmail})`);
         }
 
         await pool.query(`
@@ -10641,7 +10688,7 @@ async function processSubscriptionWebhook(event) {
                         `UPDATE client_companies SET monthly_total = purchased_seats::NUMERIC * $1 WHERE client_portal_id = $2`,
                         [pkg.price, clientPortalId]
                     );
-                    console.log(`[SUB WEBHOOK] ✅ Company admin linked: ${leadEmail} → ${clientPortalId} (${purchasedQty} seats purchased @ $${pkg.price}/seat = $${purchasedQty * pkg.price}/mo)`);
+                    console.log(`[SUB WEBHOOK]  Company admin linked: ${leadEmail} → ${clientPortalId} (${purchasedQty} seats purchased @ $${pkg.price}/seat = $${purchasedQty * pkg.price}/mo)`);
                 }
                 
                 // Link company employees to company portal
@@ -10653,10 +10700,10 @@ async function processSubscriptionWebhook(event) {
                             customer_status = 'active'
                         WHERE id = $2
                     `, [clientPortalId, lead.id]);
-                    console.log(`[SUB WEBHOOK] ✅ Company employee linked: ${leadEmail} → ${clientPortalId}`);
+                    console.log(`[SUB WEBHOOK]  Company employee linked: ${leadEmail} → ${clientPortalId}`);
                 }
                 
-                console.log(`[SUB WEBHOOK] ✅ Company user added to ${clientPortalId}`);
+                console.log(`[SUB WEBHOOK]  Company user added to ${clientPortalId}`);
             } catch (companyErr) {
                 console.error('[SUB WEBHOOK] Error adding company user:', companyErr);
             }
@@ -10674,9 +10721,9 @@ async function processSubscriptionWebhook(event) {
                 WHERE id = $1
             `, [lead.id]);
             
-            console.log(`[SUB WEBHOOK] ✅ Converted lead ${lead.id} to CUSTOMER (was: ${lead.name || leadEmail})`);
+            console.log(`[SUB WEBHOOK]  Converted lead ${lead.id} to CUSTOMER (was: ${lead.name || leadEmail})`);
         } else {
-            console.log(`[SUB WEBHOOK] ⚠️  Warning: No lead ID available for ${leadEmail}`);
+            console.log(`[SUB WEBHOOK] ️  Warning: No lead ID available for ${leadEmail}`);
         }
 
         // Create client portal account regardless (even if lead creation somehow failed above)
@@ -10832,7 +10879,7 @@ async function processSubscriptionWebhook(event) {
         let ourInvoiceNumber = null; // Will be set if invoice is created
         
         if (!leadDbId) {
-            console.log(`[SUB WEBHOOK] ⚠️ Cannot create invoice - no leadDbId found for ${email}`);
+            console.log(`[SUB WEBHOOK] ️ Cannot create invoice - no leadDbId found for ${email}`);
             console.log(`[SUB WEBHOOK] Subscription: ${subId}, Email: ${email}`);
         }
         
@@ -11872,6 +11919,8 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COALESCE(SUM(monthly_total) FILTER (WHERE status = 'past_due'), 0)              AS at_risk_mrr,
                 COUNT(DISTINCT lead_email) FILTER (WHERE status IN ('active','canceling','past_due')) AS unique_customers
             FROM crm_subscriptions
+            WHERE lead_id IS NOT NULL
+               OR EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
         `);
 
         // New subscribers this month
@@ -11880,6 +11929,7 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
             FROM crm_subscriptions
             WHERE created_at >= DATE_TRUNC('month', NOW())
               AND status != 'cancelled'
+              AND (lead_id IS NOT NULL OR EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)))
         `);
 
         // Churn this month
@@ -11899,6 +11949,7 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COALESCE(SUM(monthly_total) FILTER (WHERE status IN ('active','canceling')), 0) AS package_mrr,
                 AVG(user_count) FILTER (WHERE status IN ('active','canceling')) AS avg_users
             FROM crm_subscriptions
+            WHERE lead_id IS NOT NULL OR EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email))
             GROUP BY package_key, package_name
             ORDER BY package_mrr DESC
         `);
@@ -11911,6 +11962,7 @@ app.get('/api/analytics/subscriptions', authenticateToken, async (req, res) => {
                 COALESCE(SUM(monthly_total), 0) AS new_mrr
             FROM crm_subscriptions
             WHERE created_at >= NOW() - INTERVAL '12 months'
+              AND (lead_id IS NOT NULL OR EXISTS (SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)))
             GROUP BY DATE_TRUNC('month', created_at)
             ORDER BY month ASC
         `);
@@ -12189,7 +12241,7 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
             (userAgent === '' && sentAt && (Date.now() - new Date(sentAt).getTime()) < 5000);
         
         console.log(`\n========================================`);
-        console.log(`[TRACKING] 📧 EMAIL OPEN`);
+        console.log(`[TRACKING]  EMAIL OPEN`);
         console.log(`[TRACKING] Recipient: "${recipientEmail}"`);
         console.log(`[TRACKING] Email Log ID: ${emailLogId}`);
         console.log(`[TRACKING] User-Agent: "${userAgent}"`);
@@ -12198,7 +12250,7 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         
         // Don't track opens from email client prefetch scanners
         if (isLikelyPrefetch) {
-            console.log(`[TRACKING] ⚠️ SKIPPED - Automated prefetch detected`);
+            console.log(`[TRACKING] ️ SKIPPED - Automated prefetch detected`);
             return sendPixel();
         }
         
@@ -12208,15 +12260,15 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
             console.log(`[TRACKING] Seconds since sent: ${Math.floor(secondsSinceSent)}`);
             
             if (secondsSinceSent < 5) {
-                console.log(`[TRACKING] ⚠️ SKIPPED - Opened too quickly (${Math.floor(secondsSinceSent)}s < 5s)`);
+                console.log(`[TRACKING] ️ SKIPPED - Opened too quickly (${Math.floor(secondsSinceSent)}s < 5s)`);
                 return sendPixel();
             }
             
-            console.log(`[TRACKING] ✅ Valid open after ${Math.floor(secondsSinceSent)} seconds`);
+            console.log(`[TRACKING]  Valid open after ${Math.floor(secondsSinceSent)} seconds`);
         }
         
         // TRACK THE OPEN
-        console.log(`[TRACKING] 🟢 TRACKING EMAIL OPEN`);
+        console.log(`[TRACKING]  TRACKING EMAIL OPEN`);
         
         const result = await pool.query(
             `UPDATE email_log 
@@ -12231,7 +12283,7 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
         if (result.rows.length > 0) {
             const leadId   = result.rows[0].lead_id;
             const emailType = result.rows[0].email_type;
-            console.log(`[TRACKING] ✅ Email ${emailLogId} marked as OPENED by lead ${leadId} | type: ${emailType}`);
+            console.log(`[TRACKING]  Email ${emailLogId} marked as OPENED by lead ${leadId} | type: ${emailType}`);
             
             if (leadId) {
                 await pool.query(
@@ -12248,7 +12300,7 @@ app.get('/api/track/open/:emailLogId', async (req, res) => {
                 // ONLY clicks and form fills convert to hot
                 await trackEngagement(leadId, 'email_open', 5);
                 console.log(`[TRACKING] Email opened by lead ${leadId} — engagement logged (does NOT convert to hot)`);
-                console.log(`[TRACKING] ✅ Lead ${leadId} engagement tracked`);
+                console.log(`[TRACKING]  Lead ${leadId} engagement tracked`);
             }
         }
     } catch (e) {
@@ -12403,7 +12455,7 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
         const hotLeads = result.rows.filter(lead => lead.lead_temperature === 'hot');
         const coldLeads = result.rows.filter(lead => lead.lead_temperature !== 'hot' || !lead.lead_temperature);
         
-        console.log(`[FOLLOW-UPS] ✅ Found ${hotLeads.length} hot leads, ${coldLeads.length} cold leads`);
+        console.log(`[FOLLOW-UPS]  Found ${hotLeads.length} hot leads, ${coldLeads.length} cold leads`);
         
         res.json({
             success: true,
@@ -12485,7 +12537,7 @@ app.get('/api/follow-ups/categorized', authenticateToken, async (req, res) => {
                 END
         `);
         
-        console.log(`[FOLLOW-UPS] ✅ Found ${result.rows.length} categories`);
+        console.log(`[FOLLOW-UPS]  Found ${result.rows.length} categories`);
         
         res.json({
             success: true,
@@ -12547,16 +12599,16 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
         // Send via tracked helper (logs to email_log + injects open pixel)
         try {
             await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML, emailType: 'follow-up' });
-            console.log('[EMAIL API] ✅ Email sent successfully to:', to);
+            console.log('[EMAIL API]  Email sent successfully to:', to);
         } catch (emailError) {
-            console.error('[EMAIL API] ❌ Email send error:', emailError);
+            console.error('[EMAIL API]  Email send error:', emailError);
             return res.status(500).json({
                 success: false,
                 message: 'Failed to send email: ' + emailError.message
             });
         }
         
-        // ✅ CRITICAL: Do NOT update last_contact_date here!
+        //  CRITICAL: Do NOT update last_contact_date here!
         // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:
         // - Email opens → status becomes 'opened' → lead advances
         // - 24 hours without bounce → status becomes 'sent' → lead advances
@@ -12570,7 +12622,7 @@ app.post('/api/email/send-custom', authenticateToken, async (req, res) => {
         });
         
     } catch (error) {
-        console.error('[EMAIL API] ❌ Unexpected error:', error);
+        console.error('[EMAIL API]  Unexpected error:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Server error: ' + error.message 
@@ -12646,7 +12698,7 @@ async function addLeadSourceTracking() {
         `);
         
         await client.query('COMMIT');
-        console.log('✅ Lead source tracking columns added');
+        console.log(' Lead source tracking columns added');
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error adding lead source tracking:', error);
@@ -12911,7 +12963,7 @@ app.get('/api/client/projects/:projectId/milestones', authenticateClient, async 
     }
 });
 
-// ✅ NEW: Get single project with milestones (admin/client portal)
+//  NEW: Get single project with milestones (admin/client portal)
 app.get('/api/client/projects/:projectId', authenticateToken, async (req, res) => {
     try {
         const projectId = req.params.projectId;
@@ -13516,72 +13568,107 @@ app.get('/api/admin/client-accounts', authenticateToken, async (req, res) => {
 // Create client account
 app.post('/api/admin/client-accounts', authenticateToken, async (req, res) => {
     const { leadId, email, temporaryPassword, sendWelcomeEmail } = req.body;
-    
+
     try {
-        // First, check if the lead is actually a customer
+        // Check the lead exists and is a customer
         const leadCheck = await pool.query(
-            'SELECT id, name, email, is_customer, client_password FROM leads WHERE id = $1',
+            'SELECT id, name, email, company, is_customer, client_password, client_portal_id FROM leads WHERE id = $1',
             [leadId]
         );
 
         if (leadCheck.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Lead not found.'
-            });
+            return res.status(404).json({ success: false, message: 'Lead not found.' });
         }
 
         const lead = leadCheck.rows[0];
 
-        // CRITICAL: Only allow client portal creation for customers
         if (!lead.is_customer) {
             return res.status(403).json({
                 success: false,
-                message: 'Client portals can only be created for customers. Please convert this lead to a customer first before creating a portal account.'
+                message: 'Client portals can only be created for customers. Convert this lead to a customer first.'
             });
         }
 
-        // Check if portal already exists
         if (lead.client_password) {
             return res.status(409).json({
                 success: false,
-                message: 'A client portal already exists for this customer. Use the reset password function to change credentials.'
+                message: 'A client portal already exists for this customer. Use Reset Password to change credentials.'
             });
         }
-        
-        // Hash the password
+
+        // Generate a unique client_portal_id if this lead doesn't already have one
+        let clientPortalId = lead.client_portal_id;
+        if (!clientPortalId) {
+            // Generate a unique 8-char alphanumeric ID
+            const genId = () => {
+                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                let id = '';
+                for (let i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
+                return id;
+            };
+
+            let attempts = 0;
+            while (attempts < 20) {
+                const candidate = genId();
+                const exists = await pool.query('SELECT 1 FROM client_companies WHERE client_portal_id = $1', [candidate]);
+                if (exists.rows.length === 0) { clientPortalId = candidate; break; }
+                attempts++;
+            }
+            if (!clientPortalId) throw new Error('Could not generate a unique portal ID');
+
+            // Create the client_companies record for this portal
+            const companyName = lead.company || lead.name + "'s Company";
+            await pool.query(`
+                INSERT INTO client_companies (client_portal_id, company_name, admin_email, admin_name, total_active_seats, monthly_total, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, 1, 0, NOW(), NOW())
+                ON CONFLICT (client_portal_id) DO NOTHING
+            `, [clientPortalId, companyName, email || lead.email, lead.name]);
+
+            // Link the portal ID to the admin's lead record
+            await pool.query(`
+                UPDATE leads SET client_portal_id = $1, is_company_admin = TRUE, updated_at = NOW() WHERE id = $2
+            `, [clientPortalId, leadId]);
+
+            // Create default email settings so Brevo config is immediately available
+            await pool.query(`
+                INSERT INTO client_email_settings (client_portal_id, company_name, company_email, created_at, updated_at)
+                VALUES ($1, $2, $3, NOW(), NOW())
+                ON CONFLICT (client_portal_id) DO NOTHING
+            `, [clientPortalId, companyName, email || lead.email]).catch(() => {});
+
+            console.log('[CLIENT ACCOUNT] Created portal ID:', clientPortalId, 'for lead:', lead.name);
+        }
+
+        // Hash password and activate the account
         const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
-        
-        // Update the lead with client credentials
+
         await pool.query(`
-            UPDATE leads 
-            SET email = $1, 
+            UPDATE leads
+            SET email = $1,
                 client_password = $2,
-                client_account_created_at = CURRENT_TIMESTAMP
+                customer_status = 'active',
+                client_account_created_at = CURRENT_TIMESTAMP,
+                updated_at = NOW()
             WHERE id = $3
-        `, [email, hashedPassword, leadId]);
-        
-        // Get updated lead details for email
+        `, [email || lead.email, hashedPassword, leadId]);
+
         const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
         const updatedLead = leadResult.rows[0];
-        
-        // Send welcome email if requested
+
         if (sendWelcomeEmail && updatedLead) {
             await sendClientWelcomeEmail(updatedLead.email, updatedLead.name, temporaryPassword);
         }
-        
-        console.log(`✅ Client portal created for customer: ${updatedLead.name} (${updatedLead.email})`);
-        
-        res.json({ 
-            success: true, 
-            message: 'Client portal created successfully for customer.',
-            credentials: {
-                email: email,
-                temporaryPassword: temporaryPassword
-            }
+
+        console.log('[CLIENT ACCOUNT] Portal activated for:', updatedLead.name, '| Portal ID:', clientPortalId);
+
+        res.json({
+            success: true,
+            message: 'Client portal created successfully.',
+            client_portal_id: clientPortalId,
+            credentials: { email: email || lead.email, temporaryPassword }
         });
     } catch (error) {
-        console.error('Failed to create client account:', error);
+        console.error('[CLIENT ACCOUNT] Creation failed:', error);
         res.status(500).json({ success: false, message: 'Failed to create account: ' + error.message });
     }
 });
@@ -13593,7 +13680,7 @@ app.post('/api/admin/client-accounts/:id/reset-password', authenticateToken, asy
     try {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         
-        // ✅ FIXED: Changed from SQLite db.run() to PostgreSQL pool.query()
+        //  FIXED: Changed from SQLite db.run() to PostgreSQL pool.query()
         await pool.query(`
             UPDATE leads 
             SET client_password = $1,
@@ -13601,7 +13688,7 @@ app.post('/api/admin/client-accounts/:id/reset-password', authenticateToken, asy
             WHERE id = $2
         `, [hashedPassword, req.params.id]);
         
-        console.log(`✅ Password reset successfully for client ID: ${req.params.id}`);
+        console.log(` Password reset successfully for client ID: ${req.params.id}`);
         res.json({ success: true, message: 'Password reset successfully' });
     } catch (error) {
         console.error('Failed to reset password:', error);
@@ -13616,7 +13703,7 @@ app.post('/api/admin/client-accounts/:id/toggle-status', authenticateToken, asyn
     try {
         if (isActive) {
             // Activate account (ensure they have a password)
-            // ✅ FIXED: Changed from SQLite db.get() to PostgreSQL pool.query()
+            //  FIXED: Changed from SQLite db.get() to PostgreSQL pool.query()
             const result = await pool.query(
                 'SELECT client_password FROM leads WHERE id = $1', 
                 [req.params.id]
@@ -13631,7 +13718,7 @@ app.post('/api/admin/client-accounts/:id/toggle-status', authenticateToken, asyn
             }
         } else {
             // Deactivate by clearing password
-            // ✅ FIXED: Changed from SQLite db.run() to PostgreSQL pool.query()
+            //  FIXED: Changed from SQLite db.run() to PostgreSQL pool.query()
             await pool.query(
                 'UPDATE leads SET client_password = NULL WHERE id = $1', 
                 [req.params.id]
@@ -15128,7 +15215,7 @@ function calculateNextFollowUpDate(lastContactDate, leadTemperature) {
 async function trackEngagement(leadId, engagementType, details = '') {
     try {
         console.log(`\n========================================`);
-        console.log(`[ENGAGEMENT] 🔍 TRACKING ENGAGEMENT`);
+        console.log(`[ENGAGEMENT]  TRACKING ENGAGEMENT`);
         console.log(`[ENGAGEMENT] Lead ID: ${leadId}`);
         console.log(`[ENGAGEMENT] Type: ${engagementType}`);
         console.log(`[ENGAGEMENT] Details: ${details}`);
@@ -15147,11 +15234,11 @@ async function trackEngagement(leadId, engagementType, details = '') {
         );
         
         if (leadResult.rows.length === 0) {
-            console.log(`[ENGAGEMENT] ❌ ERROR: Lead ${leadId} not found!`);
+            console.log(`[ENGAGEMENT]  ERROR: Lead ${leadId} not found!`);
             return;
         }
         
-        console.log(`[ENGAGEMENT] 📊 CURRENT STATE:`, {
+        console.log(`[ENGAGEMENT]  CURRENT STATE:`, {
             name: leadResult.rows[0].name,
             email: leadResult.rows[0].email,
             temperature: leadResult.rows[0].lead_temperature,
@@ -15179,7 +15266,7 @@ async function trackEngagement(leadId, engagementType, details = '') {
         };
         score += scoreMap[engagementType] || 5;
         
-        console.log(`[ENGAGEMENT] 💯 NEW SCORE: ${score} (added ${scoreMap[engagementType] || 5} points for ${engagementType})`);
+        console.log(`[ENGAGEMENT]  NEW SCORE: ${score} (added ${scoreMap[engagementType] || 5} points for ${engagementType})`);
         
         // CRITICAL: Leads become hot through:
         // 1. Filling out a form (form_fill) → INSTANT HOT
@@ -15195,7 +15282,7 @@ async function trackEngagement(leadId, engagementType, details = '') {
                            engagementType === 'website_visit_contact';
         const newTemperature = shouldBeHot ? 'hot' : 'cold';
         
-        console.log(`[ENGAGEMENT] 🌡️  TEMPERATURE DECISION:`);
+        console.log(`[ENGAGEMENT] ️  TEMPERATURE DECISION:`);
         console.log(`   - Current: ${lead.lead_temperature || 'null'}`);
         console.log(`   - New: ${newTemperature}`);
         console.log(`   - Should be hot? ${shouldBeHot}`);
@@ -15203,7 +15290,7 @@ async function trackEngagement(leadId, engagementType, details = '') {
         
         // If lead just became hot (cold -> hot transition)
         if (newTemperature === 'hot' && lead.lead_temperature !== 'hot') {
-            console.log(`[ENGAGEMENT] 🔥 Lead ${leadId} became HOT! Cancelling auto-campaigns and RESETTING TIMELINE...`);
+            console.log(`[ENGAGEMENT]  Lead ${leadId} became HOT! Cancelling auto-campaigns and RESETTING TIMELINE...`);
             
             // Cancel any active auto-campaigns for this lead
             await pool.query(
@@ -15229,7 +15316,7 @@ async function trackEngagement(leadId, engagementType, details = '') {
                  WHERE id = $4`,
                 [JSON.stringify(history), score, newTemperature, leadId]
             );
-            console.log(`[ENGAGEMENT] ✅ Lead ${leadId} became HOT via ${engagementType} - TIMELINE RESET TO SHOW IMMEDIATELY IN QUEUE`);
+            console.log(`[ENGAGEMENT]  Lead ${leadId} became HOT via ${engagementType} - TIMELINE RESET TO SHOW IMMEDIATELY IN QUEUE`);
         } else {
             // Normal update (not becoming hot)
             // For hot leads, only reset timeline if they've NEVER been contacted before
@@ -15250,7 +15337,7 @@ async function trackEngagement(leadId, engagementType, details = '') {
                          WHERE id = $4`,
                         [JSON.stringify(history), score, newTemperature, leadId]
                     );
-                    console.log(`[ENGAGEMENT] 🔥 Hot lead ${leadId} engaged (never contacted) - showing in queue`);
+                    console.log(`[ENGAGEMENT]  Hot lead ${leadId} engaged (never contacted) - showing in queue`);
                 } else {
                     // Already contacted - DO NOT reset timeline
                     // Just update engagement data, keep their follow-up schedule intact
@@ -15264,7 +15351,7 @@ async function trackEngagement(leadId, engagementType, details = '') {
                          WHERE id = $4`,
                         [JSON.stringify(history), score, newTemperature, leadId]
                     );
-                    console.log(`[ENGAGEMENT] 🔥 Hot lead ${leadId} engaged (already contacted) - maintaining follow-up schedule`);
+                    console.log(`[ENGAGEMENT]  Hot lead ${leadId} engaged (already contacted) - maintaining follow-up schedule`);
                 }
             } else {
                 // Cold lead - standard update
@@ -15280,8 +15367,8 @@ async function trackEngagement(leadId, engagementType, details = '') {
             }
         }
         
-        console.log(`[ENGAGEMENT] ✅ Tracked ${engagementType} for lead ${leadId}`);
-        console.log(`[ENGAGEMENT] 📊 FINAL STATE: Score: ${score} | Temp: ${newTemperature}`);
+        console.log(`[ENGAGEMENT]  Tracked ${engagementType} for lead ${leadId}`);
+        console.log(`[ENGAGEMENT]  FINAL STATE: Score: ${score} | Temp: ${newTemperature}`);
         console.log(`========================================\n`);
         
         return { success: true, temperature: newTemperature, score };
@@ -15304,7 +15391,7 @@ app.get('/api/track/click/:leadId', async (req, res) => {
         const { url, email_id } = req.query;
         
         console.log(`\n========================================`);
-        console.log(`[TRACKING] 🖱️  EMAIL LINK CLICKED!`);
+        console.log(`[TRACKING] ️  EMAIL LINK CLICKED!`);
         console.log(`[TRACKING] Lead ID: ${leadId}`);
         console.log(`[TRACKING] Email ID: ${email_id}`);
         console.log(`[TRACKING] URL: ${url}`);
@@ -15339,7 +15426,7 @@ app.get('/api/track/click/:leadId', async (req, res) => {
                      WHERE id = $1`,
                     [email_id]
                 );
-                console.log(`[TRACKING] ✅ Updated email_log ${email_id}: status → sent, opened_at set, clicked_at set`);
+                console.log(`[TRACKING]  Updated email_log ${email_id}: status → sent, opened_at set, clicked_at set`);
                 console.log(`[TRACKING] Logic: User clicked link → email MUST have been delivered and opened`);
             } catch (err) {
                 console.error('[TRACKING] Error updating email_log:', err);
@@ -15348,13 +15435,13 @@ app.get('/api/track/click/:leadId', async (req, res) => {
         
         // Follow-up AND marketing email clicks both immediately convert lead to hot
         if (emailType === 'follow-up' || emailType === 'marketing') {
-            console.log(`[TRACKING] 🔥🔥🔥 ${(emailType||'').toUpperCase()} EMAIL LINK CLICKED - Making lead HOT immediately!`);
+            console.log(`[TRACKING]  ${(emailType||'').toUpperCase()} EMAIL LINK CLICKED - Making lead HOT immediately!`);
             const result = await trackEngagement(leadId, 'email_click_hot', `Clicked ${emailType} email link: ${url || 'unknown'}`);
-            console.log(`[TRACKING] ✅ Lead ${leadId} engagement result:`, result);
+            console.log(`[TRACKING]  Lead ${leadId} engagement result:`, result);
             if (result?.temperature === 'hot') {
-                console.log(`[TRACKING] ✅✅✅ LEAD ${leadId} IS NOW HOT ✅✅✅`);
+                console.log(`[TRACKING]  LEAD ${leadId} IS NOW HOT `);
             } else {
-                console.log(`[TRACKING] ⚠️ WARNING: Lead did not become hot - check trackEngagement function`);
+                console.log(`[TRACKING] ️ WARNING: Lead did not become hot - check trackEngagement function`);
             }
         } else {
             // All other email types (invoice, subscription, appointment) — track click but don't force hot
@@ -15402,7 +15489,7 @@ app.post('/api/leads/:id/contacted', authenticateToken, async (req, res) => {
             });
         }
         
-        console.log(`[FOLLOW-UP] ✅ Lead ${leadId} marked as contacted (follow-up count: ${result.rows[0].follow_up_count})`);
+        console.log(`[FOLLOW-UP]  Lead ${leadId} marked as contacted (follow-up count: ${result.rows[0].follow_up_count})`);
         
         res.json({
             success: true,
@@ -15438,7 +15525,7 @@ app.post('/api/admin/reset-cold-leads', authenticateToken, async (req, res) => {
             []
         );
         
-        console.log(`[ADMIN] ✅ Reset ${result.rows.length} cold leads to "Never Contacted"`);
+        console.log(`[ADMIN]  Reset ${result.rows.length} cold leads to "Never Contacted"`);
         
         res.json({
             success: true,
@@ -15459,7 +15546,7 @@ app.post('/api/admin/reset-cold-leads', authenticateToken, async (req, res) => {
 // Reset ALL leads (hot + cold) to "Never Contacted" - DESTRUCTIVE ACTION
 app.post('/api/admin/reset-all-leads', authenticateToken, async (req, res) => {
     try {
-        console.log('[ADMIN] 🚨 RESETTING ALL LEADS (HOT + COLD) TO "NEVER CONTACTED" STATE 🚨');
+        console.log('[ADMIN]  RESETTING ALL LEADS (HOT + COLD) TO "NEVER CONTACTED" STATE ');
         
         // First, count how many hot leads will be affected
         const hotCountResult = await pool.query(
@@ -15489,7 +15576,7 @@ app.post('/api/admin/reset-all-leads', authenticateToken, async (req, res) => {
                 `DELETE FROM email_log WHERE lead_id = ANY($1::int[])`,
                 [leadIds]
             );
-            console.log(`[ADMIN] 🗑️  Deleted ${deleteResult.rowCount} email_log records`);
+            console.log(`[ADMIN] ️  Deleted ${deleteResult.rowCount} email_log records`);
         }
         
         // Reset ALL leads (hot + cold) but NOT dead/closed leads
@@ -15509,8 +15596,8 @@ app.post('/api/admin/reset-all-leads', authenticateToken, async (req, res) => {
             []
         );
         
-        console.log(`[ADMIN] ✅ Reset ${result.rows.length} leads to "Never Contacted" (including ${hotCount} hot leads)`);
-        console.log(`[ADMIN] ✅ Cleared all engagement scores and email history`);
+        console.log(`[ADMIN]  Reset ${result.rows.length} leads to "Never Contacted" (including ${hotCount} hot leads)`);
+        console.log(`[ADMIN]  Cleared all engagement scores and email history`);
         
         res.json({
             success: true,
@@ -15557,7 +15644,7 @@ app.get('/api/follow-ups/stats', authenticateToken, async (req, res) => {
             AND unsubscribed = FALSE
         `);
         
-        console.log('[FOLLOW-UP STATS] ✅ Stats retrieved:', stats.rows[0]);
+        console.log('[FOLLOW-UP STATS]  Stats retrieved:', stats.rows[0]);
         
         res.json({
             success: true,
@@ -15608,7 +15695,7 @@ app.get('/api/follow-ups', authenticateToken, async (req, res) => {
         
         const result = await pool.query(query);
         
-        console.log(`[FOLLOW-UPS] ✅ Found ${result.rows.length} leads needing follow-up`);
+        console.log(`[FOLLOW-UPS]  Found ${result.rows.length} leads needing follow-up`);
         
         res.json({
             success: true,
@@ -15645,13 +15732,13 @@ app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
                 time: dbTest.rows[0].time,
                 version: dbTest.rows[0].pg_version
             };
-            console.log('[TEST] ✅ Database connected');
+            console.log('[TEST]  Database connected');
         } catch (error) {
             results.tests.database = {
                 status: 'FAIL',
                 error: error.message
             };
-            console.log('[TEST] ❌ Database connection failed');
+            console.log('[TEST]  Database connection failed');
         }
         
         // Test 2: Check leads table schema
@@ -15671,13 +15758,13 @@ app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
                     ? 'Required columns exist' 
                     : 'Missing required columns'
             };
-            console.log('[TEST] ✅ Schema check complete');
+            console.log('[TEST]  Schema check complete');
         } catch (error) {
             results.tests.schema = {
                 status: 'FAIL',
                 error: error.message
             };
-            console.log('[TEST] ❌ Schema check failed');
+            console.log('[TEST]  Schema check failed');
         }
         
         // Test 3: Count leads
@@ -15695,13 +15782,13 @@ app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
                 status: 'PASS',
                 stats: leadData.rows[0]
             };
-            console.log('[TEST] ✅ Lead data retrieved');
+            console.log('[TEST]  Lead data retrieved');
         } catch (error) {
             results.tests.data = {
                 status: 'FAIL',
                 error: error.message
             };
-            console.log('[TEST] ❌ Lead data failed');
+            console.log('[TEST]  Lead data failed');
         }
         
         // Test 4: Test follow-up query
@@ -15729,13 +15816,13 @@ app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
                 message: `Found ${followUps.rows.length} leads needing follow-up`,
                 sample: followUps.rows
             };
-            console.log('[TEST] ✅ Follow-up query successful');
+            console.log('[TEST]  Follow-up query successful');
         } catch (error) {
             results.tests.query = {
                 status: 'FAIL',
                 error: error.message
             };
-            console.log('[TEST] ❌ Follow-up query failed');
+            console.log('[TEST]  Follow-up query failed');
         }
         
         // Test 5: Stats query
@@ -15758,13 +15845,13 @@ app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
                 status: 'PASS',
                 data: stats.rows[0]
             };
-            console.log('[TEST] ✅ Stats query successful');
+            console.log('[TEST]  Stats query successful');
         } catch (error) {
             results.tests.stats = {
                 status: 'FAIL',
                 error: error.message
             };
-            console.log('[TEST] ❌ Stats query failed');
+            console.log('[TEST]  Stats query failed');
         }
         
         console.log('[TEST] ============================================');
@@ -15778,7 +15865,7 @@ app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
         });
         
     } catch (error) {
-        console.error('[TEST] ❌ Test failed:', error);
+        console.error('[TEST]  Test failed:', error);
         res.status(500).json({
             success: false,
             message: 'Test failed',
@@ -15788,7 +15875,7 @@ app.get('/api/follow-ups/test', authenticateToken, async (req, res) => {
     }
 });
 
-console.log('[SERVER] ✅ Follow-up routes registered');
+console.log('[SERVER]  Follow-up routes registered');
 
 // Get payment link for client invoice (CLIENT AUTH)
 app.get('/api/client/invoice/:id/payment-link', authenticateClient, async (req, res) => {
@@ -16186,7 +16273,7 @@ Our objective is to provide businesses with the best and most cost-effective web
 <tr>
 <td width="40" valign="top">
 <div style="width:32px;height:32px;background-color:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center">
-<span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+<span style="color:#F59E0B;font-size:18px;font-weight:700"></span>
 </div>
 </td>
 <td valign="middle" style="padding-left:15px">
@@ -16204,7 +16291,7 @@ Our objective is to provide businesses with the best and most cost-effective web
 <tr>
 <td width="40" valign="top">
 <div style="width:32px;height:32px;background-color:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center">
-<span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+<span style="color:#F59E0B;font-size:18px;font-weight:700"></span>
 </div>
 </td>
 <td valign="middle" style="padding-left:15px">
@@ -16222,7 +16309,7 @@ Our objective is to provide businesses with the best and most cost-effective web
 <tr>
 <td width="40" valign="top">
 <div style="width:32px;height:32px;background-color:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center">
-<span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+<span style="color:#F59E0B;font-size:18px;font-weight:700"></span>
 </div>
 </td>
 <td valign="middle" style="padding-left:15px">
@@ -16240,7 +16327,7 @@ Our objective is to provide businesses with the best and most cost-effective web
 <tr>
 <td width="40" valign="top">
 <div style="width:32px;height:32px;background-color:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center">
-<span style="color:#F59E0B;font-size:18px;font-weight:700">✓</span>
+<span style="color:#F59E0B;font-size:18px;font-weight:700"></span>
 </div>
 </td>
 <td valign="middle" style="padding-left:15px">
@@ -16567,7 +16654,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 <tr><td align="center" style="padding:0 30px 18px 30px;background:#FFF8E7">
 <table cellpadding="0" cellspacing="0" border="0" style="background:#2D5F5D;border-radius:25px">
 <tr><td style="padding:9px 28px">
-<span style="color:#FFD93D;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1.8px;font-family:Arial,sans-serif">✦ Spring Event ✦</span>
+<span style="color:#FFD93D;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1.8px;font-family:Arial,sans-serif"> Spring Event </span>
 </td></tr>
 </table>
 </td></tr>
@@ -16579,7 +16666,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
 <td width="15%" align="center" valign="middle">
-<span style="font-size:35px">🌸</span>
+<span style="font-size:35px"></span>
 </td>
 <td width="70%" align="center" valign="middle">
 <div style="text-align:center">
@@ -16588,7 +16675,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 </div>
 </td>
 <td width="15%" align="center" valign="middle">
-<span style="font-size:35px">🌺</span>
+<span style="font-size:35px"></span>
 </td>
 </tr>
 </table>
@@ -16614,12 +16701,12 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 
 <table cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr><td align="center" style="padding-bottom:10px">
-<span style="color:#2D5F5D;font-size:13px;font-weight:900;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1.5px">🌸 Pick Your Solution Vibe 🌸</span>
+<span style="color:#2D5F5D;font-size:13px;font-weight:900;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1.5px"> Pick Your Solution Vibe </span>
 </td></tr>
 <tr>
 <td style="padding:8px 12px" align="center" width="25%">
 <div style="text-align:center">
-<span style="font-size:40px">🌺</span>
+<span style="font-size:40px"></span>
 <div style="margin-top:5px">
 <span style="font-size:11px;font-weight:700;color:#F7B5CA;font-family:Arial,sans-serif;text-transform:uppercase">Web Dev</span>
 </div>
@@ -16628,7 +16715,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 
 <td style="padding:8px 12px" align="center" width="25%">
 <div style="text-align:center">
-<span style="font-size:40px">🍋</span>
+<span style="font-size:40px"></span>
 <div style="margin-top:5px">
 <span style="font-size:11px;font-weight:700;color:#FFD93D;font-family:Arial,sans-serif;text-transform:uppercase">CRM</span>
 </div>
@@ -16637,7 +16724,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 
 <td style="padding:8px 12px" align="center" width="25%">
 <div style="text-align:center">
-<span style="font-size:40px">🌿</span>
+<span style="font-size:40px"></span>
 <div style="margin-top:5px">
 <span style="font-size:11px;font-weight:700;color:#98D8C8;font-family:Arial,sans-serif;text-transform:uppercase">Mobile</span>
 </div>
@@ -16646,7 +16733,7 @@ No longer want to receive these emails? <a href="${unsubUrl}" style="color:#ffff
 
 <td style="padding:8px 12px" align="center" width="25%">
 <div style="text-align:center">
-<span style="font-size:40px">🌸</span>
+<span style="font-size:40px"></span>
 <div style="margin-top:5px">
 <span style="font-size:11px;font-weight:700;color:#E6B8D5;font-family:Arial,sans-serif;text-transform:uppercase">Speed</span>
 </div>
@@ -16929,7 +17016,7 @@ Valid for all packages. Choose one option per customer.
 <td width="70" valign="top" align="center">
 <table cellpadding="0" cellspacing="0" border="0" style="width:55px;height:55px;background-color:#A5F3FC;border-radius:50%">
 <tr><td align="center" valign="middle">
-<span style="font-size:28px;color:#0891B2">✓</span>
+<span style="font-size:28px;color:#0891B2"></span>
 </td></tr>
 </table>
 </td>
@@ -16947,7 +17034,7 @@ Valid for all packages. Choose one option per customer.
 <td width="70" valign="top" align="center">
 <table cellpadding="0" cellspacing="0" border="0" style="width:55px;height:55px;background-color:#FBCFE8;border-radius:50%">
 <tr><td align="center" valign="middle">
-<span style="font-size:28px;color:#BE185D">✓</span>
+<span style="font-size:28px;color:#BE185D"></span>
 </td></tr>
 </table>
 </td>
@@ -16965,7 +17052,7 @@ Valid for all packages. Choose one option per customer.
 <td width="70" valign="top" align="center">
 <table cellpadding="0" cellspacing="0" border="0" style="width:55px;height:55px;background-color:#FED7AA;border-radius:50%">
 <tr><td align="center" valign="middle">
-<span style="font-size:28px;color:#C2410C">✓</span>
+<span style="font-size:28px;color:#C2410C"></span>
 </td></tr>
 </table>
 </td>
@@ -16995,7 +17082,7 @@ Valid for all packages. Choose one option per customer.
 <td style="padding:12px 15px" align="center" width="25%">
 <table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#A5F3FC;border-radius:16px">
 <tr><td align="center" valign="middle">
-<span style="font-size:32px">💻</span>
+<span style="font-size:32px"></span>
 </td></tr>
 </table>
 <div style="margin-top:12px">
@@ -17006,7 +17093,7 @@ Valid for all packages. Choose one option per customer.
 <td style="padding:12px 15px" align="center" width="25%">
 <table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#FBCFE8;border-radius:16px">
 <tr><td align="center" valign="middle">
-<span style="font-size:32px">📊</span>
+<span style="font-size:32px"></span>
 </td></tr>
 </table>
 <div style="margin-top:12px">
@@ -17017,7 +17104,7 @@ Valid for all packages. Choose one option per customer.
 <td style="padding:12px 15px" align="center" width="25%">
 <table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#FED7AA;border-radius:16px">
 <tr><td align="center" valign="middle">
-<span style="font-size:32px">📱</span>
+<span style="font-size:32px"></span>
 </td></tr>
 </table>
 <div style="margin-top:12px">
@@ -17028,7 +17115,7 @@ Valid for all packages. Choose one option per customer.
 <td style="padding:12px 15px" align="center" width="25%">
 <table cellpadding="0" cellspacing="0" border="0" style="width:65px;height:65px;background-color:#FEF9C3;border-radius:16px">
 <tr><td align="center" valign="middle">
-<span style="font-size:32px">⚡</span>
+<span style="font-size:32px"></span>
 </td></tr>
 </table>
 <div style="margin-top:12px">
@@ -18259,7 +18346,7 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
         );
         console.log(`[FOLLOW-UP] Lead ${leadId} marked as "contacted" immediately`);
         
-        // ✅ CRITICAL: Do NOT update last_contact_date here!
+        //  CRITICAL: Do NOT update last_contact_date here!
         // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:
         // - Email opens → lead advances (opened_at gets set)
         // - 24 hours without bounce → status changes to 'sent' → lead advances
@@ -18394,7 +18481,7 @@ app.post('/api/follow-ups/send-bulk', authenticateToken, async (req, res) => {
             }
         }
         
-        console.log(`[BULK FOLLOW-UP] ⏳ Queued: ${successCount}, ❌ Failed: ${failCount}`);
+        console.log(`[BULK FOLLOW-UP] ⏳ Queued: ${successCount},  Failed: ${failCount}`);
         
         res.json({
             success: true,
@@ -18507,7 +18594,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
 
                 await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML, emailType: 'marketing' });
                 
-                // ✅ CRITICAL: Do NOT update last_contact_date here!
+                //  CRITICAL: Do NOT update last_contact_date here!
                 // The sendTrackedEmail function and tracking pixel endpoint handle this correctly
                 // This was the 8th instance of the immediate update bug!
                 
@@ -18533,10 +18620,10 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
                 );
                 
                 successCount++;
-                console.log(`[BULK CATEGORY] ✅ Sent to ${lead.email}`);
+                console.log(`[BULK CATEGORY]  Sent to ${lead.email}`);
                 
             } catch (error) {
-                console.error(`[BULK CATEGORY] ❌ Error sending to ${lead.email}:`, error);
+                console.error(`[BULK CATEGORY]  Error sending to ${lead.email}:`, error);
                 failCount++;
                 errors.push({ 
                     leadId: lead.id, 
@@ -18546,7 +18633,7 @@ app.post('/api/follow-ups/send-by-category', authenticateToken, async (req, res)
             }
         }
         
-        console.log(`[BULK CATEGORY] ✅ Complete: ${successCount} sent, ${failCount} failed`);
+        console.log(`[BULK CATEGORY]  Complete: ${successCount} sent, ${failCount} failed`);
         
         res.json({
             success: true,
@@ -18662,7 +18749,7 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
 
                 await sendTrackedEmail({ leadId: lead.id, to: lead.email, subject, html: emailHTML, emailType: 'marketing' });
 
-                // ✅ CRITICAL: Do NOT update last_contact_date here!
+                //  CRITICAL: Do NOT update last_contact_date here!
                 // The sendTrackedEmail function and tracking pixel endpoint handle this correctly
                 // This was the 9th instance of the immediate update bug!
 
@@ -18684,16 +18771,16 @@ app.post('/api/follow-ups/email-category', authenticateToken, async (req, res) =
                 );
 
                 sent_count++;
-                console.log(`[EMAIL-CATEGORY] ✅ Sent to ${lead.email}`);
+                console.log(`[EMAIL-CATEGORY]  Sent to ${lead.email}`);
 
             } catch (error) {
-                console.error(`[EMAIL-CATEGORY] ❌ Error sending to ${lead.email}:`, error);
+                console.error(`[EMAIL-CATEGORY]  Error sending to ${lead.email}:`, error);
                 fail_count++;
                 errors.push({ leadId: lead.id, email: lead.email, error: error.message });
             }
         }
 
-        console.log(`[EMAIL-CATEGORY] ✅ Complete: ${sent_count} sent, ${fail_count} failed`);
+        console.log(`[EMAIL-CATEGORY]  Complete: ${sent_count} sent, ${fail_count} failed`);
 
         res.json({
             success: true,
@@ -18781,7 +18868,7 @@ app.post('/api/auto-campaigns', authenticateToken, async (req, res) => {
             VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP) RETURNING *
         `, [leadId, subject, body]);
 
-        // ✅ CRITICAL: Do NOT update last_contact_date here!
+        //  CRITICAL: Do NOT update last_contact_date here!
         // The sendTrackedEmail function and tracking pixel endpoint handle this correctly
         // This was ANOTHER instance of the immediate update bug!
 
@@ -18791,7 +18878,7 @@ app.post('/api/auto-campaigns', authenticateToken, async (req, res) => {
         notes.push({ text: `[Auto-Campaign] Started — first email sent: "${subject}"`, author: req.user?.username || 'Admin', date: new Date().toISOString() });
         await pool.query('UPDATE leads SET notes = $1 WHERE id = $2', [JSON.stringify(notes), leadId]);
 
-        console.log(`[AUTO-CAMPAIGNS] ✅ Created #${ins.rows[0].id} for lead ${leadId}`);
+        console.log(`[AUTO-CAMPAIGNS]  Created #${ins.rows[0].id} for lead ${leadId}`);
         res.json({ success: true, campaign: ins.rows[0] });
     } catch (err) {
         console.error('[AUTO-CAMPAIGNS] POST error:', err);
@@ -18902,7 +18989,7 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
                 let emailSubject, emailHTML;
                 
                 if (isHotLead) {
-                    // ✅ HOT LEADS: Use the original subject/body that was saved when auto-campaign was created
+                    //  HOT LEADS: Use the original subject/body that was saved when auto-campaign was created
                     // Hot leads just repeat the same message on their schedule (3.5/7 day alternating)
                     console.log(`[AUTO-CAMPAIGNS] HOT Lead ${c.lead_id} (${c.lead_email}): Using saved message, follow_up_count=${followUpCount}`);
                     
@@ -18924,7 +19011,7 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
                     `, { unsubscribeUrl: `${BASE_URL}/api/unsubscribe/${unsub}` });
                     
                 } else {
-                    // ✅ COLD LEADS: Follow the template sequence based on follow_up_count
+                    //  COLD LEADS: Follow the template sequence based on follow_up_count
                     // followup2 → followup3 → followupindefinite (repeating)
                     let templateName;
                     
@@ -19049,7 +19136,7 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
 
                 await pool.query('UPDATE auto_campaigns SET last_sent_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=$1', [c.id]);
                 
-                // ✅ CRITICAL: Do NOT update last_contact_date here!
+                //  CRITICAL: Do NOT update last_contact_date here!
                 // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:
                 // - Email opens → lead advances
                 // - 24 hours without bounce → lead advances
@@ -19065,9 +19152,9 @@ app.post('/api/auto-campaigns/run-due', authenticateToken, async (req, res) => {
                 await pool.query('UPDATE leads SET notes=$1 WHERE id=$2', [JSON.stringify(notes), c.lead_id]);
 
                 sent++;
-                console.log(`[AUTO-CAMPAIGNS] ✅ Sent to ${c.lead_email} (${isHotLead ? 'HOT' : 'COLD'})`);
+                console.log(`[AUTO-CAMPAIGNS]  Sent to ${c.lead_email} (${isHotLead ? 'HOT' : 'COLD'})`);
             } catch (e) {
-                console.error(`[AUTO-CAMPAIGNS] ❌ Campaign ${c.id}:`, e.message);
+                console.error(`[AUTO-CAMPAIGNS]  Campaign ${c.id}:`, e.message);
                 errors.push({ id: c.id, error: e.message });
             }
         }
@@ -19112,7 +19199,7 @@ app.post('/api/send-email', authenticateToken, async (req, res) => {
     try {
         await sendTrackedEmail({ leadId: leadId || null, to, subject, html: emailHTML, emailType: 'follow-up' });
         
-        // ✅ CRITICAL: Do NOT update last_contact_date here!
+        //  CRITICAL: Do NOT update last_contact_date here!
         // The sendTrackedEmail function and tracking pixel endpoint handle this correctly:
         // - Email opens → status becomes 'opened' → lead advances
         // - 24 hours without bounce → status becomes 'sent' → lead advances
@@ -19185,7 +19272,7 @@ app.get('/api/unsubscribe/:token', async (req, res) => {
             } catch (e) { notes = []; }
 
             notes.push({
-                text: '⛔ Lead unsubscribed from follow-up emails via email link.',
+                text: ' Lead unsubscribed from follow-up emails via email link.',
                 author: 'System',
                 date: new Date().toISOString()
             });
@@ -19195,7 +19282,7 @@ app.get('/api/unsubscribe/:token', async (req, res) => {
             console.warn('[UNSUBSCRIBE] Could not append note:', noteErr.message);
         }
 
-        console.log(`[UNSUBSCRIBE] ✅ Lead ${lead.id} (${lead.email}) unsubscribed via token`);
+        console.log(`[UNSUBSCRIBE]  Lead ${lead.id} (${lead.email}) unsubscribed via token`);
 
         res.send(`
             <!DOCTYPE html>
@@ -19508,7 +19595,7 @@ async function sendApplicationStatusEmail(app, jobTitle, newStatus) {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`[APPLICATIONS] ✅ Status email "${newStatus}" sent to ${app.email} for job "${jobTitle}"`);
+    console.log(`[APPLICATIONS]  Status email "${newStatus}" sent to ${app.email} for job "${jobTitle}"`);
 }
 
 // DELETE application (admin)
@@ -19634,7 +19721,7 @@ async function migrateExistingLeadsToTemperature() {
         `);
         
         if (result.rows.length > 0) {
-            console.log(`[MIGRATION] ✅ Updated ${result.rows.length} leads to 'cold' temperature`);
+            console.log(`[MIGRATION]  Updated ${result.rows.length} leads to 'cold' temperature`);
         } else {
             console.log('[MIGRATION] ℹ️  All leads already have temperature values');
         }
@@ -19642,7 +19729,7 @@ async function migrateExistingLeadsToTemperature() {
         return { success: true, migrated: result.rows.length };
         
     } catch (error) {
-        console.error('[MIGRATION] ⚠️  Migration error (non-critical):', error.message);
+        console.error('[MIGRATION] ️  Migration error (non-critical):', error.message);
         // Don't fail startup if migration has issues
         return { success: false, error: error.message };
     }
@@ -19684,7 +19771,7 @@ function startEmailConfirmationJob() {
             console.log(`[EMAIL-CONFIRM] Logic: If queued for 2+ min without bounce → assume delivered`);
             
             if (result.rows.length > 0) {
-                console.log(`[EMAIL-CONFIRM] ✅ Confirmed ${result.rows.length} emails as delivered`);
+                console.log(`[EMAIL-CONFIRM]  Confirmed ${result.rows.length} emails as delivered`);
                 
                 for (const email of result.rows) {
                     console.log(`[EMAIL-CONFIRM]   - Email ${email.id}: "${email.subject}" sent ${email.sent_at}`);
@@ -19703,7 +19790,7 @@ function startEmailConfirmationJob() {
                                  AND (last_contact_date IS NULL OR last_contact_date < CURRENT_DATE)`,
                                 [email.lead_id]
                             );
-                            console.log(`[EMAIL-CONFIRM] ✅ Advanced lead ${email.lead_id} after confirming email ${email.id}`);
+                            console.log(`[EMAIL-CONFIRM]  Advanced lead ${email.lead_id} after confirming email ${email.id}`);
                         } catch (err) {
                             console.error(`[EMAIL-CONFIRM] Error advancing lead ${email.lead_id}:`, err);
                         }
@@ -19714,7 +19801,7 @@ function startEmailConfirmationJob() {
             }
             console.log('========================================\n');
         } catch (error) {
-            console.error('[EMAIL-CONFIRM] ❌ Error in confirmation job:', error);
+            console.error('[EMAIL-CONFIRM]  Error in confirmation job:', error);
         }
     }
     
@@ -19724,7 +19811,7 @@ function startEmailConfirmationJob() {
     // Then run every hour
     setInterval(confirmQueuedEmails, INTERVAL);
     
-    console.log('[EMAIL-CONFIRM] ✅ Background job started - will auto-confirm emails every hour');
+    console.log('[EMAIL-CONFIRM]  Background job started - will auto-confirm emails every hour');
 }
 
 // ========================================
@@ -19988,7 +20075,7 @@ async function startServer() {
                 ), 84.99), updated_at = NOW()
                 WHERE cc.monthly_total = 0 AND cc.purchased_seats > 0
             `);
-            if (r1.rowCount > 0) console.log('[STARTUP] ✅ Repaired monthly_total on', r1.rowCount, 'company record(s)');
+            if (r1.rowCount > 0) console.log('[STARTUP]  Repaired monthly_total on', r1.rowCount, 'company record(s)');
         } catch(e) { console.warn('[STARTUP] monthly_total repair skipped:', e.message); }
 
         // REPAIR: purchased_seats=0 but crm_subscriptions has a record
@@ -20003,7 +20090,7 @@ async function startServer() {
                       ORDER BY client_portal_id, created_at ASC) s
                 WHERE cc.client_portal_id = s.client_portal_id AND cc.purchased_seats = 0
             `);
-            if (r2.rowCount > 0) console.log('[STARTUP] ✅ Repaired purchased_seats on', r2.rowCount, 'company record(s)');
+            if (r2.rowCount > 0) console.log('[STARTUP]  Repaired purchased_seats on', r2.rowCount, 'company record(s)');
         } catch(e) { console.warn('[STARTUP] purchased_seats repair skipped:', e.message); }
 
         // Ensure company_users has access_until and cancelled_date columns
@@ -20016,13 +20103,106 @@ async function startServer() {
             console.log('[STARTUP] company_users.access_until + cancelled_date ensured');
         } catch(e) { console.warn('[STARTUP] company_users column migration skipped:', e.message); }
         
+        // ── STARTUP: Purge orphaned crm_subscriptions (deleted customers whose rows survived) ──
+        try {
+            const orphanSubs = await pool.query(`
+                DELETE FROM crm_subscriptions
+                WHERE lead_id IS NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+                  )
+                RETURNING lead_email
+            `);
+            if (orphanSubs.rowCount > 0) {
+                console.log(`[STARTUP]  Purged ${orphanSubs.rowCount} orphaned crm_subscriptions row(s):`,
+                    [...new Set(orphanSubs.rows.map(r => r.lead_email))].join(', '));
+            }
+        } catch(e) { console.warn('[STARTUP] Orphan subscription cleanup skipped:', e.message); }
+
+        // ── STARTUP: Purge orphaned client_companies (deleted customers whose companies survived) ──
+        try {
+            const orphanCo = await pool.query(`
+                DELETE FROM client_companies
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(client_companies.admin_email)
+                )
+                RETURNING company_name, admin_email
+            `);
+            if (orphanCo.rowCount > 0) {
+                console.log(`[STARTUP]  Purged ${orphanCo.rowCount} orphaned client_companies row(s)`);
+            }
+        } catch(e) { console.warn('[STARTUP] Orphan company cleanup skipped:', e.message); }
+
         // Migrate existing leads to temperature system
         await migrateExistingLeadsToTemperature();
+
+        // Fix existing customer accounts that have no client_portal_id
+        // These were created before the portal ID was auto-generated on account creation
+        try {
+            const orphanAdmins = await pool.query(`
+                SELECT id, name, email, company
+                FROM leads
+                WHERE is_customer = TRUE
+                  AND client_password IS NOT NULL
+                  AND (client_portal_id IS NULL OR client_portal_id = '')
+            `);
+
+            for (const admin of orphanAdmins.rows) {
+                // Check if client_companies already has a record for this email
+                const existingCompany = await pool.query(
+                    'SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email) = LOWER($1) LIMIT 1',
+                    [admin.email]
+                );
+
+                let portalId;
+                if (existingCompany.rows.length > 0) {
+                    portalId = existingCompany.rows[0].client_portal_id;
+                } else {
+                    // Generate a new unique portal ID
+                    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                    let attempts = 0;
+                    while (attempts < 20) {
+                        let candidate = '';
+                        for (let i = 0; i < 8; i++) candidate += chars[Math.floor(Math.random() * chars.length)];
+                        const exists = await pool.query('SELECT 1 FROM client_companies WHERE client_portal_id = $1', [candidate]);
+                        if (exists.rows.length === 0) { portalId = candidate; break; }
+                        attempts++;
+                    }
+                    if (!portalId) continue;
+
+                    const companyName = admin.company || admin.name + "'s Company";
+                    await pool.query(`
+                        INSERT INTO client_companies (client_portal_id, company_name, admin_email, admin_name, total_active_seats, monthly_total, created_at, updated_at)
+                        VALUES ($1, $2, $3, $4, 1, 0, NOW(), NOW())
+                        ON CONFLICT DO NOTHING
+                    `, [portalId, companyName, admin.email, admin.name]);
+
+                    await pool.query(`
+                        INSERT INTO client_email_settings (client_portal_id, company_name, company_email, created_at, updated_at)
+                        VALUES ($1, $2, $3, NOW(), NOW())
+                        ON CONFLICT DO NOTHING
+                    `, [portalId, companyName, admin.email]).catch(() => {});
+                }
+
+                await pool.query(`
+                    UPDATE leads SET client_portal_id = $1, is_company_admin = TRUE, customer_status = COALESCE(NULLIF(customer_status,''), 'active'), updated_at = NOW()
+                    WHERE id = $2
+                `, [portalId, admin.id]);
+
+                console.log('[STARTUP MIGRATION] Assigned portal ID', portalId, 'to existing admin:', admin.name, '(', admin.email, ')');
+            }
+
+            if (orphanAdmins.rows.length > 0) {
+                console.log('[STARTUP MIGRATION] Fixed', orphanAdmins.rows.length, 'customer account(s) missing portal IDs');
+            }
+        } catch (migErr) {
+            console.error('[STARTUP MIGRATION] Portal ID fix error (non-fatal):', migErr.message);
+        }
         
-        // ✅ THIS LINE MUST BE HERE
+        //  THIS LINE MUST BE HERE
         const emailConfigured = await verifyEmailConfig();
         if (!emailConfigured) {
-            console.warn('⚠️  Email functionality may not work properly');
+            console.warn('️  Email functionality may not work properly');
         }
         
         // Start background job to auto-confirm email deliveries
@@ -20031,12 +20211,12 @@ async function startServer() {
         app.listen(PORT, () => {
             console.log('');
             console.log('========================================');
-            console.log('🚀 Diamondback Coding Server Running');
+            console.log(' Diamondback Coding Server Running');
             console.log('========================================');
-            console.log(`📡 Port: ${PORT}`);
-            console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`🔗 Local: http://localhost:${PORT}`);
-            console.log(`📧 Email: ${emailConfigured ? 'Configured ✅' : 'Not configured ⚠️'}`);
+            console.log(` Port: ${PORT}`);
+            console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
+            console.log(` Local: http://localhost:${PORT}`);
+            console.log(` Email: ${emailConfigured ? 'Configured ' : 'Not configured ️'}`);
             console.log('========================================');
             console.log('');
         });
@@ -20142,7 +20322,7 @@ app.post('/api/marketing/blast', authenticateToken, async (req, res) => {
             }
         }
 
-        console.log(`[MARKETING] ✅ Done — sent=${sent} skipped=${skipped}`);
+        console.log(`[MARKETING]  Done — sent=${sent} skipped=${skipped}`);
         res.json({ success: true, sent, skipped, errors: errors.slice(0, 10) });
 
     } catch (error) {
@@ -20598,7 +20778,7 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
                 WHERE id=$1
             `, [logId, msgId || null]);
 
-            console.log(`[CLIENT EMAIL] ✅ Sent via Brevo from ${fromEmail} → ${leadEmail}`);
+            console.log(`[CLIENT EMAIL]  Sent via Brevo from ${fromEmail} → ${leadEmail}`);
             return { success: true, logId, messageId: msgId, method: 'brevo' };
         } catch(brevoErr) {
             console.error('[CLIENT EMAIL] Brevo failed, checking EmailJS fallback:', brevoErr.message);
@@ -20694,9 +20874,9 @@ app.get('/api/client-track/click/:logId', async (req, res) => {
                     UPDATE client_chain_queue SET is_active=FALSE
                     WHERE lead_id=$1 AND is_active=TRUE
                 `, [lead_id]);
-                console.log(`[CLIENT TRACK] 🔥 Lead ${lead_id} is HOT — cold chain queue paused`);
+                console.log(`[CLIENT TRACK]  Lead ${lead_id} is HOT — cold chain queue paused`);
             } else {
-                console.log(`[CLIENT TRACK] 🔥 Lead ${lead_id} confirmed HOT via email click`);
+                console.log(`[CLIENT TRACK]  Lead ${lead_id} confirmed HOT via email click`);
             }
         }
     } catch(e) { console.error('[CLIENT TRACK] Click error:', e.message); }
@@ -20732,7 +20912,7 @@ app.post('/api/client-brevo/webhook/:portalId', async (req, res) => {
                 await pool.query(`UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at,NOW()), last_contact_date=NULL, follow_up_count=0, updated_at=NOW() WHERE id=$1 AND (lead_temperature IS NULL OR lead_temperature != 'hot')`, [log.lead_id]);
                 if (!wasHot) {
                     await pool.query(`UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1 AND is_active=TRUE`, [log.lead_id]);
-                    console.log(`[CLIENT BREVO] 🔥 Lead ${log.lead_id} HOT via Brevo click — cold chains paused`);
+                    console.log(`[CLIENT BREVO]  Lead ${log.lead_id} HOT via Brevo click — cold chains paused`);
                 }
             }
         } else if (['hard_bounce','invalid_email','blocked'].includes(event.event)) {
@@ -21796,7 +21976,7 @@ app.delete('/api/admin/company/:clientPortalId', authenticateToken, async (req, 
             [clientPortalId]
         );
 
-        console.log(`[DELETE COMPANY] ✅ Fully deleted company: ${clientPortalId}`);
+        console.log(`[DELETE COMPANY]  Fully deleted company: ${clientPortalId}`);
         res.json({ success: true, message: `Company ${clientPortalId} deleted.` });
     } catch (e) {
         console.error('[DELETE COMPANY] Error:', e);
@@ -21809,8 +21989,33 @@ app.delete('/api/admin/company/:clientPortalId', authenticateToken, async (req, 
 // Call this once from the admin portal to fix already-deleted companies still showing.
 app.post('/api/admin/cleanup-orphaned-companies', authenticateToken, async (req, res) => {
     try {
-        // Find all company portals with no matching lead
-        const orphans = await pool.query(`
+        let report = [];
+
+        // 1. Purge orphaned crm_subscriptions (lead was deleted, row survived)
+        const orphanSubs = await pool.query(`
+            DELETE FROM crm_subscriptions
+            WHERE lead_id IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
+              )
+            RETURNING lead_email, monthly_total
+        `);
+        if (orphanSubs.rowCount > 0) {
+            const emails = [...new Set(orphanSubs.rows.map(r => r.lead_email))];
+            report.push(`Purged ${orphanSubs.rowCount} orphaned subscription row(s) for: ${emails.join(', ')}`);
+            console.log('[CLEANUP] Purged orphaned subscriptions:', emails);
+        }
+
+        // 2. Purge orphaned subscription_events
+        await pool.query(`
+            DELETE FROM subscription_events
+            WHERE NOT EXISTS (
+                SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(subscription_events.lead_email)
+            )
+        `).catch(() => {});
+
+        // 3. Purge orphaned client_companies + their users/data
+        const orphanCos = await pool.query(`
             SELECT cc.client_portal_id, cc.admin_email, cc.company_name
             FROM client_companies cc
             WHERE NOT EXISTS (
@@ -21820,18 +22025,31 @@ app.post('/api/admin/cleanup-orphaned-companies', authenticateToken, async (req,
             )
         `);
 
-        let cleaned = 0;
-        for (const row of orphans.rows) {
+        for (const row of orphanCos.rows) {
             const pid = row.client_portal_id;
-            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]);
-            await pool.query(`DELETE FROM subscription_events WHERE lead_email IN (SELECT user_email FROM company_users WHERE client_portal_id = $1)`, [pid]);
-            await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [pid]);
-            await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]);
+            await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_email_log WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_email_chains WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_email_templates WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_appointments WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            report.push(`Purged orphaned company: ${row.company_name} (${pid})`);
             console.log(`[CLEANUP] Purged orphaned company: ${row.company_name} (${pid})`);
-            cleaned++;
         }
 
-        res.json({ success: true, cleaned, message: `Purged ${cleaned} orphaned company record(s).` });
+        // 4. Also purge any leads marked is_customer=TRUE that no longer have a valid email
+        //    (shouldn't happen but defensive)
+
+        const totalCleaned = orphanSubs.rowCount + orphanCos.rowCount;
+        res.json({ 
+            success: true, 
+            cleaned: totalCleaned, 
+            report,
+            message: totalCleaned > 0 
+                ? `Cleaned ${totalCleaned} orphaned record(s)` 
+                : 'No orphaned data found — database is clean'
+        });
     } catch (e) {
         console.error('[CLEANUP] Error:', e);
         res.status(500).json({ success: false, message: e.message });

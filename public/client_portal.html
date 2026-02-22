@@ -1059,9 +1059,9 @@ tr:hover .row-actions { opacity: 1; }
                 <div id="fuQueueSection">
                     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
                         <button class="btn btn-default fu-tab active-tab" onclick="setFUTab('all',this)">All Due</button>
-                        <button class="btn btn-default fu-tab" onclick="setFUTab('hot',this)">🔥 Hot</button>
-                        <button class="btn btn-default fu-tab" onclick="setFUTab('cold',this)">❄️ Cold</button>
-                        <button class="btn btn-default fu-tab" onclick="setFUTab('overdue',this)">⚠️ Overdue</button>
+                        <button class="btn btn-default fu-tab" onclick="setFUTab('hot',this)">Hot</button>
+                        <button class="btn btn-default fu-tab" onclick="setFUTab('cold',this)">Cold</button>
+                        <button class="btn btn-default fu-tab" onclick="setFUTab('overdue',this)">Overdue</button>
                     </div>
                     <div id="followupsContent">
                         <div class="empty-state"><div class="spinner"></div></div>
@@ -2622,7 +2622,7 @@ function openLeadProfile(lead) {
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span style="background:${isHot?'#ef444422':'#6366f122'};color:${isHot?'#ef4444':'#6366f1'};padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;">
-                        ${isHot ? '🔥 Hot' : '❄️ Cold'}
+                        ${isHot ? 'Hot' : 'Cold'}
                     </span>
                     <button class="modal-close" onclick="closeModal('leadProfileModal')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2633,13 +2633,13 @@ function openLeadProfile(lead) {
                 <!-- Temperature toggle -->
                 <div style="display:flex;gap:8px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
                     <button class="btn btn-xs ${isHot ? 'btn-ghost' : 'btn-default'}" style="font-size:12px;" onclick="toggleLeadTemperature(${lead.id},'cold','leadProfileModal')">
-                        ❄️ Mark Cold
+                        Mark Cold
                     </button>
                     <button class="btn btn-xs ${isHot ? 'btn-default' : 'btn-ghost'}" style="font-size:12px;background:${isHot?'#ef4444':''};color:${isHot?'#fff':''};" onclick="toggleLeadTemperature(${lead.id},'hot','leadProfileModal')">
-                        🔥 Mark Hot
+                        Mark Hot
                     </button>
                     ${isHot ? `<button class="btn btn-xs btn-ghost" style="font-size:12px;margin-left:auto;" onclick="openHotChainEnrollModal(${lead.id},'${escHtml(lead.name||'')}')">
-                        ⚡ Start Hot Sequence
+                        Start Sequence
                     </button>` : ''}
                 </div>
 
@@ -2676,7 +2676,7 @@ async function toggleLeadTemperature(leadId, newTemp, closeModalId) {
         const res  = await apiFetch(`/client/leads/${leadId}`, 'PATCH', { lead_temperature: newTemp });
         const data = await res.json();
         if (data.success) {
-            const action = newTemp === 'hot' ? '🔥 Lead marked Hot' : '❄️ Lead marked Cold';
+            const action = newTemp === 'hot' ? 'Lead marked Hot' : 'Lead marked Cold';
             toast(action + (newTemp === 'hot' ? ' — timeline reset, cold chains paused' : ' — hot chains paused, timeline reset'), 'success');
             if (closeModalId) closeModal(closeModalId);
             // Refresh whichever view is active
@@ -2709,7 +2709,7 @@ async function openAssignSequenceModal(leadId, leadName, leadEmail) {
     modal.innerHTML = `
         <div class="modal" style="max-width:440px;width:calc(100% - 32px);">
             <div class="modal-header">
-                <div class="modal-title">⚡ Assign Email Sequence</div>
+                <div class="modal-title">Assign Email Sequence</div>
                 <div style="font-size:13px;color:var(--text-3);">${escHtml(leadName)} — ${escHtml(leadEmail||'')}</div>
                 <button class="modal-close" onclick="closeModal('assignSeqModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
@@ -2734,7 +2734,7 @@ async function openAssignSequenceModal(leadId, leadName, leadEmail) {
             </div>
             <div class="modal-footer">
                 <button class="btn btn-ghost" onclick="closeModal('assignSeqModal')">Cancel</button>
-                ${chains.length ? `<button class="btn btn-default" style="background:#6366f1;border-color:#6366f1;" onclick="confirmAssignSequence(${leadId})">⚡ Assign Sequence</button>` : ''}
+                ${chains.length ? `<button class="btn btn-default" style="background:#6366f1;border-color:#6366f1;" onclick="confirmAssignSequence(${leadId})">Assign Sequence</button>` : ''}
             </div>
         </div>`;
     openModal('assignSeqModal');
@@ -3018,14 +3018,14 @@ function renderFollowups() {
                         const daysLabel = l.last_contact_date === null
                             ? `<span style="color:#10b981;font-weight:700;">Now</span>`
                             : isOverdue
-                                ? `<span style="color:#ef4444;font-weight:700;">⚠ Overdue</span>`
+                                ? `<span style="color:#ef4444;font-weight:700;">Overdue</span>`
                                 : `<span style="color:var(--text-2);">${daysVal === Math.floor(daysVal) ? daysVal : daysVal.toFixed(1)}d</span>`;
                         return `<tr>
                             <td style="font-weight:500;cursor:pointer;" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">${escHtml(l.name||'—')}</td>
                             <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
                             <td>
                                 <span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;background:${isHot?'#ef444422':'#6366f122'};color:${isHot?'#ef4444':'#6366f1'};" title="Temperature set automatically by email engagement">
-                                    ${isHot ? '🔥 Hot' : '❄️ Cold'}
+                                    ${isHot ? 'Hot' : 'Cold'}
                                 </span>
                             </td>
                             <td style="font-size:12px;color:var(--text-3);">${l.last_contact_date ? new Date(l.last_contact_date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</td>
@@ -3037,7 +3037,7 @@ function renderFollowups() {
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                                         Send
                                     </button>
-                                    <button class="btn btn-ghost btn-xs" style="color:#6366f1;" onclick="openAssignSequenceModal(${l.id},'${escHtml(l.name||'')}','${escHtml(l.email||'')}')">⚡ Sequence</button>
+                                    <button class="btn btn-ghost btn-xs" style="color:#6366f1;" onclick="openAssignSequenceModal(${l.id},'${escHtml(l.name||'')}','${escHtml(l.email||'')}')">Sequence</button>
                                 </div>
                             </td>
                         </tr>`;
@@ -3172,7 +3172,7 @@ function renderFUChains() {
                             <div style="color:var(--text-2);">${escHtml(s.template_name||'?')}</div>
                             ${i > 0 ? `<div style="font-size:10px;color:var(--text-3);">After ${s.delay_days}d</div>` : ''}
                         </div>
-                        ${i < (c.steps.length-1) ? `<div style="padding:0 6px;color:var(--text-3);">→</div>` : c.loop ? `<div style="padding:0 6px;color:#6366f1;font-size:11px;font-weight:700;">→ 🔄</div>` : ''}
+                        ${i < (c.steps.length-1) ? `<div style="padding:0 6px;color:var(--text-3);">→</div>` : c.loop ? `<div style="padding:0 6px;color:#6366f1;font-size:11px;font-weight:700;">→ (loop)</div>` : ''}
                     </div>`).join('')}
             </div>
         </div>`).join('');
@@ -3729,7 +3729,7 @@ async function loadAnalytics() {
 
         el.innerHTML = `
             <!-- Marketing Email Performance -->
-            <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#6366f1;">📣 Marketing Email Performance</div>
+            <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#6366f1;">Marketing Email Performance</div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px;">
                 ${metricCard('Sent', mk.sent||0, 'Campaign emails')}
                 ${metricCard('Open Rate', (mk.open_rate||0)+'%', `${mk.opened||0} opened`, (mk.open_rate||0) >= 25 ? '#10b981' : (mk.open_rate||0) >= 15 ? '#f59e0b' : '#6366f1')}
@@ -3741,7 +3741,7 @@ async function loadAnalytics() {
             </div>
 
             <!-- Follow-up Email Performance -->
-            <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#f59e0b;">🎯 Follow-up Email Performance</div>
+            <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#f59e0b;">Follow-up Email Performance</div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px;">
                 ${metricCard('Sent', fu.sent||0, 'Follow-up emails')}
                 ${metricCard('Open Rate', (fu.open_rate||0)+'%', `${fu.opened||0} opened`, (fu.open_rate||0) >= 30 ? '#10b981' : (fu.open_rate||0) >= 20 ? '#f59e0b' : '#ef4444')}
@@ -4083,11 +4083,11 @@ async function openAddUserModal() {
 
     if (available > 0) {
         banner.style.cssText = 'background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#4ade80;';
-        banner.innerHTML = `✅ You have <strong>${available}</strong> available seat${available !== 1 ? 's' : ''} remaining. This user will fill one — your monthly total will not change.`;
+        banner.innerHTML = `You have <strong>${available}</strong> available seat${available !== 1 ? 's' : ''} remaining. This user will fill one — your monthly total will not change.`;
         if (planSection) planSection.style.display = 'none';
     } else {
         banner.style.cssText = 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:500;color:#fbbf24;';
-        banner.innerHTML = `⚠️ All <strong>${purchased}</strong> purchased seat${purchased !== 1 ? 's' : ''} are currently in use. Adding this user will add 1 seat ($84.99/mo) to your subscription.`;
+        banner.innerHTML = `All <strong>${purchased}</strong> purchased seat${purchased !== 1 ? 's' : ''} are currently in use. Adding this user will add 1 seat ($84.99/mo) to your subscription.`;
         if (planSection) planSection.style.display = 'none';
     }
 }
@@ -4134,7 +4134,7 @@ async function addCompanyUser() {
                 await loadCompany();
                 // Show a persistent alert with the credentials since email couldn't deliver them
                 setTimeout(() => {
-                    alert(`⚠️ Welcome email failed to send.\n\nPlease share these credentials manually with ${name}:\n\nLogin Email: ${email}\nPassword: ${data.tempPassword}\nPortal URL: ${window.location.origin}/client_portal.html`);
+                    alert(`Warning: Welcome email failed to send.\n\nPlease share these credentials manually with ${name}:\n\nLogin Email: ${email}\nPassword: ${data.tempPassword}\nPortal URL: ${window.location.origin}/client_portal.html`);
                 }, 300);
             } else {
                 toast(data.message || 'Team member added successfully!', 'success');
@@ -4835,9 +4835,9 @@ const TOPIC_TEMPLATES = {
         headline: 'What\'s new and what\'s coming.',
         body: `<p>Hi,</p>
 <p>Here's a quick roundup of what's been happening and what we're excited about this month:</p>
-<p><strong>📈 Industry Update:</strong> The market continues to shift, and businesses that adapt early are seeing the biggest gains. Here's what we're watching closely.</p>
-<p><strong>🚀 What We've Been Up To:</strong> We've been heads down building and improving — and we can't wait to share what's coming.</p>
-<p><strong>💡 Tip of the Month:</strong> Consistency beats intensity. Showing up for your leads and customers regularly, even in small ways, builds trust faster than any one-time big move.</p>`,
+<p><strong>Industry Update:</strong> The market continues to shift, and businesses that adapt early are seeing the biggest gains. Here's what we're watching closely.</p>
+<p><strong>What We've Been Up To:</strong> We've been heads down building and improving — and we can't wait to share what's coming.</p>
+<p><strong>Tip of the Month:</strong> Consistency beats intensity. Showing up for your leads and customers regularly, even in small ways, builds trust faster than any one-time big move.</p>`,
         cta: 'Read More'
     },
     announcement: {
@@ -4999,7 +4999,7 @@ function renderMarketing() {
                                         <div style="color:var(--text-2);">${escHtml(s.template_name||'?')}</div>
                                         ${i > 0 ? `<div style="font-size:10px;color:var(--text-3);">After ${s.delay_days}d</div>` : ''}
                                     </div>
-                                    ${i < (c.steps.length-1) ? `<div style="padding:0 6px;color:var(--text-3);">→</div>` : c.loop ? `<div style="padding:0 6px;color:#6366f1;font-size:11px;font-weight:700;">→ 🔄</div>` : ''}
+                                    ${i < (c.steps.length-1) ? `<div style="padding:0 6px;color:var(--text-3);">→</div>` : c.loop ? `<div style="padding:0 6px;color:#6366f1;font-size:11px;font-weight:700;">→ (loop)</div>` : ''}
                                 </div>`).join('')}
                         </div>
                     </div>`).join('')
@@ -5113,7 +5113,7 @@ function openTemplateBuilder(existing) {
                     
                     <!-- Website Footer Button -->
                     <div style="background:var(--bg-2);border-radius:var(--r-sm);padding:12px;margin-bottom:10px;">
-                        <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-1);">🌐 Website Footer Button</div>
+                        <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-1);">Website Footer Button</div>
                         <div style="font-size:11px;color:var(--text-3);margin-bottom:8px;">The website URL from above automatically adds a "Visit Our Website" button to your email footer.</div>
                         <div class="form-field" style="margin:0;">
                             <label>Footer Button Label</label>
@@ -5123,7 +5123,7 @@ function openTemplateBuilder(existing) {
 
                     <!-- CTA Buttons Section -->
                     <div style="background:var(--bg-2);border-radius:var(--r-sm);padding:12px;margin-bottom:10px;">
-                        <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-1);">📋 Lead Capture Forms in Email</div>
+                        <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-1);">Lead Capture Forms in Email</div>
                         <div style="font-size:11px;color:var(--text-3);margin-bottom:10px;">Add a contact form button and/or scheduling form button to your email. When a lead fills out the form, they automatically become a Hot lead and receive a confirmation email.</div>
                         <div class="form-row" style="margin-bottom:10px;">
                             <div class="form-field" style="margin:0;">
@@ -5135,7 +5135,7 @@ function openTemplateBuilder(existing) {
                             </div>
                             <div class="form-field" style="margin:0;">
                                 <label>Contact Form Button Label</label>
-                                <input class="form-input" id="tb_contact_label" value="${escHtml(t.contact_btn_label||'📋 Fill Out Contact Form')}" placeholder="📋 Fill Out Contact Form">
+                                <input class="form-input" id="tb_contact_label" value="${escHtml(t.contact_btn_label||'Fill Out Contact Form')}" placeholder="Fill Out Contact Form">
                             </div>
                         </div>
                         <div class="form-row">
@@ -5148,12 +5148,12 @@ function openTemplateBuilder(existing) {
                             </div>
                             <div class="form-field" style="margin:0;">
                                 <label>Schedule Button Label</label>
-                                <input class="form-input" id="tb_schedule_label" value="${escHtml(t.schedule_btn_label||'📅 Book a Time')}" placeholder="📅 Book a Time">
+                                <input class="form-input" id="tb_schedule_label" value="${escHtml(t.schedule_btn_label||'Book a Time')}" placeholder="Book a Time">
                             </div>
                         </div>
                     </div>
                     <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:var(--r-sm);padding:10px 14px;font-size:11px;color:#4ade80;">
-                        ✓ When a lead fills out any form, they automatically become a Hot lead and receive a confirmation email from your admin's email address.
+                        Yes - When a lead fills out any form, they automatically become a Hot lead and receive a confirmation email from your admin's email address.
                     </div>
                 </div>
 
@@ -5163,8 +5163,8 @@ function openTemplateBuilder(existing) {
                 </label>
 
                 <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
-                    <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">✓ Unsubscribe link will be automatically added to every email footer.</div>
-                    <div style="font-size:11px;color:var(--text-3);">✓ Website button click triggers cold → hot lead conversion.</div>
+                    <div style="font-size:11px;color:var(--text-3);margin-bottom:4px;">Yes - Unsubscribe link will be automatically added to every email footer.</div>
+                    <div style="font-size:11px;color:var(--text-3);">Yes - Website button click triggers cold → hot lead conversion.</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -5219,10 +5219,10 @@ async function saveTemplate(existingId) {
         eyebrow:              document.getElementById('tb_eyebrow').value.trim(),
         headline:             document.getElementById('tb_headline').value.trim(),
         cta_label:            document.getElementById('tb_cta').value.trim(),
-        schedule_btn_label:   document.getElementById('tb_schedule_label')?.value.trim() || '📅 Book a Time',
+        schedule_btn_label:   document.getElementById('tb_schedule_label')?.value.trim() || 'Book a Time',
         include_schedule_btn: document.getElementById('tb_include_schedule')?.value !== 'no',
         include_contact_form: document.getElementById('tb_include_contact')?.value !== 'no',
-        contact_btn_label:    document.getElementById('tb_contact_label')?.value.trim() || '📋 Fill Out Contact Form',
+        contact_btn_label:    document.getElementById('tb_contact_label')?.value.trim() || 'Fill Out Contact Form',
         website_btn_label:    document.getElementById('tb_website_btn_label')?.value.trim() || 'Visit Our Website',
         is_automated: document.getElementById('tb_automated').checked,
     };

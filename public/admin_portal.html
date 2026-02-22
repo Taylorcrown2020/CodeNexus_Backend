@@ -4107,7 +4107,7 @@ async function loadLeads() {
     }
 }
 
-// Alias — customers live in the same /api/leads endpoint, so loadCustomers just calls loadLeads
+// Alias — customers live in the same /api/leads endpoint
 async function loadCustomers() {
     return loadLeads();
 }
@@ -4443,11 +4443,16 @@ const standardWebsitePhases = [
 // ========================================
 function setupNavigation() {
     document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', async function() {
             const s = this.dataset.section;
             if (s) {
                 document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
                 this.classList.add('active');
+                // Always fetch fresh data before rendering sections that list customers/leads
+                if (['customers','leads','new','pending','contacted','followups','clientPortal','client-portal'].includes(s)) {
+                    await loadLeads();
+                    updateBadges();
+                }
                 renderSection(s);
             }
         });
@@ -5415,11 +5420,10 @@ async function deleteLead(leadId) {
             showToast('Deleted — all account data has been erased', 'success');
             closeDetailModal();
 
-            // Full reload so analytics, subscriptions, and client portal all reflect the deletion
+            // Full reload — re-fetch from server before ANY re-render so stale data never shows
             await Promise.all([
                 loadLeads(),
                 loadClientAccounts(),
-                loadData?.() || Promise.resolve()
             ]);
             updateBadges();
 

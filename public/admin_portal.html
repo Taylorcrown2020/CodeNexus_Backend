@@ -4068,9 +4068,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     await loadAllData();
-loadSettings();  // ADD THIS LINE
-setupNavigation();
-renderSection('dashboard');
+    await loadSettings();  // Must be awaited so Brevo/email settings are ready before any email sends
+    setupNavigation();
+    renderSection('dashboard');
 });
 
 // ========================================

@@ -20528,6 +20528,12 @@ app.post('/api/export/closings', authenticateToken, async (req, res) => {
                 subject VARCHAR(500) NOT NULL,
                 is_automated BOOLEAN DEFAULT FALSE,
                 created_by_user_email VARCHAR(255),
+                website_url VARCHAR(500),
+                website_btn_label VARCHAR(100),
+                include_contact_form BOOLEAN DEFAULT TRUE,
+                contact_btn_label VARCHAR(100),
+                include_schedule_btn BOOLEAN DEFAULT TRUE,
+                schedule_btn_label VARCHAR(100),
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
             );
@@ -20600,6 +20606,19 @@ app.post('/api/export/closings', authenticateToken, async (req, res) => {
             CREATE INDEX IF NOT EXISTS idx_cet_portal ON client_email_templates(client_portal_id);
             CREATE INDEX IF NOT EXISTS idx_ccq_next ON client_chain_queue(next_send_at) WHERE is_active = TRUE;
         `);
+
+        // Migrate existing installs: add new template columns if missing
+        const templateMigrations = [
+            `ALTER TABLE client_email_templates ADD COLUMN IF NOT EXISTS website_url VARCHAR(500)`,
+            `ALTER TABLE client_email_templates ADD COLUMN IF NOT EXISTS website_btn_label VARCHAR(100)`,
+            `ALTER TABLE client_email_templates ADD COLUMN IF NOT EXISTS include_contact_form BOOLEAN DEFAULT TRUE`,
+            `ALTER TABLE client_email_templates ADD COLUMN IF NOT EXISTS contact_btn_label VARCHAR(100)`,
+            `ALTER TABLE client_email_templates ADD COLUMN IF NOT EXISTS include_schedule_btn BOOLEAN DEFAULT TRUE`,
+            `ALTER TABLE client_email_templates ADD COLUMN IF NOT EXISTS schedule_btn_label VARCHAR(100)`,
+        ];
+        for (const sql of templateMigrations) {
+            await pool.query(sql).catch(() => {});
+        }
     } catch(e) {
         console.error('[CLIENT EMAIL] Schema init error:', e.message);
     }
@@ -20622,16 +20641,62 @@ async function getClientPortalId(userId) {
 
 // ── Helper: build per-client email HTML (mirrors admin buildEmailHTML) ──
 function buildClientEmailHTML(bodyHTML, opts = {}, settings = {}) {
-    const accentColor  = opts.accentColor  || settings.accent_color  || '#FF6B35';
-    const eyebrow      = opts.eyebrow      || '';
-    const headline     = opts.headline     || '';
-    const ctaLabel     = opts.ctaLabel     || '';
-    const ctaUrl       = opts.ctaUrl       || settings.website_url   || '';
-    const companyName  = settings.company_name  || 'Our Company';
-    const companyPhone = settings.company_phone || '';
-    const companyEmail = settings.company_email || '';
-    const companyAddr  = settings.company_address || '';
-    const unsubUrl     = opts.unsubscribeUrl || '';
+    const accentColor        = opts.accentColor        || settings.accent_color   || '#FF6B35';
+    const eyebrow            = opts.eyebrow            || '';
+    const headline           = opts.headline           || '';
+    const ctaLabel           = opts.ctaLabel           || '';
+    const ctaUrl             = opts.ctaUrl             || settings.website_url    || '';
+    const companyName        = settings.company_name   || 'Our Company';
+    const companyPhone       = settings.company_phone  || '';
+    const companyEmail       = settings.company_email  || '';
+    const companyAddr        = settings.company_address|| '';
+    const unsubUrl           = opts.unsubscribeUrl     || '';
+    // Template-level button settings (from saved template fields)
+    const websiteUrl         = opts.websiteUrl         || settings.website_url   || '';
+    const websiteBtnLabel    = opts.websiteBtnLabel    || 'Visit Our Website';
+    const includeContact     = opts.includeContactForm !== false;
+    const contactBtnLabel    = opts.contactBtnLabel    || 'Fill Out Contact Form';
+    const includeSchedule    = opts.includeScheduleBtn !== false;
+    const scheduleBtnLabel   = opts.scheduleBtnLabel   || 'Book a Time';
+    const contactFormUrl     = opts.contactFormUrl     || '';
+    const scheduleFormUrl    = opts.scheduleFormUrl    || '';
+
+    // Build the action buttons row that appears above the footer
+    const actionBtns = [];
+    if (websiteUrl) {
+        actionBtns.push({ label: websiteBtnLabel, url: websiteUrl });
+    }
+    if (includeContact && contactFormUrl) {
+        actionBtns.push({ label: contactBtnLabel, url: contactFormUrl });
+    }
+    if (includeSchedule && scheduleFormUrl) {
+        actionBtns.push({ label: scheduleBtnLabel, url: scheduleFormUrl });
+    }
+
+    const actionButtonsHtml = actionBtns.length ? `
+<!-- ACTION BUTTONS -->
+<tr><td style="background:#F7F9FB;padding:32px 40px;" class="section-pad">
+  <table cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      ${actionBtns.map((btn, i) => `
+      <td style="${i > 0 ? 'padding-left:12px;' : ''}">
+        <table cellpadding="0" cellspacing="0" border="0" style="background:${i === 0 ? accentColor : '#FFFFFF'};border:2px solid ${accentColor};border-radius:3px;">
+        <tr><td style="padding:14px 28px;">
+          <a href="${btn.url}" style="display:block;font-size:14px;font-weight:800;color:${i === 0 ? '#FFFFFF' : accentColor};text-decoration:none;letter-spacing:0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;white-space:nowrap;">${btn.label}</a>
+        </td></tr>
+        </table>
+      </td>`).join('')}
+    </tr>
+  </table>
+</td></tr>` : (ctaLabel && ctaUrl ? `
+<!-- CTA -->
+<tr><td style="background:#F7F9FB;padding:40px 40px 48px;" class="section-pad">
+  <table cellpadding="0" cellspacing="0" border="0">
+  <tr class="cta-btn"><td style="background:${accentColor};border-radius:3px;">
+    <a href="${ctaUrl}" style="display:block;padding:18px 40px;font-size:16px;font-weight:800;color:#FFFFFF;text-decoration:none;letter-spacing:0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${ctaLabel}</a>
+  </td></tr>
+  </table>
+</td></tr>` : '');
 
     return `<!DOCTYPE html>
 <html>
@@ -20679,15 +20744,7 @@ table td{border-collapse:collapse}
   </div>
 </td></tr>
 
-${ctaLabel && ctaUrl ? `
-<!-- CTA -->
-<tr><td style="background:#F7F9FB;padding:40px 40px 48px;" class="section-pad">
-  <table cellpadding="0" cellspacing="0" border="0">
-  <tr class="cta-btn"><td style="background:${accentColor};border-radius:3px;">
-    <a href="${ctaUrl}" style="display:block;padding:18px 40px;font-size:16px;font-weight:800;color:#FFFFFF;text-decoration:none;letter-spacing:0.5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${ctaLabel}</a>
-  </td></tr>
-  </table>
-</td></tr>` : ''}
+${actionButtonsHtml}
 
 <!-- FOOTER -->
 <tr><td style="background:#2D3142;padding:32px 40px;border-radius:0 0 3px 3px;" class="section-pad">
@@ -20727,10 +20784,11 @@ ${ctaLabel && ctaUrl ? `
 async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, assignedToUserEmail, templateId, chainId, subject, html, emailType = 'marketing' }) {
     const settings = await getClientEmailSettings(portalId);
 
-    // Determine FROM address: use the sending user's own email first,
-    // then fall back to the portal's configured sender, then company email.
-    const fromEmail = senderUserEmail || settings?.sender_email || settings?.company_email || null;
-    const fromName  = settings?.sender_name || settings?.company_name || fromEmail || 'CRM';
+    // FROM address is ALWAYS the portal admin's configured sender email.
+    // Individual users do not have their own Brevo accounts — all email
+    // comes from the admin's configured sender regardless of who clicks Send.
+    const fromEmail = settings?.sender_email || settings?.company_email || null;
+    const fromName  = settings?.sender_name  || settings?.company_name  || fromEmail || 'CRM';
 
     // Log the email first
     let logId = null;
@@ -21038,12 +21096,24 @@ app.post('/api/client/email-templates', authenticateClient, async (req, res) => 
     try {
         const portalId = await getClientPortalId(req.user.id);
         if (!portalId) return res.status(403).json({ success: false, message: 'Company required' });
-        const { name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated } = req.body;
+        const { name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated,
+                website_url, website_btn_label, include_contact_form, contact_btn_label,
+                include_schedule_btn, schedule_btn_label } = req.body;
         if (!name || !subject || !body_html) return res.status(400).json({ success: false, message: 'name, subject and body_html required' });
         const r = await pool.query(`
-            INSERT INTO client_email_templates (client_portal_id, name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated, created_by_user_email)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
-        `, [portalId, name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject, is_automated||false, req.user.email]);
+            INSERT INTO client_email_templates
+                (client_portal_id, name, topic, eyebrow, headline, body_html, cta_label, subject,
+                 is_automated, created_by_user_email,
+                 website_url, website_btn_label, include_contact_form, contact_btn_label,
+                 include_schedule_btn, schedule_btn_label)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *
+        `, [portalId, name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject,
+            is_automated||false, req.user.email,
+            website_url||null, website_btn_label||null,
+            include_contact_form !== false,
+            contact_btn_label||null,
+            include_schedule_btn !== false,
+            schedule_btn_label||null]);
         res.json({ success: true, template: r.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -21051,11 +21121,26 @@ app.post('/api/client/email-templates', authenticateClient, async (req, res) => 
 app.put('/api/client/email-templates/:id', authenticateClient, async (req, res) => {
     try {
         const portalId = await getClientPortalId(req.user.id);
-        const { name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated } = req.body;
+        const { name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated,
+                website_url, website_btn_label, include_contact_form, contact_btn_label,
+                include_schedule_btn, schedule_btn_label } = req.body;
         const r = await pool.query(`
-            UPDATE client_email_templates SET name=$1,topic=$2,eyebrow=$3,headline=$4,body_html=$5,cta_label=$6,subject=$7,is_automated=$8,updated_at=NOW()
-            WHERE id=$9 AND client_portal_id=$10 RETURNING *
-        `, [name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject, is_automated||false, req.params.id, portalId]);
+            UPDATE client_email_templates SET
+                name=$1, topic=$2, eyebrow=$3, headline=$4, body_html=$5, cta_label=$6,
+                subject=$7, is_automated=$8,
+                website_url=$9, website_btn_label=$10,
+                include_contact_form=$11, contact_btn_label=$12,
+                include_schedule_btn=$13, schedule_btn_label=$14,
+                updated_at=NOW()
+            WHERE id=$15 AND client_portal_id=$16 RETURNING *
+        `, [name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null,
+            subject, is_automated||false,
+            website_url||null, website_btn_label||null,
+            include_contact_form !== false,
+            contact_btn_label||null,
+            include_schedule_btn !== false,
+            schedule_btn_label||null,
+            req.params.id, portalId]);
         if (!r.rows[0]) return res.status(404).json({ success: false, message: 'Template not found' });
         res.json({ success: true, template: r.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
@@ -21142,8 +21227,18 @@ app.post('/api/client/email/send', authenticateClient, async (req, res) => {
             if (unsubSet.has(lead.email?.toLowerCase())) { skipped++; continue; }
             try {
                 const unsubUrl = `${BASE_URL}/api/client-unsub/${portalId}?email=${encodeURIComponent(lead.email)}`;
+                const contactFormUrl = t.include_contact_form ? `${BASE_URL}/contact-form.html?portal=${portalId}&lead=${lead.id}` : '';
+                const scheduleFormUrl = t.include_schedule_btn ? `${BASE_URL}/schedule-form.html?portal=${portalId}&lead=${lead.id}` : '';
                 const html = buildClientEmailHTML(t.body_html, {
                     eyebrow: t.eyebrow, headline: t.headline, ctaLabel: t.cta_label, ctaUrl: settings?.website_url,
+                    websiteUrl: t.website_url || settings?.website_url,
+                    websiteBtnLabel: t.website_btn_label,
+                    includeContactForm: t.include_contact_form,
+                    contactBtnLabel: t.contact_btn_label,
+                    contactFormUrl,
+                    includeScheduleBtn: t.include_schedule_btn,
+                    scheduleBtnLabel: t.schedule_btn_label,
+                    scheduleFormUrl,
                     unsubscribeUrl: unsubUrl
                 }, settings || {});
 
@@ -21234,9 +21329,20 @@ async function processClientEmailChains() {
 
             try {
                 const unsubUrl = `${BASE_URL}/api/client-unsub/${item.client_portal_id}?email=${encodeURIComponent(item.lead_email)}`;
+                const contactFormUrl = t.include_contact_form ? `${BASE_URL}/contact-form.html?portal=${item.client_portal_id}&lead=${item.lead_id}` : '';
+                const scheduleFormUrl = t.include_schedule_btn ? `${BASE_URL}/schedule-form.html?portal=${item.client_portal_id}&lead=${item.lead_id}` : '';
                 const html = buildClientEmailHTML(t.body_html, {
                     eyebrow: t.eyebrow, headline: t.headline, ctaLabel: t.cta_label,
-                    ctaUrl: settings?.website_url, unsubscribeUrl: unsubUrl
+                    ctaUrl: settings?.website_url,
+                    websiteUrl: t.website_url || settings?.website_url,
+                    websiteBtnLabel: t.website_btn_label,
+                    includeContactForm: t.include_contact_form,
+                    contactBtnLabel: t.contact_btn_label,
+                    contactFormUrl,
+                    includeScheduleBtn: t.include_schedule_btn,
+                    scheduleBtnLabel: t.schedule_btn_label,
+                    scheduleFormUrl,
+                    unsubscribeUrl: unsubUrl
                 }, settings || {});
                 await sendClientEmail({ portalId: item.client_portal_id, leadId: item.lead_id, leadEmail: item.lead_email, chainId: item.chain_id, templateId: step.template_id, subject: t.subject, html, emailType: 'marketing' });
                 await pool.query('UPDATE leads SET last_contact_date=NOW(), follow_up_count=COALESCE(follow_up_count,0)+1, updated_at=NOW() WHERE id=$1', [item.lead_id]);
@@ -21600,19 +21706,7 @@ app.post('/api/client/change-password', authenticateClient, async (req, res) => 
 // MISSING CLIENT PORTAL ROUTES
 // ============================================================
 
-// GET /api/client/appointments — list appointments for this client
-app.get('/api/client/appointments', authenticateClient, async (req, res) => {
-    try {
-        const result = await pool.query(
-            `SELECT * FROM appointments WHERE lead_email = $1 ORDER BY scheduled_time DESC`,
-            [req.user.email]
-        );
-        res.json({ success: true, appointments: result.rows });
-    } catch (e) {
-        console.error('[CLIENT APPOINTMENTS] GET error:', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
+// GET /api/client/appointments — handled below by the full portal-aware route
 
 // POST /api/client/appointments — create an appointment from the client portal
 app.post('/api/client/appointments', authenticateClient, async (req, res) => {

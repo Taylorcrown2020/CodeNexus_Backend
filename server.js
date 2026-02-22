@@ -3471,7 +3471,7 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         // Helper: delete from a table that may not exist yet in this deployment
         const _safeDelete = async (table, col, val) => {
             try { await pool.query(`DELETE FROM ${table} WHERE ${col} = $1`, [val]); }
-            catch (e) { if (e.code !== '42P01') throw e; /* 42P01 = table doesn't exist, skip */ }
+            catch (e) { if (e.code !== '42P01' && e.code !== '42703') throw e; /* 42P01 = table doesn't exist, 42703 = column doesn't exist — skip both */ }
         };
         
         console.log(`[DELETE CUSTOMER] Starting complete wipe for ${leadEmail} (ID: ${leadId})`);
@@ -3605,8 +3605,9 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         await _safeDelete('email_events', 'lead_id', leadId);
         await _safeDelete('lead_engagement', 'lead_id', leadId);
         await _safeDelete('tasks', 'lead_id', leadId);
+        // ticket_responses has no lead_id — delete via support_tickets (which has ON DELETE CASCADE)
+        try { await pool.query(`DELETE FROM ticket_responses WHERE ticket_id IN (SELECT id FROM support_tickets WHERE lead_id = $1)`, [leadId]); } catch(_) {}
         await _safeDelete('support_tickets', 'lead_id', leadId);
-        await _safeDelete('ticket_responses', 'lead_id', leadId);
         await _safeDelete('pipeline_deals', 'lead_id', leadId);
         await _safeDelete('auto_campaigns', 'lead_id', leadId);
         try { await pool.query(`DELETE FROM email_log WHERE LOWER(lead_email) = LOWER($1)`, [leadEmail]); } catch(_) {}

@@ -3537,8 +3537,10 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
             await pool.query(`DELETE FROM client_email_settings WHERE client_portal_id = $1`, [pid]).catch(() => {});
             await pool.query(`DELETE FROM client_appointments WHERE client_portal_id = $1`, [pid]).catch(() => {});
             await pool.query(`DELETE FROM client_unsubscribes WHERE client_portal_id = $1`, [pid]).catch(() => {});
+            // Delete all seat user lead records that belong to this company portal (source='company-user')
+            // This removes them from the Client Portal tab entirely instead of leaving orphaned accounts
+            await pool.query(`DELETE FROM leads WHERE client_portal_id = $1 AND id != $2`, [pid, leadId]);
             await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [pid]);
-            await pool.query(`UPDATE leads SET client_portal_id = NULL, is_company_admin = FALSE, updated_at = NOW() WHERE client_portal_id = $1`, [pid]);
             console.log(`[DELETE] Wiped company: ${pid}`);
         }
 

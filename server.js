@@ -3247,7 +3247,8 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
-            WHERE (l.source IS NULL OR l.source != 'company-user')
+            WHERE (l.source IS NULL OR l.source NOT IN ('company-user', 'crm-portal'))
+              AND l.client_portal_id IS NULL
             ORDER BY l.created_at DESC
         `);
 
@@ -3472,6 +3473,18 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         const leadEmail = lead.email;
         const stripeCustomerId = lead.stripe_customer_id;
         const clientPortalId = lead.client_portal_id;
+
+        // HARD GUARD: Never allow the admin nuke route to delete a CRM lead
+        // that belongs to a client portal. Those must be deleted via /api/client/leads/:id.
+        // Only allow deletion of portal account holders (client_password IS NOT NULL)
+        // which represent the actual subscription/company account, not CRM leads inside a portal.
+        const isCrmLead = clientPortalId && !lead.client_password;
+        if (isCrmLead) {
+            return res.status(403).json({
+                success: false,
+                message: 'This lead belongs to a client portal and must be deleted from within that portal.'
+            });
+        }
 
         // Helper: delete from a table that may not exist yet in this deployment
         const _safeDelete = async (table, col, val) => {

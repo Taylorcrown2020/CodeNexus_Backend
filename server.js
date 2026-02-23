@@ -3220,6 +3220,7 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
                 COUNT(*) FILTER (WHERE status = 'closed' OR is_customer = TRUE) as closed
             FROM leads
             WHERE (source IS NULL OR source != 'company-user')
+              AND client_portal_id IS NULL
         `);
 
         res.json({
@@ -3245,6 +3246,7 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
             WHERE (l.source IS NULL OR l.source != 'company-user')
+              AND l.client_portal_id IS NULL
             ORDER BY l.created_at DESC
         `);
 
@@ -3271,6 +3273,7 @@ app.get('/api/leads/all-complete', authenticateToken, async (req, res) => {
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
             WHERE (l.source IS NULL OR l.source != 'company-user')
+              AND l.client_portal_id IS NULL
             ORDER BY l.created_at DESC
         `);
 
@@ -3318,6 +3321,7 @@ app.get('/api/leads/followup-all', authenticateToken, async (req, res) => {
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
             AND (l.source IS NULL OR l.source != 'company-user')
+            AND l.client_portal_id IS NULL
             AND NOT EXISTS (
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
@@ -3642,10 +3646,14 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
             WHERE lead_email IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM leads WHERE LOWER(email) = LOWER(subscription_events.lead_email))
         `).catch(() => {});
-        // Remove any client_companies whose admin lead no longer exists
+        // Remove any client_companies whose admin portal account no longer exists
         await pool.query(`
             DELETE FROM client_companies
-            WHERE NOT EXISTS (SELECT 1 FROM leads WHERE LOWER(email) = LOWER(client_companies.admin_email))
+            WHERE NOT EXISTS (
+                SELECT 1 FROM leads
+                WHERE LOWER(email) = LOWER(client_companies.admin_email)
+                AND client_password IS NOT NULL
+            )
         `).catch(() => {});
         await pool.query(`DELETE FROM leads WHERE id = $1`, [leadId]);
         
@@ -8609,19 +8617,22 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
         // Remove crm_subscriptions whose lead no longer exists or is no longer a customer
         await pool.query(`
             DELETE FROM crm_subscriptions
-            WHERE NOT EXISTS (
+            WHERE client_portal_id IS NOT NULL
+              AND NOT EXISTS (
                 SELECT 1 FROM leads l
                 WHERE LOWER(l.email) = LOWER(crm_subscriptions.lead_email)
                 AND l.is_customer = TRUE
+                AND l.client_password IS NOT NULL
             )
         `).catch(() => {});
-        // Remove client_companies whose admin lead no longer exists as a customer
+        // Remove client_companies whose admin lead no longer exists as a portal customer account
         await pool.query(`
             DELETE FROM client_companies
             WHERE NOT EXISTS (
                 SELECT 1 FROM leads l
                 WHERE LOWER(l.email) = LOWER(client_companies.admin_email)
                 AND l.is_customer = TRUE
+                AND l.client_password IS NOT NULL
             )
         `).catch(() => {});
         // ────────────────────────────────────────────────────────────────────
@@ -8967,6 +8978,49 @@ app.patch('/api/client/leads/:id', authenticateClient, async (req, res) => {
 
     } catch (error) {
         console.error('[CLIENT LEADS] PATCH error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// ========================================
+// DELETE /api/client/leads/:id — Delete a CRM lead (portal-scoped only)
+// Only deletes the lead row itself. Never touches subscriptions, companies, or auth accounts.
+// ========================================
+app.delete('/api/client/leads/:id', authenticateClient, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const leadId = req.params.id;
+
+        // Get the requesting user's portal ID
+        const userInfo = await pool.query(
+            `SELECT client_portal_id FROM leads WHERE id = $1`, [userId]
+        );
+        const clientPortalId = userInfo.rows[0]?.client_portal_id;
+        if (!clientPortalId) return res.status(403).json({ success: false, message: 'No portal found' });
+
+        // Verify the lead belongs to this portal AND is not a portal user account
+        const check = await pool.query(
+            `SELECT id, email FROM leads
+             WHERE id = $1
+               AND client_portal_id = $2
+               AND client_password IS NULL
+               AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))`,
+            [leadId, clientPortalId]
+        );
+        if (!check.rows.length) {
+            return res.status(404).json({ success: false, message: 'Lead not found or cannot be deleted' });
+        }
+
+        // Safe delete: only remove CRM-related data for this lead, nothing subscription-related
+        await pool.query(`DELETE FROM client_chain_queue WHERE lead_id = $1`, [leadId]).catch(() => {});
+        await pool.query(`DELETE FROM lead_notes WHERE lead_id = $1`, [leadId]).catch(() => {});
+        await pool.query(`DELETE FROM client_email_log WHERE lead_id = $1`, [leadId]).catch(() => {});
+        await pool.query(`DELETE FROM leads WHERE id = $1`, [leadId]);
+
+        res.json({ success: true, message: 'Lead deleted' });
+
+    } catch (error) {
+        console.error('[CLIENT LEADS] DELETE error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
@@ -20207,7 +20261,9 @@ async function startServer() {
             const orphanCo = await pool.query(`
                 DELETE FROM client_companies
                 WHERE NOT EXISTS (
-                    SELECT 1 FROM leads l WHERE LOWER(l.email) = LOWER(client_companies.admin_email)
+                    SELECT 1 FROM leads l
+                    WHERE LOWER(l.email) = LOWER(client_companies.admin_email)
+                    AND l.client_password IS NOT NULL
                 )
                 RETURNING company_name, admin_email
             `);

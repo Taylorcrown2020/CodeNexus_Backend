@@ -7096,16 +7096,30 @@ function setBackground(key) {
 
     if (cfg.video) {
         const vid = document.getElementById(cfg.video);
-        if (vid) {
-            // Force visible immediately — don't wait for any event
-            vid.classList.add('active');
-            vid.currentTime = 0;
-            vid.play().catch(() => {
-                // If play() rejected, force load then try again
-                vid.load();
-                setTimeout(() => { vid.play().catch(() => {}); }, 300);
-            });
-        }
+        if (!vid) { toast('Video element not found: ' + cfg.video, 'error'); return; }
+
+        toast('Loading ' + key + '… readyState=' + vid.readyState + ' src=' + (vid.src ? 'set' : 'missing'), 'info');
+
+        vid.classList.add('active');
+        vid.currentTime = 0;
+
+        vid.onerror = () => {
+            toast('Video error: ' + (vid.error ? vid.error.code + ' ' + vid.error.message : 'unknown') + ' src=' + vid.src, 'error');
+        };
+
+        vid.play().then(() => {
+            toast(key + ' playing OK', 'success');
+        }).catch((err) => {
+            toast('play() failed: ' + err.message + ' — retrying…', 'error');
+            vid.load();
+            setTimeout(() => {
+                vid.play().then(() => {
+                    toast(key + ' playing after retry', 'success');
+                }).catch((err2) => {
+                    toast('Retry also failed: ' + err2.message, 'error');
+                });
+            }, 500);
+        });
     }
 
     // Update picker UI

@@ -22555,6 +22555,23 @@ async function getClientPortalId(userId) {
         }
         return portalId;
     }
+    // Fallback for regular team members whose client_portal_id wasn't stamped on their lead row
+    if (row.email) {
+        const cu = await pool.query(
+            `SELECT client_portal_id FROM company_users
+             WHERE LOWER(user_email) = LOWER($1) AND status = 'active'
+             LIMIT 1`,
+            [row.email]
+        );
+        const portalId = cu.rows[0]?.client_portal_id || null;
+        if (portalId) {
+            await pool.query(
+                'UPDATE leads SET client_portal_id = $1 WHERE id = $2',
+                [portalId, userId]
+            ).catch(() => {});
+        }
+        return portalId;
+    }
     return null;
 }
 

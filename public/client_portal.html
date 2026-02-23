@@ -7041,16 +7041,33 @@ function setBackground(key) {
         document.body.classList.add('theme-' + cfg.theme, 'has-video-bg');
     }
 
-    // Switch videos — pause others to save GPU/CPU
+    // Pause & hide all videos first
     document.querySelectorAll('#videoBgLayer video').forEach(v => {
         v.classList.remove('active');
         v.pause();
     });
+
     if (cfg.video) {
         const vid = document.getElementById(cfg.video);
         if (vid) {
-            vid.classList.add('active');
-            vid.play().catch(() => {});
+            const doPlay = () => {
+                vid.play().then(() => {
+                    vid.classList.add('active');
+                }).catch(() => {
+                    // Autoplay blocked by browser — still reveal the frame
+                    vid.classList.add('active');
+                });
+            };
+
+            if (vid.readyState >= 2) {
+                // Already has enough data — play right away
+                doPlay();
+            } else {
+                // preload="none" means we must kick off a load first
+                vid.preload = 'auto';
+                vid.load();
+                vid.addEventListener('canplay', doPlay, { once: true });
+            }
         }
     }
 

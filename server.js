@@ -8801,6 +8801,8 @@ app.get('/api/client/leads', authenticateClient, async (req, res) => {
                 LEFT JOIN company_users cu ON l.crm_assigned_to = cu.id
                 WHERE l.client_portal_id = $1
                   AND l.crm_assigned_to = $2
+                  AND l.client_password IS NULL
+                  AND (l.source IS NULL OR l.source NOT IN ('company-user', 'subscription-direct'))
                 ORDER BY l.updated_at DESC NULLS LAST, l.created_at DESC
             `;
             params = [clientPortalId, cuRecord.id];
@@ -8814,6 +8816,8 @@ app.get('/api/client/leads', authenticateClient, async (req, res) => {
                 FROM leads l
                 LEFT JOIN company_users cu ON l.crm_assigned_to = cu.id
                 WHERE l.client_portal_id = $1
+                  AND l.client_password IS NULL
+                  AND (l.source IS NULL OR l.source NOT IN ('company-user', 'subscription-direct'))
                 ORDER BY l.updated_at DESC NULLS LAST, l.created_at DESC
             `;
             params = [clientPortalId];
@@ -21636,6 +21640,8 @@ app.get('/api/client/analytics/team', authenticateClient, async (req, res) => {
                 SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status='closed' OR is_customer=TRUE) as closed,
                        COUNT(*) FILTER (WHERE lead_temperature='hot') as hot
                 FROM leads WHERE client_portal_id=$1 AND crm_assigned_to=$2
+                  AND client_password IS NULL
+                  AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))
             `, [portalId, m.id]);
             const es = emailStats.rows[0];
             const ls = leadStats.rows[0];
@@ -21678,6 +21684,8 @@ app.get('/api/admin/client-crm-stats/:portalId', authenticateToken, async (req, 
                     COUNT(*) FILTER (WHERE status = 'new' OR status IS NULL) as new,
                     COUNT(*) FILTER (WHERE status = 'lost') as lost
                 FROM leads WHERE client_portal_id = $1
+                  AND client_password IS NULL
+                  AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))
             `, [portalId]),
             pool.query(`
                 SELECT cu.user_name, cu.user_email, cu.user_label, cu.is_admin,
@@ -21807,19 +21815,31 @@ app.post('/api/client/appointments', authenticateClient, async (req, res) => {
 
         if (sendConfirmation) {
             try {
-                const portalId = await getClientPortalId(req.user.id);
                 const apptDate = new Date(scheduled_at);
                 const formattedDate = apptDate.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
                 const formattedTime = apptDate.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', timeZoneName:'short' });
-                const clientApptSettings = portalId ? await getClientEmailSettings(portalId) : null;
-                const confirmSubject = `Appointment Confirmed — ${formattedDate}`;
-                const confirmBody = `<p>Hi ${name},</p><p>Your appointment has been scheduled successfully.</p><div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:24px 0;"><p style="margin:0 0 8px 0;"><strong>Date:</strong> ${formattedDate}</p><p style="margin:0 0 8px 0;"><strong>Time:</strong> ${formattedTime}</p>${notes ? `<p style="margin:0;"><strong>Notes:</strong> ${notes}</p>` : ''}</div><p>We look forward to connecting with you!</p>`;
-                const confirmHtml = buildClientEmailHTML(confirmBody, { eyebrow: 'APPOINTMENT CONFIRMED', headline: 'Your appointment is scheduled.', accentColor: clientApptSettings?.accent_color || '#1A7A3A' }, clientApptSettings || {});
-                if (portalId) {
-                    await sendClientEmail({ portalId, leadId: null, leadEmail: email, senderUserEmail: req.user.email, subject: confirmSubject, html: confirmHtml, emailType: 'appointment_confirmation' });
-                } else {
-                    await sendTrackedEmail({ leadId: req.user.id || null, to: email, subject: confirmSubject, html: confirmHtml, emailType: 'appointment_confirmation' });
-                }
+                const confirmHtml = buildEmailHTML(`
+                    <p>Hi ${name},</p>
+                    <p>Your appointment has been scheduled successfully.</p>
+                    <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:24px 0;">
+                        <p style="margin:0 0 8px 0;"><strong>Date:</strong> ${formattedDate}</p>
+                        <p style="margin:0 0 8px 0;"><strong>Time:</strong> ${formattedTime}</p>
+                        ${notes ? `<p style="margin:0;"><strong>Notes:</strong> ${notes}</p>` : ''}
+                    </div>
+                    <p>We look forward to connecting with you!</p>
+                `, {
+                    eyebrow: 'APPOINTMENT CONFIRMED',
+                    headline: 'Your appointment is scheduled.',
+                    accentColor: '#1A7A3A',
+                    tagline: 'MANAGE LEADS. CLOSE DEALS.'
+                });
+                await sendTrackedEmail({
+                    leadId: req.user.id || null,
+                    to: email,
+                    subject: `Appointment Confirmed — ${formattedDate}`,
+                    html: confirmHtml,
+                    emailType: 'appointment_confirmation'
+                });
             } catch (emailErr) {
                 console.error('[CLIENT APPOINTMENTS] Confirmation email error:', emailErr.message);
             }
@@ -22014,24 +22034,30 @@ app.post('/api/client/invoice/:id/email', authenticateClient, async (req, res) =
         const invoice = invResult.rows[0];
         const toEmail = invoice.customer_email || req.user.email;
 
-        // Use client's own Brevo settings for invoice email, fall back to admin Brevo
-        const invoicePortalId = await getClientPortalId(req.user.id);
-        const invoiceEmailSettings = invoicePortalId ? await getClientEmailSettings(invoicePortalId) : null;
-        const invoiceBody = `<p>Hi ${invoice.customer_name || 'Valued Customer'},</p><p>Please find your invoice details below.</p><div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:24px 0;"><p style="margin:0 0 8px 0;"><strong>Invoice #:</strong> ${invoice.invoice_number}</p><p style="margin:0 0 8px 0;"><strong>Amount Due:</strong> $${parseFloat(invoice.total_amount||0).toLocaleString()}</p>${invoice.due_date ? `<p style="margin:0;"><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}</div><p>If you have any questions, please don't hesitate to reach out.</p>`;
-        const emailHTML = buildClientEmailHTML(invoiceBody, {
+        const emailHTML = buildEmailHTML(`
+            <p>Hi ${invoice.customer_name || 'Valued Customer'},</p>
+            <p>Please find your invoice details below.</p>
+            <div style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:8px;padding:20px 24px;margin:24px 0;">
+                <p style="margin:0 0 8px 0;"><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
+                <p style="margin:0 0 8px 0;"><strong>Amount Due:</strong> $${parseFloat(invoice.total_amount||0).toLocaleString()}</p>
+                ${invoice.due_date ? `<p style="margin:0;"><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}
+            </div>
+            <p>If you have any questions, please don't hesitate to reach out.</p>
+        `, {
             eyebrow: 'INVOICE',
             headline: `Invoice #${invoice.invoice_number}`,
-            accentColor: invoiceEmailSettings?.accent_color || '#1A7A3A',
+            accentColor: '#1A7A3A',
             ctaLabel: invoice.stripe_payment_link ? 'Pay Invoice Now' : '',
             ctaUrl: invoice.stripe_payment_link || ''
-        }, invoiceEmailSettings || {});
-        const invoiceSubject = `Invoice ${invoice.invoice_number} from ${invoiceEmailSettings?.company_name || 'Your Team'}`;
+        });
 
-        if (invoicePortalId) {
-            await sendClientEmail({ portalId: invoicePortalId, leadId: null, leadEmail: toEmail, senderUserEmail: req.user.email, subject: invoiceSubject, html: emailHTML, emailType: 'invoice' });
-        } else {
-            await sendDirectEmail({ to: toEmail, subject: invoiceSubject, html: emailHTML, leadId: req.user.id, emailType: 'invoice' });
-        }
+        await sendDirectEmail({
+            to: toEmail,
+            subject: `Invoice ${invoice.invoice_number} from Diamondback Coding`,
+            html: emailHTML,
+            leadId: req.user.id,
+            emailType: 'invoice'
+        });
 
         await pool.query(`UPDATE invoices SET status='sent', updated_at=NOW() WHERE id=$1`, [id]);
         res.json({ success: true, message: `Invoice sent to ${toEmail}` });

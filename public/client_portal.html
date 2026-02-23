@@ -667,6 +667,13 @@ tr:hover .row-actions { opacity: 1; }
 ============================================================ */
 
 /* ── Tablet ─────────────────────────────────────────────── */
+/* ============================================================
+   MOBILE NAV — hidden by default; shown only on mobile via media query + JS
+============================================================ */
+.mobile-bottom-nav { display: none; }
+.mobile-more-menu  { display: none; }
+.mobile-topbar     { display: none; }
+
 @media (max-width: 900px) {
     :root { --sidebar-w: 220px; }
     .col-8, .col-4, .col-6 { grid-column: span 12; }
@@ -902,13 +909,6 @@ tr:hover .row-actions { opacity: 1; }
     /* === QTY CONTROL === */
     .qty-btn { width: 40px; height: 40px; }
 }
-
-/* ============================================================
-   MOBILE NAV — hidden globally, only shown on mobile via JS/media
-============================================================ */
-.mobile-bottom-nav { display: none; }
-.mobile-more-menu  { display: none; }
-.mobile-topbar     { display: none; }
 
 /* ============================================================
    SCROLLBAR

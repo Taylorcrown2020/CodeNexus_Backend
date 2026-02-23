@@ -71,6 +71,10 @@ body {
     max-width: 400px;
     animation: fadeUp 0.4s ease;
 }
+@keyframes chartSlideIn {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
 @keyframes fadeUp {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -263,13 +267,17 @@ body {
 ============================================================ */
 .stats-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(5, 1fr);
     gap: 1px; background: var(--border);
     border: 1px solid var(--border); border-radius: var(--r-lg);
     overflow: hidden; margin-bottom: 24px;
 }
 .stat-cell {
     background: var(--bg-2); padding: 20px 24px;
+}
+.stat-cell-income {
+    background: linear-gradient(135deg, rgba(34,197,94,0.08) 0%, var(--bg-2) 100%);
+    border-left: 2px solid rgba(34,197,94,0.3);
 }
 .stat-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 8px; }
 .stat-value { font-size: 28px; font-weight: 600; color: var(--text-0); letter-spacing: -0.03em; }
@@ -679,7 +687,7 @@ tr:hover .row-actions { opacity: 1; }
     .col-8, .col-4, .col-6 { grid-column: span 12; }
     .page-body { padding: 16px; }
     .page-header { padding: 14px 16px; }
-    .stats-row { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
     .form-row { grid-template-columns: 1fr; }
     .detail-panel { width: 360px; }
 }
@@ -1014,7 +1022,7 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                     Dashboard
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="leads">
+                <div class="nav-item" data-page="leads">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     Leads
                 </div>
@@ -1022,7 +1030,11 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M12 14v7"/><path d="M9 17h6"/></svg>
                     My Leads
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="contacts">
+                <div class="nav-item" data-page="customers">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/><circle cx="18" cy="5" r="3"/></svg>
+                    Customers
+                </div>
+                <div class="nav-item" data-page="contacts">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     Contacts
                 </div>
@@ -1030,7 +1042,7 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     Follow-ups
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="marketing">
+                <div class="nav-item" data-page="marketing">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                     Marketing
                 </div>
@@ -1043,13 +1055,17 @@ tr:hover .row-actions { opacity: 1; }
             <!-- FINANCIALS -->
             <div class="nav-section">
                 <div class="nav-section-title">Financials</div>
-                <div class="nav-item nav-item-admin-only" data-page="invoices">
+                <div class="nav-item" data-page="invoices">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     Invoices
                 </div>
                 <div class="nav-item" data-page="analytics">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                     Analytics
+                </div>
+                <div class="nav-item nav-item-admin-only" data-page="products" id="navProducts">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    Products
                 </div>
             </div>
 
@@ -1117,19 +1133,66 @@ tr:hover .row-actions { opacity: 1; }
                     <div class="page-subtitle">Here's what's happening today</div>
                 </div>
                 <div class="page-actions">
-                    <button class="btn btn-default" onclick="navigate('leads')">
+                    <button class="btn btn-default" onclick="openAddLeadModal()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         New Lead
                     </button>
                 </div>
             </div>
             <div class="page-body">
+
+                <!-- TOP STATS ROW -->
                 <div id="dashStats" class="stats-row">
                     <div class="stat-cell"><div class="stat-label">Total Leads</div><div class="stat-value" id="dStat1">—</div></div>
-                    <div class="stat-cell"><div class="stat-label">Contacts</div><div class="stat-value" id="dStat2">—</div></div>
+                    <div class="stat-cell"><div class="stat-label">Customers</div><div class="stat-value" id="dStat2">—</div></div>
                     <div class="stat-cell"><div class="stat-label">Open Tasks</div><div class="stat-value" id="dStat3">—</div></div>
-                    <div class="stat-cell"><div class="stat-label">Revenue (MTD)</div><div class="stat-value" id="dStat4">—</div></div>
+                    <!-- Current Month Income with % change -->
+                    <div class="stat-cell stat-cell-income" style="position:relative;">
+                        <div class="stat-label" style="color:rgba(74,222,128,0.7);">This Month — Actual Income</div>
+                        <div class="stat-value" id="dStat4" style="color:#4ade80;">—</div>
+                        <div id="dStatChange" class="stat-sub" style="margin-top:6px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;"></div>
+                    </div>
+                    <div class="stat-cell"><div class="stat-label">Pipeline Value</div><div class="stat-value" id="dStat5">—</div><div class="stat-sub">Potential income</div></div>
                 </div>
+
+                <!-- CHART CARD with slideshow -->
+                <div class="card" style="margin-bottom:16px;">
+                    <div class="card-header" style="flex-wrap:wrap;gap:8px;align-items:flex-start;">
+                        <div style="flex:1;min-width:0;">
+                            <span class="card-title" id="chartTitle">Revenue Overview</span>
+                            <div style="font-size:11px;color:var(--text-3);margin-top:2px;" id="chartSubtitle">Potential vs. actual income — last 12 months</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                            <!-- Legend -->
+                            <div id="chartLegend" style="display:flex;gap:12px;font-size:11px;color:var(--text-2);flex-wrap:wrap;"></div>
+                            <!-- Slide nav -->
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <button onclick="prevChart()" title="Previous chart"
+                                    style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-2);transition:all 0.15s;"
+                                    onmouseover="this.style.background='var(--bg-hover)';this.style.borderColor='var(--text-3)';this.style.color='var(--text-0)'"
+                                    onmouseout="this.style.background='var(--bg-3)';this.style.borderColor='var(--border)';this.style.color='var(--text-2)'">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M15 18l-6-6 6-6"/></svg>
+                                </button>
+                                <div id="chartDots" style="display:flex;align-items:center;gap:4px;"></div>
+                                <button onclick="nextChart()" title="Next chart"
+                                    style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--bg-3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-2);transition:all 0.15s;"
+                                    onmouseover="this.style.background='var(--bg-hover)';this.style.borderColor='var(--text-3)';this.style.color='var(--text-0)'"
+                                    onmouseout="this.style.background='var(--bg-3)';this.style.borderColor='var(--border)';this.style.color='var(--text-2)'">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M9 18l6-6-6-6"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:16px 20px 20px;">
+                        <canvas id="dashChart" style="width:100%;height:280px;display:block;"></canvas>
+                        <div id="chartEmpty" style="display:none;padding:48px;text-align:center;color:var(--text-3);font-size:13px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 12px;display:block;opacity:0.4;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            No data yet — add products to leads and customers to see revenue charts.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM GRID -->
                 <div class="dash-grid">
                     <div class="col-8">
                         <div class="card">
@@ -1161,6 +1224,7 @@ tr:hover .row-actions { opacity: 1; }
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -1266,6 +1330,64 @@ tr:hover .row-actions { opacity: 1; }
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         <h3>No contacts yet</h3>
                         <p>Add your first contact</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==============================
+             CUSTOMERS
+        ============================== -->
+        <div class="page" id="page-customers">
+            <div class="page-header">
+                <div class="page-title-group">
+                    <div class="page-title">Customers</div>
+                    <div class="page-subtitle">People who have converted from leads or were added directly</div>
+                </div>
+                <div class="page-actions">
+                    <div class="search-input">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="customersSearch" placeholder="Search customers..." oninput="filterCustomers()">
+                    </div>
+                    <button class="btn btn-default" onclick="openAddCustomerModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Customer
+                    </button>
+                </div>
+            </div>
+            <div class="page-body">
+                <div class="table-wrap mobile-table-card" id="customersTable">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                        <h3>No customers yet</h3>
+                        <p>Convert a lead or add a customer directly</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==============================
+             PRODUCTS (admin only)
+        ============================== -->
+        <div class="page" id="page-products">
+            <div class="page-header">
+                <div class="page-title-group">
+                    <div class="page-title">Products</div>
+                    <div class="page-subtitle">Products & services your team can associate with leads</div>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-default" onclick="openAddProductModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Product
+                    </button>
+                </div>
+            </div>
+            <div class="page-body">
+                <div id="productsGrid" class="table-wrap mobile-table-card">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                        <h3>No products yet</h3>
+                        <p>Add products or services to associate with leads</p>
                     </div>
                 </div>
             </div>
@@ -1809,6 +1931,10 @@ tr:hover .row-actions { opacity: 1; }
             <div class="form-field">
                 <label class="form-label">Notes</label>
                 <textarea class="form-input" id="leadNotes" placeholder="Initial notes..."></textarea>
+            </div>
+            <div class="form-field" id="leadProductsField" style="display:none;">
+                <label class="form-label">Interested In (Products)</label>
+                <div id="leadProductsCheckboxes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
             </div>
         </div>
         <div class="modal-footer">
@@ -2399,6 +2525,8 @@ function navigate(page) {
 
     // Load data for page
     switch(page) {
+        case 'customers':   loadCustomers();   break;
+        case 'products':    if(S.isAdmin) loadProducts(); break;
         case 'dashboard':   loadDashboard();   break;
         case 'leads':       loadLeads();       break;
         case 'myleads':     loadMyLeads();     break;
@@ -2445,12 +2573,14 @@ const MOBILE_PAGE_NAMES = {
     dashboard:    'Dashboard',
     leads:        'All Leads',
     myleads:      'My Leads',
+    customers:    'Customers',
     contacts:     'Contacts',
     followups:    'Follow-ups',
     marketing:    'Marketing',
     scheduling:   'Scheduling',
     invoices:     'Invoices',
     analytics:    'Analytics',
+    products:     'Products',
     tasks:        'Tasks',
     team:         'Team',
     company:      'Company',
@@ -2559,35 +2689,352 @@ async function loadInitialData() {
         loadLeadsData(),
         loadContactsData(),
         loadTasksData(),
+        apiFetch('/client/customers').then(r=>r.json()).then(d=>{ S.customers = d.customers||[]; _customers = S.customers; }).catch(()=>{}),
     ]);
 }
 
 // ============================================================
 // DASHBOARD
 // ============================================================
+// ============================================================
+// DASHBOARD CHARTS — pure canvas, no external deps
+// ============================================================
+const DC = {
+    slide: 0,           // 0=income, 1=growth, 2=products
+    data: null,         // last fetched chart data
+    canvas: null,
+    ctx: null,
+};
+
+const CHART_SLIDES = [
+    { title: 'Revenue Overview',    subtitle: 'Potential vs. actual income — last 12 months' },
+    { title: 'Lead & Customer Growth', subtitle: 'New leads and customers per month — last 12 months' },
+    { title: 'Product Popularity', subtitle: 'Leads assigned each product per month — last 12 months' },
+];
+
+function nextChart() {
+    DC.slide = (DC.slide + 1) % 3;
+    _animateChart('right');
+    renderChart();
+}
+function prevChart() {
+    DC.slide = (DC.slide + 2) % 3;
+    _animateChart('left');
+    renderChart();
+}
+function _animateChart(dir) {
+    const canvas = document.getElementById('dashChart');
+    const empty = document.getElementById('chartEmpty');
+    [canvas, empty].forEach(el => {
+        if (!el) return;
+        el.style.animation = 'none';
+        el.offsetHeight; // reflow
+        el.style.animation = `chartSlideIn 0.28s cubic-bezier(0.22,1,0.36,1)`;
+    });
+}
+
+function _fmt$(n) { return '$' + (n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,'') + 'k' : n.toFixed(0)); }
+function _fmtMonth(ym) {
+    const [y,m] = ym.split('-');
+    return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1];
+}
+
+const CHART_COLORS = [
+    '#ffffff','#22c55e','#3b82f6','#f59e0b','#a855f7','#ef4444','#06b6d4','#f97316','#ec4899','#84cc16',
+];
+
+function renderChart() {
+    const d = DC.data;
+    const canvas = document.getElementById('dashChart');
+    const emptyEl = document.getElementById('chartEmpty');
+    const titleEl = document.getElementById('chartTitle');
+    const subtitleEl = document.getElementById('chartSubtitle');
+    const legendEl = document.getElementById('chartLegend');
+    const dotsEl = document.getElementById('chartDots');
+    if (!canvas || !d) return;
+
+    // Dots — styled pills
+    const slideLabels = ['Revenue', 'Growth', 'Products'];
+    dotsEl.innerHTML = [0,1,2].map(i =>
+        `<button onclick="DC.slide=${i};_animateChart('right');renderChart()"
+            style="height:6px;border-radius:3px;border:none;cursor:pointer;transition:all 0.2s;background:${i===DC.slide?'var(--text-0)':'var(--border)'};width:${i===DC.slide?'20px':'6px'};padding:0;"
+            title="${slideLabels[i]}"></button>`
+    ).join('');
+
+    titleEl.textContent = CHART_SLIDES[DC.slide].title;
+    subtitleEl.textContent = CHART_SLIDES[DC.slide].subtitle;
+
+    const months = d.months || [];
+    const labels = months.map(_fmtMonth);
+    let series = []; // [{label, color, values:[]}]
+
+    if (DC.slide === 0) {
+        // Income: potential + actual
+        series = [
+            { label: 'Potential Income', color: '#ffffff', values: d.income.map(m => m.potential) },
+            { label: 'Actual Income',    color: '#22c55e', values: d.income.map(m => m.actual) },
+        ];
+    } else if (DC.slide === 1) {
+        // Growth
+        series = [
+            { label: 'New Leads',     color: '#3b82f6', values: d.growth.map(m => m.leads) },
+            { label: 'New Customers', color: '#22c55e', values: d.growth.map(m => m.customers) },
+        ];
+    } else {
+        // Product popularity — one line per product
+        const productIds = [...new Set(d.products.map(r => r.product_id))];
+        const productNames = {};
+        d.products.forEach(r => { productNames[r.product_id] = r.product_name; });
+        series = productIds.map((pid, idx) => ({
+            label: productNames[pid],
+            color: CHART_COLORS[idx % CHART_COLORS.length],
+            values: months.map(m => {
+                const row = d.products.find(r => r.product_id === pid && r.month === m);
+                return row ? row.count : 0;
+            }),
+        }));
+    }
+
+    // Legend
+    legendEl.innerHTML = series.map(s =>
+        `<div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:10px;height:10px;border-radius:2px;background:${s.color};flex-shrink:0;"></div>
+            <span style="white-space:nowrap;">${escHtml(s.label)}</span>
+         </div>`
+    ).join('');
+
+    // Check for all-zero data
+    const hasData = series.some(s => s.values.some(v => v > 0));
+    if (!hasData) {
+        canvas.style.display = 'none';
+        emptyEl.style.display = 'block';
+        return;
+    }
+    canvas.style.display = 'block';
+    emptyEl.style.display = 'none';
+
+    // Draw canvas
+    const DPR = window.devicePixelRatio || 1;
+    const W = canvas.parentElement.clientWidth - 40;
+    const H = 280;
+    canvas.width  = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+    ctx.clearRect(0, 0, W, H);
+
+    const PAD = { top: 16, right: 20, bottom: 40, left: DC.slide === 0 ? 64 : 44 };
+    const CW = W - PAD.left - PAD.right;
+    const CH = H - PAD.top - PAD.bottom;
+
+    // Max value
+    const allValues = series.flatMap(s => s.values);
+    const maxVal = Math.max(...allValues, 1);
+
+    const niceMax = (() => {
+        const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
+        const candidates = [1,2,2.5,5,10].map(x => x * magnitude);
+        return candidates.find(c => c >= maxVal) || maxVal;
+    })();
+
+    // Grid lines
+    const gridCount = 4;
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= gridCount; i++) {
+        const y = PAD.top + CH - (i / gridCount) * CH;
+        ctx.beginPath();
+        ctx.moveTo(PAD.left, y);
+        ctx.lineTo(PAD.left + CW, y);
+        ctx.stroke();
+
+        // Y labels
+        const val = (i / gridCount) * niceMax;
+        ctx.fillStyle = '#666666';
+        ctx.font = '10px Geist, sans-serif';
+        ctx.textAlign = 'right';
+        const label = DC.slide === 0 ? _fmt$(val) : (val >= 1000 ? (val/1000).toFixed(1)+'k' : Math.round(val).toString());
+        ctx.fillText(label, PAD.left - 8, y + 4);
+    }
+
+    // X labels
+    const step = Math.max(1, Math.floor(labels.length / 8));
+    ctx.fillStyle = '#666666';
+    ctx.font = '10px Geist, sans-serif';
+    ctx.textAlign = 'center';
+    labels.forEach((lbl, i) => {
+        if (i % step === 0 || i === labels.length - 1) {
+            const x = PAD.left + (i / (labels.length - 1)) * CW;
+            ctx.fillText(lbl, x, H - PAD.bottom + 16);
+        }
+    });
+
+    // Draw each series
+    series.forEach((s, si) => {
+        const pts = s.values.map((v, i) => ({
+            x: PAD.left + (i / Math.max(s.values.length - 1, 1)) * CW,
+            y: PAD.top + CH - (v / niceMax) * CH,
+        }));
+
+        // Gradient fill under first/second line for income chart
+        if (DC.slide === 0) {
+            const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + CH);
+            grad.addColorStop(0, s.color + '28');
+            grad.addColorStop(1, s.color + '00');
+            ctx.beginPath();
+            pts.forEach((p, i) => { i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+            ctx.lineTo(pts[pts.length-1].x, PAD.top + CH);
+            ctx.lineTo(pts[0].x, PAD.top + CH);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+        }
+
+        // Line
+        ctx.beginPath();
+        pts.forEach((p, i) => {
+            if (i === 0) { ctx.moveTo(p.x, p.y); return; }
+            // Smooth curve
+            const prev = pts[i-1];
+            const cpx = (prev.x + p.x) / 2;
+            ctx.bezierCurveTo(cpx, prev.y, cpx, p.y, p.x, p.y);
+        });
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = si === 0 && DC.slide === 0 ? 1.5 : 2;
+        ctx.stroke();
+
+        // Dots on data points
+        pts.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = s.color;
+            ctx.fill();
+            ctx.strokeStyle = '#111111';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        });
+    });
+
+    // Hover tooltip
+    canvas.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        // Find closest month index
+        const idx = Math.round((mx - PAD.left) / CW * (labels.length - 1));
+        if (idx < 0 || idx >= labels.length) return;
+        // Re-draw (lightweight: just overlay a tooltip)
+        renderChartTooltip(ctx, series, idx, labels, PAD, CW, CH, niceMax, W, H);
+    };
+    canvas.onmouseleave = () => renderChart();
+}
+
+function renderChartTooltip(ctx, series, idx, labels, PAD, CW, CH, niceMax, W, H) {
+    // Redraw clean (small flicker is acceptable; full redraw avoided for perf)
+    const x = PAD.left + (idx / (labels.length - 1)) * CW;
+
+    // Vertical hairline
+    ctx.save();
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x, PAD.top);
+    ctx.lineTo(x, PAD.top + CH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Tooltip box
+    const lines = series.map(s => ({ label: s.label, color: s.color, val: s.values[idx] }));
+    const boxW = 160;
+    const boxH = 20 + lines.length * 18;
+    let bx = x + 10;
+    if (bx + boxW > W - 10) bx = x - boxW - 10;
+    const by = PAD.top + 8;
+
+    ctx.save();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 1;
+    const r = 6;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, boxW, boxH, r);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = '600 11px Geist, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.fillText(labels[idx], bx + 10, by + 14);
+
+    lines.forEach((l, i) => {
+        const ly = by + 28 + i * 18;
+        ctx.beginPath();
+        ctx.arc(bx + 15, ly - 3, 4, 0, Math.PI * 2);
+        ctx.fillStyle = l.color;
+        ctx.fill();
+
+        ctx.font = '11px Geist, sans-serif';
+        ctx.fillStyle = '#a1a1a1';
+        ctx.fillText(l.label, bx + 24, ly);
+
+        ctx.font = '600 11px Geist, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'right';
+        const valStr = DC.slide === 0 ? _fmt$(l.val) : l.val.toString();
+        ctx.fillText(valStr, bx + boxW - 10, ly);
+        ctx.textAlign = 'left';
+    });
+    ctx.restore();
+}
+
 async function loadDashboard() {
     try {
-        const [dashRes] = await Promise.all([
+        const [dashRes, chartRes] = await Promise.all([
             apiFetch('/client/dashboard'),
+            apiFetch('/client/charts'),
         ]);
-        const dashData = await dashRes.json();
-        if (!dashData.success && !dashData.dashboard) return;
+        const dashData  = await dashRes.json();
+        const chartData = await chartRes.json();
 
         const d = dashData.dashboard || {};
-        const leads = d.leads || S.leads;
-        const invoices = d.invoices || S.invoices;
-        const tasks = d.tickets || [];
+        const leads     = S.leads || [];
+        const customers = S.customers || [];
+        const invoices  = d.invoices || [];
 
         // Stats
-        const totalLeads = leads.length;
-        const totalContacts = (S.contacts || []).length;
         const openTasks = (S.tasks || []).filter(t => t.status !== 'completed').length;
-        const revenue = invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+parseFloat(i.total_amount||i.amount||0),0);
 
-        document.getElementById('dStat1').textContent = totalLeads;
-        document.getElementById('dStat2').textContent = totalContacts;
+        // Income from chart data
+        const cm = chartData.currentMonthIncome || {};
+        const actualIncome   = cm.actual   || 0;
+        const potentialTotal = (chartData.income || []).reduce((s,m) => s + m.potential, 0);
+
+        document.getElementById('dStat1').textContent = leads.length;
+        document.getElementById('dStat2').textContent = customers.length;
         document.getElementById('dStat3').textContent = openTasks;
-        document.getElementById('dStat4').textContent = '$' + revenue.toFixed(0);
+        document.getElementById('dStat4').textContent = '$' + actualIncome.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+        document.getElementById('dStat5').textContent = '$' + potentialTotal.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+
+        // % change pill
+        const changeEl = document.getElementById('dStatChange');
+        if (changeEl) {
+            const pct = cm.pctChange || 0;
+            const up  = pct >= 0;
+            changeEl.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;color:${up?'#22c55e':'#ef4444'};">
+                    ${up ? '<polyline points="18 15 12 9 6 15"/>' : '<polyline points="6 9 12 15 18 9"/>'}
+                </svg>
+                <span style="color:${up?'#22c55e':'#ef4444'};">${up?'+':''}${pct}% vs last month</span>`;
+        }
+
+        // Chart data
+        if (chartData.success) {
+            DC.data = chartData;
+            renderChart();
+        }
 
         // Activity
         const activity = d.activity || [];
@@ -2614,9 +3061,7 @@ async function loadDashboard() {
         if (recentLeads.length) {
             dashLeadsEl.innerHTML = `
                 <table style="width:100%;">
-                    <thead><tr>
-                        <th>Name</th><th>Status</th><th>Date</th>
-                    </tr></thead>
+                    <thead><tr><th>Name</th><th>Status</th><th>Date</th></tr></thead>
                     <tbody>
                         ${recentLeads.map(l=>`<tr>
                             <td style="font-weight:500;">${escHtml(l.name||l.email||'—')}</td>
@@ -2628,6 +3073,7 @@ async function loadDashboard() {
         } else {
             dashLeadsEl.innerHTML = '<div class="empty-state"><p>No leads yet</p></div>';
         }
+
     } catch(e) {
         console.error('Dashboard load error:', e);
     }
@@ -2744,6 +3190,23 @@ function openAddLeadModal() {
         }
     }).catch(()=>{});
 
+    // Load products for multi-select
+    apiFetch('/client/products').then(r=>r.json()).then(d=>{
+        const products = d.products || [];
+        const field = document.getElementById('leadProductsField');
+        const box = document.getElementById('leadProductsCheckboxes');
+        if (products.length && field && box) {
+            box.innerHTML = products.map(p=>`
+                <label style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg-3);border-radius:var(--r-sm);cursor:pointer;font-size:12px;">
+                    <input type="checkbox" class="lead-product-cb" value="${p.id}" style="accent-color:var(--text-0);">
+                    ${escHtml(p.name)}${p.price?` <span style="color:var(--text-3);">$${parseFloat(p.price).toFixed(0)}</span>`:''}
+                </label>`).join('');
+            field.style.display = 'block';
+        } else if (field) {
+            field.style.display = 'none';
+        }
+    }).catch(()=>{});
+
     // Toggle chain field visibility
     const modeEl = document.getElementById('leadFollowupMode');
     modeEl.onchange = function() {
@@ -2760,6 +3223,8 @@ async function saveLead() {
 
     const followupMode = document.getElementById('leadFollowupMode')?.value || 'manual';
     const chainId = document.getElementById('leadChainSelect')?.value || null;
+    // Collect selected product IDs
+    const selectedProducts = [...document.querySelectorAll('.lead-product-cb:checked')].map(cb => parseInt(cb.value));
 
     try {
         const res = await apiFetch('/client/leads', 'POST', {
@@ -2767,7 +3232,7 @@ async function saveLead() {
             phone: document.getElementById('leadPhone').value,
             company: document.getElementById('leadCompany').value,
             status: document.getElementById('leadStatus').value,
-            lead_temperature: 'cold',  // Always start as cold — auto-updated by engagement
+            lead_temperature: 'cold',
             followup_mode: followupMode,
             chain_id: followupMode === 'automatic' && chainId ? parseInt(chainId) : null,
             notes: document.getElementById('leadNotes').value,
@@ -2775,6 +3240,11 @@ async function saveLead() {
         });
         const data = await res.json();
         if (data.success || data.lead || data.id) {
+            const newLeadId = data.lead?.id || data.id;
+            // Save product associations if any
+            if (newLeadId && selectedProducts.length) {
+                apiFetch(`/client/leads/${newLeadId}/products`, 'POST', { product_ids: selectedProducts }).catch(()=>{});
+            }
             toast('Lead created', 'success');
             closeModal('addLeadModal');
             await loadLeads();
@@ -2787,8 +3257,193 @@ async function saveLead() {
 }
 
 function openEditLeadModal(lead) {
-    // Simple inline edit — for brevity opening add modal pre-filled
-    toast('Edit functionality — use admin portal for advanced editing', 'success');
+    let modal = document.getElementById('editLeadModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'editLeadModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('editLeadModal'); };
+        document.body.appendChild(modal);
+    }
+    const isCustomer = lead.is_customer;
+    modal.innerHTML = `
+        <div class="modal" style="max-width:520px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Edit Lead</div>
+                <button class="modal-close" onclick="closeModal('editLeadModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-field">
+                        <label class="form-label">Name</label>
+                        <input class="form-input" id="editLeadName" value="${escHtml(lead.name||'')}">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Email</label>
+                        <input class="form-input" id="editLeadEmail" type="email" value="${escHtml(lead.email||'')}">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label class="form-label">Phone</label>
+                        <input class="form-input" id="editLeadPhone" value="${escHtml(lead.phone||'')}">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Company</label>
+                        <input class="form-input" id="editLeadCompany" value="${escHtml(lead.company||'')}">
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="editLeadStatus">
+                        ${['new','contacted','pending','qualified','proposal','negotiation','closed','lost'].map(s =>
+                            `<option value="${s}" ${(lead.status||'new')===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label class="form-label">Temperature</label>
+                    <select class="form-select" id="editLeadTemp">
+                        <option value="cold" ${(lead.lead_temperature||'cold')==='cold'?'selected':''}>Cold</option>
+                        <option value="hot" ${lead.lead_temperature==='hot'?'selected':''}>Hot</option>
+                    </select>
+                </div>
+                <div class="form-field" id="editLeadProductsField">
+                    <label class="form-label">Products Interested In</label>
+                    <div id="editLeadProductsBoxes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+                        <span style="font-size:12px;color:var(--text-3);">Loading products...</span>
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label class="form-label">Notes</label>
+                    <textarea class="form-input" id="editLeadNotes" style="min-height:80px;">${escHtml(lead.notes||'')}</textarea>
+                </div>
+                ${!isCustomer ? `
+                <div style="margin-top:4px;padding:12px 16px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);">
+                    <div style="font-size:12px;font-weight:600;color:#4ade80;margin-bottom:6px;">Convert to Customer</div>
+                    <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">This will move the lead out of the follow-up queue and into your Customers tab permanently.</div>
+                    <button class="btn btn-ghost btn-sm" style="border-color:rgba(34,197,94,0.4);color:#4ade80;" onclick="convertLeadToCustomer(${lead.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"/></svg>
+                        Convert to Customer
+                    </button>
+                </div>` : `
+                <div style="padding:10px 14px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);font-size:12px;color:#4ade80;">
+                    ✓ This person is already a customer
+                </div>`}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('editLeadModal')">Cancel</button>
+                <button class="btn btn-white" onclick="saveEditLead(${lead.id})">Save Changes</button>
+            </div>
+        </div>`;
+    openModal('editLeadModal');
+
+    // Load products + current lead's products
+    Promise.all([
+        apiFetch('/client/products').then(r=>r.json()),
+        apiFetch(`/client/leads/${lead.id}/products`).then(r=>r.json()),
+    ]).then(([pd, ld]) => {
+        const all = pd.products || [];
+        const assigned = (ld.products || []).map(p => p.id);
+        const box = document.getElementById('editLeadProductsBoxes');
+        const field = document.getElementById('editLeadProductsField');
+        if (!all.length) { if (field) field.style.display = 'none'; return; }
+        box.innerHTML = all.map(p => `
+            <label style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg-3);border-radius:var(--r-sm);cursor:pointer;font-size:12px;">
+                <input type="checkbox" class="edit-product-cb" value="${p.id}" ${assigned.includes(p.id)?'checked':''} style="accent-color:var(--text-0);">
+                ${escHtml(p.name)}${p.price?` <span style="color:var(--text-3);">$${parseFloat(p.price).toFixed(0)}</span>`:''}
+            </label>`).join('');
+    }).catch(() => {});
+}
+
+async function saveEditLead(leadId) {
+    const payload = {
+        name:             document.getElementById('editLeadName')?.value.trim(),
+        email:            document.getElementById('editLeadEmail')?.value.trim(),
+        phone:            document.getElementById('editLeadPhone')?.value.trim(),
+        company:          document.getElementById('editLeadCompany')?.value.trim(),
+        status:           document.getElementById('editLeadStatus')?.value,
+        lead_temperature: document.getElementById('editLeadTemp')?.value,
+        notes:            document.getElementById('editLeadNotes')?.value.trim(),
+    };
+    // Collect product IDs from edit modal checkboxes
+    const selectedProducts = [...document.querySelectorAll('.edit-product-cb:checked')].map(cb => parseInt(cb.value));
+    try {
+        const res = await apiFetch(`/client/leads/${leadId}`, 'PATCH', payload);
+        const data = await res.json();
+        if (data.success) {
+            // Save product associations (always set, even if empty — replaces old ones)
+            await apiFetch(`/client/leads/${leadId}/products`, 'POST', { product_ids: selectedProducts }).catch(()=>{});
+            toast('Lead updated', 'success');
+            closeModal('editLeadModal');
+            await loadLeads();
+            // Refresh chart data + income stats — product assignments change the revenue graph
+            apiFetch('/client/charts').then(r=>r.json()).then(d=>{
+                if (!d.success) return;
+                DC.data = d;
+                if (S.currentPage === 'dashboard') {
+                    renderChart();
+                    const cm = d.currentMonthIncome || {};
+                    const actualIncome   = cm.actual || 0;
+                    const potentialTotal = (d.income || []).reduce((s,m) => s + m.potential, 0);
+                    const stat4 = document.getElementById('dStat4');
+                    const stat5 = document.getElementById('dStat5');
+                    if (stat4) stat4.textContent = '$' + actualIncome.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+                    if (stat5) stat5.textContent = '$' + potentialTotal.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+                    const changeEl = document.getElementById('dStatChange');
+                    if (changeEl && cm.pctChange !== undefined) {
+                        const pct = cm.pctChange, up = pct >= 0;
+                        changeEl.innerHTML = `
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;color:${up?'#22c55e':'#ef4444'};">
+                                ${up ? '<polyline points="18 15 12 9 6 15"/>' : '<polyline points="6 9 12 15 18 9"/>'}
+                            </svg>
+                            <span style="color:${up?'#22c55e':'#ef4444'};">${up?'+':''}${pct}% vs last month</span>`;
+                    }
+                }
+            }).catch(()=>{});
+            if (S.currentPage === 'followups') loadFollowups();
+        } else { toast(data.message || 'Failed to update', 'error'); }
+    } catch { toast('Error saving lead', 'error'); }
+}
+
+async function convertLeadToCustomer(leadId) {
+    if (!confirm('Convert this lead to a customer? They will be removed from the follow-up queue.')) return;
+    try {
+        const res = await apiFetch(`/client/leads/${leadId}/convert`, 'POST');
+        const data = await res.json();
+        if (data.success) {
+            toast('Converted to customer!', 'success');
+            closeModal('editLeadModal');
+            await loadLeads();
+            await loadCustomers();
+            if (S.currentPage === 'followups') loadFollowups();
+            // Refresh chart & income stats (conversion moves lead→actual income)
+            apiFetch('/client/charts').then(r=>r.json()).then(d=>{
+                if (!d.success) return;
+                DC.data = d;
+                renderChart();
+                // Update income stat cards
+                const cm = d.currentMonthIncome || {};
+                const actualIncome = cm.actual || 0;
+                const potentialTotal = (d.income || []).reduce((s,m) => s + m.potential, 0);
+                const stat4 = document.getElementById('dStat4');
+                const stat5 = document.getElementById('dStat5');
+                if (stat4) stat4.textContent = '$' + actualIncome.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+                if (stat5) stat5.textContent = '$' + potentialTotal.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+                const changeEl = document.getElementById('dStatChange');
+                if (changeEl && cm.pctChange !== undefined) {
+                    const pct = cm.pctChange, up = pct >= 0;
+                    changeEl.innerHTML = `
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;color:${up?'#22c55e':'#ef4444'};">
+                            ${up ? '<polyline points="18 15 12 9 6 15"/>' : '<polyline points="6 9 12 15 18 9"/>'}
+                        </svg>
+                        <span style="color:${up?'#22c55e':'#ef4444'};">${up?'+':''}${pct}% vs last month</span>`;
+                }
+            }).catch(()=>{});
+        } else { toast(data.message || 'Failed to convert', 'error'); }
+    } catch { toast('Error converting lead', 'error'); }
 }
 
 async function sendFollowUpEmail(leadId, email) {
@@ -3771,9 +4426,24 @@ async function openAddAppointmentModal() {
                 <button class="modal-close" onclick="closeModal('addApptModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div class="modal-body">
-                <div class="form-row">
-                    <div class="form-field"><label class="form-label">Client Name</label><input class="form-input" id="apptClientName" placeholder="Full name"></div>
-                    <div class="form-field"><label class="form-label">Client Email</label><input class="form-input" id="apptClientEmail" type="email" placeholder="client@example.com"></div>
+                <div class="form-field">
+                    <label class="form-label">Select Lead / Client</label>
+                    <input class="form-input" id="apptLeadSearch" placeholder="Type to search leads..." oninput="filterApptLeads()" autocomplete="off">
+                    <div id="apptLeadDropdown" style="display:none;position:absolute;z-index:9999;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);max-height:200px;overflow-y:auto;width:calc(100% - 48px);margin-top:2px;"></div>
+                    <input type="hidden" id="apptLeadId">
+                    <input type="hidden" id="apptClientName">
+                    <input type="hidden" id="apptClientEmail">
+                    <div id="apptSelectedLead" style="display:none;margin-top:6px;padding:8px 12px;background:var(--bg-3);border-radius:var(--r-sm);font-size:13px;color:var(--text-1);display:flex;align-items:center;justify-content:space-between;">
+                        <span id="apptSelectedLeadName"></span>
+                        <button onclick="clearApptLead()" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;line-height:1;">×</button>
+                    </div>
+                </div>
+                <div style="margin:8px 0;text-align:center;font-size:12px;color:var(--text-3);">— or enter manually —</div>
+                <div id="apptManualFields">
+                    <div class="form-row">
+                        <div class="form-field"><label class="form-label">Client Name</label><input class="form-input" id="apptManualName" placeholder="Full name"></div>
+                        <div class="form-field"><label class="form-label">Client Email</label><input class="form-input" id="apptManualEmail" type="email" placeholder="client@example.com"></div>
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-field"><label class="form-label">Date</label><input class="form-input" type="date" id="apptDate"></div>
@@ -3789,21 +4459,69 @@ async function openAddAppointmentModal() {
                 <button class="btn btn-white" onclick="saveNewAppointment()">Add Appointment</button>
             </div>
         </div>`;
+    // Populate lead search from cached leads
     openModal('addApptModal');
+    // Populate dropdown data after modal is open
+    window._apptLeads = [...(S.leads||[]), ...(S.customers||[])];
+}
+}
+
+function filterApptLeads() {
+    const q = (document.getElementById('apptLeadSearch')?.value||'').toLowerCase();
+    const dd = document.getElementById('apptLeadDropdown');
+    if (!dd) return;
+    if (!q) { dd.style.display = 'none'; return; }
+    const matches = (window._apptLeads||[]).filter(l =>
+        (l.name||'').toLowerCase().includes(q) || (l.email||'').toLowerCase().includes(q)
+    ).slice(0, 10);
+    if (!matches.length) { dd.style.display = 'none'; return; }
+    dd.innerHTML = matches.map(l => `
+        <div onclick="selectApptLead(${l.id},'${escHtml(l.name||'')}','${escHtml(l.email||'')}')"
+             style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
+             onmouseover="this.style.background='var(--bg-3)'" onmouseout="this.style.background=''">
+            <div style="font-weight:500;color:var(--text-0);">${escHtml(l.name||'—')}</div>
+            <div style="font-size:11px;color:var(--text-3);">${escHtml(l.email||'')}</div>
+        </div>`).join('');
+    dd.style.display = 'block';
+}
+
+function selectApptLead(id, name, email) {
+    document.getElementById('apptLeadId').value = id;
+    document.getElementById('apptClientName').value = name;
+    document.getElementById('apptClientEmail').value = email;
+    document.getElementById('apptLeadSearch').value = '';
+    document.getElementById('apptLeadDropdown').style.display = 'none';
+    const sel = document.getElementById('apptSelectedLead');
+    document.getElementById('apptSelectedLeadName').textContent = `${name} — ${email}`;
+    sel.style.display = 'flex';
+    document.getElementById('apptManualFields').style.display = 'none';
+}
+
+function clearApptLead() {
+    document.getElementById('apptLeadId').value = '';
+    document.getElementById('apptClientName').value = '';
+    document.getElementById('apptClientEmail').value = '';
+    const sel = document.getElementById('apptSelectedLead');
+    if (sel) sel.style.display = 'none';
+    document.getElementById('apptManualFields').style.display = '';
 }
 
 async function saveNewAppointment() {
-    const name  = document.getElementById('apptClientName')?.value.trim();
-    const email = document.getElementById('apptClientEmail')?.value.trim();
+    // Get name/email from lead selector or manual fields
+    const name  = document.getElementById('apptClientName')?.value?.trim()
+               || document.getElementById('apptManualName')?.value?.trim();
+    const email = document.getElementById('apptClientEmail')?.value?.trim()
+               || document.getElementById('apptManualEmail')?.value?.trim();
     const date  = document.getElementById('apptDate')?.value;
     const time  = document.getElementById('apptTime')?.value;
+    const leadId = document.getElementById('apptLeadId')?.value || null;
     if (!name || !date || !time) { toast('Name, date and time required', 'error'); return; }
 
     const scheduledAt = new Date(`${date}T${time}`).toISOString();
 
     try {
         const res = await apiFetch('/client/appointments', 'POST', {
-            clientName: name, clientEmail: email,
+            clientName: name, clientEmail: email, lead_id: leadId,
             scheduled_at: scheduledAt,
             notes: document.getElementById('apptNotes')?.value,
             sendConfirmation: true,
@@ -6118,6 +6836,311 @@ function statusBadge(status) {
         'in-progress': 'badge-yellow',
     };
     return `<span class="badge ${map[status?.toLowerCase()]||'badge-gray'}">${escHtml(status||'—')}</span>`;
+}
+
+// ============================================================
+// CUSTOMERS
+// ============================================================
+let _customers = [];
+
+async function loadCustomers() {
+    const el = document.getElementById('customersTable');
+    if (el) el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-3);"><div class="spinner" style="margin:0 auto 8px;"></div>Loading...</div>`;
+    try {
+        const res = await apiFetch('/client/customers');
+        const data = await res.json();
+        _customers = data.customers || [];
+        S.customers = _customers;
+        renderCustomers();
+    } catch(e) {
+        if (el) el.innerHTML = `<div class="empty-state"><p>Could not load customers</p></div>`;
+    }
+}
+
+function renderCustomers() {
+    const el = document.getElementById('customersTable');
+    if (!el) return;
+    const q = (document.getElementById('customersSearch')||{}).value?.toLowerCase() || '';
+    let list = q ? _customers.filter(c =>
+        (c.name||'').toLowerCase().includes(q) ||
+        (c.email||'').toLowerCase().includes(q) ||
+        (c.company||'').toLowerCase().includes(q)
+    ) : _customers;
+
+    if (!list.length) {
+        el.innerHTML = `<div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <h3>${q ? 'No matching customers' : 'No customers yet'}</h3>
+            <p>${q ? 'Try a different search' : 'Add a customer or convert a lead'}</p>
+        </div>`;
+        return;
+    }
+    el.innerHTML = `
+        <table>
+            <thead><tr>
+                <th>Name</th><th>Email</th><th>Company</th><th>Phone</th><th>Assigned To</th><th>Since</th>
+            </tr></thead>
+            <tbody>
+                ${list.map(c=>`<tr>
+                    <td style="font-weight:500;">${escHtml(c.name||'—')}</td>
+                    <td style="color:var(--text-2);">${escHtml(c.email||'—')}</td>
+                    <td style="color:var(--text-2);">${escHtml(c.company||'—')}</td>
+                    <td style="color:var(--text-2);">${escHtml(c.phone||'—')}</td>
+                    <td>${c.assigned_to_name?`<span style="font-size:12px;background:var(--bg-1);padding:3px 8px;border-radius:4px;">${escHtml(c.assigned_to_name)}</span>`:'<span style="font-size:12px;color:var(--text-3);">Unassigned</span>'}</td>
+                    <td style="color:var(--text-3);font-size:12px;">${fmtDate(c.updated_at||c.created_at)}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>`;
+}
+
+function filterCustomers() { renderCustomers(); }
+
+function openAddCustomerModal() {
+    let modal = document.getElementById('addCustomerModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'addCustomerModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('addCustomerModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:480px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Add Customer</div>
+                <button class="modal-close" onclick="closeModal('addCustomerModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;font-size:12px;color:#4ade80;">
+                    Adding a customer directly bypasses the leads system. If this email already exists as a lead in your CRM, they will be automatically converted.
+                </div>
+                <div class="form-row">
+                    <div class="form-field"><label class="form-label">Name *</label><input class="form-input" id="custName" placeholder="Full name"></div>
+                    <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="custEmail" type="email" placeholder="email@example.com"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="custPhone" placeholder="(555) 000-0000"></div>
+                    <div class="form-field"><label class="form-label">Company</label><input class="form-input" id="custCompany" placeholder="Company name"></div>
+                </div>
+                <div class="form-field"><label class="form-label">Notes</label><textarea class="form-input" id="custNotes" placeholder="Initial notes..."></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('addCustomerModal')">Cancel</button>
+                <button class="btn btn-white" onclick="saveCustomer()">Add Customer</button>
+            </div>
+        </div>`;
+    openModal('addCustomerModal');
+}
+
+async function saveCustomer() {
+    const name = document.getElementById('custName')?.value.trim();
+    if (!name) { toast('Name is required', 'error'); return; }
+    try {
+        const res = await apiFetch('/client/customers', 'POST', {
+            name,
+            email: document.getElementById('custEmail')?.value.trim(),
+            phone: document.getElementById('custPhone')?.value.trim(),
+            company: document.getElementById('custCompany')?.value.trim(),
+            notes: document.getElementById('custNotes')?.value.trim(),
+        });
+        const data = await res.json();
+        if (data.success) {
+            toast('Customer added', 'success');
+            closeModal('addCustomerModal');
+            await loadCustomers();
+        } else { toast(data.message||'Failed', 'error'); }
+    } catch { toast('Error adding customer', 'error'); }
+}
+
+// ============================================================
+// PRODUCTS (admin only)
+// ============================================================
+let _products = [];
+
+async function loadProducts() {
+    const el = document.getElementById('productsGrid');
+    if (el) el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-3);"><div class="spinner" style="margin:0 auto 8px;"></div>Loading...</div>`;
+    try {
+        const res = await apiFetch('/client/products');
+        const data = await res.json();
+        _products = data.products || [];
+        renderProducts();
+    } catch(e) {
+        if (el) el.innerHTML = `<div class="empty-state"><p>Could not load products</p></div>`;
+    }
+}
+
+function renderProducts() {
+    const el = document.getElementById('productsGrid');
+    if (!el) return;
+    if (!_products.length) {
+        el.innerHTML = `<div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <h3>No products yet</h3><p>Add products or services to associate with leads</p>
+        </div>`;
+        return;
+    }
+    el.innerHTML = `
+        <table>
+            <thead><tr><th>Name</th><th>Category</th><th>SKU</th><th>Price</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                ${_products.map(p=>`<tr>
+                    <td style="font-weight:500;">${escHtml(p.name)}</td>
+                    <td style="color:var(--text-2);">${escHtml(p.category||'—')}</td>
+                    <td style="color:var(--text-2);font-family:var(--font-mono);font-size:12px;">${escHtml(p.sku||'—')}</td>
+                    <td>${p.price?`$${parseFloat(p.price).toFixed(2)}`:'<span style="color:var(--text-3);">—</span>'}</td>
+                    <td>${p.is_active!==false?'<span class="badge badge-green">Active</span>':'<span class="badge badge-gray">Inactive</span>'}</td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn btn-ghost btn-xs" onclick="openEditProductModal(${JSON.stringify(p).replace(/"/g,'&quot;')})">Edit</button>
+                            <button class="btn btn-ghost btn-xs" style="color:var(--red);" onclick="deleteProduct(${p.id})">Delete</button>
+                        </div>
+                    </td>
+                </tr>`).join('')}
+            </tbody>
+        </table>`;
+}
+
+function openAddProductModal() {
+    let modal = document.getElementById('addProductModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'addProductModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('addProductModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:480px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Add Product</div>
+                <button class="modal-close" onclick="closeModal('addProductModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field"><label class="form-label">Product Name *</label><input class="form-input" id="prodName" placeholder="e.g. Web Design Package"></div>
+                <div class="form-row">
+                    <div class="form-field"><label class="form-label">Category</label><input class="form-input" id="prodCategory" placeholder="e.g. Services"></div>
+                    <div class="form-field"><label class="form-label">SKU / Code</label><input class="form-input" id="prodSku" placeholder="WDP-001"></div>
+                </div>
+                <div class="form-field"><label class="form-label">Price ($)</label><input class="form-input" id="prodPrice" type="number" step="0.01" placeholder="0.00"></div>
+                <div class="form-field"><label class="form-label">Description</label><textarea class="form-input" id="prodDesc" placeholder="Brief description..." style="min-height:72px;"></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('addProductModal')">Cancel</button>
+                <button class="btn btn-white" onclick="saveProduct()">Add Product</button>
+            </div>
+        </div>`;
+    openModal('addProductModal');
+}
+
+function openEditProductModal(product) {
+    let modal = document.getElementById('editProductModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'editProductModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('editProductModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:480px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Edit Product</div>
+                <button class="modal-close" onclick="closeModal('editProductModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field"><label class="form-label">Product Name *</label><input class="form-input" id="editProdName" value="${escHtml(product.name||'')}"></div>
+                <div class="form-row">
+                    <div class="form-field"><label class="form-label">Category</label><input class="form-input" id="editProdCategory" value="${escHtml(product.category||'')}"></div>
+                    <div class="form-field"><label class="form-label">SKU / Code</label><input class="form-input" id="editProdSku" value="${escHtml(product.sku||'')}"></div>
+                </div>
+                <div class="form-field"><label class="form-label">Price ($)</label><input class="form-input" id="editProdPrice" type="number" step="0.01" value="${product.price||''}"></div>
+                <div class="form-field"><label class="form-label">Description</label><textarea class="form-input" id="editProdDesc" style="min-height:72px;">${escHtml(product.description||'')}</textarea></div>
+                <div class="form-field">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                        <input type="checkbox" id="editProdActive" ${product.is_active!==false?'checked':''} style="accent-color:var(--text-0);">
+                        Active (visible in lead creation)
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('editProductModal')">Cancel</button>
+                <button class="btn btn-white" onclick="updateProduct(${product.id})">Save Changes</button>
+            </div>
+        </div>`;
+    openModal('editProductModal');
+}
+
+async function saveProduct() {
+    const name = document.getElementById('prodName')?.value.trim();
+    if (!name) { toast('Product name required', 'error'); return; }
+    try {
+        const res = await apiFetch('/client/products', 'POST', {
+            name,
+            category: document.getElementById('prodCategory')?.value.trim(),
+            sku:      document.getElementById('prodSku')?.value.trim(),
+            price:    document.getElementById('prodPrice')?.value || null,
+            description: document.getElementById('prodDesc')?.value.trim(),
+        });
+        const data = await res.json();
+        if (data.success) {
+            toast('Product added', 'success');
+            closeModal('addProductModal');
+            await loadProducts();
+        } else { toast(data.message||'Failed', 'error'); }
+    } catch { toast('Error adding product', 'error'); }
+}
+
+async function updateProduct(id) {
+    const name = document.getElementById('editProdName')?.value.trim();
+    if (!name) { toast('Product name required', 'error'); return; }
+    try {
+        const res = await apiFetch(`/client/products/${id}`, 'PATCH', {
+            name,
+            category:    document.getElementById('editProdCategory')?.value.trim(),
+            sku:         document.getElementById('editProdSku')?.value.trim(),
+            price:       document.getElementById('editProdPrice')?.value || null,
+            description: document.getElementById('editProdDesc')?.value.trim(),
+            is_active:   document.getElementById('editProdActive')?.checked,
+        });
+        const data = await res.json();
+        if (data.success) {
+            toast('Product updated', 'success');
+            closeModal('editProductModal');
+            await loadProducts();
+        } else { toast(data.message||'Failed', 'error'); }
+    } catch { toast('Error updating product', 'error'); }
+}
+
+async function deleteProduct(id) {
+    if (!confirm('Delete this product? It will be removed from all leads.')) return;
+    try {
+        const res = await apiFetch(`/client/products/${id}`, 'DELETE');
+        const data = await res.json();
+        if (data.success) { toast('Product deleted', 'success'); await loadProducts(); }
+        else { toast(data.message||'Failed', 'error'); }
+    } catch { toast('Error deleting product', 'error'); }
+}
+
+// Resize → re-render chart
+window.addEventListener('resize', () => { if (DC.data && S.currentPage === 'dashboard') renderChart(); });
+
+// Polyfill roundRect for older browsers
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r) {
+        this.beginPath();
+        this.moveTo(x+r,y); this.lineTo(x+w-r,y); this.quadraticCurveTo(x+w,y,x+w,y+r);
+        this.lineTo(x+w,y+h-r); this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+        this.lineTo(x+r,y+h); this.quadraticCurveTo(x,y+h,x,y+h-r);
+        this.lineTo(x,y+r); this.quadraticCurveTo(x,y,x+r,y);
+        this.closePath(); return this;
+    };
 }
 </script>
 

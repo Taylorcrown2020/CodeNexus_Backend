@@ -21570,7 +21570,9 @@ app.get('/api/client/follow-ups', authenticateClient, async (req, res) => {
             LEFT JOIN company_users cu ON l.crm_assigned_to = cu.id
             WHERE ${whereExtra}
               AND (l.status IS NULL OR l.status NOT IN ('closed','lost'))
-              AND (l.source IS NULL OR l.source != 'company-user')
+              AND (l.source IS NULL OR l.source NOT IN ('company-user','subscription-direct'))
+              AND l.client_password IS NULL
+              AND l.is_customer IS NOT TRUE
             ORDER BY
                 CASE l.lead_temperature WHEN 'hot' THEN 1 ELSE 2 END,
                 l.last_contact_date ASC NULLS FIRST
@@ -22756,4 +22758,332 @@ process.on('SIGINT', async () => {
     console.log('SIGINT signal received: closing HTTP server');
     await pool.end();
     process.exit(0);
+});
+// ============================================================
+// CLIENT PORTAL — PRODUCTS
+// ============================================================
+
+// Ensure client_products table exists
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS client_products (
+                id SERIAL PRIMARY KEY,
+                client_portal_id VARCHAR(50) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                price NUMERIC(10,2),
+                sku VARCHAR(100),
+                category VARCHAR(100),
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        // Ensure lead_products join table exists
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS lead_products (
+                id SERIAL PRIMARY KEY,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                product_id INTEGER REFERENCES client_products(id) ON DELETE CASCADE,
+                client_portal_id VARCHAR(50),
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(lead_id, product_id)
+            )
+        `);
+        console.log('[PRODUCTS] Tables ready');
+    } catch(e) { console.warn('[PRODUCTS] Table setup:', e.message); }
+})();
+
+// GET /api/client/products
+app.get('/api/client/products', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+        const result = await pool.query(
+            `SELECT * FROM client_products WHERE client_portal_id=$1 ORDER BY name ASC`,
+            [portalId]
+        );
+        res.json({ success: true, products: result.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/products
+app.post('/api/client/products', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+        const { name, description, price, sku, category } = req.body;
+        if (!name) return res.status(400).json({ success: false, message: 'Name required' });
+        const result = await pool.query(
+            `INSERT INTO client_products (client_portal_id, name, description, price, sku, category)
+             VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+            [portalId, name, description||null, price||null, sku||null, category||null]
+        );
+        res.json({ success: true, product: result.rows[0] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// PATCH /api/client/products/:id
+app.patch('/api/client/products/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const { name, description, price, sku, category, is_active } = req.body;
+        const result = await pool.query(
+            `UPDATE client_products SET
+                name=COALESCE($1,name), description=COALESCE($2,description),
+                price=COALESCE($3,price), sku=COALESCE($4,sku),
+                category=COALESCE($5,category), is_active=COALESCE($6,is_active),
+                updated_at=NOW()
+             WHERE id=$7 AND client_portal_id=$8 RETURNING *`,
+            [name,description,price,sku,category,is_active,req.params.id,portalId]
+        );
+        if (!result.rows.length) return res.status(404).json({ success: false, message: 'Product not found' });
+        res.json({ success: true, product: result.rows[0] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// DELETE /api/client/products/:id
+app.delete('/api/client/products/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        await pool.query(`DELETE FROM client_products WHERE id=$1 AND client_portal_id=$2`, [req.params.id, portalId]);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// GET /api/client/leads/:id/products
+app.get('/api/client/leads/:id/products', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const result = await pool.query(
+            `SELECT p.* FROM client_products p
+             JOIN lead_products lp ON lp.product_id = p.id
+             WHERE lp.lead_id=$1 AND lp.client_portal_id=$2`,
+            [req.params.id, portalId]
+        );
+        res.json({ success: true, products: result.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/leads/:id/products — set products for a lead (replaces all)
+app.post('/api/client/leads/:id/products', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const leadId = req.params.id;
+        const { product_ids } = req.body; // array of product IDs
+        // Delete existing
+        await pool.query(`DELETE FROM lead_products WHERE lead_id=$1 AND client_portal_id=$2`, [leadId, portalId]);
+        // Insert new
+        if (product_ids && product_ids.length) {
+            for (const pid of product_ids) {
+                await pool.query(
+                    `INSERT INTO lead_products (lead_id, product_id, client_portal_id) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+                    [leadId, pid, portalId]
+                );
+            }
+        }
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// CLIENT PORTAL — CUSTOMERS
+// ============================================================
+
+// GET /api/client/customers — leads that are customers for this portal
+app.get('/api/client/customers', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+        const result = await pool.query(`
+            SELECT l.*, cu.user_name as assigned_to_name
+            FROM leads l
+            LEFT JOIN company_users cu ON l.crm_assigned_to = cu.id
+            WHERE l.client_portal_id=$1
+              AND l.is_customer = TRUE
+              AND l.client_password IS NULL
+              AND (l.source IS NULL OR l.source NOT IN ('company-user','subscription-direct'))
+            ORDER BY l.updated_at DESC NULLS LAST
+        `, [portalId]);
+        res.json({ success: true, customers: result.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/customers — add someone directly as a customer
+app.post('/api/client/customers', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+        const { name, email, phone, company, notes } = req.body;
+        if (!name) return res.status(400).json({ success: false, message: 'Name required' });
+        // Check if lead already exists for this portal
+        if (email) {
+            const existing = await pool.query(
+                `SELECT id FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2 AND client_password IS NULL`,
+                [email, portalId]
+            );
+            if (existing.rows.length) {
+                // Convert existing lead to customer
+                await pool.query(
+                    `UPDATE leads SET is_customer=TRUE, customer_status='active', status='closed', updated_at=NOW() WHERE id=$1`,
+                    [existing.rows[0].id]
+                );
+                // Remove from follow-up chains
+                await pool.query(`UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1`, [existing.rows[0].id]);
+                const updated = await pool.query(`SELECT * FROM leads WHERE id=$1`, [existing.rows[0].id]);
+                return res.json({ success: true, customer: updated.rows[0] });
+            }
+        }
+        const result = await pool.query(`
+            INSERT INTO leads (name, email, phone, company, notes, source, is_customer, customer_status,
+                status, lead_temperature, client_portal_id, created_at, updated_at)
+            VALUES ($1,$2,$3,$4,$5,'crm-portal',TRUE,'active','closed','cold',$6,NOW(),NOW()) RETURNING *
+        `, [name, email||null, phone||null, company||null, notes||null, portalId]);
+        res.json({ success: true, customer: result.rows[0] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/leads/:id/convert — convert a lead to customer
+app.post('/api/client/leads/:id/convert', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const leadId = req.params.id;
+        // Verify lead belongs to portal and is not a portal account
+        const check = await pool.query(
+            `SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2 AND client_password IS NULL`,
+            [leadId, portalId]
+        );
+        if (!check.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
+        // Convert to customer
+        await pool.query(`
+            UPDATE leads SET
+                is_customer=TRUE, customer_status='active',
+                status='closed', updated_at=NOW()
+            WHERE id=$1
+        `, [leadId]);
+        // Remove from all active follow-up chains
+        await pool.query(`UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1`, [leadId]);
+        const result = await pool.query(`SELECT * FROM leads WHERE id=$1`, [leadId]);
+        res.json({ success: true, customer: result.rows[0] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// CLIENT PORTAL — DASHBOARD CHARTS (12-month data)
+// GET /api/client/charts
+// Returns:
+//   income[]: { month, potential, actual } — 12 months
+//   growth[]: { month, leads, customers } — 12 months
+//   products[]: { month, product_id, product_name, count } — 12 months
+//   currentMonthIncome: { actual, prevActual, pctChange }
+// ============================================================
+app.get('/api/client/charts', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+
+        // Build array of last 12 months (YYYY-MM strings, oldest first)
+        const months = [];
+        const now = new Date();
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+        }
+        const oldest = months[0] + '-01';
+
+        // ── Income data: sum of product prices per lead per month
+        //    "potential" = leads (not yet customers) with products
+        //    "actual"    = customers with products
+        const incomeRows = await pool.query(`
+            SELECT
+                TO_CHAR(l.created_at, 'YYYY-MM') as month,
+                CASE WHEN l.is_customer = TRUE THEN 'actual' ELSE 'potential' END as income_type,
+                COALESCE(SUM(p.price), 0) as total
+            FROM leads l
+            JOIN lead_products lp ON lp.lead_id = l.id
+            JOIN client_products p ON p.id = lp.product_id
+            WHERE l.client_portal_id = $1
+              AND l.client_password IS NULL
+              AND l.created_at >= $2::date
+            GROUP BY month, income_type
+            ORDER BY month ASC
+        `, [portalId, oldest]);
+
+        // ── Growth data: leads and customers created per month
+        const growthRows = await pool.query(`
+            SELECT
+                TO_CHAR(created_at, 'YYYY-MM') as month,
+                COUNT(*) FILTER (WHERE is_customer IS NOT TRUE) as leads,
+                COUNT(*) FILTER (WHERE is_customer = TRUE) as customers
+            FROM leads
+            WHERE client_portal_id = $1
+              AND client_password IS NULL
+              AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
+              AND created_at >= $2::date
+            GROUP BY month
+            ORDER BY month ASC
+        `, [portalId, oldest]);
+
+        // ── Product popularity: how many leads assigned each product per month
+        const productRows = await pool.query(`
+            SELECT
+                TO_CHAR(l.created_at, 'YYYY-MM') as month,
+                p.id as product_id,
+                p.name as product_name,
+                COUNT(*) as count
+            FROM leads l
+            JOIN lead_products lp ON lp.lead_id = l.id
+            JOIN client_products p ON p.id = lp.product_id
+            WHERE l.client_portal_id = $1
+              AND l.client_password IS NULL
+              AND l.created_at >= $2::date
+            GROUP BY month, p.id, p.name
+            ORDER BY month ASC, p.name ASC
+        `, [portalId, oldest]);
+
+        // ── Current month vs previous month actual income
+        const curMonth = months[11]; // most recent
+        const prevMonth = months[10];
+
+        const incomeMap = {};
+        for (const r of incomeRows.rows) {
+            if (!incomeMap[r.month]) incomeMap[r.month] = { potential: 0, actual: 0 };
+            incomeMap[r.month][r.income_type] = parseFloat(r.total) || 0;
+        }
+        const curActual  = incomeMap[curMonth]?.actual  || 0;
+        const prevActual = incomeMap[prevMonth]?.actual || 0;
+        const pctChange  = prevActual === 0
+            ? (curActual > 0 ? 100 : 0)
+            : Math.round(((curActual - prevActual) / prevActual) * 100 * 10) / 10;
+
+        // ── Shape income data into month-keyed array
+        const income = months.map(m => ({
+            month: m,
+            potential: incomeMap[m]?.potential || 0,
+            actual:    incomeMap[m]?.actual    || 0,
+        }));
+
+        // ── Shape growth data
+        const growthMap = {};
+        for (const r of growthRows.rows) growthMap[r.month] = { leads: parseInt(r.leads)||0, customers: parseInt(r.customers)||0 };
+        const growth = months.map(m => ({ month: m, leads: growthMap[m]?.leads||0, customers: growthMap[m]?.customers||0 }));
+
+        // ── Shape product data
+        const products = productRows.rows.map(r => ({
+            month: r.month, product_id: r.product_id, product_name: r.product_name, count: parseInt(r.count)||0
+        }));
+
+        res.json({
+            success: true,
+            months,
+            income,
+            growth,
+            products,
+            currentMonthIncome: { actual: curActual, prevActual, pctChange }
+        });
+    } catch(e) {
+        console.error('[CHARTS]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
 });

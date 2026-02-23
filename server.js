@@ -346,10 +346,41 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ── Explicit video streaming with proper range-request support ──
+// Must come BEFORE express.static so browsers can seek/stream mp4s correctly
+const VIDEO_EXTS = /\.(mp4|webm|ogg|mov)$/i;
+app.get('*', (req, res, next) => {
+    if (!VIDEO_EXTS.test(req.path)) return next();
+    const fs = require('fs');
+    const filePath = path.join(__dirname, 'public', req.path);
+    fs.stat(filePath, (err, stat) => {
+        if (err || !stat.isFile()) return next(); // not found — fall through
+        const fileSize = stat.size;
+        const range = req.headers.range;
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Content-Type', 'video/mp4');
+        if (range) {
+            const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(startStr, 10);
+            const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
+            const chunkSize = end - start + 1;
+            const file = fs.createReadStream(filePath, { start, end });
+            res.writeHead(206, {
+                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                'Content-Length': chunkSize,
+            });
+            file.pipe(res);
+        } else {
+            res.writeHead(200, { 'Content-Length': fileSize });
+            fs.createReadStream(filePath).pipe(res);
+        }
+    });
+});
+
 // Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { acceptRanges: true }));
 // Serve uploaded media files (videos, images) for client portal backgrounds
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { acceptRanges: true }));
 
 // Request logging
 app.use((req, res, next) => {

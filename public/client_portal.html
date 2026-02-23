@@ -7080,15 +7080,12 @@ const BG_CONFIGS = {
 function setBackground(key) {
     const cfg = BG_CONFIGS[key] || BG_CONFIGS.default;
 
-    // Remove all theme classes
     document.body.classList.remove('theme-nature', 'theme-ink', 'theme-sand', 'theme-ocean', 'has-video-bg');
 
-    // Apply new theme
     if (cfg.theme) {
         document.body.classList.add('theme-' + cfg.theme, 'has-video-bg');
     }
 
-    // Pause & hide all videos first
     document.querySelectorAll('#videoBgLayer video').forEach(v => {
         v.classList.remove('active');
         v.pause();
@@ -7096,43 +7093,24 @@ function setBackground(key) {
 
     if (cfg.video) {
         const vid = document.getElementById(cfg.video);
-        if (!vid) { toast('Video element not found: ' + cfg.video, 'error'); return; }
-
-        toast('Loading ' + key + '… readyState=' + vid.readyState + ' src=' + (vid.src ? 'set' : 'missing'), 'info');
-
-        vid.classList.add('active');
-        vid.currentTime = 0;
-
-        vid.onerror = () => {
-            toast('Video error: ' + (vid.error ? vid.error.code + ' ' + vid.error.message : 'unknown') + ' src=' + vid.src, 'error');
-        };
-
-        vid.play().then(() => {
-            toast(key + ' playing OK', 'success');
-        }).catch((err) => {
-            toast('play() failed: ' + err.message + ' — retrying…', 'error');
-            vid.load();
-            setTimeout(() => {
-                vid.play().then(() => {
-                    toast(key + ' playing after retry', 'success');
-                }).catch((err2) => {
-                    toast('Retry also failed: ' + err2.message, 'error');
-                });
-            }, 500);
-        });
+        if (vid) {
+            vid.classList.add('active');
+            vid.currentTime = 0;
+            vid.play().catch(() => {
+                vid.load();
+                setTimeout(() => { vid.play().catch(() => {}); }, 500);
+            });
+        }
     }
 
-    // Update picker UI
     document.querySelectorAll('.bg-option').forEach(el => {
         const isActive = el.dataset.bg === key;
-        const accentColor = cfg.checkColor;
-        el.style.borderColor = isActive ? accentColor : 'var(--border)';
+        el.style.borderColor = isActive ? cfg.checkColor : 'var(--border)';
         el.style.transform = isActive ? 'scale(1.03)' : '';
         const ck = el.querySelector('.bg-checkmark');
         if (ck) ck.style.display = isActive ? 'flex' : 'none';
     });
 
-    // Save preference
     localStorage.setItem('crmBg', key);
 }
 

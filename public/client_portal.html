@@ -148,7 +148,7 @@ body.theme-ocean {
     width: 100%; height: 100%;
     object-fit: cover;
     opacity: 0;
-    transition: opacity 0.4s ease;
+    transition: none;
 }
 #videoBgLayer video.active { opacity: 1; }
 
@@ -1088,10 +1088,10 @@ tr:hover .row-actions { opacity: 1; }
      VIDEO BACKGROUND LAYER
 ============================================================ -->
 <div id="videoBgLayer" style="display:none;">
-    <video id="vbNature"  src="/14570507_1920_1080_30fps.mp4"      loop muted playsinline preload="none"></video>
-    <video id="vbInk"    src="/9669050-hd_1920_1080_25fps.mp4"    loop muted playsinline preload="none"></video>
-    <video id="vbSand"   src="/4153406-uhd_3840_2160_25fps.mp4"   loop muted playsinline preload="none"></video>
-    <video id="vbOcean"  src="/5192849-uhd_3840_2160_24fps.mp4"   loop muted playsinline preload="none"></video>
+    <video id="vbNature"  src="/14570507_1920_1080_30fps.mp4"      loop muted playsinline preload="metadata"></video>
+    <video id="vbInk"    src="/9669050-hd_1920_1080_25fps.mp4"    loop muted playsinline preload="metadata"></video>
+    <video id="vbSand"   src="/4153406-uhd_3840_2160_25fps.mp4"   loop muted playsinline preload="metadata"></video>
+    <video id="vbOcean"  src="/5192849-uhd_3840_2160_24fps.mp4"   loop muted playsinline preload="metadata"></video>
 </div>
 
 <!-- LOGIN SCREEN -->
@@ -2687,6 +2687,7 @@ function showApp() {
     document.getElementById('app').classList.add('visible');
     const vbl = document.getElementById('videoBgLayer');
     if (vbl) vbl.style.display = 'block';
+    applyUserBackground();
 
     const user = S.user;
     S.isAdmin         = user.isCompanyAdmin || user.isCoAdmin || false;
@@ -2743,6 +2744,9 @@ function logout() {
     document.getElementById('loginScreen').style.display = 'flex';
     const vbl = document.getElementById('videoBgLayer');
     if (vbl) vbl.style.display = 'none';
+    // Pause all videos and strip all theme/bg classes so login is always clean default
+    document.querySelectorAll('#videoBgLayer video').forEach(v => { v.pause(); v.classList.remove('active'); });
+    document.body.classList.remove('theme-nature', 'theme-ink', 'theme-sand', 'theme-ocean', 'has-video-bg');
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
 }
@@ -7093,24 +7097,14 @@ function setBackground(key) {
     if (cfg.video) {
         const vid = document.getElementById(cfg.video);
         if (vid) {
-            const doPlay = () => {
-                vid.play().then(() => {
-                    vid.classList.add('active');
-                }).catch(() => {
-                    vid.classList.add('active');
-                });
-            };
-
-            if (vid.readyState >= 1) {
-                doPlay();
-            } else {
-                vid.preload = 'auto';
+            // Force visible immediately — don't wait for any event
+            vid.classList.add('active');
+            vid.currentTime = 0;
+            vid.play().catch(() => {
+                // If play() rejected, force load then try again
                 vid.load();
-                vid.addEventListener('loadstart', () => {
-                    vid.play().catch(() => {});
-                    vid.classList.add('active');
-                }, { once: true });
-            }
+                setTimeout(() => { vid.play().catch(() => {}); }, 300);
+            });
         }
     }
 
@@ -7129,11 +7123,16 @@ function setBackground(key) {
 }
 
 function initBackground() {
+    // Do nothing on page load — login screen should always be clean default.
+    // Background is applied in showApp() after login.
+}
+
+function applyUserBackground() {
     const saved = localStorage.getItem('crmBg') || 'default';
     setBackground(saved);
 }
 
-// Initialize on load
+// Initialize on load — intentionally a no-op to keep login clean
 document.addEventListener('DOMContentLoaded', initBackground);
 
 function statusBadge(status) {

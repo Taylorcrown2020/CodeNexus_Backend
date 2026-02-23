@@ -348,6 +348,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
+// Serve uploaded media files (videos, images) for client portal backgrounds
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Request logging
 app.use((req, res, next) => {
@@ -3246,7 +3248,7 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
             WHERE (l.source IS NULL OR l.source != 'company-user')
-              AND l.client_portal_id IS NULL
+              AND l.client_password IS NULL
             ORDER BY l.created_at DESC
         `);
 
@@ -15075,78 +15077,43 @@ app.post('/api/client/company/upgrade-plan', authenticateClient, async (req, res
 // Client Login
 app.post('/api/client/login', async (req, res) => {
     const { email, password } = req.body;
-    
-    console.log('[CLIENT] Login attempt:', email);
-    
+    if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password required.' });
+
     try {
-        // Get client from database
+        // Look up by email — must have a client_password (CRM portal account)
         const result = await pool.query(
-            'SELECT * FROM leads WHERE email = $1 AND is_customer = TRUE',
+            `SELECT * FROM leads WHERE LOWER(email) = LOWER($1) AND client_password IS NOT NULL LIMIT 1`,
             [email]
         );
-        
-        console.log('[DATABASE] Query result:', {
-            found: result.rows.length > 0,
-            email: email
-        });
-        
-        if (result.rows.length === 0) {
-            console.log('[AUTH] No client found with email:', email);
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Invalid email or password. Contact support if you need access.' 
-            });
-        }
-        
-        const lead = result.rows[0];
-        
-        // Check if client has a password set
-        if (!lead.client_password) {
-            console.log('[AUTH] Client exists but no password set for:', email);
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Your account is not activated. Please contact your project manager.' 
+
+        if (!result.rows.length) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email or password.'
             });
         }
 
-        // Check if customer account is active (has at least one active subscription)
-        if (lead.customer_status !== 'active') {
-            console.log('[AUTH] Customer account inactive:', email);
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Your account is inactive. Please renew your subscription or contact support.' 
-            });
-        }
-        
-        // Verify password with bcrypt
-        console.log('[AUTH] Verifying password for:', email);
+        const lead = result.rows[0];
+
+        // Verify password
         const passwordMatch = await bcrypt.compare(password, lead.client_password);
-        
         if (!passwordMatch) {
-            console.log('[AUTH] Password mismatch for:', email);
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Invalid email or password.' 
-            });
+            return res.status(401).json({ success: false, message: 'Invalid email or password.' });
         }
-        
-        console.log('[AUTH] Password verified successfully for:', email);
-        
+
         // Update last login timestamp
         await pool.query(
             'UPDATE leads SET client_last_login = CURRENT_TIMESTAMP WHERE id = $1',
             [lead.id]
-        );
-        
+        ).catch(() => {});
+
         // Generate JWT token
         const token = jwt.sign(
             { id: lead.id, email: lead.email, type: 'client' },
             JWT_SECRET,
             { expiresIn: '7d' }
         );
-        
-        console.log('[SUCCESS] Client login successful:', lead.name);
-        
+
         res.json({
             success: true,
             token,
@@ -15160,14 +15127,10 @@ app.post('/api/client/login', async (req, res) => {
                 clientPortalId: lead.client_portal_id || null
             }
         });
-        
+
     } catch (error) {
-        console.error('[ERROR] Client login error:', error);
-        console.error('[ERROR] Stack:', error.stack);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Server error during login. Please try again.' 
-        });
+        console.error('[CLIENT LOGIN ERROR]', error);
+        res.status(500).json({ success: false, message: 'Server error during login. Please try again.' });
     }
 });
 

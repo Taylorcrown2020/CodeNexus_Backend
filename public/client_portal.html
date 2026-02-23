@@ -2420,6 +2420,20 @@ function navigate(page) {
         case 'scheduling':  loadScheduling();  break;
         case 'settings':    loadSettings();    break;
     }
+    // Sync mobile UI after every navigation
+    _syncMobileNav(page);
+}
+
+// Syncs mobile topbar title and bottom nav highlights — called inside navigate()
+function _syncMobileNav(page) {
+    const titleEl = document.getElementById('mobilePageTitle');
+    if (titleEl) titleEl.textContent = MOBILE_PAGE_NAMES[page] || page;
+    document.querySelectorAll('.mobile-nav-item[data-mobile-page]').forEach(el => {
+        el.classList.toggle('active', el.dataset.mobilePage === page);
+    });
+    const moreBtn = document.getElementById('mobileMoreBtn');
+    const isInMore = !!document.querySelector(`.mobile-more-menu-item[data-mobile-page="${page}"]`);
+    if (moreBtn) moreBtn.classList.toggle('active', isInMore && !document.querySelector(`.mobile-nav-item[data-mobile-page="${page}"]`));
 }
 
 // ============================================================
@@ -2457,42 +2471,12 @@ function initMobileUI() {
 }
 
 function mobileNavigate(page, btnEl) {
-    // Close more menu and sidebar
     closeMobileMoreMenu();
     closeMobileSidebar();
-
-    // Navigate
-    navigate(page);
-
-    // Sync bottom nav active state
-    document.querySelectorAll('.mobile-nav-item[data-mobile-page]').forEach(el => {
-        el.classList.toggle('active', el.dataset.mobilePage === page);
-    });
-    // If it came from more-menu, activate "More" btn
-    const moreBtn = document.getElementById('mobileMoreBtn');
-    const isInMoreMenu = !!document.querySelector(`.mobile-more-menu-item[data-mobile-page="${page}"]`);
-    if (moreBtn) moreBtn.classList.toggle('active', isInMoreMenu);
-
-    // Update topbar title
-    const titleEl = document.getElementById('mobilePageTitle');
-    if (titleEl) titleEl.textContent = MOBILE_PAGE_NAMES[page] || page;
+    navigate(page); // _syncMobileNav called inside navigate()
 }
 
-// Keep desktop nav in sync — patch navigate() to update mobile UI too
-const _origNavigate = navigate;
-function navigate(page) {
-    _origNavigate(page);
-    // Update mobile topbar title
-    const titleEl = document.getElementById('mobilePageTitle');
-    if (titleEl) titleEl.textContent = MOBILE_PAGE_NAMES[page] || page;
-    // Sync bottom nav
-    document.querySelectorAll('.mobile-nav-item[data-mobile-page]').forEach(el => {
-        el.classList.toggle('active', el.dataset.mobilePage === page);
-    });
-    const moreBtn = document.getElementById('mobileMoreBtn');
-    const isInMore = !!document.querySelector(`.mobile-more-menu-item[data-mobile-page="${page}"]`);
-    if (moreBtn) moreBtn.classList.toggle('active', isInMore && !document.querySelector(`.mobile-nav-item[data-mobile-page="${page}"]`));
-}
+// Mobile nav sync is handled by _syncMobileNav() called inside navigate()
 
 function toggleMobileSidebar() {
     const sidebar = document.querySelector('.sidebar');

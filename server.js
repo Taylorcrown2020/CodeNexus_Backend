@@ -8889,6 +8889,13 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
         const portalUser = userInfo.rows[0];
         const clientPortalId = portalUser?.client_portal_id || null;
 
+        // HARD GUARD: Never create a lead without a portal ID from this endpoint.
+        // A null client_portal_id would let the lead bleed into the admin portal.
+        if (!clientPortalId) {
+            console.error('[CLIENT LEADS] User has no client_portal_id — refusing lead creation', userId);
+            return res.status(400).json({ success: false, message: 'Your account is not linked to a portal. Please contact support.' });
+        }
+
         // Get the creator's company_users record for auto-assign
         let assignedTo = null;
         if (assignToSelf !== false) {

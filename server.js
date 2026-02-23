@@ -3221,8 +3221,8 @@ app.get('/api/leads/stats', authenticateToken, async (req, res) => {
                 COUNT(*) FILTER (WHERE status = 'contacted' AND is_customer = FALSE) as contacted,
                 COUNT(*) FILTER (WHERE status = 'closed' OR is_customer = TRUE) as closed
             FROM leads
-            WHERE (source IS NULL OR source != 'company-user')
-              AND client_portal_id IS NULL
+            WHERE source IS NULL
+               OR source NOT IN ('company-user', 'crm-portal')
         `);
 
         res.json({
@@ -3247,8 +3247,8 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
-            WHERE (l.source IS NULL OR l.source NOT IN ('company-user', 'crm-portal'))
-              AND l.client_portal_id IS NULL
+            WHERE l.source IS NULL
+               OR l.source NOT IN ('company-user', 'crm-portal')
             ORDER BY l.created_at DESC
         `);
 

@@ -2235,6 +2235,40 @@ console.log(' Recruitment tables (jobs, applications) initialized');
         
         console.log(' Database migrations completed');
 
+        // Migration: Create message_log table for SMS + inbound email tracking
+        try {
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS message_log (
+                    id SERIAL PRIMARY KEY,
+                    lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                    client_portal_id VARCHAR(255),
+                    direction VARCHAR(10) NOT NULL DEFAULT 'outbound',
+                    channel VARCHAR(10) NOT NULL DEFAULT 'email',
+                    content TEXT,
+                    subject VARCHAR(500),
+                    status VARCHAR(50) DEFAULT 'sent',
+                    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    from_number VARCHAR(50),
+                    to_number VARCHAR(50),
+                    from_email VARCHAR(255),
+                    to_email VARCHAR(255),
+                    brevo_message_id VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_message_log_lead_id ON message_log(lead_id)`);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_message_log_portal ON message_log(client_portal_id)`);
+            await client.query(`
+                DO $sms$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='brevo_sms_sender') THEN
+                        ALTER TABLE client_email_settings ADD COLUMN brevo_sms_sender VARCHAR(20);
+                        ALTER TABLE client_email_settings ADD COLUMN brevo_sms_enabled BOOLEAN DEFAULT FALSE;
+                    END IF;
+                END $sms$;
+            `);
+        } catch(smsErr) { console.warn('[SMS MIGRATION] Non-fatal:', smsErr.message); }
+
         await client.query('COMMIT');
         console.log(' Database tables initialized');
 
@@ -20317,6 +20351,9 @@ app.get('/api/client/email-settings', authenticateClient, async (req, res) => {
         } else {
             out.brevo_api_key_set = false;
         }
+        // Include SMS settings
+        out.brevo_sms_enabled = out.brevo_sms_enabled || false;
+        out.brevo_sms_sender  = out.brevo_sms_sender  || '';
         res.json({ success: true, settings: out });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -20330,7 +20367,8 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
             brevo_api_key, sender_email, sender_name,
             company_name, company_phone, company_email, company_address,
             website_url, accent_color,
-            emailjs_service_id, emailjs_template_id, emailjs_public_key
+            emailjs_service_id, emailjs_template_id, emailjs_public_key,
+            brevo_sms_sender, brevo_sms_enabled
         } = req.body;
 
         // Only update API key if a non-masked value is provided
@@ -20361,31 +20399,256 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
                  company_name, company_phone, company_email, company_address,
                  website_url, accent_color,
                  emailjs_service_id, emailjs_template_id, emailjs_public_key,
+                 brevo_sms_sender, brevo_sms_enabled,
                  updated_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW())
             ON CONFLICT (client_portal_id) DO UPDATE SET
-                brevo_api_key      = COALESCE($2, client_email_settings.brevo_api_key),
-                sender_email       = COALESCE($3, client_email_settings.sender_email),
-                sender_name        = COALESCE($4, client_email_settings.sender_name),
-                company_name       = COALESCE($5, client_email_settings.company_name),
-                company_phone      = COALESCE($6, client_email_settings.company_phone),
-                company_email      = COALESCE($7, client_email_settings.company_email),
-                company_address    = COALESCE($8, client_email_settings.company_address),
-                website_url        = COALESCE($9, client_email_settings.website_url),
-                accent_color       = COALESCE($10, client_email_settings.accent_color),
-                emailjs_service_id = COALESCE($11, client_email_settings.emailjs_service_id),
-                emailjs_template_id= COALESCE($12, client_email_settings.emailjs_template_id),
-                emailjs_public_key = COALESCE($13, client_email_settings.emailjs_public_key),
-                updated_at         = NOW()
+                brevo_api_key       = COALESCE($2, client_email_settings.brevo_api_key),
+                sender_email        = COALESCE($3, client_email_settings.sender_email),
+                sender_name         = COALESCE($4, client_email_settings.sender_name),
+                company_name        = COALESCE($5, client_email_settings.company_name),
+                company_phone       = COALESCE($6, client_email_settings.company_phone),
+                company_email       = COALESCE($7, client_email_settings.company_email),
+                company_address     = COALESCE($8, client_email_settings.company_address),
+                website_url         = COALESCE($9, client_email_settings.website_url),
+                accent_color        = COALESCE($10, client_email_settings.accent_color),
+                emailjs_service_id  = COALESCE($11, client_email_settings.emailjs_service_id),
+                emailjs_template_id = COALESCE($12, client_email_settings.emailjs_template_id),
+                emailjs_public_key  = COALESCE($13, client_email_settings.emailjs_public_key),
+                brevo_sms_sender    = COALESCE($14, client_email_settings.brevo_sms_sender),
+                brevo_sms_enabled   = COALESCE($15, client_email_settings.brevo_sms_enabled),
+                updated_at          = NOW()
         `, [
             portalId, finalKey||null, sender_email||null, sender_name||null,
             company_name||null, company_phone||null, company_email||null,
             company_address||null, website_url||null, accent_color||null,
-            emailjs_service_id||null, emailjs_template_id||null, emailjs_public_key||null
+            emailjs_service_id||null, emailjs_template_id||null, emailjs_public_key||null,
+            brevo_sms_sender||null, brevo_sms_enabled !== undefined ? brevo_sms_enabled : null
         ]);
 
         res.json({ success: true, message: 'Settings saved' });
     } catch(e) { console.error('[CLIENT EMAIL SETTINGS PUT]', e); res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// SMS (Brevo) + MESSAGE LOG ENDPOINTS
+// ============================================================
+
+// Send SMS via Brevo SMS API
+async function sendSmsViaBrevo(apiKey, senderName, toPhone, message) {
+    return new Promise((resolve, reject) => {
+        const body = JSON.stringify({
+            sender: senderName || 'Notify',
+            recipient: toPhone,
+            content: message,
+            type: 'transactional'
+        });
+        const options = {
+            hostname: 'api.brevo.com',
+            path: '/v3/transactionalSMS/sms',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': apiKey,
+                'Content-Length': Buffer.byteLength(body)
+            }
+        };
+        const req = require('https').request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(data);
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve({ success: true, messageId: parsed.messageId });
+                    } else {
+                        reject(new Error(`Brevo SMS failed: ${parsed.message || data}`));
+                    }
+                } catch(e) { reject(new Error('Brevo SMS parse error: ' + e.message)); }
+            });
+        });
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
+}
+
+// POST /api/client/leads/:id/send-sms  — Send SMS to a lead
+app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) => {
+    try {
+        const leadId = parseInt(req.params.id);
+        const portalId = await getClientPortalId(req.user.id);
+        const { message } = req.body;
+        if (!message) return res.status(400).json({ success: false, message: 'message required' });
+
+        // Get lead phone
+        const leadResult = await pool.query('SELECT * FROM leads WHERE id=$1', [leadId]);
+        if (!leadResult.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
+        const lead = leadResult.rows[0];
+        const toPhone = lead.phone;
+        if (!toPhone) return res.status(400).json({ success: false, message: 'Lead has no phone number' });
+
+        // Get SMS settings
+        const settings = portalId ? await getClientEmailSettings(portalId) : null;
+        if (!settings || !settings.brevo_api_key || !settings.brevo_sms_enabled) {
+            return res.status(400).json({ success: false, message: 'Brevo SMS not configured. Enable it in Settings → SMS.' });
+        }
+
+        await sendSmsViaBrevo(settings.brevo_api_key, settings.brevo_sms_sender || 'CRM', toPhone, message);
+
+        // Log to message_log
+        await pool.query(`
+            INSERT INTO message_log (lead_id, client_portal_id, direction, channel, content, to_number, status, sent_at)
+            VALUES ($1,$2,'outbound','sms',$3,$4,'sent',NOW())
+        `, [leadId, portalId, message, toPhone]);
+
+        // Update last_contact_date + follow_up_count (SMS counts as contact)
+        await pool.query(`
+            UPDATE leads SET last_contact_date=CURRENT_DATE,
+                follow_up_count=COALESCE(follow_up_count,0)+1,
+                status=CASE WHEN status='new' THEN 'contacted' ELSE status END,
+                updated_at=CURRENT_TIMESTAMP
+            WHERE id=$1`, [leadId]);
+
+        res.json({ success: true, message: 'SMS sent' });
+    } catch(e) {
+        console.error('[SEND SMS]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/leads/:id/log-sms-contact  — Log an SMS contact (manual or inbound)
+app.post('/api/client/leads/:id/log-sms-contact', authenticateClient, async (req, res) => {
+    try {
+        const leadId = parseInt(req.params.id);
+        const portalId = await getClientPortalId(req.user.id);
+        const { content, direction = 'inbound', from_number, to_number } = req.body;
+
+        await pool.query(`
+            INSERT INTO message_log (lead_id, client_portal_id, direction, channel, content, from_number, to_number, status, sent_at)
+            VALUES ($1,$2,$3,'sms',$4,$5,$6,'received',NOW())
+        `, [leadId, portalId, direction, content||null, from_number||null, to_number||null]);
+
+        if (direction === 'inbound') {
+            await pool.query(`
+                UPDATE leads SET last_contact_date=CURRENT_DATE,
+                    follow_up_count=COALESCE(follow_up_count,0)+1,
+                    status=CASE WHEN status='new' THEN 'contacted' ELSE status END,
+                    updated_at=CURRENT_TIMESTAMP
+                WHERE id=$1`, [leadId]);
+        }
+
+        res.json({ success: true });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// GET /api/client/leads/:id/messages  — Get full message log for a lead
+app.get('/api/client/leads/:id/messages', authenticateClient, async (req, res) => {
+    try {
+        const leadId = parseInt(req.params.id);
+        const portalId = await getClientPortalId(req.user.id);
+
+        // Get outbound emails from client_email_log
+        let emailRows = [];
+        try {
+            const emailResult = await pool.query(`
+                SELECT id, lead_id, subject, status, sent_at as sent_at, to_email,
+                       'outbound' as direction, 'email' as channel, NULL as content,
+                       lead_became_hot, email_type
+                FROM client_email_log
+                WHERE lead_id=$1 AND client_portal_id=$2
+                ORDER BY sent_at DESC
+            `, [leadId, portalId]);
+            emailRows = emailResult.rows;
+        } catch(e) { /* table may not exist yet */ }
+
+        // Get SMS + any other messages from message_log
+        let msgRows = [];
+        try {
+            const msgResult = await pool.query(`
+                SELECT id, lead_id, subject, status, sent_at, to_email, direction, channel, content,
+                       from_number, to_number, false as lead_became_hot, NULL as email_type
+                FROM message_log
+                WHERE lead_id=$1 AND client_portal_id=$2
+                ORDER BY sent_at DESC
+            `, [leadId, portalId]);
+            msgRows = msgResult.rows;
+        } catch(e) { /* table may not exist yet */ }
+
+        // Merge and sort
+        const all = [...emailRows, ...msgRows].sort((a,b) => new Date(b.sent_at) - new Date(a.sent_at));
+
+        // Count unread (inbound) messages
+        const unreadEmail = emailRows.filter(r => r.direction === 'inbound').length;
+        const unreadSms   = msgRows.filter(r => r.direction === 'inbound').length;
+
+        res.json({ success: true, messages: all, unreadEmail, unreadSms });
+    } catch(e) {
+        console.error('[MESSAGES GET]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// GET /api/client/follow-ups/message-counts  — Get unread counts for all leads in follow-up queue
+app.get('/api/client/follow-ups/message-counts', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, counts: {} });
+
+        const result = await pool.query(`
+            SELECT lead_id,
+                   SUM(CASE WHEN channel='email' AND direction='inbound' THEN 1 ELSE 0 END) as email_count,
+                   SUM(CASE WHEN channel='sms'   AND direction='inbound' THEN 1 ELSE 0 END) as sms_count
+            FROM message_log
+            WHERE client_portal_id=$1
+            GROUP BY lead_id
+        `, [portalId]);
+
+        const counts = {};
+        result.rows.forEach(r => {
+            counts[r.lead_id] = { email: parseInt(r.email_count)||0, sms: parseInt(r.sms_count)||0 };
+        });
+        res.json({ success: true, counts });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/brevo/sms-webhook  — Incoming SMS (if Brevo supports it)
+app.post('/api/brevo/sms-webhook', async (req, res) => {
+    try {
+        const events = Array.isArray(req.body) ? req.body : [req.body];
+        for (const event of events) {
+            if (event.event === 'inbound_sms' || event.mobilePhone) {
+                const fromPhone = event.mobilePhone || event.from;
+                const content   = event.text || event.content;
+                if (!fromPhone) continue;
+
+                // Find lead by phone
+                const leadResult = await pool.query(
+                    `SELECT id, client_portal_id FROM leads WHERE REGEXP_REPLACE(phone,'[^0-9]','','g') = REGEXP_REPLACE($1,'[^0-9]','','g') LIMIT 1`,
+                    [fromPhone]
+                );
+                if (!leadResult.rows.length) continue;
+                const lead = leadResult.rows[0];
+
+                await pool.query(`
+                    INSERT INTO message_log (lead_id, client_portal_id, direction, channel, content, from_number, status, sent_at)
+                    VALUES ($1,$2,'inbound','sms',$3,$4,'received',NOW())
+                `, [lead.id, lead.client_portal_id, content, fromPhone]);
+
+                await pool.query(`
+                    UPDATE leads SET last_contact_date=CURRENT_DATE, updated_at=CURRENT_TIMESTAMP WHERE id=$1
+                `, [lead.id]);
+            }
+        }
+        res.json({ received: true });
+    } catch(e) {
+        console.error('[SMS WEBHOOK]', e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.get('/api/client/email-templates', authenticateClient, async (req, res) => {

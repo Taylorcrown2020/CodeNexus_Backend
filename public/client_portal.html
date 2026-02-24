@@ -2708,8 +2708,6 @@ function setupLoginForm() {
 function showApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
-    const vbl = document.getElementById('videoBgLayer');
-    if (vbl) vbl.style.display = 'block';
     applyUserBackground();
 
     const user = S.user;
@@ -4261,6 +4259,8 @@ async function loadFollowups() {
 }
 
 async function renderFollowups() {
+    const el = document.getElementById('followupsContent');
+    if (!FU.data || !el) return;
     const hot  = FU.data.hot  || [];
     const cold = FU.data.cold || [];
     const all  = [...hot, ...cold];
@@ -7360,7 +7360,7 @@ function setBackground(key) {
     });
 
     if (cfg.video) {
-        if (vbl) vbl.style.display = '';
+        if (vbl) vbl.style.display = 'block';
         const vid = document.getElementById(cfg.video);
         if (vid) {
             vid.classList.add('active');

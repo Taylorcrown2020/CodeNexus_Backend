@@ -4317,9 +4317,8 @@ async function renderFollowups() {
                         const mc = (FU.msgCounts || {})[l.id] || {};
                         const emailBadge = mc.email > 0 ? `<span title="${mc.email} inbound email${mc.email>1?'s':''}" style="display:inline-flex;align-items:center;gap:3px;background:#3b82f622;color:#3b82f6;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:9px;height:9px;'><path d='M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z'/><polyline points='22,6 12,13 2,6'/></svg>${mc.email}</span>` : '';
                         const smsBadge  = mc.sms  > 0 ? `<span title="${mc.sms} inbound SMS" style="display:inline-flex;align-items:center;gap:3px;background:#10b98122;color:#10b981;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:9px;height:9px;'><path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/></svg>${mc.sms}</span>` : '';
-                        const smsEnabled = MK.settings && MK.settings.brevo_sms_enabled;
                         const smsBtnHtml = l.phone
-                            ? `<button class="btn btn-ghost btn-xs" style="color:#10b981;" title="Send SMS" onclick="${smsEnabled ? `openSendSmsModal(${l.id},'${escHtml(l.phone||'')}','${escHtml(l.name||'')}')` : `toast('Enable Brevo SMS in Settings → Email Provider first','error')`}"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:11px;height:11px;'><path d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z'/></svg> SMS</button>`
+                            ? `<button class="btn btn-ghost btn-xs" style="color:#10b981;" title="Send SMS" onclick="event.stopPropagation();openLeadMessageLog(${JSON.stringify(l).replace(/"/g,'&quot;')},true)"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:11px;height:11px;'><path d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z'/></svg> SMS</button>`
                             : '';
                         return `<tr>
                             <td style="font-weight:500;cursor:pointer;color:var(--text-0);" onclick="openLeadMessageLog(${JSON.stringify(l).replace(/"/g,'&quot;')})">
@@ -4359,9 +4358,19 @@ async function renderFollowups() {
 
 
 // ============================================================
-// FOLLOW-UP MESSAGE LOG MODAL
+// FOLLOW-UP MESSAGE LOG MODAL  (chat-style with SMS compose)
 // ============================================================
-async function openLeadMessageLog(lead) {
+
+// Store current open lead so SMS/log functions can reference it
+let _msgLeadRef = null;
+
+async function openLeadMessageLog(lead, focusCompose) {
+    _msgLeadRef = lead;
+    const isHot = lead.lead_temperature === 'hot';
+    const avatarColor = isHot ? '#ef4444' : '#6366f1';
+    const avatarBg    = isHot ? '#ef444422' : '#6366f122';
+    const smsReady    = MK.settings && MK.settings.brevo_sms_enabled && lead.phone;
+
     let modal = document.getElementById('leadMessageLogModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -4370,215 +4379,174 @@ async function openLeadMessageLog(lead) {
         modal.onclick = (e) => { if (e.target === modal) closeModal('leadMessageLogModal'); };
         document.body.appendChild(modal);
     }
-    const isHot = lead.lead_temperature === 'hot';
 
     modal.innerHTML = `
-        <div class="modal" style="max-width:640px;width:calc(100% - 32px);max-height:88vh;display:flex;flex-direction:column;">
-            <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div class="modal" style="max-width:660px;width:calc(100% - 24px);height:82vh;display:flex;flex-direction:column;overflow:hidden;padding:0;">
+
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
                 <div style="display:flex;align-items:center;gap:12px;">
-                    <div style="width:40px;height:40px;border-radius:50%;background:${isHot?'#ef444422':'#6366f122'};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:${isHot?'#ef4444':'#6366f1'};">
+                    <div style="width:38px;height:38px;border-radius:50%;background:${avatarBg};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:${avatarColor};flex-shrink:0;">
                         ${(lead.name||'?').charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <div style="font-size:16px;font-weight:800;color:var(--text-0);">${escHtml(lead.name||'Unnamed')}</div>
-                        <div style="font-size:11px;color:var(--text-3);">Message Log — all email &amp; SMS conversations</div>
+                        <div style="font-size:15px;font-weight:700;color:var(--text-0);">${escHtml(lead.name||'Unnamed')}</div>
+                        <div style="font-size:11px;color:var(--text-3);">${escHtml(lead.email||'')}${lead.phone ? ' · ' + escHtml(lead.phone) : ''}</div>
                     </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <button class="btn btn-ghost btn-xs" style="font-size:11px;" onclick="closeModal('leadMessageLogModal');openLeadProfile(${JSON.stringify(lead).replace(/"/g,'&quot;')})">
-                        View Profile
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <button class="btn btn-ghost btn-xs" onclick="closeModal('leadMessageLogModal');openSendEmailModal(${lead.id},'${escHtml(lead.email||'')}','${escHtml(lead.name||'')}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        Email
                     </button>
+                    <button class="btn btn-ghost btn-xs" onclick="closeModal('leadMessageLogModal');openLeadProfile(${JSON.stringify(lead).replace(/"/g,'&quot;')})">Profile</button>
                     <button class="modal-close" onclick="closeModal('leadMessageLogModal')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                 </div>
             </div>
-            <div class="modal-body" style="flex:1;overflow-y:auto;padding:16px;">
-                <div id="messageLogContent" style="display:flex;flex-direction:column;gap:10px;">
-                    <div style="text-align:center;padding:30px;color:var(--text-3);">
-                        <div class="spinner" style="margin:0 auto 8px;"></div>Loading messages...
-                    </div>
+
+            <!-- Message thread -->
+            <div id="msgThreadScroll" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px;min-height:0;">
+                <div style="text-align:center;padding:40px 0;color:var(--text-3);">
+                    <div class="spinner" style="margin:0 auto 10px;"></div>Loading conversation...
                 </div>
             </div>
-            <div class="modal-footer" style="flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-ghost" onclick="closeModal('leadMessageLogModal')">Close</button>
-                <button class="btn btn-ghost" onclick="openSendEmailModal(${lead.id},'${escHtml(lead.email||'')}','${escHtml(lead.name||'')}')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                    Send Email
-                </button>
-                ${MK.settings?.brevo_sms_enabled && lead.phone ? `<button class="btn btn-ghost" style="color:#10b981;" onclick="openSendSmsModal(${lead.id},'${escHtml(lead.phone||'')}','${escHtml(lead.name||'')}')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z"/></svg>
-                    Send SMS
-                </button>` : ''}
-                <button class="btn btn-ghost" style="color:#f59e0b;margin-left:auto;" onclick="openLogSmsContactModal(${lead.id},'${escHtml(lead.name||'')}')">
-                    + Log SMS Reply
-                </button>
+
+            <!-- SMS Compose bar -->
+            <div style="border-top:1px solid var(--border);padding:12px 16px;flex-shrink:0;background:var(--bg-1);">
+                ${!smsReady ? `
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-2);border-radius:var(--r-md);font-size:12px;color:var(--text-3);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z"/></svg>
+                    ${!lead.phone ? 'No phone number on file for this lead.' : 'SMS not enabled — go to <a href="#" onclick="closeModal(\'leadMessageLogModal\');navigateTo(\'settings\')" style="color:#6366f1;">Settings → Email Provider</a> to enable Brevo SMS.'}
+                </div>` : `
+                <div style="display:flex;align-items:flex-end;gap:8px;">
+                    <div style="flex:1;position:relative;">
+                        <textarea id="msgComposeBox" rows="1" maxlength="160" placeholder="Send an SMS…"
+                            style="width:100%;resize:none;background:var(--bg-2);border:1px solid var(--border);border-radius:20px;padding:10px 44px 10px 14px;font-size:13px;color:var(--text-0);font-family:inherit;outline:none;line-height:1.4;overflow:hidden;"
+                            oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,96)+'px';document.getElementById('msgCharLeft').textContent=(160-this.value.length);"
+                            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();msgComposeSend(${lead.id});}"></textarea>
+                        <span id="msgCharLeft" style="position:absolute;bottom:10px;right:12px;font-size:10px;color:var(--text-3);pointer-events:none;">160</span>
+                    </div>
+                    <button onclick="msgComposeSend(${lead.id})" style="width:38px;height:38px;border-radius:50%;background:#10b981;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:14px;height:14px;margin-left:2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </div>
+                <div style="font-size:10px;color:var(--text-3);margin-top:5px;padding-left:4px;">Enter to send · Shift+Enter for new line</div>`}
             </div>
         </div>`;
 
     openModal('leadMessageLogModal');
+    if (focusCompose) {
+        setTimeout(() => { const t = document.getElementById('msgComposeBox'); if(t) t.focus(); }, 120);
+    }
+    await _refreshMsgThread(lead.id);
+}
 
-    // Load messages
+async function _refreshMsgThread(leadId) {
+    const scroll = document.getElementById('msgThreadScroll');
+    if (!scroll) return;
     try {
-        const res = await apiFetch(`/client/leads/${lead.id}/messages`);
+        const res  = await apiFetch(`/client/leads/${leadId}/messages`);
         const data = await res.json();
-        const msgEl = document.getElementById('messageLogContent');
-        if (!msgEl) return;
 
         if (!data.success || !data.messages || data.messages.length === 0) {
-            msgEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-3);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 12px;display:block;opacity:0.3;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <p style="font-size:13px;">No messages yet</p>
-                <p style="font-size:11px;margin-top:4px;">Send an email or SMS to get started</p>
+            scroll.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--text-3);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;margin:0 auto 12px;display:block;opacity:0.25;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <p style="font-size:13px;margin:0;">No messages yet</p>
+                <p style="font-size:11px;margin-top:4px;opacity:0.7;">Send an email or SMS to start the conversation</p>
             </div>`;
             return;
         }
 
-        msgEl.innerHTML = data.messages.map(msg => {
-            const isOut = msg.direction === 'outbound';
-            const isSms = msg.channel === 'sms';
-            const dt    = msg.sent_at ? new Date(msg.sent_at).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}) : '';
-            const chanIcon = isSms
-                ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z"/></svg>`
-                : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`;
-            const dirLabel = isOut ? 'You →' : '← Lead';
-            const bgColor  = isOut ? 'var(--bg-2)' : (isSms ? 'rgba(16,185,129,0.08)' : 'rgba(59,130,246,0.08)');
-            const borderColor = isOut ? 'var(--border)' : (isSms ? 'rgba(16,185,129,0.25)' : 'rgba(59,130,246,0.25)');
-            const statusBit = msg.status === 'failed'
-                ? `<span style="color:#ef4444;font-size:10px;margin-left:6px;">Failed</span>`
-                : msg.status === 'queued' ? `<span style="color:#f59e0b;font-size:10px;margin-left:6px;">Queued</span>` : '';
-            const preview = msg.subject
-                ? `<div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:3px;">${escHtml(msg.subject)}</div>`
-                : '';
-            const body = msg.content
-                ? `<div style="font-size:12px;color:var(--text-2);white-space:pre-wrap;">${escHtml(msg.content.substring(0,300))}${msg.content.length>300?'…':''}</div>`
-                : `<div style="font-size:11px;color:var(--text-3);font-style:italic;">Email sent — click to view thread</div>`;
+        // Sort oldest first for chat layout
+        const msgs = [...data.messages].sort((a,b) => new Date(a.sent_at) - new Date(b.sent_at));
 
-            return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:var(--r-md);padding:12px 14px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        ${chanIcon}
-                        <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-3);">${isSms?'SMS':'Email'}</span>
-                        <span style="font-size:10px;color:var(--text-3);">·</span>
-                        <span style="font-size:10px;font-weight:600;color:${isOut?'var(--text-2)':'#10b981'};">${dirLabel}</span>
-                        ${statusBit}
-                    </div>
-                    <span style="font-size:10px;color:var(--text-3);">${dt}</span>
+        scroll.innerHTML = msgs.map(msg => {
+            const isOut   = msg.direction === 'outbound';
+            const isSms   = msg.channel === 'sms';
+            const dt      = msg.sent_at ? new Date(msg.sent_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+            const failed  = msg.status === 'failed';
+            const queued  = msg.status === 'queued';
+
+            // Bubble colors
+            // Outbound SMS  → green right
+            // Outbound email→ indigo right
+            // Inbound SMS   → dark left
+            // Inbound email → blue-tinted left
+            const bubbleBg     = isOut ? (isSms ? '#10b981' : '#6366f1') : 'var(--bg-2)';
+            const bubbleColor  = isOut ? '#fff' : 'var(--text-0)';
+            const bubbleBorder = isOut ? 'none' : '1px solid var(--border)';
+            const align        = isOut ? 'flex-end' : 'flex-start';
+
+            const chanTag = `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;opacity:0.7;margin-bottom:3px;display:block;text-align:${isOut?'right':'left'};">${isSms ? '&#x2709; SMS' : '&#x2709; Email'}${failed?' · Failed':''}${queued?' · Queued':''}</span>`;
+
+            const subjectLine = (!isSms && msg.subject)
+                ? `<div style="font-weight:600;font-size:12px;margin-bottom:3px;">${escHtml(msg.subject)}</div>`
+                : '';
+            const bodyLine = msg.content
+                ? `<div style="font-size:13px;line-height:1.45;white-space:pre-wrap;">${escHtml(msg.content.substring(0,400))}${msg.content.length>400?'…':''}</div>`
+                : `<div style="font-size:12px;opacity:0.75;font-style:italic;">Email sent</div>`;
+
+            return `<div style="display:flex;flex-direction:column;align-items:${align};align-self:${isOut?'flex-end':'flex-start'};max-width:82%;">
+                ${chanTag}
+                <div style="background:${bubbleBg};color:${bubbleColor};border:${bubbleBorder};border-radius:${isOut?'18px 18px 4px 18px':'18px 18px 18px 4px'};padding:10px 14px;word-break:break-word;">
+                    ${subjectLine}${bodyLine}
                 </div>
-                ${preview}${body}
+                <div style="font-size:10px;color:var(--text-3);margin-top:3px;">${dt}</div>
             </div>`;
         }).join('');
+
+        // Scroll to bottom
+        scroll.scrollTop = scroll.scrollHeight;
     } catch(e) {
-        const msgEl = document.getElementById('messageLogContent');
-        if (msgEl) msgEl.innerHTML = `<div style="padding:20px;color:var(--red);font-size:13px;">Could not load messages: ${e.message}</div>`;
+        if (scroll) scroll.innerHTML = `<div style="padding:20px;color:var(--red);font-size:13px;">Could not load messages: ${escHtml(e.message)}</div>`;
     }
 }
 
-// Modal to log an inbound SMS reply manually
-function openLogSmsContactModal(leadId, leadName) {
-    let modal = document.getElementById('logSmsModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'logSmsModal';
-        modal.className = 'modal-overlay';
-        modal.onclick = (e) => { if(e.target===modal) closeModal('logSmsModal'); };
-        document.body.appendChild(modal);
-    }
-    modal.innerHTML = `
-        <div class="modal" style="max-width:460px;width:calc(100% - 32px);">
-            <div class="modal-header"><span class="modal-title">Log SMS Reply from ${escHtml(leadName)}</span></div>
-            <div class="modal-body">
-                <div class="form-field">
-                    <label class="form-label">Their message (optional)</label>
-                    <textarea class="form-input" id="logSmsContent" rows="3" placeholder="What did they say?"></textarea>
-                </div>
-                <div style="font-size:11px;color:var(--text-3);margin-top:6px;">Logging this will count as a contact and update Last Contact date.</div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-ghost" onclick="closeModal('logSmsModal')">Cancel</button>
-                <button class="btn btn-white" onclick="submitLogSmsContact(${leadId})">Log Contact</button>
-            </div>
-        </div>`;
-    openModal('logSmsModal');
-}
+async function msgComposeSend(leadId) {
+    const ta = document.getElementById('msgComposeBox');
+    if (!ta) return;
+    const message = ta.value.trim();
+    if (!message) return;
 
-async function submitLogSmsContact(leadId) {
-    const content = document.getElementById('logSmsContent')?.value?.trim();
-    try {
-        const res  = await apiFetch(`/client/leads/${leadId}/log-sms-contact`, 'POST', { content, direction: 'inbound' });
-        const data = await res.json();
-        if (data.success) {
-            toast('SMS contact logged', 'success');
-            closeModal('logSmsModal');
-            FU.msgCountsLoaded = false;
-            await loadFollowups();
-        } else { toast(data.message||'Failed', 'error'); }
-    } catch(e) { toast('Error', 'error'); }
-}
+    const btn = ta.parentElement?.nextElementSibling;
+    ta.disabled = true;
+    if (btn) btn.disabled = true;
 
-// Send SMS modal
-function openSendSmsModal(leadId, phone, name) {
-    if (!phone) { toast('This lead has no phone number on file', 'error'); return; }
-    let modal = document.getElementById('sendSmsModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'sendSmsModal';
-        modal.className = 'modal-overlay';
-        modal.onclick = (e) => { if(e.target===modal) closeModal('sendSmsModal'); };
-        document.body.appendChild(modal);
-    }
-    modal.innerHTML = `
-        <div class="modal" style="max-width:460px;width:calc(100% - 32px);">
-            <div class="modal-header">
-                <span class="modal-title">Send SMS to ${escHtml(name)}</span>
-                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Sending to: ${escHtml(phone)}</div>
-            </div>
-            <div class="modal-body">
-                <div class="form-field">
-                    <label class="form-label">Message</label>
-                    <textarea class="form-input" id="smsMessageText" rows="4" placeholder="Type your SMS message..." maxlength="160"></textarea>
-                    <div style="font-size:10px;color:var(--text-3);margin-top:3px;text-align:right;">
-                        <span id="smsCharCount">0</span>/160 characters
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-ghost" onclick="closeModal('sendSmsModal')">Cancel</button>
-                <button class="btn btn-white" id="sendSmsBtn" onclick="submitSendSms(${leadId})">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z"/></svg>
-                    Send SMS
-                </button>
-            </div>
-        </div>`;
-    openModal('sendSmsModal');
-    const ta = document.getElementById('smsMessageText');
-    if (ta) ta.addEventListener('input', () => {
-        const cc = document.getElementById('smsCharCount');
-        if (cc) cc.textContent = ta.value.length;
-    });
-}
-
-async function submitSendSms(leadId) {
-    const message = document.getElementById('smsMessageText')?.value?.trim();
-    if (!message) { toast('Message cannot be empty', 'error'); return; }
-    const btn = document.getElementById('sendSmsBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
     try {
         const res  = await apiFetch(`/client/leads/${leadId}/send-sms`, 'POST', { message });
         const data = await res.json();
         if (data.success) {
-            toast('SMS sent successfully', 'success');
-            closeModal('sendSmsModal');
+            ta.value = '';
+            ta.style.height = 'auto';
+            document.getElementById('msgCharLeft') && (document.getElementById('msgCharLeft').textContent = '160');
             FU.msgCountsLoaded = false;
-            if (S.currentPage === 'followups') await loadFollowups();
+            await _refreshMsgThread(leadId);
+            if (S.currentPage === 'followups') loadFollowups();
         } else {
-            toast(data.message || 'SMS failed to send', 'error');
-            if (btn) { btn.disabled = false; btn.textContent = 'Send SMS'; }
+            toast(data.message || 'SMS failed', 'error');
         }
     } catch(e) {
-        toast('Error sending SMS: ' + e.message, 'error');
-        if (btn) { btn.disabled = false; btn.textContent = 'Send SMS'; }
+        toast('Error: ' + e.message, 'error');
     }
+    ta.disabled = false;
+    if (btn) btn.disabled = false;
+    ta.focus();
+}
+
+// Log inbound SMS reply from within the message log
+async function logInboundSmsFromThread(leadId) {
+    const content = prompt('Paste their reply (optional):') ?? '';
+    try {
+        const res = await apiFetch(`/client/leads/${leadId}/log-sms-contact`, 'POST', { content, direction: 'inbound' });
+        const data = await res.json();
+        if (data.success) {
+            FU.msgCountsLoaded = false;
+            await _refreshMsgThread(leadId);
+            if (S.currentPage === 'followups') loadFollowups();
+        } else { toast(data.message||'Failed','error'); }
+    } catch(e) { toast('Error','error'); }
 }
 
 

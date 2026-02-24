@@ -2708,6 +2708,8 @@ function setupLoginForm() {
 function showApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
+    const vbl = document.getElementById('videoBgLayer');
+    if (vbl) vbl.style.display = 'block';
     applyUserBackground();
 
     const user = S.user;
@@ -4316,7 +4318,9 @@ async function renderFollowups() {
                         const emailBadge = mc.email > 0 ? `<span title="${mc.email} inbound email${mc.email>1?'s':''}" style="display:inline-flex;align-items:center;gap:3px;background:#3b82f622;color:#3b82f6;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:9px;height:9px;'><path d='M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z'/><polyline points='22,6 12,13 2,6'/></svg>${mc.email}</span>` : '';
                         const smsBadge  = mc.sms  > 0 ? `<span title="${mc.sms} inbound SMS" style="display:inline-flex;align-items:center;gap:3px;background:#10b98122;color:#10b981;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:9px;height:9px;'><path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/></svg>${mc.sms}</span>` : '';
                         const smsEnabled = MK.settings && MK.settings.brevo_sms_enabled;
-                        const smsBtnHtml = smsEnabled && l.phone ? `<button class="btn btn-ghost btn-xs" style="color:#10b981;" title="Send SMS" onclick="openSendSmsModal(${l.id},'${escHtml(l.phone||'')}','${escHtml(l.name||'')}')"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:11px;height:11px;'><path d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z'/></svg> SMS</button>` : '';
+                        const smsBtnHtml = l.phone
+                            ? `<button class="btn btn-ghost btn-xs" style="color:#10b981;" title="Send SMS" onclick="${smsEnabled ? `openSendSmsModal(${l.id},'${escHtml(l.phone||'')}','${escHtml(l.name||'')}')` : `toast('Enable Brevo SMS in Settings → Email Provider first','error')`}"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:11px;height:11px;'><path d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z'/></svg> SMS</button>`
+                            : '';
                         return `<tr>
                             <td style="font-weight:500;cursor:pointer;color:var(--text-0);" onclick="openLeadMessageLog(${JSON.stringify(l).replace(/"/g,'&quot;')})">
                                 <span style="display:inline-flex;align-items:center;gap:5px;">
@@ -7353,14 +7357,13 @@ function setBackground(key) {
         document.body.classList.add('theme-' + cfg.theme, 'has-video-bg');
     }
 
-    const vbl = document.getElementById('videoBgLayer');
+    const vbl = document.getElementById('videoBgLayer'); // kept for logout cleanup reference
     document.querySelectorAll('#videoBgLayer video').forEach(v => {
         v.classList.remove('active');
         v.pause();
     });
 
     if (cfg.video) {
-        if (vbl) vbl.style.display = 'block';
         const vid = document.getElementById(cfg.video);
         if (vid) {
             vid.classList.add('active');
@@ -7371,8 +7374,6 @@ function setBackground(key) {
                 setTimeout(() => { vid.play().catch(() => {}); }, 500);
             });
         }
-    } else {
-        if (vbl) vbl.style.display = 'none';
     }
 
     document.querySelectorAll('.bg-option').forEach(el => {

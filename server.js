@@ -10087,6 +10087,21 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             return res.status(400).json({ success: false, message: 'This email already has an active seat in your company' });
         }
 
+        // ── Domain enforcement ───────────────────────────────────────
+        // If the business has a verified sending domain, warn (but don't block) when
+        // the user's email doesn't match. They can still log in and use the CRM;
+        // they just won't be able to send email as a personal sender.
+        const emailSettings = await getClientEmailSettings(clientPortalId);
+        let domainWarning = null;
+        if (emailSettings?.verified_domain && emailSettings?.domain_status === 'verified') {
+            const userDomain = email.toLowerCase().split('@')[1];
+            const verifiedDomain = emailSettings.verified_domain.toLowerCase();
+            if (userDomain !== verifiedDomain) {
+                domainWarning = `Note: This user's email (@${userDomain}) does not match your verified sending domain (@${verifiedDomain}). They can log in and use the CRM, but emails they send will come from the shared portal sender address, not their personal email.`;
+                console.log(`[ADD-USER] Domain mismatch warning: ${email} vs verified ${verifiedDomain}`);
+            }
+        }
+
         // Count occupied seats: only 'active' users hold a seat.
         // 'cancelling' users have been freed — their seat is available for a new user
         // at no extra charge until the admin explicitly removes it via "Remove Unused Seat".
@@ -10242,7 +10257,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             newLeadRes = await pool.query(`
                 INSERT INTO leads (email, name, source, is_customer, customer_status, status,
                     lead_temperature, client_portal_id, client_password, is_company_admin, is_co_admin)
-                VALUES ($1, $2, 'company-user', TRUE, 'active', 'closed', 'cold', $3, $4, FALSE, FALSE)
+                VALUES ($1, $2, 'company-user', TRUE, 'active', 'active', 'cold', $3, $4, FALSE, FALSE)
                 RETURNING id
             `, [email, name, clientPortalId, hashedPassword]);
         }
@@ -10354,6 +10369,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
                 : `${name} has been added successfully, but the welcome email could not be sent (${emailError || 'unknown error'}). Their login: email = ${email}, password = ${tempPassword}`,
             emailSent,
             tempPassword: emailSent ? undefined : tempPassword,  // expose password in response only if email failed
+            domainWarning,
             user: { name, email, packageKey, packageName: pkg.name, pricePerUser: pkg.price }
         });
 
@@ -10773,7 +10789,7 @@ async function processSubscriptionWebhook(event) {
             } else {
                 const newCustomerResult = await pool.query(`
                     INSERT INTO leads (email, name, source, lead_temperature, stripe_customer_id, is_customer, customer_status, status, created_at, updated_at)
-                    VALUES ($1, $2, 'subscription-direct', 'hot', $3, TRUE, 'active', 'closed', NOW(), NOW())
+                    VALUES ($1, $2, 'subscription-direct', 'hot', $3, TRUE, 'active', 'active', NOW(), NOW())
                     RETURNING id, name, email
                 `, [leadEmail, leadEmail.split('@')[0], customerId]);
                 lead = newCustomerResult.rows[0];
@@ -20321,6 +20337,41 @@ app.post('/api/client-brevo/webhook/:portalId', async (req, res) => {
             }
         } else if (['hard_bounce','invalid_email','blocked'].includes(event.event)) {
             await pool.query(`UPDATE client_email_log SET status='failed', error_message=$2 WHERE id=$1`, [log.id, event.event]);
+            // ── Deliverability tracking: increment bounce count per portal ──
+            await pool.query(
+                `UPDATE client_email_settings SET bounce_count = COALESCE(bounce_count,0) + 1 WHERE client_portal_id = $1`,
+                [portalId]
+            );
+            // Auto-suspend if bounce rate is catastrophically high (> 50 hard bounces)
+            const bounceCheck = await pool.query(
+                `SELECT bounce_count, emails_sent_today FROM client_email_settings WHERE client_portal_id=$1`, [portalId]
+            );
+            const bc = bounceCheck.rows[0];
+            if (bc && bc.bounce_count >= 50 && bc.emails_sent_today > 0) {
+                const bounceRate = bc.bounce_count / Math.max(bc.emails_sent_today, bc.bounce_count);
+                if (bounceRate > 0.10) {  // > 10% bounce rate
+                    await pool.query(
+                        `UPDATE client_email_settings SET suspended=TRUE WHERE client_portal_id=$1`, [portalId]
+                    );
+                    console.error(`[DELIVERABILITY] Portal ${portalId} auto-suspended: bounce rate ${(bounceRate*100).toFixed(1)}%`);
+                }
+            }
+        } else if (event.event === 'spam') {
+            // Spam complaint — most damaging deliverability event
+            await pool.query(`UPDATE client_email_log SET status='complaint' WHERE id=$1`, [log.id]);
+            await pool.query(
+                `UPDATE client_email_settings SET complaint_count = COALESCE(complaint_count,0) + 1 WHERE client_portal_id = $1`,
+                [portalId]
+            );
+            const complaintCheck = await pool.query(
+                `SELECT complaint_count FROM client_email_settings WHERE client_portal_id=$1`, [portalId]
+            );
+            if ((complaintCheck.rows[0]?.complaint_count || 0) >= 10) {
+                await pool.query(
+                    `UPDATE client_email_settings SET suspended=TRUE WHERE client_portal_id=$1`, [portalId]
+                );
+                console.error(`[DELIVERABILITY] Portal ${portalId} auto-suspended: too many spam complaints`);
+            }
         }
     } catch(e) { console.error('[CLIENT BREVO WEBHOOK] Error:', e.message); }
 });
@@ -20336,6 +20387,357 @@ app.get('/api/client-unsub/:portalId', async (req, res) => {
         );
         res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:60px;"><h2>Unsubscribed</h2><p>You have been removed from our email list.</p></body></html>`);
     } catch(e) { res.status(500).send('Error'); }
+});
+
+// ============================================================
+// DOMAIN VERIFICATION SYSTEM
+// Architecture: 1 verified domain per business → unlimited users
+// Any user whose email matches the verified domain can send mail.
+// Uses master Brevo account (no per-user Brevo setup required).
+// ============================================================
+
+// ── Schema migration: domain verification columns ─────────────
+(async () => {
+    try {
+        await pool.query(`
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='verified_domain') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN verified_domain VARCHAR(255);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='domain_status') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN domain_status VARCHAR(30) DEFAULT 'unverified';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='dkim_selector') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN dkim_selector VARCHAR(100);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='dkim_value') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN dkim_value TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='domain_id') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN domain_id INTEGER;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='bounce_count') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN bounce_count INTEGER DEFAULT 0;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='complaint_count') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN complaint_count INTEGER DEFAULT 0;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='emails_sent_today') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN emails_sent_today INTEGER DEFAULT 0;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='rate_limit_day') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN rate_limit_day INTEGER DEFAULT 500;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='suspended') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN suspended BOOLEAN DEFAULT FALSE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='rate_reset_at') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN rate_reset_at DATE DEFAULT CURRENT_DATE;
+                END IF;
+            END $$;
+        `);
+        console.log('[SCHEMA] Domain verification columns ensured.');
+    } catch(e) { console.warn('[SCHEMA] Domain migration error (non-fatal):', e.message); }
+})();
+
+// ── Helper: call Brevo sender domain API ──────────────────────
+async function brevoApiRequest(apiKey, method, path, body = null) {
+    const https = require('https');
+    return new Promise((resolve, reject) => {
+        const bodyStr = body ? JSON.stringify(body) : null;
+        const options = {
+            hostname: 'api.brevo.com',
+            path,
+            method,
+            headers: {
+                'accept': 'application/json',
+                'api-key': apiKey,
+                'content-type': 'application/json',
+                ...(bodyStr ? { 'content-length': Buffer.byteLength(bodyStr) } : {})
+            }
+        };
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', c => data += c);
+            res.on('end', () => {
+                try { resolve({ status: res.statusCode, body: data ? JSON.parse(data) : {} }); }
+                catch { resolve({ status: res.statusCode, body: { raw: data } }); }
+            });
+        });
+        req.on('error', reject);
+        if (bodyStr) req.write(bodyStr);
+        req.end();
+    });
+}
+
+// ── Enforce per-portal rate limits & suspension ───────────────
+async function checkPortalRateLimit(portalId) {
+    const r = await pool.query(
+        `SELECT suspended, emails_sent_today, rate_limit_day, bounce_count, complaint_count, rate_reset_at
+         FROM client_email_settings WHERE client_portal_id = $1`, [portalId]
+    );
+    const s = r.rows[0];
+    if (!s) return { allowed: true };
+    if (s.suspended) return { allowed: false, reason: 'Account suspended due to deliverability issues. Contact support.' };
+
+    // Reset daily counter if date rolled over
+    const today = new Date().toISOString().split('T')[0];
+    const resetAt = s.rate_reset_at ? new Date(s.rate_reset_at).toISOString().split('T')[0] : null;
+    if (resetAt !== today) {
+        await pool.query(
+            `UPDATE client_email_settings SET emails_sent_today = 0, rate_reset_at = CURRENT_DATE WHERE client_portal_id = $1`,
+            [portalId]
+        );
+        s.emails_sent_today = 0;
+    }
+
+    const limit = s.rate_limit_day || 500;
+    if (s.emails_sent_today >= limit) {
+        return { allowed: false, reason: `Daily email limit (${limit}) reached. Resets at midnight.` };
+    }
+
+    // Auto-suspend if bounce rate > 5% over last 200 emails or > 10 spam complaints
+    if (s.complaint_count >= 10) {
+        await pool.query(`UPDATE client_email_settings SET suspended = TRUE WHERE client_portal_id = $1`, [portalId]);
+        return { allowed: false, reason: 'Account suspended: too many spam complaints. Contact support.' };
+    }
+
+    return { allowed: true };
+}
+
+async function incrementPortalEmailCount(portalId) {
+    await pool.query(
+        `UPDATE client_email_settings SET emails_sent_today = COALESCE(emails_sent_today,0) + 1 WHERE client_portal_id = $1`,
+        [portalId]
+    );
+}
+
+// POST /api/client/domain/add
+// Admin registers their business domain with Brevo to get DNS records.
+app.post('/api/client/domain/add', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(403).json({ success: false, message: 'Company account required' });
+
+        // Must be admin
+        const lead = await pool.query(`SELECT is_company_admin, is_co_admin FROM leads WHERE id = $1`, [req.user.id]);
+        if (!lead.rows[0]?.is_company_admin && !lead.rows[0]?.is_co_admin) {
+            return res.status(403).json({ success: false, message: 'Only company admins can manage domain verification' });
+        }
+
+        const { domain } = req.body;
+        if (!domain) return res.status(400).json({ success: false, message: 'domain is required' });
+
+        // Clean domain
+        const cleanDomain = domain.toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+        if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(cleanDomain)) {
+            return res.status(400).json({ success: false, message: 'Invalid domain format. Use: acmeroofing.com' });
+        }
+
+        // Get Brevo API key from settings
+        const settings = await getClientEmailSettings(portalId);
+        const brevoKey = settings?.brevo_api_key || process.env.BREVO_API_KEY;
+        if (!brevoKey) {
+            return res.status(400).json({ success: false, message: 'Brevo API key is required before adding a domain. Please save your Brevo API key in Email Settings first.' });
+        }
+
+        // Register domain with Brevo sender domains API
+        console.log(`[DOMAIN] Registering domain ${cleanDomain} for portal ${portalId}`);
+        const brevoRes = await brevoApiRequest(brevoKey, 'POST', '/v3/senders/domains', { name: cleanDomain });
+
+        let domainId = null;
+        let dkimSelector = null;
+        let dkimValue = null;
+
+        if (brevoRes.status === 201 || brevoRes.status === 200) {
+            // Newly created — extract DNS records
+            domainId = brevoRes.body.id || null;
+            dkimSelector = brevoRes.body.dkimSelector || brevoRes.body.dkim_selector || null;
+            dkimValue = brevoRes.body.dkimValue || brevoRes.body.dkim_value || null;
+        } else if (brevoRes.status === 409 || brevoRes.status === 400) {
+            // Domain already registered — fetch existing records
+            console.log(`[DOMAIN] Domain already exists in Brevo, fetching records…`);
+            const listRes = await brevoApiRequest(brevoKey, 'GET', '/v3/senders/domains');
+            if (listRes.status === 200 && Array.isArray(listRes.body.domains)) {
+                const existing = listRes.body.domains.find(d => d.name?.toLowerCase() === cleanDomain);
+                if (existing) {
+                    domainId = existing.id;
+                    dkimSelector = existing.dkimSelector || existing.dkim_selector;
+                    dkimValue = existing.dkimValue || existing.dkim_value;
+                }
+            }
+        } else {
+            console.error('[DOMAIN] Brevo API error:', brevoRes.status, JSON.stringify(brevoRes.body));
+            // Still save domain locally and give user manual SPF instructions
+        }
+
+        // Save to DB
+        await pool.query(`
+            INSERT INTO client_email_settings (client_portal_id, verified_domain, domain_status, domain_id, dkim_selector, dkim_value, updated_at)
+            VALUES ($1,$2,'pending',$3,$4,$5,NOW())
+            ON CONFLICT (client_portal_id) DO UPDATE SET
+                verified_domain = $2,
+                domain_status   = 'pending',
+                domain_id       = COALESCE($3, client_email_settings.domain_id),
+                dkim_selector   = COALESCE($4, client_email_settings.dkim_selector),
+                dkim_value      = COALESCE($5, client_email_settings.dkim_value),
+                updated_at      = NOW()
+        `, [portalId, cleanDomain, domainId, dkimSelector, dkimValue]);
+
+        // Build DNS record instructions
+        const spfRecord = `v=spf1 include:spf.brevo.com mx ~all`;
+        const dnsRecords = [
+            {
+                type: 'TXT',
+                host: '@',
+                value: spfRecord,
+                description: 'SPF Record — allows Brevo to send email on behalf of your domain'
+            }
+        ];
+        if (dkimSelector && dkimValue) {
+            dnsRecords.push({
+                type: 'TXT',
+                host: `${dkimSelector}._domainkey`,
+                value: dkimValue,
+                description: 'DKIM Record — cryptographically signs outgoing emails'
+            });
+        }
+        dnsRecords.push({
+            type: 'TXT',
+            host: '_dmarc',
+            value: `v=DMARC1; p=none; rua=mailto:dmarc@${cleanDomain}`,
+            description: 'DMARC Record — monitors alignment (optional but recommended)'
+        });
+
+        res.json({
+            success: true,
+            domain: cleanDomain,
+            status: 'pending',
+            dnsRecords,
+            message: 'Domain registered. Add these DNS records to your domain registrar, then click "Check Verification Status".'
+        });
+    } catch(e) {
+        console.error('[DOMAIN ADD]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// GET /api/client/domain/status
+// Polls Brevo to check if SPF + DKIM are verified.
+app.get('/api/client/domain/status', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, status: 'unverified', domain: null });
+
+        const settings = await getClientEmailSettings(portalId);
+        if (!settings?.verified_domain) return res.json({ success: true, status: 'unverified', domain: null });
+
+        const brevoKey = settings?.brevo_api_key || process.env.BREVO_API_KEY;
+        if (!brevoKey) return res.json({ success: true, status: settings.domain_status || 'pending', domain: settings.verified_domain });
+
+        // Ask Brevo if domain is authenticated
+        const listRes = await brevoApiRequest(brevoKey, 'GET', '/v3/senders/domains');
+        let spfOk = false, dkimOk = false, domainFound = false;
+
+        if (listRes.status === 200 && Array.isArray(listRes.body.domains)) {
+            const d = listRes.body.domains.find(x => x.name?.toLowerCase() === settings.verified_domain.toLowerCase());
+            if (d) {
+                domainFound = true;
+                // Brevo uses different field names depending on API version
+                spfOk  = !!(d.spfRecord?.isVerified || d.spf_record?.is_verified || d.spfVerified || d.spf_verified);
+                dkimOk = !!(d.dkimRecord?.isVerified || d.dkim_record?.is_verified || d.dkimVerified || d.dkim_verified);
+                // Also store updated DKIM info if we didn't get it on creation
+                if (!settings.dkim_selector && (d.dkimSelector || d.dkim_selector)) {
+                    await pool.query(
+                        `UPDATE client_email_settings SET dkim_selector=$1, dkim_value=$2, domain_id=$3 WHERE client_portal_id=$4`,
+                        [d.dkimSelector || d.dkim_selector, d.dkimValue || d.dkim_value, d.id || settings.domain_id, portalId]
+                    );
+                }
+            }
+        }
+
+        const newStatus = (spfOk && dkimOk) ? 'verified' : (domainFound ? 'pending' : 'pending');
+
+        // Update DB status
+        if (newStatus !== settings.domain_status) {
+            await pool.query(
+                `UPDATE client_email_settings SET domain_status=$1, updated_at=NOW() WHERE client_portal_id=$2`,
+                [newStatus, portalId]
+            );
+        }
+
+        // Build records to show user current state
+        const spfRecord = `v=spf1 include:spf.brevo.com mx ~all`;
+        const dnsRecords = [
+            { type: 'TXT', host: '@', value: spfRecord, verified: spfOk, description: 'SPF Record' }
+        ];
+        if (settings.dkim_selector && settings.dkim_value) {
+            dnsRecords.push({
+                type: 'TXT',
+                host: `${settings.dkim_selector}._domainkey`,
+                value: settings.dkim_value,
+                verified: dkimOk,
+                description: 'DKIM Record'
+            });
+        }
+
+        res.json({
+            success: true,
+            domain: settings.verified_domain,
+            status: newStatus,
+            spfVerified: spfOk,
+            dkimVerified: dkimOk,
+            dnsRecords,
+            message: newStatus === 'verified'
+                ? '✅ Domain verified! All users under this domain can now send email.'
+                : '⏳ DNS records not yet detected. DNS propagation can take up to 48 hours.'
+        });
+    } catch(e) {
+        console.error('[DOMAIN STATUS]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// DELETE /api/client/domain
+// Admin removes domain verification (e.g. to change domains).
+app.delete('/api/client/domain', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(403).json({ success: false, message: 'Company account required' });
+        const lead = await pool.query(`SELECT is_company_admin FROM leads WHERE id=$1`, [req.user.id]);
+        if (!lead.rows[0]?.is_company_admin) return res.status(403).json({ success: false, message: 'Admin only' });
+
+        await pool.query(
+            `UPDATE client_email_settings SET verified_domain=NULL, domain_status='unverified', domain_id=NULL, dkim_selector=NULL, dkim_value=NULL, updated_at=NOW() WHERE client_portal_id=$1`,
+            [portalId]
+        );
+        res.json({ success: true, message: 'Domain removed.' });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// GET /api/client/domain/check-user-email
+// Validates that a given email matches the verified domain.
+app.get('/api/client/domain/check-user-email', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const { email } = req.query;
+        if (!portalId || !email) return res.json({ valid: true, warning: null });
+
+        const settings = await getClientEmailSettings(portalId);
+        if (!settings?.verified_domain || settings.domain_status !== 'verified') {
+            return res.json({ valid: true, warning: null }); // no domain set yet — let it through
+        }
+
+        const userDomain = email.toLowerCase().split('@')[1];
+        const verified = settings.verified_domain.toLowerCase();
+        if (userDomain !== verified) {
+            return res.json({
+                valid: false,
+                warning: `This email uses @${userDomain} but your verified sending domain is @${verified}. Users with non-matching domains cannot send email through the CRM. They can still log in and use all other features.`
+            });
+        }
+        return res.json({ valid: true, warning: null });
+    } catch(e) { res.status(500).json({ valid: true }); }
 });
 
 app.get('/api/client/email-settings', authenticateClient, async (req, res) => {
@@ -20354,6 +20756,18 @@ app.get('/api/client/email-settings', authenticateClient, async (req, res) => {
         // Include SMS settings
         out.brevo_sms_enabled = out.brevo_sms_enabled || false;
         out.brevo_sms_sender  = out.brevo_sms_sender  || '';
+        // Include domain verification state
+        out.verified_domain = out.verified_domain || null;
+        out.domain_status   = out.domain_status   || 'unverified';
+        out.dkim_selector   = out.dkim_selector   || null;
+        // Never send raw DKIM value to frontend
+        out.dkim_value      = out.dkim_value ? '••••' : null;
+        out.suspended       = out.suspended || false;
+        out.rate_limit_day  = out.rate_limit_day || 500;
+        // Deliverability stats (safe to expose to portal admin)
+        out.emails_sent_today = out.emails_sent_today || 0;
+        out.bounce_count      = out.bounce_count      || 0;
+        out.complaint_count   = out.complaint_count   || 0;
         res.json({ success: true, settings: out });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -20368,7 +20782,8 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
             company_name, company_phone, company_email, company_address,
             website_url, accent_color,
             emailjs_service_id, emailjs_template_id, emailjs_public_key,
-            brevo_sms_sender, brevo_sms_enabled
+            brevo_sms_sender, brevo_sms_enabled,
+            rate_limit_day
         } = req.body;
 
         // Only update API key if a non-masked value is provided
@@ -20400,8 +20815,9 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
                  website_url, accent_color,
                  emailjs_service_id, emailjs_template_id, emailjs_public_key,
                  brevo_sms_sender, brevo_sms_enabled,
+                 rate_limit_day,
                  updated_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW())
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW())
             ON CONFLICT (client_portal_id) DO UPDATE SET
                 brevo_api_key       = COALESCE($2, client_email_settings.brevo_api_key),
                 sender_email        = COALESCE($3, client_email_settings.sender_email),
@@ -20417,13 +20833,15 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
                 emailjs_public_key  = COALESCE($13, client_email_settings.emailjs_public_key),
                 brevo_sms_sender    = COALESCE($14, client_email_settings.brevo_sms_sender),
                 brevo_sms_enabled   = COALESCE($15, client_email_settings.brevo_sms_enabled),
+                rate_limit_day      = COALESCE($16, client_email_settings.rate_limit_day),
                 updated_at          = NOW()
         `, [
             portalId, finalKey||null, sender_email||null, sender_name||null,
             company_name||null, company_phone||null, company_email||null,
             company_address||null, website_url||null, accent_color||null,
             emailjs_service_id||null, emailjs_template_id||null, emailjs_public_key||null,
-            brevo_sms_sender||null, brevo_sms_enabled !== undefined ? brevo_sms_enabled : null
+            brevo_sms_sender||null, brevo_sms_enabled !== undefined ? brevo_sms_enabled : null,
+            rate_limit_day ? parseInt(rate_limit_day) : null
         ]);
 
         res.json({ success: true, message: 'Settings saved' });
@@ -23027,11 +23445,47 @@ ${actionButtonsHtml}
 async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, assignedToUserEmail, templateId, chainId, subject, html, emailType = 'marketing' }) {
     const settings = await getClientEmailSettings(portalId);
 
-    // FROM address is ALWAYS the portal admin's configured sender email.
-    // Individual users do not have their own Brevo accounts — all email
-    // comes from the admin's configured sender regardless of who clicks Send.
-    const fromEmail = settings?.sender_email || settings?.company_email || null;
-    const fromName  = settings?.sender_name  || settings?.company_name  || fromEmail || 'CRM';
+    // ── Per-portal rate limit & suspension check ─────────────────
+    const rateCheck = await checkPortalRateLimit(portalId);
+    if (!rateCheck.allowed) {
+        throw new Error(rateCheck.reason);
+    }
+
+    // ── Determine FROM address ────────────────────────────────────
+    // ARCHITECTURE: Domain-level verification → any user @domain can send.
+    //
+    // If the business has a verified domain AND the sending user's email
+    // matches that domain → send FROM the individual user's email address.
+    // This gives each team member their own professional sender identity.
+    //
+    // Fallback order:
+    //   1. User email matching verified domain (e.g. john@acmeroofing.com)
+    //   2. Admin-configured sender_email
+    //   3. company_email
+    let fromEmail = null;
+    let fromName  = null;
+
+    const domainVerified = settings?.domain_status === 'verified' && settings?.verified_domain;
+
+    if (domainVerified && senderUserEmail) {
+        const senderDomain = senderUserEmail.toLowerCase().split('@')[1];
+        if (senderDomain === settings.verified_domain.toLowerCase()) {
+            // ✅ User's email matches verified domain — send as them
+            fromEmail = senderUserEmail.toLowerCase();
+            // Look up their display name
+            const userRow = await pool.query(
+                `SELECT user_name FROM company_users WHERE LOWER(user_email) = LOWER($1) AND client_portal_id = $2 LIMIT 1`,
+                [senderUserEmail, portalId]
+            ).catch(() => ({ rows: [] }));
+            fromName = userRow.rows[0]?.user_name || senderUserEmail.split('@')[0];
+        }
+    }
+
+    // Fallback to portal-wide sender
+    if (!fromEmail) {
+        fromEmail = settings?.sender_email || settings?.company_email || null;
+        fromName  = settings?.sender_name  || settings?.company_name  || fromEmail || 'CRM';
+    }
 
     // Log the email first
     let logId = null;
@@ -23061,10 +23515,13 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
     }
 
     // ── Try Brevo first (server-side, full tracking) ──────────────
-    if (settings?.brevo_api_key && fromEmail) {
+    // Always use master Brevo API key — no per-user key needed.
+    // Domain verification handles authentication at the domain level.
+    const masterBrevoKey = settings?.brevo_api_key || process.env.BREVO_API_KEY;
+    if (masterBrevoKey && fromEmail) {
         try {
             const brevoResult = await sendViaBrevo(
-                settings.brevo_api_key,
+                masterBrevoKey,
                 fromEmail,
                 fromName,
                 leadEmail,
@@ -23078,6 +23535,9 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
                 SET status='sent', sent_at=NOW(), brevo_message_id=$2
                 WHERE id=$1
             `, [logId, msgId || null]);
+
+            // Increment daily send counter for deliverability tracking
+            await incrementPortalEmailCount(portalId);
 
             console.log(`[CLIENT EMAIL]  Sent via Brevo from ${fromEmail} → ${leadEmail}`);
             return { success: true, logId, messageId: msgId, method: 'brevo' };
@@ -23428,3 +23888,447 @@ process.on('SIGINT', async () => {
         console.log('[PRODUCTS] Tables ready');
     } catch(e) { console.warn('[PRODUCTS] Table setup:', e.message); }
 })();
+// ============================================================
+// SMS TEMPLATES ENDPOINTS
+// ============================================================
+
+// Ensure sms_templates table exists
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sms_templates (
+                id SERIAL PRIMARY KEY,
+                client_portal_id VARCHAR(50) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                body TEXT NOT NULL,
+                include_schedule_link BOOLEAN DEFAULT FALSE,
+                include_contact_link BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sms_auto_sequences (
+                id SERIAL PRIMARY KEY,
+                client_portal_id VARCHAR(50) NOT NULL UNIQUE,
+                enabled BOOLEAN DEFAULT FALSE,
+                steps JSONB DEFAULT '[]',
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        // Add company_logo_url to client_email_settings if not exists
+        await pool.query(`
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_email_settings' AND column_name='company_logo_url') THEN
+                    ALTER TABLE client_email_settings ADD COLUMN company_logo_url TEXT;
+                END IF;
+            END $$;
+        `);
+        console.log('[SMS TEMPLATES] Tables ready');
+    } catch(e) { console.warn('[SMS TEMPLATES] Table setup:', e.message); }
+})();
+
+// GET /api/client/sms-templates
+app.get('/api/client/sms-templates', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, templates: [] });
+        const r = await pool.query(`SELECT * FROM sms_templates WHERE client_portal_id=$1 ORDER BY created_at DESC`, [portalId]);
+        res.json({ success: true, templates: r.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/sms-templates
+app.post('/api/client/sms-templates', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        const { name, body, include_schedule_link, include_contact_link } = req.body;
+        if (!name || !body) return res.status(400).json({ success: false, message: 'name and body required' });
+        const r = await pool.query(
+            `INSERT INTO sms_templates (client_portal_id, name, body, include_schedule_link, include_contact_link) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+            [portalId, name, body, include_schedule_link||false, include_contact_link||false]
+        );
+        res.json({ success: true, template: r.rows[0] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// PUT /api/client/sms-templates/:id
+app.put('/api/client/sms-templates/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const { name, body, include_schedule_link, include_contact_link } = req.body;
+        await pool.query(
+            `UPDATE sms_templates SET name=$1, body=$2, include_schedule_link=$3, include_contact_link=$4, updated_at=NOW() WHERE id=$5 AND client_portal_id=$6`,
+            [name, body, include_schedule_link||false, include_contact_link||false, req.params.id, portalId]
+        );
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// DELETE /api/client/sms-templates/:id
+app.delete('/api/client/sms-templates/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        await pool.query(`DELETE FROM sms_templates WHERE id=$1 AND client_portal_id=$2`, [req.params.id, portalId]);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// GET /api/client/sms-auto-sequence
+app.get('/api/client/sms-auto-sequence', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, enabled: false, steps: [] });
+        const r = await pool.query(`SELECT * FROM sms_auto_sequences WHERE client_portal_id=$1 LIMIT 1`, [portalId]);
+        const row = r.rows[0];
+        res.json({ success: true, enabled: row?.enabled || false, steps: row?.steps || [] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/sms-auto-sequence/toggle
+app.post('/api/client/sms-auto-sequence/toggle', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        const { enabled } = req.body;
+        await pool.query(`
+            INSERT INTO sms_auto_sequences (client_portal_id, enabled) VALUES ($1,$2)
+            ON CONFLICT (client_portal_id) DO UPDATE SET enabled=$2, updated_at=NOW()
+        `, [portalId, enabled]);
+        res.json({ success: true, enabled });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// PUT /api/client/sms-auto-sequence
+app.put('/api/client/sms-auto-sequence', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        const { steps } = req.body;
+        await pool.query(`
+            INSERT INTO sms_auto_sequences (client_portal_id, steps) VALUES ($1,$2)
+            ON CONFLICT (client_portal_id) DO UPDATE SET steps=$2, updated_at=NOW()
+        `, [portalId, JSON.stringify(steps || [])]);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// COMPANY LOGO UPLOAD ENDPOINTS
+// ============================================================
+const logoUpload = require('multer')({
+    storage: require('multer').diskStorage({
+        destination: async (req, file, cb) => {
+            const dir = require('path').join(__dirname, 'uploads', 'logos');
+            await require('fs').promises.mkdir(dir, { recursive: true });
+            cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+            const ext = require('path').extname(file.originalname);
+            cb(null, 'logo-' + Date.now() + ext);
+        }
+    }),
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const ok = ['image/png','image/jpeg','image/svg+xml','image/webp'].includes(file.mimetype);
+        ok ? cb(null, true) : cb(new Error('Only PNG, JPG, SVG, WEBP allowed'));
+    }
+});
+
+// Serve logos
+app.use('/uploads/logos', require('express').static(require('path').join(__dirname, 'uploads', 'logos')));
+
+// POST /api/client/company-logo
+app.post('/api/client/company-logo', authenticateClient, logoUpload.single('logo'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+
+        const logoUrl = '/uploads/logos/' + req.file.filename;
+        await pool.query(`
+            INSERT INTO client_email_settings (client_portal_id, company_logo_url)
+            VALUES ($1,$2)
+            ON CONFLICT (client_portal_id) DO UPDATE SET company_logo_url=$2, updated_at=NOW()
+        `, [portalId, logoUrl]);
+
+        res.json({ success: true, logoUrl });
+    } catch(e) {
+        console.error('[LOGO UPLOAD]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// DELETE /api/client/company-logo
+app.delete('/api/client/company-logo', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        await pool.query(`UPDATE client_email_settings SET company_logo_url=NULL, updated_at=NOW() WHERE client_portal_id=$1`, [portalId]);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// DYNAMIC CLIENT PORTAL FORMS
+// These forms route back to the specific client portal (not admin)
+// and apply that portal's branding (logo, colors, company name).
+// ============================================================
+
+async function getPortalBranding(portalId) {
+    const r = await pool.query(`SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1`, [portalId]);
+    const s = r.rows[0] || {};
+    return {
+        companyName:  s.company_name   || 'CRM',
+        accentColor:  s.accent_color   || '#6366f1',
+        logoUrl:      s.company_logo_url || null,
+    };
+}
+
+function portalFormHtml({ title, formContent, portalId, brand }) {
+    const logoHtml = brand.logoUrl
+        ? `<img src="${brand.logoUrl}" style="max-height:52px;max-width:180px;object-fit:contain;margin-bottom:16px;display:block;" alt="${brand.companyName} logo">`
+        : '';
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${title} — ${brand.companyName}</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Geist',-apple-system,BlinkMacSystemFont,sans-serif;background:#0a0a0a;color:#ebebeb;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.form-card{background:#111;border:1px solid #2a2a2a;border-radius:16px;padding:36px 40px;width:100%;max-width:480px;box-shadow:0 24px 80px rgba(0,0,0,0.5);}
+.form-header{margin-bottom:28px;}
+.company-name{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;}
+.form-title{font-size:14px;color:#a1a1a1;}
+.accent-bar{width:32px;height:3px;border-radius:2px;margin-top:12px;background:${brand.accentColor};}
+.form-field{margin-bottom:16px;}
+.form-label{display:block;font-size:12px;font-weight:600;color:#a1a1a1;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+.form-input{width:100%;background:#191919;border:1px solid #2a2a2a;border-radius:8px;padding:11px 14px;font-size:14px;color:#fff;font-family:inherit;outline:none;transition:border-color 0.2s;}
+.form-input:focus{border-color:${brand.accentColor};}
+.form-input::placeholder{color:#555;}
+textarea.form-input{resize:vertical;min-height:80px;}
+.submit-btn{width:100%;background:${brand.accentColor};color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:opacity 0.2s;}
+.submit-btn:hover{opacity:0.88;}
+.submit-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.success-msg{display:none;text-align:center;padding:20px 0;}
+.success-icon{font-size:48px;margin-bottom:12px;}
+.success-title{font-size:20px;font-weight:700;color:#fff;margin-bottom:8px;}
+.success-text{font-size:14px;color:#a1a1a1;}
+.error-msg{background:#2a0a0a;border:1px solid #ef444444;border-radius:8px;padding:12px 16px;font-size:13px;color:#ef4444;margin-bottom:16px;display:none;}
+</style>
+</head>
+<body>
+<div class="form-card">
+    <div class="form-header">
+        ${logoHtml}
+        <div class="company-name">${brand.companyName}</div>
+        <div class="form-title">${title}</div>
+        <div class="accent-bar"></div>
+    </div>
+    <div id="errorMsg" class="error-msg"></div>
+    <div id="formContent">${formContent}</div>
+    <div class="success-msg" id="successMsg">
+        <div class="success-icon">✅</div>
+        <div class="success-title">You're all set!</div>
+        <div class="success-text" id="successText">We'll be in touch shortly.</div>
+    </div>
+</div>
+<script>
+const PORTAL_ID = '${portalId}';
+const BASE = '${process.env.BASE_URL || ''}';
+function getParam(k) { return new URLSearchParams(location.search).get(k); }
+const LEAD_ID = getParam('lead');
+</script>
+</body>
+</html>`;
+}
+
+// GET /schedule-form.html?portal=XXX&lead=YYY
+app.get('/schedule-form.html', async (req, res) => {
+    const portalId = req.query.portal;
+    if (!portalId) return res.status(400).send('Portal ID required');
+    try {
+        const brand = await getPortalBranding(portalId);
+        const formContent = `
+<form id="schedForm" onsubmit="submitSchedForm(event)">
+    <div class="form-field"><label class="form-label">Full Name *</label><input class="form-input" id="sf_name" placeholder="Your name" required></div>
+    <div class="form-field"><label class="form-label">Email *</label><input class="form-input" id="sf_email" type="email" placeholder="your@email.com" required></div>
+    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="sf_phone" placeholder="(555) 000-0000"></div>
+    <div style="display:flex;gap:12px;">
+        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Date *</label><input class="form-input" id="sf_date" type="date" required></div>
+        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Time *</label><input class="form-input" id="sf_time" type="time" required></div>
+    </div>
+    <div class="form-field"><label class="form-label">Notes</label><textarea class="form-input" id="sf_notes" placeholder="Anything you'd like us to know..."></textarea></div>
+    <button class="submit-btn" type="submit" id="sf_btn">Request Appointment</button>
+</form>
+<script>
+async function submitSchedForm(e) {
+    e.preventDefault();
+    const btn = document.getElementById('sf_btn');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    try {
+        const res = await fetch(BASE + '/api/client-forms/schedule', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                portalId: PORTAL_ID, leadId: LEAD_ID,
+                name: document.getElementById('sf_name').value,
+                email: document.getElementById('sf_email').value,
+                phone: document.getElementById('sf_phone').value,
+                preferredDate: document.getElementById('sf_date').value,
+                preferredTime: document.getElementById('sf_time').value,
+                notes: document.getElementById('sf_notes').value,
+            })
+        });
+        const d = await res.json();
+        if (d.success) {
+            document.getElementById('formContent').style.display = 'none';
+            document.getElementById('successMsg').style.display = 'block';
+            document.getElementById('successText').textContent = 'Your appointment request has been received! We'll confirm the details soon.';
+        } else {
+            errEl.textContent = d.message || 'Something went wrong. Please try again.';
+            errEl.style.display = 'block';
+            btn.disabled = false; btn.textContent = 'Request Appointment';
+        }
+    } catch(err) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Request Appointment';
+    }
+}
+</script>`;
+        res.send(portalFormHtml({ title: 'Schedule an Appointment', formContent, portalId, brand }));
+    } catch(e) {
+        console.error('[SCHEDULE FORM]', e);
+        res.status(500).send('Error loading form');
+    }
+});
+
+// GET /contact-form.html?portal=XXX&lead=YYY
+app.get('/contact-form.html', async (req, res) => {
+    const portalId = req.query.portal;
+    if (!portalId) return res.status(400).send('Portal ID required');
+    try {
+        const brand = await getPortalBranding(portalId);
+        const formContent = `
+<form id="contactForm" onsubmit="submitContactForm(event)">
+    <div class="form-field"><label class="form-label">Full Name *</label><input class="form-input" id="cf_name" placeholder="Your name" required></div>
+    <div class="form-field"><label class="form-label">Email *</label><input class="form-input" id="cf_email" type="email" placeholder="your@email.com" required></div>
+    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="cf_phone" placeholder="(555) 000-0000"></div>
+    <div class="form-field"><label class="form-label">Message *</label><textarea class="form-input" id="cf_msg" placeholder="How can we help?" required></textarea></div>
+    <button class="submit-btn" type="submit" id="cf_btn">Send Message</button>
+</form>
+<script>
+async function submitContactForm(e) {
+    e.preventDefault();
+    const btn = document.getElementById('cf_btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    try {
+        const res = await fetch(BASE + '/api/client-forms/contact', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                portalId: PORTAL_ID, leadId: LEAD_ID,
+                name: document.getElementById('cf_name').value,
+                email: document.getElementById('cf_email').value,
+                phone: document.getElementById('cf_phone').value,
+                message: document.getElementById('cf_msg').value,
+            })
+        });
+        const d = await res.json();
+        if (d.success) {
+            document.getElementById('formContent').style.display = 'none';
+            document.getElementById('successMsg').style.display = 'block';
+            document.getElementById('successText').textContent = 'Message received! We'll get back to you soon.';
+        } else {
+            errEl.textContent = d.message || 'Something went wrong. Please try again.';
+            errEl.style.display = 'block';
+            btn.disabled = false; btn.textContent = 'Send Message';
+        }
+    } catch(err) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Send Message';
+    }
+}
+</script>`;
+        res.send(portalFormHtml({ title: 'Get In Touch', formContent, portalId, brand }));
+    } catch(e) {
+        console.error('[CONTACT FORM]', e);
+        res.status(500).send('Error loading form');
+    }
+});
+
+// POST /api/client-forms/contact
+app.post('/api/client-forms/contact', async (req, res) => {
+    try {
+        const { portalId, name, email, phone, message, leadId } = req.body;
+        if (!portalId || !email) return res.status(400).json({ success: false, message: 'Missing required fields' });
+
+        const settingsRes = await pool.query('SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1', [portalId]);
+        const settings = settingsRes.rows[0] || {};
+
+        // Upsert lead as hot
+        let lead;
+        const existingLead = await pool.query('SELECT * FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2', [email, portalId]);
+        if (existingLead.rows.length) {
+            lead = existingLead.rows[0];
+            await pool.query(`UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at, NOW()), status='contacted', updated_at=NOW() WHERE id=$1`, [lead.id]);
+        } else {
+            const nl = await pool.query(`
+                INSERT INTO leads (name, email, phone, notes, source, lead_temperature, became_hot_at, client_portal_id, status, created_at, updated_at)
+                VALUES ($1,$2,$3,$4,'contact-form','hot',NOW(),$5,'new',NOW(),NOW()) RETURNING *
+            `, [name, email, phone||null, message||null, portalId]);
+            lead = nl.rows[0];
+        }
+
+        await pool.query(`
+            INSERT INTO client_email_log (lead_id, client_portal_id, email_type, status, sent_at, lead_became_hot, subject, to_email)
+            VALUES ($1,$2,'form-contact','submitted',NOW(),TRUE,'Contact Form Submission',$3)
+        `, [lead.id, portalId, email]).catch(()=>{});
+
+        // Notify admin
+        if (settings.brevo_api_key && settings.sender_email) {
+            await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'api-key': settings.brevo_api_key, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sender: { name: settings.sender_name || 'CRM', email: settings.sender_email },
+                    to: [{ email: settings.sender_email }],
+                    subject: `New Contact Form: ${name}`,
+                    htmlContent: `<p><strong>${name}</strong> submitted a contact form.</p><p>Email: ${email}</p>${phone?`<p>Phone: ${phone}</p>`:''}<p>Message: ${message}</p>`
+                })
+            }).catch(()=>{});
+        }
+
+        res.json({ success: true, leadId: lead.id });
+    } catch(e) { console.error('[CONTACT FORM]', e); res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/email-chains/:id/toggle — Enable or disable an email chain
+app.post('/api/client/email-chains/:id/toggle', authenticateClient, async (req, res) => {
+    try {
+        const chainId = parseInt(req.params.id);
+        const portalId = await getClientPortalId(req.user.id);
+        const { active } = req.body; // boolean
+        if (active === false) {
+            // Pause all queue entries for this chain
+            await pool.query(
+                `UPDATE client_chain_queue SET is_active=FALSE WHERE chain_id=$1 AND client_portal_id=$2`,
+                [chainId, portalId]
+            );
+        } else {
+            await pool.query(
+                `UPDATE client_chain_queue SET is_active=TRUE WHERE chain_id=$1 AND client_portal_id=$2`,
+                [chainId, portalId]
+            );
+        }
+        res.json({ success: true, active });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});

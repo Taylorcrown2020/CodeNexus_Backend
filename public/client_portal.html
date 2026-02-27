@@ -1585,8 +1585,12 @@ tr:hover .row-actions { opacity: 1; }
                 <!-- Main tab row -->
                 <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0;" id="fuMainTabBar">
                     <button class="btn btn-ghost fu-main-tab active-fu-main-tab" onclick="setFUMainTab('queue',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">Queue</button>
-                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('templates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Templates</button>
-                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Automated Chains</button>
+                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('templates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Email Templates</button>
+                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Email Chains</button>
+                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('smstemplates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;color:#10b981;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        SMS Templates
+                    </button>
                 </div>
 
                 <!-- Queue sub-tab content -->
@@ -1625,6 +1629,47 @@ tr:hover .row-actions { opacity: 1; }
                     </div>
                     <div id="fuChainsContent">
                         <div class="empty-state"><div class="spinner"></div></div>
+                    </div>
+                </div>
+
+                <!-- SMS Templates sub-tab content -->
+                <div id="fuSmsTemplatesSection" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <div>
+                            <div style="font-size:13px;color:var(--text-2);">Build SMS follow-up templates with links to your scheduling or contact form. Leads who submit a form automatically become Hot.</div>
+                        </div>
+                        <button class="btn btn-default" onclick="openSmsTemplateBuilder(null)" style="flex-shrink:0;margin-left:16px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New SMS Template
+                        </button>
+                    </div>
+                    <div id="fuSmsTemplatesContent">
+                        <div class="empty-state"><div class="spinner"></div></div>
+                    </div>
+                    <!-- SMS Auto-sequence -->
+                    <div style="margin-top:24px;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                            <div>
+                                <div style="font-size:14px;font-weight:700;color:var(--text-0);">Automatic SMS Sequence</div>
+                                <div style="font-size:12px;color:var(--text-3);margin-top:3px;">Auto-send SMS follow-ups on a schedule. Cannot run at the same time as an automatic Email chain.</div>
+                            </div>
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <span style="font-size:12px;color:var(--text-3);" id="smsAutoLabel">Off</span>
+                                <div style="position:relative;width:40px;height:22px;" onclick="toggleSmsAutoSequence()">
+                                    <input type="checkbox" id="smsAutoToggle" style="opacity:0;position:absolute;width:100%;height:100%;cursor:pointer;z-index:1;margin:0;">
+                                    <div id="smsAutoTrack" style="width:40px;height:22px;background:var(--bg-3);border:1px solid var(--border);border-radius:11px;transition:background 0.2s;"></div>
+                                    <div id="smsAutoThumb" style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:#a1a1a1;border-radius:50%;transition:left 0.2s,background 0.2s;pointer-events:none;"></div>
+                                </div>
+                            </label>
+                        </div>
+                        <div id="smsAutoSequenceConfig" style="display:none;">
+                            <div class="form-field" style="margin-bottom:12px;">
+                                <label class="form-label">SMS Template Sequence (drag to reorder)</label>
+                                <div id="smsAutoSteps" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
+                                <button class="btn btn-ghost btn-xs" onclick="addSmsAutoStep()" style="margin-top:8px;">+ Add Step</button>
+                            </div>
+                            <button class="btn btn-default btn-sm" onclick="saveSmsAutoSequence()">Save Sequence</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2015,13 +2060,83 @@ tr:hover .row-actions { opacity: 1; }
                                 <input class="form-input" id="settingsBrevoKey" type="password" placeholder="xkeysib-...">
                             </div>
                             <div class="form-field">
-                                <label class="form-label">Sender Email</label>
+                                <label class="form-label">Default Sender Email <span style="color:var(--text-3);font-weight:400;">(fallback when domain not verified)</span></label>
                                 <input class="form-input" id="settingsSenderEmail" type="email" placeholder="hello@yourcompany.com">
                             </div>
                         </div>
                         <div class="form-field">
-                            <label class="form-label">Sender Name</label>
+                            <label class="form-label">Default Sender Name</label>
                             <input class="form-input" id="settingsSenderName" placeholder="Acme Corp">
+                        </div>
+
+                        <!-- Domain Verification Section -->
+                        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
+                            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                Domain Verification
+                                <span id="domainStatusBadge" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;"></span>
+                            </div>
+                            <div style="background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:14px;font-size:12px;color:var(--text-2);line-height:1.7;">
+                                <strong style="color:var(--text-0);">How domain verification works:</strong><br>
+                                Verify <em>one domain</em> (e.g. <code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">acmeroofing.com</code>) and every user on that domain — john@, sarah@, mike@ — can send email with <em>their own name and address</em> as the sender. No per-user Brevo setup. No manual configuration per team member.
+                            </div>
+
+                            <!-- Verified domain display / entry -->
+                            <div id="domainVerifiedDisplay" style="display:none;background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:14px 16px;margin-bottom:14px;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;">
+                                    <div>
+                                        <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">✅ Verified Domain</div>
+                                        <div id="domainVerifiedName" style="font-size:16px;font-weight:700;color:var(--text-0);font-family:var(--font-mono);"></div>
+                                        <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Any @this-domain email can send as their personal address</div>
+                                    </div>
+                                    <button class="btn btn-ghost btn-xs" style="color:var(--red);" onclick="removeDomainVerification()">Remove</button>
+                                </div>
+                            </div>
+
+                            <div id="domainPendingDisplay" style="display:none;background:#f59e0b11;border:1px solid #f59e0b44;border-radius:var(--r-md);padding:14px 16px;margin-bottom:14px;">
+                                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">⏳ Pending — Add these DNS records</div>
+                                <div id="dnsRecordsList" style="font-family:var(--font-mono);font-size:11px;"></div>
+                                <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+                                    <button class="btn btn-white btn-xs" onclick="checkDomainStatus()">Check Verification Status</button>
+                                    <span style="font-size:11px;color:var(--text-3);">DNS propagation can take up to 48 hours</span>
+                                </div>
+                            </div>
+
+                            <div id="domainUnverifiedEntry" style="display:flex;gap:10px;align-items:flex-end;">
+                                <div class="form-field" style="flex:1;margin-bottom:0;">
+                                    <label class="form-label">Business Domain</label>
+                                    <input class="form-input" id="settingsDomain" placeholder="acmeroofing.com" style="font-family:var(--font-mono);">
+                                </div>
+                                <button class="btn btn-white" id="verifyDomainBtn" onclick="addDomainVerification()" style="white-space:nowrap;flex-shrink:0;">Add &amp; Verify Domain</button>
+                            </div>
+                            <div style="font-size:11px;color:var(--text-3);margin-top:8px;">Enter your domain without https:// or www — e.g. <code>acmeroofing.com</code></div>
+
+                            <!-- Deliverability stats -->
+                            <div id="deliverabilityStats" style="display:none;margin-top:14px;background:var(--bg-2);border-radius:var(--r-md);padding:12px 16px;">
+                                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:10px;">Deliverability Health</div>
+                                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                                    <div style="text-align:center;">
+                                        <div id="statEmailsToday" style="font-size:20px;font-weight:800;color:var(--text-0);">—</div>
+                                        <div style="font-size:10px;color:var(--text-3);margin-top:2px;">Sent Today</div>
+                                    </div>
+                                    <div style="text-align:center;">
+                                        <div id="statBounces" style="font-size:20px;font-weight:800;color:var(--text-0);">—</div>
+                                        <div style="font-size:10px;color:var(--text-3);margin-top:2px;">Bounces</div>
+                                    </div>
+                                    <div style="text-align:center;">
+                                        <div id="statComplaints" style="font-size:20px;font-weight:800;color:var(--text-0);">—</div>
+                                        <div style="font-size:10px;color:var(--text-3);margin-top:2px;">Complaints</div>
+                                    </div>
+                                </div>
+                                <div id="suspendedBanner" style="display:none;background:#ef444411;border:1px solid #ef444444;border-radius:var(--r-sm);padding:10px 12px;margin-top:10px;font-size:12px;color:#ef4444;font-weight:600;">
+                                    ⛔ Account suspended due to deliverability issues. Contact support to reinstate.
+                                </div>
+                                <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
+                                    <label style="font-size:12px;color:var(--text-2);">Daily send limit:</label>
+                                    <input type="number" id="settingsRateLimit" class="form-input" style="width:90px;padding:4px 8px;font-size:12px;" min="1" max="5000" placeholder="500">
+                                    <button class="btn btn-ghost btn-xs" onclick="saveRateLimit()">Save</button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Brevo SMS Section -->
@@ -2107,6 +2222,23 @@ tr:hover .row-actions { opacity: 1; }
                                 <input type="color" id="settingsColorPicker" value="#FF6B35" oninput="document.getElementById('settingsAccentColor').value=this.value" style="width:44px;height:38px;border:none;border-radius:var(--r-sm);cursor:pointer;padding:2px;">
                                 <input class="form-input" id="settingsAccentColor" placeholder="#FF6B35" oninput="document.getElementById('settingsColorPicker').value=this.value" style="max-width:120px;">
                             </div>
+                        </div>
+                        <!-- Company Logo -->
+                        <div class="form-field" style="margin-top:8px;">
+                            <label class="form-label">Company Logo <span style="color:var(--text-3);font-weight:400;">(used on invoices, emails, and forms)</span></label>
+                            <div id="logoUploadArea" style="border:2px dashed var(--border);border-radius:var(--r-md);padding:16px;text-align:center;cursor:pointer;transition:border-color 0.2s;" onclick="document.getElementById('logoFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--text-0)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleLogoFileDrop(event)">
+                                <div id="logoPreview" style="display:none;margin-bottom:10px;">
+                                    <img id="logoPreviewImg" style="max-height:60px;max-width:200px;object-fit:contain;" alt="Company Logo">
+                                </div>
+                                <div id="logoUploadPlaceholder">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:28px;height:28px;margin:0 auto 8px;display:block;opacity:0.4;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                                    <div style="font-size:13px;color:var(--text-2);">Click to upload or drag &amp; drop</div>
+                                    <div style="font-size:11px;color:var(--text-3);margin-top:4px;">PNG, JPG, SVG — max 2MB</div>
+                                </div>
+                            </div>
+                            <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;" onchange="handleLogoFileSelect(event)">
+                            <div id="logoUploadStatus" style="font-size:12px;margin-top:8px;display:none;"></div>
+                            <button id="logoRemoveBtn" class="btn btn-ghost btn-xs" style="display:none;margin-top:8px;color:var(--red);" onclick="removeLogo()">Remove Logo</button>
                         </div>
                         <button class="btn btn-white" onclick="saveEmailSettings()">Save Email Settings</button>
                     </div>
@@ -2326,14 +2458,28 @@ tr:hover .row-actions { opacity: 1; }
 
 <!-- Create Invoice Modal -->
 <div class="modal-overlay" id="createInvoiceModal" onclick="closeOnOverlay(event,'createInvoiceModal')">
-    <div class="modal">
+    <div class="modal" style="max-width:560px;">
         <div class="modal-header">
             <span class="modal-title">Create Invoice</span>
             <button class="modal-close" onclick="closeModal('createInvoiceModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="modal-body">
-            <div class="form-field"><label class="form-label">Client Name</label><input class="form-input" id="invClient" placeholder="Client name"></div>
-            <div class="form-field"><label class="form-label">Client Email</label><input class="form-input" id="invEmail" type="email" placeholder="client@example.com"></div>
+            <!-- Lead / Customer Selector -->
+            <div class="form-field" style="position:relative;">
+                <label class="form-label">Select Lead or Customer</label>
+                <input class="form-input" id="invLeadSearch" placeholder="Type to search leads &amp; customers..." oninput="filterInvLeads()" autocomplete="off">
+                <div id="invLeadDropdown" style="display:none;position:absolute;z-index:9999;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);max-height:200px;overflow-y:auto;width:100%;top:100%;margin-top:2px;"></div>
+                <div id="invSelectedLead" style="display:none;margin-top:6px;padding:8px 12px;background:var(--bg-3);border-radius:var(--r-sm);font-size:13px;color:var(--text-1);display:flex;align-items:center;justify-content:space-between;">
+                    <span id="invSelectedLeadName"></span>
+                    <button onclick="clearInvLead()" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;line-height:1;">×</button>
+                </div>
+                <input type="hidden" id="invLeadId">
+            </div>
+            <div style="margin:8px 0;text-align:center;font-size:12px;color:var(--text-3);">— or enter manually —</div>
+            <div id="invManualFields">
+                <div class="form-field"><label class="form-label">Client Name</label><input class="form-input" id="invClient" placeholder="Client name"></div>
+                <div class="form-field"><label class="form-label">Client Email</label><input class="form-input" id="invEmail" type="email" placeholder="client@example.com"></div>
+            </div>
             <div class="form-field"><label class="form-label">Description</label><input class="form-input" id="invDesc" placeholder="Service description"></div>
             <div class="form-row">
                 <div class="form-field"><label class="form-label">Amount ($)</label><input class="form-input" id="invAmount" type="number" step="0.01" placeholder="0.00"></div>
@@ -2345,6 +2491,10 @@ tr:hover .row-actions { opacity: 1; }
             </div>
         </div>
         <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="previewInvoice()" style="margin-right:auto;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Preview
+            </button>
             <button class="btn btn-ghost" onclick="closeModal('createInvoiceModal')">Cancel</button>
             <button class="btn btn-white" onclick="createInvoice()">Create Invoice</button>
         </div>
@@ -2629,11 +2779,27 @@ function navigateTo(page) { navigate(page); }
 function previewTemplate() {
     const subject = document.getElementById('templateSubject')?.value || '(no subject)';
     const body    = document.getElementById('templateBody')?.value || '';
-    const preview = window.open('', '_blank', 'width=600,height=500');
-    if (preview) {
-        preview.document.write(`<html><head><title>Preview: ${subject}</title></head><body style="font-family:sans-serif;padding:24px;max-width:600px;margin:0 auto;"><h3 style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Subject</h3><p style="margin-bottom:24px;">${subject}</p><hr><div style="margin-top:24px;">${body.replace(/\n/g,'<br>')}</div></body></html>`);
-        preview.document.close();
+    let modal = document.getElementById('templatePreviewModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'templatePreviewModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('templatePreviewModal'); };
+        document.body.appendChild(modal);
     }
+    const bodyHtml = body
+        ? body.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+        : '<em style="color:#888;">No body content</em>';
+    modal.innerHTML = '<div class="modal" style="max-width:640px;width:calc(100% - 32px);">'
+        + '<div class="modal-header"><span class="modal-title">Email Preview</span>'
+        + '<button class="modal-close" onclick="closeModal(\'templatePreviewModal\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
+        + '<div class="modal-body" style="padding:0;">'
+        + '<div style="background:var(--bg-3);border-bottom:1px solid var(--border);padding:14px 20px;">'
+        + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:4px;">Subject</div>'
+        + '<div style="font-size:15px;font-weight:600;color:var(--text-0);">' + escHtml(subject) + '</div></div>'
+        + '<div style="padding:20px 24px;min-height:160px;font-size:14px;line-height:1.6;color:var(--text-1);background:var(--bg-2);">' + bodyHtml + '</div></div>'
+        + '<div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal(\'templatePreviewModal\')">Close</button></div></div>';
+    openModal('templatePreviewModal');
 }
 
 // ============================================================
@@ -4321,9 +4487,9 @@ async function renderFollowups() {
                             ? `<button class="btn btn-ghost btn-xs" style="color:#10b981;" title="Send SMS" onclick="event.stopPropagation();openLeadMessageLog(${JSON.stringify(l).replace(/"/g,'&quot;')},true)"><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:11px;height:11px;'><path d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z'/></svg> SMS</button>`
                             : '';
                         return `<tr>
-                            <td style="font-weight:500;cursor:pointer;color:var(--text-0);" onclick="openLeadMessageLog(${JSON.stringify(l).replace(/"/g,'&quot;')})">
+                            <td style="font-weight:500;cursor:pointer;color:var(--text-0);" onclick="openLeadProfile(${JSON.stringify(l).replace(/"/g,'&quot;')})">
                                 <span style="display:inline-flex;align-items:center;gap:5px;">
-                                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:11px;height:11px;opacity:0.35;'><path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/></svg>
+                                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' style='width:11px;height:11px;opacity:0.35;'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>
                                     ${escHtml(l.name||'—')}
                                 </span>
                             </td>
@@ -4343,7 +4509,10 @@ async function renderFollowups() {
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                                         Email
                                     </button>
-                                    ${smsBtnHtml}
+                                    <button class="btn btn-ghost btn-xs" style="color:#10b981;" onclick="event.stopPropagation();openLeadMessageLog(${JSON.stringify(l).replace(/"/g,'&quot;')},true)" title="Open SMS / message thread">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                        Msg
+                                    </button>
                                     <button class="btn btn-ghost btn-xs" style="color:#6366f1;" onclick="openAssignSequenceModal(${l.id},'${escHtml(l.name||'')}','${escHtml(l.email||'')}')">Sequence</button>
                                 </div>
                             </td>
@@ -4568,21 +4737,56 @@ async function msgComposeSend(leadId) {
     ta.disabled = true;
     if (btn) btn.disabled = true;
 
+    // Optimistically add message to thread as "queued" so it stays in log
+    const scroll = document.getElementById('msgThreadScroll');
+    const tmpId = 'msg-tmp-' + Date.now();
+    if (scroll) {
+        const tmpDiv = document.createElement('div');
+        tmpDiv.id = tmpId;
+        tmpDiv.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;align-self:flex-end;max-width:82%;';
+        tmpDiv.innerHTML = '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;opacity:0.7;margin-bottom:3px;display:block;text-align:right;">✉ SMS · Sending…</span>'
+            + '<div style="background:#10b981;color:#fff;border-radius:18px 18px 4px 18px;padding:10px 14px;word-break:break-word;font-size:13px;line-height:1.45;">' + escHtml(message) + '</div>'
+            + '<div style="font-size:10px;color:var(--text-3);margin-top:3px;">just now</div>';
+        scroll.appendChild(tmpDiv);
+        scroll.scrollTop = scroll.scrollHeight;
+    }
+
     try {
         const res  = await apiFetch(`/client/leads/${leadId}/send-sms`, 'POST', { message });
         const data = await res.json();
         if (data.success) {
             ta.value = '';
             ta.style.height = 'auto';
-            document.getElementById('msgCharLeft') && (document.getElementById('msgCharLeft').textContent = '160');
+            const cl = document.getElementById('msgCharLeft'); if(cl) cl.textContent = '160';
             FU.msgCountsLoaded = false;
             await _refreshMsgThread(leadId);
             if (S.currentPage === 'followups') loadFollowups();
         } else {
-            toast(data.message || 'SMS failed', 'error');
+            // Mark as failed in thread — remove optimistic and show failed state
+            const tmp = document.getElementById(tmpId);
+            if (tmp) {
+                tmp.querySelector('span').textContent = '✉ SMS · Failed to send';
+                tmp.querySelector('span').style.color = '#ef4444';
+                tmp.querySelector('div').style.background = '#2a0a0a';
+                tmp.querySelector('div').style.border = '1px solid #ef444444';
+                tmp.querySelector('div').style.color = 'var(--text-2)';
+                const failNote = document.createElement('div');
+                failNote.style.cssText = 'font-size:10px;color:#ef4444;margin-top:3px;text-align:right;';
+                failNote.textContent = 'Failed to send';
+                tmp.appendChild(failNote);
+            }
+            toast(data.message || 'SMS failed to send', 'error');
         }
     } catch(e) {
-        toast('Error: ' + e.message, 'error');
+        const tmp = document.getElementById(tmpId);
+        if (tmp) {
+            const sp = tmp.querySelector('span'); if(sp) sp.textContent = '✉ SMS · Failed to send';
+            const failNote = document.createElement('div');
+            failNote.style.cssText = 'font-size:10px;color:#ef4444;margin-top:3px;text-align:right;';
+            failNote.textContent = 'Failed to send';
+            tmp.appendChild(failNote);
+        }
+        toast('SMS error: ' + e.message, 'error');
     }
     ta.disabled = false;
     if (btn) btn.disabled = false;
@@ -4694,16 +4898,22 @@ function setFUMainTab(tab, el) {
     document.querySelectorAll('.fu-main-tab').forEach(b => {
         b.classList.remove('active-fu-main-tab');
         b.style.borderBottom = '';
+        b.style.color = '';
     });
-    if (el) { el.classList.add('active-fu-main-tab'); el.style.borderBottom = '2px solid var(--text-0)'; }
+    if (el) {
+        el.classList.add('active-fu-main-tab');
+        el.style.borderBottom = tab === 'smstemplates' ? '2px solid #10b981' : '2px solid var(--text-0)';
+    }
 
-    document.getElementById('fuQueueSection').style.display    = tab === 'queue'     ? 'block' : 'none';
-    document.getElementById('fuTemplatesSection').style.display = tab === 'templates' ? 'block' : 'none';
-    document.getElementById('fuChainsSection').style.display   = tab === 'chains'    ? 'block' : 'none';
+    document.getElementById('fuQueueSection').style.display         = tab === 'queue'        ? 'block' : 'none';
+    document.getElementById('fuTemplatesSection').style.display      = tab === 'templates'    ? 'block' : 'none';
+    document.getElementById('fuChainsSection').style.display         = tab === 'chains'       ? 'block' : 'none';
+    document.getElementById('fuSmsTemplatesSection').style.display   = tab === 'smstemplates' ? 'block' : 'none';
 
-    if (tab === 'templates') loadFUTemplates();
-    if (tab === 'chains')    loadFUChains();
-    if (tab === 'queue')     loadFollowups();
+    if (tab === 'templates')    loadFUTemplates();
+    if (tab === 'chains')       loadFUChains();
+    if (tab === 'smstemplates') loadSmsTemplates();
+    if (tab === 'queue')        loadFollowups();
 }
 
 async function loadFUTemplates() {
@@ -4823,6 +5033,257 @@ async function deleteFUChain(id) {
 }
 
 // Quick send-email modal from follow-up queue
+// ============================================================
+// SMS TEMPLATE BUILDER
+// ============================================================
+const SMS_TMPL = { templates: [] };
+
+async function loadSmsTemplates() {
+    const el = document.getElementById('fuSmsTemplatesContent');
+    if (!el) return;
+    el.innerHTML = '<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>';
+    try {
+        const r = await apiFetch('/client/sms-templates');
+        const d = await r.json();
+        SMS_TMPL.templates = d.templates || [];
+        renderSmsTemplates();
+        loadSmsAutoSequenceState();
+    } catch {
+        el.innerHTML = '<div class="empty-state"><p>Could not load SMS templates</p></div>';
+    }
+}
+
+function renderSmsTemplates() {
+    const el = document.getElementById('fuSmsTemplatesContent');
+    if (!el) return;
+    if (!SMS_TMPL.templates.length) {
+        el.innerHTML = `<div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;opacity:0.3;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <h3>No SMS templates yet</h3>
+            <p>Create an SMS template to send follow-up text messages with scheduling links</p>
+        </div>`;
+        return;
+    }
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+        ${SMS_TMPL.templates.map(t => `
+            <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                    <div style="font-size:14px;font-weight:700;color:var(--text-0);">${escHtml(t.name)}</div>
+                    <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:20px;background:#10b98122;color:#10b981;">SMS</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;white-space:pre-wrap;max-height:60px;overflow:hidden;">${escHtml((t.body||'').substring(0,120))}${(t.body||'').length>120?'…':''}</div>
+                ${t.include_schedule_link?`<div style="font-size:11px;color:#10b981;margin-bottom:10px;">↗ Schedule link included</div>`:''}
+                ${t.include_contact_link ?`<div style="font-size:11px;color:#6366f1;margin-bottom:10px;">↗ Contact form link included</div>`:''}
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-ghost btn-xs" onclick="openSmsTemplateBuilder(${JSON.stringify(t).replace(/"/g,'&quot;')})">Edit</button>
+                    <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteSmsTemplate(${t.id})">Delete</button>
+                </div>
+            </div>`).join('')}
+    </div>`;
+}
+
+function openSmsTemplateBuilder(existing) {
+    let modal = document.getElementById('smsTemplateBuilderModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'smsTemplateBuilderModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('smsTemplateBuilderModal'); };
+        document.body.appendChild(modal);
+    }
+    const t = existing || {};
+    modal.innerHTML = `
+        <div class="modal" style="max-width:540px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <span class="modal-title">${t.id ? 'Edit' : 'New'} SMS Template</span>
+                <button class="modal-close" onclick="closeModal('smsTemplateBuilderModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field">
+                    <label class="form-label">Template Name</label>
+                    <input class="form-input" id="smsTplName" value="${escHtml(t.name||'')}" placeholder="e.g. Follow-up Day 3">
+                </div>
+                <div class="form-field">
+                    <label class="form-label" style="display:flex;justify-content:space-between;">
+                        <span>Message Body</span>
+                        <span id="smsTplCharCount" style="font-size:11px;color:var(--text-3);">${(t.body||'').length}/160</span>
+                    </label>
+                    <textarea class="form-input" id="smsTplBody" rows="5" maxlength="160" placeholder="Hi {name}, just following up…"
+                        oninput="document.getElementById('smsTplCharCount').textContent=this.value.length+'/160';"
+                        style="resize:vertical;">${escHtml(t.body||'')}</textarea>
+                    <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Use {name} to insert the lead's name automatically.</div>
+                </div>
+                <div class="form-field">
+                    <label class="form-label">Links to Include</label>
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                            <input type="checkbox" id="smsTplSched" ${t.include_schedule_link?'checked':''} style="accent-color:#10b981;width:15px;height:15px;">
+                            <span>Include scheduling form link</span>
+                            <span style="font-size:11px;color:var(--text-3);">(leads who book → Hot)</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+                            <input type="checkbox" id="smsTplContact" ${t.include_contact_link?'checked':''} style="accent-color:#6366f1;width:15px;height:15px;">
+                            <span>Include contact form link</span>
+                            <span style="font-size:11px;color:var(--text-3);">(leads who submit → Hot)</span>
+                        </label>
+                    </div>
+                </div>
+                <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 16px;margin-top:8px;" id="smsTplPreview">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px;">Preview</div>
+                    <div id="smsTplPreviewText" style="font-size:13px;color:var(--text-0);line-height:1.5;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="updateSmsTplPreview()">Preview</button>
+                <button class="btn btn-ghost" onclick="closeModal('smsTemplateBuilderModal')">Cancel</button>
+                <button class="btn btn-white" onclick="saveSmsTemplate(${t.id||'null'})">Save Template</button>
+            </div>
+        </div>`;
+    openModal('smsTemplateBuilderModal');
+    updateSmsTplPreview();
+}
+
+function updateSmsTplPreview() {
+    const body   = document.getElementById('smsTplBody')?.value || '';
+    const sched  = document.getElementById('smsTplSched')?.checked;
+    const contact= document.getElementById('smsTplContact')?.checked;
+    const prev   = document.getElementById('smsTplPreviewText');
+    if (!prev) return;
+    let full = body.replace(/{name}/g, 'Alex');
+    if (sched)   full += '\n📅 Book a time: [scheduling-link]';
+    if (contact) full += '\n📋 Fill out form: [contact-link]';
+    prev.textContent = full || '(empty)';
+}
+
+async function saveSmsTemplate(id) {
+    const name    = document.getElementById('smsTplName')?.value?.trim();
+    const body    = document.getElementById('smsTplBody')?.value?.trim();
+    const sched   = document.getElementById('smsTplSched')?.checked || false;
+    const contact = document.getElementById('smsTplContact')?.checked || false;
+    if (!name || !body) { toast('Name and message body required', 'error'); return; }
+    try {
+        const method = id ? 'PUT' : 'POST';
+        const url    = id ? `/client/sms-templates/${id}` : '/client/sms-templates';
+        const res    = await apiFetch(url, method, { name, body, include_schedule_link: sched, include_contact_link: contact });
+        const d      = await res.json();
+        if (d.success) {
+            toast(id ? 'Template updated' : 'Template saved', 'success');
+            closeModal('smsTemplateBuilderModal');
+            await loadSmsTemplates();
+        } else { toast(d.message || 'Failed', 'error'); }
+    } catch { toast('Error saving template', 'error'); }
+}
+
+async function deleteSmsTemplate(id) {
+    if (!confirm('Delete this SMS template?')) return;
+    try {
+        await apiFetch(`/client/sms-templates/${id}`, 'DELETE');
+        toast('Template deleted', 'success');
+        await loadSmsTemplates();
+    } catch { toast('Error', 'error'); }
+}
+
+// SMS Auto-sequence toggle (mutually exclusive with email chains)
+async function loadSmsAutoSequenceState() {
+    try {
+        const r = await apiFetch('/client/sms-auto-sequence');
+        const d = await r.json();
+        const on = d.enabled || false;
+        _setSmsAutoUI(on);
+        if (on && d.steps) renderSmsAutoSteps(d.steps);
+    } catch {}
+}
+
+function _setSmsAutoUI(on) {
+    const toggle = document.getElementById('smsAutoToggle');
+    const track  = document.getElementById('smsAutoTrack');
+    const thumb  = document.getElementById('smsAutoThumb');
+    const label  = document.getElementById('smsAutoLabel');
+    const config = document.getElementById('smsAutoSequenceConfig');
+    if (toggle) toggle.checked = on;
+    if (track)  track.style.background = on ? '#10b981' : 'var(--bg-3)';
+    if (thumb)  { thumb.style.left = on ? '21px' : '3px'; thumb.style.background = on ? '#fff' : '#a1a1a1'; }
+    if (label)  label.textContent = on ? 'On' : 'Off';
+    if (config) config.style.display = on ? 'block' : 'none';
+}
+
+async function toggleSmsAutoSequence() {
+    const toggle = document.getElementById('smsAutoToggle');
+    if (!toggle) return;
+    const newState = toggle.checked; // already toggled by checkbox click
+
+    if (newState) {
+        // Check if email auto chains are running
+        try {
+            const r = await apiFetch('/client/email-chains');
+            const d = await r.json();
+            const activeChain = (d.chains || []).find(c => c.is_active);
+            if (activeChain) {
+                if (!confirm('An automatic Email sequence is currently active. Turning on SMS auto-sequence will pause the email sequence. Continue?')) {
+                    _setSmsAutoUI(false);
+                    return;
+                }
+                // Pause email chain
+                await apiFetch(`/client/email-chains/${activeChain.id}/toggle`, 'POST', { active: false });
+            }
+        } catch {}
+    }
+
+    try {
+        const r = await apiFetch('/client/sms-auto-sequence/toggle', 'POST', { enabled: newState });
+        const d = await r.json();
+        _setSmsAutoUI(d.enabled || false);
+        toast(d.enabled ? 'SMS auto-sequence enabled' : 'SMS auto-sequence disabled', 'success');
+    } catch { toast('Error', 'error'); }
+}
+
+function renderSmsAutoSteps(steps) {
+    const el = document.getElementById('smsAutoSteps');
+    if (!el) return;
+    el.innerHTML = (steps || []).map((s, i) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);">
+            <span style="font-size:11px;font-weight:700;color:var(--text-3);min-width:20px;">Day ${s.delay_days||0}</span>
+            <select class="form-input" style="flex:1;font-size:12px;padding:6px 10px;" id="smsAutoStep_${i}_tpl">
+                <option value="">— Select SMS Template —</option>
+                ${SMS_TMPL.templates.map(t => `<option value="${t.id}" ${s.template_id==t.id?'selected':''}>${escHtml(t.name)}</option>`).join('')}
+            </select>
+            <input type="number" class="form-input" style="width:70px;font-size:12px;padding:6px 10px;" placeholder="Days" value="${s.delay_days||0}" id="smsAutoStep_${i}_days" min="0">
+            <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="this.closest('div').remove()">×</button>
+        </div>`).join('');
+}
+
+function addSmsAutoStep() {
+    const el = document.getElementById('smsAutoSteps');
+    if (!el) return;
+    const i = el.children.length;
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);';
+    div.innerHTML = `<span style="font-size:11px;font-weight:700;color:var(--text-3);min-width:20px;">Day</span>
+        <select class="form-input" style="flex:1;font-size:12px;padding:6px 10px;" id="smsAutoStep_${i}_tpl">
+            <option value="">— Select SMS Template —</option>
+            ${SMS_TMPL.templates.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('')}
+        </select>
+        <input type="number" class="form-input" style="width:70px;font-size:12px;padding:6px 10px;" placeholder="Days" value="1" id="smsAutoStep_${i}_days" min="0">
+        <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="this.closest('div').remove()">×</button>`;
+    el.appendChild(div);
+}
+
+async function saveSmsAutoSequence() {
+    const el = document.getElementById('smsAutoSteps');
+    if (!el) return;
+    const steps = Array.from(el.querySelectorAll('[id^=smsAutoStep_][id$=_tpl]')).map((sel, i) => ({
+        template_id: parseInt(sel.value) || null,
+        delay_days: parseInt(document.getElementById('smsAutoStep_' + i + '_days')?.value) || 0,
+    })).filter(s => s.template_id);
+    try {
+        const r = await apiFetch('/client/sms-auto-sequence', 'PUT', { steps });
+        const d = await r.json();
+        if (d.success) { toast('SMS sequence saved', 'success'); }
+        else { toast(d.message || 'Failed', 'error'); }
+    } catch { toast('Error saving', 'error'); }
+}
+
+
 async function openSendEmailModal(leadId, leadEmail, leadName) {
     // Load templates
     let templates = [];
@@ -5258,27 +5719,141 @@ function renderInvoices() {
 }
 
 function openCreateInvoiceModal() {
-    ['invClient','invEmail','invDesc','invAmount'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('invDue').value = '';
-    document.getElementById('invEmailCheck').checked = true;
+    ['invClient','invEmail','invDesc','invAmount'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    const due = document.getElementById('invDue'); if(due) due.value='';
+    const chk = document.getElementById('invEmailCheck'); if(chk) chk.checked=true;
+    const sel = document.getElementById('invSelectedLead'); if(sel) sel.style.display='none';
+    const mf  = document.getElementById('invManualFields'); if(mf) mf.style.display='';
+    const lid = document.getElementById('invLeadId'); if(lid) lid.value='';
+    const ls  = document.getElementById('invLeadSearch'); if(ls) ls.value='';
+    // Populate lead search data
+    window._invLeads = [...(S.leads||[]), ...(S.customers||[])];
     openModal('createInvoiceModal');
 }
 
-async function createInvoice() {
-    const client = document.getElementById('invClient').value.trim();
-    const email  = document.getElementById('invEmail').value.trim();
-    const desc   = document.getElementById('invDesc').value.trim();
-    const amount = parseFloat(document.getElementById('invAmount').value);
-    const due    = document.getElementById('invDue').value;
-    const sendEmail = document.getElementById('invEmailCheck').checked;
+function filterInvLeads() {
+    const q = (document.getElementById('invLeadSearch')?.value||'').toLowerCase();
+    const dd = document.getElementById('invLeadDropdown');
+    if (!dd) return;
+    if (!q) { dd.style.display='none'; return; }
+    const matches = (window._invLeads||[]).filter(l =>
+        (l.name||'').toLowerCase().includes(q) || (l.email||'').toLowerCase().includes(q)
+    ).slice(0,10);
+    if (!matches.length) { dd.style.display='none'; return; }
+    dd.innerHTML = matches.map(l => `
+        <div onclick="selectInvLead(${l.id},'${escHtml(l.name||'')}','${escHtml(l.email||'')}')"
+             style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
+             onmouseover="this.style.background='var(--bg-3)'" onmouseout="this.style.background=''">
+            <div style="font-weight:500;color:var(--text-0);">${escHtml(l.name||'—')}</div>
+            <div style="font-size:11px;color:var(--text-3);">${escHtml(l.email||'')}</div>
+        </div>`).join('');
+    dd.style.display='block';
+}
 
-    if (!client||!amount) { toast('Client and amount required', 'error'); return; }
+function selectInvLead(id, name, email) {
+    document.getElementById('invLeadId').value = id;
+    document.getElementById('invLeadSearch').value = '';
+    document.getElementById('invLeadDropdown').style.display='none';
+    const sel = document.getElementById('invSelectedLead');
+    document.getElementById('invSelectedLeadName').textContent = name + (email ? ' — ' + email : '');
+    sel.style.display='flex';
+    // Pre-fill manual fields too (hidden but used for submission)
+    const cn = document.getElementById('invClient'); if(cn) cn.value=name;
+    const em = document.getElementById('invEmail'); if(em) em.value=email;
+    // Hide manual fields since we selected a lead
+    document.getElementById('invManualFields').style.display='none';
+}
+
+function clearInvLead() {
+    document.getElementById('invLeadId').value='';
+    const sel = document.getElementById('invSelectedLead'); if(sel) sel.style.display='none';
+    document.getElementById('invManualFields').style.display='';
+    const cn = document.getElementById('invClient'); if(cn) cn.value='';
+    const em = document.getElementById('invEmail'); if(em) em.value='';
+}
+
+function previewInvoice() {
+    const client = document.getElementById('invClient')?.value?.trim() || '—';
+    const email  = document.getElementById('invEmail')?.value?.trim() || '';
+    const desc   = document.getElementById('invDesc')?.value?.trim() || '—';
+    const amount = parseFloat(document.getElementById('invAmount')?.value)||0;
+    const due    = document.getElementById('invDue')?.value || '';
+    const company = (MK.settings?.company_name) || 'Your Company';
+    const dueStr  = due ? new Date(due + 'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}) : 'Upon Receipt';
+
+    let modal = document.getElementById('invoicePreviewModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'invoicePreviewModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if(e.target===modal) closeModal('invoicePreviewModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:600px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <span class="modal-title">Invoice Preview</span>
+                <button class="modal-close" onclick="closeModal('invoicePreviewModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body" style="padding:0;">
+                <div style="background:var(--bg-3);padding:24px 28px;border-bottom:1px solid var(--border);">
+                    ${MK.settings?.company_logo_url ? `<img src="${MK.settings.company_logo_url}" style="max-height:48px;max-width:160px;object-fit:contain;margin-bottom:12px;display:block;" alt="Logo">` : ''}
+                    <div style="font-size:22px;font-weight:800;color:var(--text-0);">${escHtml(company)}</div>
+                    <div style="font-size:12px;color:var(--text-3);margin-top:4px;">INVOICE</div>
+                </div>
+                <div style="padding:24px 28px;background:var(--bg-2);">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+                        <div>
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:6px;">Bill To</div>
+                            <div style="font-weight:600;color:var(--text-0);">${escHtml(client)}</div>
+                            ${email ? `<div style="font-size:12px;color:var(--text-3);">${escHtml(email)}</div>` : ''}
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:6px;">Due Date</div>
+                            <div style="font-weight:600;color:var(--text-0);">${escHtml(dueStr)}</div>
+                        </div>
+                    </div>
+                    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <thead><tr style="border-bottom:1px solid var(--border);">
+                            <th style="padding:8px 0;text-align:left;color:var(--text-3);font-size:10px;text-transform:uppercase;letter-spacing:1px;">Description</th>
+                            <th style="padding:8px 0;text-align:right;color:var(--text-3);font-size:10px;text-transform:uppercase;letter-spacing:1px;">Amount</th>
+                        </tr></thead>
+                        <tbody><tr>
+                            <td style="padding:14px 0;color:var(--text-1);">${escHtml(desc)}</td>
+                            <td style="padding:14px 0;text-align:right;font-weight:700;color:var(--text-0);">$${amount.toFixed(2)}</td>
+                        </tr></tbody>
+                        <tfoot><tr style="border-top:2px solid var(--border);">
+                            <td style="padding:12px 0;font-weight:700;color:var(--text-0);">Total</td>
+                            <td style="padding:12px 0;text-align:right;font-size:18px;font-weight:800;color:var(--text-0);">$${amount.toFixed(2)}</td>
+                        </tr></tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('invoicePreviewModal')">Close</button>
+                <button class="btn btn-white" onclick="closeModal('invoicePreviewModal');createInvoice()">Create Invoice</button>
+            </div>
+        </div>`;
+    openModal('invoicePreviewModal');
+}
+
+async function createInvoice() {
+    const client = document.getElementById('invClient')?.value?.trim();
+    const email  = document.getElementById('invEmail')?.value?.trim();
+    const desc   = document.getElementById('invDesc')?.value?.trim();
+    const amount = parseFloat(document.getElementById('invAmount')?.value);
+    const due    = document.getElementById('invDue')?.value;
+    const sendEmail = document.getElementById('invEmailCheck')?.checked;
+    const leadId = document.getElementById('invLeadId')?.value || null;
+
+    if (!client||!amount) { toast('Client name and amount required', 'error'); return; }
 
     try {
         const res = await apiFetch('/client/invoices/create', 'POST', {
             clientName: client, clientEmail: email,
             description: desc, amount, dueDate: due,
             sendEmail, createdBy: S.user.name || S.user.email,
+            leadId: leadId ? parseInt(leadId) : null,
         });
         const data = await res.json();
         if (data.success || data.invoice) {
@@ -5788,7 +6363,7 @@ async function addCompanyUser() {
     const name         = document.getElementById('addUserName').value.trim();
     const username     = document.getElementById('addUserUsername').value.trim();
     const email        = document.getElementById('addUserEmail').value.trim();
-    const sendingEmail = document.getElementById('addUserSendingEmail').value.trim();
+    const sendingEmail = document.getElementById('addUserSendingEmail')?.value?.trim() || '';
     const password     = document.getElementById('addUserPassword').value;
     const label        = document.getElementById('addUserLabel').value.trim();
 
@@ -5819,19 +6394,23 @@ async function addCompanyUser() {
         });
         const data = await res.json();
         if (data.success) {
-            if (!data.emailSent && data.tempPassword) {
+            closeModal('addUserModal');
+            await loadCompany();
+
+            if (data.domainWarning) {
+                // Show domain mismatch info as a non-blocking notification
+                setTimeout(() => {
+                    toast('User added — ' + data.domainWarning, 'warning');
+                }, 400);
+            } else if (!data.emailSent && data.tempPassword) {
                 // Email failed — show credentials directly in the portal so the admin can relay them
                 toast(data.message || 'User added (email failed — see credentials below)', 'warning');
-                closeModal('addUserModal');
-                await loadCompany();
                 // Show a persistent alert with the credentials since email couldn't deliver them
                 setTimeout(() => {
                     alert(`Warning: Welcome email failed to send.\n\nPlease share these credentials manually with ${name}:\n\nLogin Email: ${email}\nPassword: ${data.tempPassword}\nPortal URL: ${window.location.origin}/client_portal.html`);
                 }, 300);
             } else {
                 toast(data.message || 'Team member added successfully!', 'success');
-                closeModal('addUserModal');
-                await loadCompany();
             }
         } else {
             toast(data.message || 'Failed to add user', 'error');
@@ -7207,6 +7786,14 @@ async function loadSettings() {
                 keyInput.style.fontFamily = 'var(--font-mono)';
             }
         }
+
+        // Company logo
+        if (s.company_logo_url) {
+            showLogoPreview(s.company_logo_url);
+        }
+
+        // Domain verification state
+        await _loadDomainState(s);
     } catch {}
 }
 
@@ -7237,6 +7824,248 @@ async function saveEmailSettings() {
         if (data.success) await loadSettings();
     } catch { toast('Error saving settings', 'error'); }
 }
+
+// ============================================================
+// DOMAIN VERIFICATION
+// ============================================================
+async function addDomainVerification() {
+    const domainInput = document.getElementById('settingsDomain');
+    const domain = domainInput?.value?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!domain) { toast('Enter your business domain (e.g. acmeroofing.com)', 'error'); return; }
+
+    const btn = document.getElementById('verifyDomainBtn');
+    btn.disabled = true; btn.textContent = 'Registering…';
+
+    try {
+        const res  = await apiFetch('/client/domain/add', 'POST', { domain });
+        const data = await res.json();
+        if (!data.success) { toast(data.message || 'Failed to register domain', 'error'); return; }
+
+        toast('Domain registered — add the DNS records shown below', 'success');
+        renderDnsRecords(data.dnsRecords, data.domain);
+        showDomainPending(data.dnsRecords, data.domain);
+        await loadSettings();
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Add & Verify Domain'; }
+}
+
+async function checkDomainStatus() {
+    try {
+        const res  = await apiFetch('/client/domain/status');
+        const data = await res.json();
+        if (!data.success) { toast(data.message || 'Error checking status', 'error'); return; }
+
+        if (data.status === 'verified') {
+            toast('✅ Domain verified! All @' + data.domain + ' users can send email.', 'success');
+            showDomainVerified(data.domain);
+        } else {
+            toast('⏳ Not yet verified. DNS changes can take up to 48h.', 'warning');
+            renderDnsRecords(data.dnsRecords, data.domain);
+        }
+    } catch(e) { toast('Error checking status', 'error'); }
+}
+
+async function removeDomainVerification() {
+    if (!confirm('Remove domain verification? Your team will lose per-user sending until a new domain is verified.')) return;
+    try {
+        const res  = await apiFetch('/client/domain', 'DELETE');
+        const data = await res.json();
+        if (data.success) {
+            toast('Domain removed', 'success');
+            showDomainUnverified();
+            await loadSettings();
+        } else { toast(data.message || 'Error', 'error'); }
+    } catch { toast('Error removing domain', 'error'); }
+}
+
+async function saveRateLimit() {
+    const val = parseInt(document.getElementById('settingsRateLimit')?.value);
+    if (!val || val < 1) { toast('Enter a valid limit', 'error'); return; }
+    try {
+        const res = await apiFetch('/client/email-settings', 'PUT', { rate_limit_day: val });
+        const data = await res.json();
+        toast(data.success ? 'Rate limit saved' : (data.message || 'Error'), data.success ? 'success' : 'error');
+    } catch { toast('Error', 'error'); }
+}
+
+function showDomainVerified(domain) {
+    document.getElementById('domainVerifiedDisplay').style.display = '';
+    document.getElementById('domainVerifiedName').textContent = domain;
+    document.getElementById('domainPendingDisplay').style.display = 'none';
+    document.getElementById('domainUnverifiedEntry').style.display = 'none';
+    const badge = document.getElementById('domainStatusBadge');
+    badge.style.display = 'inline-block';
+    badge.textContent = 'Verified';
+    badge.style.background = '#10b98122';
+    badge.style.color = '#10b981';
+    document.getElementById('deliverabilityStats').style.display = '';
+}
+
+function showDomainPending(dnsRecords, domain) {
+    document.getElementById('domainVerifiedDisplay').style.display = 'none';
+    document.getElementById('domainPendingDisplay').style.display = '';
+    document.getElementById('domainUnverifiedEntry').style.display = 'none';
+    renderDnsRecords(dnsRecords, domain);
+    const badge = document.getElementById('domainStatusBadge');
+    badge.style.display = 'inline-block';
+    badge.textContent = 'Pending';
+    badge.style.background = '#f59e0b22';
+    badge.style.color = '#f59e0b';
+}
+
+function showDomainUnverified() {
+    document.getElementById('domainVerifiedDisplay').style.display = 'none';
+    document.getElementById('domainPendingDisplay').style.display = 'none';
+    document.getElementById('domainUnverifiedEntry').style.display = 'flex';
+    const badge = document.getElementById('domainStatusBadge');
+    badge.style.display = 'none';
+    document.getElementById('deliverabilityStats').style.display = 'none';
+}
+
+function renderDnsRecords(records, domain) {
+    const container = document.getElementById('dnsRecordsList');
+    if (!container || !records?.length) return;
+    container.innerHTML = records.map((r, i) => `
+        <div style="margin-bottom:${i < records.length-1 ? '14' : '0'}px;padding-bottom:${i < records.length-1 ? '14' : '0'}px;${i < records.length-1 ? 'border-bottom:1px solid rgba(255,255,255,0.06)' : ''};">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+                ${r.verified !== undefined ? `<span style="font-size:11px;">${r.verified ? '✅' : '❌'}</span>` : ''}
+                <span style="background:#6366f133;color:#818cf8;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:700;">${r.type}</span>
+                <span style="color:var(--text-2);font-size:11px;">${r.description || ''}</span>
+            </div>
+            <div style="margin-bottom:4px;">
+                <span style="color:var(--text-3);font-size:10px;">Host/Name:</span>
+                <code style="background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:4px;font-size:11px;color:#a5f3fc;">${r.host === '@' ? '@  (or leave blank)' : r.host + '.' + domain}</code>
+                <button onclick="copyToClipboard('${r.host === '@' ? '@' : r.host + '.' + domain}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:10px;padding:0 4px;">📋</button>
+            </div>
+            <div>
+                <span style="color:var(--text-3);font-size:10px;">Value:</span>
+                <code style="background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:4px;font-size:11px;color:#bbf7d0;word-break:break-all;">${r.value}</code>
+                <button onclick="copyToClipboard('${r.value.replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:10px;padding:0 4px;">📋</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => toast('Copied!', 'success')).catch(() => {
+        // Fallback for older browsers
+        const el = document.createElement('textarea');
+        el.value = text; document.body.appendChild(el); el.select();
+        document.execCommand('copy'); document.body.removeChild(el);
+        toast('Copied!', 'success');
+    });
+}
+
+// Update loadSettings to handle domain state
+async function _loadDomainState(s) {
+    const status = s.domain_status || 'unverified';
+    const domain = s.verified_domain;
+
+    // Populate rate limit
+    const rlInput = document.getElementById('settingsRateLimit');
+    if (rlInput) rlInput.value = s.rate_limit_day || 500;
+
+    // Populate deliverability stats
+    if (s.emails_sent_today !== undefined) {
+        const el = id => document.getElementById(id);
+        if (el('statEmailsToday')) el('statEmailsToday').textContent = s.emails_sent_today ?? '0';
+        if (el('statBounces'))     el('statBounces').textContent     = s.bounce_count ?? '0';
+        if (el('statComplaints'))  el('statComplaints').textContent  = s.complaint_count ?? '0';
+        const suspended = el('suspendedBanner');
+        if (suspended) suspended.style.display = s.suspended ? '' : 'none';
+    }
+
+    if (status === 'verified' && domain) {
+        showDomainVerified(domain);
+    } else if (status === 'pending' && domain) {
+        // Load DNS records from status endpoint
+        try {
+            const r = await apiFetch('/client/domain/status');
+            const d = await r.json();
+            showDomainPending(d.dnsRecords || [], domain);
+        } catch { showDomainPending([], domain); }
+    } else {
+        showDomainUnverified();
+        if (domain) document.getElementById('settingsDomain').value = domain;
+    }
+}
+
+
+// ============================================================
+// COMPANY LOGO UPLOAD
+// ============================================================
+function handleLogoFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (file) uploadLogoFile(file);
+}
+
+function handleLogoFileDrop(e) {
+    e.preventDefault();
+    document.getElementById('logoUploadArea').style.borderColor = 'var(--border)';
+    const file = e.dataTransfer?.files?.[0];
+    if (file) uploadLogoFile(file);
+}
+
+async function uploadLogoFile(file) {
+    if (file.size > 2 * 1024 * 1024) { toast('Logo must be under 2MB', 'error'); return; }
+    const status = document.getElementById('logoUploadStatus');
+    if (status) { status.style.display = 'block'; status.textContent = 'Uploading…'; status.style.color = 'var(--text-3)'; }
+
+    const formData = new FormData();
+    formData.append('logo', file);
+    try {
+        const res = await fetch('/api/client/company-logo', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + S.token },
+            body: formData,
+        });
+        const data = await res.json();
+        if (data.success && data.logoUrl) {
+            MK.settings = MK.settings || {};
+            MK.settings.company_logo_url = data.logoUrl;
+            showLogoPreview(data.logoUrl);
+            if (status) { status.textContent = 'Logo saved ✓'; status.style.color = 'var(--green)'; }
+            toast('Logo uploaded successfully', 'success');
+        } else {
+            if (status) { status.textContent = data.message || 'Upload failed'; status.style.color = 'var(--red)'; }
+            toast(data.message || 'Logo upload failed', 'error');
+        }
+    } catch(e) {
+        if (status) { status.textContent = 'Error: ' + e.message; status.style.color = 'var(--red)'; }
+        toast('Error uploading logo', 'error');
+    }
+}
+
+function showLogoPreview(url) {
+    const prev   = document.getElementById('logoPreview');
+    const img    = document.getElementById('logoPreviewImg');
+    const ph     = document.getElementById('logoUploadPlaceholder');
+    const rmBtn  = document.getElementById('logoRemoveBtn');
+    if (img)   img.src = url;
+    if (prev)  prev.style.display = 'block';
+    if (ph)    ph.style.display   = 'none';
+    if (rmBtn) rmBtn.style.display = 'inline-flex';
+}
+
+async function removeLogo() {
+    if (!confirm('Remove company logo?')) return;
+    try {
+        const res = await apiFetch('/client/company-logo', 'DELETE');
+        const d   = await res.json();
+        if (d.success) {
+            MK.settings = MK.settings || {};
+            delete MK.settings.company_logo_url;
+            const prev  = document.getElementById('logoPreview');
+            const ph    = document.getElementById('logoUploadPlaceholder');
+            const rmBtn = document.getElementById('logoRemoveBtn');
+            if (prev)  prev.style.display  = 'none';
+            if (ph)    ph.style.display    = '';
+            if (rmBtn) rmBtn.style.display = 'none';
+            toast('Logo removed', 'success');
+        }
+    } catch { toast('Error removing logo', 'error'); }
+}
+
 
 
 
@@ -7452,13 +8281,15 @@ function setBackground(key) {
         document.body.classList.add('theme-' + cfg.theme, 'has-video-bg');
     }
 
-    const vbl = document.getElementById('videoBgLayer'); // kept for logout cleanup reference
+    const vbl = document.getElementById('videoBgLayer');
     document.querySelectorAll('#videoBgLayer video').forEach(v => {
         v.classList.remove('active');
         v.pause();
     });
 
     if (cfg.video) {
+        // Ensure the layer is visible before playing
+        if (vbl) vbl.style.display = 'block';
         const vid = document.getElementById(cfg.video);
         if (vid) {
             vid.classList.add('active');
@@ -7469,6 +8300,9 @@ function setBackground(key) {
                 setTimeout(() => { vid.play().catch(() => {}); }, 500);
             });
         }
+    } else {
+        // Default theme — hide the layer
+        if (vbl) vbl.style.display = 'none';
     }
 
     document.querySelectorAll('.bg-option').forEach(el => {

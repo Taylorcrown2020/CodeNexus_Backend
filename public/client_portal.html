@@ -1591,6 +1591,10 @@ tr:hover .row-actions { opacity: 1; }
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         SMS Templates
                     </button>
+                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('smschains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;color:#10b981;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        SMS Chains
+                    </button>
                 </div>
 
                 <!-- Queue sub-tab content -->
@@ -1673,6 +1677,21 @@ tr:hover .row-actions { opacity: 1; }
                     </div>
                 </div>
             </div>
+
+                <!-- SMS Chains sub-tab content -->
+                <div id="fuSmsChainSection" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <div style="font-size:13px;color:var(--text-2);">Build multi-step SMS sequences. Each step sends an SMS template after a delay. Enroll leads to auto-send the chain.</div>
+                        <button class="btn btn-default" onclick="openSmsChainBuilder()" style="flex-shrink:0;margin-left:16px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            New SMS Chain
+                        </button>
+                    </div>
+                    <div id="fuSmsChainContent">
+                        <div class="empty-state"><div class="spinner"></div></div>
+                    </div>
+                </div>
+
         </div>
 
         <!-- ==============================
@@ -2777,8 +2796,13 @@ function navigateTo(page) { navigate(page); }
 
 // previewTemplate: shows a preview of the current template being built
 function previewTemplate() {
-    const subject = document.getElementById('templateSubject')?.value || '(no subject)';
-    const body    = document.getElementById('templateBody')?.value || '';
+    // Builder inputs use ids: tb_subject, tb_body, tb_eyebrow, tb_headline, tb_color
+    const subject     = document.getElementById('tb_subject')?.value  || '(no subject)';
+    const eyebrow     = document.getElementById('tb_eyebrow')?.value  || '';
+    const headline    = document.getElementById('tb_headline')?.value || '';
+    const body        = document.getElementById('tb_body')?.value     || '';
+    const accentColor = document.getElementById('tb_color')?.value    || '#FF6B35';
+
     let modal = document.getElementById('templatePreviewModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -2787,17 +2811,29 @@ function previewTemplate() {
         modal.onclick = e => { if (e.target === modal) closeModal('templatePreviewModal'); };
         document.body.appendChild(modal);
     }
+
     const bodyHtml = body
-        ? body.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
-        : '<em style="color:#888;">No body content</em>';
-    modal.innerHTML = '<div class="modal" style="max-width:640px;width:calc(100% - 32px);">'
+        ? body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+        : '<em style="color:#999;">No body content yet</em>';
+
+    modal.innerHTML =
+        '<div class="modal" style="max-width:680px;width:calc(100% - 32px);max-height:90vh;overflow-y:auto;">'
         + '<div class="modal-header"><span class="modal-title">Email Preview</span>'
         + '<button class="modal-close" onclick="closeModal(\'templatePreviewModal\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
         + '<div class="modal-body" style="padding:0;">'
         + '<div style="background:var(--bg-3);border-bottom:1px solid var(--border);padding:14px 20px;">'
         + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:4px;">Subject</div>'
         + '<div style="font-size:15px;font-weight:600;color:var(--text-0);">' + escHtml(subject) + '</div></div>'
-        + '<div style="padding:20px 24px;min-height:160px;font-size:14px;line-height:1.6;color:var(--text-1);background:var(--bg-2);">' + bodyHtml + '</div></div>'
+        + '<div style="background:#f4f4f5;padding:20px 16px;">'
+        + '<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;font-family:sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.08);">'
+        + '<div style="background:' + accentColor + ';padding:24px 28px;">'
+        + (eyebrow ? '<div style="font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:8px;">' + escHtml(eyebrow) + '</div>' : '')
+        + (headline ? '<div style="font-size:22px;font-weight:800;color:#fff;line-height:1.2;">' + escHtml(headline) + '</div>' : '')
+        + '</div>'
+        + '<div style="padding:24px 28px;font-size:14px;line-height:1.7;color:#333;">' + bodyHtml + '</div>'
+        + '<div style="background:#f9f9f9;border-top:1px solid #eee;padding:14px 28px;font-size:11px;color:#999;text-align:center;">'
+        + 'Unsubscribe &nbsp;&middot;&nbsp; Company Name &nbsp;&middot;&nbsp; Address<br><em style="font-size:10px;">CTA buttons appear when email is sent</em></div>'
+        + '</div></div></div>'
         + '<div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal(\'templatePreviewModal\')">Close</button></div></div>';
     openModal('templatePreviewModal');
 }
@@ -4535,6 +4571,17 @@ let _msgLeadRef = null;
 
 async function openLeadMessageLog(lead, focusCompose) {
     _msgLeadRef = lead;
+
+    // ── Always fetch fresh settings so smsReady is accurate ──────
+    // MK.settings may be null if the user hasn't visited the Marketing tab yet.
+    if (!MK.settings) {
+        try {
+            const sr = await apiFetch('/client/email-settings');
+            const sd = await sr.json();
+            MK.settings = sd.settings || {};
+        } catch { MK.settings = {}; }
+    }
+
     const isHot      = lead.lead_temperature === 'hot';
     const avatarColor = isHot ? '#ef4444' : '#6366f1';
     const avatarBg    = isHot ? '#ef444422' : '#6366f122';
@@ -4839,13 +4886,29 @@ async function msgEmailSend(leadId, email, name) {
     const msg = ta.value.trim();
     if (!msg) { toast('Message cannot be empty', 'error'); return; }
 
-    // Use the existing follow-up email endpoint with the message as body
     try {
         ta.disabled = true;
-        const res  = await apiFetch(`/client/leads/${leadId}/followup`, 'POST', {
-            subject: `Follow-up from your team`,
+
+        // Optimistically add to thread
+        const scroll = document.getElementById('msgThreadScroll');
+        const tmpId  = 'email-tmp-' + Date.now();
+        if (scroll) {
+            const tmpDiv = document.createElement('div');
+            tmpDiv.id = tmpId;
+            tmpDiv.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;align-self:flex-end;max-width:82%;';
+            tmpDiv.innerHTML = '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;opacity:0.7;margin-bottom:3px;display:block;text-align:right;">✉ Email · Sending…</span>'
+                + '<div style="background:#6366f1;color:#fff;border-radius:18px 18px 4px 18px;padding:10px 14px;word-break:break-word;font-size:13px;line-height:1.45;">' + escHtml(msg) + '</div>'
+                + '<div style="font-size:10px;color:var(--text-3);margin-top:3px;">just now</div>';
+            scroll.appendChild(tmpDiv);
+            scroll.scrollTop = scroll.scrollHeight;
+        }
+
+        // Use the client quick-email endpoint that routes through portal's Brevo key
+        // and logs correctly to message_log for thread display
+        const res  = await apiFetch(`/client/leads/${leadId}/send-email`, 'POST', {
+            subject: 'Message from your team',
             body: msg,
-            to: email,
+            toEmail: email,
             toName: name
         });
         const data = await res.json();
@@ -4857,6 +4920,14 @@ async function msgEmailSend(leadId, email, name) {
             await _refreshMsgThread(leadId);
             if (S.currentPage === 'followups') loadFollowups();
         } else {
+            // Mark optimistic as failed
+            const tmp = document.getElementById(tmpId);
+            if (tmp) {
+                const sp = tmp.querySelector('span'); if(sp) { sp.textContent = '✉ Email · Failed to send'; sp.style.color = '#ef4444'; }
+                tmp.querySelector('div').style.background = '#1e0a3c';
+                tmp.querySelector('div').style.border = '1px solid #6366f144';
+                tmp.querySelector('div').style.color = 'var(--text-2)';
+            }
             toast(data.message || 'Failed to send email', 'error');
         }
     } catch(e) {
@@ -4902,17 +4973,19 @@ function setFUMainTab(tab, el) {
     });
     if (el) {
         el.classList.add('active-fu-main-tab');
-        el.style.borderBottom = tab === 'smstemplates' ? '2px solid #10b981' : '2px solid var(--text-0)';
+        el.style.borderBottom = (tab === 'smstemplates' || tab === 'smschains') ? '2px solid #10b981' : '2px solid var(--text-0)';
     }
 
     document.getElementById('fuQueueSection').style.display         = tab === 'queue'        ? 'block' : 'none';
     document.getElementById('fuTemplatesSection').style.display      = tab === 'templates'    ? 'block' : 'none';
     document.getElementById('fuChainsSection').style.display         = tab === 'chains'       ? 'block' : 'none';
     document.getElementById('fuSmsTemplatesSection').style.display   = tab === 'smstemplates' ? 'block' : 'none';
+    document.getElementById('fuSmsChainSection').style.display       = tab === 'smschains'    ? 'block' : 'none';
 
     if (tab === 'templates')    loadFUTemplates();
     if (tab === 'chains')       loadFUChains();
     if (tab === 'smstemplates') loadSmsTemplates();
+    if (tab === 'smschains')    loadSmsChains();
     if (tab === 'queue')        loadFollowups();
 }
 
@@ -5182,6 +5255,251 @@ async function deleteSmsTemplate(id) {
         await loadSmsTemplates();
     } catch { toast('Error', 'error'); }
 }
+// ============================================================
+// SMS CHAINS
+// ============================================================
+const SMS_CHAIN = { chains: [] };
+
+async function loadSmsChains() {
+    const el = document.getElementById('fuSmsChainContent');
+    if (!el) return;
+    el.innerHTML = '<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>';
+    try {
+        const r = await apiFetch('/client/sms-chains');
+        const d = await r.json();
+        SMS_CHAIN.chains = d.chains || [];
+        renderSmsChains();
+    } catch(e) {
+        el.innerHTML = '<div class="empty-state"><p>Could not load SMS chains</p></div>';
+    }
+}
+
+function renderSmsChains() {
+    const el = document.getElementById('fuSmsChainContent');
+    if (!el) return;
+    if (!SMS_CHAIN.chains.length) {
+        el.innerHTML = `<div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;opacity:0.3;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <h3>No SMS chains yet</h3>
+            <p>Build a chain to automatically send a sequence of SMS messages to leads</p>
+        </div>`;
+        return;
+    }
+    el.innerHTML = SMS_CHAIN.chains.map(c => `
+        <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:15px;font-weight:700;">${escHtml(c.name)}</span>
+                        <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:20px;background:#10b98122;color:#10b981;">SMS</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-3);margin-top:3px;">${c.steps?.length||0} steps · ${c.loop?'Loops indefinitely':'Runs once'}</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-ghost btn-xs" onclick="enrollInSmsChain(${c.id},'${escHtml(c.name)}')">Enroll Leads</button>
+                    <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteSmsChain(${c.id})">Delete</button>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;">
+                ${(c.steps||[]).map((s,i) => `
+                    <div style="display:flex;align-items:center;">
+                        <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 14px;font-size:12px;">
+                            <div style="font-weight:700;color:var(--text-0);">Step ${i+1}</div>
+                            <div style="color:#10b981;">📱 ${escHtml(s.template_name||'?')}</div>
+                            ${i > 0 ? `<div style="font-size:10px;color:var(--text-3);">After ${s.delay_days}d</div>` : ''}
+                        </div>
+                        ${i < (c.steps.length-1) ? '<div style="padding:0 6px;color:var(--text-3);">→</div>' : c.loop ? '<div style="padding:0 6px;color:#10b981;font-size:11px;font-weight:700;">→ (loop)</div>' : ''}
+                    </div>`).join('')}
+            </div>
+        </div>`).join('');
+}
+
+function openSmsChainBuilder() {
+    // Load SMS templates first so we can pick from them
+    const templates = SMS_TMPL.templates;
+
+    let modal = document.getElementById('smsChainBuilderModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'smsChainBuilderModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('smsChainBuilderModal'); };
+        document.body.appendChild(modal);
+    }
+
+    const tplOptions = templates.length
+        ? templates.map(t => '<option value="' + t.id + '">' + escHtml(t.name) + '</option>').join('')
+        : '<option value="" disabled>No SMS templates yet</option>';
+
+    const noTplWarning = !templates.length
+        ? '<div style="font-size:12px;color:#f59e0b;margin-top:8px;">\u26a0 No SMS templates found. ' +
+          '<a href="#" onclick="closeModal(\'smsChainBuilderModal\');setFUMainTab(\'smstemplates\',null);" style="color:#10b981;">Create one first \u2192</a></div>'
+        : '';
+
+    modal.innerHTML =
+        '<div class="modal" style="max-width:600px;width:calc(100% - 32px);max-height:90vh;overflow-y:auto;">'
+        + '<div class="modal-header"><span class="modal-title">New SMS Chain</span>'
+        + '<button class="modal-close" onclick="closeModal(\'smsChainBuilderModal\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
+        + '<div class="modal-body">'
+        + '<div class="form-field"><label class="form-label">Chain Name</label>'
+        + '<input class="form-input" id="smsChainName" placeholder="e.g. 7-Day SMS Follow-up"></div>'
+        + '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:20px;">'
+        + '<input type="checkbox" id="smsChainLoop"> Loop chain (restart from step 1 after last step)</label>'
+        + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:10px;">Steps</div>'
+        + '<div id="smsChainSteps" style="display:flex;flex-direction:column;gap:10px;"></div>'
+        + '<button class="btn btn-ghost btn-sm" onclick="addSmsChainStep();" style="margin-top:10px;">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Step</button>'
+        + noTplWarning
+        + '</div>'
+        + '<div class="modal-footer">'
+        + '<button class="btn btn-ghost" onclick="closeModal(\'smsChainBuilderModal\')">Cancel</button>'
+        + '<button class="btn btn-default" onclick="saveSmsChain()">Save Chain</button>'
+        + '</div></div>';
+
+    openModal('smsChainBuilderModal');
+    // Store template options globally and add first step
+    _smsChainTplOptions = tplOptions;
+    addSmsChainStep();
+}
+
+
+let _smsChainTplOptions = '';
+
+function addSmsChainStep(tplOptionsHtml) {
+    const container = document.getElementById('smsChainSteps');
+    if (!container) return;
+    const opts = tplOptionsHtml || _smsChainTplOptions;
+    const idx = container.children.length;
+    const div = document.createElement('div');
+    div.style.cssText = 'background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;position:relative;';
+    div.innerHTML = `
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:10px;">Step ${idx+1}</div>
+        <div class="form-row" style="margin-bottom:0;">
+            <div class="form-field" style="margin:0;">
+                <label class="form-label">SMS Template</label>
+                <select class="form-input sms-chain-tpl">${opts}</select>
+            </div>
+            ${idx > 0 ? `<div class="form-field" style="margin:0;">
+                <label class="form-label">Delay (days after previous step)</label>
+                <input type="number" class="form-input sms-chain-delay" min="1" max="365" value="3" placeholder="3">
+            </div>` : '<div class="form-field" style="margin:0;"><label class="form-label" style="opacity:0;">·</label><div style="font-size:12px;color:var(--text-3);padding-top:10px;">Sent immediately on enrollment</div></div>'}
+        </div>
+        <button onclick="this.parentElement.remove();_renumberSmsSteps();" style="position:absolute;top:10px;right:12px;background:none;border:none;cursor:pointer;color:var(--text-3);font-size:18px;line-height:1;" title="Remove step">×</button>
+    `;
+    container.appendChild(div);
+}
+
+function _renumberSmsSteps() {
+    const steps = document.querySelectorAll('#smsChainSteps > div');
+    steps.forEach((s, i) => {
+        const label = s.querySelector('[style*="text-transform:uppercase"]');
+        if (label) label.textContent = `Step ${i+1}`;
+    });
+}
+
+async function saveSmsChain() {
+    const name = document.getElementById('smsChainName')?.value?.trim();
+    const loop = document.getElementById('smsChainLoop')?.checked || false;
+    if (!name) { toast('Chain name required', 'error'); return; }
+
+    const stepEls = document.querySelectorAll('#smsChainSteps > div');
+    const steps = [];
+    stepEls.forEach((el, i) => {
+        const tplSel = el.querySelector('.sms-chain-tpl');
+        const delaySel = el.querySelector('.sms-chain-delay');
+        if (tplSel?.value) {
+            steps.push({
+                template_id: parseInt(tplSel.value),
+                delay_days: i === 0 ? 0 : (parseInt(delaySel?.value) || 3)
+            });
+        }
+    });
+
+    if (!steps.length) { toast('Add at least one step', 'error'); return; }
+
+    try {
+        const res = await apiFetch('/client/sms-chains', 'POST', { name, loop, steps });
+        const d = await res.json();
+        if (d.success) {
+            toast('SMS chain saved', 'success');
+            closeModal('smsChainBuilderModal');
+            await loadSmsChains();
+        } else { toast(d.message || 'Failed to save', 'error'); }
+    } catch { toast('Error saving chain', 'error'); }
+}
+
+async function deleteSmsChain(id) {
+    if (!confirm('Delete this SMS chain? Leads currently enrolled will stop receiving messages.')) return;
+    try {
+        await apiFetch(`/client/sms-chains/${id}`, 'DELETE');
+        toast('Chain deleted', 'success');
+        await loadSmsChains();
+    } catch { toast('Error', 'error'); }
+}
+
+async function enrollInSmsChain(chainId, chainName) {
+    // Reuse the same lead picker as email chains
+    let modal = document.getElementById('assignSmsSeqModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'assignSmsSeqModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('assignSmsSeqModal'); };
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `<div class="modal" style="max-width:520px;width:calc(100% - 32px);max-height:85vh;display:flex;flex-direction:column;">
+        <div class="modal-header">
+            <span class="modal-title">Enroll Leads in "${escHtml(chainName)}"</span>
+            <button class="modal-close" onclick="closeModal('assignSmsSeqModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body" style="overflow-y:auto;flex:1;">
+            <p style="font-size:13px;color:var(--text-2);margin-bottom:14px;">Select leads with phone numbers to enroll. They'll receive each SMS step automatically.</p>
+            <div id="smsChainLeadList" style="display:flex;flex-direction:column;gap:6px;">
+                <div style="text-align:center;padding:20px;"><div class="spinner" style="margin:0 auto;"></div></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('assignSmsSeqModal')">Cancel</button>
+            <button class="btn btn-default" onclick="_submitSmsChainEnroll(${chainId})">Enroll Selected</button>
+        </div>
+    </div>`;
+
+    openModal('assignSmsSeqModal');
+
+    try {
+        const r = await apiFetch('/client/leads');
+        const d = await r.json();
+        const leads = (d.leads || []).filter(l => l.phone && !l.is_customer);
+        const listEl = document.getElementById('smsChainLeadList');
+        if (!leads.length) {
+            listEl.innerHTML = '<p style="color:var(--text-3);font-size:13px;">No eligible leads with phone numbers found.</p>';
+            return;
+        }
+        listEl.innerHTML = leads.map(l => `
+            <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r-md);cursor:pointer;border:1px solid var(--border);background:var(--bg-1);">
+                <input type="checkbox" value="${l.id}" style="accent-color:#10b981;width:15px;height:15px;">
+                <div>
+                    <div style="font-size:13px;font-weight:600;">${escHtml(l.name||'Unnamed')}</div>
+                    <div style="font-size:11px;color:var(--text-3);">${escHtml(l.phone||'')}${l.email ? ' · '+escHtml(l.email) : ''}</div>
+                </div>
+            </label>`).join('');
+    } catch { document.getElementById('smsChainLeadList').innerHTML = '<p style="color:var(--red);">Could not load leads</p>'; }
+}
+
+async function _submitSmsChainEnroll(chainId) {
+    const checked = [...document.querySelectorAll('#smsChainLeadList input[type=checkbox]:checked')].map(c => parseInt(c.value));
+    if (!checked.length) { toast('Select at least one lead', 'error'); return; }
+    try {
+        const res = await apiFetch('/client/sms-chains/enroll', 'POST', { chain_id: chainId, lead_ids: checked });
+        const d = await res.json();
+        if (d.success) {
+            toast(`Enrolled ${d.enrolled} lead${d.enrolled!==1?'s':''} in SMS chain`, 'success');
+            closeModal('assignSmsSeqModal');
+        } else { toast(d.message || 'Failed to enroll', 'error'); }
+    } catch { toast('Error enrolling leads', 'error'); }
+}
+
 
 // SMS Auto-sequence toggle (mutually exclusive with email chains)
 async function loadSmsAutoSequenceState() {

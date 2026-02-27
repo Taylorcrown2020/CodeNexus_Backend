@@ -2258,6 +2258,39 @@ console.log(' Recruitment tables (jobs, applications) initialized');
             `);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_log_lead_id ON message_log(lead_id)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_log_portal ON message_log(client_portal_id)`);
+
+            // SMS Chains
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS client_sms_chains (
+                    id SERIAL PRIMARY KEY,
+                    client_portal_id VARCHAR(255),
+                    name VARCHAR(255) NOT NULL,
+                    loop BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `).catch(()=>{});
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS client_sms_chain_steps (
+                    id SERIAL PRIMARY KEY,
+                    chain_id INTEGER REFERENCES client_sms_chains(id) ON DELETE CASCADE,
+                    template_id INTEGER REFERENCES client_sms_templates(id) ON DELETE CASCADE,
+                    step_order INTEGER NOT NULL DEFAULT 0,
+                    delay_days INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `).catch(()=>{});
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS client_sms_chain_queue (
+                    id SERIAL PRIMARY KEY,
+                    chain_id INTEGER REFERENCES client_sms_chains(id) ON DELETE CASCADE,
+                    lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                    client_portal_id VARCHAR(255),
+                    current_step INTEGER DEFAULT 0,
+                    next_send_at TIMESTAMP,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `).catch(()=>{});
             await client.query(`
                 DO $sms$
                 BEGIN
@@ -8939,6 +8972,8 @@ app.get('/api/client/leads', authenticateClient, async (req, res) => {
                     COUNT(*) FILTER (WHERE crm_assigned_to = $1 AND status = 'lost') as lost
                 FROM leads
                 WHERE client_portal_id = $2
+                  AND client_password IS NULL
+                  AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))
             `, [cuRecord.id, clientPortalId]);
             analytics = statsRes.rows[0];
         }
@@ -20891,6 +20926,85 @@ async function sendSmsViaBrevo(apiKey, senderName, toPhone, message) {
     });
 }
 
+// POST /api/client/leads/:id/send-email
+// Quick-compose email from the message thread modal.
+// Uses the portal's own Brevo key + sender identity.
+// Logs to message_log (not client_email_log) so it appears in the conversation thread.
+app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res) => {
+    try {
+        const leadId   = parseInt(req.params.id);
+        const portalId = await getClientPortalId(req.user.id);
+        const { subject, body, toEmail, toName } = req.body;
+
+        if (!body)    return res.status(400).json({ success: false, message: 'body required' });
+        if (!toEmail) return res.status(400).json({ success: false, message: 'toEmail required' });
+
+        // Get portal settings — need Brevo key and sender identity
+        const settings = portalId ? await getClientEmailSettings(portalId) : null;
+        const brevoKey = settings?.brevo_api_key || process.env.BREVO_API_KEY;
+
+        if (!brevoKey) {
+            return res.status(400).json({ success: false, message: 'Brevo is not configured. Add your Brevo API key in Settings.' });
+        }
+
+        // Determine FROM address (same logic as sendClientEmail)
+        let fromEmail = null;
+        let fromName  = null;
+        const domainVerified = settings?.domain_status === 'verified' && settings?.verified_domain;
+        if (domainVerified && req.user.email) {
+            const senderDomain = req.user.email.toLowerCase().split('@')[1];
+            if (senderDomain === settings.verified_domain.toLowerCase()) {
+                fromEmail = req.user.email.toLowerCase();
+                const cuRow = await pool.query(
+                    `SELECT user_name FROM company_users WHERE LOWER(user_email)=LOWER($1) AND client_portal_id=$2 LIMIT 1`,
+                    [req.user.email, portalId]
+                ).catch(() => ({ rows: [] }));
+                fromName = cuRow.rows[0]?.user_name || req.user.email.split('@')[0];
+            }
+        }
+        if (!fromEmail) {
+            fromEmail = settings?.sender_email || settings?.company_email;
+            fromName  = settings?.sender_name  || settings?.company_name || 'Team';
+        }
+        if (!fromEmail) {
+            return res.status(400).json({ success: false, message: 'No sender email configured. Set Sender Email or verify your domain in Settings.' });
+        }
+
+        // Build simple HTML email
+        const escapedBody = body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+        const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;font-size:14px;color:#222;max-width:600px;margin:0 auto;padding:24px;">
+            <p>${escapedBody}</p>
+            <hr style="border:none;border-top:1px solid #eee;margin:28px 0;">
+            <p style="font-size:11px;color:#999;">${fromName} · ${fromEmail}</p>
+        </body></html>`;
+
+        const emailSubject = subject || `Message from ${fromName}`;
+
+        // Send via Brevo
+        await sendViaBrevo(brevoKey, fromEmail, fromName, toEmail, emailSubject, html);
+
+        // Log to message_log so the thread picks it up
+        await pool.query(`
+            INSERT INTO message_log
+                (lead_id, client_portal_id, direction, channel, subject, content, from_email, to_email, status, sent_at)
+            VALUES ($1,$2,'outbound','email',$3,$4,$5,$6,'sent',NOW())
+        `, [leadId, portalId, emailSubject, body, fromEmail, toEmail]);
+
+        // Count as contact
+        await pool.query(`
+            UPDATE leads SET last_contact_date=CURRENT_DATE,
+                follow_up_count=COALESCE(follow_up_count,0)+1,
+                status=CASE WHEN status='new' THEN 'contacted' ELSE status END,
+                updated_at=CURRENT_TIMESTAMP
+            WHERE id=$1`, [leadId]);
+
+        res.json({ success: true, message: 'Email sent' });
+    } catch(e) {
+        console.error('[SEND EMAIL THREAD]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 // POST /api/client/leads/:id/send-sms  — Send SMS to a lead
 app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) => {
     try {
@@ -23973,6 +24087,126 @@ app.delete('/api/client/sms-templates/:id', authenticateClient, async (req, res)
         await pool.query(`DELETE FROM sms_templates WHERE id=$1 AND client_portal_id=$2`, [req.params.id, portalId]);
         res.json({ success: true });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+
+// ─────────────────────────────────────────────────────────────
+// SMS CHAINS CRUD
+// ─────────────────────────────────────────────────────────────
+
+// GET /api/client/sms-chains
+app.get('/api/client/sms-chains', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, chains: [] });
+
+        const chains = await pool.query(
+            'SELECT * FROM client_sms_chains WHERE client_portal_id=$1 ORDER BY created_at DESC',
+            [portalId]
+        ).catch(() => ({ rows: [] }));
+
+        // Attach steps with template name
+        const steps = await pool.query(`
+            SELECT cs.*, t.name as template_name, t.body as template_body
+            FROM client_sms_chain_steps cs
+            JOIN client_sms_templates t ON cs.template_id = t.id
+            WHERE t.client_portal_id=$1
+            ORDER BY cs.chain_id, cs.step_order
+        `, [portalId]).catch(() => ({ rows: [] }));
+
+        const stepsByChain = {};
+        steps.rows.forEach(s => {
+            (stepsByChain[s.chain_id] = stepsByChain[s.chain_id] || []).push(s);
+        });
+
+        const result = chains.rows.map(c => ({ ...c, steps: stepsByChain[c.id] || [] }));
+        res.json({ success: true, chains: result });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/sms-chains
+app.post('/api/client/sms-chains', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(403).json({ success: false });
+        const { name, loop, steps } = req.body;
+        if (!name || !steps?.length) return res.status(400).json({ success: false, message: 'name and steps required' });
+
+        const chain = await pool.query(
+            'INSERT INTO client_sms_chains (client_portal_id,name,loop) VALUES ($1,$2,$3) RETURNING *',
+            [portalId, name, loop !== false]
+        );
+        const chainId = chain.rows[0].id;
+        for (let i = 0; i < steps.length; i++) {
+            await pool.query(
+                'INSERT INTO client_sms_chain_steps (chain_id,template_id,step_order,delay_days) VALUES ($1,$2,$3,$4)',
+                [chainId, steps[i].template_id, i, steps[i].delay_days || 0]
+            );
+        }
+        res.json({ success: true, chain: chain.rows[0] });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// DELETE /api/client/sms-chains/:id
+app.delete('/api/client/sms-chains/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        await pool.query(
+            'DELETE FROM client_sms_chains WHERE id=$1 AND client_portal_id=$2',
+            [req.params.id, portalId]
+        );
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/sms-chains/enroll
+app.post('/api/client/sms-chains/enroll', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const { chain_id, lead_ids } = req.body;
+        if (!chain_id || !lead_ids?.length) return res.status(400).json({ success: false, message: 'chain_id and lead_ids required' });
+
+        const chain = await pool.query(
+            'SELECT * FROM client_sms_chains WHERE id=$1 AND client_portal_id=$2',
+            [chain_id, portalId]
+        );
+        if (!chain.rows[0]) return res.status(404).json({ success: false, message: 'Chain not found' });
+
+        // Get first step delay to compute first send time
+        const firstStep = await pool.query(
+            'SELECT delay_days FROM client_sms_chain_steps WHERE chain_id=$1 ORDER BY step_order LIMIT 1',
+            [chain_id]
+        );
+        const firstDelay = firstStep.rows[0]?.delay_days || 0;
+        const nextSend = firstDelay > 0
+            ? new Date(Date.now() + firstDelay * 86400000)
+            : new Date(); // send now if delay is 0
+
+        let enrolled = 0;
+        for (const leadId of lead_ids) {
+            // Skip if already enrolled in this chain
+            const existing = await pool.query(
+                'SELECT id FROM client_sms_chain_queue WHERE chain_id=$1 AND lead_id=$2 AND is_active=TRUE',
+                [chain_id, leadId]
+            );
+            if (existing.rows.length) continue;
+
+            await pool.query(
+                'INSERT INTO client_sms_chain_queue (chain_id,lead_id,client_portal_id,current_step,next_send_at,is_active) VALUES ($1,$2,$3,0,$4,TRUE)',
+                [chain_id, leadId, portalId, nextSend]
+            );
+            enrolled++;
+        }
+
+        res.json({ success: true, enrolled });
+    } catch(e) {
+        console.error('[SMS CHAIN ENROLL]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
 });
 
 // GET /api/client/sms-auto-sequence

@@ -1685,23 +1685,23 @@ body.crm-active .hero,
 
     <div class="services-grid crm-grid-bottom">
         <!-- CRM Workspace — Company / Team Plan -->
-        <div class="service-card workspace-card" style="border:2px solid #FF6B35;position:relative;overflow:visible;">
-            <div class="service-badge" style="background:#FF6B35;color:#fff;">TEAM PLAN</div>
+        <div class="service-card workspace-card" style="border:2px solid #FF6B35;background:#0d0d0d;border-radius:20px;">
+            <div class="service-badge" style="background:rgba(255,107,53,0.15);color:#FF6B35;">TEAM PLAN</div>
             <div class="service-price" style="color:#FF6B35;">$84.99 / User</div>
-            <div class="service-period">per month, billed monthly</div>
-            <h3 class="service-name">CRM Workspace</h3>
-            <p class="service-description">
+            <div class="service-period" style="color:rgba(255,255,255,0.4);">per month, billed monthly</div>
+            <h3 class="service-name" style="color:#fff;">CRM Workspace</h3>
+            <p class="service-description" style="color:rgba(255,255,255,0.6);border-bottom-color:rgba(255,255,255,0.1);">
                 One shared account for your whole team. Add or remove users anytime. All billing in one place.
             </p>
             <ul class="service-features">
-                <li>Unlimited contacts &amp; storage</li>
-                <li>Centralized team billing</li>
-                <li>Add / remove users anytime</li>
-                <li>Company admin dashboard</li>
-                <li>Role-based access control</li>
-                <li>Shared leads &amp; pipelines</li>
-                <li>24/7 dedicated support</li>
-                <li>SLA guarantee</li>
+                <li style="color:rgba(255,255,255,0.75);">Unlimited contacts &amp; storage</li>
+                <li style="color:rgba(255,255,255,0.75);">Centralized team billing</li>
+                <li style="color:rgba(255,255,255,0.75);">Add / remove users anytime</li>
+                <li style="color:rgba(255,255,255,0.75);">Company admin dashboard</li>
+                <li style="color:rgba(255,255,255,0.75);">Role-based access control</li>
+                <li style="color:rgba(255,255,255,0.75);">Shared leads &amp; pipelines</li>
+                <li style="color:rgba(255,255,255,0.75);">24/7 dedicated support</li>
+                <li style="color:rgba(255,255,255,0.75);">SLA guarantee</li>
             </ul>
             <div class="crm-subscribe-group">
                 <button class="service-btn crm-subscribe-btn" style="background:#FF6B35;" onclick="openCRMSubscribeModal('crm-workspace', 'CRM Workspace', 84.99, true)">
@@ -1985,151 +1985,156 @@ body.crm-active .hero,
     margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 32px;
+    gap: 24px;
+    align-items: start;
 }
 
 .service-card {
     background: var(--white);
-    padding: 56px 48px;
-    border: 2px solid var(--grey-300);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 40px 36px 36px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 20px;
+    transition: all 0.25s ease;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
 }
 
-.service-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--gold), #e6b86b);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-}
-
-.service-card:hover::before {
-    transform: translateX(0);
-}
+.service-card::before { content: none; }
 
 .service-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+    transform: translateY(-6px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    border-color: #d0d0d0;
+}
+
+.service-card.featured {
+    border: 2px solid var(--gold);
+    box-shadow: 0 4px 24px rgba(244,200,126,0.2), 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.service-card.featured:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(244,200,126,0.3);
     border-color: var(--gold);
 }
 
 .service-badge {
-    display: inline-block;
-    background: var(--grey-100);
-    color: var(--black);
-    padding: 6px 16px;
-    font-size: 11px;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    background: #f2f2f2;
+    color: #666;
+    padding: 5px 12px;
+    font-size: 10px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     margin-bottom: 24px;
-    border-radius: 4px;
+    border-radius: 100px;
+    width: fit-content;
 }
 
 .service-card.featured .service-badge {
-    background: var(--gold);
-    color: var(--black);
+    background: #fef3d8;
+    color: #996600;
 }
 
 .service-price {
-    font-size: 56px;
-    font-weight: 300;
-    letter-spacing: -1.5px;
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
     color: var(--black);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     line-height: 1;
 }
 
 .service-period {
-    font-size: 15px;
-    font-weight: 400;
-    color: var(--grey-600);
-    margin-bottom: 32px;
-    letter-spacing: 0;
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 16px;
 }
 
 .service-name {
-    font-size: 24px;
-    font-weight: 600;
-    letter-spacing: -0.5px;
+    font-size: 20px;
+    font-weight: 700;
     color: var(--black);
-    margin-bottom: 16px;
-    line-height: 1.3;
+    margin-bottom: 8px;
+    line-height: 1.2;
 }
 
 .service-description {
-    font-size: 15px;
-    font-weight: 400;
-    line-height: 1.7;
-    color: var(--grey-700);
-    margin-bottom: 40px;
-    letter-spacing: 0;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #777;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .service-features {
     list-style: none;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
+    flex: 1;
 }
 
 .service-features li {
-    font-size: 15px;
-    padding: 16px 0;
-    color: var(--grey-700);
-    border-bottom: 1px solid var(--grey-200);
+    font-size: 14px;
+    padding: 8px 0;
+    color: #555;
+    border-bottom: none;
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 10px;
 }
 
-.service-features li:last-child {
-    border-bottom: none;
-}
+.service-features li:last-child { border-bottom: none; }
 
 .service-features li::before {
     content: '✓';
     color: var(--gold);
-    font-weight: 600;
-    font-size: 18px;
+    font-weight: 800;
+    font-size: 13px;
     flex-shrink: 0;
+    margin-top: 1px;
 }
 
 .service-btn {
     background: var(--black);
     color: var(--white);
-    padding: 18px 32px;
+    padding: 15px 24px;
     font-size: 13px;
     font-weight: 600;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    border: none;
+    border: 2px solid var(--black);
     width: 100%;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-decoration: none;
     display: block;
-    border-radius: 4px;
+    border-radius: 10px;
+    margin-top: auto;
 }
 
 .service-btn:hover {
-    background: var(--dark-grey);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    background: transparent;
+    color: var(--black);
+    transform: none;
+    box-shadow: none;
 }
 
 .service-card.featured .service-btn {
     background: var(--gold);
     color: var(--black);
+    border-color: var(--gold);
 }
 
 .service-card.featured .service-btn:hover {
     background: #e6b86b;
+    border-color: #e6b86b;
 }
 
 /* ── CRM 4-column grid ─────────────────────────────────────── */
@@ -2167,10 +2172,11 @@ body.crm-active .hero,
 .crm-custom-card .service-period {
     color: var(--white);
 }
-.crm-custom-card .service-description { color: rgba(255,255,255,0.65); }
+.crm-custom-card .service-description { color: rgba(255,255,255,0.65); border-bottom-color: rgba(255,255,255,0.1); }
 .crm-custom-card .service-features li { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.1); }
 .crm-custom-card .service-features li::before { color: var(--gold); }
-.crm-custom-card:hover { border-color: var(--gold); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+.crm-custom-card:hover { background: #1a1a1a !important; box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important; border-color: #333 !important; transform: translateY(-6px) !important; }
+.workspace-card:hover { background: #1a1a1a !important; box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important; transform: translateY(-6px) !important; }
 
 .custom-badge { background: var(--gold) !important; color: var(--black) !important; }
 .custom-price { font-size: 42px !important; display: flex; align-items: center; }
@@ -3140,151 +3146,155 @@ body.crm-active .hero,
     margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 32px;
+    gap: 24px;
+    align-items: start;
 }
 
 .webdev-pricing-card {
     background: var(--white);
-    padding: 56px 48px;
-    border: 2px solid var(--grey-300);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 40px 36px 36px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 20px;
+    transition: all 0.25s ease;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
 }
 
-.webdev-pricing-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--gold), #e6b86b);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-}
-
-.webdev-pricing-card:hover::before {
-    transform: translateX(0);
-}
+.webdev-pricing-card::before { content: none; }
 
 .webdev-pricing-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
-    border-color: var(--gold);
+    transform: translateY(-6px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    border-color: #d0d0d0;
+}
+
+.webdev-pricing-card.featured {
+    border: 2px solid var(--gold);
+    box-shadow: 0 4px 24px rgba(244,200,126,0.2), 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.webdev-pricing-card.featured:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(244,200,126,0.3);
 }
 
 .webdev-pricing-badge {
-    display: inline-block;
-    background: var(--grey-100);
-    color: var(--black);
-    padding: 6px 16px;
-    font-size: 11px;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    background: #f2f2f2;
+    color: #666;
+    padding: 5px 12px;
+    font-size: 10px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     margin-bottom: 24px;
-    border-radius: 4px;
+    border-radius: 100px;
+    width: fit-content;
 }
 
 .webdev-pricing-card.featured .webdev-pricing-badge {
-    background: var(--gold);
-    color: var(--black);
+    background: #fef3d8;
+    color: #996600;
 }
 
 .webdev-pricing-price {
-    font-size: 56px;
-    font-weight: 300;
-    letter-spacing: -1.5px;
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
     color: var(--black);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     line-height: 1;
 }
 
 .webdev-pricing-period {
-    font-size: 15px;
-    font-weight: 400;
-    color: var(--grey-600);
-    margin-bottom: 32px;
-    letter-spacing: 0;
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 16px;
 }
 
 .webdev-pricing-name {
-    font-size: 24px;
-    font-weight: 600;
-    letter-spacing: -0.5px;
+    font-size: 20px;
+    font-weight: 700;
     color: var(--black);
-    margin-bottom: 16px;
-    line-height: 1.3;
+    margin-bottom: 8px;
+    line-height: 1.2;
 }
 
 .webdev-pricing-desc {
-    font-size: 15px;
-    font-weight: 400;
-    line-height: 1.7;
-    color: var(--grey-700);
-    margin-bottom: 40px;
-    letter-spacing: 0;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #777;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .webdev-pricing-features {
     list-style: none;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
+    flex: 1;
 }
 
 .webdev-pricing-features li {
-    font-size: 15px;
-    padding: 16px 0;
-    color: var(--grey-700);
-    border-bottom: 1px solid var(--grey-200);
+    font-size: 14px;
+    padding: 8px 0;
+    color: #555;
+    border-bottom: none;
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 10px;
 }
 
-.webdev-pricing-features li:last-child {
-    border-bottom: none;
-}
+.webdev-pricing-features li:last-child { border-bottom: none; }
 
 .webdev-pricing-features li::before {
     content: '✓';
     color: var(--gold);
-    font-weight: 600;
-    font-size: 18px;
+    font-weight: 800;
+    font-size: 13px;
     flex-shrink: 0;
+    margin-top: 1px;
 }
 
 .webdev-pricing-btn {
     background: var(--black);
     color: var(--white);
-    padding: 18px 32px;
+    padding: 15px 24px;
     font-size: 13px;
     font-weight: 600;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    border: none;
+    border: 2px solid var(--black);
     width: 100%;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-decoration: none;
     display: block;
-    border-radius: 4px;
+    border-radius: 10px;
+    margin-top: auto;
 }
 
 .webdev-pricing-btn:hover {
-    background: var(--dark-grey);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    background: transparent;
+    color: var(--black);
+    transform: none;
+    box-shadow: none;
 }
 
 .webdev-pricing-card.featured .webdev-pricing-btn {
     background: var(--gold);
     color: var(--black);
+    border-color: var(--gold);
 }
 
 .webdev-pricing-card.featured .webdev-pricing-btn:hover {
     background: #e6b86b;
+    border-color: #e6b86b;
 }
 
 /* Web Dev Features Grid */
@@ -4051,148 +4061,155 @@ body.crm-active .hero,
     margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 32px;
+    gap: 24px;
+    align-items: start;
 }
 
 .seo-pricing-card {
     background: var(--white);
-    padding: 56px 48px;
-    border: 2px solid var(--grey-300);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 40px 36px 36px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 20px;
+    transition: all 0.25s ease;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
 }
 
-.seo-pricing-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--gold), #e6b86b);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-}
-
-.seo-pricing-card:hover::before {
-    transform: translateX(0);
-}
+.seo-pricing-card::before { content: none; }
 
 .seo-pricing-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 60px rgba(244, 200, 126, 0.15);
-    border-color: var(--gold);
+    transform: translateY(-6px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    border-color: #d0d0d0;
+}
+
+.seo-pricing-card.featured {
+    border: 2px solid var(--gold);
+    box-shadow: 0 4px 24px rgba(244,200,126,0.2), 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.seo-pricing-card.featured:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(244,200,126,0.3);
 }
 
 .seo-pricing-badge {
-    display: inline-block;
-    background: var(--grey-100);
-    color: var(--black);
-    padding: 6px 16px;
-    font-size: 11px;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    background: #f2f2f2;
+    color: #666;
+    padding: 5px 12px;
+    font-size: 10px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     margin-bottom: 24px;
-    border-radius: 4px;
+    border-radius: 100px;
+    width: fit-content;
 }
 
 .seo-pricing-card.featured .seo-pricing-badge {
-    background: var(--gold);
-    color: var(--black);
+    background: #fef3d8;
+    color: #996600;
 }
 
 .seo-pricing-price {
-    font-size: 56px;
-    font-weight: 300;
-    letter-spacing: -1.5px;
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
     color: var(--black);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     line-height: 1;
 }
 
 .seo-pricing-period {
-    font-size: 15px;
-    font-weight: 400;
-    color: var(--grey-600);
-    margin-bottom: 32px;
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 16px;
 }
 
 .seo-pricing-name {
-    font-size: 24px;
-    font-weight: 600;
-    letter-spacing: -0.5px;
+    font-size: 20px;
+    font-weight: 700;
     color: var(--black);
-    margin-bottom: 16px;
-    line-height: 1.3;
+    margin-bottom: 8px;
+    line-height: 1.2;
 }
 
 .seo-pricing-desc {
-    font-size: 15px;
-    line-height: 1.7;
-    color: var(--grey-700);
-    margin-bottom: 40px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #777;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .seo-pricing-features {
     list-style: none;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
+    flex: 1;
 }
 
 .seo-pricing-features li {
-    font-size: 15px;
-    padding: 16px 0;
-    color: var(--grey-700);
-    border-bottom: 1px solid var(--grey-200);
+    font-size: 14px;
+    padding: 8px 0;
+    color: #555;
+    border-bottom: none;
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 10px;
 }
 
-.seo-pricing-features li:last-child {
-    border-bottom: none;
-}
+.seo-pricing-features li:last-child { border-bottom: none; }
 
 .seo-pricing-features li::before {
     content: '✓';
     color: var(--gold);
-    font-weight: 600;
-    font-size: 18px;
+    font-weight: 800;
+    font-size: 13px;
     flex-shrink: 0;
+    margin-top: 1px;
 }
 
 .seo-pricing-btn {
     background: var(--black);
     color: var(--white);
-    padding: 18px 32px;
+    padding: 15px 24px;
     font-size: 13px;
     font-weight: 600;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    border: none;
+    border: 2px solid var(--black);
     width: 100%;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-decoration: none;
     display: block;
-    border-radius: 4px;
+    border-radius: 10px;
+    margin-top: auto;
 }
 
 .seo-pricing-btn:hover {
-    background: var(--dark-grey);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    background: transparent;
+    color: var(--black);
+    transform: none;
+    box-shadow: none;
 }
 
 .seo-pricing-card.featured .seo-pricing-btn {
     background: var(--gold);
     color: var(--black);
+    border-color: var(--gold);
 }
 
 .seo-pricing-card.featured .seo-pricing-btn:hover {
     background: #e6b86b;
+    border-color: #e6b86b;
 }
 
 /* SEO Stats Section */
@@ -6620,9 +6637,9 @@ async function submitCRMSubscription() {
         banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#059669;color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:15px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
         if (clientId) {
             // Company subscription - show Client Portal ID prominently
-            banner.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> You\'re subscribed! Your Client Portal ID: <strong style="font-size:18px;letter-spacing:2px;margin:0 8px;background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:4px;">' + clientId + '</strong> (Share with your team) &nbsp;<button onclick="this.parentNode.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px;">Dismiss</button>';
+            banner.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Account created! Your Client Portal ID: <strong style="font-size:18px;letter-spacing:2px;margin:0 8px;background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:4px;">' + clientId + '</strong> (Share with your team) — Check your email for login info. <strong>Also check junk/spam!</strong> &nbsp;<button onclick="this.parentNode.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px;">Dismiss</button>';
         } else {
-            banner.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> You\'re subscribed to ' + plan + '! Check your email for your receipt. &nbsp;<button onclick="this.parentNode.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px;">Dismiss</button>';
+            banner.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Account created for ' + plan + '! Please check your email for your login information — <strong style="margin:0 4px;">be sure to also check your junk/spam folder</strong> in case it ended up there. &nbsp;<button onclick="this.parentNode.remove()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px;">Dismiss</button>';
         }
         document.body.prepend(banner);
         // Clean URL

@@ -1604,6 +1604,7 @@ tr:hover .row-actions { opacity: 1; }
                         <button class="btn btn-default fu-tab" onclick="setFUTab('hot',this)">Hot</button>
                         <button class="btn btn-default fu-tab" onclick="setFUTab('cold',this)">Cold</button>
                         <button class="btn btn-default fu-tab" onclick="setFUTab('overdue',this)">Overdue</button>
+                        <button class="btn btn-default fu-tab" onclick="setFUTab('dead',this)" style="color:#ef4444;border-color:rgba(239,68,68,0.3);">Dead</button>
                     </div>
                     <div id="followupsContent">
                         <div class="empty-state"><div class="spinner"></div></div>
@@ -4467,8 +4468,40 @@ async function renderFollowups() {
     if (!FU.data || !el) return;
     const hot  = FU.data.hot  || [];
     const cold = FU.data.cold || [];
+    const dead = FU.data.dead || [];
     const all  = [...hot, ...cold];
     const tab  = FU.tab;
+
+    // Dead leads tab — special render
+    if (tab === 'dead') {
+        if (!dead.length) {
+            el.innerHTML = `<div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/></svg>
+                <h3>No dead leads</h3>
+                <p>Leads that unsubscribe from email or reply STOP to a text will appear here.</p></div>`;
+            return;
+        }
+        el.innerHTML = `
+            <div style="background:#ef444411;border:1px solid #ef444433;border-radius:var(--r-lg);padding:14px 18px;margin-bottom:16px;font-size:13px;color:#ef4444;">
+                <strong>⚠ ${dead.length} Dead Lead${dead.length===1?'':'s'}</strong> — These leads have opted out of emails or texts. Do not contact them.
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr>
+                        <th>Lead</th><th>Email / Phone</th><th>Reason</th><th>Date Opted Out</th>
+                    </tr></thead>
+                    <tbody>
+                        ${dead.map(l => `<tr>
+                            <td style="font-weight:500;color:var(--text-2);">${escHtml(l.name||'—')}</td>
+                            <td style="font-size:12px;color:var(--text-3);">${escHtml(l.email||'—')}${l.phone ? ' · ' + escHtml(l.phone) : ''}</td>
+                            <td><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#ef444422;color:#ef4444;">Unsubscribed</span></td>
+                            <td style="font-size:12px;color:var(--text-3);">${l.updated_at ? new Date(l.updated_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+        return;
+    }
 
     let leads = tab === 'hot'     ? hot
               : tab === 'cold'    ? cold
@@ -4603,14 +4636,16 @@ async function openLeadMessageLog(lead, focusCompose) {
     const leadName = escHtml(lead.name || 'Unnamed');
     const leadEmail = escHtml(lead.email || '');
     const leadPhone = escHtml(lead.phone || '');
-    const initSmsDisplay   = smsReady ? 'block' : 'none';
-    const initEmailDisplay = smsReady ? 'none'  : 'block';
-    const smsTabActiveBg   = smsReady ? 'var(--bg-active)' : 'var(--bg-1)';
-    const smsTabColor      = smsReady ? 'var(--text-0)'    : 'var(--text-3)';
-    const smsTabBorder     = smsReady ? '2px solid #10b981' : '2px solid transparent';
-    const emailTabActiveBg = smsReady ? 'var(--bg-1)'      : 'var(--bg-active)';
-    const emailTabColor    = smsReady ? 'var(--text-3)'    : 'var(--text-0)';
-    const emailTabBorder   = smsReady ? '2px solid transparent' : '2px solid #6366f1';
+    // Default to SMS tab if the lead has a phone number (SMS is the purpose of this modal from the Msg button)
+    const defaultToSms = hasPhone;
+    const initSmsDisplay   = defaultToSms ? 'block' : 'none';
+    const initEmailDisplay = defaultToSms ? 'none'  : 'block';
+    const smsTabActiveBg   = defaultToSms ? 'var(--bg-active)' : 'var(--bg-1)';
+    const smsTabColor      = defaultToSms ? 'var(--text-0)'    : 'var(--text-3)';
+    const smsTabBorder     = defaultToSms ? '2px solid #10b981' : '2px solid transparent';
+    const emailTabActiveBg = defaultToSms ? 'var(--bg-1)'      : 'var(--bg-active)';
+    const emailTabColor    = defaultToSms ? 'var(--text-3)'    : 'var(--text-0)';
+    const emailTabBorder   = defaultToSms ? '2px solid transparent' : '2px solid #6366f1';
 
     const smsTabHtml = hasPhone
         ? '<button id="msgTabSms" onclick="msgSwitchTab(\'sms\',' + lead.id + ')" style="flex:1;padding:9px 0;font-size:12px;font-weight:600;border:none;background:' + smsTabActiveBg + ';color:' + smsTabColor + ';cursor:pointer;border-bottom:' + smsTabBorder + ';display:flex;align-items:center;justify-content:center;gap:5px;">'
@@ -4623,7 +4658,7 @@ async function openLeadMessageLog(lead, focusCompose) {
 
     const noPhoneNote = !hasPhone
         ? '<div style="font-size:11px;color:var(--text-3);padding:0 0 4px 0;">No phone number on file — add one in the lead profile to enable SMS.</div>'
-        : (!smsReady ? '<div style="font-size:11px;color:var(--text-3);padding:0 0 4px 0;">Enable Brevo SMS in <a href="#" onclick="closeModal(\'leadMessageLogModal\');navigateTo(\'settings\')" style="color:#6366f1;">Settings</a> to unlock SMS.</div>' : '');
+        : (!smsReady ? '<div style="font-size:11px;color:#f59e0b;background:#fef3c722;border:1px solid #f59e0b44;border-radius:6px;padding:6px 10px;margin-bottom:8px;">⚠ Brevo SMS is not enabled in Settings. Enable it to send real SMS — messages below will fail to deliver until configured.</div>' : '');
 
     modal.innerHTML =
         '<div class="modal" style="max-width:660px;width:calc(100% - 24px);height:82vh;display:flex;flex-direction:column;overflow:hidden;padding:0;">'
@@ -4705,7 +4740,7 @@ async function openLeadMessageLog(lead, focusCompose) {
     if (focusCompose) {
         setTimeout(function() {
             var t = document.getElementById('msgComposeBox');
-            if (t && initSmsDisplay === 'block') { t.focus(); }
+            if (t && defaultToSms) { t.focus(); }
             else { var e = document.getElementById('msgEmailBox'); if (e) e.focus(); }
         }, 120);
     }

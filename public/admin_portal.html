@@ -5429,29 +5429,65 @@ async function saveCustomerEdit(event, leadId) {
 
 // 7. DELETE LEAD (MISSING)
 async function deleteLead(leadId) {
-if (!confirm('Are you sure you want to delete this lead?')) return;
+if (!confirm('Are you sure you want to permanently delete this record and all associated data?')) return;
 try {
+    // Check if this lead has a client_portal_id (workspace admin) and delete company data first
+    const leadInfo = [...(state.leads||[]), ...(state.customers||[])].find(l => l.id === leadId || l.id === parseInt(leadId));
+    const clientPortalId = leadInfo?.client_portal_id;
+
+    if (clientPortalId) {
+        try {
+            await fetch(`${API_URL}/api/admin/company/${encodeURIComponent(clientPortalId)}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+        } catch(companyErr) {
+            console.warn('[DELETE] Company cleanup error (non-fatal):', companyErr.message);
+        }
+    }
+
     const r = await fetch(`${API_URL}/api/leads/${leadId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${authToken}` }
     });
     
-    if (!r.ok) throw new Error('Failed to delete lead');
-    
-    await loadLeads();
-    await loadClientAccounts();
-    await updateBadges();
+    if (!r.ok) {
+        const errData = await r.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to delete');
+    }
+
+    // Immediately remove from local state so UI updates before async fetches return
+    state.leads     = (state.leads     || []).filter(l => l.id !== leadId && l.id !== parseInt(leadId));
+    state.customers = (state.customers || []).filter(l => l.id !== leadId && l.id !== parseInt(leadId));
+    state.clientAccounts = (state.clientAccounts || []).filter(l => l.id !== leadId && l.id !== parseInt(leadId));
+
     closeDetailModal();
     showToast('Deleted successfully', 'success');
+
+    // Re-render immediately with updated local state (no race condition)
     if (state.currentSection === 'subscriptions') {
         renderSubscriptions(document.getElementById('contentArea'));
     } else if (state.currentSection === 'clientPortal') {
-        renderClientPortal();
+        renderClientAccountsTable();
+        updateClientStats();
+    } else {
+        renderSection(state.currentSection);
+    }
+
+    // Background full refresh
+    await Promise.all([loadLeads(), loadClientAccounts(), updateBadges()]);
+
+    // Re-render again with fresh server data
+    if (state.currentSection === 'subscriptions') {
+        renderSubscriptions(document.getElementById('contentArea'));
+    } else if (state.currentSection === 'clientPortal') {
+        renderClientAccountsTable();
+        updateClientStats();
     } else {
         renderSection(state.currentSection);
     }
 } catch (e) {
-    showToast('Error deleting', 'error');
+    showToast('Error deleting: ' + e.message, 'error');
 }
 }
 
@@ -5862,7 +5898,7 @@ function renderClientAccountsTable() {
             <td>
                 <button class="btn btn-sm btn-secondary" onclick="assignProject(${client.id})">Project</button>
                 <button class="btn btn-sm btn-secondary" onclick="resetClientPassword(${client.id})">Reset PW</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteLead(${client.id})">Delete</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteClientAccount(${client.id}, '${(client.email||'').replace(/'/g, "\\'")}')">Delete</button>
             </td>
         </tr>
     `).join('');
@@ -5879,6 +5915,52 @@ function updateClientStats() {
     if (activeCount) activeCount.textContent = activeClients;
     if (projectsCount) projectsCount.textContent = totalProjects;
     if (badge) badge.textContent = activeClients;
+}
+
+async function deleteClientAccount(clientId, clientEmail) {
+    if (!confirm(`Permanently delete this client account (${clientEmail}) and all associated data? This cannot be undone.`)) return;
+    try {
+        // Find portal ID to delete workspace data
+        const allRecords = [...(state.leads||[]), ...(state.customers||[]), ...(state.clientAccounts||[])];
+        const rec = allRecords.find(l => l.id === clientId || l.id === parseInt(clientId) ||
+            (l.email && l.email.toLowerCase() === (clientEmail||'').toLowerCase()));
+        const portalId = rec?.client_portal_id;
+
+        // Delete workspace first
+        if (portalId) {
+            await fetch(`${API_URL}/api/admin/company/${encodeURIComponent(portalId)}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }).catch(e => console.warn('[DELETE CLIENT] Company delete error:', e.message));
+        }
+
+        // Delete the lead record
+        const r = await fetch(`${API_URL}/api/leads/${clientId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.message || 'Delete failed');
+        }
+
+        // Immediately remove from local state
+        state.clientAccounts = (state.clientAccounts||[]).filter(c => c.id !== clientId && c.id !== parseInt(clientId));
+        state.leads     = (state.leads    ||[]).filter(l => l.id !== clientId && l.id !== parseInt(clientId));
+        state.customers = (state.customers||[]).filter(l => l.id !== clientId && l.id !== parseInt(clientId));
+
+        renderClientAccountsTable();
+        updateClientStats();
+        showToast('Client account deleted', 'success');
+
+        // Background full refresh
+        await Promise.all([loadLeads(), loadClientAccounts(), updateBadges()]);
+        renderClientAccountsTable();
+        updateClientStats();
+    } catch(e) {
+        showToast('Error deleting client: ' + e.message, 'error');
+    }
 }
 
 async function loadClientUploads() {
@@ -7483,6 +7565,31 @@ if (typeof module !== 'undefined' && module.exports) {
 // Full subscriber list with cancel / reactivate / billing-portal actions
 // ═══════════════════════════════════════════════════════════════════
 
+async function deleteWorkspaceAccount(clientPortalId, adminEmail) {
+    if (!confirm(`Permanently delete workspace "${adminEmail}" (ID: ${clientPortalId}) and ALL associated data? This will remove all users, leads, sequences, and billing. This CANNOT be undone.`)) return;
+    try {
+        // Delete company data
+        const r1 = await fetch(`${API_URL}/api/admin/company/${encodeURIComponent(clientPortalId)}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        // Also try to delete the admin's lead record
+        const adminLead = [...(state.leads||[]), ...(state.customers||[])].find(l => l.email && l.email.toLowerCase() === (adminEmail||'').toLowerCase());
+        if (adminLead) {
+            await fetch(`${API_URL}/api/leads/${adminLead.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }).catch(() => {});
+        }
+        showToast('Workspace deleted', 'success');
+        // Full refresh
+        await Promise.all([loadLeads(), loadClientAccounts(), updateBadges()]);
+        renderSubscriptions(document.getElementById('contentArea'));
+    } catch(e) {
+        showToast('Error deleting workspace: ' + e.message, 'error');
+    }
+}
+
 async function renderSubscriptions(content) {
     content.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--text-muted);">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="animation:spin 1s linear infinite;margin-bottom:12px;">
@@ -7604,6 +7711,12 @@ async function renderSubscriptions(content) {
                                         <span style="color:#059669;font-weight:600;">${activeSeats} active</span>
                                         ${cancellingSeats > 0 ? `<span style="color:#d97706;font-weight:600;margin-left:8px;">${cancellingSeats} cancelling</span>` : ''}
                                         ${emptySeats > 0 ? `<span style="color:var(--text-muted);margin-left:8px;">${emptySeats} open</span>` : ''}
+                                    </div>
+                                    <div style="margin-top:10px;">
+                                        <button onclick="deleteWorkspaceAccount('${company.client_portal_id}','${(company.admin_email||'').replace(/'/g,"\\'")}')"
+                                            style="padding:5px 12px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;background:rgba(239,68,68,0.1);color:#dc2626;border:1px solid rgba(239,68,68,0.3);">
+                                            🗑 Delete Workspace
+                                        </button>
                                     </div>
                                 </div>
                             </div>

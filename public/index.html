@@ -3726,6 +3726,17 @@ nav {
       }
     }
     </script>
+<style>
+.crm-hero-tilt {
+  width:100%;
+  transform: perspective(1400px) rotateY(-4deg) rotateX(1.5deg);
+  transition: transform .6s cubic-bezier(.22,1,.36,1);
+  transform-origin: center center;
+}
+.crm-hero-tilt:hover {
+  transform: perspective(1400px) rotateY(-1deg) rotateX(.4deg);
+}
+</style>
 </head>
 <body>
 
@@ -3883,7 +3894,55 @@ nav {
             
             <div class="growth-feature-card">
                 <div class="new-badge">NEW</div>
-                <img src="performance.jpg" alt="CRM Mobile App">
+                <div style="width:100%;height:100%;background:#0a0a0a;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Geist',sans-serif;display:flex;flex-direction:column;">
+  <div style="padding:20px 24px 16px;border-bottom:1px solid #1f1f1f;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:26px;height:26px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" width="13" height="13"><path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z"/><path d="M12 12L3 7.5"/><path d="M12 12V21"/><path d="M12 12L21 7.5"/></svg>
+      </div>
+      <div><div style="font-size:13px;font-weight:600;color:#fff;letter-spacing:-.01em;">Diamondback CRM</div><div style="font-size:11px;color:#444;">Good morning, John</div></div>
+    </div>
+    <div style="background:#fff;color:#000;font-size:11px;font-weight:600;padding:6px 14px;border-radius:7px;">+ New Lead</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:#1f1f1f;flex-shrink:0;">
+    <div style="background:#0d0d0d;padding:16px 22px;"><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:8px;">Total Leads</div><div style="font-size:30px;font-weight:700;color:#fff;letter-spacing:-.04em;line-height:1;">124</div></div>
+    <div style="background:#0d0d0d;padding:16px 22px;"><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:8px;">Customers</div><div style="font-size:30px;font-weight:700;color:#fff;letter-spacing:-.04em;line-height:1;">38</div></div>
+    <div style="background:#0d0d0d;padding:16px 22px;border-left:2px solid rgba(34,197,94,.4);background:linear-gradient(135deg,rgba(34,197,94,.08),#0d0d0d);"><div style="font-size:9px;color:rgba(74,222,128,.8);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:8px;">Revenue</div><div style="font-size:30px;font-weight:700;color:#4ade80;letter-spacing:-.04em;line-height:1;">$14,820</div><div style="font-size:11px;color:#22c55e;margin-top:5px;font-weight:600;">↑ 18% this month</div></div>
+  </div>
+  <div style="padding:16px 22px 12px;border-bottom:1px solid #1a1a1a;flex-shrink:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <span style="font-size:12px;font-weight:600;color:#777;">Revenue Overview</span>
+      <div style="display:flex;gap:10px;font-size:10px;color:#444;"><span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ade80;margin-right:4px;vertical-align:middle;"></span>Revenue</span><span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#3b82f6;margin-right:4px;vertical-align:middle;"></span>Pipeline</span></div>
+    </div>
+    <svg viewBox="0 0 400 80" width="100%" height="80" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="gc1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4ade80" stop-opacity=".15"/><stop offset="100%" stop-color="#4ade80" stop-opacity="0"/></linearGradient>
+        <linearGradient id="gc2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity=".12"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/></linearGradient>
+      </defs>
+      <line x1="0" y1="20" x2="400" y2="20" stroke="#1a1a1a" stroke-width="1"/>
+      <line x1="0" y1="40" x2="400" y2="40" stroke="#1a1a1a" stroke-width="1"/>
+      <line x1="0" y1="60" x2="400" y2="60" stroke="#1a1a1a" stroke-width="1"/>
+      <path d="M0,68 C65,54 130,44 200,32 C270,20 335,12 400,6 L400,80 L0,80 Z" fill="url(#gc2)"/>
+      <path d="M0,68 C65,54 130,44 200,32 C270,20 335,12 400,6" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+      <path d="M0,76 C65,62 130,52 200,40 C270,28 335,18 400,10 L400,80 L0,80 Z" fill="url(#gc1)"/>
+      <path d="M0,76 C65,62 130,52 200,40 C270,28 335,18 400,10" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/>
+      <text x="4" y="79" fill="#2a2a2a" font-size="9" font-family="sans-serif">Sep</text>
+      <text x="70" y="79" fill="#2a2a2a" font-size="9" font-family="sans-serif">Oct</text>
+      <text x="137" y="79" fill="#2a2a2a" font-size="9" font-family="sans-serif">Nov</text>
+      <text x="204" y="79" fill="#2a2a2a" font-size="9" font-family="sans-serif">Dec</text>
+      <text x="271" y="79" fill="#2a2a2a" font-size="9" font-family="sans-serif">Jan</text>
+      <text x="338" y="79" fill="#2a2a2a" font-size="9" font-family="sans-serif">Feb</text>
+    </svg>
+  </div>
+  <div style="flex:1;padding:14px 22px;min-height:0;overflow:hidden;">
+    <div style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Leads Pipeline</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:11px;"><div style="width:30px;height:30px;border-radius:50%;background:#1d3a5f;font-size:10px;font-weight:700;color:#7a9cc0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">MR</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#fff;">Marcus Rivera</div><div style="font-size:11px;color:#444;">Website Redesign · $4,200</div></div><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(239,68,68,.12);color:#ef4444;">Hot</span></div>
+      <div style="display:flex;align-items:center;gap:11px;"><div style="width:30px;height:30px;border-radius:50%;background:#2d1a4f;font-size:10px;font-weight:700;color:#9a7ac0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">SK</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#fff;">Sarah Kim</div><div style="font-size:11px;color:#444;">SEO Package · $899/mo</div></div><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(245,158,11,.12);color:#f59e0b;">Warm</span></div>
+      <div style="display:flex;align-items:center;gap:11px;"><div style="width:30px;height:30px;border-radius:50%;background:#1a3a2a;font-size:10px;font-weight:700;color:#6aaa7a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">TJ</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#fff;">Tyler Johnson</div><div style="font-size:11px;color:#444;">CRM Setup · $1,500</div></div><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:#3b82f6;">New</span></div>
+    </div>
+  </div>
+</div>
                 <div class="growth-feature-overlay">
                     <h3>Diamondback Coding® CRM</h3>
                     <button class="feature-explore-btn" onclick="openModal()">+</button>
@@ -3942,16 +4001,53 @@ nav {
                 <div class="crm-laptop-showcase">
                     <div class="laptop-mockup-large">
                         <div class="laptop-screen">
-                            <img src="Custom.jpg" alt="CRM Dashboard Analytics">
+                            <div style="width:100%;height:100%;background:#0a0a0a;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Geist',sans-serif;display:flex;flex-direction:column;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid #1f1f1f;background:#060606;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:24px;height:24px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" width="13" height="13"><path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z"/><path d="M12 12L3 7.5"/><path d="M12 12V21"/><path d="M12 12L21 7.5"/></svg>
+      </div>
+      <span style="font-size:14px;font-weight:600;color:#fff;letter-spacing:-.01em;">Leads</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;">
+      <div style="display:flex;align-items:center;gap:6px;background:#111;border:1px solid #222;border-radius:6px;padding:7px 13px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="2" width="12" height="12"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span style="font-size:12px;color:#3a3a3a;">Search leads...</span>
+      </div>
+      <div style="background:#fff;color:#000;font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;">+ Add Lead</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:0;border-bottom:1px solid #1a1a1a;padding:0 22px;background:#060606;flex-shrink:0;">
+    <div style="padding:9px 16px;font-size:12px;font-weight:600;color:#fff;border-bottom:2px solid #fff;cursor:default;">All</div>
+    <div style="padding:9px 16px;font-size:12px;color:#3a3a3a;border-bottom:2px solid transparent;cursor:default;">New</div>
+    <div style="padding:9px 16px;font-size:12px;color:#3a3a3a;border-bottom:2px solid transparent;cursor:default;">Contacted</div>
+    <div style="padding:9px 16px;font-size:12px;color:#3a3a3a;border-bottom:2px solid transparent;cursor:default;">Pending</div>
+    <div style="padding:9px 16px;font-size:12px;color:#3a3a3a;border-bottom:2px solid transparent;cursor:default;">Converted</div>
+  </div>
+  <div style="flex:1;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:#0d0d0d;border-bottom:1px solid #1a1a1a;">
+        <th style="padding:10px 22px;font-size:10px;font-weight:700;color:#444;text-align:left;text-transform:uppercase;letter-spacing:.07em;">Contact</th>
+        <th style="padding:10px 18px;font-size:10px;font-weight:700;color:#444;text-align:left;text-transform:uppercase;letter-spacing:.07em;">Service</th>
+        <th style="padding:10px 18px;font-size:10px;font-weight:700;color:#444;text-align:left;text-transform:uppercase;letter-spacing:.07em;">Value</th>
+        <th style="padding:10px 18px;font-size:10px;font-weight:700;color:#444;text-align:left;text-transform:uppercase;letter-spacing:.07em;">Status</th>
+        <th style="padding:10px 18px;font-size:10px;font-weight:700;color:#444;text-align:left;text-transform:uppercase;letter-spacing:.07em;">Added</th>
+      </tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #111;"><td style="padding:12px 22px;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:50%;background:#1d3a5f;font-size:11px;font-weight:700;color:#7a9cc0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">MR</div><div><div style="font-size:13px;font-weight:600;color:#fff;">Marcus Rivera</div><div style="font-size:11px;color:#3a3a3a;">Rivera Construction</div></div></div></td><td style="padding:12px 18px;font-size:13px;color:#666;">Website Redesign</td><td style="padding:12px 18px;font-size:13px;font-weight:700;color:#fff;">$4,200</td><td style="padding:12px 18px;"><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(239,68,68,.12);color:#ef4444;">Hot</span></td><td style="padding:12px 18px;font-size:12px;color:#3a3a3a;">Nov 12</td></tr>
+        <tr style="border-bottom:1px solid #111;"><td style="padding:12px 22px;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:50%;background:#2d1a4f;font-size:11px;font-weight:700;color:#9a7ac0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">SK</div><div><div style="font-size:13px;font-weight:600;color:#fff;">Sarah Kim</div><div style="font-size:11px;color:#3a3a3a;">Kim &amp; Associates</div></div></div></td><td style="padding:12px 18px;font-size:13px;color:#666;">SEO Package</td><td style="padding:12px 18px;font-size:13px;font-weight:700;color:#fff;">$899/mo</td><td style="padding:12px 18px;"><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(245,158,11,.12);color:#f59e0b;">Warm</span></td><td style="padding:12px 18px;font-size:12px;color:#3a3a3a;">Nov 14</td></tr>
+        <tr style="border-bottom:1px solid #111;"><td style="padding:12px 22px;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:50%;background:#1a3a2a;font-size:11px;font-weight:700;color:#6aaa7a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">TJ</div><div><div style="font-size:13px;font-weight:600;color:#fff;">Tyler Johnson</div><div style="font-size:11px;color:#3a3a3a;">TJ Roofing</div></div></div></td><td style="padding:12px 18px;font-size:13px;color:#666;">CRM Setup</td><td style="padding:12px 18px;font-size:13px;font-weight:700;color:#fff;">$1,500</td><td style="padding:12px 18px;"><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:#3b82f6;">New</span></td><td style="padding:12px 18px;font-size:12px;color:#3a3a3a;">Nov 15</td></tr>
+        <tr style="border-bottom:1px solid #111;"><td style="padding:12px 22px;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:50%;background:#3a2a1a;font-size:11px;font-weight:700;color:#aa8a5a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">AP</div><div><div style="font-size:13px;font-weight:600;color:#fff;">Amanda Park</div><div style="font-size:11px;color:#3a3a3a;">Park Digital</div></div></div></td><td style="padding:12px 18px;font-size:13px;color:#666;">E-Commerce</td><td style="padding:12px 18px;font-size:13px;font-weight:700;color:#fff;">$7,800</td><td style="padding:12px 18px;"><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(245,158,11,.12);color:#f59e0b;">Warm</span></td><td style="padding:12px 18px;font-size:12px;color:#3a3a3a;">Nov 16</td></tr>
+        <tr><td style="padding:12px 22px;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:50%;background:#1a1a3a;font-size:11px;font-weight:700;color:#7a7ac0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">RG</div><div><div style="font-size:13px;font-weight:600;color:#fff;">Robert Garcia</div><div style="font-size:11px;color:#3a3a3a;">Garcia Media</div></div></div></td><td style="padding:12px 18px;font-size:13px;color:#666;">Custom Dev</td><td style="padding:12px 18px;font-size:13px;font-weight:700;color:#fff;">$12,000</td><td style="padding:12px 18px;"><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(239,68,68,.12);color:#ef4444;">Hot</span></td><td style="padding:12px 18px;font-size:12px;color:#3a3a3a;">Nov 17</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
                         </div>
                         <div class="laptop-base"></div>
                     </div>
-                    <div class="phone-mockup-overlay">
-                        <div class="phone-frame">
-                            <img src="Brand.jpg" alt="Mobile CRM">
-                        </div>
                     </div>
-                </div>
+</div>
             </div>
         </div>
 
@@ -5684,95 +5780,476 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </section>
 
-<!-- Web Development Showcase Section - Matching CRM Style -->
-<section class="crm-showcase-section" style="background: var(--white);">
-    <div class="crm-showcase-container">
-        <div class="crm-showcase-content">
-            <div class="crm-text-side">
-                <h2 class="crm-main-title">Professional Web Development Services</h2>
-                <p class="crm-main-description">
-                    Transform your online presence with custom-built websites that drive results. From responsive design to powerful functionality, we create digital experiences that help your business grow and succeed in the competitive online landscape.
-                </p>
-            </div>
-            <div class="crm-visual-side">
-                <div class="crm-device-showcase">
-                    <div class="crm-laptop-device">
-                        <div class="crm-laptop-frame">
-                            <img src="https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=1200&q=80" alt="Web Development Dashboard">
-                        </div>
-                        <div class="crm-laptop-bottom"></div>
-                    </div>
-                    <div class="crm-phone-device">
-                        <div class="crm-phone-frame">
-                            <img src="https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400&q=80" alt="Mobile Web Design">
-                        </div>
-                    </div>
-                </div>
-            </div>
+<!-- Web Development Showcase Section - Attio Style -->
+<style>
+.attio-section {
+    padding: 96px 60px;
+    background: #fafaf8;
+}
+.attio-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+.attio-header {
+    margin-bottom: 60px;
+    max-width: 680px;
+}
+.attio-eyebrow {
+    font-size: 14px;
+    font-weight: 500;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 16px;
+}
+.attio-title-light {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 54px;
+    font-weight: 400;
+    color: #888;
+    line-height: 1.1;
+    letter-spacing: -1px;
+}
+.attio-title-bold {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 54px;
+    font-weight: 700;
+    color: #1a1a1a;
+    line-height: 1.1;
+    letter-spacing: -1px;
+}
+.attio-subtitle {
+    font-size: 17px;
+    line-height: 1.7;
+    color: #666;
+    margin-top: 20px;
+    max-width: 520px;
+}
+.attio-body {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 80px;
+    align-items: start;
+    border-top: 1px solid #e0e0db;
+    padding-top: 0;
+}
+.attio-accordion {
+    padding-top: 0;
+}
+.attio-accordion-item {
+    border-bottom: 1px solid #e0e0db;
+    cursor: pointer;
+}
+.attio-accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 0;
+    gap: 16px;
+}
+.attio-accordion-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1a1a1a;
+    line-height: 1.3;
+}
+.attio-accordion-item:not(.attio-open) .attio-accordion-title {
+    color: #666;
+    font-weight: 400;
+}
+.attio-accordion-chevron {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    color: #999;
+    transition: transform 0.3s ease;
+}
+.attio-open .attio-accordion-chevron {
+    transform: rotate(180deg);
+    color: #1a1a1a;
+}
+.attio-accordion-body {
+    display: none;
+    padding: 0 0 22px 0;
+    font-size: 15px;
+    line-height: 1.75;
+    color: #666;
+}
+.attio-open .attio-accordion-body {
+    display: block;
+}
+.attio-visual {
+    position: sticky;
+    top: 140px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+    background: #fff;
+    min-height: 440px;
+    display: flex;
+    align-items: stretch;
+}
+.attio-visual-panel {
+    display: none;
+    width: 100%;
+}
+.attio-visual-panel.attio-panel-active {
+    display: flex;
+    flex-direction: column;
+}
+/* Web mockup visual */
+.webmock-browser {
+    background: #1a1a1a;
+    border-radius: 16px;
+    overflow: hidden;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+.webmock-bar {
+    background: #2a2a2a;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #333;
+}
+.webmock-dots { display: flex; gap: 6px; }
+.webmock-dot { width: 10px; height: 10px; border-radius: 50%; }
+.webmock-urlbar {
+    flex: 1;
+    background: #3a3a3a;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 11px;
+    color: #888;
+    font-family: monospace;
+}
+@media (max-width: 900px) {
+    .attio-body { grid-template-columns: 1fr; gap: 40px; }
+    .attio-visual { position: static; }
+    .attio-title-light, .attio-title-bold { font-size: 38px; }
+    .attio-section { padding: 60px 24px; }
+}
+</style>
+
+<section class="attio-section" id="webDevShowcase">
+    <div class="attio-container">
+        <div class="attio-header">
+            <div class="attio-title-light">The websites for</div>
+            <div class="attio-title-bold">all your needs.</div>
+            <p class="attio-subtitle">Powerful, flexible, and performance-driven — Diamondback Coding makes it easy to build the exact website your business needs.</p>
         </div>
-
-        <!-- Web Development Feature Cards -->
-        <div class="crm-features-grid">
-            <div class="crm-image-card">
-                <div class="crm-card-image">
-                    <img src="Custom.jpg" alt="Custom Web Development">
+        <div class="attio-body">
+            <div class="attio-accordion" id="webAccordion">
+                <div class="attio-accordion-item attio-open" data-panel="webpanel-1">
+                    <div class="attio-accordion-header">
+                        <span class="attio-accordion-title">Custom web development.</span>
+                        <svg class="attio-accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                    </div>
+                    <div class="attio-accordion-body">
+                        Build something truly yours — 100% custom-coded from the ground up. Full control over every pixel and feature, with unlimited scalability and seamless integration with your existing tools and workflows.
+                    </div>
                 </div>
-                <div class="crm-card-content">
-                    <h3 class="crm-card-title">Custom Web Development</h3>
-                    <p class="crm-card-description">
-                        Tailored solutions built from the ground up to meet your unique business requirements. Full control, unlimited scalability, and seamless integration with your existing systems.
-                    </p>
-                    <ul class="crm-card-features">
-                        <li>100% custom-coded solutions</li>
-                        <li>Responsive across all devices</li>
-                        <li>Advanced functionality & features</li>
-                        <li>Full ownership of your code</li>
-                    </ul>
+                <div class="attio-accordion-item" data-panel="webpanel-2">
+                    <div class="attio-accordion-header">
+                        <span class="attio-accordion-title">E-commerce & online stores.</span>
+                        <svg class="attio-accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                    </div>
+                    <div class="attio-accordion-body">
+                        Launch your online store with powerful platforms like Shopify, WooCommerce, or fully custom solutions. Secure payment processing, smart inventory management, and checkout flows built to convert.
+                    </div>
                 </div>
-            </div>
-
-            <div class="crm-image-card">
-                <div class="crm-card-image">
-                    <img src="shop.jpg" alt="E-commerce Solutions">
+                <div class="attio-accordion-item" data-panel="webpanel-3">
+                    <div class="attio-accordion-header">
+                        <span class="attio-accordion-title">Performance & SEO optimization.</span>
+                        <svg class="attio-accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                    </div>
+                    <div class="attio-accordion-body">
+                        Lightning-fast Core Web Vitals scores, technical SEO built in from day one, and mobile-first responsive design. We build sites that rank — and sites that convert when visitors arrive.
+                    </div>
                 </div>
-                <div class="crm-card-content">
-                    <h3 class="crm-card-title">E-Commerce Development</h3>
-                    <p class="crm-card-description">
-                        Launch your online store with powerful e-commerce platforms. Secure payment processing, inventory management, and conversion-optimized checkout experiences.
-                    </p>
-                    <ul class="crm-card-features">
-                        <li>Shopify, WooCommerce & custom</li>
-                        <li>Secure payment integration</li>
-                        <li>Product management systems</li>
-                        <li>Marketing & SEO tools</li>
-                    </ul>
+                <div class="attio-accordion-item" data-panel="webpanel-4">
+                    <div class="attio-accordion-header">
+                        <span class="attio-accordion-title">Ongoing maintenance & support.</span>
+                        <svg class="attio-accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                    </div>
+                    <div class="attio-accordion-body">
+                        Your site keeps working so you can keep working. Security updates, performance monitoring, content changes, and a team that's always a message away when you need something fixed or added.
+                    </div>
                 </div>
-            </div>
-
-            <div class="crm-image-card">
-                <div class="crm-card-image">
-                    <img src="seo.jpg" alt="Performance Optimization">
-                </div>
-                <div class="crm-card-content">
-                    <h3 class="crm-card-title">Performance & SEO</h3>
-                    <p class="crm-card-description">
-                        Lightning-fast loading speeds, technical SEO optimization, and search engine visibility. We build websites that rank and convert.
-                    </p>
-                    <ul class="crm-card-features">
-                        <li>Speed optimization (Core Web Vitals)</li>
-                        <li>Technical SEO implementation</li>
-                        <li>Mobile-first responsive design</li>
-                        <li>Analytics & tracking setup</li>
-                    </ul>
+                <div style="padding-top: 32px;">
+                    <button class="crm-btn-primary" onclick="openModal()">Start Your Web Project</button>
                 </div>
             </div>
-        </div>
+            <div class="attio-visual" id="webVisual">
 
-        <div class="crm-cta">
-            <button class="crm-btn-primary" onclick="openModal()">Start Your Web Project</button>
+                <!-- Panel 1: Law Firm — cinematic dark, gold type, Apple-level negative space -->
+                <div class="attio-visual-panel attio-panel-active" id="webpanel-1">
+                  <div class="webmock-browser">
+                    <div class="webmock-bar">
+                      <div class="webmock-dots"><div class="webmock-dot" style="background:#ff5f57"></div><div class="webmock-dot" style="background:#febc2e"></div><div class="webmock-dot" style="background:#28c840"></div></div>
+                      <div class="webmock-urlbar">harrisonlawgroup.com</div>
+                    </div>
+                    <div style="background:#0a0a0a;overflow:hidden;font-family:'Georgia',serif;">
+                      <!-- Nav: ultra-minimal, hairline border -->
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.9);letter-spacing:3px;text-transform:uppercase;font-family:'Georgia',serif;">Harrison · Law</div>
+                        <div style="display:flex;gap:20px;font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',sans-serif;font-weight:300;"><span>Practice</span><span>Team</span><span>Results</span><span>Contact</span></div>
+                        <div style="border:1px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.75);font-size:7px;font-weight:400;padding:6px 14px;letter-spacing:2px;text-transform:uppercase;font-family:'Helvetica Neue',sans-serif;">Consult</div>
+                      </div>
+                      <!-- Hero: full-bleed, massive type, Tesla-style -->
+                      <div style="padding:44px 28px 32px;position:relative;overflow:hidden;">
+                        <!-- Subtle grain texture sim -->
+                        <div style="position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 70% 40%,rgba(180,140,60,0.07),transparent);pointer-events:none;"></div>
+                        <div style="position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(180,140,60,0.15),transparent);"></div>
+                        <div style="font-size:8px;color:rgba(180,140,60,0.7);letter-spacing:4px;text-transform:uppercase;margin-bottom:14px;font-family:'Helvetica Neue',sans-serif;font-weight:300;">Texas Personal Injury · Est. 1998</div>
+                        <div style="font-size:30px;font-weight:400;color:#fff;line-height:1.1;letter-spacing:-0.5px;margin-bottom:14px;">We Win<br/><em style="color:rgba(180,140,60,0.85);font-style:italic;">for Texas.</em></div>
+                        <div style="font-size:9px;color:rgba(255,255,255,0.38);line-height:1.9;margin-bottom:24px;max-width:280px;font-family:'Helvetica Neue',sans-serif;font-weight:300;letter-spacing:0.3px;">$200M+ recovered for accident victims. No fee unless you win. Board-certified trial attorneys.</div>
+                        <div style="display:flex;gap:12px;align-items:center;">
+                          <div style="background:rgba(180,140,60,0.9);color:#0a0a0a;font-size:7px;font-weight:600;padding:9px 20px;letter-spacing:2px;text-transform:uppercase;font-family:'Helvetica Neue',sans-serif;">Free Consultation</div>
+                          <div style="font-size:8px;color:rgba(255,255,255,0.4);letter-spacing:0.5px;font-family:'Helvetica Neue',sans-serif;font-weight:300;">or call (940) 217-8680</div>
+                        </div>
+                      </div>
+                      <!-- Stats row: Apple-style dividers, no boxes -->
+                      <div style="display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <div style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.05);">
+                          <div style="font-size:18px;font-weight:300;color:#fff;margin-bottom:3px;letter-spacing:-0.5px;">$200M</div>
+                          <div style="font-size:7px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:2px;font-family:'Helvetica Neue',sans-serif;">Recovered</div>
+                        </div>
+                        <div style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.05);">
+                          <div style="font-size:18px;font-weight:300;color:#fff;margin-bottom:3px;letter-spacing:-0.5px;">4,800+</div>
+                          <div style="font-size:7px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:2px;font-family:'Helvetica Neue',sans-serif;">Cases Won</div>
+                        </div>
+                        <div style="padding:16px 20px;border-right:1px solid rgba(255,255,255,0.05);">
+                          <div style="font-size:18px;font-weight:300;color:#fff;margin-bottom:3px;letter-spacing:-0.5px;">25 yrs</div>
+                          <div style="font-size:7px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:2px;font-family:'Helvetica Neue',sans-serif;">Experience</div>
+                        </div>
+                        <div style="padding:16px 20px;">
+                          <div style="font-size:18px;font-weight:300;color:#fff;margin-bottom:3px;letter-spacing:-0.5px;">No Fee</div>
+                          <div style="font-size:7px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:2px;font-family:'Helvetica Neue',sans-serif;">Unless We Win</div>
+                        </div>
+                      </div>
+                      <!-- Practice areas: Apple product card grid -->
+                      <div style="padding:18px 28px 20px;">
+                        <div style="font-size:7px;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:3px;font-family:'Helvetica Neue',sans-serif;margin-bottom:12px;">Practice Areas</div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                          <div style="border:1px solid rgba(255,255,255,0.07);padding:12px 14px;background:rgba(255,255,255,0.02);">
+                            <div style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.8);margin-bottom:4px;font-family:'Georgia',serif;">Car Accidents</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.25);font-family:'Helvetica Neue',sans-serif;font-weight:300;line-height:1.6;">Full compensation for auto injury</div>
+                          </div>
+                          <div style="border:1px solid rgba(255,255,255,0.07);padding:12px 14px;background:rgba(255,255,255,0.02);">
+                            <div style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.8);margin-bottom:4px;font-family:'Georgia',serif;">Truck Accidents</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.25);font-family:'Helvetica Neue',sans-serif;font-weight:300;line-height:1.6;">Commercial carrier liability</div>
+                          </div>
+                          <div style="border:1px solid rgba(180,140,60,0.25);padding:12px 14px;background:rgba(180,140,60,0.04);">
+                            <div style="font-size:9px;font-weight:400;color:rgba(180,140,60,0.85);margin-bottom:4px;font-family:'Georgia',serif;">Wrongful Death</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.25);font-family:'Helvetica Neue',sans-serif;font-weight:300;line-height:1.6;">Justice for your family</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Panel 2: Roofing — bold cinematic dark, Tesla Model Y vibes -->
+                <div class="attio-visual-panel" id="webpanel-2">
+                  <div class="webmock-browser">
+                    <div class="webmock-bar">
+                      <div class="webmock-dots"><div class="webmock-dot" style="background:#ff5f57"></div><div class="webmock-dot" style="background:#febc2e"></div><div class="webmock-dot" style="background:#28c840"></div></div>
+                      <div class="webmock-urlbar">peakroofingpros.com</div>
+                    </div>
+                    <div style="background:#080808;overflow:hidden;font-family:'Helvetica Neue',sans-serif;">
+                      <!-- Nav -->
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 24px;border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size:12px;font-weight:600;color:#fff;letter-spacing:-0.3px;">Peak</div>
+                        <div style="display:flex;gap:18px;font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:0.5px;font-weight:300;"><span>Services</span><span>Gallery</span><span>About</span><span>Reviews</span></div>
+                        <div style="background:#fff;color:#000;font-size:7px;font-weight:600;padding:6px 14px;letter-spacing:1px;text-transform:uppercase;">Get Estimate</div>
+                      </div>
+                      <!-- Hero: full-bleed gradient, cinematic scale -->
+                      <div style="padding:40px 24px 28px;position:relative;background:linear-gradient(160deg,#0f0f0f 0%,#080808 100%);overflow:hidden;">
+                        <div style="position:absolute;top:0;right:-20px;width:60%;height:100%;background:radial-gradient(ellipse 100% 80% at 80% 50%,rgba(255,80,20,0.06),transparent 70%);pointer-events:none;"></div>
+                        <div style="font-size:8px;color:rgba(255,80,20,0.6);letter-spacing:4px;text-transform:uppercase;margin-bottom:12px;font-weight:400;">Licensed · Insured · North Texas</div>
+                        <div style="font-size:28px;font-weight:700;color:#fff;line-height:1.08;margin-bottom:12px;letter-spacing:-1px;">The roof<br/>your home<br/><span style="color:rgba(255,80,20,0.85);">deserves.</span></div>
+                        <div style="font-size:8px;color:rgba(255,255,255,0.3);line-height:1.9;margin-bottom:20px;max-width:260px;font-weight:300;letter-spacing:0.2px;">Storm damage to full replacement. We handle your insurance claim. 2,000+ homes protected.</div>
+                        <div style="display:flex;gap:10px;">
+                          <div style="background:rgba(255,80,20,0.9);color:#fff;font-size:7px;font-weight:600;padding:9px 18px;letter-spacing:1.5px;text-transform:uppercase;">Book Inspection</div>
+                          <div style="border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.55);font-size:7px;font-weight:400;padding:9px 14px;letter-spacing:0.5px;">Our Work →</div>
+                        </div>
+                      </div>
+                      <!-- Services: clean card row -->
+                      <div style="border-top:1px solid rgba(255,255,255,0.05);padding:16px 24px;">
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                          <div style="padding:14px 16px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);">
+                            <div style="width:28px;height:1px;background:rgba(255,80,20,0.6);margin-bottom:10px;"></div>
+                            <div style="font-size:10px;font-weight:600;color:#fff;margin-bottom:4px;letter-spacing:-0.2px;">Replacement</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.25);line-height:1.7;font-weight:300;">Full tear-off & install. All materials included.</div>
+                          </div>
+                          <div style="padding:14px 16px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);">
+                            <div style="width:28px;height:1px;background:rgba(59,130,246,0.6);margin-bottom:10px;"></div>
+                            <div style="font-size:10px;font-weight:600;color:#fff;margin-bottom:4px;letter-spacing:-0.2px;">Storm Claims</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.25);line-height:1.7;font-weight:300;">Insurance navigation. We fight for max payout.</div>
+                          </div>
+                          <div style="padding:14px 16px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);">
+                            <div style="width:28px;height:1px;background:rgba(34,197,94,0.6);margin-bottom:10px;"></div>
+                            <div style="font-size:10px;font-weight:600;color:#fff;margin-bottom:4px;letter-spacing:-0.2px;">Gutters & Repair</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.25);line-height:1.7;font-weight:300;">Same-day service. 10-year workmanship warranty.</div>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- Social proof: minimal -->
+                      <div style="padding:10px 24px 14px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                          <div style="font-size:16px;font-weight:700;color:#fff;">4.9</div>
+                          <div>
+                            <div style="font-size:9px;color:rgba(245,158,11,0.8);letter-spacing:1px;">★★★★★</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.2);font-weight:300;margin-top:1px;">312 verified reviews</div>
+                          </div>
+                        </div>
+                        <div style="font-size:7px;color:rgba(255,255,255,0.18);font-weight:300;letter-spacing:0.3px;font-style:italic;">"Handled our storm claim perfectly. Highly recommend." — Mike T., Rockwall</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Panel 3: Medical — Apple white, razor clean -->
+                <div class="attio-visual-panel" id="webpanel-3">
+                  <div class="webmock-browser">
+                    <div class="webmock-bar">
+                      <div class="webmock-dots"><div class="webmock-dot" style="background:#ff5f57"></div><div class="webmock-dot" style="background:#febc2e"></div><div class="webmock-dot" style="background:#28c840"></div></div>
+                      <div class="webmock-urlbar">northtexasorthopedics.com</div>
+                    </div>
+                    <div style="background:#fafafa;overflow:hidden;font-family:'Helvetica Neue',sans-serif;color:#1d1d1f;">
+                      <!-- Apple-style announcement bar -->
+                      <div style="background:#1d1d1f;padding:5px 20px;text-align:center;font-size:7px;color:rgba(255,255,255,0.6);letter-spacing:0.3px;font-weight:300;">Now accepting new patients · Same-day appointments available <span style="color:rgba(0,122,255,0.8);margin-left:6px;">Book now →</span></div>
+                      <!-- Nav: SF Pro style -->
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid rgba(0,0,0,0.06);background:rgba(250,250,250,0.95);">
+                        <div style="font-size:14px;font-weight:600;color:#1d1d1f;letter-spacing:-0.5px;">NTO</div>
+                        <div style="display:flex;gap:18px;font-size:8px;color:rgba(0,0,0,0.45);letter-spacing:0.2px;font-weight:400;"><span>Conditions</span><span>Providers</span><span>Locations</span><span>Patients</span></div>
+                        <div style="background:#0066cc;color:#fff;font-size:7px;font-weight:500;padding:6px 14px;border-radius:14px;letter-spacing:0.2px;">Book Appointment</div>
+                      </div>
+                      <!-- Hero: Apple product page — image-forward, centered text -->
+                      <div style="padding:36px 24px 28px;text-align:center;background:linear-gradient(180deg,#f5f5f7 0%,#fafafa 100%);position:relative;">
+                        <div style="font-size:8px;color:rgba(0,102,204,0.8);letter-spacing:2px;text-transform:uppercase;font-weight:500;margin-bottom:10px;">DFW's Premier Orthopedic Care</div>
+                        <div style="font-size:28px;font-weight:700;color:#1d1d1f;line-height:1.1;letter-spacing:-1px;margin-bottom:10px;">Move freely.<br/>Live fully.</div>
+                        <div style="font-size:9px;color:rgba(0,0,0,0.45);line-height:1.8;margin-bottom:18px;font-weight:300;max-width:280px;margin-left:auto;margin-right:auto;">Sports injuries, joint replacement, spine care & physical therapy. All under one roof.</div>
+                        <div style="display:flex;gap:10px;justify-content:center;">
+                          <div style="background:#0066cc;color:#fff;font-size:8px;font-weight:500;padding:8px 18px;border-radius:14px;">Schedule Online</div>
+                          <div style="color:#0066cc;font-size:8px;font-weight:400;padding:8px 14px;">Meet Our Team →</div>
+                        </div>
+                      </div>
+                      <!-- Feature cards: Apple 3-up grid -->
+                      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid rgba(0,0,0,0.06);">
+                        <div style="padding:18px 16px;border-right:1px solid rgba(0,0,0,0.05);">
+                          <div style="width:32px;height:32px;background:#e8f0fe;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;"><svg viewBox="0 0 24 24" fill="none" stroke="#0066cc" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+                          <div style="font-size:10px;font-weight:600;color:#1d1d1f;margin-bottom:4px;letter-spacing:-0.2px;">Same-Day Care</div>
+                          <div style="font-size:7px;color:rgba(0,0,0,0.4);line-height:1.7;font-weight:300;">Walk in or book online. Most insurances accepted.</div>
+                        </div>
+                        <div style="padding:18px 16px;border-right:1px solid rgba(0,0,0,0.05);">
+                          <div style="width:32px;height:32px;background:#e6f9f0;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;"><svg viewBox="0 0 24 24" fill="none" stroke="#00b265" stroke-width="2" width="15" height="15"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                          <div style="font-size:10px;font-weight:600;color:#1d1d1f;margin-bottom:4px;letter-spacing:-0.2px;">Board-Certified</div>
+                          <div style="font-size:7px;color:rgba(0,0,0,0.4);line-height:1.7;font-weight:300;">Surgeons with 20+ years combined experience.</div>
+                        </div>
+                        <div style="padding:18px 16px;">
+                          <div style="width:32px;height:32px;background:#fff8e6;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" width="15" height="15"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+                          <div style="font-size:10px;font-weight:600;color:#1d1d1f;margin-bottom:4px;letter-spacing:-0.2px;">4.9 ★ Rating</div>
+                          <div style="font-size:7px;color:rgba(0,0,0,0.4);line-height:1.7;font-weight:300;">540+ verified patient reviews on Google.</div>
+                        </div>
+                      </div>
+                      <!-- Specialties bar -->
+                      <div style="background:#1d1d1f;display:flex;">
+                        <div style="flex:1;padding:10px 14px;text-align:center;border-right:1px solid rgba(255,255,255,0.06);"><div style="font-size:8px;font-weight:500;color:#f5f5f7;">Knee & Hip</div><div style="font-size:7px;color:rgba(255,255,255,0.3);margin-top:1px;font-weight:300;">Replacement</div></div>
+                        <div style="flex:1;padding:10px 14px;text-align:center;border-right:1px solid rgba(255,255,255,0.06);"><div style="font-size:8px;font-weight:500;color:#f5f5f7;">Spine</div><div style="font-size:7px;color:rgba(255,255,255,0.3);margin-top:1px;font-weight:300;">Minimally Invasive</div></div>
+                        <div style="flex:1;padding:10px 14px;text-align:center;border-right:1px solid rgba(255,255,255,0.06);"><div style="font-size:8px;font-weight:500;color:#f5f5f7;">Sports Med</div><div style="font-size:7px;color:rgba(255,255,255,0.3);margin-top:1px;font-weight:300;">ACL · Shoulder</div></div>
+                        <div style="flex:1;padding:10px 14px;text-align:center;"><div style="font-size:8px;font-weight:500;color:#f5f5f7;">Physical Therapy</div><div style="font-size:7px;color:rgba(255,255,255,0.3);margin-top:1px;font-weight:300;">On-site rehab</div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Panel 4: Restaurant — bold, editorial, dark luxury -->
+                <div class="attio-visual-panel" id="webpanel-4">
+                  <div class="webmock-browser">
+                    <div class="webmock-bar">
+                      <div class="webmock-dots"><div class="webmock-dot" style="background:#ff5f57"></div><div class="webmock-dot" style="background:#febc2e"></div><div class="webmock-dot" style="background:#28c840"></div></div>
+                      <div class="webmock-urlbar">fierytexasgrill.com</div>
+                    </div>
+                    <div style="background:#0a0805;overflow:hidden;font-family:'Georgia',serif;">
+                      <!-- Nav: editorial, all-caps logo -->
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 24px;border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <div style="font-size:10px;font-weight:400;color:#fff;letter-spacing:4px;text-transform:uppercase;">Fiery Texas Grill</div>
+                        <div style="display:flex;gap:18px;font-size:7px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;font-family:'Helvetica Neue',sans-serif;font-weight:300;"><span>Menu</span><span>Reserve</span><span>Order</span><span>About</span></div>
+                        <div style="border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);font-size:7px;padding:6px 14px;letter-spacing:2px;text-transform:uppercase;font-family:'Helvetica Neue',sans-serif;font-weight:300;">Reserve</div>
+                      </div>
+                      <!-- Hero: cinematic, editorial layout -->
+                      <div style="padding:40px 24px 24px;position:relative;overflow:hidden;">
+                        <div style="position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 60% 30%,rgba(220,80,20,0.08),transparent);pointer-events:none;"></div>
+                        <!-- Decorative rule -->
+                        <div style="width:32px;height:1px;background:rgba(220,80,20,0.7);margin-bottom:16px;"></div>
+                        <div style="font-size:8px;color:rgba(255,255,255,0.25);letter-spacing:4px;text-transform:uppercase;margin-bottom:12px;font-family:'Helvetica Neue',sans-serif;font-weight:300;">Post Oak Smoked · Rockwall, Texas</div>
+                        <div style="font-size:32px;font-weight:400;color:#fff;line-height:1.0;margin-bottom:14px;letter-spacing:-0.5px;">Low &amp; Slow.<br/><em style="color:rgba(220,80,20,0.85);">Blazing</em><br/>Flavor.</div>
+                        <div style="font-size:8px;color:rgba(255,255,255,0.28);line-height:1.9;margin-bottom:20px;max-width:250px;font-family:'Helvetica Neue',sans-serif;font-weight:300;">16-hour smoked brisket, beef ribs & house-made sides. Dine in or carry out.</div>
+                        <div style="display:flex;gap:12px;align-items:center;">
+                          <div style="background:rgba(220,80,20,0.9);color:#fff;font-size:7px;font-weight:500;padding:9px 18px;letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',sans-serif;">View Menu</div>
+                          <div style="font-size:8px;color:rgba(220,80,20,0.6);font-family:'Georgia',serif;font-style:italic;">or call ahead →</div>
+                        </div>
+                      </div>
+                      <!-- Menu preview: editorial card layout -->
+                      <div style="border-top:1px solid rgba(255,255,255,0.05);padding:16px 24px;">
+                        <div style="font-size:7px;color:rgba(255,255,255,0.2);letter-spacing:3px;text-transform:uppercase;font-family:'Helvetica Neue',sans-serif;margin-bottom:12px;">Signature Plates</div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,0.04);">
+                          <div style="background:#0a0805;padding:14px 12px;">
+                            <div style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.7);font-family:'Georgia',serif;margin-bottom:4px;">Brisket Plate</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.2);font-family:'Helvetica Neue',sans-serif;font-weight:300;margin-bottom:8px;line-height:1.5;">16hr smoked · 2 sides</div>
+                            <div style="font-size:12px;font-weight:300;color:#fff;letter-spacing:-0.3px;">$18.99</div>
+                          </div>
+                          <div style="background:#0f0a06;padding:14px 12px;border-left:1px solid rgba(220,80,20,0.15);">
+                            <div style="font-size:9px;font-weight:400;color:rgba(220,80,20,0.85);font-family:'Georgia',serif;font-style:italic;margin-bottom:4px;">Full Rack Ribs</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.2);font-family:'Helvetica Neue',sans-serif;font-weight:300;margin-bottom:8px;line-height:1.5;">Fall-off-the-bone · 3 sides</div>
+                            <div style="font-size:12px;font-weight:300;color:#fff;letter-spacing:-0.3px;">$32.99</div>
+                          </div>
+                          <div style="background:#0a0805;padding:14px 12px;border-left:1px solid rgba(255,255,255,0.04);">
+                            <div style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.7);font-family:'Georgia',serif;margin-bottom:4px;">Family Pack</div>
+                            <div style="font-size:7px;color:rgba(255,255,255,0.2);font-family:'Helvetica Neue',sans-serif;font-weight:300;margin-bottom:8px;line-height:1.5;">Feeds 4–6 · All sides</div>
+                            <div style="font-size:12px;font-weight:300;color:#fff;letter-spacing:-0.3px;">$74.99</div>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- Footer info -->
+                      <div style="padding:10px 24px;border-top:1px solid rgba(255,255,255,0.04);display:flex;justify-content:space-between;align-items:center;">
+                        <div style="font-size:7px;color:rgba(255,255,255,0.18);font-family:'Helvetica Neue',sans-serif;font-weight:300;letter-spacing:0.3px;">📍 142 Main St · Rockwall, TX</div>
+                        <div style="font-size:7px;color:rgba(255,255,255,0.18);font-family:'Helvetica Neue',sans-serif;font-weight:300;">Tue–Sun 11am–9pm</div>
+                        <div style="font-size:7px;color:rgba(245,158,11,0.55);font-family:'Helvetica Neue',sans-serif;letter-spacing:0.5px;">★ 4.8 · 890 reviews</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+            </div>
+
+            </div>
         </div>
     </div>
 </section>
+
+<script>
+(function() {
+    var acc = document.getElementById('webAccordion');
+    if (!acc) return;
+    acc.addEventListener('click', function(e) {
+        var item = e.target.closest('.attio-accordion-item');
+        if (!item) return;
+        var panel = item.getAttribute('data-panel');
+        // Close all
+        acc.querySelectorAll('.attio-accordion-item').forEach(function(i) { i.classList.remove('attio-open'); });
+        // Open clicked
+        item.classList.add('attio-open');
+        // Switch visual panel
+        document.querySelectorAll('#webVisual .attio-visual-panel').forEach(function(p) { p.classList.remove('attio-panel-active'); });
+        var target = document.getElementById(panel);
+        if (target) target.classList.add('attio-panel-active');
+    });
+})();
+</script>
 
     <!-- MOBILE CARD CAROUSEL: CRM (Mobile Only) -->
     <section class="crm-card-carousel" id="crmCardCarousel">
@@ -5785,7 +6262,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 <!-- Card 1 -->
                 <div class="crm-carousel-card">
                     <div class="crm-carousel-card-image">
-                        <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80" alt="Custom-Built CRM">
+                        <div style="width:100%;height:300px;background:#0a0a0a;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Geist',sans-serif;display:flex;flex-direction:column;">
+  <div style="padding:16px 20px 14px;border-bottom:1px solid #1f1f1f;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:9px;"><div style="width:24px;height:24px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" width="12" height="12"><path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z"/><path d="M12 12L3 7.5"/><path d="M12 12V21"/><path d="M12 12L21 7.5"/></svg></div><span style="font-size:13px;font-weight:600;color:#fff;">Dashboard</span></div>
+    <div style="background:#fff;color:#000;font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;">+ New Lead</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#1f1f1f;flex-shrink:0;">
+    <div style="background:#0d0d0d;padding:14px 18px;"><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:6px;">Total Leads</div><div style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-.04em;">124</div></div>
+    <div style="background:#0d0d0d;padding:14px 18px;border-left:2px solid rgba(34,197,94,.4);background:linear-gradient(135deg,rgba(34,197,94,.08),#0d0d0d);"><div style="font-size:9px;color:rgba(74,222,128,.8);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:6px;">Revenue</div><div style="font-size:26px;font-weight:700;color:#4ade80;letter-spacing:-.04em;">$14,820</div><div style="font-size:10px;color:#22c55e;margin-top:3px;font-weight:600;">↑ 18%</div></div>
+  </div>
+  <div style="flex:1;padding:14px 20px;min-height:0;overflow:hidden;">
+    <div style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Leads Pipeline</div>
+    <div style="display:flex;flex-direction:column;gap:9px;">
+      <div style="display:flex;align-items:center;gap:10px;"><div style="width:30px;height:30px;border-radius:50%;background:#1d3a5f;font-size:10px;font-weight:700;color:#7a9cc0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">MR</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#fff;">Marcus Rivera</div><div style="font-size:11px;color:#444;">Website · $4,200</div></div><span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(239,68,68,.12);color:#ef4444;">Hot</span></div>
+      <div style="display:flex;align-items:center;gap:10px;"><div style="width:30px;height:30px;border-radius:50%;background:#2d1a4f;font-size:10px;font-weight:700;color:#9a7ac0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">SK</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#fff;">Sarah Kim</div><div style="font-size:11px;color:#444;">SEO · $899/mo</div></div><span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#f59e0b;">Warm</span></div>
+      <div style="display:flex;align-items:center;gap:10px;"><div style="width:30px;height:30px;border-radius:50%;background:#1a3a2a;font-size:10px;font-weight:700;color:#6aaa7a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">TJ</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#fff;">Tyler Johnson</div><div style="font-size:11px;color:#444;">CRM Setup · $1,500</div></div><span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.12);color:#3b82f6;">New</span></div>
+    </div>
+  </div>
+</div>
                     </div>
                     <div class="crm-carousel-card-content">
                         <h3 class="crm-carousel-card-title">Custom-Built CRM</h3>
@@ -5801,7 +6295,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 <!-- Card 2 -->
                 <div class="crm-carousel-card">
                     <div class="crm-carousel-card-image">
-                        <img src="crm.jpg" alt="Pre-Built CRM">
+                        <div style="width:100%;height:300px;background:#0a0a0a;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Geist',sans-serif;display:flex;flex-direction:column;">
+  <div style="padding:14px 20px 12px;border-bottom:1px solid #1f1f1f;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <span style="font-size:14px;font-weight:600;color:#fff;letter-spacing:-.01em;">Leads</span>
+    <div style="background:#fff;color:#000;font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;">+ Add Lead</div>
+  </div>
+  <div style="display:flex;border-bottom:1px solid #1a1a1a;padding:0 20px;flex-shrink:0;">
+    <div style="padding:8px 12px;font-size:12px;font-weight:600;color:#fff;border-bottom:2px solid #fff;">All</div>
+    <div style="padding:8px 12px;font-size:12px;color:#3a3a3a;border-bottom:2px solid transparent;">New</div>
+    <div style="padding:8px 12px;font-size:12px;color:#3a3a3a;border-bottom:2px solid transparent;">Contacted</div>
+    <div style="padding:8px 12px;font-size:12px;color:#3a3a3a;border-bottom:2px solid transparent;">Hot</div>
+  </div>
+  <div style="flex:1;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;">
+      <tbody>
+        <tr style="border-bottom:1px solid #141414;"><td style="padding:11px 20px;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:30px;height:30px;border-radius:50%;background:#1d3a5f;font-size:10px;font-weight:700;color:#7a9cc0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">MR</div><div><div style="font-size:13px;font-weight:600;color:#fff;">Marcus Rivera</div><div style="font-size:11px;color:#444;">Rivera Construction</div></div></div></td><td style="padding:11px 16px;font-size:12px;color:#666;">Website Redesign</td><td style="padding:11px 16px;"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(239,68,68,.12);color:#ef4444;">Hot</span></td></tr>
+        <tr style="border-bottom:1px solid #141414;"><td style="padding:11px 20px;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:30px;height:30px;border-radius:50%;background:#2d1a4f;font-size:10px;font-weight:700;color:#9a7ac0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">SK</div><div><div style="font-size:13px;font-weight:600;color:#fff;">Sarah Kim</div><div style="font-size:11px;color:#444;">Kim &amp; Associates</div></div></div></td><td style="padding:11px 16px;font-size:12px;color:#666;">SEO Package</td><td style="padding:11px 16px;"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#f59e0b;">Warm</span></td></tr>
+        <tr style="border-bottom:1px solid #141414;"><td style="padding:11px 20px;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:30px;height:30px;border-radius:50%;background:#1a3a2a;font-size:10px;font-weight:700;color:#6aaa7a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">TJ</div><div><div style="font-size:13px;font-weight:600;color:#fff;">Tyler Johnson</div><div style="font-size:11px;color:#444;">TJ Roofing</div></div></div></td><td style="padding:11px 16px;font-size:12px;color:#666;">CRM Setup</td><td style="padding:11px 16px;"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.12);color:#3b82f6;">New</span></td></tr>
+        <tr><td style="padding:11px 20px;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:30px;height:30px;border-radius:50%;background:#3a2a1a;font-size:10px;font-weight:700;color:#aa8a5a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">AP</div><div><div style="font-size:13px;font-weight:600;color:#fff;">Amanda Park</div><div style="font-size:11px;color:#444;">Park Digital</div></div></div></td><td style="padding:11px 16px;font-size:12px;color:#666;">E-Commerce</td><td style="padding:11px 16px;"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#f59e0b;">Warm</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
                     </div>
                     <div class="crm-carousel-card-content">
                         <h3 class="crm-carousel-card-title">Pre-Built CRM Platforms</h3>
@@ -5817,7 +6332,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 <!-- Card 3 -->
                 <div class="crm-carousel-card">
                     <div class="crm-carousel-card-image">
-                        <img src="data.jpg" alt="CRM Integration">
+                        <div style="width:100%;height:300px;background:#0a0a0a;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Geist',sans-serif;display:flex;flex-direction:column;">
+  <div style="padding:16px 20px 12px;border-bottom:1px solid #1f1f1f;flex-shrink:0;">
+    <div style="font-size:14px;font-weight:600;color:#fff;letter-spacing:-.01em;">Analytics</div>
+    <div style="font-size:11px;color:#444;margin-top:2px;">Performance metrics · Feb 2026</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#1f1f1f;flex-shrink:0;">
+    <div style="background:#0d0d0d;padding:14px 18px;"><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:6px;">Conversion Rate</div><div style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-.04em;">30.6%</div><div style="font-size:10px;color:#22c55e;margin-top:4px;font-weight:600;">↑ 4.2% this month</div></div>
+    <div style="background:#0d0d0d;padding:14px 18px;border-left:2px solid rgba(34,197,94,.4);background:linear-gradient(135deg,rgba(34,197,94,.08),#0d0d0d);"><div style="font-size:9px;color:rgba(74,222,128,.8);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:6px;">Monthly Revenue</div><div style="font-size:26px;font-weight:700;color:#4ade80;letter-spacing:-.04em;">$14,820</div><div style="font-size:10px;color:#22c55e;margin-top:4px;font-weight:600;">↑ 18% vs last month</div></div>
+  </div>
+  <div style="flex:1;padding:14px 20px;min-height:0;display:flex;flex-direction:column;">
+    <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:10px;">Monthly Revenue — Last 12 months</div>
+    <svg viewBox="0 0 320 80" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+      <line x1="0" y1="20" x2="320" y2="20" stroke="#1a1a1a" stroke-width="1"/>
+      <line x1="0" y1="45" x2="320" y2="45" stroke="#1a1a1a" stroke-width="1"/>
+      <line x1="0" y1="70" x2="320" y2="70" stroke="#1a1a1a" stroke-width="1"/>
+      <rect x="4" y="55" width="18" height="25" fill="rgba(74,222,128,.45)" rx="2"/>
+      <rect x="30" y="48" width="18" height="32" fill="rgba(74,222,128,.45)" rx="2"/>
+      <rect x="56" y="60" width="18" height="20" fill="rgba(74,222,128,.45)" rx="2"/>
+      <rect x="82" y="40" width="18" height="40" fill="rgba(74,222,128,.45)" rx="2"/>
+      <rect x="108" y="32" width="18" height="48" fill="rgba(74,222,128,.45)" rx="2"/>
+      <rect x="134" y="44" width="18" height="36" fill="rgba(74,222,128,.5)" rx="2"/>
+      <rect x="160" y="24" width="18" height="56" fill="rgba(74,222,128,.5)" rx="2"/>
+      <rect x="186" y="34" width="18" height="46" fill="rgba(74,222,128,.5)" rx="2"/>
+      <rect x="212" y="16" width="18" height="64" fill="rgba(74,222,128,.55)" rx="2"/>
+      <rect x="238" y="26" width="18" height="54" fill="rgba(74,222,128,.55)" rx="2"/>
+      <rect x="264" y="8" width="18" height="72" fill="rgba(74,222,128,.6)" rx="2"/>
+      <rect x="290" y="2" width="18" height="78" fill="rgba(74,222,128,.65)" rx="2"/>
+      <text x="4" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">S</text>
+      <text x="30" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">O</text>
+      <text x="56" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">N</text>
+      <text x="82" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">D</text>
+      <text x="108" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">J</text>
+      <text x="134" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">F</text>
+      <text x="160" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">M</text>
+      <text x="186" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">A</text>
+      <text x="212" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">M</text>
+      <text x="238" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">J</text>
+      <text x="264" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">J</text>
+      <text x="290" y="79" fill="#2a2a2a" font-size="8" font-family="sans-serif">A</text>
+    </svg>
+  </div>
+</div>
                     </div>
                     <div class="crm-carousel-card-content">
                         <h3 class="crm-carousel-card-title">CRM Integration & Setup</h3>
@@ -5850,95 +6406,389 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </section>
 
-    <!-- CRM Services Section - Redesigned with Laptop Showcase -->
-    <section class="crm-showcase-section">
-        <div class="crm-showcase-container">
-            <div class="crm-showcase-content">
-                <div class="crm-text-side">
-                    <h2 class="crm-main-title">Customer Relationship Management Systems</h2>
-                    <p class="crm-main-description">
-                        Streamline your business operations with custom-built CRM solutions or industry-leading pre-built platforms. Manage customers, track leads, automate workflows, and grow your business with powerful CRM technology tailored to United States businesses.
-                    </p>
-                </div>
-                <div class="crm-visual-side">
-                    <div class="crm-device-showcase">
-                        <div class="crm-laptop-device">
-                            <div class="crm-laptop-frame">
-                                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80" alt="CRM Dashboard">
-                            </div>
-                            <div class="crm-laptop-bottom"></div>
-                        </div>
-                        <div class="crm-phone-device">
-                            <div class="crm-phone-frame">
-                                <img src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&q=80" alt="Mobile CRM">
-                            </div>
-                        </div>
+    <!-- CRM Services Section - Attio Accordion Style -->
+<section class="attio-section" id="crmShowcase" style="background:#fff;">
+    <div class="attio-container">
+        <div class="attio-header">
+            <div class="attio-title-light">The tools for</div>
+            <div class="attio-title-bold">all your needs.</div>
+            <p class="attio-subtitle">Powerful, flexible and data-driven — Diamondback makes it easy to build the exact CRM you need for your business.</p>
+        </div>
+        <div class="attio-body">
+            <div class="attio-accordion" id="crmAccordion">
+                <div class="attio-accordion-item attio-open" data-crm-panel="crmpanel-1">
+                    <div class="attio-accordion-header">
+                        <span class="attio-accordion-title">Lead tracking & pipeline management.</span>
+                        <svg class="attio-accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                    </div>
+                    <div class="attio-accordion-body">
+                        Connect your leads, track their status, and manage your entire sales pipeline from a single view. See hot leads, follow-up reminders, deal values, and team activity — all in real time.
                     </div>
                 </div>
-            </div>
-
-            <!-- CRM Feature Cards -->
-            <div class="crm-features-grid">
-                <div class="crm-image-card">
-                    <div class="crm-card-image">
-                        <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80" alt="Custom CRM Dashboard">
+                <div class="attio-accordion-item" data-crm-panel="crmpanel-2">
+                    <div class="attio-accordion-header">
+                        <span class="attio-accordion-title">Custom workflows & automation.</span>
+                        <svg class="attio-accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
                     </div>
-                    <div class="crm-card-content">
-                        <h3 class="crm-card-title">Custom-Built CRM</h3>
-                        <p class="crm-card-description">
-                            Fully customized CRM systems built specifically for your business processes. Own your data, control your features, and integrate seamlessly.
-                        </p>
-                        <ul class="crm-card-features">
-                            <li>Complete ownership of your CRM</li>
-                            <li>Unlimited customization</li>
-                            <li>Custom integrations</li>
-                            <li>One-time development fee</li>
-                        </ul>
+                    <div class="attio-accordion-body">
+                        Automate follow-ups, task assignments, and notifications so nothing slips through the cracks. Build custom workflows that match your exact business process — no compromise.
                     </div>
                 </div>
-
-                <div class="crm-image-card">
-                    <div class="crm-card-image">
-                        <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80" alt="Pre-Built CRM Platform">
+                <div class="attio-accordion-item" data-crm-panel="crmpanel-3">
+                    <div class="attio-accordion-header">
+                        <span class="attio-accordion-title">Analytics & revenue reporting.</span>
+                        <svg class="attio-accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
                     </div>
-                    <div class="crm-card-content">
-                        <h3 class="crm-card-title">Pre-Built CRM Platforms</h3>
-                        <p class="crm-card-description">
-                            Get started faster with proven solutions, regular updates, and extensive integrations. Monthly subscription-based pricing.
-                        </p>
-                        <ul class="crm-card-features">
-                            <li>Quick deployment (1-2 weeks)</li>
-                            <li>Regular platform updates</li>
-                            <li>Scalable user management</li>
-                            <li>Monthly subscription model</li>
-                        </ul>
+                    <div class="attio-accordion-body">
+                        Know your numbers at a glance. Revenue trends, conversion rates, pipeline forecasting, and per-team performance — all in a clean analytics dashboard built specifically for your business.
                     </div>
                 </div>
-
-                <div class="crm-image-card">
-                    <div class="crm-card-image">
-                        <img src="https://images.unsplash.com/photo-1556761175-4b46a572b786?w=800&q=80" alt="CRM Integration">
+                <div class="attio-accordion-item" data-crm-panel="crmpanel-4">
+                    <div class="attio-accordion-header">
+                        <span class="attio-accordion-title">Invoicing & client management.</span>
+                        <svg class="attio-accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
                     </div>
-                    <div class="crm-card-content">
-                        <h3 class="crm-card-title">CRM Integration & Setup</h3>
-                        <p class="crm-card-description">
-                            Expert configuration, data migration, team training, and ongoing support. We handle the technical complexity.
-                        </p>
-                        <ul class="crm-card-features">
-                            <li>Data migration assistance</li>
-                            <li>Team training & onboarding</li>
-                            <li>Custom workflows & automation</li>
-                            <li>Ongoing support & optimization</li>
-                        </ul>
+                    <div class="attio-accordion-body">
+                        Send professional invoices, track payments, and manage your entire client relationship from one place. Overdue reminders, payment status, and invoice history — all built into your CRM.
                     </div>
+                </div>
+                <div style="padding-top: 32px;">
+                    <button class="crm-btn-primary" onclick="openModal()">Discuss Your CRM Needs</button>
                 </div>
             </div>
+            <div class="attio-visual" id="crmVisual">
 
-            <div class="crm-cta">
-                <button class="crm-btn-primary" onclick="openModal()">Discuss Your CRM Needs</button>
+                <!-- CRM Panel 1: Dashboard -->
+                <div class="attio-visual-panel attio-panel-active" id="crmpanel-1">
+                  <div class="webmock-browser">
+                    <div class="webmock-bar">
+                      <div class="webmock-dots"><div class="webmock-dot" style="background:#ff5f57"></div><div class="webmock-dot" style="background:#febc2e"></div><div class="webmock-dot" style="background:#28c840"></div></div>
+                      <div class="webmock-urlbar">crm.diamondbackcoding.com — Dashboard</div>
+                    </div>
+                    <!-- Full CRM layout: sidebar + main -->
+                    <div style="display:flex;background:#0a0a0a;font-family:'Inter',sans-serif;height:380px;overflow:hidden;">
+                      <!-- Sidebar -->
+                      <div style="width:148px;background:#000;border-right:1px solid #1e1e1e;flex-shrink:0;display:flex;flex-direction:column;">
+                        <div style="padding:12px 10px 9px;border-bottom:1px solid #1a1a1a;">
+                          <div style="display:flex;align-items:center;gap:7px;">
+                            <div style="width:22px;height:22px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" width="12" height="12"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+                            <div><div style="font-size:10px;font-weight:700;color:#fff;">Diamondback</div><div style="font-size:8px;color:#444;">CRM</div></div>
+                          </div>
+                        </div>
+                        <div style="padding:8px 6px;flex:1;overflow:hidden;">
+                          <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#444;padding:0 6px 5px;">Workspace</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;background:#222;color:#fff;font-size:9px;font-weight:500;margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;color:#666;font-size:9px;margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Leads</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;color:#666;font-size:9px;margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/><circle cx="18" cy="5" r="3"/></svg>Customers</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;color:#666;font-size:9px;margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Follow-ups</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;color:#666;font-size:9px;margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Marketing</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;color:#666;font-size:9px;margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Scheduling</div>
+                          <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#444;padding:8px 6px 5px 6px;">Financials</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;color:#666;font-size:9px;margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Invoices</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;color:#666;font-size:9px;margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Analytics</div>
+                          <div style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#444;padding:8px 6px 5px 6px;">Account</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;color:#666;font-size:9px;margin-bottom:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Tasks</div>
+                          <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:5px;color:#666;font-size:9px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4"/></svg>Settings</div>
+                        </div>
+                        <div style="padding:8px 8px;border-top:1px solid #1a1a1a;display:flex;align-items:center;gap:7px;">
+                          <div style="width:22px;height:22px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#ccc;flex-shrink:0;">JD</div>
+                          <div style="flex:1;min-width:0;"><div style="font-size:8px;font-weight:600;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">John Davis</div><div style="font-size:7px;color:#444;">Admin</div></div>
+                        </div>
+                      </div>
+                      <!-- Main content -->
+                      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                        <!-- Page header -->
+                        <div style="padding:12px 18px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between;background:#0a0a0a;flex-shrink:0;">
+                          <div><div style="font-size:12px;font-weight:700;color:#fff;">Good morning, John</div><div style="font-size:8px;color:#444;margin-top:2px;">Here's what's happening today</div></div>
+                          <div style="background:#fff;color:#000;font-size:8px;font-weight:700;padding:5px 11px;border-radius:5px;display:flex;align-items:center;gap:5px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Lead</div>
+                        </div>
+                        <!-- Stats row -->
+                        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-bottom:1px solid #1a1a1a;flex-shrink:0;">
+                          <div style="padding:10px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:#444;margin-bottom:4px;">Total Leads</div><div style="font-size:16px;font-weight:700;color:#fff;">124</div></div>
+                          <div style="padding:10px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:#444;margin-bottom:4px;">Customers</div><div style="font-size:16px;font-weight:700;color:#fff;">38</div></div>
+                          <div style="padding:10px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:#444;margin-bottom:4px;">Open Tasks</div><div style="font-size:16px;font-weight:700;color:#fff;">12</div></div>
+                          <div style="padding:10px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:rgba(74,222,128,0.7);margin-bottom:4px;">This Month — Revenue</div><div style="font-size:16px;font-weight:700;color:#4ade80;">$14,820</div></div>
+                          <div style="padding:10px 14px;"><div style="font-size:7px;color:#444;margin-bottom:4px;">Pipeline Value</div><div style="font-size:16px;font-weight:700;color:#fff;">$46,200</div></div>
+                        </div>
+                        <!-- Chart area -->
+                        <div style="padding:10px 14px;border-bottom:1px solid #1a1a1a;flex-shrink:0;">
+                          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <div><div style="font-size:10px;font-weight:600;color:#eee;">Revenue Overview</div><div style="font-size:7px;color:#444;margin-top:1px;">Pipeline Value vs. Revenue — last 12 months</div></div>
+                            <div style="display:flex;gap:10px;font-size:7px;color:#555;align-items:center;"><span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:2px;background:#4ade80;display:inline-block;border-radius:1px;"></span>Revenue</span><span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:2px;background:#3b82f6;display:inline-block;border-radius:1px;"></span>Pipeline</span></div>
+                          </div>
+                          <!-- SVG bar chart -->
+                          <svg viewBox="0 0 420 56" style="width:100%;display:block;">
+                            <defs><linearGradient id="cg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4ade80" stop-opacity="0.6"/><stop offset="100%" stop-color="#4ade80" stop-opacity="0.05"/></linearGradient><linearGradient id="cg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity="0.4"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0.03"/></linearGradient></defs>
+                            <!-- Pipeline area -->
+                            <polyline fill="url(#cg2)" stroke="none" points="0,50 35,44 70,40 105,36 140,30 175,28 210,32 245,25 280,20 315,22 350,18 385,12 420,16 420,56 0,56"/>
+                            <polyline fill="none" stroke="#3b82f6" stroke-width="1.5" points="0,50 35,44 70,40 105,36 140,30 175,28 210,32 245,25 280,20 315,22 350,18 385,12 420,16"/>
+                            <!-- Revenue area -->
+                            <polyline fill="url(#cg1)" stroke="none" points="0,54 35,52 70,49 105,46 140,42 175,40 210,43 245,38 280,35 315,36 350,30 385,26 420,28 420,56 0,56"/>
+                            <polyline fill="none" stroke="#4ade80" stroke-width="1.5" points="0,54 35,52 70,49 105,46 140,42 175,40 210,43 245,38 280,35 315,36 350,30 385,26 420,28"/>
+                            <!-- Month labels -->
+                            <text x="0" y="56" fill="#333" font-size="6">Mar</text><text x="70" y="56" fill="#333" font-size="6">May</text><text x="140" y="56" fill="#333" font-size="6">Jul</text><text x="210" y="56" fill="#333" font-size="6">Sep</text><text x="280" y="56" fill="#333" font-size="6">Nov</text><text x="350" y="56" fill="#333" font-size="6">Jan</text>
+                          </svg>
+                        </div>
+                        <!-- Bottom grid: activity + pipeline -->
+                        <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:0;flex:1;overflow:hidden;">
+                          <div style="padding:10px 14px;border-right:1px solid #1a1a1a;overflow:hidden;">
+                            <div style="font-size:9px;font-weight:600;color:#eee;margin-bottom:8px;">Leads Pipeline</div>
+                            <div style="display:flex;flex-direction:column;gap:5px;">
+                              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#111;border-radius:5px;border:1px solid #1e1e1e;"><div style="width:5px;height:5px;border-radius:50%;background:#6366f1;flex-shrink:0;"></div><div style="flex:1;font-size:8px;font-weight:500;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Sarah Miller</div><div style="font-size:7px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e19280938089a180828c84cf828e8c">[email&#160;protected]</a></div><div style="font-size:7px;background:#6366f122;color:#6366f1;padding:2px 6px;border-radius:10px;flex-shrink:0;">Cold</div></div>
+                              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#111;border-radius:5px;border:1px solid #1e1e1e;"><div style="width:5px;height:5px;border-radius:50%;background:#ef4444;flex-shrink:0;"></div><div style="flex:1;font-size:8px;font-weight:500;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Marcus Johnson</div><div style="font-size:7px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="711c100312040231121e03015f181e">[email&#160;protected]</a></div><div style="font-size:7px;background:#ef444422;color:#ef4444;padding:2px 6px;border-radius:10px;flex-shrink:0;">Hot</div></div>
+                              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#111;border-radius:5px;border:1px solid #1e1e1e;"><div style="width:5px;height:5px;border-radius:50%;background:#6366f1;flex-shrink:0;"></div><div style="flex:1;font-size:8px;font-weight:500;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Jennifer Walsh</div><div style="font-size:7px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6f050a012f1c1b0e1d1b1a1f410c00">[email&#160;protected]</a></div><div style="font-size:7px;background:#6366f122;color:#6366f1;padding:2px 6px;border-radius:10px;flex-shrink:0;">Cold</div></div>
+                              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#111;border-radius:5px;border:1px solid #1e1e1e;"><div style="width:5px;height:5px;border-radius:50%;background:#ef4444;flex-shrink:0;"></div><div style="flex:1;font-size:8px;font-weight:500;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">David Chen</div><div style="font-size:7px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a4c08ac7ccc1cae4d0c1c7cc8ac7cbc9">[email&#160;protected]</a></div><div style="font-size:7px;background:#ef444422;color:#ef4444;padding:2px 6px;border-radius:10px;flex-shrink:0;">Hot</div></div>
+                            </div>
+                          </div>
+                          <div style="padding:10px 12px;overflow:hidden;">
+                            <div style="font-size:9px;font-weight:600;color:#eee;margin-bottom:8px;">Tasks Due</div>
+                            <div style="display:flex;flex-direction:column;gap:5px;">
+                              <div style="padding:6px 8px;background:#111;border-radius:5px;border:1px solid #1e1e1e;"><div style="font-size:8px;color:#ccc;font-weight:500;">Follow up: Sarah M.</div><div style="font-size:7px;color:#ef4444;margin-top:2px;">Overdue</div></div>
+                              <div style="padding:6px 8px;background:#111;border-radius:5px;border:1px solid #1e1e1e;"><div style="font-size:8px;color:#ccc;font-weight:500;">Send proposal to Marcus</div><div style="font-size:7px;color:#f59e0b;margin-top:2px;">Due today</div></div>
+                              <div style="padding:6px 8px;background:#111;border-radius:5px;border:1px solid #1e1e1e;"><div style="font-size:8px;color:#ccc;font-weight:500;">Schedule demo call</div><div style="font-size:7px;color:#444;margin-top:2px;">Tomorrow</div></div>
+                              <div style="padding:6px 8px;background:#111;border-radius:5px;border:1px solid #1e1e1e;"><div style="font-size:8px;color:#ccc;font-weight:500;">Review invoice #INV-042</div><div style="font-size:7px;color:#444;margin-top:2px;">In 2 days</div></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CRM Panel 2: Leads page with tabs -->
+                <div class="attio-visual-panel" id="crmpanel-2">
+                  <div class="webmock-browser">
+                    <div class="webmock-bar">
+                      <div class="webmock-dots"><div class="webmock-dot" style="background:#ff5f57"></div><div class="webmock-dot" style="background:#febc2e"></div><div class="webmock-dot" style="background:#28c840"></div></div>
+                      <div class="webmock-urlbar">crm.diamondbackcoding.com — Leads</div>
+                    </div>
+                    <div style="display:flex;background:#0a0a0a;font-family:'Inter',sans-serif;height:380px;overflow:hidden;">
+                      <!-- Sidebar (compact) -->
+                      <div style="width:130px;background:#000;border-right:1px solid #1e1e1e;flex-shrink:0;padding:10px 6px;display:flex;flex-direction:column;gap:1px;overflow:hidden;">
+                        <div style="display:flex;align-items:center;gap:6px;padding:7px;border-bottom:1px solid #1a1a1a;margin-bottom:6px;">
+                          <div style="width:20px;height:20px;background:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" width="11" height="11"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+                          <span style="font-size:9px;font-weight:700;color:#fff;">Diamondback</span>
+                        </div>
+                        <div style="font-size:7px;font-weight:700;text-transform:uppercase;color:#333;padding:0 5px 4px;">Workspace</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;background:#222;color:#fff;font-size:8px;font-weight:500;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Leads</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M12 14v7"/><path d="M9 17h6"/></svg>My Leads</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/><circle cx="18" cy="5" r="3"/></svg>Customers</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Contacts</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Follow-ups</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Marketing</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Scheduling</div>
+                        <div style="font-size:7px;font-weight:700;text-transform:uppercase;color:#333;padding:6px 5px 4px;">Financials</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Invoices</div>
+                        <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Analytics</div>
+                      </div>
+                      <!-- Main -->
+                      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                        <div style="padding:11px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                          <div style="font-size:12px;font-weight:700;color:#fff;">Leads</div>
+                          <div style="display:flex;gap:7px;align-items:center;">
+                            <div style="display:flex;align-items:center;gap:5px;background:#111;border:1px solid #222;border-radius:5px;padding:4px 9px;"><svg viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" width="10" height="10"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span style="font-size:8px;color:#444;">Search leads...</span></div>
+                            <div style="background:#fff;color:#000;font-size:8px;font-weight:700;padding:4px 10px;border-radius:5px;display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="9" height="9"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Lead</div>
+                          </div>
+                        </div>
+                        <!-- Tabs -->
+                        <div style="display:flex;gap:2px;padding:0 16px;border-bottom:1px solid #1a1a1a;flex-shrink:0;">
+                          <div style="padding:7px 10px;font-size:8px;color:#fff;font-weight:600;border-bottom:2px solid #fff;">All</div>
+                          <div style="padding:7px 10px;font-size:8px;color:#444;">New</div>
+                          <div style="padding:7px 10px;font-size:8px;color:#444;">Contacted</div>
+                          <div style="padding:7px 10px;font-size:8px;color:#444;">Pending</div>
+                          <div style="padding:7px 10px;font-size:8px;color:#444;">Converted</div>
+                        </div>
+                        <!-- Table -->
+                        <div style="flex:1;overflow:hidden;">
+                          <table style="width:100%;border-collapse:collapse;">
+                            <thead><tr style="border-bottom:1px solid #1a1a1a;">
+                              <th style="padding:7px 14px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Lead</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Email</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Temp</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Last Contact</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Next Due</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:right;text-transform:uppercase;letter-spacing:0.05em;">Actions</th>
+                            </tr></thead>
+                            <tbody>
+                              <tr style="border-bottom:1px solid #111;"><td style="padding:7px 14px;font-size:8px;font-weight:500;color:#eee;"><span style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9" style="opacity:0.3;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Sarah Miller</span></td><td style="padding:7px 10px;font-size:8px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="cfbcaebdaea78faeaca2aae1aca0a2">[email&#160;protected]</a></td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#ef444422;color:#ef4444;">Hot</span></td><td style="padding:7px 10px;font-size:8px;color:#444;">Feb 25</td><td style="padding:7px 10px;font-size:8px;color:#ef4444;font-weight:700;">Overdue</td><td style="padding:7px 10px;text-align:right;"><div style="display:flex;gap:4px;justify-content:flex-end;"><span style="font-size:7px;color:#3b82f6;padding:2px 6px;border:1px solid #3b82f622;border-radius:3px;">Email</span><span style="font-size:7px;color:#10b981;padding:2px 6px;border:1px solid #10b98122;border-radius:3px;">Msg</span></div></td></tr>
+                              <tr style="border-bottom:1px solid #111;"><td style="padding:7px 14px;font-size:8px;font-weight:500;color:#eee;"><span style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9" style="opacity:0.3;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Marcus Johnson</span></td><td style="padding:7px 10px;font-size:8px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="0469657667717744676b76742a6d6b">[email&#160;protected]</a></td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#6366f122;color:#6366f1;">Cold</span></td><td style="padding:7px 10px;font-size:8px;color:#444;">Feb 22</td><td style="padding:7px 10px;font-size:8px;color:#aaa;">2d</td><td style="padding:7px 10px;text-align:right;"><div style="display:flex;gap:4px;justify-content:flex-end;"><span style="font-size:7px;color:#3b82f6;padding:2px 6px;border:1px solid #3b82f622;border-radius:3px;">Email</span><span style="font-size:7px;color:#10b981;padding:2px 6px;border:1px solid #10b98122;border-radius:3px;">Msg</span></div></td></tr>
+                              <tr style="border-bottom:1px solid #111;"><td style="padding:7px 14px;font-size:8px;font-weight:500;color:#eee;"><span style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9" style="opacity:0.3;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Jennifer Walsh</span></td><td style="padding:7px 10px;font-size:8px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="0369666d43707762717776732d606c">[email&#160;protected]</a></td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#ef444422;color:#ef4444;">Hot</span></td><td style="padding:7px 10px;font-size:8px;color:#444;">Feb 20</td><td style="padding:7px 10px;font-size:8px;color:#10b981;font-weight:700;">Now</td><td style="padding:7px 10px;text-align:right;"><div style="display:flex;gap:4px;justify-content:flex-end;"><span style="font-size:7px;color:#3b82f6;padding:2px 6px;border:1px solid #3b82f622;border-radius:3px;">Email</span><span style="font-size:7px;color:#10b981;padding:2px 6px;border:1px solid #10b98122;border-radius:3px;">Msg</span></div></td></tr>
+                              <tr style="border-bottom:1px solid #111;"><td style="padding:7px 14px;font-size:8px;font-weight:500;color:#eee;"><span style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9" style="opacity:0.3;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>David Chen</span></td><td style="padding:7px 10px;font-size:8px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="4a2e6429222f240a3e2f292264292527">[email&#160;protected]</a></td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#6366f122;color:#6366f1;">Cold</span></td><td style="padding:7px 10px;font-size:8px;color:#444;">Feb 18</td><td style="padding:7px 10px;font-size:8px;color:#aaa;">5d</td><td style="padding:7px 10px;text-align:right;"><div style="display:flex;gap:4px;justify-content:flex-end;"><span style="font-size:7px;color:#3b82f6;padding:2px 6px;border:1px solid #3b82f622;border-radius:3px;">Email</span><span style="font-size:7px;color:#6366f1;padding:2px 6px;border:1px solid #6366f122;border-radius:3px;">Sequence</span></div></td></tr>
+                              <tr style="border-bottom:1px solid #111;"><td style="padding:7px 14px;font-size:8px;font-weight:500;color:#eee;"><span style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9" style="opacity:0.3;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Rachel Torres</span></td><td style="padding:7px 10px;font-size:8px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="92e0bce6fde0e0f7e1d2f0fbe8bcfcf7e6">[email&#160;protected]</a></td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#ef444422;color:#ef4444;">Hot</span></td><td style="padding:7px 10px;font-size:8px;color:#444;">Feb 26</td><td style="padding:7px 10px;font-size:8px;color:#aaa;">1d</td><td style="padding:7px 10px;text-align:right;"><div style="display:flex;gap:4px;justify-content:flex-end;"><span style="font-size:7px;color:#3b82f6;padding:2px 6px;border:1px solid #3b82f622;border-radius:3px;">Email</span><span style="font-size:7px;color:#10b981;padding:2px 6px;border:1px solid #10b98122;border-radius:3px;">Msg</span></div></td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CRM Panel 3: Follow-ups page -->
+                <div class="attio-visual-panel" id="crmpanel-3">
+                  <div class="webmock-browser">
+                    <div class="webmock-bar">
+                      <div class="webmock-dots"><div class="webmock-dot" style="background:#ff5f57"></div><div class="webmock-dot" style="background:#febc2e"></div><div class="webmock-dot" style="background:#28c840"></div></div>
+                      <div class="webmock-urlbar">crm.diamondbackcoding.com — Follow-ups</div>
+                    </div>
+                    <div style="display:flex;background:#0a0a0a;font-family:'Inter',sans-serif;height:380px;overflow:hidden;">
+                      <!-- Sidebar (compact) -->
+                      <div style="width:130px;background:#000;border-right:1px solid #1e1e1e;flex-shrink:0;padding:10px 6px;overflow:hidden;">
+                        <div style="display:flex;align-items:center;gap:6px;padding:7px;border-bottom:1px solid #1a1a1a;margin-bottom:6px;">
+                          <div style="width:20px;height:20px;background:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" width="11" height="11"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+                          <span style="font-size:9px;font-weight:700;color:#fff;">Diamondback</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:1px;">
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Leads</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/><circle cx="18" cy="5" r="3"/></svg>Customers</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;background:#222;color:#fff;font-size:8px;font-weight:500;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Follow-ups</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Marketing</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Scheduling</div>
+                          <div style="font-size:7px;font-weight:700;text-transform:uppercase;color:#333;padding:6px 5px 4px;">Financials</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Invoices</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Analytics</div>
+                        </div>
+                      </div>
+                      <!-- Main -->
+                      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                        <div style="padding:11px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                          <div><div style="font-size:12px;font-weight:700;color:#fff;">Follow-ups</div><div style="font-size:8px;color:#444;margin-top:1px;">Cold & hot lead outreach queue</div></div>
+                        </div>
+                        <!-- Sub-tabs -->
+                        <div style="display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid #1a1a1a;flex-shrink:0;">
+                          <div style="padding:4px 10px;background:#222;border:1px solid #333;border-radius:4px;font-size:8px;color:#fff;font-weight:600;">All Due</div>
+                          <div style="padding:4px 10px;border:1px solid #1e1e1e;border-radius:4px;font-size:8px;color:#555;">Hot</div>
+                          <div style="padding:4px 10px;border:1px solid #1e1e1e;border-radius:4px;font-size:8px;color:#555;">Cold</div>
+                          <div style="padding:4px 10px;border:1px solid #1e1e1e;border-radius:4px;font-size:8px;color:#555;">Overdue</div>
+                          <div style="margin-left:auto;display:flex;gap:6px;">
+                            <div style="padding:4px 10px;border:1px solid #1e1e1e;border-radius:4px;font-size:8px;color:#555;">Templates</div>
+                            <div style="padding:4px 10px;border:1px solid #1e1e1e;border-radius:4px;font-size:8px;color:#555;">Chains</div>
+                            <div style="padding:4px 10px;border:1px solid #1e1e1e;border-radius:4px;font-size:8px;color:#555;">SMS</div>
+                          </div>
+                        </div>
+                        <!-- Stats -->
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #1a1a1a;flex-shrink:0;">
+                          <div style="padding:8px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:#444;margin-bottom:3px;">Due Today</div><div style="font-size:14px;font-weight:700;color:#fff;">18</div></div>
+                          <div style="padding:8px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:#444;margin-bottom:3px;">Overdue</div><div style="font-size:14px;font-weight:700;color:#ef4444;">7</div></div>
+                          <div style="padding:8px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:#444;margin-bottom:3px;">Hot Leads</div><div style="font-size:14px;font-weight:700;color:#ef4444;">12</div></div>
+                          <div style="padding:8px 14px;"><div style="font-size:7px;color:#444;margin-bottom:3px;">This Week</div><div style="font-size:14px;font-weight:700;color:#4ade80;">43</div></div>
+                        </div>
+                        <!-- Table -->
+                        <div style="flex:1;overflow:hidden;">
+                          <table style="width:100%;border-collapse:collapse;">
+                            <thead><tr style="border-bottom:1px solid #1a1a1a;">
+                              <th style="padding:6px 14px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Lead</th>
+                              <th style="padding:6px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Email</th>
+                              <th style="padding:6px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Temp</th>
+                              <th style="padding:6px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Last Contact</th>
+                              <th style="padding:6px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Follow-ups</th>
+                              <th style="padding:6px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Next Due</th>
+                              <th style="padding:6px 10px;font-size:7px;font-weight:600;color:#444;text-align:right;text-transform:uppercase;">Msgs</th>
+                            </tr></thead>
+                            <tbody>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:6px 14px;font-size:8px;font-weight:500;color:#eee;">Sarah Miller</td><td style="padding:6px 10px;font-size:7px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ec9f8d9e8d84ac8d8f8189c28f8381">[email&#160;protected]</a></td><td style="padding:6px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#ef444422;color:#ef4444;">Hot</span></td><td style="padding:6px 10px;font-size:7px;color:#444;">Feb 25</td><td style="padding:6px 10px;font-size:7px;color:#aaa;">3</td><td style="padding:6px 10px;font-size:7px;color:#ef4444;font-weight:700;">Overdue</td><td style="padding:6px 10px;text-align:right;"><span style="font-size:7px;background:#3b82f622;color:#3b82f6;border-radius:20px;padding:2px 6px;">✉ 2</span></td></tr>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:6px 14px;font-size:8px;font-weight:500;color:#eee;">Marcus Johnson</td><td style="padding:6px 10px;font-size:7px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8fe2eefdecfafccfece0fdffa1e6e0">[email&#160;protected]</a></td><td style="padding:6px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#6366f122;color:#6366f1;">Cold</span></td><td style="padding:6px 10px;font-size:7px;color:#444;">Feb 22</td><td style="padding:6px 10px;font-size:7px;color:#aaa;">1</td><td style="padding:6px 10px;font-size:7px;color:#10b981;font-weight:700;">Now</td><td style="padding:6px 10px;text-align:right;font-size:7px;color:#444;">—</td></tr>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:6px 14px;font-size:8px;font-weight:500;color:#eee;">Jennifer Walsh</td><td style="padding:6px 10px;font-size:7px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3c5659527c4f485d4e48494c125f53">[email&#160;protected]</a></td><td style="padding:6px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#ef444422;color:#ef4444;">Hot</span></td><td style="padding:6px 10px;font-size:7px;color:#444;">Feb 20</td><td style="padding:6px 10px;font-size:7px;color:#aaa;">5</td><td style="padding:6px 10px;font-size:7px;color:#aaa;">2d</td><td style="padding:6px 10px;text-align:right;"><span style="font-size:7px;background:#10b98122;color:#10b981;border-radius:20px;padding:2px 6px;">✉ 1</span></td></tr>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:6px 14px;font-size:8px;font-weight:500;color:#eee;">David Chen</td><td style="padding:6px 10px;font-size:7px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3b5f1558535e557b4f5e585315585456">[email&#160;protected]</a></td><td style="padding:6px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#6366f122;color:#6366f1;">Cold</span></td><td style="padding:6px 10px;font-size:7px;color:#444;">Feb 18</td><td style="padding:6px 10px;font-size:7px;color:#aaa;">2</td><td style="padding:6px 10px;font-size:7px;color:#aaa;">5d</td><td style="padding:6px 10px;text-align:right;font-size:7px;color:#444;">—</td></tr>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:6px 14px;font-size:8px;font-weight:500;color:#eee;">Rachel Torres</td><td style="padding:6px 10px;font-size:7px;color:#555;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="43316d372c3131263003212a396d2d2637">[email&#160;protected]</a></td><td style="padding:6px 10px;"><span style="font-size:7px;font-weight:800;padding:2px 6px;border-radius:10px;background:#ef444422;color:#ef4444;">Hot</span></td><td style="padding:6px 10px;font-size:7px;color:#444;">Feb 26</td><td style="padding:6px 10px;font-size:7px;color:#aaa;">4</td><td style="padding:6px 10px;font-size:7px;color:#aaa;">1d</td><td style="padding:6px 10px;text-align:right;"><span style="font-size:7px;background:#3b82f622;color:#3b82f6;border-radius:20px;padding:2px 6px;">✉ 3</span></td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CRM Panel 4: Invoices page -->
+                <div class="attio-visual-panel" id="crmpanel-4">
+                  <div class="webmock-browser">
+                    <div class="webmock-bar">
+                      <div class="webmock-dots"><div class="webmock-dot" style="background:#ff5f57"></div><div class="webmock-dot" style="background:#febc2e"></div><div class="webmock-dot" style="background:#28c840"></div></div>
+                      <div class="webmock-urlbar">crm.diamondbackcoding.com — Invoices</div>
+                    </div>
+                    <div style="display:flex;background:#0a0a0a;font-family:'Inter',sans-serif;height:380px;overflow:hidden;">
+                      <!-- Sidebar (compact) -->
+                      <div style="width:130px;background:#000;border-right:1px solid #1e1e1e;flex-shrink:0;padding:10px 6px;overflow:hidden;">
+                        <div style="display:flex;align-items:center;gap:6px;padding:7px;border-bottom:1px solid #1a1a1a;margin-bottom:6px;">
+                          <div style="width:20px;height:20px;background:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" width="11" height="11"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+                          <span style="font-size:9px;font-weight:700;color:#fff;">Diamondback</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:1px;">
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Leads</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Follow-ups</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Marketing</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Scheduling</div>
+                          <div style="font-size:7px;font-weight:700;text-transform:uppercase;color:#333;padding:6px 5px 4px;">Financials</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:4px;background:#222;color:#fff;font-size:8px;font-weight:500;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Invoices</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Analytics</div>
+                          <div style="font-size:7px;font-weight:700;text-transform:uppercase;color:#333;padding:6px 5px 4px;">Account</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polyline points="9 11 12 14 22 4"/></svg>Tasks</div>
+                          <div style="display:flex;align-items:center;gap:5px;padding:4px 6px;color:#555;font-size:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="3"/></svg>Settings</div>
+                        </div>
+                      </div>
+                      <!-- Main -->
+                      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                        <div style="padding:11px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                          <div style="font-size:12px;font-weight:700;color:#fff;">Invoices</div>
+                          <div style="background:#fff;color:#000;font-size:8px;font-weight:700;padding:5px 11px;border-radius:5px;display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="9" height="9"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create Invoice</div>
+                        </div>
+                        <!-- Summary totals -->
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #1a1a1a;flex-shrink:0;">
+                          <div style="padding:10px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:#444;margin-bottom:3px;">Total Invoiced</div><div style="font-size:15px;font-weight:700;color:#fff;">$16,499</div></div>
+                          <div style="padding:10px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:#444;margin-bottom:3px;">Paid</div><div style="font-size:15px;font-weight:700;color:#4ade80;">$9,100</div></div>
+                          <div style="padding:10px 14px;border-right:1px solid #1a1a1a;"><div style="font-size:7px;color:#444;margin-bottom:3px;">Pending</div><div style="font-size:15px;font-weight:700;color:#f59e0b;">$3,499</div></div>
+                          <div style="padding:10px 14px;"><div style="font-size:7px;color:#444;margin-bottom:3px;">Overdue</div><div style="font-size:15px;font-weight:700;color:#ef4444;">$3,900</div></div>
+                        </div>
+                        <!-- Table -->
+                        <div style="flex:1;overflow:hidden;">
+                          <table style="width:100%;border-collapse:collapse;">
+                            <thead><tr style="border-bottom:1px solid #1a1a1a;">
+                              <th style="padding:7px 14px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Invoice</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Client</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Description</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Amount</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Due Date</th>
+                              <th style="padding:7px 10px;font-size:7px;font-weight:600;color:#444;text-align:left;text-transform:uppercase;">Status</th>
+                            </tr></thead>
+                            <tbody>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:7px 14px;font-size:8px;color:#666;font-family:monospace;">#INV-047</td><td style="padding:7px 10px;font-size:8px;font-weight:500;color:#eee;">Acme Corp</td><td style="padding:7px 10px;font-size:8px;color:#555;">Website Redesign</td><td style="padding:7px 10px;font-size:8px;font-weight:600;color:#fff;">$4,500</td><td style="padding:7px 10px;font-size:8px;color:#444;">Mar 1</td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:700;padding:2px 7px;border-radius:10px;background:#4ade8022;color:#4ade80;">Paid</span></td></tr>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:7px 14px;font-size:8px;color:#666;font-family:monospace;">#INV-046</td><td style="padding:7px 10px;font-size:8px;font-weight:500;color:#eee;">Corp Solutions</td><td style="padding:7px 10px;font-size:8px;color:#555;">CRM Setup & Integration</td><td style="padding:7px 10px;font-size:8px;font-weight:600;color:#fff;">$2,800</td><td style="padding:7px 10px;font-size:8px;color:#f59e0b;">Mar 5</td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:700;padding:2px 7px;border-radius:10px;background:#3b82f622;color:#3b82f6;">Sent</span></td></tr>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:7px 14px;font-size:8px;color:#666;font-family:monospace;">#INV-045</td><td style="padding:7px 10px;font-size:8px;font-weight:500;color:#eee;">StartupCo</td><td style="padding:7px 10px;font-size:8px;color:#555;">Monthly Maintenance</td><td style="padding:7px 10px;font-size:8px;font-weight:600;color:#fff;">$1,200</td><td style="padding:7px 10px;font-size:8px;color:#ef4444;">Feb 15</td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:700;padding:2px 7px;border-radius:10px;background:#ef444422;color:#ef4444;">Overdue</span></td></tr>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:7px 14px;font-size:8px;color:#666;font-family:monospace;">#INV-044</td><td style="padding:7px 10px;font-size:8px;font-weight:500;color:#eee;">Tech Industries</td><td style="padding:7px 10px;font-size:8px;color:#555;">E-commerce Build</td><td style="padding:7px 10px;font-size:8px;font-weight:600;color:#fff;">$6,800</td><td style="padding:7px 10px;font-size:8px;color:#444;">Mar 15</td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:700;padding:2px 7px;border-radius:10px;background:#4ade8022;color:#4ade80;">Paid</span></td></tr>
+                              <tr style="border-bottom:1px solid #0e0e0e;"><td style="padding:7px 14px;font-size:8px;color:#666;font-family:monospace;">#INV-043</td><td style="padding:7px 10px;font-size:8px;font-weight:500;color:#eee;">Biz Network</td><td style="padding:7px 10px;font-size:8px;color:#555;">SEO & Performance</td><td style="padding:7px 10px;font-size:8px;font-weight:600;color:#fff;">$1,199</td><td style="padding:7px 10px;font-size:8px;color:#444;">Mar 20</td><td style="padding:7px 10px;"><span style="font-size:7px;font-weight:700;padding:2px 7px;border-radius:10px;background:#44444422;color:#888;">Draft</span></td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+            </div>
+
             </div>
         </div>
-    </section>
+    </div>
+</section>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+(function() {
+    var acc = document.getElementById('crmAccordion');
+    if (!acc) return;
+    acc.addEventListener('click', function(e) {
+        var item = e.target.closest('.attio-accordion-item');
+        if (!item) return;
+        var panel = item.getAttribute('data-crm-panel');
+        acc.querySelectorAll('.attio-accordion-item').forEach(function(i) { i.classList.remove('attio-open'); });
+        item.classList.add('attio-open');
+        document.querySelectorAll('#crmVisual .attio-visual-panel').forEach(function(p) { p.classList.remove('attio-panel-active'); });
+        var target = document.getElementById(panel);
+        if (target) target.classList.add('attio-panel-active');
+    });
+})();
+</script>
 
     <!-- Services/Pricing Section -->
     <!-- Blog Articles Section -->
@@ -7344,4 +8194,3 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 </style>
 </body>
-</html>

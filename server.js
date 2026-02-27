@@ -3345,8 +3345,9 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
-            WHERE l.source IS NULL
-               OR l.source NOT IN ('company-user', 'crm-portal')
+            WHERE (l.source IS NULL
+               OR l.source NOT IN ('company-user', 'crm-portal', 'subscription-direct'))
+              AND l.client_password IS NULL
             ORDER BY l.created_at DESC
         `);
 
@@ -12694,7 +12695,10 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
+            AND (l.status IS NULL OR l.status != 'dead')
             AND l.client_portal_id IS NULL
+            AND (l.source IS NULL OR l.source NOT IN ('company-user', 'subscription-direct', 'crm-portal'))
+            AND (l.client_password IS NULL)
             AND NOT EXISTS (
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
@@ -20920,13 +20924,11 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
 
 // Send SMS via Brevo SMS API
 async function sendSmsViaBrevo(apiKey, senderName, toPhone, message) {
-    // Always append STOP opt-out instruction as required by US carrier regulations
-    const fullMessage = message.endsWith('Reply STOP to opt out.') ? message : message + '\n\nReply STOP to opt out.';
     return new Promise((resolve, reject) => {
         const body = JSON.stringify({
             sender: senderName || 'Notify',
             recipient: toPhone,
-            content: fullMessage,
+            content: message,
             type: 'transactional'
         });
         const options = {
@@ -21059,7 +21061,7 @@ app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) 
             return res.status(400).json({ success: false, message: 'Brevo SMS not configured. Enable it in Settings → SMS.' });
         }
 
-        await sendSmsViaBrevo(settings.brevo_api_key, settings.brevo_sms_sender || 'CRM', toPhone, message);
+        await sendSmsViaBrevo(settings.brevo_api_key, settings.brevo_sms_sender || 'CRM', toPhone, message + '\n\nReply STOP to opt out.');
 
         // Log to message_log
         await pool.query(`
@@ -22118,11 +22120,18 @@ app.delete('/api/admin/company/:clientPortalId', authenticateToken, async (req, 
     try {
         const { clientPortalId } = req.params;
 
-        // Cancel all Stripe subscriptions for company users
+        const _safe = async (sql, params = []) => {
+            try { await pool.query(sql, params); }
+            catch (e) { if (e.code !== '42P01' && e.code !== '42703') throw e; }
+        };
+
+        // 1. Fetch all users in this company (to cancel Stripe subs + delete their lead records)
         const users = await pool.query(
             `SELECT user_email, stripe_subscription_id FROM company_users WHERE client_portal_id = $1`,
             [clientPortalId]
         );
+
+        // 2. Cancel every user's Stripe subscription
         for (const u of users.rows) {
             if (u.stripe_subscription_id) {
                 try {
@@ -22134,20 +22143,63 @@ app.delete('/api/admin/company/:clientPortalId', authenticateToken, async (req, 
             }
         }
 
-        // Delete all related records
-        await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]);
-        await pool.query(`DELETE FROM subscription_events WHERE lead_email IN (SELECT user_email FROM company_users WHERE client_portal_id = $1)`, [clientPortalId]);
+        // 3. Delete all portal-level data
+        await _safe(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]);
+        await _safe(`DELETE FROM subscription_events WHERE lead_email IN (SELECT user_email FROM company_users WHERE client_portal_id = $1)`, [clientPortalId]);
+        await _safe(`DELETE FROM client_email_chain_steps WHERE chain_id IN (SELECT id FROM client_email_chains WHERE client_portal_id = $1)`, [clientPortalId]);
+        await _safe(`DELETE FROM client_chain_queue WHERE client_portal_id = $1`, [clientPortalId]);
+        await _safe(`DELETE FROM client_email_chains WHERE client_portal_id = $1`, [clientPortalId]);
+        await _safe(`DELETE FROM client_email_templates WHERE client_portal_id = $1`, [clientPortalId]);
+        await _safe(`DELETE FROM client_email_settings WHERE client_portal_id = $1`, [clientPortalId]);
+        await _safe(`DELETE FROM client_email_log WHERE client_portal_id = $1`, [clientPortalId]);
+        await _safe(`DELETE FROM client_appointments WHERE client_portal_id = $1`, [clientPortalId]);
+        await _safe(`DELETE FROM client_unsubscribes WHERE client_portal_id = $1`, [clientPortalId]);
+        await _safe(`DELETE FROM message_log WHERE client_portal_id = $1`, [clientPortalId]);
+
+        // 4. Delete all lead records belonging to this workspace
+        //    (seat users, co-admins, and the admin account itself)
+        //    This is the critical step that was previously missing —
+        //    old code only NULLed client_portal_id, leaving orphaned leads
+        //    that then appeared in follow-up counts and lead lists.
+        const leadRows = await pool.query(
+            `SELECT id, email FROM leads WHERE client_portal_id = $1`,
+            [clientPortalId]
+        );
+        for (const lr of leadRows.rows) {
+            // Clean up per-lead child rows before deleting the lead itself
+            await _safe(`DELETE FROM lead_notes WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM lead_scores WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM score_history WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM email_events WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM lead_engagement WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM tasks WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM pipeline_deals WHERE lead_id = $1`, [lr.id]);
+            try { await pool.query(`DELETE FROM ticket_responses WHERE ticket_id IN (SELECT id FROM support_tickets WHERE lead_id = $1)`, [lr.id]); } catch(_) {}
+            await _safe(`DELETE FROM support_tickets WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM client_projects WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM client_uploads WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM invoices WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM expenses WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM documents WHERE lead_id = $1`, [lr.id]);
+            await _safe(`DELETE FROM appointments WHERE LOWER(lead_email) = LOWER($1)`, [lr.email]);
+            await _safe(`DELETE FROM crm_subscriptions WHERE lead_id = $1`, [lr.id]);
+        }
+        // Now delete all the lead rows at once
+        await pool.query(`DELETE FROM leads WHERE client_portal_id = $1`, [clientPortalId]);
+
+        // 5. Delete company_users and client_companies rows
         await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [clientPortalId]);
         await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [clientPortalId]);
 
-        // Also clear client_portal_id from any leads pointing at this company
-        await pool.query(
-            `UPDATE leads SET client_portal_id = NULL, is_company_admin = FALSE, updated_at = NOW() WHERE client_portal_id = $1`,
-            [clientPortalId]
-        );
+        // 6. Global orphan sweep — any crm_subscriptions whose lead no longer exists
+        await pool.query(`
+            DELETE FROM crm_subscriptions
+            WHERE lead_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM leads WHERE id = crm_subscriptions.lead_id)
+        `).catch(() => {});
 
-        console.log(`[DELETE COMPANY]  Fully deleted company: ${clientPortalId}`);
-        res.json({ success: true, message: `Company ${clientPortalId} deleted.` });
+        console.log(`[DELETE COMPANY] Fully deleted company ${clientPortalId} — ${leadRows.rowCount} lead records removed`);
+        res.json({ success: true, message: `Company ${clientPortalId} and all ${leadRows.rowCount} user accounts deleted.` });
     } catch (e) {
         console.error('[DELETE COMPANY] Error:', e);
         res.status(500).json({ success: false, message: e.message });

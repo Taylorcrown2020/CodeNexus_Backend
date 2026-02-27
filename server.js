@@ -3345,9 +3345,8 @@ app.get('/api/leads', authenticateToken, async (req, res) => {
                    e.email as employee_email
             FROM leads l
             LEFT JOIN employees e ON l.assigned_to = e.id
-            WHERE (l.source IS NULL
-               OR l.source NOT IN ('company-user', 'crm-portal', 'subscription-direct'))
-              AND l.client_password IS NULL
+            WHERE l.source IS NULL
+               OR l.source NOT IN ('company-user', 'crm-portal')
             ORDER BY l.created_at DESC
         `);
 
@@ -3557,7 +3556,8 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
 
         // Get full lead/customer info
         const leadResult = await pool.query(`
-            SELECT email, stripe_customer_id, client_portal_id, is_company_admin 
+            SELECT email, stripe_customer_id, client_portal_id, is_company_admin,
+                   client_password, source, is_customer
             FROM leads WHERE id = $1
         `, [leadId]);
         
@@ -3573,15 +3573,16 @@ app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
         const stripeCustomerId = lead.stripe_customer_id;
         const clientPortalId = lead.client_portal_id;
 
-        // HARD GUARD: Never allow the admin nuke route to delete a CRM lead
-        // that belongs to a client portal. Those must be deleted via /api/client/leads/:id.
-        // Only allow deletion of portal account holders (client_password IS NOT NULL)
-        // which represent the actual subscription/company account, not CRM leads inside a portal.
-        const isCrmLead = clientPortalId && !lead.client_password;
-        if (isCrmLead) {
+        // HARD GUARD: only block deletion of workspace seat users (source='company-user').
+        // Allow deletion of: workspace admins, regular customers, plain leads.
+        const isSeatUser = clientPortalId
+            && !lead.client_password
+            && !lead.is_company_admin
+            && lead.source === 'company-user';
+        if (isSeatUser) {
             return res.status(403).json({
                 success: false,
-                message: 'This lead belongs to a client portal and must be deleted from within that portal.'
+                message: 'This user is a workspace seat. Delete the whole workspace account instead.'
             });
         }
 
@@ -10087,7 +10088,7 @@ app.post('/api/client/company/reduce-seat', authenticateClient, async (req, res)
 // ========================================
 app.post('/api/client/company/add-user', authenticateClient, async (req, res) => {
     try {
-        const { name, username, email, sendingEmail, userLabel, packageKey, clientPortalId, mode, password, phone, smsEnabled } = req.body;
+        const { name, username, email, sendingEmail, userLabel, packageKey, clientPortalId, mode, password } = req.body;
         const requesterEmail = req.user.email;
 
         if (!name || !email || !clientPortalId) {
@@ -10124,29 +10125,16 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         }
 
         // ── Domain enforcement ───────────────────────────────────────
-        // ── Domain enforcement ───────────────────────────────────────
-        // All workspace users must share the same email domain as the admin.
-        // This groups all users under one account for billing and ensures
-        // email sending stays consistent under one verified domain.
+        // If the business has a verified sending domain, warn (but don't block) when
+        // the user's email doesn't match. They can still log in and use the CRM;
+        // they just won't be able to send email as a personal sender.
         const emailSettings = await getClientEmailSettings(clientPortalId);
         let domainWarning = null;
-
-        // Get the admin's email domain — all workspace users must match
-        const adminDomain = company.admin_email?.toLowerCase().split('@')[1];
-        const userDomain  = email.toLowerCase().split('@')[1];
-
-        if (adminDomain && userDomain !== adminDomain) {
-            return res.status(400).json({
-                success: false,
-                message: `All users in this workspace must use the same email domain as the admin (@${adminDomain}). This user's email (@${userDomain}) does not match. Please use a ${adminDomain} email address for this team member.`
-            });
-        }
-
-        // Additional soft warning if verified sending domain differs (edge case)
         if (emailSettings?.verified_domain && emailSettings?.domain_status === 'verified') {
+            const userDomain = email.toLowerCase().split('@')[1];
             const verifiedDomain = emailSettings.verified_domain.toLowerCase();
             if (userDomain !== verifiedDomain) {
-                domainWarning = `Note: This user's email (@${userDomain}) does not match the verified sending domain (@${verifiedDomain}). Emails they send will come from the shared sender address.`;
+                domainWarning = `Note: This user's email (@${userDomain}) does not match your verified sending domain (@${verifiedDomain}). They can log in and use the CRM, but emails they send will come from the shared portal sender address, not their personal email.`;
                 console.log(`[ADD-USER] Domain mismatch warning: ${email} vs verified ${verifiedDomain}`);
             }
         }
@@ -10257,7 +10245,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         }
 
         // Add to company_users — NOT to leads table
-        await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser, phone || null, smsEnabled || false);
+        await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser);
 
         // Update company totals — two separate queries so monthly_total reads the
         // already-updated purchased_seats value (PostgreSQL SET is not sequential)
@@ -10605,19 +10593,8 @@ async function createCompany(companyName, adminEmail, adminName) {
 }
 
 // Add user to company
-async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser, phone = null, smsEnabled = false) {
+async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser) {
     try {
-        // Ensure phone and sms_enabled columns exist
-        await pool.query(`
-            DO $$ BEGIN
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='company_users' AND column_name='user_phone') THEN
-                    ALTER TABLE company_users ADD COLUMN user_phone VARCHAR(30);
-                    ALTER TABLE company_users ADD COLUMN sms_enabled BOOLEAN DEFAULT FALSE;
-                    ALTER TABLE company_users ADD COLUMN email_enabled BOOLEAN DEFAULT TRUE;
-                END IF;
-            END $$;
-        `).catch(() => {});
-
         // Check if an existing row exists (cancelled users can be re-added)
         const existing = await pool.query(
             `SELECT id FROM company_users WHERE client_portal_id = $1 AND LOWER(user_email) = LOWER($2)`,
@@ -10636,15 +10613,12 @@ async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, su
                     package_key = $5,
                     package_name = $6,
                     price_per_user = $7,
-                    user_phone = $10,
-                    sms_enabled = $11,
-                    email_enabled = TRUE,
                     status = 'active',
                     cancelled_date = NULL,
                     added_date = NOW()
                 WHERE client_portal_id = $8 AND LOWER(user_email) = LOWER($9)
                 RETURNING *
-            `, [userLabel, userName, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser, clientPortalId, userEmail, phone || null, smsEnabled || false]);
+            `, [userLabel, userName, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser, clientPortalId, userEmail]);
         } else {
             // Fresh insert — no conflict possible since we checked above
             result = await pool.query(`
@@ -10652,14 +10626,13 @@ async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, su
                     client_portal_id, user_label, user_name, user_email,
                     subscription_id, stripe_subscription_id,
                     package_key, package_name, price_per_user,
-                    user_phone, sms_enabled, email_enabled,
                     is_admin, status, added_date
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, FALSE, 'active', NOW())
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE, 'active', NOW())
                 RETURNING *
-            `, [clientPortalId, userLabel, userName, userEmail, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser, phone || null, smsEnabled || false]);
+            `, [clientPortalId, userLabel, userName, userEmail, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser]);
         }
 
-        console.log(`[COMPANY] Added/updated user in ${clientPortalId}: ${userName} (${userEmail}) | SMS: ${smsEnabled} | Phone: ${phone}`);
+        console.log(`[COMPANY] Added/updated user in ${clientPortalId}: ${userName} (${userEmail})`);
         return result.rows[0];
     } catch (err) {
         console.error('[COMPANY] Error adding user:', err);
@@ -12695,10 +12668,9 @@ app.get('/api/follow-ups/by-temperature', authenticateToken, async (req, res) =>
             WHERE l.status IN ('new', 'contacted', 'qualified', 'pending')
             AND l.is_customer = FALSE
             AND l.unsubscribed = FALSE
-            AND (l.status IS NULL OR l.status != 'dead')
             AND l.client_portal_id IS NULL
             AND (l.source IS NULL OR l.source NOT IN ('company-user', 'subscription-direct', 'crm-portal'))
-            AND (l.client_password IS NULL)
+            AND (l.is_company_admin IS NOT TRUE)
             AND NOT EXISTS (
                 SELECT 1 FROM auto_campaigns ac WHERE ac.lead_id = l.id AND ac.is_active = TRUE
             )
@@ -19527,9 +19499,9 @@ app.get('/api/unsubscribe/:token', async (req, res) => {
             `);
         }
 
-        // Set unsubscribed flag and mark as dead
+        // Set unsubscribed flag
         await pool.query(
-            "UPDATE leads SET unsubscribed = TRUE, status = 'dead', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            'UPDATE leads SET unsubscribed = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
             [lead.id]
         );
 
@@ -20452,13 +20424,7 @@ app.get('/api/client-unsub/:portalId', async (req, res) => {
             `INSERT INTO client_unsubscribes (client_portal_id, email) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
             [portalId, email.toLowerCase()]
         );
-        // Also mark the lead itself as unsubscribed and dead
-        await pool.query(
-            `UPDATE leads SET unsubscribed = TRUE, status = 'dead', updated_at = CURRENT_TIMESTAMP
-             WHERE client_portal_id = $1 AND LOWER(email) = LOWER($2)`,
-            [portalId, email]
-        ).catch(() => {});
-        res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:60px;"><h2 style="color:#166534;">Unsubscribed</h2><p>You have been removed from our email list. You will no longer receive marketing emails.</p><p style="font-size:13px;color:#888;">Reply STOP to any text message to also opt out of SMS.</p></body></html>`);
+        res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:60px;"><h2>Unsubscribed</h2><p>You have been removed from our email list.</p></body></html>`);
     } catch(e) { res.status(500).send('Error'); }
 });
 
@@ -20607,10 +20573,11 @@ app.post('/api/client/domain/add', authenticateClient, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid domain format. Use: acmeroofing.com' });
         }
 
-        // Always use DiamondbackCoding's master Brevo key for domain registration
-        const brevoKey = process.env.BREVO_API_KEY;
+        // Get Brevo API key from settings
+        const settings = await getClientEmailSettings(portalId);
+        const brevoKey = settings?.brevo_api_key || process.env.BREVO_API_KEY;
         if (!brevoKey) {
-            return res.status(500).json({ success: false, message: 'Platform email service not configured. Please contact DiamondbackCoding support.' });
+            return res.status(400).json({ success: false, message: 'Brevo API key is required before adding a domain. Please save your Brevo API key in Email Settings first.' });
         }
 
         // Register domain with Brevo sender domains API
@@ -20818,11 +20785,13 @@ app.get('/api/client/email-settings', authenticateClient, async (req, res) => {
         if (!portalId) return res.json({ success: true, settings: {} });
         const settings = await getClientEmailSettings(portalId);
         const out = settings ? { ...settings } : {};
-        // DiamondbackCoding manages the Brevo account — no per-portal API key needed.
-        // Report that Brevo is always active (powered by the platform master key).
-        out.brevo_api_key_set = true; // Always true — platform handles this
-        out.brevo_managed_by_platform = true;
-        delete out.brevo_api_key; // Never expose any stored key
+        // Mask Brevo API key for security — never send raw key to frontend
+        if (out.brevo_api_key) {
+            out.brevo_api_key_set = true;
+            out.brevo_api_key = out.brevo_api_key.substring(0, 6) + '••••••••••••';
+        } else {
+            out.brevo_api_key_set = false;
+        }
         // Include SMS settings
         out.brevo_sms_enabled = out.brevo_sms_enabled || false;
         out.brevo_sms_sender  = out.brevo_sms_sender  || '';
@@ -21061,7 +21030,7 @@ app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) 
             return res.status(400).json({ success: false, message: 'Brevo SMS not configured. Enable it in Settings → SMS.' });
         }
 
-        await sendSmsViaBrevo(settings.brevo_api_key, settings.brevo_sms_sender || 'CRM', toPhone, message + '\n\nReply STOP to opt out.');
+        await sendSmsViaBrevo(settings.brevo_api_key, settings.brevo_sms_sender || 'CRM', toPhone, message);
 
         // Log to message_log
         await pool.query(`
@@ -21190,7 +21159,7 @@ app.post('/api/brevo/sms-webhook', async (req, res) => {
         for (const event of events) {
             if (event.event === 'inbound_sms' || event.mobilePhone) {
                 const fromPhone = event.mobilePhone || event.from;
-                const content   = (event.text || event.content || '').trim();
+                const content   = event.text || event.content;
                 if (!fromPhone) continue;
 
                 // Find lead by phone
@@ -21200,36 +21169,6 @@ app.post('/api/brevo/sms-webhook', async (req, res) => {
                 );
                 if (!leadResult.rows.length) continue;
                 const lead = leadResult.rows[0];
-
-                // ── Handle STOP / UNSUBSCRIBE opt-out ─────────────────
-                const stopKeywords = ['STOP', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'];
-                if (stopKeywords.includes(content.toUpperCase())) {
-                    await pool.query(`
-                        UPDATE leads SET
-                            unsubscribed = TRUE,
-                            status = 'dead',
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE id = $1
-                    `, [lead.id]);
-                    // Also insert into client_unsubscribes if portal-based
-                    if (lead.client_portal_id) {
-                        const leadEmail = await pool.query('SELECT email FROM leads WHERE id=$1', [lead.id]);
-                        const email = leadEmail.rows[0]?.email;
-                        if (email) {
-                            await pool.query(
-                                `INSERT INTO client_unsubscribes (client_portal_id, email) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-                                [lead.client_portal_id, email.toLowerCase()]
-                            ).catch(() => {});
-                        }
-                    }
-                    await pool.query(`
-                        INSERT INTO message_log (lead_id, client_portal_id, direction, channel, content, from_number, status, sent_at)
-                        VALUES ($1,$2,'inbound','sms',$3,$4,'received',NOW())
-                    `, [lead.id, lead.client_portal_id, content, fromPhone]);
-                    console.log(`[SMS WEBHOOK] Lead ${lead.id} sent STOP — marked as dead/unsubscribed`);
-                    continue;
-                }
-                // ──────────────────────────────────────────────────────
 
                 await pool.query(`
                     INSERT INTO message_log (lead_id, client_portal_id, direction, channel, content, from_number, status, sent_at)
@@ -21519,26 +21458,7 @@ app.get('/api/client/follow-ups', authenticateClient, async (req, res) => {
 
         const hot  = result.rows.filter(r => r.lead_temperature === 'hot');
         const cold = result.rows.filter(r => r.lead_temperature !== 'hot');
-
-        // Fetch dead (unsubscribed) leads for this portal
-        let deadResult = { rows: [] };
-        try {
-            deadResult = await pool.query(`
-                SELECT l.id, l.name, l.email, l.company, l.phone, l.lead_temperature,
-                       l.last_contact_date, l.follow_up_count, l.status, l.unsubscribed,
-                       l.updated_at
-                FROM leads l
-                WHERE ${portalId ? `l.client_portal_id = '${portalId}'` : `l.id = ${userId}`}
-                  AND (l.unsubscribed = TRUE OR l.status = 'dead')
-                  AND l.client_password IS NULL
-                  AND l.is_customer IS NOT TRUE
-                  AND (l.source IS NULL OR l.source NOT IN ('company-user','subscription-direct'))
-                ORDER BY l.updated_at DESC NULLS LAST
-            `);
-        } catch(e) { console.warn('[CLIENT FOLLOWUPS] dead leads query error:', e.message); }
-
-        const dead = deadResult.rows;
-        res.json({ success: true, hot, cold, dead, total: result.rows.length });
+        res.json({ success: true, hot, cold, total: result.rows.length });
     } catch(e) { console.error('[CLIENT FOLLOWUPS]', e); res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -22120,18 +22040,11 @@ app.delete('/api/admin/company/:clientPortalId', authenticateToken, async (req, 
     try {
         const { clientPortalId } = req.params;
 
-        const _safe = async (sql, params = []) => {
-            try { await pool.query(sql, params); }
-            catch (e) { if (e.code !== '42P01' && e.code !== '42703') throw e; }
-        };
-
-        // 1. Fetch all users in this company (to cancel Stripe subs + delete their lead records)
+        // Cancel all Stripe subscriptions for company users
         const users = await pool.query(
             `SELECT user_email, stripe_subscription_id FROM company_users WHERE client_portal_id = $1`,
             [clientPortalId]
         );
-
-        // 2. Cancel every user's Stripe subscription
         for (const u of users.rows) {
             if (u.stripe_subscription_id) {
                 try {
@@ -22143,63 +22056,19 @@ app.delete('/api/admin/company/:clientPortalId', authenticateToken, async (req, 
             }
         }
 
-        // 3. Delete all portal-level data
-        await _safe(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]);
-        await _safe(`DELETE FROM subscription_events WHERE lead_email IN (SELECT user_email FROM company_users WHERE client_portal_id = $1)`, [clientPortalId]);
-        await _safe(`DELETE FROM client_email_chain_steps WHERE chain_id IN (SELECT id FROM client_email_chains WHERE client_portal_id = $1)`, [clientPortalId]);
-        await _safe(`DELETE FROM client_chain_queue WHERE client_portal_id = $1`, [clientPortalId]);
-        await _safe(`DELETE FROM client_email_chains WHERE client_portal_id = $1`, [clientPortalId]);
-        await _safe(`DELETE FROM client_email_templates WHERE client_portal_id = $1`, [clientPortalId]);
-        await _safe(`DELETE FROM client_email_settings WHERE client_portal_id = $1`, [clientPortalId]);
-        await _safe(`DELETE FROM client_email_log WHERE client_portal_id = $1`, [clientPortalId]);
-        await _safe(`DELETE FROM client_appointments WHERE client_portal_id = $1`, [clientPortalId]);
-        await _safe(`DELETE FROM client_unsubscribes WHERE client_portal_id = $1`, [clientPortalId]);
-        await _safe(`DELETE FROM message_log WHERE client_portal_id = $1`, [clientPortalId]);
-
-        // 4. Delete all lead records belonging to this workspace
-        //    (seat users, co-admins, and the admin account itself)
-        //    This is the critical step that was previously missing —
-        //    old code only NULLed client_portal_id, leaving orphaned leads
-        //    that then appeared in follow-up counts and lead lists.
-        const leadRows = await pool.query(
-            `SELECT id, email FROM leads WHERE client_portal_id = $1`,
-            [clientPortalId]
-        );
-        for (const lr of leadRows.rows) {
-            // Clean up per-lead child rows before deleting the lead itself
-            await _safe(`DELETE FROM lead_notes WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM lead_scores WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM score_history WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM email_events WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM lead_engagement WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM tasks WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM pipeline_deals WHERE lead_id = $1`, [lr.id]);
-            try { await pool.query(`DELETE FROM ticket_responses WHERE ticket_id IN (SELECT id FROM support_tickets WHERE lead_id = $1)`, [lr.id]); } catch(_) {}
-            await _safe(`DELETE FROM support_tickets WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM client_projects WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM client_uploads WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM invoices WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM expenses WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM documents WHERE lead_id = $1`, [lr.id]);
-            await _safe(`DELETE FROM appointments WHERE LOWER(lead_email) = LOWER($1)`, [lr.email]);
-            await _safe(`DELETE FROM crm_subscriptions WHERE lead_id = $1`, [lr.id]);
-        }
-        // Now delete all the lead rows at once
-        await pool.query(`DELETE FROM leads WHERE client_portal_id = $1`, [clientPortalId]);
-
-        // 5. Delete company_users and client_companies rows
+        // Delete all related records
+        await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]);
+        await pool.query(`DELETE FROM subscription_events WHERE lead_email IN (SELECT user_email FROM company_users WHERE client_portal_id = $1)`, [clientPortalId]);
         await pool.query(`DELETE FROM company_users WHERE client_portal_id = $1`, [clientPortalId]);
         await pool.query(`DELETE FROM client_companies WHERE client_portal_id = $1`, [clientPortalId]);
 
-        // 6. Global orphan sweep — any crm_subscriptions whose lead no longer exists
-        await pool.query(`
-            DELETE FROM crm_subscriptions
-            WHERE lead_id IS NOT NULL
-              AND NOT EXISTS (SELECT 1 FROM leads WHERE id = crm_subscriptions.lead_id)
-        `).catch(() => {});
+        // Hard-delete ALL lead records belonging to this workspace (admins + seat users).
+        // Previously this only NULLed client_portal_id which left orphaned leads floating
+        // in the database, showing up in follow-up counts and lead lists.
+        await pool.query(`DELETE FROM leads WHERE client_portal_id = $1`, [clientPortalId]);
 
-        console.log(`[DELETE COMPANY] Fully deleted company ${clientPortalId} — ${leadRows.rowCount} lead records removed`);
-        res.json({ success: true, message: `Company ${clientPortalId} and all ${leadRows.rowCount} user accounts deleted.` });
+        console.log(`[DELETE COMPANY]  Fully deleted company: ${clientPortalId}`);
+        res.json({ success: true, message: `Company ${clientPortalId} deleted.` });
     } catch (e) {
         console.error('[DELETE COMPANY] Error:', e);
         res.status(500).json({ success: false, message: e.message });
@@ -22517,123 +22386,6 @@ app.post('/api/client-forms/schedule', async (req, res) => {
 
         res.json({ success: true, leadId: lead.id, message: 'Appointment request submitted — lead is now hot' });
     } catch(e) { console.error('[SCHEDULE FORM]', e); res.status(500).json({ success: false, message: e.message }); }
-});
-
-// ─────────────────────────────────────────────────────────────────
-// COMMUNICATIONS LOG — Admin view of ALL emails and SMS sent/received
-// across the entire workspace. Grouped by user for billing tracking.
-// GET /api/client/communications/log?page=1&limit=50&user_email=&type=email|sms
-// ─────────────────────────────────────────────────────────────────
-app.get('/api/client/communications/log', authenticateClient, async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const portalId = await getClientPortalId(userId);
-        const userInfo = await pool.query('SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1', [userId]);
-        const me = userInfo.rows[0];
-        if (!me?.is_company_admin && !me?.is_co_admin) return res.status(403).json({ success: false, message: 'Admin only' });
-
-        const page       = Math.max(1, parseInt(req.query.page) || 1);
-        const limit      = Math.min(200, parseInt(req.query.limit) || 50);
-        const offset     = (page - 1) * limit;
-        const filterUser = req.query.user_email || null;
-
-        const params = [portalId];
-        let whereExtra = '';
-        if (filterUser) {
-            params.push(filterUser);
-            whereExtra = ` AND LOWER(cel.assigned_to_user_email) = LOWER($${params.length})`;
-        }
-
-        params.push(limit, offset);
-        const result = await pool.query(`
-            SELECT
-                cel.id,
-                'email' AS comm_type,
-                cel.assigned_to_user_email AS sent_by,
-                cel.lead_email AS recipient,
-                l.name AS recipient_name,
-                cel.subject,
-                cel.email_type,
-                cel.status,
-                cel.created_at AS sent_at,
-                cel.opened_at,
-                cel.clicked_at
-            FROM client_email_log cel
-            LEFT JOIN leads l ON cel.lead_id = l.id
-            WHERE cel.client_portal_id = $1${whereExtra}
-            ORDER BY cel.created_at DESC
-            LIMIT $${params.length - 1} OFFSET $${params.length}
-        `, params);
-
-        const cntParams = params.slice(0, -2);
-        const cntRes = await pool.query(
-            `SELECT COUNT(*) FROM client_email_log cel WHERE cel.client_portal_id = $1${whereExtra}`,
-            cntParams
-        );
-        const total = parseInt(cntRes.rows[0].count) || 0;
-
-        // Per-user summary for billing/usage tracking
-        const usageSummary = await pool.query(`
-            SELECT
-                COALESCE(assigned_to_user_email, 'unknown') AS user_email,
-                COUNT(*) AS total_sent,
-                COUNT(*) FILTER (WHERE status = 'sent') AS delivered,
-                COUNT(*) FILTER (WHERE opened_at IS NOT NULL) AS opened,
-                COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) AS clicked
-            FROM client_email_log
-            WHERE client_portal_id = $1
-              AND created_at >= NOW() - INTERVAL '30 days'
-            GROUP BY assigned_to_user_email
-            ORDER BY total_sent DESC
-        `, [portalId]);
-
-        res.json({
-            success: true,
-            logs: result.rows,
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit),
-            usage_summary: usageSummary.rows
-        });
-    } catch(e) { console.error('[COMMS LOG]', e); res.status(500).json({ success: false, message: e.message }); }
-});
-
-// GET /api/client/communications/stats — quick usage stats per workspace for billing
-app.get('/api/client/communications/stats', authenticateClient, async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const portalId = await getClientPortalId(userId);
-        const userInfo = await pool.query('SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1', [userId]);
-        const me = userInfo.rows[0];
-        if (!me?.is_company_admin && !me?.is_co_admin) return res.status(403).json({ success: false, message: 'Admin only' });
-
-        const stats = await pool.query(`
-            SELECT
-                COUNT(*) AS total_emails_all_time,
-                COUNT(*) FILTER (WHERE created_at >= date_trunc('month', NOW())) AS emails_this_month,
-                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') AS emails_this_week,
-                COUNT(*) FILTER (WHERE status = 'sent') AS delivered_all_time,
-                COUNT(*) FILTER (WHERE opened_at IS NOT NULL) AS opened_all_time,
-                COUNT(DISTINCT COALESCE(assigned_to_user_email, '')) AS active_senders
-            FROM client_email_log
-            WHERE client_portal_id = $1
-        `, [portalId]);
-
-        const perUser = await pool.query(`
-            SELECT
-                COALESCE(assigned_to_user_email, 'unknown') AS user_email,
-                COUNT(*) FILTER (WHERE created_at >= date_trunc('month', NOW())) AS emails_this_month,
-                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') AS emails_this_week,
-                COUNT(*) AS total_all_time
-            FROM client_email_log
-            WHERE client_portal_id = $1
-            GROUP BY assigned_to_user_email
-            ORDER BY emails_this_month DESC
-        `, [portalId]);
-
-        res.json({ success: true, stats: stats.rows[0], per_user: perUser.rows });
-    } catch(e) { console.error('[COMMS STATS]', e); res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.get('/api/client/analytics/team-email', authenticateClient, async (req, res) => {
@@ -23880,12 +23632,9 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
     }
 
     // ── Try Brevo first (server-side, full tracking) ──────────────
-    // ARCHITECTURE: Always use DiamondbackCoding's master Brevo key (env var).
-    // CRM accounts never need to configure their own Brevo account.
-    // The "from" address is the admin's configured sender_email or the individual
-    // user's email (if their domain is verified). DiamondbackCoding's Brevo account
-    // handles all delivery; the portal's per-account brevo_api_key field is ignored.
-    const masterBrevoKey = process.env.BREVO_API_KEY || settings?.brevo_api_key;
+    // Always use master Brevo API key — no per-user key needed.
+    // Domain verification handles authentication at the domain level.
+    const masterBrevoKey = settings?.brevo_api_key || process.env.BREVO_API_KEY;
     if (masterBrevoKey && fromEmail) {
         try {
             const brevoResult = await sendViaBrevo(
@@ -24043,30 +23792,8 @@ async function processClientEmailChains() {
                 const isLastStep = nextStep >= totalSteps;
                 const shouldContinue = !isLastStep || item.loop;
                 const nextStepIdx = nextStep % totalSteps;
-
-                // SEQUENCE ALIGNMENT: Next send is calculated from the lead's follow-up
-                // timeline, NOT from a manual delay_days. We look at the lead's follow_up_count
-                // after this send to determine when they're next due for outreach:
-                //   - 1st follow-up: 3 days after last contact
-                //   - 2nd follow-up: 5 days after last contact
-                //   - 3rd+ follow-ups: every 7 days
-                // This keeps sequences perfectly in sync with the lead's natural timeline.
-                const leadData = await pool.query('SELECT follow_up_count, lead_temperature FROM leads WHERE id=$1', [item.lead_id]);
-                const fupCount = leadData.rows[0]?.follow_up_count || 0;
-                const isHot    = leadData.rows[0]?.lead_temperature === 'hot';
-                let daysUntilNext;
-                if (isHot) {
-                    // Hot lead timing
-                    if (fupCount <= 1) daysUntilNext = 3;
-                    else if (fupCount % 2 === 1) daysUntilNext = 3.5;
-                    else daysUntilNext = 7;
-                } else {
-                    // Cold lead timing
-                    if (fupCount === 0) daysUntilNext = 3;
-                    else if (fupCount === 1) daysUntilNext = 5;
-                    else daysUntilNext = 7;
-                }
-                const nextSend = new Date(Date.now() + daysUntilNext * 24 * 60 * 60 * 1000);
+                const nextDelay = steps.rows[nextStepIdx]?.delay_days || 3;
+                const nextSend = new Date(Date.now() + nextDelay * 24 * 60 * 60 * 1000);
 
                 await pool.query(`
                     UPDATE client_chain_queue SET current_step=$1, next_send_at=$2, is_active=$3 WHERE id=$4

@@ -1790,6 +1790,10 @@ tr:hover .row-actions { opacity: 1; }
                     <div class="page-title">Invoices</div>
                 </div>
                 <div class="page-actions">
+                    <button class="btn btn-ghost" onclick="loadRecurringInvoices()" style="margin-right:4px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Recurring
+                    </button>
                     <button class="btn btn-default" onclick="openCreateInvoiceModal()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         Create Invoice
@@ -1797,6 +1801,22 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
             </div>
             <div class="page-body">
+                <!-- Recurring invoices section (shown/hidden via Recurring button) -->
+                <div id="recurringInvoicesSection" style="display:none;margin-bottom:20px;">
+                    <div class="card" style="margin:0;">
+                        <div class="card-header">
+                            <span class="card-title">Recurring Invoices</span>
+                            <span style="font-size:11px;color:var(--text-3);margin-left:8px;">Auto-sent on the same day every month</span>
+                            <button class="btn btn-default btn-xs" style="margin-left:auto;" onclick="openCreateRecurringModal()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                New Recurring
+                            </button>
+                        </div>
+                        <div class="card-body" id="recurringInvoicesList" style="padding:0;">
+                            <div class="empty-state" style="padding:24px;"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-wrap mobile-table-card" id="invoicesTableWrap">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
@@ -2102,8 +2122,8 @@ tr:hover .row-actions { opacity: 1; }
                         <!-- Sender identity — these control the FROM name/email shown on outbound sends -->
                         <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;">Sender Identity</div>
                         <div style="background:#6366f111;border:1px solid #6366f133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
-                            Set the name and email address that your recipients will see in the "From" field. 
-                            Verify your domain below to allow all @yourdomain.com team members to send as themselves.
+                            Set the name and email address that your recipients will see in the "From" field.
+                            Your sender email is automatically registered in our platform so all your emails reach the inbox with no extra setup.
                         </div>
                         <div class="form-row">
                             <div class="form-field">
@@ -2116,48 +2136,20 @@ tr:hover .row-actions { opacity: 1; }
                             <input class="form-input" id="settingsSenderName" placeholder="Acme Corp">
                         </div>
 
-                        <!-- Domain Verification Section -->
+                        <!-- Auto-managed sender info -->
                         <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
-                            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+                            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                                Domain Verification
-                                <span id="domainStatusBadge" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;"></span>
+                                Email Sender Status
                             </div>
-                            <div style="background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:14px;font-size:12px;color:var(--text-2);line-height:1.7;">
-                                <strong style="color:var(--text-0);">How domain verification works:</strong><br>
-                                Verify <em>one domain</em> (e.g. <code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">acmeroofing.com</code>) and every user on that domain — john@, sarah@, mike@ — can send email with <em>their own name and address</em> as the sender. No per-user setup.
+                            <div style="background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:14px 16px;font-size:12px;color:var(--text-2);line-height:1.8;">
+                                <div style="font-size:13px;font-weight:700;color:#10b981;margin-bottom:6px;">✅ Fully Managed by Diamondback Coding</div>
+                                When your account was created, your sender email was automatically registered in our platform's email system. Every user added to your company account is registered the same way — and removed automatically when their seat is cancelled.
+                                <br><br>
+                                <strong style="color:var(--text-0);">You do not need to configure DNS records, verify domains, or manage API keys.</strong> We handle all of that so your team can focus on selling.
+                                <br><br>
+                                <span style="color:var(--text-3);">If emails are going to spam, make sure your sender email matches your actual business domain (e.g. you@yourcompany.com) and contact Diamondback Coding support.</span>
                             </div>
-
-                            <!-- Verified domain display / entry -->
-                            <div id="domainVerifiedDisplay" style="display:none;background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:14px 16px;margin-bottom:14px;">
-                                <div style="display:flex;align-items:center;justify-content:space-between;">
-                                    <div>
-                                        <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">✅ Verified Domain</div>
-                                        <div id="domainVerifiedName" style="font-size:16px;font-weight:700;color:var(--text-0);font-family:var(--font-mono);"></div>
-                                        <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Any @this-domain email can send as their personal address</div>
-                                    </div>
-                                    <button class="btn btn-ghost btn-xs" style="color:var(--red);" onclick="removeDomainVerification()">Remove</button>
-                                </div>
-                            </div>
-
-                            <div id="domainPendingDisplay" style="display:none;background:#f59e0b11;border:1px solid #f59e0b44;border-radius:var(--r-md);padding:14px 16px;margin-bottom:14px;">
-                                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">⏳ Pending — Add these DNS records</div>
-                                <div id="dnsRecordsList" style="font-family:var(--font-mono);font-size:11px;"></div>
-                                <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
-                                    <button class="btn btn-white btn-xs" onclick="checkDomainStatus()">Check Verification Status</button>
-                                    <span style="font-size:11px;color:var(--text-3);">DNS propagation can take up to 48 hours</span>
-                                </div>
-                            </div>
-
-                            <div id="domainUnverifiedEntry" style="display:flex;gap:10px;align-items:flex-end;">
-                                <div class="form-field" style="flex:1;margin-bottom:0;">
-                                    <label class="form-label">Business Domain</label>
-                                    <input class="form-input" id="settingsDomain" placeholder="acmeroofing.com" style="font-family:var(--font-mono);">
-                                </div>
-                                <button class="btn btn-white" id="verifyDomainBtn" onclick="addDomainVerification()" style="white-space:nowrap;flex-shrink:0;">Add &amp; Verify Domain</button>
-                            </div>
-                            <div style="font-size:11px;color:var(--text-3);margin-top:8px;">Enter your domain without https:// or www — e.g. <code>acmeroofing.com</code></div>
-
                             <!-- Deliverability stats -->
                             <div id="deliverabilityStats" style="display:none;margin-top:14px;background:var(--bg-2);border-radius:var(--r-md);padding:12px 16px;">
                                 <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:10px;">Deliverability Health</div>
@@ -3876,7 +3868,7 @@ async function saveEditLead(leadId) {
             apiFetch(`/client/leads/${leadId}/products`, 'POST', { product_ids: selectedProducts }).catch(()=>{});
             // Refresh chart data quietly
             apiFetch('/client/charts').then(r=>r.json()).then(d=>{ if (!d.success) return; DC.data = d; if (S.currentPage === 'dashboard') renderChart(); }).catch(()=>{});
-            if (S.currentPage === 'followups') loadFollowups();
+            if (S.currentPage === 'followups') renderFollowups?.();
         } else {
             if (prev) S.leads = (S.leads || []).map(l => l.id === leadId ? prev : l);
             renderLeads();
@@ -4163,21 +4155,32 @@ function openLeadProfile(lead) {
 
 // Toggle lead temperature (hot ↔ cold) from profile modal
 async function toggleLeadTemperature(leadId, newTemp, closeModalId) {
+    // Optimistic: update lead in state immediately
+    const prevLead = S.leads.find(l => l.id === leadId);
+    S.leads = S.leads.map(l => l.id === leadId ? { ...l, lead_temperature: newTemp } : l);
+    if (closeModalId) closeModal(closeModalId);
+    const action = newTemp === 'hot' ? 'Lead marked Hot 🔥' : 'Lead marked Cold';
+    toast(action, 'success');
+    if (S.currentPage === 'followups') renderFollowups?.();
+    else if (S.currentPage === 'leads') renderLeads();
+    else if (S.currentPage === 'myleads') renderMyLeads?.();
+
     try {
         const res  = await apiFetch(`/client/leads/${leadId}`, 'PATCH', { lead_temperature: newTemp });
         const data = await res.json();
-        if (data.success) {
-            const action = newTemp === 'hot' ? 'Lead marked Hot' : 'Lead marked Cold';
-            toast(action + (newTemp === 'hot' ? ' — timeline reset, cold chains paused' : ' — hot chains paused, timeline reset'), 'success');
-            if (closeModalId) closeModal(closeModalId);
-            // Refresh whichever view is active
-            if (S.currentPage === 'followups') loadFollowups();
-            else if (S.currentPage === 'leads') loadLeads();
-            else if (S.currentPage === 'myleads') loadMyLeads();
-        } else {
+        if (!data.success) {
+            // Rollback
+            if (prevLead) S.leads = S.leads.map(l => l.id === leadId ? prevLead : l);
+            if (S.currentPage === 'followups') renderFollowups?.();
+            else if (S.currentPage === 'leads') renderLeads();
+            else if (S.currentPage === 'myleads') renderMyLeads?.();
             toast(data.message || 'Could not update temperature', 'error');
         }
-    } catch(e) { toast('Error updating lead', 'error'); }
+    } catch(e) {
+        if (prevLead) S.leads = S.leads.map(l => l.id === leadId ? prevLead : l);
+        renderLeads();
+        toast('Error updating lead', 'error');
+    }
 }
 
 // Hot-lead chain enrollment modal (start a specific chain as a hot-lead sequence)
@@ -4235,15 +4238,15 @@ async function confirmAssignSequence(leadId) {
     const chainId = document.getElementById('assignSeqSelect')?.value;
     if (!chainId) { toast('Select a sequence', 'error'); return; }
     const sendNow = document.getElementById('assignSeqSendNow')?.checked ?? true;
-    try {
-        const res = await apiFetch(`/client/leads/${leadId}/assign-sequence`, 'POST', { chain_id: parseInt(chainId), send_now: sendNow });
-        const data = await res.json();
-        if (data.success) {
-            toast('Sequence assigned — emails will go out automatically', 'success');
-            closeModal('assignSeqModal');
-            await loadFollowups();
-        } else { toast(data.message || 'Failed to assign sequence', 'error'); }
-    } catch(e) { toast('Error assigning sequence', 'error'); }
+
+    // Close immediately — sequence runs server-side, nothing to show optimistically
+    closeModal('assignSeqModal');
+    toast('Sequence assigned — emails will go out automatically', 'success');
+
+    apiFetch(`/client/leads/${leadId}/assign-sequence`, 'POST', { chain_id: parseInt(chainId), send_now: sendNow })
+        .then(r => r.json())
+        .then(d => { if (!d.success) toast(d.message || 'Failed to assign sequence', 'error'); })
+        .catch(() => toast('Error assigning sequence', 'error'));
 }
 
 async function openHotChainEnrollModal(leadId, leadName) {
@@ -4341,20 +4344,27 @@ async function saveAssignment() {
     if (!_assignLeadId) return;
     const sel = document.getElementById('assigneeSelect');
     const companyUserId = sel.value ? parseInt(sel.value) : null;
+    const assigneeName = sel.options[sel.selectedIndex]?.text || 'Unassigned';
+
+    // Optimistic: update lead in state immediately
+    const prevLead = S.leads.find(l => l.id === _assignLeadId);
+    S.leads = S.leads.map(l => l.id === _assignLeadId ? { ...l, assigned_to: companyUserId, assigned_to_name: companyUserId ? assigneeName : null } : l);
+    closeModal('assignLeadModal');
+    toast('Assignment saved', 'success');
+    if (S.currentPage === 'leads' || S.page === 'leads') renderLeads();
+    if (S.currentPage === 'myleads' || S.page === 'myleads') renderMyLeads?.();
 
     try {
         const res = await apiFetch(`/client/leads/${_assignLeadId}/assign`, 'POST', { companyUserId });
         const data = await res.json();
-        if (data.success) {
-            toast(data.message || 'Assignment saved', 'success');
-            closeModal('assignLeadModal');
-            // Refresh whichever view is active
-            if (S.page === 'leads') await loadLeads();
-            if (S.page === 'myleads') await loadMyLeads();
-        } else {
+        if (!data.success) {
+            if (prevLead) S.leads = S.leads.map(l => l.id === _assignLeadId ? prevLead : l);
+            renderLeads();
             toast(data.message || 'Failed to save assignment', 'error');
         }
     } catch(e) {
+        if (prevLead) S.leads = S.leads.map(l => l.id === _assignLeadId ? prevLead : l);
+        renderLeads();
         toast('Error saving assignment', 'error');
     }
 }
@@ -4632,8 +4642,6 @@ async function openLeadMessageLog(lead, focusCompose) {
     const isHot      = lead.lead_temperature === 'hot';
     const avatarColor = isHot ? '#ef4444' : '#6366f1';
     const avatarBg    = isHot ? '#ef444422' : '#6366f122';
-    const smsReady    = !!(MK.settings && MK.settings.brevo_sms_enabled && lead.phone);
-    const hasEmail    = !!(lead.email);
     const hasPhone    = !!(lead.phone);
 
     let modal = document.getElementById('leadMessageLogModal');
@@ -4650,103 +4658,56 @@ async function openLeadMessageLog(lead, focusCompose) {
     const leadName = escHtml(lead.name || 'Unnamed');
     const leadEmail = escHtml(lead.email || '');
     const leadPhone = escHtml(lead.phone || '');
-    // Default to SMS tab if the lead has a phone number (SMS is the purpose of this modal from the Msg button)
-    const defaultToSms = hasPhone;
-    const initSmsDisplay   = defaultToSms ? 'block' : 'none';
-    const initEmailDisplay = defaultToSms ? 'none'  : 'block';
-    const smsTabActiveBg   = defaultToSms ? 'var(--bg-active)' : 'var(--bg-1)';
-    const smsTabColor      = defaultToSms ? 'var(--text-0)'    : 'var(--text-3)';
-    const smsTabBorder     = defaultToSms ? '2px solid #10b981' : '2px solid transparent';
-    const emailTabActiveBg = defaultToSms ? 'var(--bg-1)'      : 'var(--bg-active)';
-    const emailTabColor    = defaultToSms ? 'var(--text-3)'    : 'var(--text-0)';
-    const emailTabBorder   = defaultToSms ? '2px solid transparent' : '2px solid #6366f1';
-
-    const smsTabHtml = hasPhone
-        ? '<button id="msgTabSms" onclick="msgSwitchTab(\'sms\',' + lead.id + ')" style="flex:1;padding:9px 0;font-size:12px;font-weight:600;border:none;background:' + smsTabActiveBg + ';color:' + smsTabColor + ';cursor:pointer;border-bottom:' + smsTabBorder + ';display:flex;align-items:center;justify-content:center;gap:5px;">'
-          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z"/></svg> SMS</button>'
-        : '';
-
-    const emailHint = !hasEmail
-        ? '<span style="color:#ef4444;font-size:10px;">No email on file for this lead</span>'
-        : '<span style="font-size:10px;color:var(--text-3);">Click send or press Cmd+Enter</span>';
 
     const noPhoneNote = !hasPhone
-        ? '<div style="font-size:11px;color:var(--text-3);padding:0 0 4px 0;">No phone number on file — add one in the lead profile to enable SMS.</div>'
-        : (!smsReady ? '<div style="font-size:11px;color:#f59e0b;background:#fef3c722;border:1px solid #f59e0b44;border-radius:6px;padding:6px 10px;margin-bottom:8px;">⚠ Brevo SMS is not enabled in Settings. Enable it to send real SMS — messages below will fail to deliver until configured.</div>' : '');
+        ? '<div style="font-size:11px;color:var(--text-3);padding:0 0 8px 0;">No phone number on file — add one in the lead profile to enable SMS.</div>'
+        : '';
 
     modal.innerHTML =
-        '<div class="modal" style="max-width:660px;width:calc(100% - 24px);height:82vh;display:flex;flex-direction:column;overflow:hidden;padding:0;">'
+        '<div class="modal" style="max-width:580px;width:calc(100% - 24px);height:75vh;display:flex;flex-direction:column;overflow:hidden;padding:0;">'
 
         // Header
-        + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">'
-        +   '<div style="display:flex;align-items:center;gap:12px;">'
-        +     '<div style="width:38px;height:38px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:' + avatarColor + ';flex-shrink:0;">' + (lead.name||'?').charAt(0).toUpperCase() + '</div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0;">'
+        +   '<div style="display:flex;align-items:center;gap:10px;">'
+        +     '<div style="width:36px;height:36px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:' + avatarColor + ';flex-shrink:0;">' + (lead.name||'?').charAt(0).toUpperCase() + '</div>'
         +     '<div>'
-        +       '<div style="font-size:15px;font-weight:700;color:var(--text-0);">' + leadName + '</div>'
-        +       '<div style="font-size:11px;color:var(--text-3);">' + leadEmail + (leadPhone ? ' · ' + leadPhone : '') + '</div>'
+        +       '<div style="font-size:14px;font-weight:700;color:var(--text-0);">' + leadName + '</div>'
+        +       '<div style="font-size:11px;color:var(--text-3);">'
+        +         (leadPhone ? '📱 ' + leadPhone : '<span style="color:#f59e0b;">No phone on file</span>')
+        +       '</div>'
         +     '</div>'
         +   '</div>'
         +   '<div style="display:flex;align-items:center;gap:6px;">'
+        +     '<div style="font-size:11px;font-weight:600;background:#10b98122;color:#10b981;padding:3px 10px;border-radius:20px;">SMS Only</div>'
         +     '<button class="btn btn-ghost btn-xs" onclick="closeModal(\'leadMessageLogModal\');openLeadProfile(' + leadJSON + ')">Profile</button>'
         +     '<button class="modal-close" onclick="closeModal(\'leadMessageLogModal\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
         +   '</div>'
         + '</div>'
 
         // Thread scroll area
-        + '<div id="msgThreadScroll" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px;min-height:0;">'
+        + '<div id="msgThreadScroll" style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;min-height:0;">'
         +   '<div style="text-align:center;padding:40px 0;color:var(--text-3);"><div class="spinner" style="margin:0 auto 10px;"></div>Loading…</div>'
         + '</div>'
 
-        // Compose area — always rendered
-        + '<div style="border-top:1px solid var(--border);flex-shrink:0;background:var(--bg-1);">'
-
-        //   Tab row
-        +   '<div style="display:flex;border-bottom:1px solid var(--border);">'
-        +     smsTabHtml
-        +     '<button id="msgTabEmail" onclick="msgSwitchTab(\'email\',' + lead.id + ')" style="flex:1;padding:9px 0;font-size:12px;font-weight:600;border:none;background:' + emailTabActiveBg + ';color:' + emailTabColor + ';cursor:pointer;border-bottom:' + emailTabBorder + ';display:flex;align-items:center;justify-content:center;gap:5px;">'
-        +       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Email'
+        // Compose area — SMS only
+        + '<div style="border-top:1px solid var(--border);flex-shrink:0;background:var(--bg-1);padding:12px 16px;">'
+        + noPhoneNote
+        +   '<div style="display:flex;align-items:flex-end;gap:8px;">'
+        +     '<div style="flex:1;position:relative;">'
+        +       '<textarea id="msgComposeBox" rows="1" maxlength="160" placeholder="Send an SMS…" '
+        +         'style="width:100%;resize:none;background:var(--bg-2);border:1px solid var(--border);border-radius:20px;padding:10px 44px 10px 14px;font-size:13px;color:var(--text-0);font-family:inherit;outline:none;line-height:1.4;overflow:hidden;box-sizing:border-box;" '
+        +         'oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,96)+\'px\';var cl=document.getElementById(\'msgCharLeft\');if(cl)cl.textContent=(160-this.value.length);" '
+        +         'onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();msgComposeSend(' + lead.id + ');}"></textarea>'
+        +       '<span id="msgCharLeft" style="position:absolute;bottom:10px;right:12px;font-size:10px;color:var(--text-3);pointer-events:none;">160</span>'
+        +     '</div>'
+        +     '<button onclick="msgComposeSend(' + lead.id + ')" '
+        +       'style="width:38px;height:38px;border-radius:50%;background:#10b981;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" '
+        +       'onmouseover="this.style.opacity=\'.75\'" onmouseout="this.style.opacity=\'1\'">'
+        +       '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:14px;height:14px;margin-left:2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
         +     '</button>'
         +   '</div>'
-
-        //   SMS pane
-        +   '<div id="msgPaneSms" style="padding:12px 16px;display:' + initSmsDisplay + ';">'
-        +     noPhoneNote
-        +     '<div style="display:flex;align-items:flex-end;gap:8px;">'
-        +       '<div style="flex:1;position:relative;">'
-        +         '<textarea id="msgComposeBox" rows="1" maxlength="160" placeholder="Send an SMS…" '
-        +           'style="width:100%;resize:none;background:var(--bg-2);border:1px solid var(--border);border-radius:20px;padding:10px 44px 10px 14px;font-size:13px;color:var(--text-0);font-family:inherit;outline:none;line-height:1.4;overflow:hidden;box-sizing:border-box;" '
-        +           'oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,96)+\'px\';var cl=document.getElementById(\'msgCharLeft\');if(cl)cl.textContent=(160-this.value.length);" '
-        +           'onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();msgComposeSend(' + lead.id + ');}"></textarea>'
-        +         '<span id="msgCharLeft" style="position:absolute;bottom:10px;right:12px;font-size:10px;color:var(--text-3);pointer-events:none;">160</span>'
-        +       '</div>'
-        +       '<button onclick="msgComposeSend(' + lead.id + ')" '
-        +         'style="width:38px;height:38px;border-radius:50%;background:#10b981;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" '
-        +         'onmouseover="this.style.opacity=\'.75\'" onmouseout="this.style.opacity=\'1\'">'
-        +         '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:14px;height:14px;margin-left:2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
-        +       '</button>'
-        +     '</div>'
-        +     '<div style="font-size:10px;color:var(--text-3);margin-top:5px;">Enter to send · Shift+Enter for new line</div>'
-        +   '</div>'
-
-        //   Email pane
-        +   '<div id="msgPaneEmail" style="padding:12px 16px;display:' + initEmailDisplay + ';">'
-        +     '<div style="display:flex;align-items:flex-end;gap:8px;">'
-        +       '<div style="flex:1;">'
-        +         '<textarea id="msgEmailBox" rows="1" placeholder="Type your email message…" '
-        +           'style="width:100%;resize:none;background:var(--bg-2);border:1px solid var(--border);border-radius:20px;padding:10px 14px;font-size:13px;color:var(--text-0);font-family:inherit;outline:none;line-height:1.4;overflow:hidden;box-sizing:border-box;" '
-        +           'oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,120)+\'px\';" '
-        +           'onkeydown="if(event.key===\'Enter\'&&event.metaKey){event.preventDefault();msgEmailSend(' + lead.id + ',\'' + leadEmail + '\',\'' + leadName + '\');}"></textarea>'
-        +       '</div>'
-        +       '<button onclick="msgEmailSend(' + lead.id + ',\'' + leadEmail + '\',\'' + leadName + '\')" '
-        +         'style="width:38px;height:38px;border-radius:50%;background:#6366f1;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" '
-        +         'onmouseover="this.style.opacity=\'.75\'" onmouseout="this.style.opacity=\'1\'">'
-        +         '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:14px;height:14px;margin-left:2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
-        +       '</button>'
-        +     '</div>'
-        +     '<div style="margin-top:5px;">' + emailHint + '</div>'
-        +   '</div>'
-
-        + '</div>'  // end compose area
+        +   '<div style="font-size:10px;color:var(--text-3);margin-top:5px;">Enter to send · Shift+Enter for new line · <span id="msgCharLeft2"></span></div>'
+        + '</div>'
         + '</div>'; // end modal
 
     openModal('leadMessageLogModal');
@@ -5086,11 +5047,17 @@ function openFUTemplateBuilder(existing) {
 
 async function deleteFUTemplate(id) {
     if (!confirm('Delete this template?')) return;
-    try {
-        await apiFetch(`/client/email-templates/${id}`, 'DELETE');
-        toast('Template deleted', 'success');
-        await loadFUTemplates();
-    } catch { toast('Error', 'error'); }
+    const removed = FU_MK.templates.find(t => t.id === id);
+    FU_MK.templates = FU_MK.templates.filter(t => t.id !== id);
+    // MK.templates is the same data — keep in sync
+    if (MK.templates) MK.templates = MK.templates.filter(t => t.id !== id);
+    renderFUTemplates();
+    renderMarketing();
+    toast('Template deleted', 'success');
+    apiFetch(`/client/email-templates/${id}`, 'DELETE').catch(() => {
+        if (removed) { FU_MK.templates = [removed, ...FU_MK.templates]; renderFUTemplates(); }
+        toast('Error deleting template', 'error');
+    });
 }
 
 async function loadFUChains() {
@@ -5147,11 +5114,17 @@ function openFUChainBuilder() {
 
 async function deleteFUChain(id) {
     if (!confirm('Delete this chain?')) return;
-    try {
-        await apiFetch(`/client/email-chains/${id}`, 'DELETE');
-        toast('Chain deleted', 'success');
-        await loadFUChains();
-    } catch { toast('Error', 'error'); }
+    const removed = FU_MK.chains.find(c => c.id === id);
+    FU_MK.chains = FU_MK.chains.filter(c => c.id !== id);
+    // MK.chains is the same data — keep in sync
+    if (MK.chains) MK.chains = MK.chains.filter(c => c.id !== id);
+    renderFUChains();
+    renderMarketing();
+    toast('Chain deleted', 'success');
+    apiFetch(`/client/email-chains/${id}`, 'DELETE').catch(() => {
+        if (removed) { FU_MK.chains = [removed, ...FU_MK.chains]; renderFUChains(); }
+        toast('Error deleting chain', 'error');
+    });
 }
 
 // Quick send-email modal from follow-up queue
@@ -5283,26 +5256,57 @@ async function saveSmsTemplate(id) {
     const sched   = document.getElementById('smsTplSched')?.checked || false;
     const contact = document.getElementById('smsTplContact')?.checked || false;
     if (!name || !body) { toast('Name and message body required', 'error'); return; }
-    try {
-        const method = id ? 'PUT' : 'POST';
-        const url    = id ? `/client/sms-templates/${id}` : '/client/sms-templates';
-        const res    = await apiFetch(url, method, { name, body, include_schedule_link: sched, include_contact_link: contact });
-        const d      = await res.json();
-        if (d.success) {
-            toast(id ? 'Template updated' : 'Template saved', 'success');
-            closeModal('smsTemplateBuilderModal');
-            await loadSmsTemplates();
-        } else { toast(d.message || 'Failed', 'error'); }
-    } catch { toast('Error saving template', 'error'); }
+
+    const payload = { name, body, include_schedule_link: sched, include_contact_link: contact };
+
+    if (id) {
+        // Optimistic update
+        const prev = SMS_TMPL.templates.find(t => t.id === id);
+        SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === id ? { ...t, ...payload } : t);
+        closeModal('smsTemplateBuilderModal');
+        renderSmsTemplates();
+        toast('Template updated', 'success');
+        apiFetch(`/client/sms-templates/${id}`, 'PUT', payload)
+            .then(r => r.json())
+            .then(d => { if (!d.success) { if (prev) SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === id ? prev : t); renderSmsTemplates(); toast(d.message||'Failed', 'error'); } })
+            .catch(() => { if (prev) SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === id ? prev : t); renderSmsTemplates(); });
+    } else {
+        // Optimistic add
+        const tmpId = 'tmp_' + Date.now();
+        const optimistic = { id: tmpId, ...payload, _optimistic: true };
+        SMS_TMPL.templates = [optimistic, ...SMS_TMPL.templates];
+        closeModal('smsTemplateBuilderModal');
+        renderSmsTemplates();
+        toast('Template saved', 'success');
+        apiFetch('/client/sms-templates', 'POST', payload)
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    const real = d.template || { ...optimistic, id: d.id || tmpId, _optimistic: false };
+                    SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === tmpId ? { ...real, _optimistic: false } : t);
+                    renderSmsTemplates();
+                } else {
+                    SMS_TMPL.templates = SMS_TMPL.templates.filter(t => t.id !== tmpId);
+                    renderSmsTemplates();
+                    toast(d.message || 'Failed', 'error');
+                }
+            })
+            .catch(() => { SMS_TMPL.templates = SMS_TMPL.templates.filter(t => t.id !== tmpId); renderSmsTemplates(); });
+    }
 }
 
 async function deleteSmsTemplate(id) {
     if (!confirm('Delete this SMS template?')) return;
-    try {
-        await apiFetch(`/client/sms-templates/${id}`, 'DELETE');
-        toast('Template deleted', 'success');
-        await loadSmsTemplates();
-    } catch { toast('Error', 'error'); }
+    const removed = SMS_TMPL.templates.find(t => t.id === id);
+    SMS_TMPL.templates = SMS_TMPL.templates.filter(t => t.id !== id);
+    renderSmsTemplates();
+    toast('Template deleted', 'success');
+    apiFetch(`/client/sms-templates/${id}`, 'DELETE')
+        .catch(() => {
+            if (removed) SMS_TMPL.templates = [removed, ...SMS_TMPL.templates];
+            renderSmsTemplates();
+            toast('Error deleting template', 'error');
+        });
 }
 // ============================================================
 // SMS CHAINS
@@ -5466,24 +5470,42 @@ async function saveSmsChain() {
 
     if (!steps.length) { toast('Add at least one step', 'error'); return; }
 
-    try {
-        const res = await apiFetch('/client/sms-chains', 'POST', { name, loop, steps });
-        const d = await res.json();
-        if (d.success) {
-            toast('SMS chain saved', 'success');
-            closeModal('smsChainBuilderModal');
-            await loadSmsChains();
-        } else { toast(d.message || 'Failed to save', 'error'); }
-    } catch { toast('Error saving chain', 'error'); }
+    // Optimistic
+    const tmpId = 'tmp_' + Date.now();
+    const optimistic = { id: tmpId, name, loop, steps, step_count: steps.length, _optimistic: true };
+    SMS_CHAIN.chains = [optimistic, ...(SMS_CHAIN.chains || [])];
+    closeModal('smsChainBuilderModal');
+    renderSmsChains();
+    toast('SMS chain saved', 'success');
+
+    apiFetch('/client/sms-chains', 'POST', { name, loop, steps })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                const real = d.chain || { ...optimistic, id: d.id || tmpId, _optimistic: false };
+                SMS_CHAIN.chains = SMS_CHAIN.chains.map(c => c.id === tmpId ? { ...real, _optimistic: false } : c);
+                renderSmsChains();
+            } else {
+                SMS_CHAIN.chains = SMS_CHAIN.chains.filter(c => c.id !== tmpId);
+                renderSmsChains();
+                toast(d.message || 'Failed to save', 'error');
+            }
+        })
+        .catch(() => { SMS_CHAIN.chains = SMS_CHAIN.chains.filter(c => c.id !== tmpId); renderSmsChains(); toast('Error saving chain', 'error'); });
 }
 
 async function deleteSmsChain(id) {
     if (!confirm('Delete this SMS chain? Leads currently enrolled will stop receiving messages.')) return;
-    try {
-        await apiFetch(`/client/sms-chains/${id}`, 'DELETE');
-        toast('Chain deleted', 'success');
-        await loadSmsChains();
-    } catch { toast('Error', 'error'); }
+    const removed = SMS_CHAIN.chains.find(c => c.id === id);
+    SMS_CHAIN.chains = SMS_CHAIN.chains.filter(c => c.id !== id);
+    renderSmsChains();
+    toast('Chain deleted', 'success');
+    apiFetch(`/client/sms-chains/${id}`, 'DELETE')
+        .catch(() => {
+            if (removed) SMS_CHAIN.chains = [removed, ...(SMS_CHAIN.chains || [])];
+            renderSmsChains();
+            toast('Error deleting chain', 'error');
+        });
 }
 
 async function enrollInSmsChain(chainId, chainName) {
@@ -5698,25 +5720,39 @@ async function openSendEmailModal(leadId, leadEmail, leadName) {
 async function quickSendEmail(leadId) {
     const templateId = document.getElementById('quickSendTemplate')?.value;
     if (!templateId) { toast('Select a template', 'error'); return; }
-    try {
-        const res = await apiFetch('/client/email/send', 'POST', { template_id: parseInt(templateId), lead_ids: [leadId] });
-        const data = await res.json();
-        if (data.success) {
-            toast(`Email sent (${data.sent} sent, ${data.skipped} skipped)`, 'success');
-            closeModal('quickSendModal');
-            await loadFollowups();
-        } else { toast(data.message||'Failed to send', 'error'); }
-    } catch(e) { toast('Error sending email', 'error'); }
+
+    closeModal('quickSendModal');
+    toast('Sending email...', 'success');
+
+    apiFetch('/client/email/send', 'POST', { template_id: parseInt(templateId), lead_ids: [leadId] })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) toast(`Email sent (${d.sent} sent, ${d.skipped} skipped)`, 'success');
+            else toast(d.message || 'Failed to send', 'error');
+        })
+        .catch(() => toast('Error sending email', 'error'));
 }
 
 
 async function toggleAutoReply(leadId, enable) {
+    // Optimistic: update lead state immediately
+    const prevLead = S.leads.find(l => l.id === leadId);
+    S.leads = S.leads.map(l => l.id === leadId ? { ...l, auto_reply: enable } : l);
+    toast(`Auto-reply ${enable ? 'enabled' : 'disabled'}`, 'success');
+    // Re-render followups if visible
+    if (S.currentPage === 'followups') renderFollowups?.();
+
     try {
         const res = await apiFetch(`/client/leads/${leadId}/auto-reply`, 'POST', { enabled: enable });
         const data = await res.json();
-        toast(data.success ? `Auto-reply ${enable ? 'enabled' : 'disabled'}` : (data.message||'Failed'), data.success?'success':'error');
-        if (data.success) loadFollowups();
+        if (!data.success) {
+            if (prevLead) S.leads = S.leads.map(l => l.id === leadId ? prevLead : l);
+            if (S.currentPage === 'followups') renderFollowups?.();
+            toast(data.message || 'Failed', 'error');
+        }
     } catch {
+        if (prevLead) S.leads = S.leads.map(l => l.id === leadId ? prevLead : l);
+        if (S.currentPage === 'followups') renderFollowups?.();
         toast('Error updating auto-reply', 'error');
     }
 }
@@ -5955,20 +5991,20 @@ async function saveNewAppointment() {
 
     const scheduledAt = new Date(`${date}T${time}`).toISOString();
 
-    try {
-        const res = await apiFetch('/client/appointments', 'POST', {
-            clientName: name, clientEmail: email, lead_id: leadId,
-            scheduled_at: scheduledAt,
-            notes: document.getElementById('apptNotes')?.value,
-            sendConfirmation: true,
-        });
-        const data = await res.json();
-        if (data.success || data.appointment) {
-            toast('Appointment added — confirmation email sent', 'success');
-            closeModal('addApptModal');
-            await loadScheduling();
-        } else { toast(data.message||'Failed', 'error'); }
-    } catch { toast('Error adding appointment', 'error'); }
+    // Optimistic close + toast immediately
+    closeModal('addApptModal');
+    toast('Appointment added — confirmation email sent', 'success');
+    // Reload scheduling list in background (appointments don't have a local state array to update)
+    loadScheduling();
+
+    apiFetch('/client/appointments', 'POST', {
+        clientName: name, clientEmail: email, lead_id: leadId,
+        scheduled_at: scheduledAt,
+        notes: document.getElementById('apptNotes')?.value,
+        sendConfirmation: true,
+    }).then(r => r.json()).then(d => {
+        if (!d.success && !d.appointment) toast(d.message || 'Failed to save appointment', 'error');
+    }).catch(() => toast('Error adding appointment', 'error'));
 }
 
 async function openRescheduleModal(apptId, clientName, clientEmail) {
@@ -6010,29 +6046,25 @@ async function confirmReschedule(apptId, clientEmail) {
     if (!date || !time) { toast('Date and time required', 'error'); return; }
 
     const scheduledAt = new Date(`${date}T${time}`).toISOString();
-    try {
-        const res = await apiFetch(`/client/appointments/${apptId}/reschedule`, 'POST', {
-            scheduled_at: scheduledAt, sendConfirmation: true
-        });
-        const data = await res.json();
-        if (data.success) {
-            toast('Appointment rescheduled — confirmation email sent', 'success');
-            closeModal('rescheduleModal');
-            await loadScheduling();
-        } else { toast(data.message||'Failed', 'error'); }
-    } catch { toast('Error rescheduling', 'error'); }
+    closeModal('rescheduleModal');
+    toast('Appointment rescheduled — confirmation email sent', 'success');
+    loadScheduling(); // refresh list in background
+
+    apiFetch(`/client/appointments/${apptId}/reschedule`, 'POST', { scheduled_at: scheduledAt, sendConfirmation: true })
+        .then(r => r.json())
+        .then(d => { if (!d.success) toast(d.message || 'Failed to reschedule', 'error'); })
+        .catch(() => toast('Error rescheduling', 'error'));
 }
 
 async function cancelAppointment(apptId, clientName, clientEmail) {
     if (!confirm(`Cancel appointment with ${clientName}? A cancellation email will be sent.`)) return;
-    try {
-        const res = await apiFetch(`/client/appointments/${apptId}/cancel`, 'POST', { sendConfirmation: true });
-        const data = await res.json();
-        if (data.success) {
-            toast('Appointment cancelled — confirmation email sent', 'success');
-            await loadScheduling();
-        } else { toast(data.message||'Failed', 'error'); }
-    } catch { toast('Error cancelling appointment', 'error'); }
+    // Optimistic: remove from view immediately
+    toast('Appointment cancelled — confirmation email sent', 'success');
+    loadScheduling(); // reload list (no local state array for appts)
+    apiFetch(`/client/appointments/${apptId}/cancel`, 'POST', { sendConfirmation: true })
+        .then(r => r.json())
+        .then(d => { if (!d.success) toast(d.message || 'Failed to cancel', 'error'); })
+        .catch(() => toast('Error cancelling appointment', 'error'));
 }
 
 function copySchedulingLink() {
@@ -6050,6 +6082,219 @@ async function loadInvoices() {
         S.invoices = data.invoices || [];
         renderInvoices();
     } catch {}
+}
+
+// ── Recurring Invoices ─────────────────────────────────────────────────────
+
+let _recurringInvoices = [];
+
+function loadRecurringInvoices() {
+    const section = document.getElementById('recurringInvoicesSection');
+    if (!section) return;
+    // Toggle visibility
+    const isVisible = section.style.display !== 'none';
+    section.style.display = isVisible ? 'none' : '';
+    if (isVisible) return;
+    fetchRecurringInvoices();
+}
+
+async function fetchRecurringInvoices() {
+    const el = document.getElementById('recurringInvoicesList');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state" style="padding:24px;"><div class="spinner"></div></div>';
+    try {
+        const res = await apiFetch('/client/recurring-invoices');
+        const data = await res.json();
+        _recurringInvoices = data.recurringInvoices || [];
+        renderRecurringInvoices();
+    } catch(e) {
+        el.innerHTML = `<div class="empty-state" style="padding:20px;"><p>Failed to load. <button class="btn btn-ghost btn-xs" onclick="fetchRecurringInvoices()">Retry</button></p></div>`;
+    }
+}
+
+function renderRecurringInvoices() {
+    const el = document.getElementById('recurringInvoicesList');
+    if (!el) return;
+    if (!_recurringInvoices.length) {
+        el.innerHTML = `<div class="empty-state" style="padding:24px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <h3>No recurring invoices</h3>
+            <p>Set up automatic monthly invoices for your clients</p>
+            <button class="btn btn-default" style="margin-top:10px;" onclick="openCreateRecurringModal()">Create First Recurring Invoice</button>
+        </div>`;
+        return;
+    }
+    const ordinalSuffix = n => { const s=['th','st','nd','rd']; const v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
+    const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}) : '—';
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="border-bottom:1px solid var(--border);">
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Client</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Description</th>
+            <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Amount</th>
+            <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Send Day</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Next Send</th>
+            <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Status</th>
+            <th style="padding:10px 14px;"></th>
+        </tr></thead>
+        <tbody>
+            ${_recurringInvoices.map(r => `<tr style="border-bottom:1px solid var(--border-1);">
+                <td style="padding:10px 14px;">
+                    <div style="font-size:13px;font-weight:500;">${escHtml(r.lead_name || r.lead_email || '—')}</div>
+                    <div style="font-size:11px;color:var(--text-3);">${escHtml(r.lead_email || '')}</div>
+                </td>
+                <td style="padding:10px 14px;font-size:13px;color:var(--text-2);">${escHtml(r.description)}</td>
+                <td style="padding:10px 14px;text-align:right;font-size:13px;font-weight:700;">$${parseFloat(r.amount).toFixed(2)}</td>
+                <td style="padding:10px 14px;text-align:center;font-size:13px;color:var(--text-2);">${ordinalSuffix(r.send_day_of_month)}</td>
+                <td style="padding:10px 14px;font-size:12px;color:var(--text-2);">${fmtDate(r.next_send_date)}</td>
+                <td style="padding:10px 14px;text-align:center;">
+                    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                        <input type="checkbox" ${r.is_active?'checked':''} style="accent-color:#10b981;width:15px;height:15px;" onchange="toggleRecurring(${r.id},this.checked)">
+                        <span style="font-size:11px;color:${r.is_active?'#10b981':'var(--text-3)'};">${r.is_active?'Active':'Paused'}</span>
+                    </label>
+                </td>
+                <td style="padding:10px 14px;text-align:right;">
+                    <button class="btn btn-ghost btn-xs" style="color:var(--red);" onclick="deleteRecurring(${r.id})">Delete</button>
+                </td>
+            </tr>`).join('')}
+        </tbody>
+    </table>`;
+}
+
+function openCreateRecurringModal() {
+    let modal = document.getElementById('createRecurringModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'createRecurringModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('createRecurringModal'); };
+        document.body.appendChild(modal);
+    }
+    // Build lead options from S.leads + S.customers
+    const allPeople = [...(S.leads||[]), ...(S.customers||[])].filter(p => p.email);
+    const opts = allPeople.map(p => `<option value="${p.id}" data-email="${escHtml(p.email)}" data-name="${escHtml(p.name||p.email)}">${escHtml(p.name||p.email)} — ${escHtml(p.email)}</option>`).join('');
+
+    modal.innerHTML = `
+        <div class="modal" style="max-width:460px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <span class="modal-title">New Recurring Invoice</span>
+                <button class="modal-close" onclick="closeModal('createRecurringModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div style="background:#6366f111;border:1px solid #6366f133;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
+                    📅 An invoice will be automatically emailed to this client on the day you choose, every month.
+                </div>
+                <div class="form-field">
+                    <label class="form-label">Client</label>
+                    <select class="form-input" id="recLead" onchange="var o=this.options[this.selectedIndex];document.getElementById('recEmail').value=o.dataset.email||'';document.getElementById('recName').value=o.dataset.name||'';">
+                        <option value="">— Select a lead or customer —</option>
+                        ${opts}
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label class="form-label">Client Name</label>
+                        <input class="form-input" id="recName" placeholder="Client name">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Client Email</label>
+                        <input class="form-input" id="recEmail" type="email" placeholder="client@example.com">
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label class="form-label">Description</label>
+                    <input class="form-input" id="recDesc" placeholder="Monthly retainer, Service fee...">
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label class="form-label">Amount ($)</label>
+                        <input class="form-input" id="recAmount" type="number" step="0.01" min="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Send on Day of Month</label>
+                        <input class="form-input" id="recDay" type="number" min="1" max="28" value="1" placeholder="1–28">
+                        <div style="font-size:10px;color:var(--text-3);margin-top:3px;">Max 28 to avoid month-end issues</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('createRecurringModal')">Cancel</button>
+                <button class="btn btn-white" onclick="saveRecurringInvoice()">Create Recurring</button>
+            </div>
+        </div>`;
+    openModal('createRecurringModal');
+}
+
+async function saveRecurringInvoice() {
+    const selectEl = document.getElementById('recLead');
+    const leadId   = selectEl?.value || null;
+    const name     = document.getElementById('recName')?.value?.trim();
+    const email    = document.getElementById('recEmail')?.value?.trim();
+    const desc     = document.getElementById('recDesc')?.value?.trim();
+    const amount   = document.getElementById('recAmount')?.value;
+    const day      = parseInt(document.getElementById('recDay')?.value);
+    if (!email) { toast('Client email required', 'error'); return; }
+    if (!desc)  { toast('Description required', 'error');  return; }
+    if (!amount || parseFloat(amount) <= 0) { toast('Valid amount required', 'error'); return; }
+    if (!day || day < 1 || day > 28) { toast('Send day must be between 1 and 28', 'error'); return; }
+
+    // Optimistic
+    const tmp = { id: 'tmp_'+Date.now(), lead_id: leadId, lead_name: name, lead_email: email, description: desc, amount: parseFloat(amount), send_day_of_month: day, is_active: true, next_send_date: null, _optimistic: true };
+    _recurringInvoices = [tmp, ..._recurringInvoices];
+    closeModal('createRecurringModal');
+    renderRecurringInvoices();
+    toast('Recurring invoice created', 'success');
+
+    try {
+        const res = await apiFetch('/client/recurring-invoices', 'POST', { lead_id: leadId||null, lead_name: name, lead_email: email, description: desc, amount: parseFloat(amount), send_day_of_month: day });
+        const data = await res.json();
+        if (data.success) {
+            _recurringInvoices = _recurringInvoices.map(r => r.id === tmp.id ? { ...data.recurringInvoice, _optimistic: false } : r);
+            renderRecurringInvoices();
+        } else {
+            _recurringInvoices = _recurringInvoices.filter(r => r.id !== tmp.id);
+            renderRecurringInvoices();
+            toast(data.message || 'Failed to create', 'error');
+        }
+    } catch {
+        _recurringInvoices = _recurringInvoices.filter(r => r.id !== tmp.id);
+        renderRecurringInvoices();
+        toast('Error creating recurring invoice', 'error');
+    }
+}
+
+async function toggleRecurring(id, isActive) {
+    const prev = _recurringInvoices.find(r => r.id === id);
+    _recurringInvoices = _recurringInvoices.map(r => r.id === id ? { ...r, is_active: isActive } : r);
+    renderRecurringInvoices();
+    try {
+        const res = await apiFetch(`/client/recurring-invoices/${id}`, 'PATCH', { is_active: isActive });
+        const data = await res.json();
+        if (!data.success) {
+            if (prev) _recurringInvoices = _recurringInvoices.map(r => r.id === id ? prev : r);
+            renderRecurringInvoices();
+            toast(data.message || 'Failed to update', 'error');
+        } else {
+            toast(isActive ? 'Recurring invoice resumed' : 'Recurring invoice paused', 'success');
+        }
+    } catch {
+        if (prev) _recurringInvoices = _recurringInvoices.map(r => r.id === id ? prev : r);
+        renderRecurringInvoices();
+    }
+}
+
+async function deleteRecurring(id) {
+    if (!confirm('Delete this recurring invoice? It will stop sending.')) return;
+    const removed = _recurringInvoices.find(r => r.id === id);
+    _recurringInvoices = _recurringInvoices.filter(r => r.id !== id);
+    renderRecurringInvoices();
+    toast('Recurring invoice deleted', 'success');
+    try {
+        await apiFetch(`/client/recurring-invoices/${id}`, 'DELETE');
+    } catch {
+        if (removed) _recurringInvoices = [removed, ..._recurringInvoices];
+        renderRecurringInvoices();
+        toast('Error deleting', 'error');
+    }
 }
 
 function renderInvoices() {
@@ -6215,6 +6460,18 @@ async function createInvoice() {
 
     if (!client||!amount) { toast('Client name and amount required', 'error'); return; }
 
+    // Optimistic: add to S.invoices immediately
+    const tmpId = 'tmp_' + Date.now();
+    const optimisticInv = {
+        id: tmpId, invoice_number: '...', client_name: client, client_email: email,
+        description: desc, total_amount: amount, due_date: due, status: 'draft',
+        created_at: new Date().toISOString(), _optimistic: true
+    };
+    S.invoices = [optimisticInv, ...(S.invoices || [])];
+    closeModal('createInvoiceModal');
+    renderInvoices();
+    toast('Invoice created' + (sendEmail ? ' and emailed' : ''), 'success');
+
     try {
         const res = await apiFetch('/client/invoices/create', 'POST', {
             clientName: client, clientEmail: email,
@@ -6224,13 +6481,17 @@ async function createInvoice() {
         });
         const data = await res.json();
         if (data.success || data.invoice) {
-            toast('Invoice created' + (sendEmail ? ' and emailed' : ''), 'success');
-            closeModal('createInvoiceModal');
-            await loadInvoices();
+            const real = data.invoice || { ...optimisticInv, id: data.id || tmpId, invoice_number: data.invoice_number || '—' };
+            S.invoices = S.invoices.map(i => i.id === tmpId ? { ...real, _optimistic: false } : i);
+            renderInvoices();
         } else {
-            toast(data.message||'Failed', 'error');
+            S.invoices = S.invoices.filter(i => i.id !== tmpId);
+            renderInvoices();
+            toast(data.message || 'Failed to create invoice', 'error');
         }
     } catch {
+        S.invoices = S.invoices.filter(i => i.id !== tmpId);
+        renderInvoices();
         toast('Error creating invoice', 'error');
     }
 }
@@ -6784,28 +7045,21 @@ async function addCompanyUser() {
     const btn = document.getElementById('addUserBtn');
     btn.disabled = true; btn.textContent = 'Adding...';
 
-    try {
-        const res = await apiFetch('/client/company/add-user', 'POST', {
-            name, username, email, sendingEmail,
-            password,
-            userLabel: label,
-            clientPortalId: company.clientPortalId,
-            packageKey: selectedPlan || null,   // null = use existing plan (seat already paid)
-        });
-        const data = await res.json();
+    apiFetch('/client/company/add-user', 'POST', {
+        name, username, email, sendingEmail,
+        password,
+        userLabel: label,
+        clientPortalId: company.clientPortalId,
+        packageKey: selectedPlan || null,
+    }).then(r => r.json()).then(data => {
+        btn.disabled = false; btn.textContent = 'Add Team Member';
         if (data.success) {
             closeModal('addUserModal');
-            await loadCompany();
-
+            loadCompany(); // refresh list in background
             if (data.domainWarning) {
-                // Show domain mismatch info as a non-blocking notification
-                setTimeout(() => {
-                    toast('User added — ' + data.domainWarning, 'warning');
-                }, 400);
+                setTimeout(() => { toast('User added — ' + data.domainWarning, 'warning'); }, 200);
             } else if (!data.emailSent && data.tempPassword) {
-                // Email failed — show credentials directly in the portal so the admin can relay them
                 toast(data.message || 'User added (email failed — see credentials below)', 'warning');
-                // Show a persistent alert with the credentials since email couldn't deliver them
                 setTimeout(() => {
                     alert(`Warning: Welcome email failed to send.\n\nPlease share these credentials manually with ${name}:\n\nLogin Email: ${email}\nPassword: ${data.tempPassword}\nPortal URL: ${window.location.origin}/client_portal.html`);
                 }, 300);
@@ -6815,11 +7069,11 @@ async function addCompanyUser() {
         } else {
             toast(data.message || 'Failed to add user', 'error');
         }
-    } catch {
-        toast('Error adding user', 'error');
-    } finally {
+    }).catch(() => {
         btn.disabled = false; btn.textContent = 'Add Team Member';
-    }
+        toast('Error adding user', 'error');
+    });
+
 }
 
 // ── Admin: Reset a team member's password ───────────────────────
@@ -6871,7 +7125,7 @@ async function cancelCompanyUser(userId, name, isAdmin) {
         const res = await apiFetch(`/client/company/user/${userId}/cancel`, 'POST', {});
         const data = await res.json();
         toast(data.success ? (data.message || name + ' has been removed.') : (data.message || 'Failed'), data.success ? 'success' : 'error');
-        if (data.success) { S.companyData = null; await loadCompany(); }
+        if (data.success) { S.companyData = null; loadCompany(); }
     } catch { toast('Error', 'error'); }
 }
 
@@ -6892,10 +7146,10 @@ async function reinstateCompanyUser(userId, name) {
             const res2 = await apiFetch(`/client/company/user/${userId}/reinstate`, 'POST', { confirmedExtraCost: true });
             const data2 = await res2.json();
             toast(data2.success ? (data2.message || `${name} reinstated`) : (data2.message || 'Failed'), data2.success ? 'success' : 'error');
-            if (data2.success) { S.companyData = null; await loadCompany(); }
+            if (data2.success) { S.companyData = null; loadCompany(); }
         } else {
             toast(data.success ? (data.message || `${name}'s subscription reinstated.`) : (data.message || 'Failed'), data.success ? 'success' : 'error');
-            if (data.success) { S.companyData = null; await loadCompany(); }
+            if (data.success) { S.companyData = null; loadCompany(); }
         }
     } catch { toast('Error reinstating user', 'error'); }
 }
@@ -6906,7 +7160,7 @@ async function reduceUnusedSeat() {
         const res = await apiFetch('/client/company/reduce-seat', 'POST', {});
         const data = await res.json();
         toast(data.success ? (data.message || 'Unused seat removed.') : (data.message || 'Failed'), data.success ? 'success' : 'error');
-        if (data.success) { S.companyData = null; await loadCompany(); }
+        if (data.success) { S.companyData = null; loadCompany(); }
     } catch { toast('Error removing seat', 'error'); }
 }
 
@@ -6954,19 +7208,19 @@ function renderFiles() {
 async function handleFileUpload(files) {
     if (!files?.length) return;
     toast(`Uploading ${files.length} file${files.length>1?'s':''}...`, 'success');
-    for (const file of files) {
+    const uploads = Array.from(files).map(file => {
         const fd = new FormData();
         fd.append('file', file);
-        try {
-            await fetch(API_BASE + '/client/files/upload', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + S.token },
-                body: fd,
-            });
-        } catch {}
-    }
-    await loadFiles();
-    toast('Upload complete', 'success');
+        return fetch(API_BASE + '/client/files/upload', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + S.token },
+            body: fd,
+        }).catch(() => {});
+    });
+    Promise.all(uploads).then(() => {
+        loadFiles();
+        toast('Upload complete', 'success');
+    });
 }
 
 function downloadFile(fileId, filename) {
@@ -7037,17 +7291,34 @@ async function submitTicket() {
     const category = document.getElementById('ticketCategory').value;
     if (!subject || !message) { toast('Subject and message required', 'error'); return; }
 
-    try {
-        const res = await apiFetch('/client/support/ticket', 'POST', { subject, message, priority, category });
-        const data = await res.json();
-        if (data.success) {
-            toast('Ticket submitted', 'success');
-            closeModal('newTicketModal');
-            await loadTickets();
-        } else {
-            toast(data.message||'Failed', 'error');
-        }
-    } catch { toast('Error submitting ticket', 'error'); }
+    // Optimistic: add to S.tickets immediately
+    const tmpTicket = {
+        id: 'tmp_' + Date.now(), subject, message, priority, category,
+        status: 'open', created_at: new Date().toISOString(), _optimistic: true,
+    };
+    S.tickets = [tmpTicket, ...(S.tickets || [])];
+    closeModal('newTicketModal');
+    renderTickets();
+    toast('Ticket submitted', 'success');
+
+    apiFetch('/client/support/ticket', 'POST', { subject, message, priority, category })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                const real = d.ticket || { ...tmpTicket, id: d.id || tmpTicket.id, _optimistic: false };
+                S.tickets = S.tickets.map(t => t.id === tmpTicket.id ? { ...real, _optimistic: false } : t);
+                renderTickets();
+            } else {
+                S.tickets = S.tickets.filter(t => t.id !== tmpTicket.id);
+                renderTickets();
+                toast(d.message || 'Failed', 'error');
+            }
+        })
+        .catch(() => {
+            S.tickets = S.tickets.filter(t => t.id !== tmpTicket.id);
+            renderTickets();
+            toast('Error submitting ticket', 'error');
+        });
 }
 
 async function viewTicket(ticketId) {
@@ -7100,17 +7371,14 @@ async function replyToTicket(ticketId) {
     const msg = document.getElementById('ticketReplyText')?.value?.trim();
     if (!msg) { toast('Enter a reply', 'error'); return; }
 
-    try {
-        const res = await apiFetch(`/client/tickets/${ticketId}/responses`, 'POST', { message: msg });
-        const data = await res.json();
-        if (data.success) {
-            toast('Reply sent', 'success');
-            document.getElementById('ticketViewModal')?.remove();
-            await loadTickets();
-        } else {
-            toast(data.message||'Failed', 'error');
-        }
-    } catch { toast('Error', 'error'); }
+    document.getElementById('ticketViewModal')?.remove();
+    toast('Reply sent', 'success');
+    loadTickets(); // refresh list in background
+
+    apiFetch(`/client/tickets/${ticketId}/responses`, 'POST', { message: msg })
+        .then(r => r.json())
+        .then(d => { if (!d.success) toast(d.message || 'Failed to send reply', 'error'); })
+        .catch(() => toast('Error sending reply', 'error'));
 }
 
 // ============================================================
@@ -7122,13 +7390,12 @@ async function loadBilling() {
     if (!el) return;
     el.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
 
-    const res = await apiFetch('/client/billing/usage', 'GET');
-    if (!res || !res.success) {
-        el.innerHTML = `<div class="empty-state" style="color:var(--red);">Failed to load billing data. <button class="btn btn-ghost" style="margin-top:10px;" onclick="loadBilling()">Retry</button></div>`;
-        return;
-    }
+    try {
+        const res = await apiFetch('/client/billing/usage', 'GET');
+        const data = await res.json();
+        if (!data || !data.success) throw new Error(data?.message || 'Failed to load billing data');
 
-    const { lastMonth, currentMonth, rates } = res;
+        const { lastMonth, currentMonth, rates } = data;
 
     const fmtMoney = v => '$' + parseFloat(v || 0).toFixed(2);
     const fmtCount = v => parseInt(v || 0).toLocaleString();
@@ -7237,6 +7504,13 @@ async function loadBilling() {
             </div>
         </div>
     `;
+    } catch(e) {
+        el.innerHTML = `<div class="empty-state" style="color:var(--red);">
+            <p>Failed to load billing data.</p>
+            <p style="font-size:12px;opacity:.7;">${e.message}</p>
+            <button class="btn btn-ghost" style="margin-top:10px;" onclick="loadBilling()">Retry</button>
+        </div>`;
+    }
 }
 
 // ============================================================
@@ -7508,8 +7782,11 @@ async function confirmPlanChange() {
             newPackageKey: _planState.selectedKey, newUserCount: qty,
         });
         const data = await res.json();
-        if(data.success) { toast(data.message||'Plan updated','success'); closeModal('changePlanModal'); await loadSubscription(); }
-        else { toast(data.message||'Failed','error'); }
+        if(data.success) {
+            toast(data.message||'Plan updated','success');
+            closeModal('changePlanModal');
+            loadSubscription(); // refresh in background
+        } else { toast(data.message||'Failed','error'); }
     } catch { toast('Error','error'); }
     finally { btn.disabled=false; btn.textContent='Confirm Change'; }
 }
@@ -7536,7 +7813,7 @@ async function confirmCancelSub() {
         if (data.success) {
             toast(data.message || 'Subscription cancelled', 'success');
             closeModal('cancelSubModal');
-            await loadSubscription();
+            loadSubscription(); // refresh in background
         } else { toast(data.message || 'Failed', 'error'); }
     } catch { toast('Error', 'error'); }
     finally { btn.disabled = false; btn.textContent = 'Cancel Subscription'; }
@@ -7696,12 +7973,7 @@ function renderMarketing() {
     const el = document.getElementById('marketingContent');
     if (!el) return;
 
-    const brevoMissing = !MK.settings?.brevo_api_key_set && !MK.settings?.brevo_api_key;
-    const brevoWarning = brevoMissing ? `
-        <div style="background:#f59e0b22;border:1px solid #f59e0b44;border-radius:var(--r-md);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="width:18px;height:18px;flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <span style="font-size:13px;color:#f59e0b;font-weight:600;">Brevo not configured. <a href="#" onclick="navigateTo('settings')" style="color:#f59e0b;text-decoration:underline;">Set up in Settings →</a></span>
-        </div>` : '';
+    const brevoWarning = ''; // Brevo is handled by the Diamondback platform — no per-portal key needed
 
     if (MK.tab === 'templates') {
         el.innerHTML = brevoWarning + `
@@ -8377,176 +8649,35 @@ async function saveEmailSettings() {
         brevo_sms_sender:      document.getElementById('settingsSmsSender')?.value?.trim(),
     };
 
-    try {
-        const res  = await apiFetch('/client/email-settings', 'PUT', payload);
-        const data = await res.json();
-        toast(data.success ? 'Settings saved' : (data.message||'Failed'), data.success ? 'success' : 'error');
-        if (data.success) await loadSettings();
-    } catch { toast('Error saving settings', 'error'); }
+    // Optimistic: update MK.settings in memory immediately, show toast, no page reload
+    MK.settings = { ...(MK.settings || {}), ...payload };
+    toast('Settings saved', 'success');
+
+    apiFetch('/client/email-settings', 'PUT', payload)
+        .then(r => r.json())
+        .then(data => { if (!data.success) toast(data.message || 'Failed to save settings', 'error'); })
+        .catch(() => toast('Error saving settings', 'error'));
 }
 
-// ============================================================
-// DOMAIN VERIFICATION
-// ============================================================
-async function addDomainVerification() {
-    const domainInput = document.getElementById('settingsDomain');
-    const domain = domainInput?.value?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-    if (!domain) { toast('Enter your business domain (e.g. acmeroofing.com)', 'error'); return; }
+// SENDER STATUS — fully managed by Diamondback Coding platform
+// Domain verification removed. Senders are auto-registered/removed on account
+// creation and cancellation via brevoRegisterSender / brevoRemoveSender on the server.
 
-    const btn = document.getElementById('verifyDomainBtn');
-    btn.disabled = true; btn.textContent = 'Registering…';
-
-    try {
-        const res  = await apiFetch('/client/domain/add', 'POST', { domain });
-        const data = await res.json();
-        if (!data.success) { toast(data.message || 'Failed to register domain', 'error'); return; }
-
-        toast('Domain registered — add the DNS records shown below', 'success');
-        renderDnsRecords(data.dnsRecords, data.domain);
-        showDomainPending(data.dnsRecords, data.domain);
-        await loadSettings();
-    } catch(e) { toast('Error: ' + e.message, 'error'); }
-    finally { btn.disabled = false; btn.textContent = 'Add & Verify Domain'; }
-}
-
-async function checkDomainStatus() {
-    try {
-        const res  = await apiFetch('/client/domain/status');
-        const data = await res.json();
-        if (!data.success) { toast(data.message || 'Error checking status', 'error'); return; }
-
-        if (data.status === 'verified') {
-            toast('✅ Domain verified! All @' + data.domain + ' users can send email.', 'success');
-            showDomainVerified(data.domain);
-        } else {
-            toast('⏳ Not yet verified. DNS changes can take up to 48h.', 'warning');
-            renderDnsRecords(data.dnsRecords, data.domain);
-        }
-    } catch(e) { toast('Error checking status', 'error'); }
-}
-
-async function removeDomainVerification() {
-    if (!confirm('Remove domain verification? Your team will lose per-user sending until a new domain is verified.')) return;
-    try {
-        const res  = await apiFetch('/client/domain', 'DELETE');
-        const data = await res.json();
-        if (data.success) {
-            toast('Domain removed', 'success');
-            showDomainUnverified();
-            await loadSettings();
-        } else { toast(data.message || 'Error', 'error'); }
-    } catch { toast('Error removing domain', 'error'); }
-}
-
-async function saveRateLimit() {
-    const val = parseInt(document.getElementById('settingsRateLimit')?.value);
-    if (!val || val < 1) { toast('Enter a valid limit', 'error'); return; }
-    try {
-        const res = await apiFetch('/client/email-settings', 'PUT', { rate_limit_day: val });
-        const data = await res.json();
-        toast(data.success ? 'Rate limit saved' : (data.message || 'Error'), data.success ? 'success' : 'error');
-    } catch { toast('Error', 'error'); }
-}
-
-function showDomainVerified(domain) {
-    document.getElementById('domainVerifiedDisplay').style.display = '';
-    document.getElementById('domainVerifiedName').textContent = domain;
-    document.getElementById('domainPendingDisplay').style.display = 'none';
-    document.getElementById('domainUnverifiedEntry').style.display = 'none';
-    const badge = document.getElementById('domainStatusBadge');
-    badge.style.display = 'inline-block';
-    badge.textContent = 'Verified';
-    badge.style.background = '#10b98122';
-    badge.style.color = '#10b981';
-    document.getElementById('deliverabilityStats').style.display = '';
-}
-
-function showDomainPending(dnsRecords, domain) {
-    document.getElementById('domainVerifiedDisplay').style.display = 'none';
-    document.getElementById('domainPendingDisplay').style.display = '';
-    document.getElementById('domainUnverifiedEntry').style.display = 'none';
-    renderDnsRecords(dnsRecords, domain);
-    const badge = document.getElementById('domainStatusBadge');
-    badge.style.display = 'inline-block';
-    badge.textContent = 'Pending';
-    badge.style.background = '#f59e0b22';
-    badge.style.color = '#f59e0b';
-}
-
-function showDomainUnverified() {
-    document.getElementById('domainVerifiedDisplay').style.display = 'none';
-    document.getElementById('domainPendingDisplay').style.display = 'none';
-    document.getElementById('domainUnverifiedEntry').style.display = 'flex';
-    const badge = document.getElementById('domainStatusBadge');
-    badge.style.display = 'none';
-    document.getElementById('deliverabilityStats').style.display = 'none';
-}
-
-function renderDnsRecords(records, domain) {
-    const container = document.getElementById('dnsRecordsList');
-    if (!container || !records?.length) return;
-    container.innerHTML = records.map((r, i) => `
-        <div style="margin-bottom:${i < records.length-1 ? '14' : '0'}px;padding-bottom:${i < records.length-1 ? '14' : '0'}px;${i < records.length-1 ? 'border-bottom:1px solid rgba(255,255,255,0.06)' : ''};">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-                ${r.verified !== undefined ? `<span style="font-size:11px;">${r.verified ? '✅' : '❌'}</span>` : ''}
-                <span style="background:#6366f133;color:#818cf8;padding:1px 7px;border-radius:3px;font-size:10px;font-weight:700;">${r.type}</span>
-                <span style="color:var(--text-2);font-size:11px;">${r.description || ''}</span>
-            </div>
-            <div style="margin-bottom:4px;">
-                <span style="color:var(--text-3);font-size:10px;">Host/Name:</span>
-                <code style="background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:4px;font-size:11px;color:#a5f3fc;">${r.host === '@' ? '@  (or leave blank)' : r.host + '.' + domain}</code>
-                <button onclick="copyToClipboard('${r.host === '@' ? '@' : r.host + '.' + domain}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:10px;padding:0 4px;">📋</button>
-            </div>
-            <div>
-                <span style="color:var(--text-3);font-size:10px;">Value:</span>
-                <code style="background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:4px;font-size:11px;color:#bbf7d0;word-break:break-all;">${r.value}</code>
-                <button onclick="copyToClipboard('${r.value.replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:10px;padding:0 4px;">📋</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => toast('Copied!', 'success')).catch(() => {
-        // Fallback for older browsers
-        const el = document.createElement('textarea');
-        el.value = text; document.body.appendChild(el); el.select();
-        document.execCommand('copy'); document.body.removeChild(el);
-        toast('Copied!', 'success');
-    });
-}
-
-// Update loadSettings to handle domain state
 async function _loadDomainState(s) {
-    const status = s.domain_status || 'unverified';
-    const domain = s.verified_domain;
-
     // Populate rate limit
     const rlInput = document.getElementById('settingsRateLimit');
     if (rlInput) rlInput.value = s.rate_limit_day || 500;
 
-    // Populate deliverability stats
+    // Show deliverability stats if present
     if (s.emails_sent_today !== undefined) {
         const el = id => document.getElementById(id);
         if (el('statEmailsToday')) el('statEmailsToday').textContent = s.emails_sent_today ?? '0';
         if (el('statBounces'))     el('statBounces').textContent     = s.bounce_count ?? '0';
         if (el('statComplaints'))  el('statComplaints').textContent  = s.complaint_count ?? '0';
+        const statsEl = document.getElementById('deliverabilityStats');
+        if (statsEl) statsEl.style.display = '';
         const suspended = el('suspendedBanner');
         if (suspended) suspended.style.display = s.suspended ? '' : 'none';
-    }
-
-    if (status === 'verified' && domain) {
-        showDomainVerified(domain);
-    } else if (status === 'pending' && domain) {
-        // Load DNS records from status endpoint
-        try {
-            const r = await apiFetch('/client/domain/status');
-            const d = await r.json();
-            showDomainPending(d.dnsRecords || [], domain);
-        } catch { showDomainPending([], domain); }
-    } else {
-        showDomainUnverified();
-        if (domain) document.getElementById('settingsDomain').value = domain;
     }
 }
 
@@ -8955,21 +9086,44 @@ function openAddCustomerModal() {
 async function saveCustomer() {
     const name = document.getElementById('custName')?.value.trim();
     if (!name) { toast('Name is required', 'error'); return; }
-    try {
-        const res = await apiFetch('/client/customers', 'POST', {
-            name,
-            email: document.getElementById('custEmail')?.value.trim(),
-            phone: document.getElementById('custPhone')?.value.trim(),
-            company: document.getElementById('custCompany')?.value.trim(),
-            notes: document.getElementById('custNotes')?.value.trim(),
-        });
-        const data = await res.json();
-        if (data.success) {
-            toast('Customer added', 'success');
-            closeModal('addCustomerModal');
-            await loadCustomers();
-        } else { toast(data.message||'Failed', 'error'); }
-    } catch { toast('Error adding customer', 'error'); }
+
+    const optimistic = {
+        id: 'tmp_' + Date.now(),
+        name,
+        email:   document.getElementById('custEmail')?.value.trim(),
+        phone:   document.getElementById('custPhone')?.value.trim(),
+        company: document.getElementById('custCompany')?.value.trim(),
+        notes:   document.getElementById('custNotes')?.value.trim(),
+        created_at: new Date().toISOString(),
+        _optimistic: true,
+    };
+    _customers = [optimistic, ..._customers];
+    S.customers = _customers;
+    closeModal('addCustomerModal');
+    renderCustomers();
+    toast('Customer added', 'success');
+
+    apiFetch('/client/customers', 'POST', {
+        name: optimistic.name, email: optimistic.email,
+        phone: optimistic.phone, company: optimistic.company, notes: optimistic.notes,
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            const real = d.customer || { ...optimistic, id: d.id || optimistic.id, _optimistic: false };
+            _customers = _customers.map(c => c.id === optimistic.id ? { ...real, _optimistic: false } : c);
+            S.customers = _customers;
+            renderCustomers();
+        } else {
+            _customers = _customers.filter(c => c.id !== optimistic.id);
+            S.customers = _customers;
+            renderCustomers();
+            toast(d.message || 'Failed', 'error');
+        }
+    }).catch(() => {
+        _customers = _customers.filter(c => c.id !== optimistic.id);
+        S.customers = _customers;
+        renderCustomers();
+        toast('Error adding customer', 'error');
+    });
 }
 
 // ============================================================

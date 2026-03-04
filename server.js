@@ -10652,6 +10652,8 @@ async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, su
         }
 
         console.log(`[COMPANY] Added/updated user in ${clientPortalId}: ${userName} (${userEmail})`);
+        // Auto-register this user's email as a Brevo sender so they can send as themselves
+        brevoRegisterSender(userEmail, userName).catch(() => {});
         return result.rows[0];
     } catch (err) {
         console.error('[COMPANY] Error adding user:', err);
@@ -11438,16 +11440,19 @@ async function processSubscriptionWebhook(event) {
         // Mark company_users row as fully cancelled and free the seat
         try {
             const cuRes = await pool.query(
-                `SELECT client_portal_id FROM company_users WHERE stripe_subscription_id = $1`,
+                `SELECT client_portal_id, user_email FROM company_users WHERE stripe_subscription_id = $1`,
                 [subId]
             );
             if (cuRes.rows.length > 0) {
                 const portalId = cuRes.rows[0].client_portal_id;
+                const cancelledEmail = cuRes.rows[0].user_email;
                 // Mark as cancelled
                 await pool.query(
                     `UPDATE company_users SET status = 'cancelled', updated_at = NOW() WHERE stripe_subscription_id = $1`,
                     [subId]
                 );
+                // Auto-remove sender from platform Brevo account (non-blocking)
+                if (cancelledEmail) brevoRemoveSender(cancelledEmail).catch(() => {});
                 // Recalculate company totals:
                 // - total_active_seats = active + cancelling (seats still in use)
                 // - purchased_seats stays the same (seats bought); only decrements if company explicitly reduces seats
@@ -13911,6 +13916,10 @@ app.post('/api/admin/client-accounts', authenticateToken, async (req, res) => {
                 VALUES ($1, $2, $3, NOW(), NOW())
                 ON CONFLICT (client_portal_id) DO NOTHING
             `, [clientPortalId, companyName, email || lead.email]).catch(() => {});
+
+            // Auto-register the admin's email as a verified sender in Diamondback's platform Brevo account
+            // so emails from this portal can be sent with their address as the "from" field.
+            brevoRegisterSender(email || lead.email, lead.name).catch(() => {});
 
             console.log('[CLIENT ACCOUNT] Created portal ID:', clientPortalId, 'for lead:', lead.name);
         }
@@ -20804,15 +20813,16 @@ app.get('/api/client/email-settings', authenticateClient, async (req, res) => {
         if (!portalId) return res.json({ success: true, settings: {} });
         const settings = await getClientEmailSettings(portalId);
         const out = settings ? { ...settings } : {};
-        // Mask Brevo API key for security — never send raw key to frontend
+        // All sending routes through the platform BREVO key — per-portal key is optional/legacy.
+        // Always tell the frontend Brevo is configured so no warning banners appear.
+        out.brevo_api_key_set = true;
         if (out.brevo_api_key) {
-            out.brevo_api_key_set = true;
             out.brevo_api_key = out.brevo_api_key.substring(0, 6) + '••••••••••••';
         } else {
-            out.brevo_api_key_set = false;
+            out.brevo_api_key = '';
         }
-        // Include SMS settings
-        out.brevo_sms_enabled = out.brevo_sms_enabled || false;
+        // SMS is always available through the platform — no per-portal toggle needed
+        out.brevo_sms_enabled = true;
         out.brevo_sms_sender  = out.brevo_sms_sender  || '';
         // Include domain verification state
         out.verified_domain = out.verified_domain || null;
@@ -22063,7 +22073,7 @@ app.delete('/api/admin/company/:clientPortalId', authenticateToken, async (req, 
     try {
         const { clientPortalId } = req.params;
 
-        // Cancel all Stripe subscriptions for company users
+        // Cancel all Stripe subscriptions for company users and remove Brevo senders
         const users = await pool.query(
             `SELECT user_email, stripe_subscription_id FROM company_users WHERE client_portal_id = $1`,
             [clientPortalId]
@@ -22077,7 +22087,12 @@ app.delete('/api/admin/company/:clientPortalId', authenticateToken, async (req, 
                     console.error(`[DELETE COMPANY] Stripe cancel error for ${u.user_email}:`, err.message);
                 }
             }
+            // Remove each user's sender from platform Brevo (non-blocking)
+            if (u.user_email) brevoRemoveSender(u.user_email).catch(() => {});
         }
+        // Also remove the admin's sender email
+        const adminRow = await pool.query(`SELECT admin_email FROM client_companies WHERE client_portal_id=$1`, [clientPortalId]);
+        if (adminRow.rows[0]?.admin_email) brevoRemoveSender(adminRow.rows[0].admin_email).catch(() => {});
 
         // Delete all related records
         await pool.query(`DELETE FROM crm_subscriptions WHERE client_portal_id = $1`, [clientPortalId]);
@@ -23039,6 +23054,89 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
     }
 });
 
+// ========================================
+// RECURRING INVOICES — Client Portal
+// ========================================
+
+// GET /api/client/recurring-invoices — list all for this portal
+app.get('/api/client/recurring-invoices', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        const r = await pool.query(
+            `SELECT * FROM recurring_invoices WHERE client_portal_id=$1 ORDER BY created_at DESC`,
+            [portalId]
+        );
+        res.json({ success: true, recurringInvoices: r.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/recurring-invoices — create a new schedule
+app.post('/api/client/recurring-invoices', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        const { lead_id, lead_name, lead_email, description, amount, send_day_of_month } = req.body;
+        if (!lead_email || !amount || !description || !send_day_of_month) {
+            return res.status(400).json({ success: false, message: 'lead_email, description, amount, and send_day_of_month are required' });
+        }
+        const day = Math.max(1, Math.min(28, parseInt(send_day_of_month)));
+        // Calculate first send date
+        const now = new Date();
+        let nextSend = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day));
+        if (nextSend <= now) nextSend.setUTCMonth(nextSend.getUTCMonth() + 1);
+
+        const r = await pool.query(`
+            INSERT INTO recurring_invoices (client_portal_id, lead_id, lead_name, lead_email, description, amount, send_day_of_month, is_active, next_send_date)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8) RETURNING *
+        `, [portalId, lead_id||null, lead_name||null, lead_email, description, parseFloat(amount), day, nextSend.toISOString().split('T')[0]]);
+        res.json({ success: true, recurringInvoice: r.rows[0] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// PATCH /api/client/recurring-invoices/:id — update or toggle active
+app.patch('/api/client/recurring-invoices/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        const { id } = req.params;
+        const { is_active, description, amount, send_day_of_month } = req.body;
+        const fields = [];
+        const vals = [];
+        let idx = 1;
+        if (is_active !== undefined) { fields.push(`is_active=$${idx++}`); vals.push(is_active); }
+        if (description !== undefined) { fields.push(`description=$${idx++}`); vals.push(description); }
+        if (amount !== undefined) { fields.push(`amount=$${idx++}`); vals.push(parseFloat(amount)); }
+        if (send_day_of_month !== undefined) {
+            const day = Math.max(1, Math.min(28, parseInt(send_day_of_month)));
+            fields.push(`send_day_of_month=$${idx++}`); vals.push(day);
+            const now = new Date();
+            let nextSend = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day));
+            if (nextSend <= now) nextSend.setUTCMonth(nextSend.getUTCMonth() + 1);
+            fields.push(`next_send_date=$${idx++}`); vals.push(nextSend.toISOString().split('T')[0]);
+        }
+        if (!fields.length) return res.status(400).json({ success: false, message: 'Nothing to update' });
+        fields.push(`updated_at=NOW()`);
+        vals.push(id); vals.push(portalId);
+        const r = await pool.query(
+            `UPDATE recurring_invoices SET ${fields.join(',')} WHERE id=$${idx++} AND client_portal_id=$${idx} RETURNING *`,
+            vals
+        );
+        if (!r.rows.length) return res.status(404).json({ success: false, message: 'Not found' });
+        res.json({ success: true, recurringInvoice: r.rows[0] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// DELETE /api/client/recurring-invoices/:id
+app.delete('/api/client/recurring-invoices/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        await pool.query(`DELETE FROM recurring_invoices WHERE id=$1 AND client_portal_id=$2`, [req.params.id, portalId]);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 function startEmailConfirmationJob() {
     // Run every minute for real-time updates
     const INTERVAL = 60 * 1000; // 1 minute in milliseconds
@@ -23170,6 +23268,27 @@ async function initializeUsageTables() {
             )
         `);
 
+        // Recurring invoice schedules — per lead, per portal
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS recurring_invoices (
+                id SERIAL PRIMARY KEY,
+                client_portal_id VARCHAR(255) NOT NULL,
+                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                lead_name VARCHAR(255),
+                lead_email VARCHAR(255),
+                description VARCHAR(500),
+                amount DECIMAL(10,2) NOT NULL,
+                send_day_of_month INTEGER NOT NULL DEFAULT 1,
+                is_active BOOLEAN DEFAULT TRUE,
+                last_sent_at TIMESTAMP,
+                next_send_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_recurring_invoices_portal ON recurring_invoices(client_portal_id)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_recurring_invoices_next ON recurring_invoices(next_send_date) WHERE is_active=TRUE`);
+
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_portal_usage_log_portal_month ON portal_usage_log(client_portal_id, billing_month)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_portal_usage_events_portal ON portal_usage_events(client_portal_id, billing_month)`);
 
@@ -23177,6 +23296,151 @@ async function initializeUsageTables() {
     } catch(e) {
         console.error('[USAGE] Table init error:', e.message);
     }
+}
+
+// ── Auto-register a sender email in Diamondback's platform Brevo account ────
+// Called on portal creation and when a new company user is added.
+// Brevo requires senders to be registered before sending FROM that address.
+async function brevoRegisterSender(email, name) {
+    if (!PLATFORM_BREVO_KEY || !email) return;
+    try {
+        const result = await brevoApiRequest(PLATFORM_BREVO_KEY, 'POST', '/v3/senders', {
+            name: name || email.split('@')[0],
+            email,
+        });
+        if (result.status === 201 || result.status === 200) {
+            console.log(`[BREVO SENDER] Registered sender: ${email}`);
+        } else if (result.status === 400 && result.body?.code === 'duplicate_parameter') {
+            // Already registered — that's fine
+            console.log(`[BREVO SENDER] Sender already registered: ${email}`);
+        } else {
+            console.warn(`[BREVO SENDER] Register sender ${email} got status ${result.status}:`, JSON.stringify(result.body).substring(0, 200));
+        }
+    } catch(e) {
+        console.warn(`[BREVO SENDER] Could not register ${email}:`, e.message);
+    }
+}
+
+// ── Remove a sender from Diamondback's platform Brevo account ───────────────
+// Called when a portal is hard-deleted or a company user is fully cancelled.
+async function brevoRemoveSender(email) {
+    if (!PLATFORM_BREVO_KEY || !email) return;
+    try {
+        // First find the sender ID
+        const listRes = await brevoApiRequest(PLATFORM_BREVO_KEY, 'GET', '/v3/senders');
+        if (listRes.status !== 200 || !Array.isArray(listRes.body?.senders)) return;
+        const match = listRes.body.senders.find(s => s.email?.toLowerCase() === email.toLowerCase());
+        if (!match?.id) {
+            console.log(`[BREVO SENDER] Sender not found to remove: ${email}`);
+            return;
+        }
+        const delRes = await brevoApiRequest(PLATFORM_BREVO_KEY, 'DELETE', `/v3/senders/${match.id}`);
+        if (delRes.status === 204 || delRes.status === 200) {
+            console.log(`[BREVO SENDER] Removed sender: ${email}`);
+        } else {
+            console.warn(`[BREVO SENDER] Remove ${email} got status ${delRes.status}`);
+        }
+    } catch(e) {
+        console.warn(`[BREVO SENDER] Could not remove ${email}:`, e.message);
+    }
+}
+
+// ── Recurring invoice cron job ───────────────────────────────────────────────
+// Runs daily at midnight — sends any invoices whose next_send_date is today or past.
+function startRecurringInvoiceJob() {
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+    async function runRecurringInvoices() {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const due = await pool.query(`
+                SELECT ri.*, ces.sender_email, ces.sender_name, ces.company_name
+                FROM recurring_invoices ri
+                LEFT JOIN client_email_settings ces ON ces.client_portal_id = ri.client_portal_id
+                WHERE ri.is_active = TRUE
+                  AND ri.next_send_date <= $1
+                  AND ri.lead_email IS NOT NULL
+            `, [today]);
+
+            for (const r of due.rows) {
+                try {
+                    // Generate invoice number
+                    const invNum = 'REC-' + Date.now();
+                    const dueDate = new Date();
+                    dueDate.setDate(dueDate.getDate() + 14);
+
+                    // Insert invoice record
+                    const invRes = await pool.query(`
+                        INSERT INTO invoices (invoice_number, lead_id, issue_date, due_date, subtotal, tax_rate, tax_amount, discount_amount, total_amount, status, notes, created_at)
+                        VALUES ($1, $2, CURRENT_DATE, $3, $4, 0, 0, 0, $4, 'sent', $5, NOW())
+                        RETURNING id
+                    `, [invNum, r.lead_id, dueDate.toISOString().split('T')[0], r.amount, `Recurring: ${r.description}`]);
+
+                    const invoiceId = invRes.rows[0]?.id;
+
+                    // Send invoice email via platform Brevo
+                    const fromEmail = r.sender_email || PLATFORM_SENDER_EMAIL;
+                    const fromName  = r.sender_name  || r.company_name || PLATFORM_SENDER_NAME;
+                    const subject   = `Invoice ${invNum} — ${r.description}`;
+                    const html = `
+                        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px 24px;">
+                            <h2 style="margin:0 0 8px;">Invoice ${invNum}</h2>
+                            <p style="color:#666;margin:0 0 24px;">From ${escapeHtml(fromName)}</p>
+                            <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+                                <tr style="background:#f9f9f9;">
+                                    <td style="padding:12px;border:1px solid #e5e7eb;font-weight:600;">Description</td>
+                                    <td style="padding:12px;border:1px solid #e5e7eb;font-weight:600;text-align:right;">Amount</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:12px;border:1px solid #e5e7eb;">${escapeHtml(r.description)}</td>
+                                    <td style="padding:12px;border:1px solid #e5e7eb;text-align:right;font-weight:700;">$${parseFloat(r.amount).toFixed(2)}</td>
+                                </tr>
+                            </table>
+                            <p style="color:#666;font-size:13px;">Due: ${dueDate.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</p>
+                            <p style="color:#999;font-size:12px;margin-top:24px;">This is a recurring invoice sent automatically on the ${r.send_day_of_month}${['th','st','nd','rd'][Math.min(r.send_day_of_month%10,3)]||'th'} of each month.</p>
+                        </div>
+                    `;
+
+                    await sendViaBrevo(PLATFORM_BREVO_KEY, fromEmail, fromName, r.lead_email, subject, html);
+
+                    // Record usage
+                    await recordUsage({ clientPortalId: r.client_portal_id, eventType: 'email', leadId: r.lead_id, leadEmail: r.lead_email, subject });
+
+                    // Advance next_send_date by one month
+                    const next = new Date();
+                    next.setMonth(next.getMonth() + 1);
+                    next.setDate(Math.min(r.send_day_of_month, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
+
+                    await pool.query(
+                        `UPDATE recurring_invoices SET last_sent_at=NOW(), next_send_date=$1, updated_at=NOW() WHERE id=$2`,
+                        [next.toISOString().split('T')[0], r.id]
+                    );
+                    console.log(`[RECURRING INVOICE] Sent to ${r.lead_email} for portal ${r.client_portal_id}`);
+                } catch(rowErr) {
+                    console.error(`[RECURRING INVOICE] Failed for lead ${r.lead_email}:`, rowErr.message);
+                }
+            }
+        } catch(e) {
+            console.error('[RECURRING INVOICE JOB]', e.message);
+        }
+        // Schedule next run for midnight tonight
+        const now = new Date();
+        const midnight = new Date(now);
+        midnight.setUTCHours(24, 0, 0, 0);
+        setTimeout(runRecurringInvoices, midnight - now);
+    }
+
+    // First run: next midnight
+    const now = new Date();
+    const midnight = new Date(now);
+    midnight.setUTCHours(24, 0, 0, 0);
+    setTimeout(runRecurringInvoices, midnight - now);
+    console.log('[RECURRING INVOICE] Cron job scheduled');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // Record a single email or SMS send event — call this AFTER successful delivery
@@ -23405,6 +23669,8 @@ async function startServer() {
         
         // Start background job to auto-confirm email deliveries
         startEmailConfirmationJob();
+        // Start recurring invoice scheduler
+        startRecurringInvoiceJob();
         
         app.listen(PORT, () => {
             console.log('');

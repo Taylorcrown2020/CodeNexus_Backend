@@ -754,7 +754,7 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
     }
 
     const body = JSON.stringify(payload);
-    console.log('[BREVO] Sending via REST API' + (attachments.length > 0 ? ` + ${attachments.length} attachment(s)` : ''));
+    console.log('[BREVO] Sending via REST API | to:', to, '| from:', senderEmail, '| key prefix:', brevoApiKey ? brevoApiKey.substring(0,8)+'...' : 'MISSING');
 
     return new Promise((resolve, reject) => {
         const options = {
@@ -15275,22 +15275,34 @@ app.post('/api/client/login', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Invalid email or password.' });
         }
 
-        // Resolve clientPortalId — may not be stamped on lead if admin was created via admin panel
+        // Resolve clientPortalId and admin status
+        // Always check client_companies so admins whose lead row has stale/missing flags
+        // still get isCompanyAdmin=true and the correct clientPortalId
         let clientPortalId = lead.client_portal_id || null;
         let isCompanyAdmin = lead.is_company_admin || false;
 
-        if (!clientPortalId) {
-            // Look up from client_companies by admin_email
-            const cc = await pool.query(
-                'SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email) = LOWER($1) LIMIT 1',
+        const ccLookup = await pool.query(
+            'SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email) = LOWER($1) LIMIT 1',
+            [lead.email]
+        );
+        if (ccLookup.rows[0]?.client_portal_id) {
+            clientPortalId = ccLookup.rows[0].client_portal_id;
+            isCompanyAdmin = true;
+            // Stamp back so future requests are instant
+            await pool.query(
+                'UPDATE leads SET client_portal_id = $1, is_company_admin = TRUE WHERE id = $2',
+                [clientPortalId, lead.id]
+            ).catch(() => {});
+        } else if (!clientPortalId) {
+            // Not an admin — still try to find portal via company_users
+            const cu = await pool.query(
+                `SELECT client_portal_id FROM company_users WHERE LOWER(user_email)=LOWER($1) AND status='active' LIMIT 1`,
                 [lead.email]
             );
-            if (cc.rows[0]?.client_portal_id) {
-                clientPortalId = cc.rows[0].client_portal_id;
-                isCompanyAdmin = true;
-                // Stamp it back so future requests are instant
+            if (cu.rows[0]?.client_portal_id) {
+                clientPortalId = cu.rows[0].client_portal_id;
                 await pool.query(
-                    'UPDATE leads SET client_portal_id = $1, is_company_admin = TRUE WHERE id = $2',
+                    'UPDATE leads SET client_portal_id=$1 WHERE id=$2',
                     [clientPortalId, lead.id]
                 ).catch(() => {});
             }
@@ -21023,6 +21035,37 @@ async function sendSmsViaBrevo(apiKey, senderName, toPhone, message) {
     });
 }
 
+// GET /api/client/test-email-config — diagnostic endpoint for admin
+app.get('/api/client/test-email-config', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const settings = portalId ? await getClientEmailSettings(portalId) : null;
+        const result = {
+            portalId: portalId || 'NOT FOUND',
+            platformBrevoKeySet: !!PLATFORM_BREVO_KEY,
+            platformBrevoKeyPrefix: PLATFORM_BREVO_KEY ? PLATFORM_BREVO_KEY.substring(0,8)+'...' : 'MISSING',
+            senderEmail: settings?.sender_email || '(not set - will use ' + PLATFORM_SENDER_EMAIL + ')',
+            senderName: settings?.sender_name || '(not set)',
+            settingsExist: !!settings,
+        };
+        // Try a live Brevo API check (list senders — read-only, no email sent)
+        if (PLATFORM_BREVO_KEY) {
+            try {
+                const check = await brevoApiRequest(PLATFORM_BREVO_KEY, 'GET', '/v3/account');
+                result.brevoApiStatus = check.status;
+                result.brevoAccountEmail = check.body?.email || '(none)';
+                result.brevoApiWorking = check.status === 200;
+            } catch(e) {
+                result.brevoApiWorking = false;
+                result.brevoApiError = e.message;
+            }
+        }
+        res.json({ success: true, config: result });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 // POST /api/client/leads/:id/send-email
 // Quick-compose email from the message thread modal.
 // ALWAYS uses Diamondback Coding's platform Brevo account — never per-portal keys.
@@ -21037,16 +21080,20 @@ app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res
         if (!toEmail) return res.status(400).json({ success: false, message: 'toEmail required' });
 
         // Always use Diamondback's platform Brevo key — NOT per-portal key
+        console.log('[SEND-EMAIL] portalId:', portalId, '| PLATFORM_BREVO_KEY set:', !!PLATFORM_BREVO_KEY);
         if (!PLATFORM_BREVO_KEY) {
-            return res.status(500).json({ success: false, message: 'Platform email not configured. Contact Diamondback Coding.' });
+            console.error('[SEND-EMAIL] CRITICAL: BREVO_API_KEY env var is not set!');
+            return res.status(500).json({ success: false, message: 'Platform email not configured. Contact Diamondback Coding support.' });
         }
 
         // Get portal settings for sender identity only
         const settings = portalId ? await getClientEmailSettings(portalId) : null;
+        console.log('[SEND-EMAIL] settings found:', !!settings, '| sender_email:', settings?.sender_email, '| company_email:', settings?.company_email);
 
         // Determine FROM address (portal sender identity, not Brevo key)
         let fromEmail = settings?.sender_email || settings?.company_email || PLATFORM_SENDER_EMAIL;
         let fromName  = settings?.sender_name  || settings?.company_name  || PLATFORM_SENDER_NAME;
+        console.log('[SEND-EMAIL] fromEmail:', fromEmail, '| toEmail:', toEmail);
 
         // Build simple HTML email
         const escapedBody = body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
@@ -22156,6 +22203,7 @@ app.post('/api/client/leads/:leadId/followup', authenticateClient, async (req, r
         const emailSubject = subject || `Following up — ${fromName}`;
 
         // Use sendClientEmail so it logs to client_email_log (analytics, tracking)
+        console.log('[FOLLOWUP] Sending to:', lead.email, '| portalId:', portalId, '| sender:', senderEmail);
         await sendClientEmail({
             portalId,
             leadId: lead.id,

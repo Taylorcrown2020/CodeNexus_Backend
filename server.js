@@ -10266,6 +10266,16 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         // Add to company_users — NOT to leads table
         await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser);
 
+        // Set per-user sender_name from admin's portal settings, sender_email = user's own email
+        try {
+            const adminSettings = await getClientEmailSettings(clientPortalId);
+            const defaultSenderName = adminSettings?.sender_name || adminSettings?.company_name || null;
+            await pool.query(
+                `UPDATE company_users SET sender_name = $1 WHERE client_portal_id = $2 AND LOWER(user_email) = LOWER($3)`,
+                [defaultSenderName, clientPortalId, email]
+            );
+        } catch(e) { console.warn('[ADD-USER] Could not set sender_name:', e.message); }
+
         // Update company totals — two separate queries so monthly_total reads the
         // already-updated purchased_seats value (PostgreSQL SET is not sequential)
         const finalPrice = parseFloat(pricePerUser) || 84.99;
@@ -20912,6 +20922,16 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
             rate_limit_day ? parseInt(rate_limit_day) : null
         ]);
 
+        // When admin updates sender_name, propagate to all company users who haven't
+        // had their sender_name customised (i.e. it matches the old default or is null)
+        if (sender_name) {
+            await pool.query(
+                `UPDATE company_users SET sender_name = $1
+                 WHERE client_portal_id = $2 AND status = 'active'`,
+                [sender_name, portalId]
+            ).catch(() => {});
+        }
+
         res.json({ success: true, message: 'Settings saved' });
     } catch(e) { console.error('[CLIENT EMAIL SETTINGS PUT]', e); res.status(500).json({ success: false, message: e.message }); }
 });
@@ -21337,8 +21357,10 @@ app.delete('/api/client/email-chains/:id', authenticateClient, async (req, res) 
 app.post('/api/client/email/send', authenticateClient, async (req, res) => {
     try {
         const portalId = await getClientPortalId(req.user.id);
-        const { template_id, lead_ids } = req.body;
+        const { template_id, lead_ids, email_type } = req.body;
         if (!template_id || !lead_ids?.length) return res.status(400).json({ success: false, message: 'template_id and lead_ids required' });
+        // email_type can be 'follow-up' (sent from followups queue) or 'marketing' (campaign) 
+        const emailType = email_type || (lead_ids.length === 1 ? 'follow-up' : 'marketing');
 
         const settings = await getClientEmailSettings(portalId);
         const tmpl = await pool.query('SELECT * FROM client_email_templates WHERE id=$1 AND client_portal_id=$2', [template_id, portalId]);
@@ -21381,7 +21403,7 @@ app.post('/api/client/email/send', authenticateClient, async (req, res) => {
                     templateId: template_id,
                     subject: t.subject,
                     html,
-                    emailType: 'marketing'
+                    emailType
                 });
 
                 if (result.method === 'emailjs' && result.emailjs) {
@@ -21489,9 +21511,22 @@ app.get('/api/client/follow-ups', authenticateClient, async (req, res) => {
                 l.last_contact_date ASC NULLS FIRST
         `);
 
+        // Fetch unsubscribed / dead leads for the Dead tab
+        const deadResult = await pool.query(`
+            SELECT l.id, l.name, l.email, l.phone, l.updated_at
+            FROM leads l
+            JOIN client_unsubscribes cu ON LOWER(l.email) = LOWER(cu.email)
+            WHERE cu.client_portal_id = $1
+              AND l.client_portal_id = $1
+              AND l.client_password IS NULL
+              AND l.is_customer IS NOT TRUE
+            ORDER BY l.updated_at DESC
+        `, [portalId]);
+
         const hot  = result.rows.filter(r => r.lead_temperature === 'hot');
         const cold = result.rows.filter(r => r.lead_temperature !== 'hot');
-        res.json({ success: true, hot, cold, total: result.rows.length });
+        const dead = deadResult.rows;
+        res.json({ success: true, hot, cold, dead, total: result.rows.length });
     } catch(e) { console.error('[CLIENT FOLLOWUPS]', e); res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -21499,21 +21534,20 @@ app.get('/api/client/analytics', authenticateClient, async (req, res) => {
     try {
         const userId = req.user.id;
         const portalId = await getClientPortalId(userId);
-        const { user_email } = req.query; // admin can query any team member
+        const { user_email } = req.query;
 
-        // Only admins/co-admins can query other users
-        const userInfo = await pool.query('SELECT is_company_admin, is_co_admin, email FROM leads WHERE id=$1', [userId]);
+        const userInfo = await pool.query('SELECT is_company_admin, is_co_admin, email, name FROM leads WHERE id=$1', [userId]);
         const me = userInfo.rows[0];
         const isAdmin = me?.is_company_admin || me?.is_co_admin;
         const targetEmail = (user_email && isAdmin) ? user_email : me?.email;
+        // When admin views without selecting a user, show account-wide totals
+        const viewAll = isAdmin && !user_email;
 
-        // If no portal, return empty analytics
         if (!portalId) {
             return res.json({
                 success: true,
                 analytics: {
-                    user_email: targetEmail,
-                    user_name: me?.name || targetEmail,
+                    user_email: targetEmail, user_name: me?.name || targetEmail,
                     email: { sent: 0, open_rate: 0, click_rate: 0, opened: 0, clicked: 0 },
                     leads: { total_assigned: 0, hot: 0, cold: 0, new: 0, closed: 0, lost: 0, close_rate: 0 }
                 }
@@ -21526,29 +21560,51 @@ app.get('/api/client/analytics', authenticateClient, async (req, res) => {
         );
         const cu = cuRec.rows[0];
 
-        // Email stats (from client_email_log)
-        const emailStats = await pool.query(`
-            SELECT
-                COUNT(*) FILTER (WHERE status = 'sent') as sent,
-                COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
-                COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked
-            FROM client_email_log
-            WHERE client_portal_id=$1
-              AND LOWER(assigned_to_user_email)=LOWER($2)
-        `, [portalId, targetEmail]);
+        // Email stats — account-wide for admin overview, per-user otherwise
+        const emailStats = viewAll
+            ? await pool.query(`
+                SELECT
+                    COUNT(*) FILTER (WHERE status='sent') as sent,
+                    COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
+                    COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked
+                FROM client_email_log WHERE client_portal_id=$1
+            `, [portalId])
+            : await pool.query(`
+                SELECT
+                    COUNT(*) FILTER (WHERE status='sent') as sent,
+                    COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
+                    COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked
+                FROM client_email_log
+                WHERE client_portal_id=$1 AND LOWER(assigned_to_user_email)=LOWER($2)
+            `, [portalId, targetEmail]);
 
-        // Lead stats
-        const leadStats = await pool.query(`
-            SELECT
-                COUNT(*) as total_assigned,
-                COUNT(*) FILTER (WHERE lead_temperature='hot') as hot,
-                COUNT(*) FILTER (WHERE lead_temperature!='hot' OR lead_temperature IS NULL) as cold,
-                COUNT(*) FILTER (WHERE status='closed' OR is_customer=TRUE) as closed,
-                COUNT(*) FILTER (WHERE status='lost') as lost,
-                COUNT(*) FILTER (WHERE status='new' OR status IS NULL) as new
-            FROM leads
-            WHERE client_portal_id=$1 AND crm_assigned_to=$2
-        `, [portalId, cu?.id || -1]);
+        // Lead stats — account-wide for admin overview, per-user otherwise
+        const leadStats = viewAll
+            ? await pool.query(`
+                SELECT
+                    COUNT(*) as total_assigned,
+                    COUNT(*) FILTER (WHERE lead_temperature='hot') as hot,
+                    COUNT(*) FILTER (WHERE lead_temperature!='hot' OR lead_temperature IS NULL) as cold,
+                    COUNT(*) FILTER (WHERE status='closed' OR is_customer=TRUE) as closed,
+                    COUNT(*) FILTER (WHERE status='lost') as lost,
+                    COUNT(*) FILTER (WHERE status='new' OR status IS NULL) as new
+                FROM leads
+                WHERE client_portal_id=$1
+                  AND client_password IS NULL
+                  AND is_customer IS NOT TRUE
+                  AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
+            `, [portalId])
+            : await pool.query(`
+                SELECT
+                    COUNT(*) as total_assigned,
+                    COUNT(*) FILTER (WHERE lead_temperature='hot') as hot,
+                    COUNT(*) FILTER (WHERE lead_temperature!='hot' OR lead_temperature IS NULL) as cold,
+                    COUNT(*) FILTER (WHERE status='closed' OR is_customer=TRUE) as closed,
+                    COUNT(*) FILTER (WHERE status='lost') as lost,
+                    COUNT(*) FILTER (WHERE status='new' OR status IS NULL) as new
+                FROM leads
+                WHERE client_portal_id=$1 AND crm_assigned_to=$2
+            `, [portalId, cu?.id || -1]);
 
         const es = emailStats.rows[0];
         const ls = leadStats.rows[0];
@@ -21560,10 +21616,11 @@ app.get('/api/client/analytics', authenticateClient, async (req, res) => {
 
         res.json({
             success: true,
+            view_all: viewAll,
             analytics: {
-                user_email: targetEmail,
-                user_name: cu?.user_name || targetEmail,
-                user_label: cu?.user_label,
+                user_email: viewAll ? null : targetEmail,
+                user_name: viewAll ? 'Account Total' : (cu?.user_name || targetEmail),
+                user_label: viewAll ? null : cu?.user_label,
                 email: {
                     sent,
                     open_rate:  sent > 0 ? parseFloat(((opened  / sent) * 100).toFixed(1)) : 0,
@@ -22018,33 +22075,54 @@ app.post('/api/client/leads/:leadId/followup', authenticateClient, async (req, r
     try {
         const { leadId } = req.params;
         const { message, subject } = req.body;
+        const senderEmail = req.user.email;
 
-        // Verify this lead belongs to the client's portal
-        const portalId = req.user.client_portal_id || null;
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+
         const leadResult = await pool.query(
-            `SELECT id, email, name FROM leads WHERE id=$1 ${portalId ? 'AND client_portal_id=$2' : ''} LIMIT 1`,
-            portalId ? [leadId, portalId] : [leadId]
+            `SELECT id, email, name FROM leads WHERE id=$1 AND client_portal_id=$2 LIMIT 1`,
+            [leadId, portalId]
         );
         if (!leadResult.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
         const lead = leadResult.rows[0];
 
-        const emailHTML = buildEmailHTML(`
-            <p>Hi ${lead.name || 'there'},</p>
-            ${message ? `<p>${message}</p>` : '<p>Just following up to see if you have any questions!</p>'}
-            <p>Feel free to reply to this email or call us anytime.</p>
-        `, {
-            eyebrow: 'FOLLOW UP',
-            headline: 'Staying in touch.',
-            accentColor: '#FF6B35'
-        });
+        // Check not unsubscribed
+        const unsub = await pool.query(
+            `SELECT 1 FROM client_unsubscribes WHERE client_portal_id=$1 AND LOWER(email)=LOWER($2)`,
+            [portalId, lead.email]
+        );
+        if (unsub.rows.length) return res.status(400).json({ success: false, message: 'Lead has unsubscribed' });
 
-        await sendTrackedEmail({
+        const settings = await getClientEmailSettings(portalId);
+        const fromName = settings?.sender_name || settings?.company_name || 'Team';
+
+        const bodyText = message || `Hi ${lead.name || 'there'},\n\nJust following up to see if you had any questions. Feel free to reply anytime.\n\n${fromName}`;
+        const escapedBody = bodyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+        const html = buildClientEmailHTML(escapedBody, {}, settings || {});
+        const emailSubject = subject || `Following up — ${fromName}`;
+
+        // Use sendClientEmail so it logs to client_email_log (analytics, tracking)
+        await sendClientEmail({
+            portalId,
             leadId: lead.id,
-            to: lead.email,
-            subject: subject || 'Following up from Diamondback Coding',
-            html: emailHTML,
+            leadEmail: lead.email,
+            senderUserEmail: senderEmail,
+            assignedToUserEmail: senderEmail,
+            subject: emailSubject,
+            html,
             emailType: 'follow-up'
         });
+
+        // Update last_contact_date and follow_up_count
+        await pool.query(
+            `UPDATE leads SET last_contact_date=CURRENT_DATE,
+             follow_up_count=COALESCE(follow_up_count,0)+1,
+             status=CASE WHEN status='new' THEN 'contacted' ELSE status END,
+             updated_at=CURRENT_TIMESTAMP
+             WHERE id=$1`,
+            [lead.id]
+        );
 
         res.json({ success: true, message: `Follow-up sent to ${lead.email}` });
     } catch (e) {
@@ -22192,21 +22270,32 @@ app.get('/api/client/analytics/email', authenticateClient, async (req, res) => {
         const me = userInfo.rows[0];
         const isAdmin = me?.is_company_admin || me?.is_co_admin;
         const targetEmail = (user_email && isAdmin) ? user_email : me?.email;
+        const viewAll = isAdmin && !user_email;
 
         if (!portalId) return res.json({ success: true, marketing: { sent:0, opened:0, clicked:0, open_rate:0, click_rate:0, hot_conversions:0 }, followup: { sent:0, opened:0, clicked:0, open_rate:0, click_rate:0, hot_conversions:0 } });
 
         const getStats = async (emailType) => {
-            const r = await pool.query(`
-                SELECT
-                    COUNT(*) FILTER (WHERE status='sent') as sent,
-                    COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
-                    COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked,
-                    COUNT(*) FILTER (WHERE lead_became_hot = TRUE) as hot_conversions
-                FROM client_email_log
-                WHERE client_portal_id=$1
-                  AND LOWER(assigned_to_user_email)=LOWER($2)
-                  AND email_type=$3
-            `, [portalId, targetEmail, emailType]);
+            const r = viewAll
+                ? await pool.query(`
+                    SELECT
+                        COUNT(*) FILTER (WHERE status='sent') as sent,
+                        COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
+                        COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked,
+                        COUNT(*) FILTER (WHERE lead_became_hot = TRUE) as hot_conversions
+                    FROM client_email_log
+                    WHERE client_portal_id=$1 AND email_type=$2
+                `, [portalId, emailType])
+                : await pool.query(`
+                    SELECT
+                        COUNT(*) FILTER (WHERE status='sent') as sent,
+                        COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
+                        COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked,
+                        COUNT(*) FILTER (WHERE lead_became_hot = TRUE) as hot_conversions
+                    FROM client_email_log
+                    WHERE client_portal_id=$1
+                      AND LOWER(assigned_to_user_email)=LOWER($2)
+                      AND email_type=$3
+                `, [portalId, targetEmail, emailType]);
             const d = r.rows[0];
             const sent = parseInt(d.sent)||0;
             const opened = parseInt(d.opened)||0;
@@ -22223,7 +22312,7 @@ app.get('/api/client/analytics/email', authenticateClient, async (req, res) => {
             getStats('marketing'),
             getStats('follow-up'),
         ]);
-        res.json({ success: true, marketing, followup, target_email: targetEmail });
+        res.json({ success: true, marketing, followup, target_email: viewAll ? null : targetEmail });
     } catch(e) { console.error('[EMAIL ANALYTICS SPLIT]', e); res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -23558,9 +23647,10 @@ async function startServer() {
             await pool.query(`
                 ALTER TABLE company_users
                 ADD COLUMN IF NOT EXISTS access_until TIMESTAMP,
-                ADD COLUMN IF NOT EXISTS cancelled_date TIMESTAMP
+                ADD COLUMN IF NOT EXISTS cancelled_date TIMESTAMP,
+                ADD COLUMN IF NOT EXISTS sender_name VARCHAR(255)
             `);
-            console.log('[STARTUP] company_users.access_until + cancelled_date ensured');
+            console.log('[STARTUP] company_users.access_until + cancelled_date + sender_name ensured');
         } catch(e) { console.warn('[STARTUP] company_users column migration skipped:', e.message); }
         
         // ── STARTUP: Purge orphaned crm_subscriptions (deleted customers whose rows survived) ──
@@ -24105,32 +24195,26 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
     }
 
     // ── Determine FROM address ────────────────────────────────────
-    // ARCHITECTURE: Domain-level verification → any user @domain can send.
-    //
-    // If the business has a verified domain AND the sending user's email
-    // matches that domain → send FROM the individual user's email address.
-    // This gives each team member their own professional sender identity.
-    //
-    // Fallback order:
-    //   1. User email matching verified domain (e.g. john@acmeroofing.com)
-    //   2. Admin-configured sender_email
-    //   3. company_email
+    // Priority order:
+    //   1. User's own email (always used as fromEmail when they are the sender)
+    //      with their per-user sender_name from company_users (set by admin)
+    //   2. Portal-wide sender_email / sender_name from client_email_settings
+    //   3. company_email / company_name as last resort
     let fromEmail = null;
     let fromName  = null;
 
-    const domainVerified = settings?.domain_status === 'verified' && settings?.verified_domain;
-
-    if (domainVerified && senderUserEmail) {
-        const senderDomain = senderUserEmail.toLowerCase().split('@')[1];
-        if (senderDomain === settings.verified_domain.toLowerCase()) {
-            // ✅ User's email matches verified domain — send as them
+    if (senderUserEmail) {
+        // Look up the sending user's record — use their email + admin-assigned sender_name
+        const userRow = await pool.query(
+            `SELECT user_name, sender_name FROM company_users
+             WHERE LOWER(user_email) = LOWER($1) AND client_portal_id = $2 LIMIT 1`,
+            [senderUserEmail, portalId]
+        ).catch(() => ({ rows: [] }));
+        const cu = userRow.rows[0];
+        if (cu) {
             fromEmail = senderUserEmail.toLowerCase();
-            // Look up their display name
-            const userRow = await pool.query(
-                `SELECT user_name FROM company_users WHERE LOWER(user_email) = LOWER($1) AND client_portal_id = $2 LIMIT 1`,
-                [senderUserEmail, portalId]
-            ).catch(() => ({ rows: [] }));
-            fromName = userRow.rows[0]?.user_name || senderUserEmail.split('@')[0];
+            // Use admin-assigned sender_name if set, otherwise fall back to user_name
+            fromName = cu.sender_name || cu.user_name || senderUserEmail.split('@')[0];
         }
     }
 

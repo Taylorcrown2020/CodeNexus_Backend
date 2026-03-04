@@ -1837,7 +1837,7 @@ tr:hover .row-actions { opacity: 1; }
                 </div>
                 <div class="page-actions" id="analyticsAdminControls" style="display:none;">
                     <select id="analyticsUserSelect" onchange="loadAnalytics()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-1);color:var(--text-0);font-size:13px;min-width:180px;">
-                        <option value="">My Analytics</option>
+                        <option value="">Account Total</option>
                     </select>
                 </div>
             </div>
@@ -2119,21 +2119,26 @@ tr:hover .row-actions { opacity: 1; }
                             </div>
                         </div>
 
-                        <!-- Sender identity — these control the FROM name/email shown on outbound sends -->
-                        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;">Sender Identity</div>
-                        <div style="background:#6366f111;border:1px solid #6366f133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
-                            Set the name and email address that your recipients will see in the "From" field.
-                            Your sender email is automatically registered in our platform so all your emails reach the inbox with no extra setup.
-                        </div>
-                        <div class="form-row">
-                            <div class="form-field">
-                                <label class="form-label">Default Sender Email <span style="color:var(--text-3);font-weight:400;">(shown as From address)</span></label>
-                                <input class="form-input" id="settingsSenderEmail" type="email" placeholder="hello@yourcompany.com">
+                        <!-- Sender identity — admin-only: controls FROM name/email for all users -->
+                        <div class="settings-admin-only" style="margin-top:4px;">
+                            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;">Sender Identity</div>
+                            <div style="background:#6366f111;border:1px solid #6366f133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
+                                Set the name and email address your leads will see in the "From" field.
+                                Each team member you add will automatically use their own email address with the sender name you set here.
                             </div>
-                        </div>
-                        <div class="form-field">
-                            <label class="form-label">Default Sender Name</label>
-                            <input class="form-input" id="settingsSenderName" placeholder="Acme Corp">
+                            <div class="form-row">
+                                <div class="form-field">
+                                    <label class="form-label">Default Sender Email <span style="color:var(--text-3);font-weight:400;">(shown as From address)</span></label>
+                                    <input class="form-input" id="settingsSenderEmail" type="email" placeholder="hello@yourcompany.com">
+                                </div>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Default Sender Name</label>
+                                <input class="form-input" id="settingsSenderName" placeholder="Acme Corp">
+                            </div>
+                            <div style="font-size:11px;color:var(--text-3);margin-top:4px;margin-bottom:16px;">
+                                When you add a team member, their sender email is automatically set to their login email and their sender name is set to the name above.
+                            </div>
                         </div>
 
                         <!-- Auto-managed sender info -->
@@ -2184,6 +2189,10 @@ tr:hover .row-actions { opacity: 1; }
                                 <input class="form-input" id="settingsSmsSender" placeholder="MyBusiness" maxlength="11">
                             </div>
                             <div style="font-size:11px;color:var(--text-3);margin-top:4px;">SMS is sent through Diamondback Coding's platform. Lead phone numbers must be in E.164 format (e.g. +15551234567).</div>
+                        </div>
+                        <!-- Save button — admin-only, saves sender identity + SMS sender name -->
+                        <div class="settings-admin-only" style="margin-top:20px;">
+                            <button class="btn btn-white" onclick="saveEmailSettings()">Save Email &amp; SMS Settings</button>
                         </div>
                     </div>
                 </div>
@@ -3915,7 +3924,12 @@ async function sendFollowUpEmail(leadId, email) {
             sentBy: S.user.name || S.user.email,
         });
         const data = await res.json();
-        toast(data.success ? 'Follow-up email sent' : (data.message||'Failed'), data.success?'success':'error');
+        if (data.success) {
+            toast('Follow-up email sent', 'success');
+            loadFollowups(); // refresh so last_contact_date and count update
+        } else {
+            toast(data.message || 'Failed', 'error');
+        }
     } catch {
         toast('Error sending email', 'error');
     }
@@ -5724,11 +5738,20 @@ async function quickSendEmail(leadId) {
     closeModal('quickSendModal');
     toast('Sending email...', 'success');
 
-    apiFetch('/client/email/send', 'POST', { template_id: parseInt(templateId), lead_ids: [leadId] })
+    apiFetch('/client/email/send', 'POST', {
+        template_id: parseInt(templateId),
+        lead_ids: [leadId],
+        email_type: 'follow-up'
+    })
         .then(r => r.json())
         .then(d => {
-            if (d.success) toast(`Email sent (${d.sent} sent, ${d.skipped} skipped)`, 'success');
-            else toast(d.message || 'Failed to send', 'error');
+            if (d.success) {
+                toast('Email sent', 'success');
+                // Refresh followups so last_contact_date and counts update
+                loadFollowups();
+            } else {
+                toast(d.message || 'Failed to send', 'error');
+            }
         })
         .catch(() => toast('Error sending email', 'error'));
 }
@@ -6539,9 +6562,16 @@ async function loadAnalytics() {
             const sel = document.getElementById('analyticsUserSelect');
             if (sel && sel.options.length <= 1) {
                 try {
+                    // Add admin's own entry first
+                    const myOpt = document.createElement('option');
+                    myOpt.value = S.user.email;
+                    myOpt.textContent = 'My Analytics';
+                    sel.appendChild(myOpt);
+
                     const r = await apiFetch('/client/team-members');
                     const d = await r.json();
                     (d.members||[]).forEach(m => {
+                        if (m.user_email?.toLowerCase() === S.user.email?.toLowerCase()) return; // skip self dupe
                         const opt = document.createElement('option');
                         opt.value = m.user_email;
                         opt.textContent = (m.user_label ? m.user_label + ' — ' : '') + m.user_name;
@@ -6569,7 +6599,10 @@ async function loadAnalytics() {
         const fu = emailSplitRes.followup || {};
 
         const subtitle = document.getElementById('analyticsSubtitle');
-        if (subtitle) subtitle.textContent = selectedEmail ? `Viewing: ${a.user_name || selectedEmail}` : 'Your performance metrics';
+        if (subtitle) {
+            if (S.isAdmin && !selectedEmail) subtitle.textContent = 'Account-wide totals';
+            else subtitle.textContent = selectedEmail ? `Viewing: ${a.user_name || selectedEmail}` : 'Your performance metrics';
+        }
 
         const metricCard = (label, value, sub, color='var(--text-0)') => `
             <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;">

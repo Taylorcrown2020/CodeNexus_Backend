@@ -11,10 +11,31 @@ const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const path = require('path');
+const fs   = require('fs');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const SibApiV3Sdk = require('@getbrevo/brevo');
 const dns = require('dns').promises;
 require('dotenv').config();
+
+// ── Ensure upload directories exist at server startup ──────────────────────
+// Multer auto-creates on demand but can race/fail without permissions.
+// Creating synchronously at boot guarantees they exist before any request.
+(function ensureUploadDirs() {
+    const dirs = [
+        path.join(__dirname, 'uploads'),
+        path.join(__dirname, 'uploads', 'logos'),
+        path.join(__dirname, 'uploads', 'bg-images'),
+        path.join(__dirname, 'uploads', 'documents'),
+    ];
+    for (const dir of dirs) {
+        try {
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+                console.log('[STARTUP] Created uploads dir:', dir);
+            }
+        } catch(e) { console.warn('[STARTUP] Could not create dir', dir, e.message); }
+    }
+})();
 
 // ========================================
 // PLATFORM BREVO — ALL client portal emails/SMS route through here
@@ -7412,10 +7433,9 @@ const fs = require('fs').promises;
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-    destination: async (req, file, cb) => {
-        const uploadDir = path.join(__dirname, 'uploads', 'documents');
-        await fs.mkdir(uploadDir, { recursive: true });
-        cb(null, uploadDir);
+    destination: (req, file, cb) => {
+        // Directory guaranteed to exist from startup ensureUploadDirs()
+        cb(null, path.join(__dirname, 'uploads', 'documents'));
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -10107,7 +10127,7 @@ app.post('/api/client/company/reduce-seat', authenticateClient, async (req, res)
 // ========================================
 app.post('/api/client/company/add-user', authenticateClient, async (req, res) => {
     try {
-        const { name, username, email, sendingEmail, userLabel, packageKey, clientPortalId, mode, password } = req.body;
+        const { name, username, email, sendingEmail, userLabel, packageKey, clientPortalId, mode, password, smsEnabled, smsSenderName } = req.body;
         const requesterEmail = req.user.email;
 
         if (!name || !email || !clientPortalId) {
@@ -10264,7 +10284,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
         }
 
         // Add to company_users — NOT to leads table
-        await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser);
+        await addCompanyUser(clientPortalId, name, email, userLabel, subscriptionId, stripeSubId, pkg.key || packageKey || 'crm', pkg.name, pricePerUser, smsEnabled || false, smsSenderName || null);
 
         // Set per-user sender_name from admin's portal settings, sender_email = user's own email
         try {
@@ -10622,7 +10642,7 @@ async function createCompany(companyName, adminEmail, adminName) {
 }
 
 // Add user to company
-async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser) {
+async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser, smsEnabled = false, smsSenderName = null) {
     try {
         // Check if an existing row exists (cancelled users can be re-added)
         const existing = await pool.query(
@@ -10655,10 +10675,11 @@ async function addCompanyUser(clientPortalId, userName, userEmail, userLabel, su
                     client_portal_id, user_label, user_name, user_email,
                     subscription_id, stripe_subscription_id,
                     package_key, package_name, price_per_user,
-                    is_admin, status, added_date
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE, 'active', NOW())
+                    is_admin, status, added_date,
+                    sms_enabled, sms_sender_name
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE, 'active', NOW(), $10, $11)
                 RETURNING *
-            `, [clientPortalId, userLabel, userName, userEmail, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser]);
+            `, [clientPortalId, userLabel, userName, userEmail, subscriptionId, stripeSubscriptionId, packageKey, packageName, pricePerUser, smsEnabled || false, smsSenderName || null]);
         }
 
         console.log(`[COMPANY] Added/updated user in ${clientPortalId}: ${userName} (${userEmail})`);
@@ -20886,6 +20907,12 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
             `);
         } catch(migErr) { /* columns may already exist — safe to ignore */ }
 
+        // brevo_sms_sender: if the key was present in the request body (even as ''), use the
+        // literal value so admin can clear it. If absent (undefined), keep existing via COALESCE.
+        const smsSenderValue = (brevo_sms_sender !== undefined)
+            ? (brevo_sms_sender || '')  // allow clearing to empty string
+            : undefined;
+
         await pool.query(`
             INSERT INTO client_email_settings
                 (client_portal_id, brevo_api_key, sender_email, sender_name,
@@ -20909,7 +20936,7 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
                 emailjs_service_id  = COALESCE($11, client_email_settings.emailjs_service_id),
                 emailjs_template_id = COALESCE($12, client_email_settings.emailjs_template_id),
                 emailjs_public_key  = COALESCE($13, client_email_settings.emailjs_public_key),
-                brevo_sms_sender    = COALESCE($14, client_email_settings.brevo_sms_sender),
+                brevo_sms_sender    = CASE WHEN $14::text IS NOT NULL THEN $14 ELSE client_email_settings.brevo_sms_sender END,
                 brevo_sms_enabled   = COALESCE($15, client_email_settings.brevo_sms_enabled),
                 rate_limit_day      = COALESCE($16, client_email_settings.rate_limit_day),
                 updated_at          = NOW()
@@ -20918,7 +20945,8 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
             company_name||null, company_phone||null, company_email||null,
             company_address||null, website_url||null, accent_color||null,
             emailjs_service_id||null, emailjs_template_id||null, emailjs_public_key||null,
-            brevo_sms_sender||null, brevo_sms_enabled !== undefined ? brevo_sms_enabled : null,
+            smsSenderValue !== undefined ? smsSenderValue : null,
+            brevo_sms_enabled !== undefined ? brevo_sms_enabled : null,
             rate_limit_day ? parseInt(rate_limit_day) : null
         ]);
 
@@ -20932,7 +20960,9 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
             ).catch(() => {});
         }
 
-        res.json({ success: true, message: 'Settings saved' });
+        // Return the freshly-saved settings so the frontend can confirm what was persisted
+        const savedSettings = await getClientEmailSettings(portalId);
+        res.json({ success: true, message: 'Settings saved', settings: savedSettings });
     } catch(e) { console.error('[CLIENT EMAIL SETTINGS PUT]', e); res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -21071,8 +21101,17 @@ app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) 
         if (!toPhone) return res.status(400).json({ success: false, message: 'Lead has no phone number' });
 
         // Get portal settings for SMS sender name
+        // Check per-user sms_sender_name first (set by admin at user creation), then portal default
         const settings = portalId ? await getClientEmailSettings(portalId) : null;
-        const senderName = settings?.brevo_sms_sender || settings?.company_name || 'Notify';
+        const cuRow = await pool.query(
+            `SELECT sms_sender_name FROM company_users
+             WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
+            [portalId, req.user.email]
+        ).catch(() => ({ rows: [] }));
+        const senderName = cuRow.rows[0]?.sms_sender_name
+            || settings?.brevo_sms_sender
+            || settings?.company_name
+            || 'Notify';
 
         const smsResult = await sendSmsViaBrevo(PLATFORM_BREVO_KEY, senderName, toPhone, message);
 
@@ -23648,9 +23687,11 @@ async function startServer() {
                 ALTER TABLE company_users
                 ADD COLUMN IF NOT EXISTS access_until TIMESTAMP,
                 ADD COLUMN IF NOT EXISTS cancelled_date TIMESTAMP,
-                ADD COLUMN IF NOT EXISTS sender_name VARCHAR(255)
+                ADD COLUMN IF NOT EXISTS sender_name VARCHAR(255),
+                ADD COLUMN IF NOT EXISTS sms_enabled BOOLEAN DEFAULT FALSE,
+                ADD COLUMN IF NOT EXISTS sms_sender_name VARCHAR(11)
             `);
-            console.log('[STARTUP] company_users.access_until + cancelled_date + sender_name ensured');
+            console.log('[STARTUP] company_users.access_until + cancelled_date + sender_name + sms columns ensured');
         } catch(e) { console.warn('[STARTUP] company_users column migration skipped:', e.message); }
         
         // ── STARTUP: Purge orphaned crm_subscriptions (deleted customers whose rows survived) ──
@@ -24863,10 +24904,9 @@ app.put('/api/client/sms-auto-sequence', authenticateClient, async (req, res) =>
 // ============================================================
 const logoUpload = require('multer')({
     storage: require('multer').diskStorage({
-        destination: async (req, file, cb) => {
-            const dir = require('path').join(__dirname, 'uploads', 'logos');
-            await require('fs').promises.mkdir(dir, { recursive: true });
-            cb(null, dir);
+        destination: (req, file, cb) => {
+            // Directory guaranteed to exist from startup ensureUploadDirs()
+            cb(null, require('path').join(__dirname, 'uploads', 'logos'));
         },
         filename: (req, file, cb) => {
             const ext = require('path').extname(file.originalname);
@@ -24920,10 +24960,9 @@ app.delete('/api/client/company-logo', authenticateClient, async (req, res) => {
 
 const bgImageUpload = require('multer')({
     storage: require('multer').diskStorage({
-        destination: async (req, file, cb) => {
-            const dir = require('path').join(__dirname, 'uploads', 'bg-images');
-            await require('fs').promises.mkdir(dir, { recursive: true });
-            cb(null, dir);
+        destination: (req, file, cb) => {
+            // Directory guaranteed to exist from startup ensureUploadDirs()
+            cb(null, require('path').join(__dirname, 'uploads', 'bg-images'));
         },
         filename: (req, file, cb) => {
             const ext = require('path').extname(file.originalname);

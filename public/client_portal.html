@@ -2175,7 +2175,7 @@ tr:hover .row-actions { opacity: 1; }
                                 <br><br>
                                 <strong style="color:var(--text-0);">You do not need to configure DNS records, verify domains, or manage API keys.</strong> We handle all of that so your team can focus on selling.
                                 <br><br>
-                                <span style="color:var(--text-3);">If emails are going to spam, make sure your sender email matches your actual business domain (e.g. you@yourcompany.com) and contact Diamondback Coding support.</span>
+                                <span style="color:var(--text-3);">If emails are going to spam, make sure your sender email matches your actual business domain (e.g. <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d7aeb8a297aeb8a2a5b4b8baa7b6b9aef9b4b8ba">[email&#160;protected]</a>) and contact Diamondback Coding support.</span>
                             </div>
                             <!-- Deliverability stats -->
                             <div id="deliverabilityStats" style="display:none;margin-top:14px;background:var(--bg-2);border-radius:var(--r-md);padding:12px 16px;">
@@ -2595,6 +2595,22 @@ tr:hover .row-actions { opacity: 1; }
                     <input class="form-input" id="addUserLabel" placeholder="e.g., Sales Rep, Manager...">
                 </div>
             </div>
+
+            <!-- SMS Capabilities -->
+            <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;">
+                    <input type="checkbox" id="addUserSmsEnabled" style="accent-color:var(--accent);width:15px;height:15px;"
+                        onchange="document.getElementById('addUserSmsRow').style.display=this.checked?'':'none'">
+                    <span style="font-size:13px;font-weight:600;color:var(--text-1);">Enable SMS for this user</span>
+                </label>
+                <div id="addUserSmsRow" style="display:none;margin-top:10px;">
+                    <div class="form-field">
+                        <label class="form-label">SMS Sender Name <span style="color:var(--text-3);font-weight:400;">(max 11 chars — shown on texts)</span></label>
+                        <input class="form-input" id="addUserSmsSender" maxlength="11" placeholder="e.g. AcmeCorp">
+                        <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Defaults to the company SMS sender name if left blank.</div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('addUserModal')">Cancel</button>
@@ -2747,7 +2763,7 @@ tr:hover .row-actions { opacity: 1; }
 <!-- ============================================================
      JAVASCRIPT
 ============================================================ -->
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 'use strict';
 
 // ============================================================
@@ -7039,11 +7055,15 @@ async function loadCompany() {
 async function openAddUserModal() {
     if (!S.isAdmin) return;
 
-    ['addUserName','addUserUsername','addUserEmail','addUserSendingEmail','addUserPassword','addUserLabel'].forEach(id=>{
+    ['addUserName','addUserUsername','addUserEmail','addUserSendingEmail','addUserPassword','addUserLabel','addUserSmsSender'].forEach(id=>{
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
     document.querySelectorAll('input[name="addUserPlan"]').forEach(r => r.checked = false);
+    const smsChk = document.getElementById('addUserSmsEnabled');
+    if (smsChk) { smsChk.checked = false; }
+    const smsRow = document.getElementById('addUserSmsRow');
+    if (smsRow) { smsRow.style.display = 'none'; }
     document.querySelectorAll('#addUserPlanSection label[id^="addUserPlan-"]').forEach(l => {
         l.style.borderColor = 'var(--border)';
         l.style.background = '';
@@ -7106,12 +7126,17 @@ async function addCompanyUser() {
     const btn = document.getElementById('addUserBtn');
     btn.disabled = true; btn.textContent = 'Adding...';
 
+    const smsEnabled    = document.getElementById('addUserSmsEnabled')?.checked || false;
+    const smsSenderName = document.getElementById('addUserSmsSender')?.value?.trim() || null;
+
     apiFetch('/client/company/add-user', 'POST', {
         name, username, email, sendingEmail,
         password,
         userLabel: label,
         clientPortalId: company.clientPortalId,
         packageKey: selectedPlan || null,
+        smsEnabled,
+        smsSenderName,
     }).then(r => r.json()).then(data => {
         btn.disabled = false; btn.textContent = 'Add Team Member';
         if (data.success) {
@@ -8701,26 +8726,52 @@ async function loadSettings() {
 }
 
 async function saveEmailSettings() {
-    const payload  = {
-        sender_email:          document.getElementById('settingsSenderEmail')?.value?.trim(),
-        sender_name:           document.getElementById('settingsSenderName')?.value?.trim(),
-        company_name:          document.getElementById('settingsCompanyName')?.value?.trim(),
-        company_phone:         document.getElementById('settingsCompanyPhone')?.value?.trim(),
-        company_email:         document.getElementById('settingsCompanyEmail')?.value?.trim(),
-        company_address:       document.getElementById('settingsCompanyAddr')?.value?.trim(),
-        website_url:           document.getElementById('settingsWebsiteUrl')?.value?.trim(),
-        accent_color:          document.getElementById('settingsAccentColor')?.value?.trim(),
-        brevo_sms_sender:      document.getElementById('settingsSmsSender')?.value?.trim(),
+    const payload = {
+        sender_email:     document.getElementById('settingsSenderEmail')?.value?.trim()  || null,
+        sender_name:      document.getElementById('settingsSenderName')?.value?.trim()   || null,
+        company_name:     document.getElementById('settingsCompanyName')?.value?.trim()  || null,
+        company_phone:    document.getElementById('settingsCompanyPhone')?.value?.trim() || null,
+        company_email:    document.getElementById('settingsCompanyEmail')?.value?.trim() || null,
+        company_address:  document.getElementById('settingsCompanyAddr')?.value?.trim()  || null,
+        website_url:      document.getElementById('settingsWebsiteUrl')?.value?.trim()   || null,
+        accent_color:     document.getElementById('settingsAccentColor')?.value?.trim()  || null,
+        brevo_sms_sender: document.getElementById('settingsSmsSender')?.value?.trim()    || null,
     };
 
-    // Optimistic: update MK.settings in memory immediately, show toast, no page reload
-    MK.settings = { ...(MK.settings || {}), ...payload };
-    toast('Settings saved', 'success');
+    // Strip out null values so COALESCE in SQL doesn't overwrite existing data with nulls
+    // EXCEPTION: we keep brevo_sms_sender even if blank so the admin can clear it intentionally
+    // We use empty string sentinel: send '' explicitly when the user clears the field
+    const smsSenderEl = document.getElementById('settingsSmsSender');
+    if (smsSenderEl) {
+        payload.brevo_sms_sender = smsSenderEl.value.trim(); // allow empty string to clear
+    }
 
-    apiFetch('/client/email-settings', 'PUT', payload)
-        .then(r => r.json())
-        .then(data => { if (!data.success) toast(data.message || 'Failed to save settings', 'error'); })
-        .catch(() => toast('Error saving settings', 'error'));
+    const btn = document.querySelector('[onclick="saveEmailSettings()"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+    try {
+        const res  = await apiFetch('/client/email-settings', 'PUT', payload);
+        const data = await res.json();
+        if (data.success) {
+            // Use the server-confirmed settings so what's in memory = what's in DB
+            if (data.settings) {
+                MK.settings = { ...(MK.settings || {}), ...data.settings };
+                // Re-populate SMS sender field from confirmed server value
+                const smsEl = document.getElementById('settingsSmsSender');
+                if (smsEl) smsEl.value = data.settings.brevo_sms_sender || '';
+            } else {
+                MK.settings = { ...(MK.settings || {}), ...payload };
+            }
+            toast('Settings saved', 'success');
+        } else {
+            toast(data.message || 'Failed to save settings', 'error');
+        }
+    } catch(e) {
+        toast('Error saving settings', 'error');
+        console.error('[SETTINGS]', e);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Email & SMS Settings'; }
+    }
 }
 
 // SENDER STATUS — fully managed by Diamondback Coding platform
@@ -9614,10 +9665,4 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
         <span>Settings</span>
     </div>
     <div class="mobile-more-menu-item" style="border-top:1px solid var(--border);margin-top:4px;padding-top:12px;color:var(--red);" onclick="logout()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--red)"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        <span>Sign Out</span>
-    </div>
-</div>
-
-</body>
-</html>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi

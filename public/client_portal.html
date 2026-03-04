@@ -1263,6 +1263,10 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                     Subscription
                 </div>
+                <div class="nav-item" data-page="billing" id="navBilling">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    Billing
+                </div>
                 <div class="nav-item" data-page="settings">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     Settings
@@ -1957,6 +1961,20 @@ tr:hover .row-actions { opacity: 1; }
         </div>
 
         <!-- ==============================
+             BILLING
+        ============================== -->
+        <div class="page" id="page-billing">
+            <div class="page-header">
+                <div class="page-title-group">
+                    <div class="page-title">Billing</div>
+                </div>
+            </div>
+            <div class="page-body" id="billingContent">
+                <div class="empty-state"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- ==============================
              SETTINGS
         ============================== -->
         <div class="page" id="page-settings">
@@ -2061,26 +2079,35 @@ tr:hover .row-actions { opacity: 1; }
                     </div>
                 </div>
 
-                <!-- Brevo Integration -->
+                <!-- Email & SMS — Managed by Diamondback Coding -->
                 <div class="card settings-workspace" style="max-width:620px;margin-top:16px;display:none;">
                     <div class="card-header">
-                        <span class="card-title">Email Provider</span>
-                        <span style="font-size:11px;color:var(--text-3);margin-top:3px;display:block;">Set up Brevo for full tracking, or use EmailJS as a fallback. Brevo takes priority when both are configured.</span>
+                        <span class="card-title">Email &amp; SMS</span>
+                        <span style="font-size:11px;color:var(--text-3);margin-top:3px;display:block;">Email and SMS are fully managed by Diamondback Coding — no setup required.</span>
                     </div>
                     <div class="card-body">
-                        <!-- Brevo Section -->
-                        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;">Brevo (Primary)</div>
+                        <!-- Platform managed notice -->
+                        <div style="background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;">
+                            <div style="font-size:20px;flex-shrink:0;margin-top:1px;">✅</div>
+                            <div>
+                                <div style="font-size:13px;font-weight:700;color:var(--text-0);margin-bottom:4px;">All Email &amp; SMS Handled by Diamondback Coding</div>
+                                <div style="font-size:12px;color:var(--text-2);line-height:1.65;">
+                                    All outbound emails and text messages are sent through Diamondback Coding's platform — no API keys or third-party accounts needed. 
+                                    You'll be billed at <strong>$0.003 per email</strong> and <strong>$0.018 per SMS</strong> at the end of each month based on actual usage.
+                                    See the <strong>Billing</strong> tab for your current and projected charges.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sender identity — these control the FROM name/email shown on outbound sends -->
+                        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;">Sender Identity</div>
                         <div style="background:#6366f111;border:1px solid #6366f133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
-                            <strong style="color:var(--text-0);">How it works:</strong> Get your API key from <a href="https://app.brevo.com/settings/keys/api" target="_blank" style="color:#6366f1;">brevo.com → Settings → API Keys</a>.
-                            Track email opens &amp; clicks — when a lead clicks the Schedule button, they automatically become a Hot lead.
+                            Set the name and email address that your recipients will see in the "From" field. 
+                            Verify your domain below to allow all @yourdomain.com team members to send as themselves.
                         </div>
                         <div class="form-row">
                             <div class="form-field">
-                                <label class="form-label">Brevo API Key</label>
-                                <input class="form-input" id="settingsBrevoKey" type="password" placeholder="xkeysib-...">
-                            </div>
-                            <div class="form-field">
-                                <label class="form-label">Default Sender Email <span style="color:var(--text-3);font-weight:400;">(fallback when domain not verified)</span></label>
+                                <label class="form-label">Default Sender Email <span style="color:var(--text-3);font-weight:400;">(shown as From address)</span></label>
                                 <input class="form-input" id="settingsSenderEmail" type="email" placeholder="hello@yourcompany.com">
                             </div>
                         </div>
@@ -2098,7 +2125,7 @@ tr:hover .row-actions { opacity: 1; }
                             </div>
                             <div style="background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:14px;font-size:12px;color:var(--text-2);line-height:1.7;">
                                 <strong style="color:var(--text-0);">How domain verification works:</strong><br>
-                                Verify <em>one domain</em> (e.g. <code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">acmeroofing.com</code>) and every user on that domain — john@, sarah@, mike@ — can send email with <em>their own name and address</em> as the sender. No per-user Brevo setup. No manual configuration per team member.
+                                Verify <em>one domain</em> (e.g. <code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;">acmeroofing.com</code>) and every user on that domain — john@, sarah@, mike@ — can send email with <em>their own name and address</em> as the sender. No per-user setup.
                             </div>
 
                             <!-- Verified domain display / entry -->
@@ -2151,56 +2178,20 @@ tr:hover .row-actions { opacity: 1; }
                                 <div id="suspendedBanner" style="display:none;background:#ef444411;border:1px solid #ef444444;border-radius:var(--r-sm);padding:10px 12px;margin-top:10px;font-size:12px;color:#ef4444;font-weight:600;">
                                     ⛔ Account suspended due to deliverability issues. Contact support to reinstate.
                                 </div>
-                                <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
-                                    <label style="font-size:12px;color:var(--text-2);">Daily send limit:</label>
-                                    <input type="number" id="settingsRateLimit" class="form-input" style="width:90px;padding:4px 8px;font-size:12px;" min="1" max="5000" placeholder="500">
-                                    <button class="btn btn-ghost btn-xs" onclick="saveRateLimit()">Save</button>
-                                </div>
                             </div>
                         </div>
 
-                        <!-- Brevo SMS Section -->
+                        <!-- SMS Sender Name -->
                         <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
                             <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z"/></svg>
-                                Brevo SMS
-                            </div>
-                            <div style="background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
-                                <strong style="color:var(--text-0);">SMS via Brevo:</strong> Uses your same Brevo API key to send transactional SMS. Set a sender name (up to 11 alphanumeric chars) and enable below. Lead phone number must be in E.164 format (e.g. +15551234567).
-                            </div>
-                            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-                                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-1);">
-                                    <input type="checkbox" id="settingsSmsEnabled" style="accent-color:#10b981;width:16px;height:16px;">
-                                    Enable Brevo SMS in Follow-ups
-                                </label>
+                                SMS Sender Name
                             </div>
                             <div class="form-field">
-                                <label class="form-label">SMS Sender Name <span style="color:var(--text-3);font-weight:400;">(max 11 chars, no spaces)</span></label>
+                                <label class="form-label">SMS Sender Name <span style="color:var(--text-3);font-weight:400;">(max 11 chars, shown on texts)</span></label>
                                 <input class="form-input" id="settingsSmsSender" placeholder="MyBusiness" maxlength="11">
                             </div>
-                            <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Once enabled, a "Send SMS" button appears in the Follow-ups queue and counts as a contact.</div>
-                        </div>
-
-                        <!-- EmailJS fallback section -->
-                        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
-                            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;">EmailJS (Fallback — used when Brevo is not configured)</div>
-                            <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text-2);line-height:1.6;">
-                                <strong style="color:var(--text-0);">EmailJS:</strong> Get your credentials from <a href="https://www.emailjs.com" target="_blank" style="color:#3b82f6;">emailjs.com</a>. Emails will send from each user's configured sending email address.
-                            </div>
-                            <div class="form-row">
-                                <div class="form-field">
-                                    <label class="form-label">EmailJS Service ID</label>
-                                    <input class="form-input" id="settingsEmailJSService" placeholder="service_xxxxxxx">
-                                </div>
-                                <div class="form-field">
-                                    <label class="form-label">EmailJS Template ID</label>
-                                    <input class="form-input" id="settingsEmailJSTemplate" placeholder="template_xxxxxxx">
-                                </div>
-                            </div>
-                            <div class="form-field">
-                                <label class="form-label">EmailJS Public Key</label>
-                                <input class="form-input" id="settingsEmailJSPublicKey" placeholder="your_public_key">
-                            </div>
+                            <div style="font-size:11px;color:var(--text-3);margin-top:4px;">SMS is sent through Diamondback Coding's platform. Lead phone numbers must be in E.164 format (e.g. +15551234567).</div>
                         </div>
                     </div>
                 </div>
@@ -3020,6 +3011,7 @@ function navigate(page) {
         case 'files':       loadFiles();       break;
         case 'support':     loadTickets();     break;
         case 'subscription': loadSubscription(); break;
+        case 'billing':      loadBilling();      break;
         case 'scheduling':  loadScheduling();  break;
         case 'settings':    loadSettings();    break;
     }
@@ -3062,6 +3054,7 @@ const MOBILE_PAGE_NAMES = {
     files:        'Files',
     support:      'Support',
     subscription: 'Subscription',
+    billing:      'Billing',
     settings:     'Settings',
 };
 
@@ -3701,32 +3694,57 @@ async function saveLead() {
     // Collect selected product IDs
     const selectedProducts = [...document.querySelectorAll('.lead-product-cb:checked')].map(cb => parseInt(cb.value));
 
+    // Optimistic UI — add the lead to state and re-render instantly
+    const optimisticLead = {
+        id: 'tmp_' + Date.now(),
+        name, email,
+        phone: document.getElementById('leadPhone').value,
+        company: document.getElementById('leadCompany').value,
+        status: document.getElementById('leadStatus').value || 'new',
+        lead_temperature: 'cold',
+        followup_mode: followupMode,
+        chain_id: followupMode === 'automatic' && chainId ? parseInt(chainId) : null,
+        notes: document.getElementById('leadNotes').value,
+        created_at: new Date().toISOString(),
+        _optimistic: true,
+    };
+    S.leads = [optimisticLead, ...(S.leads || [])];
+    closeModal('addLeadModal');
+    renderLeads();
+    toast('Lead created', 'success');
+
     try {
         const res = await apiFetch('/client/leads', 'POST', {
             name, email,
-            phone: document.getElementById('leadPhone').value,
-            company: document.getElementById('leadCompany').value,
-            status: document.getElementById('leadStatus').value,
+            phone: optimisticLead.phone,
+            company: optimisticLead.company,
+            status: optimisticLead.status,
             lead_temperature: 'cold',
             followup_mode: followupMode,
             chain_id: followupMode === 'automatic' && chainId ? parseInt(chainId) : null,
-            notes: document.getElementById('leadNotes').value,
+            notes: optimisticLead.notes,
             createdBy: S.user.name || S.user.email,
         });
         const data = await res.json();
         if (data.success || data.lead || data.id) {
             const newLeadId = data.lead?.id || data.id;
-            // Save product associations if any
+            // Replace optimistic entry with real server data
+            const realLead = data.lead || { ...optimisticLead, id: newLeadId, _optimistic: false };
+            S.leads = S.leads.map(l => l.id === optimisticLead.id ? { ...realLead, _optimistic: false } : l);
+            renderLeads();
             if (newLeadId && selectedProducts.length) {
                 apiFetch(`/client/leads/${newLeadId}/products`, 'POST', { product_ids: selectedProducts }).catch(()=>{});
             }
-            toast('Lead created', 'success');
-            closeModal('addLeadModal');
-            await loadLeads();
         } else {
+            // Rollback
+            S.leads = S.leads.filter(l => l.id !== optimisticLead.id);
+            renderLeads();
             toast(data.message || 'Failed to create lead', 'error');
         }
     } catch(e) {
+        // Rollback
+        S.leads = S.leads.filter(l => l.id !== optimisticLead.id);
+        renderLeads();
         toast('Error creating lead', 'error');
     }
 }
@@ -3845,80 +3863,57 @@ async function saveEditLead(leadId) {
     };
     // Collect product IDs from edit modal checkboxes
     const selectedProducts = [...document.querySelectorAll('.edit-product-cb:checked')].map(cb => parseInt(cb.value));
+    // Optimistic update
+    const prev = S.leads?.find(l => l.id === leadId);
+    S.leads = (S.leads || []).map(l => l.id === leadId ? { ...l, ...payload } : l);
+    closeModal('editLeadModal');
+    renderLeads();
+    toast('Lead updated', 'success');
     try {
         const res = await apiFetch(`/client/leads/${leadId}`, 'PATCH', payload);
         const data = await res.json();
         if (data.success) {
-            // Save product associations (always set, even if empty — replaces old ones)
-            await apiFetch(`/client/leads/${leadId}/products`, 'POST', { product_ids: selectedProducts }).catch(()=>{});
-            toast('Lead updated', 'success');
-            closeModal('editLeadModal');
-            await loadLeads();
-            // Refresh chart data + income stats — product assignments change the revenue graph
-            apiFetch('/client/charts').then(r=>r.json()).then(d=>{
-                if (!d.success) return;
-                DC.data = d;
-                if (S.currentPage === 'dashboard') {
-                    renderChart();
-                    const cm = d.currentMonthIncome || {};
-                    const actualIncome   = cm.actual || 0;
-                    const potentialTotal = (d.income || []).reduce((s,m) => s + m.potential, 0);
-                    const stat4 = document.getElementById('dStat4');
-                    const stat5 = document.getElementById('dStat5');
-                    if (stat4) stat4.textContent = '$' + actualIncome.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-                    if (stat5) stat5.textContent = '$' + potentialTotal.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-                    const changeEl = document.getElementById('dStatChange');
-                    if (changeEl && cm.pctChange !== undefined) {
-                        const pct = cm.pctChange, up = pct >= 0;
-                        changeEl.innerHTML = `
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;color:${up?'#22c55e':'#ef4444'};">
-                                ${up ? '<polyline points="18 15 12 9 6 15"/>' : '<polyline points="6 9 12 15 18 9"/>'}
-                            </svg>
-                            <span style="color:${up?'#22c55e':'#ef4444'};">${up?'+':''}${pct}% vs last month</span>`;
-                    }
-                }
-            }).catch(()=>{});
+            apiFetch(`/client/leads/${leadId}/products`, 'POST', { product_ids: selectedProducts }).catch(()=>{});
+            // Refresh chart data quietly
+            apiFetch('/client/charts').then(r=>r.json()).then(d=>{ if (!d.success) return; DC.data = d; if (S.currentPage === 'dashboard') renderChart(); }).catch(()=>{});
             if (S.currentPage === 'followups') loadFollowups();
-        } else { toast(data.message || 'Failed to update', 'error'); }
-    } catch { toast('Error saving lead', 'error'); }
+        } else {
+            if (prev) S.leads = (S.leads || []).map(l => l.id === leadId ? prev : l);
+            renderLeads();
+            toast(data.message || 'Failed to update', 'error');
+        }
+    } catch {
+        if (prev) S.leads = (S.leads || []).map(l => l.id === leadId ? prev : l);
+        renderLeads();
+        toast('Error saving lead', 'error');
+    }
 }
 
 async function convertLeadToCustomer(leadId) {
     if (!confirm('Convert this lead to a customer? They will be removed from the follow-up queue.')) return;
+    // Optimistic: remove from leads list immediately, show toast
+    const removedLead = (S.leads || []).find(l => l.id === leadId);
+    S.leads = (S.leads || []).filter(l => l.id !== leadId);
+    closeModal('editLeadModal');
+    renderLeads();
+    toast('Converted to customer!', 'success');
     try {
         const res = await apiFetch(`/client/leads/${leadId}/convert`, 'POST');
         const data = await res.json();
         if (data.success) {
-            toast('Converted to customer!', 'success');
-            closeModal('editLeadModal');
-            await loadLeads();
-            await loadCustomers();
+            loadCustomers();
             if (S.currentPage === 'followups') loadFollowups();
-            // Refresh chart & income stats (conversion moves lead→actual income)
-            apiFetch('/client/charts').then(r=>r.json()).then(d=>{
-                if (!d.success) return;
-                DC.data = d;
-                renderChart();
-                // Update income stat cards
-                const cm = d.currentMonthIncome || {};
-                const actualIncome = cm.actual || 0;
-                const potentialTotal = (d.income || []).reduce((s,m) => s + m.potential, 0);
-                const stat4 = document.getElementById('dStat4');
-                const stat5 = document.getElementById('dStat5');
-                if (stat4) stat4.textContent = '$' + actualIncome.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-                if (stat5) stat5.textContent = '$' + potentialTotal.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-                const changeEl = document.getElementById('dStatChange');
-                if (changeEl && cm.pctChange !== undefined) {
-                    const pct = cm.pctChange, up = pct >= 0;
-                    changeEl.innerHTML = `
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px;height:12px;color:${up?'#22c55e':'#ef4444'};">
-                            ${up ? '<polyline points="18 15 12 9 6 15"/>' : '<polyline points="6 9 12 15 18 9"/>'}
-                        </svg>
-                        <span style="color:${up?'#22c55e':'#ef4444'};">${up?'+':''}${pct}% vs last month</span>`;
-                }
-            }).catch(()=>{});
-        } else { toast(data.message || 'Failed to convert', 'error'); }
-    } catch { toast('Error converting lead', 'error'); }
+            apiFetch('/client/charts').then(r=>r.json()).then(d=>{ if (!d.success) return; DC.data = d; if (S.currentPage === 'dashboard') renderChart(); }).catch(()=>{});
+        } else {
+            if (removedLead) S.leads = [removedLead, ...(S.leads || [])];
+            renderLeads();
+            toast(data.message || 'Failed to convert', 'error');
+        }
+    } catch {
+        if (removedLead) S.leads = [removedLead, ...(S.leads || [])];
+        renderLeads();
+        toast('Error converting lead', 'error');
+    }
 }
 
 async function sendFollowUpEmail(leadId, email) {
@@ -4420,23 +4415,42 @@ async function saveContact() {
     const email = document.getElementById('contactEmail').value.trim();
     if (!name) { toast('Name required', 'error'); return; }
 
+    const optimistic = {
+        id: 'tmp_' + Date.now(),
+        name, email,
+        phone: document.getElementById('contactPhone').value,
+        company: document.getElementById('contactCompany').value,
+        notes: document.getElementById('contactNotes').value,
+        created_by_name: S.user.name || S.user.email,
+        created_at: new Date().toISOString(),
+        _optimistic: true,
+    };
+    S.contacts = [optimistic, ...(S.contacts || [])];
+    closeModal('addContactModal');
+    renderContacts();
+    toast('Contact added', 'success');
+
     try {
         const res = await apiFetch('/client/contacts', 'POST', {
             name, email,
-            phone: document.getElementById('contactPhone').value,
-            company: document.getElementById('contactCompany').value,
-            notes: document.getElementById('contactNotes').value,
+            phone: optimistic.phone,
+            company: optimistic.company,
+            notes: optimistic.notes,
             createdByName: S.user.name || S.user.email,
         });
         const data = await res.json();
         if (data.success || data.contact || data.id) {
-            toast('Contact added', 'success');
-            closeModal('addContactModal');
-            await loadContacts();
+            const real = data.contact || { ...optimistic, id: data.id || optimistic.id, _optimistic: false };
+            S.contacts = S.contacts.map(c => c.id === optimistic.id ? { ...real, _optimistic: false } : c);
+            renderContacts();
         } else {
+            S.contacts = S.contacts.filter(c => c.id !== optimistic.id);
+            renderContacts();
             toast(data.message||'Failed', 'error');
         }
     } catch {
+        S.contacts = S.contacts.filter(c => c.id !== optimistic.id);
+        renderContacts();
         toast('Error adding contact', 'error');
     }
 }
@@ -6467,39 +6481,72 @@ async function saveTask() {
     const title = document.getElementById('taskTitle').value.trim();
     if (!title) { toast('Title required', 'error'); return; }
 
+    const optimistic = {
+        id: 'tmp_' + Date.now(),
+        title,
+        description: document.getElementById('taskDesc').value,
+        priority: document.getElementById('taskPriority').value,
+        due_date: document.getElementById('taskDue').value,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        created_by_name: S.user.name || S.user.email,
+        _optimistic: true,
+    };
+    S.tasks = [optimistic, ...(S.tasks || [])];
+    closeModal('addTaskModal');
+    renderTasks();
+    toast('Task created', 'success');
+
     try {
         const res = await apiFetch('/client/tasks', 'POST', {
-            title,
-            description: document.getElementById('taskDesc').value,
-            priority: document.getElementById('taskPriority').value,
-            due_date: document.getElementById('taskDue').value,
+            title: optimistic.title,
+            description: optimistic.description,
+            priority: optimistic.priority,
+            due_date: optimistic.due_date,
             createdByName: S.user.name || S.user.email,
         });
         const data = await res.json();
         if (data.success || data.task || data.id) {
-            toast('Task created', 'success');
-            closeModal('addTaskModal');
-            await loadTasks();
+            const real = data.task || { ...optimistic, id: data.id || optimistic.id, _optimistic: false };
+            S.tasks = S.tasks.map(t => t.id === optimistic.id ? { ...real, _optimistic: false } : t);
+            renderTasks();
         } else {
+            S.tasks = S.tasks.filter(t => t.id !== optimistic.id);
+            renderTasks();
             toast(data.message||'Failed', 'error');
         }
     } catch {
+        S.tasks = S.tasks.filter(t => t.id !== optimistic.id);
+        renderTasks();
         toast('Error creating task', 'error');
     }
 }
 
 async function toggleTask(taskId) {
+    const task = S.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    S.tasks = S.tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
+    renderTasks();
     try {
         await apiFetch(`/client/tasks/${taskId}/toggle`, 'POST', {});
-        await loadTasks();
-    } catch {}
+    } catch {
+        // Rollback
+        S.tasks = S.tasks.map(t => t.id === taskId ? { ...t, status: task.status } : t);
+        renderTasks();
+    }
 }
 
 async function deleteTask(taskId) {
+    const removed = S.tasks.find(t => t.id === taskId);
+    S.tasks = S.tasks.filter(t => t.id !== taskId);
+    renderTasks();
     try {
         await apiFetch(`/client/tasks/${taskId}`, 'DELETE');
-        await loadTasks();
-    } catch {}
+    } catch {
+        if (removed) S.tasks = [removed, ...(S.tasks || [])];
+        renderTasks();
+    }
 }
 
 // ============================================================
@@ -7064,6 +7111,132 @@ async function replyToTicket(ticketId) {
             toast(data.message||'Failed', 'error');
         }
     } catch { toast('Error', 'error'); }
+}
+
+// ============================================================
+// ============================================================
+// BILLING — usage charges + subscription overview
+// ============================================================
+async function loadBilling() {
+    const el = document.getElementById('billingContent');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+
+    const res = await apiFetch('/client/billing/usage', 'GET');
+    if (!res || !res.success) {
+        el.innerHTML = `<div class="empty-state" style="color:var(--red);">Failed to load billing data. <button class="btn btn-ghost" style="margin-top:10px;" onclick="loadBilling()">Retry</button></div>`;
+        return;
+    }
+
+    const { lastMonth, currentMonth, rates } = res;
+
+    const fmtMoney = v => '$' + parseFloat(v || 0).toFixed(2);
+    const fmtCount = v => parseInt(v || 0).toLocaleString();
+
+    // Determine last month label
+    const now = new Date();
+    const lmDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const lmLabel = lmDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const cmLabel = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    el.innerHTML = `
+        <div style="max-width:820px;">
+
+            <!-- Rates Banner -->
+            <div style="background:linear-gradient(135deg,#6366f115,#8b5cf615);border:1px solid #6366f133;border-radius:12px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:180px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px;">Platform Billing Rates</div>
+                    <div style="font-size:13px;color:var(--text-2);">
+                        <span style="margin-right:20px;">✉️ Email &nbsp;<strong style="color:var(--text-0);">${fmtMoney(rates.perEmail)}</strong> per send</span>
+                        <span>💬 SMS &nbsp;<strong style="color:var(--text-0);">${fmtMoney(rates.perSms)}</strong> per send</span>
+                    </div>
+                </div>
+                <div style="font-size:11px;color:var(--text-3);text-align:right;line-height:1.5;">
+                    Usage billed at end of each month<br>alongside your subscription.
+                </div>
+            </div>
+
+            <!-- Two-column cards -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+
+                <!-- Last Month -->
+                <div class="card" style="margin:0;">
+                    <div class="card-header" style="border-bottom:1px solid var(--border-1);">
+                        <span class="card-title">Last Month</span>
+                        <span style="font-size:11px;color:var(--text-3);margin-left:auto;">${lmLabel}</span>
+                    </div>
+                    <div class="card-body" style="padding:18px;">
+                        <div style="display:flex;gap:12px;margin-bottom:16px;">
+                            <div style="flex:1;background:var(--bg-2);border-radius:8px;padding:12px;text-align:center;">
+                                <div style="font-size:22px;font-weight:700;color:var(--text-0);">${fmtCount(lastMonth.emails)}</div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Emails Sent</div>
+                            </div>
+                            <div style="flex:1;background:var(--bg-2);border-radius:8px;padding:12px;text-align:center;">
+                                <div style="font-size:22px;font-weight:700;color:var(--text-0);">${fmtCount(lastMonth.sms)}</div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">SMS Sent</div>
+                            </div>
+                        </div>
+                        <div style="border-top:1px solid var(--border-1);padding-top:14px;">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;">
+                                <span style="color:var(--text-3);">Usage charges</span>
+                                <span style="color:var(--text-0);">${fmtMoney(lastMonth.usageCharge)}</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px;">
+                                <span style="color:var(--text-3);">Subscription</span>
+                                <span style="color:var(--text-0);">${fmtMoney(lastMonth.subscriptionCharge)}</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;border-top:1px solid var(--border-1);padding-top:10px;">
+                                <span>Total Billed</span>
+                                <span style="color:var(--accent);">${fmtMoney(lastMonth.total)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Month Projection -->
+                <div class="card" style="margin:0;border:1px solid #6366f133;">
+                    <div class="card-header" style="border-bottom:1px solid var(--border-1);">
+                        <span class="card-title">This Month</span>
+                        <span style="font-size:11px;background:#6366f122;color:#818cf8;padding:2px 8px;border-radius:4px;margin-left:auto;">Projected</span>
+                    </div>
+                    <div class="card-body" style="padding:18px;">
+                        <div style="display:flex;gap:12px;margin-bottom:16px;">
+                            <div style="flex:1;background:var(--bg-2);border-radius:8px;padding:12px;text-align:center;">
+                                <div style="font-size:22px;font-weight:700;color:var(--text-0);">${fmtCount(currentMonth.emails)}</div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Emails So Far</div>
+                            </div>
+                            <div style="flex:1;background:var(--bg-2);border-radius:8px;padding:12px;text-align:center;">
+                                <div style="font-size:22px;font-weight:700;color:var(--text-0);">${fmtCount(currentMonth.sms)}</div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">SMS So Far</div>
+                            </div>
+                        </div>
+                        <div style="border-top:1px solid var(--border-1);padding-top:14px;">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;">
+                                <span style="color:var(--text-3);">Usage so far</span>
+                                <span style="color:var(--text-0);">${fmtMoney(currentMonth.usageChargeSoFar)}</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;">
+                                <span style="color:var(--text-3);">Projected usage</span>
+                                <span style="color:var(--text-0);">${fmtMoney(currentMonth.projectedUsageCharge)}</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px;">
+                                <span style="color:var(--text-3);">Subscription</span>
+                                <span style="color:var(--text-0);">${fmtMoney(currentMonth.subscriptionCharge)}</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;border-top:1px solid var(--border-1);padding-top:10px;">
+                                <span>Projected Total</span>
+                                <span style="color:#818cf8;">${fmtMoney(currentMonth.projectedTotal)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="font-size:11px;color:var(--text-3);text-align:center;padding:8px;">
+                Projections are based on your current month's pace. Actual charges may vary. Billing occurs on the 1st of each month.
+            </div>
+        </div>
+    `;
 }
 
 // ============================================================
@@ -7854,23 +8027,57 @@ async function saveTemplate(existingId) {
     try {
         const method = existingId ? 'PUT' : 'POST';
         const url    = existingId ? `/client/email-templates/${existingId}` : '/client/email-templates';
+        // Optimistic update
+        if (existingId) {
+            MK.templates = MK.templates.map(t => t.id === existingId ? { ...t, ...payload, id: existingId } : t);
+        } else {
+            const tmpId = 'tmp_' + Date.now();
+            MK.templates = [{ ...payload, id: tmpId, _optimistic: true }, ...(MK.templates || [])];
+            window._pendingTemplateId = tmpId;
+        }
+        closeModal('templateBuilderModal');
+        renderMarketing();
+        toast('Template saved', 'success');
         const res = await apiFetch(url, method, payload);
         const data = await res.json();
         if (data.success || data.template) {
-            toast('Template saved', 'success');
-            closeModal('templateBuilderModal');
-            await loadMarketing();
-        } else { toast(data.message||'Failed to save', 'error'); }
-    } catch(e) { toast('Error saving template', 'error'); }
+            if (!existingId && window._pendingTemplateId) {
+                const real = data.template || { ...payload, id: data.id || window._pendingTemplateId };
+                MK.templates = MK.templates.map(t => t.id === window._pendingTemplateId ? { ...real, _optimistic: false } : t);
+                window._pendingTemplateId = null;
+                renderMarketing();
+            }
+        } else {
+            if (!existingId && window._pendingTemplateId) {
+                MK.templates = MK.templates.filter(t => t.id !== window._pendingTemplateId);
+                window._pendingTemplateId = null;
+            }
+            renderMarketing();
+            toast(data.message||'Failed to save', 'error');
+        }
+    } catch(e) {
+        if (!existingId && window._pendingTemplateId) {
+            MK.templates = MK.templates.filter(t => t.id !== window._pendingTemplateId);
+            window._pendingTemplateId = null;
+        }
+        renderMarketing();
+        toast('Error saving template', 'error');
+    }
 }
 
 async function deleteTemplate(id) {
     if (!confirm('Delete this template?')) return;
+    const removed = MK.templates.find(t => t.id === id);
+    MK.templates = MK.templates.filter(t => t.id !== id);
+    renderMarketing();
+    toast('Template deleted', 'success');
     try {
         await apiFetch(`/client/email-templates/${id}`, 'DELETE');
-        toast('Template deleted', 'success');
-        await loadMarketing();
-    } catch { toast('Error', 'error'); }
+    } catch {
+        if (removed) MK.templates = [removed, ...(MK.templates || [])];
+        renderMarketing();
+        toast('Error', 'error');
+    }
 }
 
 async function sendTemplateNow(templateId, templateName) {
@@ -8006,24 +8213,44 @@ async function saveChain() {
     const loop = document.getElementById('chainLoop')?.checked !== false;
     if (!name) { toast('Chain name required', 'error'); return; }
     if (_chainSteps.length < 2) { toast('A chain needs at least 2 steps', 'error'); return; }
+    // Optimistic: add chain to MK.chains and close modal immediately
+    const optimistic = { id: 'tmp_' + Date.now(), name, loop, steps: _chainSteps, step_count: _chainSteps.length, _optimistic: true };
+    MK.chains = [optimistic, ...(MK.chains || [])];
+    closeModal('chainBuilderModal');
+    renderMarketing();
+    toast('Chain saved', 'success');
     try {
         const res  = await apiFetch('/client/email-chains', 'POST', { name, loop, steps: _chainSteps });
         const data = await res.json();
         if (data.success || data.chain) {
-            toast('Chain saved', 'success');
-            closeModal('chainBuilderModal');
-            await loadMarketing();
-        } else { toast(data.message||'Failed', 'error'); }
-    } catch { toast('Error saving chain', 'error'); }
+            const real = data.chain || { ...optimistic, id: data.id || optimistic.id, _optimistic: false };
+            MK.chains = MK.chains.map(c => c.id === optimistic.id ? { ...real, _optimistic: false } : c);
+            renderMarketing();
+        } else {
+            MK.chains = MK.chains.filter(c => c.id !== optimistic.id);
+            renderMarketing();
+            toast(data.message||'Failed', 'error');
+        }
+    } catch {
+        MK.chains = MK.chains.filter(c => c.id !== optimistic.id);
+        renderMarketing();
+        toast('Error saving chain', 'error');
+    }
 }
 
 async function deleteChain(id) {
     if (!confirm('Delete this chain?')) return;
+    const removed = MK.chains.find(c => c.id === id);
+    MK.chains = MK.chains.filter(c => c.id !== id);
+    renderMarketing();
+    toast('Chain deleted', 'success');
     try {
         await apiFetch(`/client/email-chains/${id}`, 'DELETE');
-        toast('Chain deleted', 'success');
-        await loadMarketing();
-    } catch { toast('Error', 'error'); }
+    } catch {
+        if (removed) MK.chains = [removed, ...(MK.chains || [])];
+        renderMarketing();
+        toast('Error', 'error');
+    }
 }
 
 // ── Enroll leads in chain ─────────────────────────────────────────
@@ -8122,23 +8349,10 @@ async function loadSettings() {
         fill('settingsCompanyAddr',        s.company_address);
         fill('settingsWebsiteUrl',         s.website_url);
         fill('settingsAccentColor',        s.accent_color || '#FF6B35');
-        fill('settingsEmailJSService',     s.emailjs_service_id);
-        fill('settingsEmailJSTemplate',    s.emailjs_template_id);
-        fill('settingsEmailJSPublicKey',   s.emailjs_public_key);
         const colorPicker = document.getElementById('settingsColorPicker');
         if (colorPicker) colorPicker.value = s.accent_color || '#FF6B35';
         // SMS settings
-        const smsEnabled = document.getElementById('settingsSmsEnabled');
-        if (smsEnabled) smsEnabled.checked = s.brevo_sms_enabled || false;
         fill('settingsSmsSender', s.brevo_sms_sender);
-
-        if (s.brevo_api_key_set) {
-            const keyInput = document.getElementById('settingsBrevoKey');
-            if (keyInput) {
-                keyInput.placeholder = 'API key is set — type new key to update';
-                keyInput.style.fontFamily = 'var(--font-mono)';
-            }
-        }
 
         // Company logo
         if (s.company_logo_url) {
@@ -8151,7 +8365,6 @@ async function loadSettings() {
 }
 
 async function saveEmailSettings() {
-    const brevoKey = document.getElementById('settingsBrevoKey')?.value?.trim();
     const payload  = {
         sender_email:          document.getElementById('settingsSenderEmail')?.value?.trim(),
         sender_name:           document.getElementById('settingsSenderName')?.value?.trim(),
@@ -8161,14 +8374,8 @@ async function saveEmailSettings() {
         company_address:       document.getElementById('settingsCompanyAddr')?.value?.trim(),
         website_url:           document.getElementById('settingsWebsiteUrl')?.value?.trim(),
         accent_color:          document.getElementById('settingsAccentColor')?.value?.trim(),
-        emailjs_service_id:    document.getElementById('settingsEmailJSService')?.value?.trim(),
-        emailjs_template_id:   document.getElementById('settingsEmailJSTemplate')?.value?.trim(),
-        emailjs_public_key:    document.getElementById('settingsEmailJSPublicKey')?.value?.trim(),
-        brevo_sms_enabled:     document.getElementById('settingsSmsEnabled')?.checked || false,
         brevo_sms_sender:      document.getElementById('settingsSmsSender')?.value?.trim(),
     };
-    // Only include brevo key if user typed a non-masked value
-    if (brevoKey && !brevoKey.includes('•')) payload.brevo_api_key = brevoKey;
 
     try {
         const res  = await apiFetch('/client/email-settings', 'PUT', payload);
@@ -8513,71 +8720,18 @@ function toast(message, type='success') {
 }
 
 // ============================================================
-// EMAIL SENDING — Brevo primary, EmailJS fallback
+// EMAIL SENDING — Platform Brevo (Diamondback Coding)
 // ============================================================
 async function sendEmailWithFallback(leadId, leadEmail, leadName, templateId, scheduleConversion) {
-    const settings = MK.settings || {};
-    const hasBrevo   = settings.brevo_api_key_set || settings.brevo_api_key;
-    const hasEmailJS = settings.emailjs_service_id && settings.emailjs_template_id && settings.emailjs_public_key;
-
-    // Always try the server route first — it handles Brevo and returns
-    // an emailjsQueue if EmailJS fallback is needed.
+    // All emails route through Diamondback Coding's platform Brevo account.
+    // No client-side API keys or third-party SDKs needed.
     const res  = await apiFetch('/client/email/send', 'POST', {
         template_id: parseInt(templateId),
         lead_ids: [leadId],
         schedule_conversion: scheduleConversion || false,
     });
     const data = await res.json();
-
-    // If server returned EmailJS payloads, send them from the browser now
-    if (data.emailjsQueue && data.emailjsQueue.length > 0) {
-        await _flushEmailJSQueue(data.emailjsQueue);
-        // Count the EmailJS sends as "sent" for the UI
-        data.sent = (data.sent || 0) + data.emailjsQueue.length;
-    }
-
     return data;
-}
-
-// Sends all EmailJS payloads returned by the server (client-side only)
-async function _flushEmailJSQueue(queue) {
-    if (!queue || !queue.length) return;
-    const settings = MK.settings || {};
-
-    // Dynamically load EmailJS SDK if not already loaded
-    if (typeof emailjs === 'undefined') {
-        await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
-            s.onload = resolve; s.onerror = reject;
-            document.head.appendChild(s);
-        });
-    }
-    emailjs.init(settings.emailjs_public_key);
-
-    // The "from" email is always the logged-in user's sending email
-    const senderEmail = S.user.sending_email || S.user.email;
-
-    for (const item of queue) {
-        try {
-            await emailjs.send(item.serviceId, item.templateId, {
-                ...item.templateParams,
-                // Override from_email with the actual logged-in user's email
-                from_email:  senderEmail,
-                from_name:   S.user.name || senderEmail,
-                reply_to:    senderEmail,
-                to_name:     item.leadName || item.leadEmail,
-                to_email:    item.leadEmail,
-                subject:     item.templateParams?.subject || '',
-            });
-            // Record the EmailJS send so analytics are tracked
-            await apiFetch('/client/email/record-send', 'POST', {
-                lead_id: item.leadId, template_id: item.templateId || null, log_id: item.logId
-            }).catch(() => {});
-        } catch(e) {
-            console.error('[EmailJS] Send failed for', item.leadEmail, e?.text || e?.message || e);
-        }
-    }
 }
 
 // When a lead clicks the schedule link in an email, they become hot
@@ -8944,52 +9098,95 @@ function openEditProductModal(product) {
 async function saveProduct() {
     const name = document.getElementById('prodName')?.value.trim();
     if (!name) { toast('Product name required', 'error'); return; }
+    const optimistic = {
+        id: 'tmp_' + Date.now(),
+        name,
+        category: document.getElementById('prodCategory')?.value.trim(),
+        sku:      document.getElementById('prodSku')?.value.trim(),
+        price:    document.getElementById('prodPrice')?.value || null,
+        description: document.getElementById('prodDesc')?.value.trim(),
+        is_active: true,
+        _optimistic: true,
+    };
+    _products = [optimistic, ..._products];
+    closeModal('addProductModal');
+    renderProducts();
+    toast('Product added', 'success');
     try {
         const res = await apiFetch('/client/products', 'POST', {
-            name,
-            category: document.getElementById('prodCategory')?.value.trim(),
-            sku:      document.getElementById('prodSku')?.value.trim(),
-            price:    document.getElementById('prodPrice')?.value || null,
-            description: document.getElementById('prodDesc')?.value.trim(),
+            name: optimistic.name,
+            category: optimistic.category,
+            sku: optimistic.sku,
+            price: optimistic.price,
+            description: optimistic.description,
         });
         const data = await res.json();
         if (data.success) {
-            toast('Product added', 'success');
-            closeModal('addProductModal');
-            await loadProducts();
-        } else { toast(data.message||'Failed', 'error'); }
-    } catch { toast('Error adding product', 'error'); }
+            const real = data.product || { ...optimistic, id: data.id || optimistic.id, _optimistic: false };
+            _products = _products.map(p => p.id === optimistic.id ? { ...real, _optimistic: false } : p);
+            renderProducts();
+        } else {
+            _products = _products.filter(p => p.id !== optimistic.id);
+            renderProducts();
+            toast(data.message||'Failed', 'error');
+        }
+    } catch {
+        _products = _products.filter(p => p.id !== optimistic.id);
+        renderProducts();
+        toast('Error adding product', 'error');
+    }
 }
 
 async function updateProduct(id) {
     const name = document.getElementById('editProdName')?.value.trim();
     if (!name) { toast('Product name required', 'error'); return; }
+    const updates = {
+        name,
+        category:    document.getElementById('editProdCategory')?.value.trim(),
+        sku:         document.getElementById('editProdSku')?.value.trim(),
+        price:       document.getElementById('editProdPrice')?.value || null,
+        description: document.getElementById('editProdDesc')?.value.trim(),
+        is_active:   document.getElementById('editProdActive')?.checked,
+    };
+    const prev = _products.find(p => p.id === id);
+    _products = _products.map(p => p.id === id ? { ...p, ...updates } : p);
+    closeModal('editProductModal');
+    renderProducts();
+    toast('Product updated', 'success');
     try {
-        const res = await apiFetch(`/client/products/${id}`, 'PATCH', {
-            name,
-            category:    document.getElementById('editProdCategory')?.value.trim(),
-            sku:         document.getElementById('editProdSku')?.value.trim(),
-            price:       document.getElementById('editProdPrice')?.value || null,
-            description: document.getElementById('editProdDesc')?.value.trim(),
-            is_active:   document.getElementById('editProdActive')?.checked,
-        });
+        const res = await apiFetch(`/client/products/${id}`, 'PATCH', updates);
         const data = await res.json();
-        if (data.success) {
-            toast('Product updated', 'success');
-            closeModal('editProductModal');
-            await loadProducts();
-        } else { toast(data.message||'Failed', 'error'); }
-    } catch { toast('Error updating product', 'error'); }
+        if (!data.success) {
+            if (prev) _products = _products.map(p => p.id === id ? prev : p);
+            renderProducts();
+            toast(data.message||'Failed', 'error');
+        }
+    } catch {
+        if (prev) _products = _products.map(p => p.id === id ? prev : p);
+        renderProducts();
+        toast('Error updating product', 'error');
+    }
 }
 
 async function deleteProduct(id) {
     if (!confirm('Delete this product? It will be removed from all leads.')) return;
+    const removed = _products.find(p => p.id === id);
+    _products = _products.filter(p => p.id !== id);
+    renderProducts();
+    toast('Product deleted', 'success');
     try {
         const res = await apiFetch(`/client/products/${id}`, 'DELETE');
         const data = await res.json();
-        if (data.success) { toast('Product deleted', 'success'); await loadProducts(); }
-        else { toast(data.message||'Failed', 'error'); }
-    } catch { toast('Error deleting product', 'error'); }
+        if (!data.success) {
+            if (removed) _products = [removed, ..._products];
+            renderProducts();
+            toast(data.message||'Failed to delete', 'error');
+        }
+    } catch {
+        if (removed) _products = [removed, ..._products];
+        renderProducts();
+        toast('Error deleting product', 'error');
+    }
 }
 
 // Resize → re-render chart

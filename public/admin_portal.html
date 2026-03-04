@@ -8198,6 +8198,10 @@ function renderAnalytics(content) {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:5px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 Email
             </button>
+            <button class="analytics-tab-btn" id="atab-usage" onclick="switchAnalyticsTab('usage')" style="padding:10px 20px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-1px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:5px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Usage Revenue
+            </button>
         </div>
 
         <!-- ══════════════════════════════════════════════════════════ -->
@@ -8460,6 +8464,12 @@ function renderAnalytics(content) {
                 </div>
             </div>
         </div>
+
+        <div id="analytics-tab-usage" style="display:none;">
+            <div id="usageRevenueContent" style="margin-top:4px;">
+                <div style="text-align:center;padding:40px;color:var(--text-muted);">Loading usage revenue data...</div>
+            </div>
+        </div>
         `;
 
         // Set up tab switching
@@ -8485,7 +8495,7 @@ function renderAnalytics(content) {
 }
 
 function switchAnalyticsTab(tab) {
-    ['overview','subscriptions','email'].forEach(t => {
+    ['overview','subscriptions','email','usage'].forEach(t => {
         const el = document.getElementById('analytics-tab-' + t);
         const btn = document.getElementById('atab-' + t);
         if (el) el.style.display = (t === tab) ? '' : 'none';
@@ -8498,6 +8508,10 @@ function switchAnalyticsTab(tab) {
     if (tab === 'email' && !window._emailReportLoaded) {
         window._emailReportLoaded = true;
         loadEmailOpenReport();
+    }
+    if (tab === 'usage' && !window._usageRevenueLoaded) {
+        window._usageRevenueLoaded = true;
+        loadUsageRevenue();
     }
 }
 
@@ -8523,6 +8537,122 @@ function renderSubscriptionHealthChart(sub) {
                 <div style="height:100%;width:${b.pct}%;background:${b.color};border-radius:4px;transition:width 0.4s ease;"></div>
             </div>
         </div>`).join('');
+}
+
+async function loadUsageRevenue() {
+    const el = document.getElementById('usageRevenueContent');
+    if (!el) return;
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted);">Loading...</div>`;
+
+    try {
+        const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+        const res = await fetch(`${API_URL}/api/admin/usage/analytics`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const d = await res.json();
+        if (!d.success) throw new Error(d.message || 'Failed');
+        const { rates, currentMonth, lastMonth, yearToDate, allTime, portalBreakdown, monthlyTrend } = d;
+
+        const statCard = (label, val, sub, color='var(--accent-amber)') => `
+            <div style="background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:12px;padding:20px 24px;">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px;">${label}</div>
+                <div style="font-size:26px;font-weight:800;color:${color};margin-bottom:4px;">$${Number(val).toFixed(2)}</div>
+                <div style="font-size:12px;color:var(--text-secondary);">${sub}</div>
+            </div>`;
+
+        const fmtStats = s => `${s.emails.toLocaleString()} emails · ${s.sms.toLocaleString()} SMS — Brevo cost $${Number(s.bRevoCost||0).toFixed(2)} · Profit $${Number(s.profit||0).toFixed(2)}`;
+
+        // Monthly trend bar chart
+        const trendRows = (monthlyTrend || []).slice(-12).map(row => {
+            const rev = Number(row.revenue || 0);
+            const cost = Number(row.brevo_cost || 0);
+            const profit = rev - cost;
+            const mo = new Date(row.billing_month).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+            return `<tr style="border-bottom:1px solid var(--border-subtle);">
+                <td style="padding:8px 12px;font-size:12px;color:var(--text-secondary);">${mo}</td>
+                <td style="padding:8px 12px;font-size:12px;text-align:right;">${Number(row.emails||0).toLocaleString()}</td>
+                <td style="padding:8px 12px;font-size:12px;text-align:right;">${Number(row.sms||0).toLocaleString()}</td>
+                <td style="padding:8px 12px;font-size:12px;text-align:right;color:var(--text-secondary);">$${cost.toFixed(2)}</td>
+                <td style="padding:8px 12px;font-size:12px;font-weight:700;text-align:right;color:var(--accent-amber);">$${rev.toFixed(2)}</td>
+                <td style="padding:8px 12px;font-size:12px;font-weight:700;text-align:right;color:${profit>=0?'var(--status-contacted)':'var(--status-closed)'};">$${profit.toFixed(2)}</td>
+            </tr>`;
+        }).join('');
+
+        const portalRows = (portalBreakdown || []).map(p => {
+            const rev = Number(p.revenue || 0);
+            const cost = Number(p.brevo_cost || 0);
+            const profit = rev - cost;
+            return `<tr style="border-bottom:1px solid var(--border-subtle);">
+                <td style="padding:9px 12px;font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.portal_label || p.client_portal_id}</td>
+                <td style="padding:9px 12px;font-size:12px;text-align:right;">${Number(p.email_count||0).toLocaleString()}</td>
+                <td style="padding:9px 12px;font-size:12px;text-align:right;">${Number(p.sms_count||0).toLocaleString()}</td>
+                <td style="padding:9px 12px;font-size:12px;text-align:right;color:var(--text-secondary);">$${cost.toFixed(2)}</td>
+                <td style="padding:9px 12px;font-size:12px;font-weight:700;text-align:right;color:var(--accent-amber);">$${rev.toFixed(2)}</td>
+                <td style="padding:9px 12px;font-size:12px;font-weight:700;text-align:right;color:${profit>=0?'var(--status-contacted)':'var(--status-closed)'};">$${profit.toFixed(2)}</td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">No usage recorded yet</td></tr>`;
+
+        el.innerHTML = `
+            <div style="background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:24px;margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <h3 style="font-size:16px;font-weight:700;margin:0;">Usage Revenue</h3>
+                    <span style="font-size:11px;color:var(--text-muted);background:var(--bg-secondary);border-radius:6px;padding:4px 10px;">
+                        Email: $${Number(rates.emailChargeClient||0).toFixed(4)}/send &nbsp;·&nbsp; SMS: $${Number(rates.smsChargeClient||0).toFixed(4)}/send &nbsp;·&nbsp; (2× Brevo cost)
+                    </span>
+                </div>
+                <p style="font-size:12px;color:var(--text-muted);margin:0 0 20px;">Revenue collected from client portals for email + SMS usage. Net profit = revenue minus Brevo platform cost.</p>
+
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+                    ${statCard('This Month', currentMonth.revenue || 0, fmtStats(currentMonth))}
+                    ${statCard('Last Month', lastMonth.revenue || 0, fmtStats(lastMonth))}
+                    ${statCard('Year to Date', yearToDate.revenue || 0, fmtStats(yearToDate))}
+                    ${statCard('All Time', allTime.revenue || 0, fmtStats(allTime), 'var(--status-contacted)')}
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;">
+                    <div style="background:var(--bg-secondary);border-radius:10px;padding:16px 20px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">Monthly Trend (Last 12 Months)</div>
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead><tr style="border-bottom:2px solid var(--border-subtle);">
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:left;color:var(--text-muted);">Month</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">Emails</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">SMS</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">Cost</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">Revenue</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">Profit</th>
+                            </tr></thead>
+                            <tbody>${trendRows || '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">No data yet</td></tr>'}</tbody>
+                        </table>
+                    </div>
+
+                    <div style="background:var(--bg-secondary);border-radius:10px;padding:16px 20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);">By Client Portal (All Time)</div>
+                            <button onclick="window._usageRevenueLoaded=false;loadUsageRevenue();" style="font-size:11px;background:none;border:none;cursor:pointer;color:var(--accent-amber);font-weight:600;">↺ Refresh</button>
+                        </div>
+                        <div style="max-height:320px;overflow-y:auto;">
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead style="position:sticky;top:0;background:var(--bg-secondary);z-index:1;"><tr style="border-bottom:2px solid var(--border-subtle);">
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:left;color:var(--text-muted);">Portal</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">Emails</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">SMS</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">Cost</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">Revenue</th>
+                                <th style="padding:6px 12px;font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);">Profit</th>
+                            </tr></thead>
+                            <tbody>${portalRows}</tbody>
+                        </table>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    } catch (err) {
+        el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-muted);">
+            <div style="font-size:14px;margin-bottom:8px;">Failed to load usage revenue data</div>
+            <div style="font-size:12px;">${err.message}</div>
+            <button onclick="window._usageRevenueLoaded=false;loadUsageRevenue();" class="btn btn-secondary" style="margin-top:16px;">Retry</button>
+        </div>`;
+    }
 }
 
 function renderMRRTrendChart(trend) {

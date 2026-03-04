@@ -16,6 +16,25 @@ const SibApiV3Sdk = require('@getbrevo/brevo');
 const dns = require('dns').promises;
 require('dotenv').config();
 
+// ========================================
+// PLATFORM BREVO — ALL client portal emails/SMS route through here
+// Diamondback Coding's own Brevo account key. Per-portal keys are IGNORED for sending.
+// ========================================
+const PLATFORM_BREVO_KEY = process.env.BREVO_API_KEY || process.env.PLATFORM_BREVO_KEY;
+const PLATFORM_SENDER_EMAIL = process.env.PLATFORM_SENDER_EMAIL || 'contact@diamondbackcoding.com';
+const PLATFORM_SENDER_NAME  = process.env.PLATFORM_SENDER_NAME  || 'Diamondback Coding';
+
+// Billing rates — 2× what Brevo charges
+const BREVO_COST_EMAIL  = 0.00150;   // Brevo charges $0.0015/email
+const BREVO_COST_SMS    = 0.00900;   // Brevo charges $0.009/SMS
+const CLIENT_RATE_EMAIL = 0.00300;   // We charge $0.003/email (2×)
+const CLIENT_RATE_SMS   = 0.01800;   // We charge $0.018/SMS (2×)
+
+function currentBillingMonth() {
+    const d = new Date();
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().split('T')[0];
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || 'https://diamondbackcoding.com';
@@ -20932,8 +20951,8 @@ async function sendSmsViaBrevo(apiKey, senderName, toPhone, message) {
 
 // POST /api/client/leads/:id/send-email
 // Quick-compose email from the message thread modal.
-// Uses the portal's own Brevo key + sender identity.
-// Logs to message_log (not client_email_log) so it appears in the conversation thread.
+// ALWAYS uses Diamondback Coding's platform Brevo account — never per-portal keys.
+// Usage is recorded to portal_usage_log for monthly billing at 2× Brevo rates.
 app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res) => {
     try {
         const leadId   = parseInt(req.params.id);
@@ -20943,36 +20962,17 @@ app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res
         if (!body)    return res.status(400).json({ success: false, message: 'body required' });
         if (!toEmail) return res.status(400).json({ success: false, message: 'toEmail required' });
 
-        // Get portal settings — need Brevo key and sender identity
+        // Always use Diamondback's platform Brevo key — NOT per-portal key
+        if (!PLATFORM_BREVO_KEY) {
+            return res.status(500).json({ success: false, message: 'Platform email not configured. Contact Diamondback Coding.' });
+        }
+
+        // Get portal settings for sender identity only
         const settings = portalId ? await getClientEmailSettings(portalId) : null;
-        const brevoKey = settings?.brevo_api_key || process.env.BREVO_API_KEY;
 
-        if (!brevoKey) {
-            return res.status(400).json({ success: false, message: 'Brevo is not configured. Add your Brevo API key in Settings.' });
-        }
-
-        // Determine FROM address (same logic as sendClientEmail)
-        let fromEmail = null;
-        let fromName  = null;
-        const domainVerified = settings?.domain_status === 'verified' && settings?.verified_domain;
-        if (domainVerified && req.user.email) {
-            const senderDomain = req.user.email.toLowerCase().split('@')[1];
-            if (senderDomain === settings.verified_domain.toLowerCase()) {
-                fromEmail = req.user.email.toLowerCase();
-                const cuRow = await pool.query(
-                    `SELECT user_name FROM company_users WHERE LOWER(user_email)=LOWER($1) AND client_portal_id=$2 LIMIT 1`,
-                    [req.user.email, portalId]
-                ).catch(() => ({ rows: [] }));
-                fromName = cuRow.rows[0]?.user_name || req.user.email.split('@')[0];
-            }
-        }
-        if (!fromEmail) {
-            fromEmail = settings?.sender_email || settings?.company_email;
-            fromName  = settings?.sender_name  || settings?.company_name || 'Team';
-        }
-        if (!fromEmail) {
-            return res.status(400).json({ success: false, message: 'No sender email configured. Set Sender Email or verify your domain in Settings.' });
-        }
+        // Determine FROM address (portal sender identity, not Brevo key)
+        let fromEmail = settings?.sender_email || settings?.company_email || PLATFORM_SENDER_EMAIL;
+        let fromName  = settings?.sender_name  || settings?.company_name  || PLATFORM_SENDER_NAME;
 
         // Build simple HTML email
         const escapedBody = body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
@@ -20984,8 +20984,18 @@ app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res
 
         const emailSubject = subject || `Message from ${fromName}`;
 
-        // Send via Brevo
-        await sendViaBrevo(brevoKey, fromEmail, fromName, toEmail, emailSubject, html);
+        // Send via Diamondback's platform Brevo account
+        const brevoResult = await sendViaBrevo(PLATFORM_BREVO_KEY, fromEmail, fromName, toEmail, emailSubject, html);
+
+        // Record usage for billing
+        await recordUsage({
+            clientPortalId: portalId,
+            eventType: 'email',
+            leadId,
+            leadEmail: toEmail,
+            subject: emailSubject,
+            brevoMessageId: brevoResult?.messageId
+        });
 
         // Log to message_log so the thread picks it up
         await pool.query(`
@@ -21010,12 +21020,18 @@ app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res
 });
 
 // POST /api/client/leads/:id/send-sms  — Send SMS to a lead
+// ALWAYS uses Diamondback Coding's platform Brevo account — never per-portal keys.
 app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) => {
     try {
         const leadId = parseInt(req.params.id);
         const portalId = await getClientPortalId(req.user.id);
         const { message } = req.body;
         if (!message) return res.status(400).json({ success: false, message: 'message required' });
+
+        // Always use Diamondback's platform Brevo key
+        if (!PLATFORM_BREVO_KEY) {
+            return res.status(500).json({ success: false, message: 'Platform SMS not configured. Contact Diamondback Coding.' });
+        }
 
         // Get lead phone
         const leadResult = await pool.query('SELECT * FROM leads WHERE id=$1', [leadId]);
@@ -21024,13 +21040,20 @@ app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) 
         const toPhone = lead.phone;
         if (!toPhone) return res.status(400).json({ success: false, message: 'Lead has no phone number' });
 
-        // Get SMS settings
+        // Get portal settings for SMS sender name
         const settings = portalId ? await getClientEmailSettings(portalId) : null;
-        if (!settings || !settings.brevo_api_key || !settings.brevo_sms_enabled) {
-            return res.status(400).json({ success: false, message: 'Brevo SMS not configured. Enable it in Settings → SMS.' });
-        }
+        const senderName = settings?.brevo_sms_sender || settings?.company_name || 'Notify';
 
-        await sendSmsViaBrevo(settings.brevo_api_key, settings.brevo_sms_sender || 'CRM', toPhone, message);
+        const smsResult = await sendSmsViaBrevo(PLATFORM_BREVO_KEY, senderName, toPhone, message);
+
+        // Record usage for billing
+        await recordUsage({
+            clientPortalId: portalId,
+            eventType: 'sms',
+            leadId,
+            leadEmail: lead.email,
+            brevoMessageId: smsResult?.messageId
+        });
 
         // Log to message_log
         await pool.query(`
@@ -22879,6 +22902,143 @@ async function migrateExistingLeadsToTemperature() {
 // After 24 hours with no bounce, we assume delivery and:
 // 1. Mark email as 'sent' 
 // 2. Advance the lead (increment follow_up_count, update last_contact_date)
+// ========================================
+// USAGE REVENUE ANALYTICS — Admin Portal
+// GET /api/admin/usage/analytics
+// ========================================
+app.get('/api/admin/usage/analytics', authenticateToken, async (req, res) => {
+    try {
+        const now = new Date();
+        const thisMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0];
+        const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().split('T')[0];
+        const ytdStart  = new Date(Date.UTC(now.getUTCFullYear(), 0, 1)).toISOString().split('T')[0];
+
+        const aggregate = async (where, params) => {
+            const r = await pool.query(`
+                SELECT
+                    COALESCE(SUM(email_count),0)::int   AS emails,
+                    COALESCE(SUM(sms_count),0)::int     AS sms,
+                    COALESCE(SUM(email_cost+sms_cost),0)::float   AS brevo_cost,
+                    COALESCE(SUM(email_revenue+sms_revenue),0)::float AS revenue
+                FROM portal_usage_log
+                WHERE ${where}
+            `, params);
+            const row = r.rows[0];
+            return { emails: row.emails, sms: row.sms, bRevoCost: row.brevo_cost, revenue: row.revenue, profit: row.revenue - row.brevo_cost };
+        };
+
+        const [currentMonth, lastMonthData, yearToDate, allTime] = await Promise.all([
+            aggregate('billing_month = $1', [thisMonth]),
+            aggregate('billing_month = $1', [lastMonth]),
+            aggregate('billing_month >= $1', [ytdStart]),
+            aggregate('1=1', [])
+        ]);
+
+        // Per-portal breakdown for current month
+        const portalBreakdown = await pool.query(`
+            SELECT client_portal_id, portal_label,
+                email_count, sms_count,
+                (email_cost + sms_cost)     AS brevo_cost,
+                (email_revenue + sms_revenue) AS revenue,
+                (email_revenue + sms_revenue - email_cost - sms_cost) AS profit
+            FROM portal_usage_log
+            WHERE billing_month = $1
+            ORDER BY revenue DESC
+        `, [thisMonth]);
+
+        // 12-month trend
+        const monthlyTrend = await pool.query(`
+            SELECT billing_month,
+                SUM(email_count)::int   AS emails,
+                SUM(sms_count)::int     AS sms,
+                SUM(email_cost+sms_cost)::float   AS brevo_cost,
+                SUM(email_revenue+sms_revenue)::float AS revenue,
+                SUM(email_revenue+sms_revenue - email_cost - sms_cost)::float AS profit
+            FROM portal_usage_log
+            WHERE billing_month >= $1
+            GROUP BY billing_month
+            ORDER BY billing_month ASC
+        `, [new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)).toISOString().split('T')[0]]);
+
+        res.json({
+            success: true,
+            rates: { emailCostBrevo: BREVO_COST_EMAIL, smsCostBrevo: BREVO_COST_SMS, emailChargeClient: CLIENT_RATE_EMAIL, smsChargeClient: CLIENT_RATE_SMS },
+            currentMonth,
+            lastMonth: lastMonthData,
+            yearToDate,
+            allTime,
+            portalBreakdown: portalBreakdown.rows,
+            monthlyTrend: monthlyTrend.rows
+        });
+    } catch(e) {
+        console.error('[USAGE ANALYTICS]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// ========================================
+// CLIENT BILLING SUMMARY — Client Portal
+// GET /api/client/billing/usage
+// Shows last month charges + current month projection
+// ========================================
+app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+
+        const now = new Date();
+        const thisMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0];
+        const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().split('T')[0];
+
+        // Subscription charge
+        const subResult = await pool.query(
+            `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active'`,
+            [portalId]
+        );
+        const subscriptionCharge = subResult.rows[0]?.sub_total || 0;
+
+        const getUsage = async (month) => {
+            const r = await pool.query(
+                `SELECT email_count, sms_count, email_revenue, sms_revenue FROM portal_usage_log WHERE client_portal_id=$1 AND billing_month=$2`,
+                [portalId, month]
+            );
+            return r.rows[0] || { email_count:0, sms_count:0, email_revenue:0, sms_revenue:0 };
+        };
+
+        const lm = await getUsage(lastMonth);
+        const cm = await getUsage(thisMonth);
+
+        // Projection: scale current usage to full month
+        const dayOfMonth = now.getUTCDate();
+        const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+        const scale = daysInMonth / Math.max(dayOfMonth, 1);
+        const projectedUsage = parseFloat(((parseFloat(cm.email_revenue) + parseFloat(cm.sms_revenue)) * scale).toFixed(4));
+
+        res.json({
+            success: true,
+            rates: { perEmail: CLIENT_RATE_EMAIL, perSms: CLIENT_RATE_SMS },
+            lastMonth: {
+                emails: lm.email_count,
+                sms: lm.sms_count,
+                usageCharge: parseFloat((parseFloat(lm.email_revenue) + parseFloat(lm.sms_revenue)).toFixed(4)),
+                subscriptionCharge,
+                total: parseFloat((parseFloat(lm.email_revenue) + parseFloat(lm.sms_revenue) + subscriptionCharge).toFixed(2))
+            },
+            currentMonth: {
+                emails: cm.email_count,
+                sms: cm.sms_count,
+                usageChargeSoFar: parseFloat((parseFloat(cm.email_revenue) + parseFloat(cm.sms_revenue)).toFixed(4)),
+                projectedUsageCharge: projectedUsage,
+                subscriptionCharge,
+                projectedTotal: parseFloat((projectedUsage + subscriptionCharge).toFixed(2))
+            }
+        });
+    } catch(e) {
+        console.error('[CLIENT BILLING]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 function startEmailConfirmationJob() {
     // Run every minute for real-time updates
     const INTERVAL = 60 * 1000; // 1 minute in milliseconds
@@ -22967,6 +23127,115 @@ function startEmailConfirmationJob() {
 
 // Section-specific email analytics
 
+// ========================================
+// USAGE TRACKING — permanent per-portal billing records
+// These tables survive portal/account deletion so end-of-month billing is always accurate.
+// ========================================
+
+async function initializeUsageTables() {
+    try {
+        // Monthly aggregate — one row per portal per billing month
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS portal_usage_log (
+                id SERIAL PRIMARY KEY,
+                client_portal_id VARCHAR(255) NOT NULL,
+                portal_label VARCHAR(500),
+                billing_month DATE NOT NULL,
+                email_count INTEGER DEFAULT 0,
+                sms_count INTEGER DEFAULT 0,
+                email_cost DECIMAL(12,6) DEFAULT 0,
+                sms_cost DECIMAL(12,6) DEFAULT 0,
+                email_revenue DECIMAL(12,6) DEFAULT 0,
+                sms_revenue DECIMAL(12,6) DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(client_portal_id, billing_month)
+            )
+        `);
+
+        // Individual send events — full audit trail
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS portal_usage_events (
+                id SERIAL PRIMARY KEY,
+                client_portal_id VARCHAR(255) NOT NULL,
+                portal_label VARCHAR(500),
+                event_type VARCHAR(20) NOT NULL,
+                lead_id INTEGER,
+                lead_email VARCHAR(255),
+                subject VARCHAR(500),
+                brevo_message_id VARCHAR(255),
+                brevo_cost DECIMAL(12,6),
+                client_charge DECIMAL(12,6),
+                billing_month DATE NOT NULL,
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_portal_usage_log_portal_month ON portal_usage_log(client_portal_id, billing_month)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_portal_usage_events_portal ON portal_usage_events(client_portal_id, billing_month)`);
+
+        console.log('[USAGE] Usage tracking tables initialized');
+    } catch(e) {
+        console.error('[USAGE] Table init error:', e.message);
+    }
+}
+
+// Record a single email or SMS send event — call this AFTER successful delivery
+async function recordUsage({ clientPortalId, eventType, leadId = null, leadEmail = null, subject = null, brevoMessageId = null }) {
+    if (!clientPortalId) return;
+    const billingMonth = currentBillingMonth();
+    const bCost  = eventType === 'email' ? BREVO_COST_EMAIL  : BREVO_COST_SMS;
+    const cCharge = eventType === 'email' ? CLIENT_RATE_EMAIL : CLIENT_RATE_SMS;
+
+    try {
+        // Get portal label for denormalization (survives deletion)
+        let portalLabel = null;
+        try {
+            const labelRow = await pool.query(
+                `SELECT company_name FROM client_companies WHERE client_portal_id=$1 LIMIT 1`,
+                [clientPortalId]
+            );
+            portalLabel = labelRow.rows[0]?.company_name || clientPortalId;
+        } catch(_) { portalLabel = clientPortalId; }
+
+        // Upsert monthly aggregate
+        const emailDelta = eventType === 'email' ? 1 : 0;
+        const smsDelta   = eventType === 'sms'   ? 1 : 0;
+        await pool.query(`
+            INSERT INTO portal_usage_log
+                (client_portal_id, portal_label, billing_month,
+                 email_count, sms_count, email_cost, sms_cost, email_revenue, sms_revenue, updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
+            ON CONFLICT (client_portal_id, billing_month) DO UPDATE SET
+                portal_label   = EXCLUDED.portal_label,
+                email_count    = portal_usage_log.email_count    + $4,
+                sms_count      = portal_usage_log.sms_count      + $5,
+                email_cost     = portal_usage_log.email_cost     + $6,
+                sms_cost       = portal_usage_log.sms_cost       + $7,
+                email_revenue  = portal_usage_log.email_revenue  + $8,
+                sms_revenue    = portal_usage_log.sms_revenue    + $9,
+                updated_at     = NOW()
+        `, [
+            clientPortalId, portalLabel, billingMonth,
+            emailDelta, smsDelta,
+            emailDelta * BREVO_COST_EMAIL,  smsDelta * BREVO_COST_SMS,
+            emailDelta * CLIENT_RATE_EMAIL, smsDelta * CLIENT_RATE_SMS
+        ]);
+
+        // Insert individual event
+        await pool.query(`
+            INSERT INTO portal_usage_events
+                (client_portal_id, portal_label, event_type, lead_id, lead_email,
+                 subject, brevo_message_id, brevo_cost, client_charge, billing_month)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        `, [clientPortalId, portalLabel, eventType, leadId, leadEmail,
+            subject, brevoMessageId, bCost, cCharge, billingMonth]);
+
+    } catch(e) {
+        // Never let usage tracking break the actual send
+        console.error('[USAGE] recordUsage error:', e.message);
+    }
+}
+
 async function startServer() {
     try {
         await initializeDatabase(pool);
@@ -22974,6 +23243,7 @@ async function startServer() {
         await addLeadSourceTracking();
         await initializeSubscriptionTables();
         await addLeadStripeCustomerColumn();
+        await initializeUsageTables();
 
         // Ensure client_companies has purchased_seats column
         try {
@@ -23631,76 +23901,54 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
         });
     }
 
-    // ── Try Brevo first (server-side, full tracking) ──────────────
-    // Always use master Brevo API key — no per-user key needed.
-    // Domain verification handles authentication at the domain level.
-    const masterBrevoKey = settings?.brevo_api_key || process.env.BREVO_API_KEY;
-    if (masterBrevoKey && fromEmail) {
-        try {
-            const brevoResult = await sendViaBrevo(
-                masterBrevoKey,
-                fromEmail,
-                fromName,
-                leadEmail,
-                subject,
-                html
-            );
-            const msgId = brevoResult?.messageId || null;
-
-            await pool.query(`
-                UPDATE client_email_log
-                SET status='sent', sent_at=NOW(), brevo_message_id=$2
-                WHERE id=$1
-            `, [logId, msgId || null]);
-
-            // Increment daily send counter for deliverability tracking
-            await incrementPortalEmailCount(portalId);
-
-            console.log(`[CLIENT EMAIL]  Sent via Brevo from ${fromEmail} → ${leadEmail}`);
-            return { success: true, logId, messageId: msgId, method: 'brevo' };
-        } catch(brevoErr) {
-            console.error('[CLIENT EMAIL] Brevo failed, checking EmailJS fallback:', brevoErr.message);
-            // Don't throw — fall through to EmailJS check
-        }
+    // ── Use Diamondback's platform Brevo key — never per-portal keys ─
+    const masterBrevoKey = PLATFORM_BREVO_KEY;
+    if (!masterBrevoKey) {
+        await pool.query(`UPDATE client_email_log SET status='failed', error_message='Platform Brevo key not configured' WHERE id=$1`, [logId]);
+        throw new Error('Platform email not configured. Contact Diamondback Coding support.');
+    }
+    if (!fromEmail) {
+        await pool.query(`UPDATE client_email_log SET status='failed', error_message='No sender email configured' WHERE id=$1`, [logId]);
+        throw new Error('No sender email configured in portal settings.');
     }
 
-    // ── EmailJS fallback (client-side send) ───────────────────────
-    // EmailJS runs in the browser, so we can't send from the server.
-    // We return a special payload so the frontend JS can complete the send.
-    if (settings?.emailjs_service_id && settings?.emailjs_template_id && settings?.emailjs_public_key) {
-        await pool.query(
-            `UPDATE client_email_log SET status='emailjs_pending', sent_at=NOW() WHERE id=$1`,
-            [logId]
+    try {
+        const brevoResult = await sendViaBrevo(
+            masterBrevoKey,
+            fromEmail,
+            fromName,
+            leadEmail,
+            subject,
+            html
         );
-        console.log(`[CLIENT EMAIL] Returning EmailJS payload for client-side send → ${leadEmail}`);
-        return {
-            success: true,
-            logId,
-            method: 'emailjs',
-            emailjs: {
-                serviceId:  settings.emailjs_service_id,
-                templateId: settings.emailjs_template_id,
-                publicKey:  settings.emailjs_public_key,
-                templateParams: {
-                    to_email:    leadEmail,
-                    from_email:  fromEmail || '',
-                    from_name:   fromName,
-                    subject:     subject,
-                    html_content: html,
-                    reply_to:    fromEmail || ''
-                }
-            }
-        };
-    }
+        const msgId = brevoResult?.messageId || null;
 
-    // ── No provider configured ────────────────────────────────────
-    if (logId) {
-        await pool.query(
-            `UPDATE client_email_log SET status='failed', error_message='No email provider configured', sent_at=NOW() WHERE id=$1`,
-            [logId]
-        );
+        await pool.query(`
+            UPDATE client_email_log
+            SET status='sent', sent_at=NOW(), brevo_message_id=$2
+            WHERE id=$1
+        `, [logId, msgId || null]);
+
+        // Increment daily send counter for deliverability tracking
+        await incrementPortalEmailCount(portalId);
+
+        // Record usage for billing at 2× Brevo rates
+        await recordUsage({
+            clientPortalId: portalId,
+            eventType: 'email',
+            leadId,
+            leadEmail,
+            subject,
+            brevoMessageId: msgId
+        });
+
+        console.log(`[CLIENT EMAIL] ✅ Sent via platform Brevo from ${fromEmail} → ${leadEmail}`);
+        return { success: true, logId, messageId: msgId, method: 'brevo' };
+    } catch(brevoErr) {
+        console.error('[CLIENT EMAIL] ❌ Platform Brevo send failed:', brevoErr.message);
+        await pool.query(`UPDATE client_email_log SET status='failed', error_message=$2 WHERE id=$1`, [logId, brevoErr.message]);
+        throw brevoErr;
     }
-    throw new Error('No email provider configured for this portal. Please set up Brevo or EmailJS in Settings.');
 }
 
 // ── Open tracking for client emails ──────────────────────────────

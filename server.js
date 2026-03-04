@@ -743,15 +743,51 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 // ========================================
 
 // Send email via Brevo
-async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, html, attachments = []) {
+async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, html, attachments = [], verifiedDomain = null) {
     // Use Brevo REST API directly — no SDK dependency, no constructor issues.
     const https = require('https');
 
+    // ── Sender verification workaround ───────────────────────────────────
+    // Brevo rejects unverified sender addresses (e.g. client Gmail accounts).
+    // Solution: always send FROM the verified platform address, set replyTo to
+    // the client's address so replies go directly to them, and include their
+    // identity in the display name so recipients know who it's from.
+    //
+    // Recipients see:  "Taylor Crownover via Diamondback CRM <contact@diamondbackcoding.com>"
+    // Replies go to:   taylor.crownover2024@gmail.com
+    // ── Sender verification logic ─────────────────────────────────────────
+    // If the sender's email domain is verified in Brevo, send directly from
+    // their address — fully branded, no "via" label, best deliverability.
+    // If not verified, fall back to platform address with reply-to so it
+    // still works without any setup required from the client.
+    const senderDomain = senderEmail ? senderEmail.split('@')[1]?.toLowerCase() : null;
+    const domainIsVerified = verifiedDomain && senderDomain &&
+        (senderDomain === verifiedDomain.toLowerCase() || senderDomain.endsWith('.' + verifiedDomain.toLowerCase()));
+
+    let actualSenderEmail, displayName, replyTo;
+    if (domainIsVerified) {
+        // Verified domain — send directly from client address, no "via" branding
+        actualSenderEmail = senderEmail;
+        displayName = senderName || senderEmail.split('@')[0];
+        replyTo = null;
+        console.log(`[BREVO] Verified domain — sending directly from: ${senderEmail}`);
+    } else {
+        // Unverified — use platform address, show client name, set reply-to
+        actualSenderEmail = PLATFORM_SENDER_EMAIL;
+        displayName = (senderEmail && senderEmail.toLowerCase() !== PLATFORM_SENDER_EMAIL.toLowerCase())
+            ? `${senderName || senderEmail.split('@')[0]} via Diamondback CRM`
+            : (senderName || 'Diamondback CRM');
+        replyTo = (senderEmail && senderEmail.toLowerCase() !== PLATFORM_SENDER_EMAIL.toLowerCase())
+            ? { email: senderEmail, name: senderName || senderEmail.split('@')[0] }
+            : null;
+    }
+
     const payload = {
-        sender: { email: senderEmail, name: senderName || 'Diamondback Coding' },
+        sender: { email: actualSenderEmail, name: displayName },
         to: [{ email: to }],
         subject,
-        htmlContent: html
+        htmlContent: html,
+        ...(replyTo ? { replyTo } : {})
     };
 
     if (attachments && attachments.length > 0) {
@@ -764,7 +800,7 @@ async function sendViaBrevo(brevoApiKey, senderEmail, senderName, to, subject, h
     }
 
     const body = JSON.stringify(payload);
-    console.log('[BREVO] Sending via REST API | to:', to, '| from:', senderEmail, '| key prefix:', brevoApiKey ? brevoApiKey.substring(0,8)+'...' : 'MISSING');
+    console.log('[BREVO] Sending | to:', to, '| from:', actualSenderEmail, '| display:', displayName, '| reply-to:', replyTo?.email || 'none', '| key prefix:', brevoApiKey ? brevoApiKey.substring(0,8)+'...' : 'MISSING');
 
     return new Promise((resolve, reject) => {
         const options = {
@@ -21161,7 +21197,8 @@ app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res
         const emailSubject = subject || `Message from ${fromName}`;
 
         // Send via Diamondback's platform Brevo account
-        const brevoResult = await sendViaBrevo(PLATFORM_BREVO_KEY, fromEmail, fromName, toEmail, emailSubject, html);
+        const verifiedDomain = (settings?.domain_status === 'verified') ? settings.verified_domain : null;
+        const brevoResult = await sendViaBrevo(PLATFORM_BREVO_KEY, fromEmail, fromName, toEmail, emailSubject, html, [], verifiedDomain);
 
         // Record usage for billing
         await recordUsage({
@@ -21213,8 +21250,26 @@ app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) 
         const leadResult = await pool.query('SELECT * FROM leads WHERE id=$1', [leadId]);
         if (!leadResult.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
         const lead = leadResult.rows[0];
-        const toPhone = lead.phone;
-        if (!toPhone) return res.status(400).json({ success: false, message: 'Lead has no phone number' });
+        const rawPhone = lead.phone;
+        if (!rawPhone) return res.status(400).json({ success: false, message: 'Lead has no phone number' });
+
+        // Normalize to E.164 format required by Brevo (e.g. +12145551234)
+        // Strip everything except digits and leading +
+        let toPhone = rawPhone.replace(/[^\d+]/g, '');
+        // If no leading +, assume US number
+        if (!toPhone.startsWith('+')) {
+            // Remove leading 1 if it's an 11-digit US number (1XXXXXXXXXX)
+            if (toPhone.length === 11 && toPhone.startsWith('1')) {
+                toPhone = '+' + toPhone;
+            } else if (toPhone.length === 10) {
+                toPhone = '+1' + toPhone;
+            } else {
+                // Best-effort: just prepend +
+                toPhone = '+' + toPhone;
+            }
+        }
+        console.log(`[SEND SMS] Normalized phone: "${rawPhone}" → "${toPhone}"`);
+        if (toPhone.length < 8) return res.status(400).json({ success: false, message: `Invalid phone number: ${rawPhone}` });
 
         // Get portal settings for SMS sender name
         // Check per-user sms_sender_name first (set by admin at user creation), then portal default
@@ -23052,6 +23107,133 @@ app.get('/api/client/charts', authenticateClient, async (req, res) => {
     }
 });
 
+// ============================================================
+// PORTAL BACKGROUND IMAGES — admin uploads shared with all company users
+// ============================================================
+
+const bgImageUpload = require('multer')({
+    storage: require('multer').diskStorage({
+        destination: (req, file, cb) => {
+            // Directory guaranteed to exist from startup ensureUploadDirs()
+            cb(null, require('path').join(__dirname, 'uploads', 'bg-images'));
+        },
+        filename: (req, file, cb) => {
+            const ext = require('path').extname(file.originalname);
+            cb(null, 'bg-' + Date.now() + '-' + Math.random().toString(36).slice(2,7) + ext);
+        }
+    }),
+    limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB max
+    fileFilter: (req, file, cb) => {
+        const ok = ['image/png','image/jpeg','image/webp','image/gif'].includes(file.mimetype);
+        ok ? cb(null, true) : cb(new Error('Only PNG, JPG, WEBP, GIF allowed'));
+    }
+});
+
+// Serve uploaded bg images statically
+app.use('/uploads/bg-images', require('express').static(require('path').join(__dirname, 'uploads', 'bg-images')));
+
+// GET /api/client/bg-images — list all bg images for this portal (available to all users)
+app.get('/api/client/bg-images', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, images: [] });
+        const result = await pool.query(
+            `SELECT id, url, label, uploaded_by, created_at FROM portal_bg_images
+             WHERE client_portal_id=$1 ORDER BY created_at ASC`,
+            [portalId]
+        );
+        res.json({ success: true, images: result.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/bg-images — admin uploads a new bg image
+app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+        let portalId = await getClientPortalId(req.user.id);
+        if (!portalId && req.user.email) {
+            const cc = await pool.query('SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email)=LOWER($1) LIMIT 1', [req.user.email]);
+            portalId = cc.rows[0]?.client_portal_id || null;
+        }
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found for this account' });
+        // Admin check — check leads table, then company_users as fallback
+        const adminCheck = await pool.query(
+            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+        );
+        const u = adminCheck.rows[0];
+        let isAdminBg = u?.is_company_admin || u?.is_co_admin;
+        if (!isAdminBg) {
+            const cuAdmin = await pool.query(
+                `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
+                [portalId, req.user.email]
+            ).catch(() => ({ rows: [] }));
+            isAdminBg = cuAdmin.rows[0]?.is_admin || false;
+        }
+        if (!isAdminBg) {
+            return res.status(403).json({ success: false, message: 'Admin only' });
+        }
+
+
+        // Limit to 10 custom backgrounds per portal
+        const countRes = await pool.query(
+            `SELECT COUNT(*) FROM portal_bg_images WHERE client_portal_id=$1`, [portalId]
+        );
+        if (parseInt(countRes.rows[0].count) >= 10) {
+            require('fs').unlink(req.file.path, () => {});
+            return res.status(400).json({ success: false, message: 'Maximum 10 custom backgrounds per account. Delete one first.' });
+        }
+
+        const url = '/uploads/bg-images/' + req.file.filename;
+        const label = req.body.label?.trim().slice(0, 40) || 'Custom';
+        const row = await pool.query(
+            `INSERT INTO portal_bg_images (client_portal_id, url, label, uploaded_by)
+             VALUES ($1,$2,$3,$4) RETURNING id, url, label, uploaded_by, created_at`,
+            [portalId, url, label, req.user.email]
+        );
+        res.json({ success: true, image: row.rows[0] });
+    } catch(e) {
+        console.error('[BG IMAGE UPLOAD]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// DELETE /api/client/bg-images/:id — admin deletes a custom bg image
+app.delete('/api/client/bg-images/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+
+        // Admin check — check leads table, then company_users as fallback
+        const adminCheck = await pool.query(
+            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+        );
+        const u = adminCheck.rows[0];
+        let isAdminDel = u?.is_company_admin || u?.is_co_admin;
+        if (!isAdminDel) {
+            const cuAdmin = await pool.query(
+                `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
+                [portalId, req.user.email]
+            ).catch(() => ({ rows: [] }));
+            isAdminDel = cuAdmin.rows[0]?.is_admin || false;
+        }
+        if (!isAdminDel) {
+            return res.status(403).json({ success: false, message: 'Admin only' });
+        }
+
+        const imgRes = await pool.query(
+            `DELETE FROM portal_bg_images WHERE id=$1 AND client_portal_id=$2 RETURNING url`,
+            [req.params.id, portalId]
+        );
+        if (!imgRes.rows[0]) return res.status(404).json({ success: false, message: 'Image not found' });
+
+        // Delete file from disk (non-blocking)
+        const filePath = require('path').join(__dirname, imgRes.rows[0].url);
+        require('fs').unlink(filePath, () => {});
+
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // ========================================
 // 404 HANDLER
 // ========================================
@@ -24431,13 +24613,17 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
     }
 
     try {
+        // Pass verified domain so sendViaBrevo can send directly from client address
+        const verifiedDomain = (settings?.domain_status === 'verified') ? settings.verified_domain : null;
         const brevoResult = await sendViaBrevo(
             masterBrevoKey,
             fromEmail,
             fromName,
             leadEmail,
             subject,
-            html
+            html,
+            [],           // no attachments
+            verifiedDomain
         );
         const msgId = brevoResult?.messageId || null;
 
@@ -25076,132 +25262,6 @@ app.delete('/api/client/company-logo', authenticateClient, async (req, res) => {
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// ============================================================
-// PORTAL BACKGROUND IMAGES — admin uploads shared with all company users
-// ============================================================
-
-const bgImageUpload = require('multer')({
-    storage: require('multer').diskStorage({
-        destination: (req, file, cb) => {
-            // Directory guaranteed to exist from startup ensureUploadDirs()
-            cb(null, require('path').join(__dirname, 'uploads', 'bg-images'));
-        },
-        filename: (req, file, cb) => {
-            const ext = require('path').extname(file.originalname);
-            cb(null, 'bg-' + Date.now() + '-' + Math.random().toString(36).slice(2,7) + ext);
-        }
-    }),
-    limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB max
-    fileFilter: (req, file, cb) => {
-        const ok = ['image/png','image/jpeg','image/webp','image/gif'].includes(file.mimetype);
-        ok ? cb(null, true) : cb(new Error('Only PNG, JPG, WEBP, GIF allowed'));
-    }
-});
-
-// Serve uploaded bg images statically
-app.use('/uploads/bg-images', require('express').static(require('path').join(__dirname, 'uploads', 'bg-images')));
-
-// GET /api/client/bg-images — list all bg images for this portal (available to all users)
-app.get('/api/client/bg-images', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.json({ success: true, images: [] });
-        const result = await pool.query(
-            `SELECT id, url, label, uploaded_by, created_at FROM portal_bg_images
-             WHERE client_portal_id=$1 ORDER BY created_at ASC`,
-            [portalId]
-        );
-        res.json({ success: true, images: result.rows });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// POST /api/client/bg-images — admin uploads a new bg image
-app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('image'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-        let portalId = await getClientPortalId(req.user.id);
-        if (!portalId && req.user.email) {
-            const cc = await pool.query('SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email)=LOWER($1) LIMIT 1', [req.user.email]);
-            portalId = cc.rows[0]?.client_portal_id || null;
-        }
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found for this account' });
-        // Admin check — check leads table, then company_users as fallback
-        const adminCheck = await pool.query(
-            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
-        );
-        const u = adminCheck.rows[0];
-        let isAdminBg = u?.is_company_admin || u?.is_co_admin;
-        if (!isAdminBg) {
-            const cuAdmin = await pool.query(
-                `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
-                [portalId, req.user.email]
-            ).catch(() => ({ rows: [] }));
-            isAdminBg = cuAdmin.rows[0]?.is_admin || false;
-        }
-        if (!isAdminBg) {
-            return res.status(403).json({ success: false, message: 'Admin only' });
-        }
-
-
-        // Limit to 10 custom backgrounds per portal
-        const countRes = await pool.query(
-            `SELECT COUNT(*) FROM portal_bg_images WHERE client_portal_id=$1`, [portalId]
-        );
-        if (parseInt(countRes.rows[0].count) >= 10) {
-            require('fs').unlink(req.file.path, () => {});
-            return res.status(400).json({ success: false, message: 'Maximum 10 custom backgrounds per account. Delete one first.' });
-        }
-
-        const url = '/uploads/bg-images/' + req.file.filename;
-        const label = req.body.label?.trim().slice(0, 40) || 'Custom';
-        const row = await pool.query(
-            `INSERT INTO portal_bg_images (client_portal_id, url, label, uploaded_by)
-             VALUES ($1,$2,$3,$4) RETURNING id, url, label, uploaded_by, created_at`,
-            [portalId, url, label, req.user.email]
-        );
-        res.json({ success: true, image: row.rows[0] });
-    } catch(e) {
-        console.error('[BG IMAGE UPLOAD]', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// DELETE /api/client/bg-images/:id — admin deletes a custom bg image
-app.delete('/api/client/bg-images/:id', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
-
-        // Admin check — check leads table, then company_users as fallback
-        const adminCheck = await pool.query(
-            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
-        );
-        const u = adminCheck.rows[0];
-        let isAdminDel = u?.is_company_admin || u?.is_co_admin;
-        if (!isAdminDel) {
-            const cuAdmin = await pool.query(
-                `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
-                [portalId, req.user.email]
-            ).catch(() => ({ rows: [] }));
-            isAdminDel = cuAdmin.rows[0]?.is_admin || false;
-        }
-        if (!isAdminDel) {
-            return res.status(403).json({ success: false, message: 'Admin only' });
-        }
-
-        const imgRes = await pool.query(
-            `DELETE FROM portal_bg_images WHERE id=$1 AND client_portal_id=$2 RETURNING url`,
-            [req.params.id, portalId]
-        );
-        if (!imgRes.rows[0]) return res.status(404).json({ success: false, message: 'Image not found' });
-
-        // Delete file from disk (non-blocking)
-        const filePath = require('path').join(__dirname, imgRes.rows[0].url);
-        require('fs').unlink(filePath, () => {});
-
-        res.json({ success: true });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
 // These forms route back to the specific client portal (not admin)
 // and apply that portal's branding (logo, colors, company name).
 // ============================================================

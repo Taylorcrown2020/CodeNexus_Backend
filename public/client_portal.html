@@ -2162,22 +2162,48 @@ tr:hover .row-actions { opacity: 1; }
                                 When you add a team member, their sender email is automatically set to their login email and their sender name is set to the name above.
                             </div>
                         </div>
-
-                        <!-- Auto-managed sender info -->
-                        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
+                        <!-- Domain Verification -->
+                        <div class="settings-admin-only" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
                             <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                                Email Sender Status
+                                Domain Verification
                             </div>
-                            <div style="background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:14px 16px;font-size:12px;color:var(--text-2);line-height:1.8;">
-                                <div style="font-size:13px;font-weight:700;color:#10b981;margin-bottom:6px;">✅ Fully Managed by Diamondback Coding</div>
-                                When your account was created, your sender email was automatically registered in our platform's email system. Every user added to your company account is registered the same way — and removed automatically when their seat is cancelled.
-                                <br><br>
-                                <strong style="color:var(--text-0);">You do not need to configure DNS records, verify domains, or manage API keys.</strong> We handle all of that so your team can focus on selling.
-                                <br><br>
-                                <span style="color:var(--text-3);">If emails are going to spam, make sure your sender email matches your actual business domain (e.g. <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d7aeb8a297aeb8a2a5b4b8baa7b6b9aef9b4b8ba">[email&#160;protected]</a>) and contact Diamondback Coding support.</span>
+                            <div id="domainStatusBanner" style="border-radius:var(--r-md);padding:12px 16px;font-size:12px;margin-bottom:14px;"></div>
+                            <div id="domainAddSection">
+                                <div style="font-size:12px;color:var(--text-2);line-height:1.7;margin-bottom:12px;">
+                                    By default, emails send as <strong>"Your Name via Diamondback CRM"</strong> from our shared address.
+                                    Verify your business domain to send fully branded emails directly from
+                                    <strong>you@yourdomain.com</strong> — better deliverability, no "via" label.
+                                </div>
+                                <div style="display:flex;gap:8px;align-items:flex-end;">
+                                    <div class="form-field" style="flex:1;margin-bottom:0;">
+                                        <label class="form-label">Your Business Domain</label>
+                                        <input class="form-input" id="domainInput" placeholder="yourdomain.com" style="font-family:monospace;font-size:13px;">
+                                    </div>
+                                    <button class="btn btn-white" onclick="addDomain()" id="domainAddBtn" style="white-space:nowrap;flex-shrink:0;">Get DNS Records</button>
+                                </div>
                             </div>
-                            <!-- Deliverability stats -->
+                            <div id="domainDnsSection" style="display:none;margin-top:14px;">
+                                <div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:10px;">
+                                    Add these records to your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.), then click Check Status.
+                                </div>
+                                <div id="dnsRecordsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                                <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+                                    <button class="btn btn-white" onclick="checkDomainStatus()" id="domainCheckBtn">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px;"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                                        Check Verification Status
+                                    </button>
+                                    <button class="btn btn-ghost" onclick="removeDomain()" style="color:var(--text-3);font-size:12px;">Remove Domain</button>
+                                </div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:8px;">⏱ DNS changes can take up to 48 hours to propagate.</div>
+                            </div>
+                            <div id="domainVerifiedSection" style="display:none;margin-top:4px;">
+                                <div style="background:#10b98111;border:1px solid #10b98133;border-radius:var(--r-md);padding:12px 16px;font-size:12px;color:var(--text-2);line-height:1.7;">
+                                    <div style="font-size:13px;font-weight:700;color:#10b981;margin-bottom:4px;">✅ Domain Verified</div>
+                                    Emails now send directly from <strong id="verifiedDomainLabel"></strong> — fully branded, no "via" label, maximum deliverability.
+                                </div>
+                                <button class="btn btn-ghost" onclick="removeDomain()" style="color:var(--text-3);font-size:12px;margin-top:10px;">Remove Domain</button>
+                            </div>
                             <div id="deliverabilityStats" style="display:none;margin-top:14px;background:var(--bg-2);border-radius:var(--r-md);padding:12px 16px;">
                                 <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:10px;">Deliverability Health</div>
                                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
@@ -2200,22 +2226,6 @@ tr:hover .row-actions { opacity: 1; }
                             </div>
                         </div>
 
-                        <!-- SMS Sender Name -->
-                        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
-                            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z"/></svg>
-                                SMS Sender Name
-                            </div>
-                            <div class="form-field">
-                                <label class="form-label">SMS Sender Name <span style="color:var(--text-3);font-weight:400;">(max 11 chars, shown on texts)</span></label>
-                                <input class="form-input" id="settingsSmsSender" placeholder="MyBusiness" maxlength="11">
-                            </div>
-                            <div style="font-size:11px;color:var(--text-3);margin-top:4px;">SMS is sent through Diamondback Coding's platform. Lead phone numbers must be in E.164 format (e.g. +15551234567).</div>
-                        </div>
-                        <!-- Save button — admin-only, saves sender identity + SMS sender name -->
-                        <div class="settings-admin-only" style="margin-top:20px;">
-                            <button class="btn btn-white" onclick="saveEmailSettings()">Save Email &amp; SMS Settings</button>
-                        </div>
                     </div>
                 </div>
 
@@ -8733,6 +8743,174 @@ async function loadSettings() {
     } catch {}
 }
 
+// ── Domain Verification ───────────────────────────────────────────
+async function _loadDomainState(s) {
+    // Populate rate limit
+    const rlInput = document.getElementById('settingsRateLimit');
+    if (rlInput) rlInput.value = s.rate_limit_day || 500;
+
+    // Show deliverability stats if present
+    if (s.emails_sent_today !== undefined) {
+        const el = id => document.getElementById(id);
+        if (el('statEmailsToday')) el('statEmailsToday').textContent = s.emails_sent_today ?? '0';
+        if (el('statBounces'))     el('statBounces').textContent     = s.bounce_count ?? '0';
+        if (el('statComplaints'))  el('statComplaints').textContent  = s.complaint_count ?? '0';
+        const statsEl = document.getElementById('deliverabilityStats');
+        if (statsEl) statsEl.style.display = '';
+        const suspended = el('suspendedBanner');
+        if (suspended) suspended.style.display = s.suspended ? '' : 'none';
+    }
+
+    if (!S.isAdmin) return;
+    const status  = s?.domain_status  || 'unverified';
+    const domain  = s?.verified_domain || null;
+    const records = s?.dnsRecords || null;
+
+    const banner     = document.getElementById('domainStatusBanner');
+    const addSection = document.getElementById('domainAddSection');
+    const dnsSection = document.getElementById('domainDnsSection');
+    const verSection = document.getElementById('domainVerifiedSection');
+
+    // Set domain input if we have a domain already
+    if (domain) {
+        const inp = document.getElementById('domainInput');
+        if (inp) inp.value = domain;
+    }
+
+    if (status === 'verified') {
+        if (banner)     { banner.style.cssText = 'background:#10b98111;border:1px solid #10b98133;color:#10b981;border-radius:var(--r-md);padding:12px 16px;font-size:12px;margin-bottom:14px;font-weight:600;'; banner.textContent = '✅ Domain verified — emails send directly from your domain'; }
+        if (addSection) addSection.style.display = 'none';
+        if (dnsSection) dnsSection.style.display = 'none';
+        if (verSection) {
+            verSection.style.display = 'block';
+            const lbl = document.getElementById('verifiedDomainLabel');
+            if (lbl) lbl.textContent = domain;
+        }
+    } else if (status === 'pending' && domain) {
+        if (banner)     { banner.style.cssText = 'background:#f59e0b11;border:1px solid #f59e0b44;color:#f59e0b;border-radius:var(--r-md);padding:12px 16px;font-size:12px;margin-bottom:14px;font-weight:600;'; banner.textContent = `⏳ Waiting for DNS verification on ${domain}`; }
+        if (addSection) addSection.style.display = 'none';
+        if (dnsSection) { dnsSection.style.display = 'block'; }
+        if (verSection) verSection.style.display = 'none';
+        // Reload DNS records from server if needed
+        if (!document.getElementById('dnsRecordsList').children.length) {
+            await checkDomainStatus(true); // silent refresh
+        }
+    } else {
+        // Unverified — show the add form
+        if (banner)     { banner.style.cssText = 'background:var(--bg-2);border:1px solid var(--border);color:var(--text-2);border-radius:var(--r-md);padding:12px 16px;font-size:12px;margin-bottom:14px;'; banner.innerHTML = '📧 Currently sending as <strong>"Name via Diamondback CRM"</strong>. Verify your domain to remove the "via" label.'; }
+        if (addSection) addSection.style.display = 'block';
+        if (dnsSection) dnsSection.style.display = 'none';
+        if (verSection) verSection.style.display = 'none';
+    }
+}
+
+function _renderDnsRecords(records) {
+    const list = document.getElementById('dnsRecordsList');
+    if (!list || !records?.length) return;
+    list.innerHTML = '';
+    records.forEach(r => {
+        const verified = r.verified;
+        const card = document.createElement('div');
+        card.style.cssText = `background:var(--bg-2);border:1px solid ${verified === true ? '#10b98144' : verified === false ? '#ef444444' : 'var(--border)'};border-radius:var(--r-md);padding:12px 14px;font-size:11px;`;
+        card.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="background:var(--bg-3);border-radius:4px;padding:2px 7px;font-weight:700;font-size:10px;color:var(--text-1);">${r.type}</span>
+                    <span style="font-weight:600;color:var(--text-1);">${r.description || ''}</span>
+                </div>
+                ${verified === true ? '<span style="color:#10b981;font-weight:700;font-size:11px;">✅ Verified</span>' : verified === false ? '<span style="color:#f59e0b;font-size:11px;">⏳ Pending</span>' : ''}
+            </div>
+            <div style="margin-bottom:4px;color:var(--text-3);">Host / Name:</div>
+            <div style="font-family:monospace;background:var(--bg-3);padding:5px 8px;border-radius:4px;color:var(--text-0);word-break:break-all;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span>${r.host}</span>
+                <button onclick="navigator.clipboard.writeText('${r.host.replace(/'/g,"\\'")}');toast('Copied','success')" style="border:none;background:none;cursor:pointer;color:var(--text-3);padding:0;flex-shrink:0;" title="Copy">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+            </div>
+            <div style="margin-bottom:4px;color:var(--text-3);">Value:</div>
+            <div style="font-family:monospace;background:var(--bg-3);padding:5px 8px;border-radius:4px;color:var(--text-0);word-break:break-all;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                <span style="flex:1;">${r.value}</span>
+                <button onclick="navigator.clipboard.writeText(${JSON.stringify(r.value)});toast('Copied','success')" style="border:none;background:none;cursor:pointer;color:var(--text-3);padding:0;flex-shrink:0;margin-top:1px;" title="Copy">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
+async function addDomain() {
+    const input = document.getElementById('domainInput');
+    const domain = input?.value?.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!domain || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) { toast('Enter a valid domain (e.g. yourdomain.com)', 'error'); return; }
+    const btn = document.getElementById('domainAddBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Registering…'; }
+    try {
+        const res  = await apiFetch('/client/domain/add', 'POST', { domain });
+        const data = await res.json();
+        if (data.success) {
+            toast('Domain registered — add the DNS records below', 'success');
+            document.getElementById('domainAddSection').style.display = 'none';
+            document.getElementById('domainDnsSection').style.display = 'block';
+            document.getElementById('domainVerifiedSection').style.display = 'none';
+            const banner = document.getElementById('domainStatusBanner');
+            if (banner) { banner.style.cssText = 'background:#f59e0b11;border:1px solid #f59e0b44;color:#f59e0b;border-radius:var(--r-md);padding:12px 16px;font-size:12px;margin-bottom:14px;font-weight:600;'; banner.textContent = `⏳ Waiting for DNS verification on ${data.domain}`; }
+            _renderDnsRecords(data.dnsRecords);
+        } else {
+            toast(data.message || 'Failed to register domain', 'error');
+        }
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+    if (btn) { btn.disabled = false; btn.textContent = 'Get DNS Records'; }
+}
+
+async function checkDomainStatus(silent = false) {
+    const btn = document.getElementById('domainCheckBtn');
+    if (btn && !silent) { btn.disabled = true; btn.textContent = 'Checking…'; }
+    try {
+        const res  = await apiFetch('/client/domain/status');
+        const data = await res.json();
+        if (!data.success) { if (!silent) toast(data.message || 'Error checking domain', 'error'); return; }
+
+        _renderDnsRecords(data.dnsRecords);
+
+        if (data.status === 'verified') {
+            toast('✅ Domain verified! Emails will now send directly from your domain.', 'success');
+            document.getElementById('domainAddSection').style.display = 'none';
+            document.getElementById('domainDnsSection').style.display = 'none';
+            const verSection = document.getElementById('domainVerifiedSection');
+            if (verSection) verSection.style.display = 'block';
+            const lbl = document.getElementById('verifiedDomainLabel');
+            if (lbl) lbl.textContent = data.domain;
+            const banner = document.getElementById('domainStatusBanner');
+            if (banner) { banner.style.cssText = 'background:#10b98111;border:1px solid #10b98133;color:#10b981;border-radius:var(--r-md);padding:12px 16px;font-size:12px;margin-bottom:14px;font-weight:600;'; banner.textContent = '✅ Domain verified — emails send directly from your domain'; }
+        } else {
+            if (!silent) toast('DNS records not yet detected. It can take up to 48 hours.', 'info');
+        }
+    } catch(e) { if (!silent) toast('Error: ' + e.message, 'error'); }
+    if (btn && !silent) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px;"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> Check Verification Status'; }
+}
+
+async function removeDomain() {
+    if (!confirm('Remove domain verification? Emails will revert to sending "via Diamondback CRM".')) return;
+    try {
+        const res  = await apiFetch('/client/domain', 'DELETE');
+        const data = await res.json();
+        if (data.success) {
+            toast('Domain removed', 'success');
+            document.getElementById('domainAddSection').style.display = 'block';
+            document.getElementById('domainDnsSection').style.display = 'none';
+            document.getElementById('domainVerifiedSection').style.display = 'none';
+            document.getElementById('dnsRecordsList').innerHTML = '';
+            const inp = document.getElementById('domainInput');
+            if (inp) inp.value = '';
+            const banner = document.getElementById('domainStatusBanner');
+            if (banner) { banner.style.cssText = 'background:var(--bg-2);border:1px solid var(--border);color:var(--text-2);border-radius:var(--r-md);padding:12px 16px;font-size:12px;margin-bottom:14px;'; banner.innerHTML = '📧 Currently sending as <strong>"Name via Diamondback CRM"</strong>. Verify your domain to remove the "via" label.'; }
+        } else {
+            toast(data.message || 'Error removing domain', 'error');
+        }
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
 async function saveEmailSettings() {
     const payload = {
         sender_email:     document.getElementById('settingsSenderEmail')?.value?.trim()  || null,
@@ -8781,29 +8959,6 @@ async function saveEmailSettings() {
         if (btn) { btn.disabled = false; btn.textContent = 'Save Email & SMS Settings'; }
     }
 }
-
-// SENDER STATUS — fully managed by Diamondback Coding platform
-// Domain verification removed. Senders are auto-registered/removed on account
-// creation and cancellation via brevoRegisterSender / brevoRemoveSender on the server.
-
-async function _loadDomainState(s) {
-    // Populate rate limit
-    const rlInput = document.getElementById('settingsRateLimit');
-    if (rlInput) rlInput.value = s.rate_limit_day || 500;
-
-    // Show deliverability stats if present
-    if (s.emails_sent_today !== undefined) {
-        const el = id => document.getElementById(id);
-        if (el('statEmailsToday')) el('statEmailsToday').textContent = s.emails_sent_today ?? '0';
-        if (el('statBounces'))     el('statBounces').textContent     = s.bounce_count ?? '0';
-        if (el('statComplaints'))  el('statComplaints').textContent  = s.complaint_count ?? '0';
-        const statsEl = document.getElementById('deliverabilityStats');
-        if (statsEl) statsEl.style.display = '';
-        const suspended = el('suspendedBanner');
-        if (suspended) suspended.style.display = s.suspended ? '' : 'none';
-    }
-}
-
 
 // ============================================================
 // COMPANY LOGO UPLOAD

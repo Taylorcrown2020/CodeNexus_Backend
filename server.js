@@ -7429,7 +7429,6 @@ app.get('/api/scoring/stats', authenticateToken, async (req, res) => {
 // Install with: npm install multer
 
 const multer = require('multer');
-const fs = require('fs').promises;
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -7841,7 +7840,7 @@ app.delete('/api/documents/:id', authenticateToken, async (req, res) => {
         
         // Delete file from disk
         try {
-            await fs.unlink(doc.file_path);
+            await fs.promises.unlink(doc.file_path);
         } catch (err) {
             console.error('Error deleting file:', err);
         }

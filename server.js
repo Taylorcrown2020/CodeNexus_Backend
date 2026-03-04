@@ -20872,8 +20872,23 @@ app.get('/api/client/email-settings', authenticateClient, async (req, res) => {
 
 app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(403).json({ success: false, message: 'Company account required' });
+        let portalId = await getClientPortalId(req.user.id);
+        // Extra fallback: if still null, try looking up client_companies by admin_email directly
+        if (!portalId && req.user.email) {
+            const cc = await pool.query(
+                'SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email)=LOWER($1) LIMIT 1',
+                [req.user.email]
+            );
+            portalId = cc.rows[0]?.client_portal_id || null;
+            if (portalId) {
+                // Stamp it back so future calls are instant
+                await pool.query(
+                    'UPDATE leads SET client_portal_id=$1, is_company_admin=TRUE WHERE LOWER(email)=LOWER($2)',
+                    [portalId, req.user.email]
+                ).catch(() => {});
+            }
+        }
+        if (!portalId) return res.status(403).json({ success: false, message: 'Company account required. Make sure your account has been fully set up by Diamondback Coding.' });
 
         const {
             brevo_api_key, sender_email, sender_name,
@@ -24926,8 +24941,12 @@ app.use('/uploads/logos', require('express').static(require('path').join(__dirna
 app.post('/api/client/company-logo', authenticateClient, logoUpload.single('logo'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        let portalId = await getClientPortalId(req.user.id);
+        if (!portalId && req.user.email) {
+            const cc = await pool.query('SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email)=LOWER($1) LIMIT 1', [req.user.email]);
+            portalId = cc.rows[0]?.client_portal_id || null;
+        }
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found for this account' });
 
         const logoUrl = '/uploads/logos/' + req.file.filename;
         await pool.query(`
@@ -24996,8 +25015,12 @@ app.get('/api/client/bg-images', authenticateClient, async (req, res) => {
 app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('image'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        let portalId = await getClientPortalId(req.user.id);
+        if (!portalId && req.user.email) {
+            const cc = await pool.query('SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email)=LOWER($1) LIMIT 1', [req.user.email]);
+            portalId = cc.rows[0]?.client_portal_id || null;
+        }
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found for this account' });
 
         // Admin check
         const adminCheck = await pool.query(

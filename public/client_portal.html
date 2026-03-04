@@ -2771,11 +2771,11 @@ tr:hover .row-actions { opacity: 1; }
 // ============================================================
 const API_BASE = (() => {
     const h = window.location.hostname;
-    if (h === 'diamondbackcoding.com' || h === 'www.diamondbackcoding.com')
-        return 'https://diamondbackcoding.com/api';
+    // Always use relative paths so this works on any host, port, or reverse proxy
+    // (Render.com, Heroku, custom domain, localhost with proxy, etc.)
     if (h === 'localhost' || h === '127.0.0.1')
         return 'http://localhost:3000/api';
-    return `${window.location.protocol}//${h}:3000/api`;
+    return '/api';
 })();
 
 // ============================================================
@@ -2971,13 +2971,21 @@ function showApp() {
     // Admin-only settings sections
     document.querySelectorAll('.settings-admin-only').forEach(el => {
         if (!S.isAdmin) { el.style.display = 'none'; return; }
-        // Labels/buttons that need flex, divs that need block
+        // Must set an explicit value — setting '' falls back to the CSS class which is display:none
         const tag = el.tagName.toLowerCase();
-        el.style.display = (tag === 'label' || el.classList.contains('btn')) ? 'flex' : '';
+        if (tag === 'label' || el.classList.contains('btn')) {
+            el.style.display = 'flex';
+        } else if (tag === 'input' || tag === 'select' || tag === 'textarea') {
+            el.style.display = 'block';
+        } else {
+            el.style.display = 'block';
+        }
     });
     // Workspace-member settings (email provider visible to all workspace users)
     document.querySelectorAll('.settings-workspace').forEach(el => {
-        el.style.display = S.isCompanyMember ? '' : 'none';
+        // Show for company members AND for company admins (who may not have clientPortalId
+        // stamped yet if account was created via admin panel before portal ID was auto-assigned)
+        el.style.display = (S.isCompanyMember || S.isAdmin) ? 'block' : 'none';
     });
 
     // Subscription nav: always visible for everyone

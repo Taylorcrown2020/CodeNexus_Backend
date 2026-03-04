@@ -23949,6 +23949,15 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
                 UNIQUE(client_portal_id, email)
             );
 
+            CREATE TABLE IF NOT EXISTS portal_bg_images (
+                id SERIAL PRIMARY KEY,
+                client_portal_id VARCHAR(20) NOT NULL,
+                url TEXT NOT NULL,
+                label VARCHAR(100),
+                uploaded_by VARCHAR(255),
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+
             CREATE TABLE IF NOT EXISTS client_chain_queue (
                 id SERIAL PRIMARY KEY,
                 client_portal_id VARCHAR(20),
@@ -24906,7 +24915,112 @@ app.delete('/api/client/company-logo', authenticateClient, async (req, res) => {
 });
 
 // ============================================================
-// DYNAMIC CLIENT PORTAL FORMS
+// PORTAL BACKGROUND IMAGES — admin uploads shared with all company users
+// ============================================================
+
+const bgImageUpload = require('multer')({
+    storage: require('multer').diskStorage({
+        destination: async (req, file, cb) => {
+            const dir = require('path').join(__dirname, 'uploads', 'bg-images');
+            await require('fs').promises.mkdir(dir, { recursive: true });
+            cb(null, dir);
+        },
+        filename: (req, file, cb) => {
+            const ext = require('path').extname(file.originalname);
+            cb(null, 'bg-' + Date.now() + '-' + Math.random().toString(36).slice(2,7) + ext);
+        }
+    }),
+    limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB max
+    fileFilter: (req, file, cb) => {
+        const ok = ['image/png','image/jpeg','image/webp','image/gif'].includes(file.mimetype);
+        ok ? cb(null, true) : cb(new Error('Only PNG, JPG, WEBP, GIF allowed'));
+    }
+});
+
+// Serve uploaded bg images statically
+app.use('/uploads/bg-images', require('express').static(require('path').join(__dirname, 'uploads', 'bg-images')));
+
+// GET /api/client/bg-images — list all bg images for this portal (available to all users)
+app.get('/api/client/bg-images', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, images: [] });
+        const result = await pool.query(
+            `SELECT id, url, label, uploaded_by, created_at FROM portal_bg_images
+             WHERE client_portal_id=$1 ORDER BY created_at ASC`,
+            [portalId]
+        );
+        res.json({ success: true, images: result.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/bg-images — admin uploads a new bg image
+app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+
+        // Admin check
+        const adminCheck = await pool.query(
+            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+        );
+        const u = adminCheck.rows[0];
+        if (!u?.is_company_admin && !u?.is_co_admin) {
+            return res.status(403).json({ success: false, message: 'Admin only' });
+        }
+
+        // Limit to 10 custom backgrounds per portal
+        const countRes = await pool.query(
+            `SELECT COUNT(*) FROM portal_bg_images WHERE client_portal_id=$1`, [portalId]
+        );
+        if (parseInt(countRes.rows[0].count) >= 10) {
+            require('fs').unlink(req.file.path, () => {});
+            return res.status(400).json({ success: false, message: 'Maximum 10 custom backgrounds per account. Delete one first.' });
+        }
+
+        const url = '/uploads/bg-images/' + req.file.filename;
+        const label = req.body.label?.trim().slice(0, 40) || 'Custom';
+        const row = await pool.query(
+            `INSERT INTO portal_bg_images (client_portal_id, url, label, uploaded_by)
+             VALUES ($1,$2,$3,$4) RETURNING id, url, label, uploaded_by, created_at`,
+            [portalId, url, label, req.user.email]
+        );
+        res.json({ success: true, image: row.rows[0] });
+    } catch(e) {
+        console.error('[BG IMAGE UPLOAD]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// DELETE /api/client/bg-images/:id — admin deletes a custom bg image
+app.delete('/api/client/bg-images/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+
+        // Admin check
+        const adminCheck = await pool.query(
+            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+        );
+        const u = adminCheck.rows[0];
+        if (!u?.is_company_admin && !u?.is_co_admin) {
+            return res.status(403).json({ success: false, message: 'Admin only' });
+        }
+
+        const imgRes = await pool.query(
+            `DELETE FROM portal_bg_images WHERE id=$1 AND client_portal_id=$2 RETURNING url`,
+            [req.params.id, portalId]
+        );
+        if (!imgRes.rows[0]) return res.status(404).json({ success: false, message: 'Image not found' });
+
+        // Delete file from disk (non-blocking)
+        const filePath = require('path').join(__dirname, imgRes.rows[0].url);
+        require('fs').unlink(filePath, () => {});
+
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
 // These forms route back to the specific client portal (not admin)
 // and apply that portal's branding (logo, colors, company name).
 // ============================================================

@@ -2175,12 +2175,29 @@ tr:hover .row-actions { opacity: 1; }
                                     Verify your business domain to send fully branded emails directly from
                                     <strong>you@yourdomain.com</strong> — better deliverability, no "via" label.
                                 </div>
+                                <div style="background:#FF6B3511;border:1px solid #FF6B3533;border-radius:var(--r-md);padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                                    <div style="font-size:12px;color:var(--text-2);line-height:1.6;">
+                                        <strong style="color:var(--text-0);">Need help setting this up?</strong><br>
+                                        Book a free 15-min call and we'll configure everything for you.
+                                    </div>
+                                    <a href="/schedule.html" target="_blank" class="btn btn-white" style="text-decoration:none;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;font-size:12px;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                        Schedule Setup Call
+                                    </a>
+                                </div>
                                 <div style="display:flex;gap:8px;align-items:flex-end;">
                                     <div class="form-field" style="flex:1;margin-bottom:0;">
                                         <label class="form-label">Your Business Domain</label>
                                         <input class="form-input" id="domainInput" placeholder="yourdomain.com" style="font-family:monospace;font-size:13px;">
                                     </div>
                                     <button class="btn btn-white" onclick="addDomain()" id="domainAddBtn" style="white-space:nowrap;flex-shrink:0;">Get DNS Records</button>
+                                </div>
+                                <div style="margin-top:12px;padding:10px 12px;background:var(--bg-2);border-radius:var(--r-md);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                                    <span style="font-size:11px;color:var(--text-3);">Need help setting this up? Jump on a quick call with us.</span>
+                                    <a href="/schedule.html" target="_blank" class="btn btn-ghost btn-xs" style="text-decoration:none;display:flex;align-items:center;gap:5px;white-space:nowrap;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                        Schedule a Call
+                                    </a>
                                 </div>
                             </div>
                             <div id="domainDnsSection" style="display:none;margin-top:14px;">
@@ -2224,6 +2241,38 @@ tr:hover .row-actions { opacity: 1; }
                                     ⛔ Account suspended due to deliverability issues. Contact support to reinstate.
                                 </div>
                             </div>
+                        </div>
+                        <!-- SMS Sender Name -->
+                        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
+                            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.14 12 19.79 19.79 0 0 1 1.08 3.4 2 2 0 0 1 3.06 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.71 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.6 2.81.71A2 2 0 0 1 21.04 17l-.12-.08z"/></svg>
+                                SMS Sender Name
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">SMS Sender Name <span style="color:var(--text-3);font-weight:400;">(max 11 chars, shown on texts)</span></label>
+                                <input class="form-input" id="settingsSmsSender" placeholder="MyBusiness" maxlength="11">
+                            </div>
+                            <div style="font-size:11px;color:var(--text-3);margin-top:4px;">SMS is sent through Diamondback Coding's platform. Lead phone numbers must be in E.164 format (e.g. +15551234567).</div>
+                            <div style="background:#FF6B3511;border:1px solid #FF6B3533;border-radius:var(--r-md);padding:10px 14px;margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                                <div style="font-size:12px;color:var(--text-2);line-height:1.5;">
+                                    <strong style="color:var(--text-0);">SMS not working?</strong> Schedule a setup call and we'll configure it for you.
+                                </div>
+                                <a href="/schedule.html" target="_blank" class="btn btn-white" style="text-decoration:none;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;font-size:12px;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    Schedule Setup Call
+                                </a>
+                            </div>
+                            <div style="margin-top:10px;padding:10px 12px;background:var(--bg-2);border-radius:var(--r-md);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                                <span style="font-size:11px;color:var(--text-3);">Need help configuring SMS or domain settings? Book a setup call.</span>
+                                <a href="/schedule.html" target="_blank" class="btn btn-ghost btn-xs" style="text-decoration:none;display:flex;align-items:center;gap:5px;white-space:nowrap;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    Schedule a Call with Diamondback
+                                </a>
+                            </div>
+                        </div>
+                        <!-- Save button -->
+                        <div class="settings-admin-only" style="margin-top:20px;">
+                            <button class="btn btn-white" onclick="saveEmailSettings()">Save Email &amp; SMS Settings</button>
                         </div>
 
                     </div>
@@ -7612,7 +7661,13 @@ async function loadBilling() {
         el.innerHTML = `<div class="empty-state" style="color:var(--red);">
             <p>Failed to load billing data.</p>
             <p style="font-size:12px;opacity:.7;">${e.message}</p>
-            <button class="btn btn-ghost" style="margin-top:10px;" onclick="loadBilling()">Retry</button>
+            <div style="display:flex;gap:10px;margin-top:14px;justify-content:center;flex-wrap:wrap;">
+                <button class="btn btn-ghost" onclick="loadBilling()">Retry</button>
+                <a href="/schedule.html" target="_blank" class="btn btn-white" style="text-decoration:none;display:flex;align-items:center;gap:6px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Schedule a Call with Diamondback
+                </a>
+            </div>
         </div>`;
     }
 }

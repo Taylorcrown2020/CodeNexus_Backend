@@ -11113,12 +11113,23 @@ async function processSubscriptionWebhook(event) {
                             <strong>Security Notice:</strong> This is a temporary password. Please log in and change it immediately in your portal settings.
                         </p>
 
+                        <div style="background:#FF6B3511;border:2px solid #FF6B3533;border-radius:8px;padding:20px 24px;margin:28px 0;">
+                            <div style="font-size:15px;font-weight:800;color:#FF6B35;margin-bottom:8px;">📅 Next Step: Schedule Your Setup Call</div>
+                            <p style="font-size:13px;color:#555;margin:0 0 16px 0;line-height:1.7;">
+                                To activate your <strong>email sending, SMS messaging, and domain verification</strong>, you'll need a quick 15-minute setup call with our team. We'll get everything configured so you can start reaching leads from day one.
+                            </p>
+                            <a href="${BASE_URL}/schedule.html" style="display:inline-block;background:#FF6B35;color:#fff;text-decoration:none;font-weight:700;font-size:13px;padding:12px 24px;border-radius:6px;">
+                                📅 Book Your Setup Call →
+                            </a>
+                            <p style="font-size:11px;color:#888;margin:12px 0 0 0;">Takes 15 minutes. We handle everything — no technical knowledge required.</p>
+                        </div>
+
                         <p>In your client portal, you can:</p>
                         <ul style="line-height:1.8;color:#555;">
-                            <li>Manage your subscription (upgrade, downgrade, cancel)</li>
-                            <li>View and download invoices</li>
-                            <li>Update payment methods</li>
-                            <li>Access support resources</li>
+                            <li>Manage and follow up with leads</li>
+                            <li>Send emails and SMS to your leads (after setup call)</li>
+                            <li>Manage your subscription and invoices</li>
+                            <li>Add team members to your workspace</li>
                         </ul>
 
                         <p style="font-size:13px;color:#888;margin-top:28px;">
@@ -23234,32 +23245,6 @@ app.delete('/api/client/bg-images/:id', authenticateClient, async (req, res) => 
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// ========================================
-// 404 HANDLER
-// ========================================
-app.use((req, res) => {
-    // If it's an API route, return JSON
-    if (req.path.startsWith('/api/')) {
-        res.status(404).json({ 
-            success: false, 
-            message: 'API endpoint not found' 
-        });
-    } else {
-        // Serve the custom 404 page
-        res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
-    }
-});
-
-// ========================================
-// ERROR HANDLER
-// ========================================
-app.use((err, req, res, next) => {
-    console.error('Server error:', err.stack);
-    res.status(500).json({ 
-        success: false, 
-        message: 'Internal server error' 
-    });
-});
 
 console.log('\n[ROUTES] Listing all registered API routes:');
 console.log('==========================================');
@@ -23428,6 +23413,9 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
         const portalId = await getClientPortalId(req.user.id);
         if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
 
+        // Ensure tables exist (safe — runs only if missing, no-op otherwise)
+        await initializeUsageTables().catch(() => {});
+
         const now = new Date();
         const thisMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0];
         const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().split('T')[0];
@@ -23563,6 +23551,8 @@ app.delete('/api/client/recurring-invoices/:id', authenticateClient, async (req,
         res.json({ success: true });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
+
+
 
 function startEmailConfirmationJob() {
     // Run every minute for real-time updates
@@ -23926,6 +23916,560 @@ async function recordUsage({ clientPortalId, eventType, leadId = null, leadEmail
         console.error('[USAGE] recordUsage error:', e.message);
     }
 }
+
+
+
+// GET /api/client/sms-templates
+app.get('/api/client/sms-templates', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, templates: [] });
+        const r = await pool.query(`SELECT * FROM sms_templates WHERE client_portal_id=$1 ORDER BY created_at DESC`, [portalId]);
+        res.json({ success: true, templates: r.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/sms-templates
+app.post('/api/client/sms-templates', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        const { name, body, include_schedule_link, include_contact_link } = req.body;
+        if (!name || !body) return res.status(400).json({ success: false, message: 'name and body required' });
+        const r = await pool.query(
+            `INSERT INTO sms_templates (client_portal_id, name, body, include_schedule_link, include_contact_link) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+            [portalId, name, body, include_schedule_link||false, include_contact_link||false]
+        );
+        res.json({ success: true, template: r.rows[0] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// PUT /api/client/sms-templates/:id
+app.put('/api/client/sms-templates/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const { name, body, include_schedule_link, include_contact_link } = req.body;
+        await pool.query(
+            `UPDATE sms_templates SET name=$1, body=$2, include_schedule_link=$3, include_contact_link=$4, updated_at=NOW() WHERE id=$5 AND client_portal_id=$6`,
+            [name, body, include_schedule_link||false, include_contact_link||false, req.params.id, portalId]
+        );
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// DELETE /api/client/sms-templates/:id
+app.delete('/api/client/sms-templates/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        await pool.query(`DELETE FROM sms_templates WHERE id=$1 AND client_portal_id=$2`, [req.params.id, portalId]);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+
+// ─────────────────────────────────────────────────────────────
+// SMS CHAINS CRUD
+// ─────────────────────────────────────────────────────────────
+
+// GET /api/client/sms-chains
+app.get('/api/client/sms-chains', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, chains: [] });
+
+        const chains = await pool.query(
+            'SELECT * FROM client_sms_chains WHERE client_portal_id=$1 ORDER BY created_at DESC',
+            [portalId]
+        ).catch(() => ({ rows: [] }));
+
+        // Attach steps with template name
+        const steps = await pool.query(`
+            SELECT cs.*, t.name as template_name, t.body as template_body
+            FROM client_sms_chain_steps cs
+            JOIN client_sms_templates t ON cs.template_id = t.id
+            WHERE t.client_portal_id=$1
+            ORDER BY cs.chain_id, cs.step_order
+        `, [portalId]).catch(() => ({ rows: [] }));
+
+        const stepsByChain = {};
+        steps.rows.forEach(s => {
+            (stepsByChain[s.chain_id] = stepsByChain[s.chain_id] || []).push(s);
+        });
+
+        const result = chains.rows.map(c => ({ ...c, steps: stepsByChain[c.id] || [] }));
+        res.json({ success: true, chains: result });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// POST /api/client/sms-chains
+app.post('/api/client/sms-chains', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(403).json({ success: false });
+        const { name, loop, steps } = req.body;
+        if (!name || !steps?.length) return res.status(400).json({ success: false, message: 'name and steps required' });
+
+        const chain = await pool.query(
+            'INSERT INTO client_sms_chains (client_portal_id,name,loop) VALUES ($1,$2,$3) RETURNING *',
+            [portalId, name, loop !== false]
+        );
+        const chainId = chain.rows[0].id;
+        for (let i = 0; i < steps.length; i++) {
+            await pool.query(
+                'INSERT INTO client_sms_chain_steps (chain_id,template_id,step_order,delay_days) VALUES ($1,$2,$3,$4)',
+                [chainId, steps[i].template_id, i, steps[i].delay_days || 0]
+            );
+        }
+        res.json({ success: true, chain: chain.rows[0] });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// DELETE /api/client/sms-chains/:id
+app.delete('/api/client/sms-chains/:id', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        await pool.query(
+            'DELETE FROM client_sms_chains WHERE id=$1 AND client_portal_id=$2',
+            [req.params.id, portalId]
+        );
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/sms-chains/enroll
+app.post('/api/client/sms-chains/enroll', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        const { chain_id, lead_ids } = req.body;
+        if (!chain_id || !lead_ids?.length) return res.status(400).json({ success: false, message: 'chain_id and lead_ids required' });
+
+        const chain = await pool.query(
+            'SELECT * FROM client_sms_chains WHERE id=$1 AND client_portal_id=$2',
+            [chain_id, portalId]
+        );
+        if (!chain.rows[0]) return res.status(404).json({ success: false, message: 'Chain not found' });
+
+        // Get first step delay to compute first send time
+        const firstStep = await pool.query(
+            'SELECT delay_days FROM client_sms_chain_steps WHERE chain_id=$1 ORDER BY step_order LIMIT 1',
+            [chain_id]
+        );
+        const firstDelay = firstStep.rows[0]?.delay_days || 0;
+        const nextSend = firstDelay > 0
+            ? new Date(Date.now() + firstDelay * 86400000)
+            : new Date(); // send now if delay is 0
+
+        let enrolled = 0;
+        for (const leadId of lead_ids) {
+            // Skip if already enrolled in this chain
+            const existing = await pool.query(
+                'SELECT id FROM client_sms_chain_queue WHERE chain_id=$1 AND lead_id=$2 AND is_active=TRUE',
+                [chain_id, leadId]
+            );
+            if (existing.rows.length) continue;
+
+            await pool.query(
+                'INSERT INTO client_sms_chain_queue (chain_id,lead_id,client_portal_id,current_step,next_send_at,is_active) VALUES ($1,$2,$3,0,$4,TRUE)',
+                [chain_id, leadId, portalId, nextSend]
+            );
+            enrolled++;
+        }
+
+        res.json({ success: true, enrolled });
+    } catch(e) {
+        console.error('[SMS CHAIN ENROLL]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// GET /api/client/sms-auto-sequence
+app.get('/api/client/sms-auto-sequence', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.json({ success: true, enabled: false, steps: [] });
+        const r = await pool.query(`SELECT * FROM sms_auto_sequences WHERE client_portal_id=$1 LIMIT 1`, [portalId]);
+        const row = r.rows[0];
+        res.json({ success: true, enabled: row?.enabled || false, steps: row?.steps || [] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/sms-auto-sequence/toggle
+app.post('/api/client/sms-auto-sequence/toggle', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        const { enabled } = req.body;
+        await pool.query(`
+            INSERT INTO sms_auto_sequences (client_portal_id, enabled) VALUES ($1,$2)
+            ON CONFLICT (client_portal_id) DO UPDATE SET enabled=$2, updated_at=NOW()
+        `, [portalId, enabled]);
+        res.json({ success: true, enabled });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// PUT /api/client/sms-auto-sequence
+app.put('/api/client/sms-auto-sequence', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        const { steps } = req.body;
+        await pool.query(`
+            INSERT INTO sms_auto_sequences (client_portal_id, steps) VALUES ($1,$2)
+            ON CONFLICT (client_portal_id) DO UPDATE SET steps=$2, updated_at=NOW()
+        `, [portalId, JSON.stringify(steps || [])]);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// COMPANY LOGO UPLOAD ENDPOINTS
+// ============================================================
+const logoUpload = require('multer')({
+    storage: require('multer').diskStorage({
+        destination: (req, file, cb) => {
+            // Directory guaranteed to exist from startup ensureUploadDirs()
+            cb(null, require('path').join(__dirname, 'uploads', 'logos'));
+        },
+        filename: (req, file, cb) => {
+            const ext = require('path').extname(file.originalname);
+            cb(null, 'logo-' + Date.now() + ext);
+        }
+    }),
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const ok = ['image/png','image/jpeg','image/svg+xml','image/webp'].includes(file.mimetype);
+        ok ? cb(null, true) : cb(new Error('Only PNG, JPG, SVG, WEBP allowed'));
+    }
+});
+
+// Serve logos
+app.use('/uploads/logos', require('express').static(require('path').join(__dirname, 'uploads', 'logos')));
+
+// POST /api/client/company-logo
+app.post('/api/client/company-logo', authenticateClient, logoUpload.single('logo'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+        let portalId = await getClientPortalId(req.user.id);
+        if (!portalId && req.user.email) {
+            const cc = await pool.query('SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email)=LOWER($1) LIMIT 1', [req.user.email]);
+            portalId = cc.rows[0]?.client_portal_id || null;
+        }
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found for this account' });
+
+        const logoUrl = '/uploads/logos/' + req.file.filename;
+        await pool.query(`
+            INSERT INTO client_email_settings (client_portal_id, company_logo_url)
+            VALUES ($1,$2)
+            ON CONFLICT (client_portal_id) DO UPDATE SET company_logo_url=$2, updated_at=NOW()
+        `, [portalId, logoUrl]);
+
+        res.json({ success: true, logoUrl });
+    } catch(e) {
+        console.error('[LOGO UPLOAD]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// DELETE /api/client/company-logo
+app.delete('/api/client/company-logo', authenticateClient, async (req, res) => {
+    try {
+        const portalId = await getClientPortalId(req.user.id);
+        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        await pool.query(`UPDATE client_email_settings SET company_logo_url=NULL, updated_at=NOW() WHERE client_portal_id=$1`, [portalId]);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// These forms route back to the specific client portal (not admin)
+// and apply that portal's branding (logo, colors, company name).
+// ============================================================
+
+async function getPortalBranding(portalId) {
+    const r = await pool.query(`SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1`, [portalId]);
+    const s = r.rows[0] || {};
+    return {
+        companyName:  s.company_name   || 'CRM',
+        accentColor:  s.accent_color   || '#6366f1',
+        logoUrl:      s.company_logo_url || null,
+    };
+}
+
+function portalFormHtml({ title, formContent, portalId, brand }) {
+    const logoHtml = brand.logoUrl
+        ? `<img src="${brand.logoUrl}" style="max-height:52px;max-width:180px;object-fit:contain;margin-bottom:16px;display:block;" alt="${brand.companyName} logo">`
+        : '';
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${title} — ${brand.companyName}</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Geist',-apple-system,BlinkMacSystemFont,sans-serif;background:#0a0a0a;color:#ebebeb;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.form-card{background:#111;border:1px solid #2a2a2a;border-radius:16px;padding:36px 40px;width:100%;max-width:480px;box-shadow:0 24px 80px rgba(0,0,0,0.5);}
+.form-header{margin-bottom:28px;}
+.company-name{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;}
+.form-title{font-size:14px;color:#a1a1a1;}
+.accent-bar{width:32px;height:3px;border-radius:2px;margin-top:12px;background:${brand.accentColor};}
+.form-field{margin-bottom:16px;}
+.form-label{display:block;font-size:12px;font-weight:600;color:#a1a1a1;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+.form-input{width:100%;background:#191919;border:1px solid #2a2a2a;border-radius:8px;padding:11px 14px;font-size:14px;color:#fff;font-family:inherit;outline:none;transition:border-color 0.2s;}
+.form-input:focus{border-color:${brand.accentColor};}
+.form-input::placeholder{color:#555;}
+textarea.form-input{resize:vertical;min-height:80px;}
+.submit-btn{width:100%;background:${brand.accentColor};color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:opacity 0.2s;}
+.submit-btn:hover{opacity:0.88;}
+.submit-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.success-msg{display:none;text-align:center;padding:20px 0;}
+.success-icon{font-size:48px;margin-bottom:12px;}
+.success-title{font-size:20px;font-weight:700;color:#fff;margin-bottom:8px;}
+.success-text{font-size:14px;color:#a1a1a1;}
+.error-msg{background:#2a0a0a;border:1px solid #ef444444;border-radius:8px;padding:12px 16px;font-size:13px;color:#ef4444;margin-bottom:16px;display:none;}
+</style>
+</head>
+<body>
+<div class="form-card">
+    <div class="form-header">
+        ${logoHtml}
+        <div class="company-name">${brand.companyName}</div>
+        <div class="form-title">${title}</div>
+        <div class="accent-bar"></div>
+    </div>
+    <div id="errorMsg" class="error-msg"></div>
+    <div id="formContent">${formContent}</div>
+    <div class="success-msg" id="successMsg">
+        <div class="success-icon">✅</div>
+        <div class="success-title">You're all set!</div>
+        <div class="success-text" id="successText">We'll be in touch shortly.</div>
+    </div>
+</div>
+<script>
+const PORTAL_ID = '${portalId}';
+const BASE = '${process.env.BASE_URL || ''}';
+function getParam(k) { return new URLSearchParams(location.search).get(k); }
+const LEAD_ID = getParam('lead');
+</script>
+</body>
+</html>`;
+}
+
+// GET /schedule-form.html?portal=XXX&lead=YYY
+app.get('/schedule-form.html', async (req, res) => {
+    const portalId = req.query.portal;
+    if (!portalId) return res.status(400).send('Portal ID required');
+    try {
+        const brand = await getPortalBranding(portalId);
+        const formContent = `
+<form id="schedForm" onsubmit="submitSchedForm(event)">
+    <div class="form-field"><label class="form-label">Full Name *</label><input class="form-input" id="sf_name" placeholder="Your name" required></div>
+    <div class="form-field"><label class="form-label">Email *</label><input class="form-input" id="sf_email" type="email" placeholder="your@email.com" required></div>
+    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="sf_phone" placeholder="(555) 000-0000"></div>
+    <div style="display:flex;gap:12px;">
+        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Date *</label><input class="form-input" id="sf_date" type="date" required></div>
+        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Time *</label><input class="form-input" id="sf_time" type="time" required></div>
+    </div>
+    <div class="form-field"><label class="form-label">Notes</label><textarea class="form-input" id="sf_notes" placeholder="Anything you'd like us to know..."></textarea></div>
+    <button class="submit-btn" type="submit" id="sf_btn">Request Appointment</button>
+</form>
+<script>
+async function submitSchedForm(e) {
+    e.preventDefault();
+    const btn = document.getElementById('sf_btn');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    try {
+        const res = await fetch(BASE + '/api/client-forms/schedule', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                portalId: PORTAL_ID, leadId: LEAD_ID,
+                name: document.getElementById('sf_name').value,
+                email: document.getElementById('sf_email').value,
+                phone: document.getElementById('sf_phone').value,
+                preferredDate: document.getElementById('sf_date').value,
+                preferredTime: document.getElementById('sf_time').value,
+                notes: document.getElementById('sf_notes').value,
+            })
+        });
+        const d = await res.json();
+        if (d.success) {
+            document.getElementById('formContent').style.display = 'none';
+            document.getElementById('successMsg').style.display = 'block';
+            document.getElementById('successText').textContent = 'Your appointment request has been received! We'll confirm the details soon.';
+        } else {
+            errEl.textContent = d.message || 'Something went wrong. Please try again.';
+            errEl.style.display = 'block';
+            btn.disabled = false; btn.textContent = 'Request Appointment';
+        }
+    } catch(err) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Request Appointment';
+    }
+}
+</script>`;
+        res.send(portalFormHtml({ title: 'Schedule an Appointment', formContent, portalId, brand }));
+    } catch(e) {
+        console.error('[SCHEDULE FORM]', e);
+        res.status(500).send('Error loading form');
+    }
+});
+
+// GET /contact-form.html?portal=XXX&lead=YYY
+app.get('/contact-form.html', async (req, res) => {
+    const portalId = req.query.portal;
+    if (!portalId) return res.status(400).send('Portal ID required');
+    try {
+        const brand = await getPortalBranding(portalId);
+        const formContent = `
+<form id="contactForm" onsubmit="submitContactForm(event)">
+    <div class="form-field"><label class="form-label">Full Name *</label><input class="form-input" id="cf_name" placeholder="Your name" required></div>
+    <div class="form-field"><label class="form-label">Email *</label><input class="form-input" id="cf_email" type="email" placeholder="your@email.com" required></div>
+    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="cf_phone" placeholder="(555) 000-0000"></div>
+    <div class="form-field"><label class="form-label">Message *</label><textarea class="form-input" id="cf_msg" placeholder="How can we help?" required></textarea></div>
+    <button class="submit-btn" type="submit" id="cf_btn">Send Message</button>
+</form>
+<script>
+async function submitContactForm(e) {
+    e.preventDefault();
+    const btn = document.getElementById('cf_btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    try {
+        const res = await fetch(BASE + '/api/client-forms/contact', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                portalId: PORTAL_ID, leadId: LEAD_ID,
+                name: document.getElementById('cf_name').value,
+                email: document.getElementById('cf_email').value,
+                phone: document.getElementById('cf_phone').value,
+                message: document.getElementById('cf_msg').value,
+            })
+        });
+        const d = await res.json();
+        if (d.success) {
+            document.getElementById('formContent').style.display = 'none';
+            document.getElementById('successMsg').style.display = 'block';
+            document.getElementById('successText').textContent = 'Message received! We'll get back to you soon.';
+        } else {
+            errEl.textContent = d.message || 'Something went wrong. Please try again.';
+            errEl.style.display = 'block';
+            btn.disabled = false; btn.textContent = 'Send Message';
+        }
+    } catch(err) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Send Message';
+    }
+}
+</script>`;
+        res.send(portalFormHtml({ title: 'Get In Touch', formContent, portalId, brand }));
+    } catch(e) {
+        console.error('[CONTACT FORM]', e);
+        res.status(500).send('Error loading form');
+    }
+});
+
+// POST /api/client-forms/contact
+app.post('/api/client-forms/contact', async (req, res) => {
+    try {
+        const { portalId, name, email, phone, message, leadId } = req.body;
+        if (!portalId || !email) return res.status(400).json({ success: false, message: 'Missing required fields' });
+
+        const settingsRes = await pool.query('SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1', [portalId]);
+        const settings = settingsRes.rows[0] || {};
+
+        // Upsert lead as hot
+        let lead;
+        const existingLead = await pool.query('SELECT * FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2', [email, portalId]);
+        if (existingLead.rows.length) {
+            lead = existingLead.rows[0];
+            await pool.query(`UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at, NOW()), status='contacted', updated_at=NOW() WHERE id=$1`, [lead.id]);
+        } else {
+            const nl = await pool.query(`
+                INSERT INTO leads (name, email, phone, notes, source, lead_temperature, became_hot_at, client_portal_id, status, created_at, updated_at)
+                VALUES ($1,$2,$3,$4,'contact-form','hot',NOW(),$5,'new',NOW(),NOW()) RETURNING *
+            `, [name, email, phone||null, message||null, portalId]);
+            lead = nl.rows[0];
+        }
+
+        await pool.query(`
+            INSERT INTO client_email_log (lead_id, client_portal_id, email_type, status, sent_at, lead_became_hot, subject, to_email)
+            VALUES ($1,$2,'form-contact','submitted',NOW(),TRUE,'Contact Form Submission',$3)
+        `, [lead.id, portalId, email]).catch(()=>{});
+
+        // Notify admin
+        if (settings.brevo_api_key && settings.sender_email) {
+            await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'api-key': settings.brevo_api_key, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sender: { name: settings.sender_name || 'CRM', email: settings.sender_email },
+                    to: [{ email: settings.sender_email }],
+                    subject: `New Contact Form: ${name}`,
+                    htmlContent: `<p><strong>${name}</strong> submitted a contact form.</p><p>Email: ${email}</p>${phone?`<p>Phone: ${phone}</p>`:''}<p>Message: ${message}</p>`
+                })
+            }).catch(()=>{});
+        }
+
+        res.json({ success: true, leadId: lead.id });
+    } catch(e) { console.error('[CONTACT FORM]', e); res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/client/email-chains/:id/toggle — Enable or disable an email chain
+app.post('/api/client/email-chains/:id/toggle', authenticateClient, async (req, res) => {
+    try {
+        const chainId = parseInt(req.params.id);
+        const portalId = await getClientPortalId(req.user.id);
+        const { active } = req.body; // boolean
+        if (active === false) {
+            // Pause all queue entries for this chain
+            await pool.query(
+                `UPDATE client_chain_queue SET is_active=FALSE WHERE chain_id=$1 AND client_portal_id=$2`,
+                [chainId, portalId]
+            );
+        } else {
+            await pool.query(
+                `UPDATE client_chain_queue SET is_active=TRUE WHERE chain_id=$1 AND client_portal_id=$2`,
+                [chainId, portalId]
+            );
+        }
+        res.json({ success: true, active });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+// ========================================
+// 404 HANDLER
+// ========================================
+app.use((req, res) => {
+    // If it's an API route, return JSON
+    if (req.path.startsWith('/api/')) {
+        res.status(404).json({ 
+            success: false, 
+            message: 'API endpoint not found' 
+        });
+    } else {
+        // Serve the custom 404 page
+        res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+    }
+});
+
+// ========================================
+// ERROR HANDLER
+// ========================================
+app.use((err, req, res, next) => {
+    console.error('Server error:', err.stack);
+    res.status(500).json({ 
+        success: false, 
+        message: 'Internal server error' 
+    });
+});
 
 async function startServer() {
     try {
@@ -24996,529 +25540,3 @@ process.on('SIGINT', async () => {
         console.log('[SMS TEMPLATES] Tables ready');
     } catch(e) { console.warn('[SMS TEMPLATES] Table setup:', e.message); }
 })();
-
-// GET /api/client/sms-templates
-app.get('/api/client/sms-templates', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.json({ success: true, templates: [] });
-        const r = await pool.query(`SELECT * FROM sms_templates WHERE client_portal_id=$1 ORDER BY created_at DESC`, [portalId]);
-        res.json({ success: true, templates: r.rows });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// POST /api/client/sms-templates
-app.post('/api/client/sms-templates', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
-        const { name, body, include_schedule_link, include_contact_link } = req.body;
-        if (!name || !body) return res.status(400).json({ success: false, message: 'name and body required' });
-        const r = await pool.query(
-            `INSERT INTO sms_templates (client_portal_id, name, body, include_schedule_link, include_contact_link) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-            [portalId, name, body, include_schedule_link||false, include_contact_link||false]
-        );
-        res.json({ success: true, template: r.rows[0] });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// PUT /api/client/sms-templates/:id
-app.put('/api/client/sms-templates/:id', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        const { name, body, include_schedule_link, include_contact_link } = req.body;
-        await pool.query(
-            `UPDATE sms_templates SET name=$1, body=$2, include_schedule_link=$3, include_contact_link=$4, updated_at=NOW() WHERE id=$5 AND client_portal_id=$6`,
-            [name, body, include_schedule_link||false, include_contact_link||false, req.params.id, portalId]
-        );
-        res.json({ success: true });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// DELETE /api/client/sms-templates/:id
-app.delete('/api/client/sms-templates/:id', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        await pool.query(`DELETE FROM sms_templates WHERE id=$1 AND client_portal_id=$2`, [req.params.id, portalId]);
-        res.json({ success: true });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-
-// ─────────────────────────────────────────────────────────────
-// SMS CHAINS CRUD
-// ─────────────────────────────────────────────────────────────
-
-// GET /api/client/sms-chains
-app.get('/api/client/sms-chains', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.json({ success: true, chains: [] });
-
-        const chains = await pool.query(
-            'SELECT * FROM client_sms_chains WHERE client_portal_id=$1 ORDER BY created_at DESC',
-            [portalId]
-        ).catch(() => ({ rows: [] }));
-
-        // Attach steps with template name
-        const steps = await pool.query(`
-            SELECT cs.*, t.name as template_name, t.body as template_body
-            FROM client_sms_chain_steps cs
-            JOIN client_sms_templates t ON cs.template_id = t.id
-            WHERE t.client_portal_id=$1
-            ORDER BY cs.chain_id, cs.step_order
-        `, [portalId]).catch(() => ({ rows: [] }));
-
-        const stepsByChain = {};
-        steps.rows.forEach(s => {
-            (stepsByChain[s.chain_id] = stepsByChain[s.chain_id] || []).push(s);
-        });
-
-        const result = chains.rows.map(c => ({ ...c, steps: stepsByChain[c.id] || [] }));
-        res.json({ success: true, chains: result });
-    } catch(e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// POST /api/client/sms-chains
-app.post('/api/client/sms-chains', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(403).json({ success: false });
-        const { name, loop, steps } = req.body;
-        if (!name || !steps?.length) return res.status(400).json({ success: false, message: 'name and steps required' });
-
-        const chain = await pool.query(
-            'INSERT INTO client_sms_chains (client_portal_id,name,loop) VALUES ($1,$2,$3) RETURNING *',
-            [portalId, name, loop !== false]
-        );
-        const chainId = chain.rows[0].id;
-        for (let i = 0; i < steps.length; i++) {
-            await pool.query(
-                'INSERT INTO client_sms_chain_steps (chain_id,template_id,step_order,delay_days) VALUES ($1,$2,$3,$4)',
-                [chainId, steps[i].template_id, i, steps[i].delay_days || 0]
-            );
-        }
-        res.json({ success: true, chain: chain.rows[0] });
-    } catch(e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// DELETE /api/client/sms-chains/:id
-app.delete('/api/client/sms-chains/:id', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        await pool.query(
-            'DELETE FROM client_sms_chains WHERE id=$1 AND client_portal_id=$2',
-            [req.params.id, portalId]
-        );
-        res.json({ success: true });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// POST /api/client/sms-chains/enroll
-app.post('/api/client/sms-chains/enroll', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        const { chain_id, lead_ids } = req.body;
-        if (!chain_id || !lead_ids?.length) return res.status(400).json({ success: false, message: 'chain_id and lead_ids required' });
-
-        const chain = await pool.query(
-            'SELECT * FROM client_sms_chains WHERE id=$1 AND client_portal_id=$2',
-            [chain_id, portalId]
-        );
-        if (!chain.rows[0]) return res.status(404).json({ success: false, message: 'Chain not found' });
-
-        // Get first step delay to compute first send time
-        const firstStep = await pool.query(
-            'SELECT delay_days FROM client_sms_chain_steps WHERE chain_id=$1 ORDER BY step_order LIMIT 1',
-            [chain_id]
-        );
-        const firstDelay = firstStep.rows[0]?.delay_days || 0;
-        const nextSend = firstDelay > 0
-            ? new Date(Date.now() + firstDelay * 86400000)
-            : new Date(); // send now if delay is 0
-
-        let enrolled = 0;
-        for (const leadId of lead_ids) {
-            // Skip if already enrolled in this chain
-            const existing = await pool.query(
-                'SELECT id FROM client_sms_chain_queue WHERE chain_id=$1 AND lead_id=$2 AND is_active=TRUE',
-                [chain_id, leadId]
-            );
-            if (existing.rows.length) continue;
-
-            await pool.query(
-                'INSERT INTO client_sms_chain_queue (chain_id,lead_id,client_portal_id,current_step,next_send_at,is_active) VALUES ($1,$2,$3,0,$4,TRUE)',
-                [chain_id, leadId, portalId, nextSend]
-            );
-            enrolled++;
-        }
-
-        res.json({ success: true, enrolled });
-    } catch(e) {
-        console.error('[SMS CHAIN ENROLL]', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// GET /api/client/sms-auto-sequence
-app.get('/api/client/sms-auto-sequence', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.json({ success: true, enabled: false, steps: [] });
-        const r = await pool.query(`SELECT * FROM sms_auto_sequences WHERE client_portal_id=$1 LIMIT 1`, [portalId]);
-        const row = r.rows[0];
-        res.json({ success: true, enabled: row?.enabled || false, steps: row?.steps || [] });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// POST /api/client/sms-auto-sequence/toggle
-app.post('/api/client/sms-auto-sequence/toggle', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
-        const { enabled } = req.body;
-        await pool.query(`
-            INSERT INTO sms_auto_sequences (client_portal_id, enabled) VALUES ($1,$2)
-            ON CONFLICT (client_portal_id) DO UPDATE SET enabled=$2, updated_at=NOW()
-        `, [portalId, enabled]);
-        res.json({ success: true, enabled });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// PUT /api/client/sms-auto-sequence
-app.put('/api/client/sms-auto-sequence', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
-        const { steps } = req.body;
-        await pool.query(`
-            INSERT INTO sms_auto_sequences (client_portal_id, steps) VALUES ($1,$2)
-            ON CONFLICT (client_portal_id) DO UPDATE SET steps=$2, updated_at=NOW()
-        `, [portalId, JSON.stringify(steps || [])]);
-        res.json({ success: true });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// ============================================================
-// COMPANY LOGO UPLOAD ENDPOINTS
-// ============================================================
-const logoUpload = require('multer')({
-    storage: require('multer').diskStorage({
-        destination: (req, file, cb) => {
-            // Directory guaranteed to exist from startup ensureUploadDirs()
-            cb(null, require('path').join(__dirname, 'uploads', 'logos'));
-        },
-        filename: (req, file, cb) => {
-            const ext = require('path').extname(file.originalname);
-            cb(null, 'logo-' + Date.now() + ext);
-        }
-    }),
-    limits: { fileSize: 2 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        const ok = ['image/png','image/jpeg','image/svg+xml','image/webp'].includes(file.mimetype);
-        ok ? cb(null, true) : cb(new Error('Only PNG, JPG, SVG, WEBP allowed'));
-    }
-});
-
-// Serve logos
-app.use('/uploads/logos', require('express').static(require('path').join(__dirname, 'uploads', 'logos')));
-
-// POST /api/client/company-logo
-app.post('/api/client/company-logo', authenticateClient, logoUpload.single('logo'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-        let portalId = await getClientPortalId(req.user.id);
-        if (!portalId && req.user.email) {
-            const cc = await pool.query('SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email)=LOWER($1) LIMIT 1', [req.user.email]);
-            portalId = cc.rows[0]?.client_portal_id || null;
-        }
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found for this account' });
-
-        const logoUrl = '/uploads/logos/' + req.file.filename;
-        await pool.query(`
-            INSERT INTO client_email_settings (client_portal_id, company_logo_url)
-            VALUES ($1,$2)
-            ON CONFLICT (client_portal_id) DO UPDATE SET company_logo_url=$2, updated_at=NOW()
-        `, [portalId, logoUrl]);
-
-        res.json({ success: true, logoUrl });
-    } catch(e) {
-        console.error('[LOGO UPLOAD]', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// DELETE /api/client/company-logo
-app.delete('/api/client/company-logo', authenticateClient, async (req, res) => {
-    try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
-        await pool.query(`UPDATE client_email_settings SET company_logo_url=NULL, updated_at=NOW() WHERE client_portal_id=$1`, [portalId]);
-        res.json({ success: true });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});
-
-// These forms route back to the specific client portal (not admin)
-// and apply that portal's branding (logo, colors, company name).
-// ============================================================
-
-async function getPortalBranding(portalId) {
-    const r = await pool.query(`SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1`, [portalId]);
-    const s = r.rows[0] || {};
-    return {
-        companyName:  s.company_name   || 'CRM',
-        accentColor:  s.accent_color   || '#6366f1',
-        logoUrl:      s.company_logo_url || null,
-    };
-}
-
-function portalFormHtml({ title, formContent, portalId, brand }) {
-    const logoHtml = brand.logoUrl
-        ? `<img src="${brand.logoUrl}" style="max-height:52px;max-width:180px;object-fit:contain;margin-bottom:16px;display:block;" alt="${brand.companyName} logo">`
-        : '';
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>${title} — ${brand.companyName}</title>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Geist',-apple-system,BlinkMacSystemFont,sans-serif;background:#0a0a0a;color:#ebebeb;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-.form-card{background:#111;border:1px solid #2a2a2a;border-radius:16px;padding:36px 40px;width:100%;max-width:480px;box-shadow:0 24px 80px rgba(0,0,0,0.5);}
-.form-header{margin-bottom:28px;}
-.company-name{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;}
-.form-title{font-size:14px;color:#a1a1a1;}
-.accent-bar{width:32px;height:3px;border-radius:2px;margin-top:12px;background:${brand.accentColor};}
-.form-field{margin-bottom:16px;}
-.form-label{display:block;font-size:12px;font-weight:600;color:#a1a1a1;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
-.form-input{width:100%;background:#191919;border:1px solid #2a2a2a;border-radius:8px;padding:11px 14px;font-size:14px;color:#fff;font-family:inherit;outline:none;transition:border-color 0.2s;}
-.form-input:focus{border-color:${brand.accentColor};}
-.form-input::placeholder{color:#555;}
-textarea.form-input{resize:vertical;min-height:80px;}
-.submit-btn{width:100%;background:${brand.accentColor};color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:opacity 0.2s;}
-.submit-btn:hover{opacity:0.88;}
-.submit-btn:disabled{opacity:0.5;cursor:not-allowed;}
-.success-msg{display:none;text-align:center;padding:20px 0;}
-.success-icon{font-size:48px;margin-bottom:12px;}
-.success-title{font-size:20px;font-weight:700;color:#fff;margin-bottom:8px;}
-.success-text{font-size:14px;color:#a1a1a1;}
-.error-msg{background:#2a0a0a;border:1px solid #ef444444;border-radius:8px;padding:12px 16px;font-size:13px;color:#ef4444;margin-bottom:16px;display:none;}
-</style>
-</head>
-<body>
-<div class="form-card">
-    <div class="form-header">
-        ${logoHtml}
-        <div class="company-name">${brand.companyName}</div>
-        <div class="form-title">${title}</div>
-        <div class="accent-bar"></div>
-    </div>
-    <div id="errorMsg" class="error-msg"></div>
-    <div id="formContent">${formContent}</div>
-    <div class="success-msg" id="successMsg">
-        <div class="success-icon">✅</div>
-        <div class="success-title">You're all set!</div>
-        <div class="success-text" id="successText">We'll be in touch shortly.</div>
-    </div>
-</div>
-<script>
-const PORTAL_ID = '${portalId}';
-const BASE = '${process.env.BASE_URL || ''}';
-function getParam(k) { return new URLSearchParams(location.search).get(k); }
-const LEAD_ID = getParam('lead');
-</script>
-</body>
-</html>`;
-}
-
-// GET /schedule-form.html?portal=XXX&lead=YYY
-app.get('/schedule-form.html', async (req, res) => {
-    const portalId = req.query.portal;
-    if (!portalId) return res.status(400).send('Portal ID required');
-    try {
-        const brand = await getPortalBranding(portalId);
-        const formContent = `
-<form id="schedForm" onsubmit="submitSchedForm(event)">
-    <div class="form-field"><label class="form-label">Full Name *</label><input class="form-input" id="sf_name" placeholder="Your name" required></div>
-    <div class="form-field"><label class="form-label">Email *</label><input class="form-input" id="sf_email" type="email" placeholder="your@email.com" required></div>
-    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="sf_phone" placeholder="(555) 000-0000"></div>
-    <div style="display:flex;gap:12px;">
-        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Date *</label><input class="form-input" id="sf_date" type="date" required></div>
-        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Time *</label><input class="form-input" id="sf_time" type="time" required></div>
-    </div>
-    <div class="form-field"><label class="form-label">Notes</label><textarea class="form-input" id="sf_notes" placeholder="Anything you'd like us to know..."></textarea></div>
-    <button class="submit-btn" type="submit" id="sf_btn">Request Appointment</button>
-</form>
-<script>
-async function submitSchedForm(e) {
-    e.preventDefault();
-    const btn = document.getElementById('sf_btn');
-    btn.disabled = true; btn.textContent = 'Submitting…';
-    const errEl = document.getElementById('errorMsg');
-    errEl.style.display = 'none';
-    try {
-        const res = await fetch(BASE + '/api/client-forms/schedule', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({
-                portalId: PORTAL_ID, leadId: LEAD_ID,
-                name: document.getElementById('sf_name').value,
-                email: document.getElementById('sf_email').value,
-                phone: document.getElementById('sf_phone').value,
-                preferredDate: document.getElementById('sf_date').value,
-                preferredTime: document.getElementById('sf_time').value,
-                notes: document.getElementById('sf_notes').value,
-            })
-        });
-        const d = await res.json();
-        if (d.success) {
-            document.getElementById('formContent').style.display = 'none';
-            document.getElementById('successMsg').style.display = 'block';
-            document.getElementById('successText').textContent = 'Your appointment request has been received! We'll confirm the details soon.';
-        } else {
-            errEl.textContent = d.message || 'Something went wrong. Please try again.';
-            errEl.style.display = 'block';
-            btn.disabled = false; btn.textContent = 'Request Appointment';
-        }
-    } catch(err) {
-        errEl.textContent = 'Network error. Please try again.';
-        errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Request Appointment';
-    }
-}
-</script>`;
-        res.send(portalFormHtml({ title: 'Schedule an Appointment', formContent, portalId, brand }));
-    } catch(e) {
-        console.error('[SCHEDULE FORM]', e);
-        res.status(500).send('Error loading form');
-    }
-});
-
-// GET /contact-form.html?portal=XXX&lead=YYY
-app.get('/contact-form.html', async (req, res) => {
-    const portalId = req.query.portal;
-    if (!portalId) return res.status(400).send('Portal ID required');
-    try {
-        const brand = await getPortalBranding(portalId);
-        const formContent = `
-<form id="contactForm" onsubmit="submitContactForm(event)">
-    <div class="form-field"><label class="form-label">Full Name *</label><input class="form-input" id="cf_name" placeholder="Your name" required></div>
-    <div class="form-field"><label class="form-label">Email *</label><input class="form-input" id="cf_email" type="email" placeholder="your@email.com" required></div>
-    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="cf_phone" placeholder="(555) 000-0000"></div>
-    <div class="form-field"><label class="form-label">Message *</label><textarea class="form-input" id="cf_msg" placeholder="How can we help?" required></textarea></div>
-    <button class="submit-btn" type="submit" id="cf_btn">Send Message</button>
-</form>
-<script>
-async function submitContactForm(e) {
-    e.preventDefault();
-    const btn = document.getElementById('cf_btn');
-    btn.disabled = true; btn.textContent = 'Sending…';
-    const errEl = document.getElementById('errorMsg');
-    errEl.style.display = 'none';
-    try {
-        const res = await fetch(BASE + '/api/client-forms/contact', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({
-                portalId: PORTAL_ID, leadId: LEAD_ID,
-                name: document.getElementById('cf_name').value,
-                email: document.getElementById('cf_email').value,
-                phone: document.getElementById('cf_phone').value,
-                message: document.getElementById('cf_msg').value,
-            })
-        });
-        const d = await res.json();
-        if (d.success) {
-            document.getElementById('formContent').style.display = 'none';
-            document.getElementById('successMsg').style.display = 'block';
-            document.getElementById('successText').textContent = 'Message received! We'll get back to you soon.';
-        } else {
-            errEl.textContent = d.message || 'Something went wrong. Please try again.';
-            errEl.style.display = 'block';
-            btn.disabled = false; btn.textContent = 'Send Message';
-        }
-    } catch(err) {
-        errEl.textContent = 'Network error. Please try again.';
-        errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Send Message';
-    }
-}
-</script>`;
-        res.send(portalFormHtml({ title: 'Get In Touch', formContent, portalId, brand }));
-    } catch(e) {
-        console.error('[CONTACT FORM]', e);
-        res.status(500).send('Error loading form');
-    }
-});
-
-// POST /api/client-forms/contact
-app.post('/api/client-forms/contact', async (req, res) => {
-    try {
-        const { portalId, name, email, phone, message, leadId } = req.body;
-        if (!portalId || !email) return res.status(400).json({ success: false, message: 'Missing required fields' });
-
-        const settingsRes = await pool.query('SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1', [portalId]);
-        const settings = settingsRes.rows[0] || {};
-
-        // Upsert lead as hot
-        let lead;
-        const existingLead = await pool.query('SELECT * FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2', [email, portalId]);
-        if (existingLead.rows.length) {
-            lead = existingLead.rows[0];
-            await pool.query(`UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at, NOW()), status='contacted', updated_at=NOW() WHERE id=$1`, [lead.id]);
-        } else {
-            const nl = await pool.query(`
-                INSERT INTO leads (name, email, phone, notes, source, lead_temperature, became_hot_at, client_portal_id, status, created_at, updated_at)
-                VALUES ($1,$2,$3,$4,'contact-form','hot',NOW(),$5,'new',NOW(),NOW()) RETURNING *
-            `, [name, email, phone||null, message||null, portalId]);
-            lead = nl.rows[0];
-        }
-
-        await pool.query(`
-            INSERT INTO client_email_log (lead_id, client_portal_id, email_type, status, sent_at, lead_became_hot, subject, to_email)
-            VALUES ($1,$2,'form-contact','submitted',NOW(),TRUE,'Contact Form Submission',$3)
-        `, [lead.id, portalId, email]).catch(()=>{});
-
-        // Notify admin
-        if (settings.brevo_api_key && settings.sender_email) {
-            await fetch('https://api.brevo.com/v3/smtp/email', {
-                method: 'POST',
-                headers: { 'api-key': settings.brevo_api_key, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sender: { name: settings.sender_name || 'CRM', email: settings.sender_email },
-                    to: [{ email: settings.sender_email }],
-                    subject: `New Contact Form: ${name}`,
-                    htmlContent: `<p><strong>${name}</strong> submitted a contact form.</p><p>Email: ${email}</p>${phone?`<p>Phone: ${phone}</p>`:''}<p>Message: ${message}</p>`
-                })
-            }).catch(()=>{});
-        }
-
-        res.json({ success: true, leadId: lead.id });
-    } catch(e) { console.error('[CONTACT FORM]', e); res.status(500).json({ success: false, message: e.message }); }
-});
-
-// POST /api/client/email-chains/:id/toggle — Enable or disable an email chain
-app.post('/api/client/email-chains/:id/toggle', authenticateClient, async (req, res) => {
-    try {
-        const chainId = parseInt(req.params.id);
-        const portalId = await getClientPortalId(req.user.id);
-        const { active } = req.body; // boolean
-        if (active === false) {
-            // Pause all queue entries for this chain
-            await pool.query(
-                `UPDATE client_chain_queue SET is_active=FALSE WHERE chain_id=$1 AND client_portal_id=$2`,
-                [chainId, portalId]
-            );
-        } else {
-            await pool.query(
-                `UPDATE client_chain_queue SET is_active=TRUE WHERE chain_id=$1 AND client_portal_id=$2`,
-                [chainId, portalId]
-            );
-        }
-        res.json({ success: true, active });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
-});

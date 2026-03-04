@@ -42,6 +42,16 @@ require('dotenv').config();
 // Diamondback Coding's own Brevo account key. Per-portal keys are IGNORED for sending.
 // ========================================
 const PLATFORM_BREVO_KEY = process.env.BREVO_API_KEY || process.env.PLATFORM_BREVO_KEY;
+if (!PLATFORM_BREVO_KEY) {
+    console.error('');
+    console.error('╔══════════════════════════════════════════════════════════════╗');
+    console.error('║  ⚠️  CRITICAL: BREVO_API_KEY environment variable NOT SET!   ║');
+    console.error('║  All email and SMS sends WILL FAIL until this is configured. ║');
+    console.error('║  Go to Render → your service → Environment → Add:            ║');
+    console.error('║  BREVO_API_KEY = your-brevo-api-key                          ║');
+    console.error('╚══════════════════════════════════════════════════════════════╝');
+    console.error('');
+}
 const PLATFORM_SENDER_EMAIL = process.env.PLATFORM_SENDER_EMAIL || 'contact@diamondbackcoding.com';
 const PLATFORM_SENDER_NAME  = process.env.PLATFORM_SENDER_NAME  || 'Diamondback Coding';
 
@@ -8845,7 +8855,7 @@ app.get('/api/subscriptions', authenticateToken, async (req, res) => {
                         'user_label', cu.user_label,
                         'user_name', cu.user_name,
                         'user_email', cu.user_email,
-                        'username', cu.username,
+                        'username', cu.user_name,
                         'sending_email', cu.sending_email,
                         'subscription_id', cu.subscription_id,
                         'stripe_subscription_id', cu.stripe_subscription_id,
@@ -20986,9 +20996,54 @@ app.put('/api/client/email-settings', authenticateClient, async (req, res) => {
             ).catch(() => {});
         }
 
+        // ── Auto-register sender in Brevo platform account ──────────────
+        // When admin saves a sender_email, automatically register it as a sender
+        // in the platform Brevo account so emails don't get rejected.
+        let brevoSenderStatus = null;
+        const effectiveSenderEmail = sender_email || existing?.sender_email;
+        const effectiveSenderName  = sender_name  || existing?.sender_name || company_name || existing?.company_name || 'CRM';
+        if (PLATFORM_BREVO_KEY && effectiveSenderEmail) {
+            try {
+                // Check if sender already registered
+                const listRes = await brevoApiRequest(PLATFORM_BREVO_KEY, 'GET', '/v3/senders');
+                const existingSenders = listRes.body?.senders || [];
+                const alreadyRegistered = existingSenders.some(s => s.email?.toLowerCase() === effectiveSenderEmail.toLowerCase());
+                if (!alreadyRegistered) {
+                    const addRes = await brevoApiRequest(PLATFORM_BREVO_KEY, 'POST', '/v3/senders', {
+                        name:  effectiveSenderName,
+                        email: effectiveSenderEmail
+                    });
+                    if (addRes.status === 201 || addRes.status === 200) {
+                        brevoSenderStatus = 'registered';
+                        console.log(`[BREVO AUTO-REGISTER] ✅ Registered sender ${effectiveSenderEmail} in platform Brevo`);
+                    } else {
+                        brevoSenderStatus = `warning: ${addRes.body?.message || 'Could not auto-register sender'}`;
+                        console.warn(`[BREVO AUTO-REGISTER] ⚠️ ${brevoSenderStatus}`);
+                    }
+                } else {
+                    brevoSenderStatus = 'already_registered';
+                    console.log(`[BREVO AUTO-REGISTER] ℹ️ Sender ${effectiveSenderEmail} already registered`);
+                }
+            } catch(brevoRegErr) {
+                brevoSenderStatus = 'error: ' + brevoRegErr.message;
+                console.error('[BREVO AUTO-REGISTER] ❌', brevoRegErr.message);
+            }
+        } else if (!PLATFORM_BREVO_KEY) {
+            brevoSenderStatus = 'platform_key_missing';
+            console.error('[BREVO AUTO-REGISTER] ❌ PLATFORM_BREVO_KEY env var is not set — emails WILL fail!');
+        }
+
         // Return the freshly-saved settings so the frontend can confirm what was persisted
         const savedSettings = await getClientEmailSettings(portalId);
-        res.json({ success: true, message: 'Settings saved', settings: savedSettings });
+        res.json({
+            success: true,
+            message: 'Settings saved',
+            settings: savedSettings,
+            brevoSenderStatus,
+            ...(brevoSenderStatus === 'platform_key_missing' ? {
+                warning: 'BREVO_API_KEY environment variable is not set on the server. Emails and SMS will not send until this is configured on Render.'
+            } : {})
+        });
     } catch(e) { console.error('[CLIENT EMAIL SETTINGS PUT]', e); res.status(500).json({ success: false, message: e.message }); }
 });
 
@@ -21082,8 +21137,8 @@ app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res
         // Always use Diamondback's platform Brevo key — NOT per-portal key
         console.log('[SEND-EMAIL] portalId:', portalId, '| PLATFORM_BREVO_KEY set:', !!PLATFORM_BREVO_KEY);
         if (!PLATFORM_BREVO_KEY) {
-            console.error('[SEND-EMAIL] CRITICAL: BREVO_API_KEY env var is not set!');
-            return res.status(500).json({ success: false, message: 'Platform email not configured. Contact Diamondback Coding support.' });
+            console.error('[SEND-EMAIL] CRITICAL: BREVO_API_KEY env var is not set on Render!');
+            return res.status(500).json({ success: false, message: 'Email service not configured. The BREVO_API_KEY environment variable must be set on your Render server. Go to Render → your service → Environment, and add BREVO_API_KEY.' });
         }
 
         // Get portal settings for sender identity only
@@ -21151,7 +21206,7 @@ app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) 
 
         // Always use Diamondback's platform Brevo key
         if (!PLATFORM_BREVO_KEY) {
-            return res.status(500).json({ success: false, message: 'Platform SMS not configured. Contact Diamondback Coding.' });
+            return res.status(500).json({ success: false, message: 'SMS service not configured. The BREVO_API_KEY environment variable must be set on your Render server. Go to Render → your service → Environment, and add BREVO_API_KEY.' });
         }
 
         // Get lead phone
@@ -24366,8 +24421,9 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
     // ── Use Diamondback's platform Brevo key — never per-portal keys ─
     const masterBrevoKey = PLATFORM_BREVO_KEY;
     if (!masterBrevoKey) {
-        await pool.query(`UPDATE client_email_log SET status='failed', error_message='Platform Brevo key not configured' WHERE id=$1`, [logId]);
-        throw new Error('Platform email not configured. Contact Diamondback Coding support.');
+        await pool.query(`UPDATE client_email_log SET status='failed', error_message='BREVO_API_KEY env var not set on server' WHERE id=$1`, [logId]);
+        console.error('[CLIENT EMAIL] ❌ CRITICAL: BREVO_API_KEY environment variable is not set on Render!');
+        throw new Error('Email service not configured. The BREVO_API_KEY environment variable must be set on your Render server. Go to Render → your service → Environment, and add BREVO_API_KEY with your Brevo API key.');
     }
     if (!fromEmail) {
         await pool.query(`UPDATE client_email_log SET status='failed', error_message='No sender email configured' WHERE id=$1`, [logId]);
@@ -25069,15 +25125,23 @@ app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('imag
             portalId = cc.rows[0]?.client_portal_id || null;
         }
         if (!portalId) return res.status(400).json({ success: false, message: 'No portal found for this account' });
-
-        // Admin check
+        // Admin check — check leads table, then company_users as fallback
         const adminCheck = await pool.query(
             `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
         );
         const u = adminCheck.rows[0];
-        if (!u?.is_company_admin && !u?.is_co_admin) {
+        let isAdminBg = u?.is_company_admin || u?.is_co_admin;
+        if (!isAdminBg) {
+            const cuAdmin = await pool.query(
+                `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
+                [portalId, req.user.email]
+            ).catch(() => ({ rows: [] }));
+            isAdminBg = cuAdmin.rows[0]?.is_admin || false;
+        }
+        if (!isAdminBg) {
             return res.status(403).json({ success: false, message: 'Admin only' });
         }
+
 
         // Limit to 10 custom backgrounds per portal
         const countRes = await pool.query(
@@ -25108,12 +25172,20 @@ app.delete('/api/client/bg-images/:id', authenticateClient, async (req, res) => 
         const portalId = await getClientPortalId(req.user.id);
         if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
 
-        // Admin check
+        // Admin check — check leads table, then company_users as fallback
         const adminCheck = await pool.query(
             `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
         );
         const u = adminCheck.rows[0];
-        if (!u?.is_company_admin && !u?.is_co_admin) {
+        let isAdminDel = u?.is_company_admin || u?.is_co_admin;
+        if (!isAdminDel) {
+            const cuAdmin = await pool.query(
+                `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
+                [portalId, req.user.email]
+            ).catch(() => ({ rows: [] }));
+            isAdminDel = cuAdmin.rows[0]?.is_admin || false;
+        }
+        if (!isAdminDel) {
             return res.status(403).json({ success: false, message: 'Admin only' });
         }
 

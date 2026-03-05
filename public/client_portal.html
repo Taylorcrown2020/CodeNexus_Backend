@@ -1588,7 +1588,7 @@ tr:hover .row-actions { opacity: 1; }
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
                         Templates
                     </button>
-                    <button class="btn btn-default" onclick="setFUMainTab('chains',this)">
+                    <button id="fuChainsHeaderBtn" class="btn btn-default" onclick="setFUMainTab('chains',this)">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                         Chains
                     </button>
@@ -1599,12 +1599,12 @@ tr:hover .row-actions { opacity: 1; }
                 <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0;" id="fuMainTabBar">
                     <button class="btn btn-ghost fu-main-tab active-fu-main-tab" onclick="setFUMainTab('queue',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">Queue</button>
                     <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('templates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Email Templates</button>
-                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Email Chains</button>
+                    <button id="fuEmailChainsTab" class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Email Chains</button>
                     <span id="smsTabsContainer" style="display:contents;"><button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('smstemplates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;color:#10b981;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         SMS Templates
                     </button>
-                    <button class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('smschains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;color:#10b981;">
+                    <button id="fuSmsChainsTab" class="btn btn-ghost fu-main-tab" onclick="setFUMainTab('smschains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;color:#10b981;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                         SMS Chains
                     </button></span>
@@ -3033,10 +3033,17 @@ function showApp() {
 
     // ── Plan limits from login response ──────────────────────────────────────
     S.planKey    = user.planKey    || '_default';
+    // IMPORTANT: if server doesn't send planLimits, default to MOST RESTRICTIVE
+    // (Essential-level) so no features are accidentally unlocked.
     S.planLimits = user.planLimits || {
-        displayName: 'CRM', smsEnabled: true, sequencesEnabled: true,
-        marketingEnabled: true, bgCustomEnabled: true,
-        maxRecords: null, maxProducts: null, maxFollowUpsDay: null
+        displayName: 'CRM',
+        smsEnabled: false,
+        sequencesEnabled: false,
+        marketingEnabled: false,
+        bgCustomEnabled: false,
+        aiEnabled: false,
+        integrationsEnabled: false,
+        maxRecords: 1000, maxProducts: 10, maxFollowUpsDay: 200
     };
 
     // Load custom photo backgrounds for the settings picker (non-blocking)
@@ -3121,6 +3128,12 @@ function showApp() {
     } else {
         navigate('dashboard');
     }
+
+    // ── Apply plan-based feature restrictions immediately after login ──────────
+    // This hides Marketing, Chains, SMS, Team/Company tabs, etc. based on the
+    // user's actual plan (Essential vs Professional vs Enterprise vs Workspace).
+    applyPlanRestrictions();
+
     loadInitialData();
     // Init AI widget immediately (planKey and planLimits are now set) + again after 500ms as safety net
     initAiWidget();
@@ -3130,44 +3143,66 @@ function showApp() {
 // ─────────────────────────────────────────────────────────────────────────────
 // PLAN RESTRICTIONS  — enforced on login and after any plan change
 // Reads from S.planLimits (set during login) and applies immediately to the UI.
+// Called from showApp() every time a user logs in.
 // ─────────────────────────────────────────────────────────────────────────────
 function applyPlanRestrictions() {
     const L = S.planLimits || {};
-    const isIndividual = S.isIndividual;
 
-    // ── Marketing tab — hidden for Essential, hidden for individual users without marketing ──
-    const navMarketing = document.getElementById('navMarketing');
-    if (navMarketing) navMarketing.style.display = L.marketingEnabled !== false ? '' : 'none';
-
-    // ── SMS tabs in Follow-ups ────────────────────────────────────────────────
-    const smsTabsContainer = document.getElementById('smsTabsContainer');
-    if (smsTabsContainer) smsTabsContainer.style.display = L.smsEnabled !== false ? '' : 'none';
-
-    // ── Automated sequences tab — hide for Essential ──────────────────────────
-    // "Email Chains" and "SMS Chains" tabs are automated sequences
-    document.querySelectorAll('.fu-main-tab').forEach(tab => {
-        const onclick = tab.getAttribute('onclick') || '';
-        if (onclick.includes('chains')) {
-            tab.style.display = L.sequencesEnabled !== false ? '' : 'none';
-        }
-    });
-
-    // ── Background customization card ─────────────────────────────────────────
-    const bgSection = document.getElementById('bgCustomSection');
-    if (bgSection) bgSection.style.display = L.bgCustomEnabled !== false ? '' : 'none';
-
-    // ── Team / Company / multi-seat features: always hidden for individual plans ──
-    // (These are already handled by nav-item-admin-only class + S.isCompanyMember check)
-    // Extra enforcement: if individual, ensure these pages are never navigable
-    if (isIndividual) {
-        // Double-ensure team/company nav items stay hidden
-        ['navTeam', 'navCompany'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
+    // Helper: show or hide an element by id
+    function setVis(id, show) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = show ? '' : 'none';
+    }
+    function setVisEl(el, show) {
+        if (el) el.style.display = show ? '' : 'none';
     }
 
-    // ── Sidebar usage bar ─────────────────────────────────────────────────────
+    // ─── INDIVIDUAL PLAN: hard-block Team and Company nav ─────────────────────
+    // These are ONLY for CRM Workspace (team/company) accounts. Never show on
+    // Essential, Professional, or Enterprise individual plans.
+    if (S.isIndividual) {
+        setVis('navTeam',    false);
+        setVis('navCompany', false);
+    }
+
+    // ─── MARKETING tab ────────────────────────────────────────────────────────
+    // Essential CRM: NO marketing access at all.
+    // Professional, Enterprise, Workspace: marketing enabled.
+    setVis('navMarketing', L.marketingEnabled === true);
+
+    // ─── AUTOMATED SEQUENCES (Email Chains, SMS Chains) ───────────────────────
+    // Essential CRM: NO automated sequences (no Email Chains, no SMS Chains).
+    // Professional, Enterprise, Workspace: sequences enabled.
+    const showSeq = L.sequencesEnabled === true;
+
+    // Tab bar buttons
+    setVis('fuEmailChainsTab',   showSeq);
+    setVis('fuSmsChainsTab',     showSeq);
+    // Header shortcut button
+    setVis('fuChainsHeaderBtn',  showSeq);
+
+    // ─── SMS tabs in Follow-ups ───────────────────────────────────────────────
+    // Essential CRM: NO SMS at all (no SMS Templates, no SMS Chains).
+    // Professional, Enterprise, Workspace: SMS enabled.
+    const showSms = L.smsEnabled === true;
+    setVis('smsTabsContainer', showSms);
+    // If SMS is off, also ensure SMS Chains tab is hidden (belt-and-suspenders)
+    if (!showSms) setVis('fuSmsChainsTab', false);
+
+    // ─── BACKGROUND CUSTOMIZATION ─────────────────────────────────────────────
+    // Essential: no custom backgrounds. Professional+: yes.
+    setVis('bgCustomSection', L.bgCustomEnabled === true);
+
+    // ─── INTEGRATIONS nav ────────────────────────────────────────────────────
+    // Enterprise and Workspace only.
+    setVis('navIntegrations', L.integrationsEnabled === true);
+
+    // ─── AI WIDGET ───────────────────────────────────────────────────────────
+    // Enterprise and Workspace only (handled by initAiWidget, but double-enforce here)
+    const aiWidget = document.getElementById('aiChatWidget');
+    if (aiWidget) aiWidget.style.display = L.aiEnabled === true ? '' : 'none';
+
+    // ─── Sidebar usage bar ────────────────────────────────────────────────────
     _refreshPlanLimitBar();
 }
 

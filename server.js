@@ -11912,6 +11912,16 @@ app.post('/api/public/subscriptions/checkout', async (req, res) => {
             });
         }
 
+        // Enforce: individual plans are always 1 user (no upselling seats on individual plans)
+        if (!pkg.isCompanyPlan && resolvedUserType === 'individual') {
+            if (parseInt(userCount) !== 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Individual plans support exactly 1 user. For multi-seat access, please purchase a CRM Workspace plan.'
+                });
+            }
+        }
+
         if (!pkg.stripePriceId) {
             return res.status(500).json({
                 success: false,

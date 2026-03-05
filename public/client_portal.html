@@ -1264,7 +1264,7 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                     Subscription
                 </div>
-                <div class="nav-item nav-item-admin-only" data-page="billing" id="navBilling">
+                <div class="nav-item" data-page="billing" id="navBilling" style="display:none;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                     Billing
                 </div>
@@ -3053,11 +3053,17 @@ function showApp() {
         S.isAdmin         ? 'Co-Admin' :
         'Member';
 
-    // Admin-only nav items (Team, Company, Billing tabs + admin workspace items)
-    // Only show for workspace admins (have a clientPortalId), NOT individual account owners
+    // Admin-only nav items (Team, Company tabs — workspace admins only)
+    // Billing is shown for all users (individual and workspace admins)
     document.querySelectorAll('.nav-item-admin-only').forEach(el => {
         el.style.display = (S.isAdmin && S.isCompanyMember) ? 'flex' : 'none';
     });
+
+    // Billing: show for ALL users (individual account owners AND workspace admins)
+    const navBilling = document.getElementById('navBilling');
+    if (navBilling) {
+        navBilling.style.display = 'flex';
+    }
 
     // Show Integrations nav for Enterprise and Workspace plans
     const navIntegrations = document.getElementById('navIntegrations');
@@ -3127,8 +3133,9 @@ function showApp() {
 // ─────────────────────────────────────────────────────────────────────────────
 function applyPlanRestrictions() {
     const L = S.planLimits || {};
+    const isIndividual = S.isIndividual;
 
-    // ── Marketing tab ─────────────────────────────────────────────────────────
+    // ── Marketing tab — hidden for Essential, hidden for individual users without marketing ──
     const navMarketing = document.getElementById('navMarketing');
     if (navMarketing) navMarketing.style.display = L.marketingEnabled !== false ? '' : 'none';
 
@@ -3136,9 +3143,29 @@ function applyPlanRestrictions() {
     const smsTabsContainer = document.getElementById('smsTabsContainer');
     if (smsTabsContainer) smsTabsContainer.style.display = L.smsEnabled !== false ? '' : 'none';
 
+    // ── Automated sequences tab — hide for Essential ──────────────────────────
+    // "Email Chains" and "SMS Chains" tabs are automated sequences
+    document.querySelectorAll('.fu-main-tab').forEach(tab => {
+        const onclick = tab.getAttribute('onclick') || '';
+        if (onclick.includes('chains')) {
+            tab.style.display = L.sequencesEnabled !== false ? '' : 'none';
+        }
+    });
+
     // ── Background customization card ─────────────────────────────────────────
     const bgSection = document.getElementById('bgCustomSection');
     if (bgSection) bgSection.style.display = L.bgCustomEnabled !== false ? '' : 'none';
+
+    // ── Team / Company / multi-seat features: always hidden for individual plans ──
+    // (These are already handled by nav-item-admin-only class + S.isCompanyMember check)
+    // Extra enforcement: if individual, ensure these pages are never navigable
+    if (isIndividual) {
+        // Double-ensure team/company nav items stay hidden
+        ['navTeam', 'navCompany'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+    }
 
     // ── Sidebar usage bar ─────────────────────────────────────────────────────
     _refreshPlanLimitBar();
@@ -3224,6 +3251,13 @@ function setupNavigation() {
 }
 
 function navigate(page) {
+    // Block individual users from accessing team/company pages
+    const teamPages = ['team', 'company'];
+    if (S.isIndividual && teamPages.includes(page)) {
+        toast('This section is only available for CRM Workspace (team) accounts.', 'error');
+        return;
+    }
+
     // Update nav
     document.querySelectorAll('.nav-item[data-page]').forEach(el => {
         el.classList.toggle('active', el.dataset.page === page);
@@ -7945,17 +7979,27 @@ async function loadBilling() {
         </div>
     `;
     } catch(e) {
-        el.innerHTML = `<div class="empty-state" style="color:var(--red);">
-            <p>Failed to load billing data.</p>
-            <p style="font-size:12px;opacity:.7;">${e.message}</p>
-            <div style="display:flex;gap:10px;margin-top:14px;justify-content:center;flex-wrap:wrap;">
-                <button class="btn btn-ghost" onclick="loadBilling()">Retry</button>
-                <a href="/schedule.html?type=setup" target="_blank" class="btn btn-white" style="text-decoration:none;display:flex;align-items:center;gap:6px;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    Schedule a Call with Diamondback
-                </a>
-            </div>
-        </div>`;
+        // Check if this is a "no active subscription" error for individual users
+        if (e.message && e.message.includes('No active subscription')) {
+            el.innerHTML = `<div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;opacity:.3;margin-bottom:16px;"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <p style="color:var(--text-2);">No active subscription found.</p>
+                <p style="font-size:12px;color:var(--text-3);margin-top:4px;">Visit our pricing page to subscribe to a CRM plan.</p>
+                <a href="/pricing.html#crm-solutions" class="btn btn-white" style="margin-top:14px;text-decoration:none;">View Plans</a>
+            </div>`;
+        } else {
+            el.innerHTML = `<div class="empty-state" style="color:var(--red);">
+                <p>Failed to load billing data.</p>
+                <p style="font-size:12px;opacity:.7;">${e.message}</p>
+                <div style="display:flex;gap:10px;margin-top:14px;justify-content:center;flex-wrap:wrap;">
+                    <button class="btn btn-ghost" onclick="loadBilling()">Retry</button>
+                    <a href="/schedule.html?type=setup" target="_blank" class="btn btn-white" style="text-decoration:none;display:flex;align-items:center;gap:6px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Schedule a Call with Diamondback
+                    </a>
+                </div>
+            </div>`;
+        }
     }
 }
 

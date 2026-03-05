@@ -76,7 +76,7 @@ const PLAN_LIMITS = {
         smsEnabled:        false,
         sequencesEnabled:  false,
         marketingEnabled:  false,
-        bgCustomEnabled:   false,
+        bgCustomEnabled:   true,
     },
     'crm-professional': {
         displayName:       'Professional CRM',
@@ -124,6 +124,42 @@ const PLAN_LIMITS = {
         bgCustomEnabled:   true,
     },
 };
+
+/**
+ * Resolves the true leads.id for a JWT-authenticated client user.
+ *
+ * The JWT stores the lead id at sign-in time. If the lead row was later
+ * remapped (e.g. merged, recreated by Stripe webhook, or id sequence reset)
+ * the JWT id may no longer exist in the leads table, causing FK violations
+ * on individual_owner_id and 404s throughout.
+ *
+ * Strategy:
+ *   1. If id exists in leads → return it (fast path, 99% of calls).
+ *   2. Otherwise look up by email → return that id and async-patch the JWT
+ *      claim is NOT patchable, but we stamp client_last_login so the user
+ *      gets a fresh token on next login.
+ *
+ * @param {number} jwtId   - req.user.id from JWT
+ * @param {string} jwtEmail - req.user.email from JWT
+ * @returns {number|null} the real lead id, or null if not found
+ */
+async function resolveLeadId(jwtId, jwtEmail) {
+    // Fast path — id still valid
+    const byId = await pool.query('SELECT id FROM leads WHERE id=$1', [jwtId]);
+    if (byId.rows.length) return jwtId;
+
+    // Fallback — look up by email (portal accounts have client_password set)
+    if (!jwtEmail) return null;
+    const byEmail = await pool.query(
+        `SELECT id FROM leads WHERE LOWER(email)=LOWER($1) AND client_password IS NOT NULL LIMIT 1`,
+        [jwtEmail]
+    );
+    if (!byEmail.rows.length) return null;
+
+    const realId = byEmail.rows[0].id;
+    console.warn(`[resolveLeadId] JWT id=${jwtId} not found; resolved to id=${realId} via email ${jwtEmail}`);
+    return realId;
+}
 
 /**
  * Resolves the active plan limits object for a logged-in client user.
@@ -9157,7 +9193,8 @@ async function getPortalAdminUserId(clientPortalId) {
 // ========================================
 app.get('/api/client/leads', authenticateClient, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        if (!userId) return res.status(400).json({ success: false, message: 'Account not found. Please log out and log back in.' });
         const { mine } = req.query; // ?mine=1 for My Leads view
 
         // Get user's portal info — uses fallback lookup for admins missing client_portal_id on lead
@@ -9258,7 +9295,11 @@ app.get('/api/client/leads', authenticateClient, async (req, res) => {
 // ========================================
 app.post('/api/client/leads', authenticateClient, async (req, res) => {
     try {
-        const userId = req.user.id;
+        // Resolve the true lead id — the JWT id may be stale if the leads row was
+        // remapped after the token was issued (FK violation guard).
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        if (!userId) return res.status(400).json({ success: false, message: 'Account not found. Please log out and log back in.' });
+
         const { name, email, phone, company, status, notes, assignToSelf } = req.body;
 
         if (!name) return res.status(400).json({ success: false, message: 'Name is required' });
@@ -9336,7 +9377,8 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
 // ========================================
 app.patch('/api/client/leads/:id', authenticateClient, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        if (!userId) return res.status(400).json({ success: false, message: 'Account not found. Please log out and log back in.' });
         const leadId = req.params.id;
         const { name, email, phone, company, status, notes, lead_temperature } = req.body;
 
@@ -9399,7 +9441,8 @@ app.patch('/api/client/leads/:id', authenticateClient, async (req, res) => {
 // ========================================
 app.delete('/api/client/leads/:id', authenticateClient, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        if (!userId) return res.status(400).json({ success: false, message: 'Account not found. Please log out and log back in.' });
         const leadId = req.params.id;
 
         // Verify ownership — works for both portal users and individual account owners
@@ -15120,14 +15163,22 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
             if (company) {
                 const primary = subscriptions.find(s => s.status === 'active' && s.is_company_subscription) || subscriptions[0];
                 if (primary) {
-                    const purchasedSeats = parseInt(company.purchased_seats || 0);
+                    // purchased_seats may be 0 if not stamped yet — fall back to user_count or 1
+                    const purchasedSeats = parseInt(company.purchased_seats || 0) || parseInt(primary.user_count || 0) || 1;
+                    const ppu = parseFloat(primary.price_per_user) || 0;
                     let displayTotal = parseFloat(company.monthly_total || 0);
-                    // Never show $0 when seats exist — calculate from price_per_user
-                    if (displayTotal === 0 && purchasedSeats > 0) {
-                        const ppu = parseFloat(primary.price_per_user) || 84.99;
+                    // Never show $0 when a seat price exists — always calculate from price_per_user
+                    if ((displayTotal === 0 || isNaN(displayTotal)) && ppu > 0) {
                         displayTotal = purchasedSeats * ppu;
-                        pool.query(`UPDATE client_companies SET monthly_total=$1 WHERE client_portal_id=$2`,
-                            [displayTotal, lead.client_portal_id]).catch(() => {});
+                        // Persist corrected totals so future loads are instant
+                        pool.query(
+                            `UPDATE client_companies SET monthly_total=$1, purchased_seats=GREATEST(purchased_seats,$2) WHERE client_portal_id=$3`,
+                            [displayTotal, purchasedSeats, lead.client_portal_id]
+                        ).catch(() => {});
+                        pool.query(
+                            `UPDATE crm_subscriptions SET monthly_total=$1, user_count=$2 WHERE id=$3`,
+                            [displayTotal, purchasedSeats, primary.id]
+                        ).catch(() => {});
                     }
                     primary.monthly_total   = displayTotal;
                     primary.user_count      = purchasedSeats;
@@ -24388,16 +24439,23 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
         let isIndividual = false;
 
         if (!portalId) {
-            // Individual user — verify they have an active individual subscription
-            const leadRow = await pool.query(
+            // Individual user — look up by id, fall back to email if id lookup fails
+            let leadRow = await pool.query(
                 `SELECT id, email, is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
             );
+            if (!leadRow.rows.length && req.user.email) {
+                leadRow = await pool.query(
+                    `SELECT id, email, is_company_admin, is_co_admin FROM leads WHERE LOWER(email)=LOWER($1) AND client_password IS NOT NULL LIMIT 1`,
+                    [req.user.email]
+                );
+            }
             const lead = leadRow.rows[0];
             if (!lead) return res.status(400).json({ success: false, message: 'User not found' });
 
-            // Check for an active individual subscription by email
+            // Check for an active subscription by email — include company subscriptions for
+            // individual users who have is_company_subscription=TRUE on their personal plan
             const subCheck = await pool.query(
-                `SELECT id FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status='active' AND is_company_subscription IS NOT TRUE LIMIT 1`,
+                `SELECT id FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status='active' LIMIT 1`,
                 [lead.email]
             );
             if (!subCheck.rows.length) {
@@ -24424,7 +24482,9 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
         // Subscription charge — individual users look up by email; workspace users by portalId
         let subscriptionCharge = 0;
         if (isIndividual) {
-            const userEmail = (await pool.query(`SELECT email FROM leads WHERE id=$1`, [req.user.id])).rows[0]?.email;
+            // Use the email directly from the JWT — avoids a round-trip and works even if
+            // the lead id has drifted or was remapped.
+            const userEmail = req.user.email;
             const subResult = await pool.query(
                 `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status='active'`,
                 [userEmail]

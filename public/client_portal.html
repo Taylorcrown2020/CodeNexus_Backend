@@ -3040,7 +3040,7 @@ function showApp() {
         smsEnabled: false,
         sequencesEnabled: false,
         marketingEnabled: false,
-        bgCustomEnabled: false,
+        bgCustomEnabled: true,
         aiEnabled: false,
         integrationsEnabled: false,
         maxRecords: 1000, maxProducts: 10, maxFollowUpsDay: 200
@@ -3203,8 +3203,8 @@ function applyPlanRestrictions() {
     if (!showSms) setVis('fuSmsChainsTab', false);
 
     // ─── BACKGROUND CUSTOMIZATION ─────────────────────────────────────────────
-    // Essential: no custom backgrounds. Professional+: yes.
-    setVis('bgCustomSection', L.bgCustomEnabled === true);
+    // Background themes available on all plans.
+    setVis('bgCustomSection', true);
 
     // ─── INTEGRATIONS nav ────────────────────────────────────────────────────
     // Enterprise and Workspace only.

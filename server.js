@@ -21831,45 +21831,67 @@ app.post('/api/brevo/sms-webhook', async (req, res) => {
 
 app.get('/api/client/email-templates', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.json({ success: true, templates: [] });
-        const r = await pool.query('SELECT * FROM client_email_templates WHERE client_portal_id=$1 ORDER BY created_at DESC', [portalId]);
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        const portalId = await getClientPortalId(userId);
+        let r;
+        if (portalId) {
+            r = await pool.query('SELECT * FROM client_email_templates WHERE client_portal_id=$1 ORDER BY created_at DESC', [portalId]);
+        } else {
+            r = await pool.query('SELECT * FROM client_email_templates WHERE individual_owner_id=$1 ORDER BY created_at DESC', [userId]);
+        }
         res.json({ success: true, templates: r.rows });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.post('/api/client/email-templates', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(403).json({ success: false, message: 'Company required' });
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        const portalId = await getClientPortalId(userId);
         const { name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated,
                 website_url, website_btn_label, include_contact_form, contact_btn_label,
                 include_schedule_btn, schedule_btn_label } = req.body;
         if (!name || !subject || !body_html) return res.status(400).json({ success: false, message: 'name, subject and body_html required' });
-        const r = await pool.query(`
-            INSERT INTO client_email_templates
-                (client_portal_id, name, topic, eyebrow, headline, body_html, cta_label, subject,
-                 is_automated, created_by_user_email,
-                 website_url, website_btn_label, include_contact_form, contact_btn_label,
-                 include_schedule_btn, schedule_btn_label)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *
-        `, [portalId, name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject,
-            is_automated||false, req.user.email,
-            website_url||null, website_btn_label||null,
-            include_contact_form !== false,
-            contact_btn_label||null,
-            include_schedule_btn !== false,
-            schedule_btn_label||null]);
+        let r;
+        if (portalId) {
+            r = await pool.query(`
+                INSERT INTO client_email_templates
+                    (client_portal_id, name, topic, eyebrow, headline, body_html, cta_label, subject,
+                     is_automated, created_by_user_email,
+                     website_url, website_btn_label, include_contact_form, contact_btn_label,
+                     include_schedule_btn, schedule_btn_label)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *
+            `, [portalId, name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject,
+                is_automated||false, req.user.email,
+                website_url||null, website_btn_label||null,
+                include_contact_form !== false, contact_btn_label||null,
+                include_schedule_btn !== false, schedule_btn_label||null]);
+        } else {
+            r = await pool.query(`
+                INSERT INTO client_email_templates
+                    (individual_owner_id, name, topic, eyebrow, headline, body_html, cta_label, subject,
+                     is_automated, created_by_user_email,
+                     website_url, website_btn_label, include_contact_form, contact_btn_label,
+                     include_schedule_btn, schedule_btn_label)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *
+            `, [userId, name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null, subject,
+                is_automated||false, req.user.email,
+                website_url||null, website_btn_label||null,
+                include_contact_form !== false, contact_btn_label||null,
+                include_schedule_btn !== false, schedule_btn_label||null]);
+        }
         res.json({ success: true, template: r.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.put('/api/client/email-templates/:id', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        const portalId = await getClientPortalId(userId);
         const { name, topic, eyebrow, headline, body_html, cta_label, subject, is_automated,
                 website_url, website_btn_label, include_contact_form, contact_btn_label,
                 include_schedule_btn, schedule_btn_label } = req.body;
+        const ownerClause = portalId ? `client_portal_id=$16` : `individual_owner_id=$16`;
+        const ownerVal    = portalId || userId;
         const r = await pool.query(`
             UPDATE client_email_templates SET
                 name=$1, topic=$2, eyebrow=$3, headline=$4, body_html=$5, cta_label=$6,
@@ -21878,7 +21900,7 @@ app.put('/api/client/email-templates/:id', authenticateClient, async (req, res) 
                 include_contact_form=$11, contact_btn_label=$12,
                 include_schedule_btn=$13, schedule_btn_label=$14,
                 updated_at=NOW()
-            WHERE id=$15 AND client_portal_id=$16 RETURNING *
+            WHERE id=$15 AND ${ownerClause} RETURNING *
         `, [name, topic||null, eyebrow||null, headline||null, body_html, cta_label||null,
             subject, is_automated||false,
             website_url||null, website_btn_label||null,
@@ -21886,7 +21908,7 @@ app.put('/api/client/email-templates/:id', authenticateClient, async (req, res) 
             contact_btn_label||null,
             include_schedule_btn !== false,
             schedule_btn_label||null,
-            req.params.id, portalId]);
+            req.params.id, ownerVal]);
         if (!r.rows[0]) return res.status(404).json({ success: false, message: 'Template not found' });
         res.json({ success: true, template: r.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
@@ -21894,8 +21916,13 @@ app.put('/api/client/email-templates/:id', authenticateClient, async (req, res) 
 
 app.delete('/api/client/email-templates/:id', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        await pool.query('DELETE FROM client_email_templates WHERE id=$1 AND client_portal_id=$2', [req.params.id, portalId]);
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        const portalId = await getClientPortalId(userId);
+        if (portalId) {
+            await pool.query('DELETE FROM client_email_templates WHERE id=$1 AND client_portal_id=$2', [req.params.id, portalId]);
+        } else {
+            await pool.query('DELETE FROM client_email_templates WHERE id=$1 AND individual_owner_id=$2', [req.params.id, userId]);
+        }
         res.json({ success: true });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -21922,8 +21949,10 @@ app.get('/api/client/email-chains', authenticateClient, async (req, res) => {
 
 app.post('/api/client/email-chains', authenticateClient, async (req, res) => {
     try {
+        const planData = await getClientPlanLimits(req.user.id);
+        if (!planData.sequencesEnabled) return res.status(403).json({ success: false, message: 'Email chains are not available on the Essential plan. Upgrade to Professional or higher.' });
         const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(403).json({ success: false });
+        if (!portalId) return res.status(403).json({ success: false, message: 'Workspace required for email chains' });
         const { name, loop, steps } = req.body; // steps: [{template_id, delay_days}]
         if (!name || !steps?.length) return res.status(400).json({ success: false, message: 'name and steps required' });
         const chain = await pool.query('INSERT INTO client_email_chains (client_portal_id,name,loop) VALUES ($1,$2,$3) RETURNING *', [portalId, name, loop !== false]);
@@ -21945,8 +21974,14 @@ app.delete('/api/client/email-chains/:id', authenticateClient, async (req, res) 
 
 app.post('/api/client/email/send', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
+        const planData = await getClientPlanLimits(req.user.id);
+        // Campaign sends (bulk) require marketingEnabled; single follow-up sends are always allowed
         const { template_id, lead_ids, email_type } = req.body;
+        const isCampaign = (lead_ids?.length > 1) || email_type === 'marketing';
+        if (isCampaign && !planData.marketingEnabled) {
+            return res.status(403).json({ success: false, message: 'Campaign sends are not available on the Essential plan. Upgrade to Professional or higher.' });
+        }
+        const portalId = await getClientPortalId(req.user.id);
         if (!template_id || !lead_ids?.length) return res.status(400).json({ success: false, message: 'template_id and lead_ids required' });
         // email_type can be 'follow-up' (sent from followups queue) or 'marketing' (campaign) 
         const emailType = email_type || (lead_ids.length === 1 ? 'follow-up' : 'marketing');
@@ -26150,9 +26185,25 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
                 updated_at TIMESTAMP DEFAULT NOW()
             );
 
+            -- Migrate existing individual template support (safe if already done)
+            DO $migtempl$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name='client_email_templates' AND column_name='individual_owner_id'
+                ) THEN
+                    ALTER TABLE client_email_templates ADD COLUMN individual_owner_id INTEGER REFERENCES leads(id) ON DELETE CASCADE;
+                END IF;
+                -- Make client_portal_id nullable for individual users
+                BEGIN
+                    ALTER TABLE client_email_templates ALTER COLUMN client_portal_id DROP NOT NULL;
+                EXCEPTION WHEN others THEN NULL;
+                END;
+            END $migtempl$;
+
             CREATE TABLE IF NOT EXISTS client_email_templates (
                 id SERIAL PRIMARY KEY,
-                client_portal_id VARCHAR(20) NOT NULL,
+                client_portal_id VARCHAR(20),
+                individual_owner_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
                 name VARCHAR(255) NOT NULL,
                 topic VARCHAR(100),
                 eyebrow VARCHAR(255),

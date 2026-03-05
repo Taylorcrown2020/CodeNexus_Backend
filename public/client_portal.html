@@ -5487,7 +5487,14 @@ function setFUMainTab(tab, el) {
     document.getElementById('fuSmsChainSection').style.display       = tab === 'smschains'    ? 'block' : 'none';
 
     if (tab === 'templates')    loadFUTemplates();
-    if (tab === 'chains')       loadFUChains();
+    if (tab === 'chains') {
+        // Block chains entirely on Essential plan
+        if (S.planLimits?.sequencesEnabled === false) {
+            toast('Email chains are not available on the Essential plan. Upgrade to Professional or higher.', 'error');
+            return;
+        }
+        loadFUChains();
+    }
     if (tab === 'smstemplates') loadSmsTemplates();
     if (tab === 'smschains')    loadSmsChains();
     if (tab === 'queue')        loadFollowups();

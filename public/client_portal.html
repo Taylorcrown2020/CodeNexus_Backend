@@ -6342,7 +6342,11 @@ function switchApptTab(view, btn) {
 async function loadScheduling() {
     const linkEl = document.getElementById('bookingLinkDisplay');
     const listEl = document.getElementById('schedulingList');
-    const link = `${window.location.origin}/schedule.html?uid=${S.user.id}`;
+    // Workspace users get a portal-scoped form; individual users get a uid-scoped form.
+    // Both point to schedule-form.html which is branded per account.
+    const link = S.user.clientPortalId
+        ? `${window.location.origin}/schedule-form.html?portal=${S.user.clientPortalId}`
+        : `${window.location.origin}/schedule-form.html?uid=${S.user.id}`;
     if (linkEl) linkEl.textContent = link;
 
     listEl.innerHTML = `<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>`;
@@ -6571,7 +6575,9 @@ async function cancelAppointment(apptId, clientName, clientEmail) {
 }
 
 function copySchedulingLink() {
-    const link = `${window.location.origin}/schedule.html?uid=${S.user.id}`;
+    const link = S.user.clientPortalId
+        ? `${window.location.origin}/schedule-form.html?portal=${S.user.clientPortalId}`
+        : `${window.location.origin}/schedule-form.html?uid=${S.user.id}`;
     navigator.clipboard.writeText(link).then(() => toast('Booking link copied!', 'success'));
 }
 

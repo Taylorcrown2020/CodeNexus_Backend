@@ -20876,7 +20876,29 @@ app.get('/api/client-unsub/:portalId', async (req, res) => {
             `INSERT INTO client_unsubscribes (client_portal_id, email) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
             [portalId, email.toLowerCase()]
         );
-        res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:60px;"><h2>Unsubscribed</h2><p>You have been removed from our email list.</p></body></html>`);
+        // Also mark the lead record as unsubscribed so it appears in Dead tab immediately
+        await pool.query(
+            `UPDATE leads SET unsubscribed=TRUE, updated_at=NOW()
+             WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2`,
+            [email, portalId]
+        ).catch(() => {});
+        res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:60px;background:#0a0a0a;color:#fff;"><h2 style="font-family:sans-serif;">Unsubscribed</h2><p style="color:#a1a1a1;">You have been removed from our email list.</p></body></html>`);
+    } catch(e) { res.status(500).send('Error'); }
+});
+
+// GET /api/client-unsub-individual/:ownerId — unsubscribe for individual CRM account leads
+// Marks lead.unsubscribed=TRUE so they appear in the Dead tab
+app.get('/api/client-unsub-individual/:ownerId', async (req, res) => {
+    const { email } = req.query;
+    const { ownerId } = req.params;
+    if (!email) return res.status(400).send('Missing email');
+    try {
+        await pool.query(
+            `UPDATE leads SET unsubscribed=TRUE, updated_at=NOW()
+             WHERE LOWER(email)=LOWER($1) AND individual_owner_id=$2 AND client_password IS NULL`,
+            [email, parseInt(ownerId)]
+        );
+        res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:60px;background:#0a0a0a;color:#fff;"><h2 style="font-family:sans-serif;">Unsubscribed</h2><p style="color:#a1a1a1;">You have been removed from our email list.</p></body></html>`);
     } catch(e) { res.status(500).send('Error'); }
 });
 
@@ -22016,7 +22038,8 @@ app.post('/api/client/email/enroll', authenticateClient, async (req, res) => {
 
 app.get('/api/client/follow-ups', authenticateClient, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        if (!userId) return res.status(400).json({ success: false, message: 'Account not found. Please log out and log back in.' });
         const { mine } = req.query; // ?mine=1 to filter to assigned leads only
         const portalId = await getClientPortalId(userId);
 
@@ -22079,16 +22102,32 @@ app.get('/api/client/follow-ups', authenticateClient, async (req, res) => {
         `);
 
         // Fetch unsubscribed / dead leads for the Dead tab
-        const deadResult = await pool.query(`
-            SELECT l.id, l.name, l.email, l.phone, l.updated_at
-            FROM leads l
-            JOIN client_unsubscribes cu ON LOWER(l.email) = LOWER(cu.email)
-            WHERE cu.client_portal_id = $1
-              AND l.client_portal_id = $1
-              AND l.client_password IS NULL
-              AND l.is_customer IS NOT TRUE
-            ORDER BY l.updated_at DESC
-        `, [portalId]);
+        // Workspace: join client_unsubscribes by portal_id
+        // Individual: leads marked unsubscribed=TRUE under individual_owner_id
+        let deadResult;
+        if (portalId) {
+            deadResult = await pool.query(`
+                SELECT l.id, l.name, l.email, l.phone, l.updated_at
+                FROM leads l
+                JOIN client_unsubscribes cu ON LOWER(l.email) = LOWER(cu.email)
+                WHERE cu.client_portal_id = $1
+                  AND l.client_portal_id = $1
+                  AND l.client_password IS NULL
+                  AND l.is_customer IS NOT TRUE
+                ORDER BY l.updated_at DESC
+            `, [portalId]);
+        } else {
+            // Individual users: dead leads are those with unsubscribed=TRUE under their ownership
+            deadResult = await pool.query(`
+                SELECT l.id, l.name, l.email, l.phone, l.updated_at
+                FROM leads l
+                WHERE l.individual_owner_id = $1
+                  AND l.unsubscribed = TRUE
+                  AND l.client_password IS NULL
+                  AND l.is_customer IS NOT TRUE
+                ORDER BY l.updated_at DESC
+            `, [userId]);
+        }
 
         const hot  = result.rows.filter(r => r.lead_temperature === 'hot');
         const cold = result.rows.filter(r => r.lead_temperature !== 'hot');
@@ -22675,9 +22714,21 @@ app.post('/api/client/leads/:leadId/followup', authenticateClient, async (req, r
         const settings = portalId ? await getClientEmailSettings(portalId) : null;
         const fromName = settings?.sender_name || settings?.company_name || 'Team';
 
+        // Build unsubscribe URL — portal users get portal-scoped unsub, individuals get uid-based
+        let unsubUrl = '';
+        if (portalId) {
+            unsubUrl = `${BASE_URL}/api/client-unsub/${portalId}?email=${encodeURIComponent(lead.email)}`;
+        } else {
+            // Individual: use lead-specific token
+            const ownerRow = await pool.query('SELECT id FROM leads WHERE id=$1', [req.user.id]);
+            if (ownerRow.rows.length) {
+                unsubUrl = `${BASE_URL}/api/client-unsub-individual/${req.user.id}?email=${encodeURIComponent(lead.email)}`;
+            }
+        }
+
         const bodyText = message.trim();
         const escapedBody = bodyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-        const html = buildClientEmailHTML(escapedBody, {}, settings || {});
+        const html = buildClientEmailHTML(escapedBody, { unsubscribeUrl: unsubUrl }, settings || {});
         const emailSubject = (subject || '').trim() || `Following up — ${fromName}`;
 
         console.log('[FOLLOWUP] Sending to:', lead.email, '| portalId:', portalId || 'individual', '| sender:', senderEmail);
@@ -23042,9 +23093,89 @@ app.post('/api/client-forms/contact', async (req, res) => {
 
 app.post('/api/client-forms/schedule', async (req, res) => {
     try {
-        const { portalId, name, email, phone, preferredDate, preferredTime, notes, formId } = req.body;
-        if (!portalId || !email) return res.status(400).json({ success: false, message: 'Missing required fields' });
+        const { portalId, uid, name, email, phone, preferredDate, preferredTime, notes, formId } = req.body;
+        if ((!portalId && !uid) || !email) return res.status(400).json({ success: false, message: 'Missing required fields' });
 
+        // ── Individual user (uid) path ──────────────────────────────────────────
+        if (uid && !portalId) {
+            const leadOwnerRes = await pool.query(
+                `SELECT id, email, name FROM leads WHERE id=$1 AND client_password IS NOT NULL LIMIT 1`, [uid]
+            );
+            if (!leadOwnerRes.rows.length) return res.status(404).json({ success: false, message: 'Account not found' });
+            const owner = leadOwnerRes.rows[0];
+
+            const settingsRes = await pool.query(
+                `SELECT * FROM client_email_settings WHERE LOWER(sender_email)=LOWER($1) ORDER BY updated_at DESC LIMIT 1`,
+                [owner.email]
+            );
+            const settings = settingsRes.rows[0] || {};
+
+            const scheduledAt = preferredDate && preferredTime
+                ? new Date(`${preferredDate}T${preferredTime}`).toISOString() : null;
+
+            // Create appointment scoped to individual user
+            await pool.query(
+                `INSERT INTO client_appointments (user_id, client_name, client_email, client_phone, scheduled_at, notes, status, created_at, updated_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,'pending',NOW(),NOW())`,
+                [parseInt(uid), name, email, phone||null, scheduledAt, notes||null]
+            ).catch(()=>{});
+
+            // Upsert lead under individual owner
+            const existingLead = await pool.query(
+                `SELECT id FROM leads WHERE LOWER(email)=LOWER($1) AND individual_owner_id=$2 AND client_password IS NULL LIMIT 1`,
+                [email, parseInt(uid)]
+            );
+            let leadId;
+            if (existingLead.rows.length) {
+                leadId = existingLead.rows[0].id;
+                await pool.query(
+                    `UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at,NOW()), status='contacted', updated_at=NOW() WHERE id=$1`,
+                    [leadId]
+                );
+            } else {
+                const newLead = await pool.query(
+                    `INSERT INTO leads (name, email, phone, source, lead_temperature, became_hot_at, individual_owner_id, status, created_at, updated_at)
+                     VALUES ($1,$2,$3,'schedule-form','hot',NOW(),$4,'new',NOW(),NOW()) RETURNING id`,
+                    [name, email, phone||null, parseInt(uid)]
+                );
+                leadId = newLead.rows[0]?.id;
+            }
+
+            // Send confirmation email if settings exist
+            if (settings.brevo_api_key && settings.sender_email) {
+                try {
+                    const timeStr = scheduledAt
+                        ? new Date(scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
+                        : 'TBD';
+                    const senderName = settings.sender_name || settings.company_name || owner.name || 'Your CRM';
+                    await fetch('https://api.brevo.com/v3/smtp/email', {
+                        method: 'POST',
+                        headers: { 'api-key': settings.brevo_api_key, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sender: { name: senderName, email: settings.sender_email },
+                            to: [{ email, name }],
+                            subject: `Appointment Request Received — ${timeStr}`,
+                            htmlContent: `<p>Hi ${name},</p><p>We received your appointment request for <strong>${timeStr}</strong>. We'll be in touch shortly to confirm.</p><p>— ${senderName}</p>`
+                        })
+                    });
+                    // Notify owner
+                    await fetch('https://api.brevo.com/v3/smtp/email', {
+                        method: 'POST',
+                        headers: { 'api-key': settings.brevo_api_key, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sender: { name: 'CRM Notifications', email: settings.sender_email },
+                            to: [{ email: owner.email }],
+                            subject: `New Appointment Request from ${name}`,
+                            htmlContent: `<p><strong>New appointment request:</strong></p><p>Name: ${name}<br>Email: ${email}<br>Phone: ${phone||'—'}<br>Requested: ${timeStr}<br>Notes: ${notes||'—'}</p>`
+                        })
+                    });
+                } catch(emailErr) { console.error('[SCHEDULE uid email]', emailErr); }
+            }
+
+            return res.json({ success: true });
+        }
+
+        // ── Portal (workspace) path ─────────────────────────────────────────────
         const settingsRes = await pool.query('SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1', [portalId]);
         const settings = settingsRes.rows[0] || {};
         const adminRes = await pool.query(`
@@ -25269,6 +25400,66 @@ app.delete('/api/client/company-logo', authenticateClient, async (req, res) => {
 // and apply that portal's branding (logo, colors, company name).
 // ============================================================
 
+// Shared schedule form HTML (used by both portal and uid routes)
+function buildScheduleFormContent() {
+    return `
+<form id="schedForm" onsubmit="submitSchedForm(event)">
+    <div class="form-field"><label class="form-label">Full Name *</label><input class="form-input" id="sf_name" placeholder="Your name" required></div>
+    <div class="form-field"><label class="form-label">Email *</label><input class="form-input" id="sf_email" type="email" placeholder="your@email.com" required></div>
+    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="sf_phone" placeholder="(555) 000-0000"></div>
+    <div style="display:flex;gap:12px;">
+        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Date *</label><input class="form-input" id="sf_date" type="date" required></div>
+        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Time *</label><input class="form-input" id="sf_time" type="time" required></div>
+    </div>
+    <div class="form-field"><label class="form-label">Notes</label><textarea class="form-input" id="sf_notes" placeholder="Anything you'd like us to know..."></textarea></div>
+    <button class="submit-btn" type="submit" id="sf_btn">Request Appointment</button>
+</form>
+<script>
+async function submitSchedForm(e) {
+    e.preventDefault();
+    const btn = document.getElementById('sf_btn');
+    btn.disabled = true; btn.textContent = 'Submitting\u2026';
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    try {
+        const payload = {
+            name: document.getElementById('sf_name').value,
+            email: document.getElementById('sf_email').value,
+            phone: document.getElementById('sf_phone').value,
+            preferredDate: document.getElementById('sf_date').value,
+            preferredTime: document.getElementById('sf_time').value,
+            notes: document.getElementById('sf_notes').value,
+        };
+        // Support both portal-based and uid-based submissions
+        if (typeof UID !== 'undefined' && UID) {
+            payload.uid = UID;
+        } else {
+            payload.portalId = PORTAL_ID;
+            payload.leadId = LEAD_ID;
+        }
+        const res = await fetch(BASE + '/api/client-forms/schedule', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const d = await res.json();
+        if (d.success) {
+            document.getElementById('formContent').style.display = 'none';
+            document.getElementById('successMsg').style.display = 'block';
+            document.getElementById('successText').textContent = 'Your appointment request has been received! We\'ll confirm the details soon.';
+        } else {
+            errEl.textContent = d.message || 'Something went wrong. Please try again.';
+            errEl.style.display = 'block';
+            btn.disabled = false; btn.textContent = 'Request Appointment';
+        }
+    } catch(err) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Request Appointment';
+    }
+}
+</script>`;
+}
+
 async function getPortalBranding(portalId) {
     const r = await pool.query(`SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1`, [portalId]);
     const s = r.rows[0] || {};
@@ -25340,61 +25531,64 @@ const LEAD_ID = getParam('lead');
 </html>`;
 }
 
-// GET /schedule-form.html?portal=XXX&lead=YYY
+// GET /schedule-form.html?portal=XXX&lead=YYY  (workspace)
+// GET /schedule-form.html?uid=LEAD_ID           (individual)
 app.get('/schedule-form.html', async (req, res) => {
     const portalId = req.query.portal;
-    if (!portalId) return res.status(400).send('Portal ID required');
+    const uid      = req.query.uid;
+
+    // ── Individual user path ──────────────────────────────────────────────────
+    if (!portalId && uid) {
+        try {
+            const leadRes = await pool.query(
+                `SELECT l.id, l.name, l.email, ces.company_name, ces.accent_color, ces.company_logo_url, ces.sender_name
+                 FROM leads l
+                 LEFT JOIN client_email_settings ces ON ces.client_portal_id IS NULL AND LOWER(ces.sender_email)=LOWER(l.email)
+                 WHERE l.id=$1 AND l.client_password IS NOT NULL LIMIT 1`,
+                [uid]
+            );
+            // Fallback: look up settings by lead email even if portal-scoped
+            let brand = { companyName: 'CRM', accentColor: '#6366f1', logoUrl: null };
+            if (leadRes.rows.length) {
+                const lr = leadRes.rows[0];
+                // Also try portal-scoped settings for this individual via their email
+                const settingsRes = await pool.query(
+                    `SELECT company_name, accent_color, company_logo_url, sender_name
+                     FROM client_email_settings
+                     WHERE LOWER(sender_email)=LOWER($1) OR LOWER(sender_email)=LOWER($1)
+                     ORDER BY updated_at DESC LIMIT 1`,
+                    [lr.email]
+                );
+                const s = settingsRes.rows[0] || {};
+                brand = {
+                    companyName: s.company_name || s.sender_name || lr.name || 'My Business',
+                    accentColor: s.accent_color || '#6366f1',
+                    logoUrl:     s.company_logo_url || null,
+                };
+            } else {
+                return res.status(404).send('Account not found');
+            }
+
+            const formContent = buildScheduleFormContent();
+            // Render using uid instead of portalId — pass uid as PORTAL_ID placeholder,
+            // the submit handler sends it as uid field
+            const html = portalFormHtml({ title: 'Schedule an Appointment', formContent, portalId: '', brand })
+                .replace("const PORTAL_ID = '';", `const PORTAL_ID = ''; const UID = '${uid}';`)
+                .replace(
+                    "portalId: PORTAL_ID, leadId: LEAD_ID,",
+                    "uid: UID, leadId: LEAD_ID,"
+                );
+            return res.send(html);
+        } catch(e) {
+            console.error('[SCHEDULE FORM uid]', e);
+            return res.status(500).send('Error loading form');
+        }
+    }
+
+    if (!portalId) return res.status(400).send('Portal ID or UID required');
     try {
         const brand = await getPortalBranding(portalId);
-        const formContent = `
-<form id="schedForm" onsubmit="submitSchedForm(event)">
-    <div class="form-field"><label class="form-label">Full Name *</label><input class="form-input" id="sf_name" placeholder="Your name" required></div>
-    <div class="form-field"><label class="form-label">Email *</label><input class="form-input" id="sf_email" type="email" placeholder="your@email.com" required></div>
-    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="sf_phone" placeholder="(555) 000-0000"></div>
-    <div style="display:flex;gap:12px;">
-        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Date *</label><input class="form-input" id="sf_date" type="date" required></div>
-        <div class="form-field" style="flex:1;"><label class="form-label">Preferred Time *</label><input class="form-input" id="sf_time" type="time" required></div>
-    </div>
-    <div class="form-field"><label class="form-label">Notes</label><textarea class="form-input" id="sf_notes" placeholder="Anything you'd like us to know..."></textarea></div>
-    <button class="submit-btn" type="submit" id="sf_btn">Request Appointment</button>
-</form>
-<script>
-async function submitSchedForm(e) {
-    e.preventDefault();
-    const btn = document.getElementById('sf_btn');
-    btn.disabled = true; btn.textContent = 'Submitting…';
-    const errEl = document.getElementById('errorMsg');
-    errEl.style.display = 'none';
-    try {
-        const res = await fetch(BASE + '/api/client-forms/schedule', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({
-                portalId: PORTAL_ID, leadId: LEAD_ID,
-                name: document.getElementById('sf_name').value,
-                email: document.getElementById('sf_email').value,
-                phone: document.getElementById('sf_phone').value,
-                preferredDate: document.getElementById('sf_date').value,
-                preferredTime: document.getElementById('sf_time').value,
-                notes: document.getElementById('sf_notes').value,
-            })
-        });
-        const d = await res.json();
-        if (d.success) {
-            document.getElementById('formContent').style.display = 'none';
-            document.getElementById('successMsg').style.display = 'block';
-            document.getElementById('successText').textContent = 'Your appointment request has been received! We'll confirm the details soon.';
-        } else {
-            errEl.textContent = d.message || 'Something went wrong. Please try again.';
-            errEl.style.display = 'block';
-            btn.disabled = false; btn.textContent = 'Request Appointment';
-        }
-    } catch(err) {
-        errEl.textContent = 'Network error. Please try again.';
-        errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Request Appointment';
-    }
-}
-</script>`;
+        const formContent = buildScheduleFormContent();
         res.send(portalFormHtml({ title: 'Schedule an Appointment', formContent, portalId, brand }));
     } catch(e) {
         console.error('[SCHEDULE FORM]', e);

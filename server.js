@@ -21981,19 +21981,33 @@ app.post('/api/client/email/send', authenticateClient, async (req, res) => {
         if (isCampaign && !planData.marketingEnabled) {
             return res.status(403).json({ success: false, message: 'Campaign sends are not available on the Essential plan. Upgrade to Professional or higher.' });
         }
-        const portalId = await getClientPortalId(req.user.id);
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        const portalId = await getClientPortalId(userId);
         if (!template_id || !lead_ids?.length) return res.status(400).json({ success: false, message: 'template_id and lead_ids required' });
         // email_type can be 'follow-up' (sent from followups queue) or 'marketing' (campaign) 
         const emailType = email_type || (lead_ids.length === 1 ? 'follow-up' : 'marketing');
 
         const settings = await getClientEmailSettings(portalId);
-        const tmpl = await pool.query('SELECT * FROM client_email_templates WHERE id=$1 AND client_portal_id=$2', [template_id, portalId]);
+        // Template lookup: portal users scope by client_portal_id, individual users by individual_owner_id
+        const tmpl = portalId
+            ? await pool.query('SELECT * FROM client_email_templates WHERE id=$1 AND client_portal_id=$2', [template_id, portalId])
+            : await pool.query('SELECT * FROM client_email_templates WHERE id=$1 AND individual_owner_id=$2', [template_id, userId]);
         if (!tmpl.rows[0]) return res.status(404).json({ success: false, message: 'Template not found' });
         const t = tmpl.rows[0];
 
-        const leads = await pool.query('SELECT id, email, name FROM leads WHERE id=ANY($1) AND client_portal_id=$2', [lead_ids, portalId]);
-        const unsubs = await pool.query('SELECT email FROM client_unsubscribes WHERE client_portal_id=$1', [portalId]);
-        const unsubSet = new Set(unsubs.rows.map(r => r.email.toLowerCase()));
+        // Leads lookup: portal users scope by client_portal_id, individual users by individual_owner_id
+        const leads = portalId
+            ? await pool.query('SELECT id, email, name FROM leads WHERE id=ANY($1) AND client_portal_id=$2', [lead_ids, portalId])
+            : await pool.query('SELECT id, email, name FROM leads WHERE id=ANY($1) AND individual_owner_id=$2 AND client_password IS NULL', [lead_ids, userId]);
+        // Unsubscribe check: portal uses client_unsubscribes table; individual uses leads.unsubscribed flag
+        let unsubSet = new Set();
+        if (portalId) {
+            const unsubs = await pool.query('SELECT email FROM client_unsubscribes WHERE client_portal_id=$1', [portalId]);
+            unsubSet = new Set(unsubs.rows.map(r => r.email.toLowerCase()));
+        } else {
+            const unsubs = await pool.query('SELECT email FROM leads WHERE individual_owner_id=$1 AND unsubscribed=TRUE AND client_password IS NULL', [userId]);
+            unsubSet = new Set(unsubs.rows.map(r => r.email?.toLowerCase()).filter(Boolean));
+        }
 
         let sent = 0, skipped = 0, errors = 0;
         // Collect EmailJS payloads when Brevo isn't configured — returned to frontend for client-side send
@@ -22002,9 +22016,15 @@ app.post('/api/client/email/send', authenticateClient, async (req, res) => {
         for (const lead of leads.rows) {
             if (unsubSet.has(lead.email?.toLowerCase())) { skipped++; continue; }
             try {
-                const unsubUrl = `${BASE_URL}/api/client-unsub/${portalId}?email=${encodeURIComponent(lead.email)}`;
-                const contactFormUrl = t.include_contact_form ? `${BASE_URL}/contact-form.html?portal=${portalId}&lead=${lead.id}` : '';
-                const scheduleFormUrl = t.include_schedule_btn ? `${BASE_URL}/schedule-form.html?portal=${portalId}&lead=${lead.id}` : '';
+                const unsubUrl = portalId
+                    ? `${BASE_URL}/api/client-unsub/${portalId}?email=${encodeURIComponent(lead.email)}`
+                    : `${BASE_URL}/api/client-unsub-individual/${userId}?email=${encodeURIComponent(lead.email)}`;
+                const contactFormUrl = t.include_contact_form
+                    ? (portalId ? `${BASE_URL}/contact-form.html?portal=${portalId}&lead=${lead.id}` : `${BASE_URL}/contact-form.html?uid=${userId}&lead=${lead.id}`)
+                    : '';
+                const scheduleFormUrl = t.include_schedule_btn
+                    ? (portalId ? `${BASE_URL}/schedule-form.html?portal=${portalId}&lead=${lead.id}` : `${BASE_URL}/schedule-form.html?uid=${userId}&lead=${lead.id}`)
+                    : '';
                 const html = buildClientEmailHTML(t.body_html, {
                     eyebrow: t.eyebrow, headline: t.headline, ctaLabel: t.cta_label, ctaUrl: settings?.website_url,
                     websiteUrl: t.website_url || settings?.website_url,

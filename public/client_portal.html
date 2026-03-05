@@ -1718,7 +1718,7 @@ tr:hover .row-actions { opacity: 1; }
                     <div class="page-subtitle">Templates, campaigns &amp; automated chains</div>
                 </div>
                 <div class="page-actions">
-                    <button class="btn btn-ghost" onclick="setMKTab('chains',document.querySelector('[data-mktab=chains]'))">
+                    <button id="mkChainsHeaderBtn" class="btn btn-ghost" onclick="setMKTab('chains',document.querySelector('[data-mktab=chains]'))">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                         Chains
                     </button>
@@ -1731,8 +1731,8 @@ tr:hover .row-actions { opacity: 1; }
             <div class="page-body">
                 <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);">
                     <button class="btn btn-ghost mk-tab active-tab" data-mktab="templates" onclick="setMKTab('templates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">Templates</button>
-                    <button class="btn btn-ghost mk-tab" data-mktab="send" onclick="setMKTab('send',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Send Campaign</button>
-                    <button class="btn btn-ghost mk-tab" data-mktab="chains" onclick="setMKTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Automated Chains</button>
+                    <button id="mkTabSend" class="btn btn-ghost mk-tab" data-mktab="send" onclick="setMKTab('send',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Send Campaign</button>
+                    <button id="mkTabChains" class="btn btn-ghost mk-tab" data-mktab="chains" onclick="setMKTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Automated Chains</button>
                 </div>
                 <div id="marketingContent"></div>
             </div>
@@ -3179,9 +3179,14 @@ function applyPlanRestrictions() {
     }
 
     // ─── MARKETING tab ────────────────────────────────────────────────────────
-    // Essential CRM: NO marketing access at all.
-    // Professional, Enterprise, Workspace: marketing enabled.
-    setVis('navMarketing', L.marketingEnabled === true);
+    // Essential CRM: marketing nav visible (templates allowed), but campaign/chains tabs hidden.
+    // Professional+: full marketing access.
+    const mkMarketing = L.marketingEnabled === true;
+    // Always show the marketing nav — Essential users can build templates and send individual emails
+    // from the follow-ups queue. Hide only the bulk campaign and chain builder tabs.
+    setVis('mkTabSend',         mkMarketing);
+    setVis('mkTabChains',       mkMarketing);
+    setVis('mkChainsHeaderBtn', mkMarketing);
 
     // ─── AUTOMATED SEQUENCES (Email Chains, SMS Chains) ───────────────────────
     // Essential CRM: NO automated sequences (no Email Chains, no SMS Chains).
@@ -8513,6 +8518,11 @@ async function loadMarketing() {
 }
 
 function setMKTab(tab, el) {
+    // Block campaign and chain tabs on Essential plan
+    if ((tab === 'send' || tab === 'chains') && S.planLimits?.marketingEnabled === false) {
+        toast('This feature is not available on the Essential plan. Upgrade to Professional or higher.', 'error');
+        return;
+    }
     MK.tab = tab;
     document.querySelectorAll('.mk-tab').forEach(b => {
         b.classList.remove('active-tab');

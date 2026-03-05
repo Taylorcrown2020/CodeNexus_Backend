@@ -1268,6 +1268,10 @@ tr:hover .row-actions { opacity: 1; }
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                     Billing
                 </div>
+                <div class="nav-item" id="navIntegrations" data-page="integrations" style="display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><line x1="7" y1="11.5" x2="17" y2="6"/><line x1="7" y1="12.5" x2="17" y2="18"/></svg>
+                    Integrations
+                </div>
                 <div class="nav-item" data-page="settings">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     Settings
@@ -2002,6 +2006,20 @@ tr:hover .row-actions { opacity: 1; }
         <!-- ==============================
              SETTINGS
         ============================== -->
+        <div class="page" id="page-integrations">
+            <div class="page-header">
+                <div class="page-title-group">
+                    <div class="page-title">Integrations</div>
+                    <div class="page-subtitle">Connect your favorite tools to Diamondback CRM</div>
+                </div>
+            </div>
+            <div class="page-body">
+                <div id="integrationsContent">
+                    <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div></div>
+                </div>
+            </div>
+        </div>
+
         <div class="page" id="page-settings">
             <div class="page-header">
                 <div class="page-title-group">
@@ -3040,6 +3058,12 @@ function showApp() {
         el.style.display = S.isAdmin ? 'flex' : 'none';
     });
 
+    // Show Integrations nav for Enterprise and Workspace plans
+    const navIntegrations = document.getElementById('navIntegrations');
+    if (navIntegrations) {
+        navIntegrations.style.display = S.planLimits?.integrationsEnabled ? 'flex' : 'none';
+    }
+
     // Admin-only settings sections
     document.querySelectorAll('.settings-admin-only').forEach(el => {
         if (!S.isAdmin) { el.style.display = 'none'; return; }
@@ -3074,10 +3098,26 @@ function showApp() {
     document.getElementById('dashGreeting').textContent = `${greet}, ${(user.name||'').split(' ')[0] || 'there'}`;
 
     initMobileUI();
-    navigate('dashboard');
+    // Handle OAuth redirect back from integration providers
+    const urlParams = new URLSearchParams(window.location.search);
+    const intSuccess = urlParams.get('integration_success');
+    const intError   = urlParams.get('integration_error');
+    const intMsg     = urlParams.get('msg');
+    if (intSuccess) {
+        toast(`✓ ${intSuccess.charAt(0).toUpperCase()+intSuccess.slice(1)} connected successfully!`, 'success');
+        window.history.replaceState({}, '', window.location.pathname);
+        navigate('integrations');
+    } else if (intError) {
+        toast(`Failed to connect ${intError}${intMsg ? ': ' + intMsg : ''}`, 'error');
+        window.history.replaceState({}, '', window.location.pathname);
+        navigate('integrations');
+    } else {
+        navigate('dashboard');
+    }
     loadInitialData();
-    // Init AI widget (shows only for Enterprise / Workspace plans)
-    setTimeout(initAiWidget, 300);
+    // Init AI widget immediately (planKey and planLimits are now set) + again after 500ms as safety net
+    initAiWidget();
+    setTimeout(initAiWidget, 500);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3218,6 +3258,7 @@ function navigate(page) {
         case 'subscription': loadSubscription(); break;
         case 'billing':      loadBilling();      break;
         case 'scheduling':  loadScheduling();  break;
+        case 'integrations': loadIntegrations(); break;
         case 'settings':    loadSettings();    break;
     }
     // Sync mobile UI after every navigation
@@ -3823,7 +3864,7 @@ function renderLeads() {
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                                 Assign
                             </button>
-                            <button class="btn btn-ghost btn-xs" onclick="sendFollowUpEmail(${l.id},'${escHtml(l.email||'')}')">
+                            <button class="btn btn-ghost btn-xs" onclick="sendFollowUpEmail(${l.id},'${escHtml(l.email||'')}','${escHtml(l.name||'')}')">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                                 Email
                             </button>
@@ -4121,21 +4162,120 @@ async function convertLeadToCustomer(leadId) {
     }
 }
 
-async function sendFollowUpEmail(leadId, email) {
-    if (!email) { toast('No email on file', 'error'); return; }
+async function sendFollowUpEmail(leadId, email, leadName) {
+    if (!email) { toast('No email on file for this lead', 'error'); return; }
+
+    // Load templates first — user must choose one (or write custom)
+    let templates = [];
+    try {
+        const res = await apiFetch('/client/email-templates');
+        const d = await res.json();
+        templates = (d.templates || []).filter(t => t.is_active !== false);
+    } catch(e) {}
+
+    // Build modal
+    document.getElementById('followupEmailModal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'followupEmailModal';
+    modal.className = 'modal-overlay';
+    modal.style.zIndex = '10001';
+
+    const templateOptions = templates.length
+        ? templates.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('')
+        : '';
+
+    modal.innerHTML = `
+        <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Send Follow-up Email</div>
+                <button class="modal-close" onclick="document.getElementById('followupEmailModal').remove()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body" style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+                <div style="font-size:13px;color:var(--text-2);">
+                    Sending to: <strong style="color:var(--text-0);">${escHtml(leadName || email)}</strong>
+                    <span style="color:var(--text-3);margin-left:6px;">&lt;${escHtml(email)}&gt;</span>
+                </div>
+                ${templates.length ? `
+                <div>
+                    <label class="form-label">Choose Template <span style="color:var(--text-3);font-weight:400;">(optional)</span></label>
+                    <select id="followupTemplateSelect" class="form-input" onchange="applyFollowupTemplate(this.value)">
+                        <option value="">— Write custom message —</option>
+                        ${templateOptions}
+                    </select>
+                </div>` : `
+                <div style="font-size:12px;color:var(--text-3);background:var(--bg-2);padding:10px 12px;border-radius:8px;">
+                    💡 No email templates yet. You can still send a custom message below, or
+                    <a href="#" onclick="document.getElementById('followupEmailModal').remove();navigate('marketing');" style="color:var(--accent);">create templates in Marketing →</a>
+                </div>`}
+                <div>
+                    <label class="form-label">Subject</label>
+                    <input id="followupSubject" class="form-input" placeholder="Following up…" value="Following up">
+                </div>
+                <div>
+                    <label class="form-label">Message</label>
+                    <textarea id="followupMessage" class="form-input" rows="5" placeholder="Write your follow-up message here…" style="resize:vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="document.getElementById('followupEmailModal').remove()">Cancel</button>
+                <button class="btn btn-default" id="followupSendBtn" onclick="submitFollowupEmail(${leadId},'${escHtml(email)}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="margin-right:5px;vertical-align:-2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Send Email
+                </button>
+            </div>
+        </div>`;
+
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+    modal.classList.add('open');
+}
+
+// Called when user picks a template from dropdown in the followup modal
+async function applyFollowupTemplate(templateId) {
+    if (!templateId) return;
+    try {
+        const res = await apiFetch(`/client/email-templates/${templateId}`);
+        const d = await res.json();
+        if (d.success && d.template) {
+            const subjectEl = document.getElementById('followupSubject');
+            const msgEl = document.getElementById('followupMessage');
+            if (subjectEl && d.template.subject) subjectEl.value = d.template.subject;
+            if (msgEl && d.template.body_text) msgEl.value = d.template.body_text;
+        }
+    } catch(e) {}
+}
+
+async function submitFollowupEmail(leadId, email) {
+    const subject = document.getElementById('followupSubject')?.value?.trim();
+    const message = document.getElementById('followupMessage')?.value?.trim();
+    const templateId = document.getElementById('followupTemplateSelect')?.value || null;
+
+    if (!message) { toast('Please write a message before sending', 'error'); return; }
+
+    const btn = document.getElementById('followupSendBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
     try {
         const res = await apiFetch(`/client/leads/${leadId}/followup`, 'POST', {
-            sentBy: S.user.name || S.user.email,
+            subject,
+            message,
+            templateId,
+            sentBy: S.user?.name || S.user?.email,
         });
         const data = await res.json();
         if (data.success) {
-            toast('Follow-up email sent', 'success');
-            loadFollowups(); // refresh so last_contact_date and count update
+            document.getElementById('followupEmailModal')?.remove();
+            toast('Follow-up email sent ✓', 'success');
+            loadFollowups();
         } else {
-            toast(data.message || 'Failed', 'error');
+            toast(data.message || 'Failed to send', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Send Email'; }
         }
-    } catch {
+    } catch(e) {
         toast('Error sending email', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Send Email'; }
     }
 }
 
@@ -9418,7 +9558,7 @@ document.addEventListener('DOMContentLoaded', initBackground);
 // ── Custom photo backgrounds (admin upload, all users can pick) ──
 
 async function loadCustomBgImages() {
-    if (!S.isCompanyMember) return; // solo portals don't have custom bgs
+    // Individual users (no portal) can also upload and use custom backgrounds
     try {
         const res = await apiFetch('/client/bg-images', 'GET');
         const data = await res.json();
@@ -9986,6 +10126,8 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
         <span>Settings</span>
     </div>
 
+</div><!-- /mobileMoreMenu -->
+
 <!-- ════════════════════════════════════════════════════
      IMPORT LEADS MODAL
      ════════════════════════════════════════════════════ -->
@@ -10450,12 +10592,414 @@ function downloadImportTemplate() {
 // ════════════════════════════════════════════════════════════════
 const AI_CHAT = { messages: [], isOpen: false, isTyping: false };
 
+
+// ============================================================
+// INTEGRATIONS PAGE
+// ============================================================
+
+const INTEGRATION_DEFS = [
+    {
+        key: 'stripe',
+        name: 'Stripe',
+        category: 'Payments',
+        description: 'Sync customers, payment history, and invoices. Auto-update lead status when a payment succeeds.',
+        logo: `<svg viewBox="0 0 32 32" fill="none" width="32" height="32"><rect width="32" height="32" rx="8" fill="#635BFF"/><path d="M13.5 12.5c0-.8.7-1.1 1.8-1.1 1.6 0 3.6.5 5.2 1.4V9c-1.7-.7-3.5-1-5.2-1C12 8 10 9.3 10 12.6c0 5.1 7 4.3 7 6.5 0 .9-.8 1.2-2 1.2-1.7 0-3.9-.7-5.6-1.7v3.8c1.9.8 3.8 1.2 5.6 1.2 3.4 0 5.7-1.7 5.7-5-.1-5.4-7.2-4.5-7.2-6.1z" fill="white"/></svg>`,
+        connectPath: '/api/integrations/stripe/connect',
+        features: ['Payment history on lead records','Auto-close leads on payment','Two-way invoice sync'],
+        scope: 'personal'
+    },
+    {
+        key: 'mailchimp',
+        name: 'Mailchimp',
+        category: 'Email Marketing',
+        description: 'Push CRM leads to Mailchimp audiences and keep them in sync automatically.',
+        logo: `<svg viewBox="0 0 32 32" fill="none" width="32" height="32"><rect width="32" height="32" rx="8" fill="#FFE01B"/><text x="7" y="22" font-size="18" font-weight="bold" fill="#241C15">✉</text></svg>`,
+        connectPath: '/api/integrations/mailchimp/connect',
+        features: ['Sync leads to Mailchimp audiences','Auto-sync in background','Campaign stats per lead'],
+        scope: 'personal'
+    },
+    {
+        key: 'google',
+        name: 'Google Workspace',
+        category: 'Productivity',
+        description: 'Connect Gmail for email tracking and Google Calendar for task and appointment sync.',
+        logo: `<svg viewBox="0 0 32 32" fill="none" width="32" height="32"><rect width="32" height="32" rx="8" fill="#fff" stroke="#e5e7eb"/><path d="M22.5 16.2c0-.6-.1-1.2-.2-1.7H16v3.3h3.6c-.2.8-.6 1.5-1.3 2v1.7h2.1c1.2-1.1 2.1-2.8 2.1-5.3z" fill="#4285F4"/><path d="M16 23c1.8 0 3.3-.6 4.4-1.6l-2.1-1.7c-.6.4-1.4.7-2.3.7-1.7 0-3.2-1.2-3.7-2.7H10v1.7C11.1 21.6 13.4 23 16 23z" fill="#34A853"/><path d="M12.3 17.7c-.1-.4-.2-.8-.2-1.2s.1-.8.2-1.2V13.6H10c-.4.8-.7 1.7-.7 2.7s.3 2 .7 2.7l2.3-1.3z" fill="#FBBC05"/><path d="M16 11.8c1 0 1.9.3 2.5 1l1.9-1.9C19.3 9.8 17.8 9 16 9c-2.6 0-4.9 1.4-6 3.6l2.3 1.7c.5-1.5 2-2.5 3.7-2.5z" fill="#EA4335"/></svg>`,
+        connectPath: '/api/integrations/google/connect',
+        features: ['Gmail email tracking per lead','Google Calendar task sync','View upcoming events on dashboard'],
+        scope: 'personal'
+    },
+    {
+        key: 'microsoft',
+        name: 'Microsoft / Outlook',
+        category: 'Productivity',
+        description: 'Connect Outlook for email tracking and Outlook Calendar for appointment sync.',
+        logo: `<svg viewBox="0 0 32 32" fill="none" width="32" height="32"><rect width="32" height="32" rx="8" fill="#0078D4"/><path d="M9 9h6v6H9zM17 9h6v6h-6zM9 17h6v6H9zM17 17h6v6h-6z" fill="white" opacity=".9"/></svg>`,
+        connectPath: '/api/integrations/microsoft/connect',
+        features: ['Outlook email tracking','Outlook Calendar sync','Works with Office 365 & personal accounts'],
+        scope: 'personal'
+    },
+    {
+        key: 'slack',
+        name: 'Slack',
+        category: 'Notifications',
+        description: 'Get notified in Slack when leads are created, updated, or change status.',
+        logo: `<svg viewBox="0 0 32 32" fill="none" width="32" height="32"><rect width="32" height="32" rx="8" fill="#4A154B"/><path d="M12 18a2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2h2v2zM13 18a2 2 0 0 1 2-2 2 2 0 0 1 2 2v5a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-5zM15 12a2 2 0 0 1-2-2 2 2 0 0 1 2-2 2 2 0 0 1 2 2v2h-2zM15 13a2 2 0 0 1 2 2 2 2 0 0 1-2 2H10a2 2 0 0 1-2-2 2 2 0 0 1 2-2h5zM21 15a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-2v-2a2 2 0 0 1 2-2zM20 15a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1 2 2v5zM18 21a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2v-2h2zM18 20a2 2 0 0 1-2-2 2 2 0 0 1 2-2h5a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-5z" fill="white"/></svg>`,
+        connectPath: '/api/integrations/slack/connect',
+        features: ['New lead notifications','Status change alerts','Choose which channel receives alerts'],
+        scope: 'personal'
+    },
+    {
+        key: 'quickbooks',
+        name: 'QuickBooks',
+        category: 'Accounting',
+        description: 'Sync invoices with QuickBooks and view payment history directly on lead records.',
+        logo: `<svg viewBox="0 0 32 32" fill="none" width="32" height="32"><rect width="32" height="32" rx="8" fill="#2CA01C"/><text x="6" y="23" font-size="18" font-weight="bold" fill="white">Q</text></svg>`,
+        connectPath: '/api/integrations/quickbooks/connect',
+        features: ['Invoice sync to QuickBooks','Payment tracking per lead','Accounting reconciliation'],
+        scope: 'personal'
+    },
+    {
+        key: 'hubspot',
+        name: 'HubSpot',
+        category: 'CRM Migration',
+        description: 'Import contacts and deals from HubSpot directly into your Diamondback CRM.',
+        logo: `<svg viewBox="0 0 32 32" fill="none" width="32" height="32"><rect width="32" height="32" rx="8" fill="#FF7A59"/><circle cx="16" cy="12" r="3" fill="white"/><circle cx="22" cy="20" r="2.5" fill="white"/><circle cx="10" cy="20" r="2.5" fill="white"/><line x1="16" y1="15" x2="10" y2="20" stroke="white" stroke-width="1.5"/><line x1="16" y1="15" x2="22" y2="20" stroke="white" stroke-width="1.5"/></svg>`,
+        connectPath: '/api/integrations/hubspot/connect',
+        features: ['Import contacts as leads','Import deals as pipeline entries','One-click migration'],
+        scope: 'personal'
+    },
+    {
+        key: 'zapier',
+        name: 'Zapier / Make',
+        category: 'Automation',
+        description: 'Send CRM events to any app via webhooks. Works with Zapier, Make, n8n, or any HTTP endpoint.',
+        logo: `<svg viewBox="0 0 32 32" fill="none" width="32" height="32"><rect width="32" height="32" rx="8" fill="#FF4A00"/><path d="M16 8l2.5 5H24l-4.5 3.5L21 22 16 18.5 11 22l1.5-5.5L8 13h5.5z" fill="white"/></svg>`,
+        connectPath: null,  // webhook-based, no OAuth
+        features: ['Trigger any Zap on lead events','Connect 5,000+ apps','Custom webhook payloads'],
+        scope: 'personal',
+        isWebhook: true
+    }
+];
+
+let _integrationStatus = {};
+
+async function loadIntegrations() {
+    if (!S.planLimits?.integrationsEnabled) {
+        document.getElementById('integrationsContent').innerHTML = `
+            <div class="empty-state" style="padding:60px 20px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;opacity:.3;margin:0 auto 16px;display:block;"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><line x1="7" y1="11.5" x2="17" y2="6"/><line x1="7" y1="12.5" x2="17" y2="18"/></svg>
+                <div style="font-size:16px;font-weight:600;color:var(--text-1);margin-bottom:8px;">Integrations require Enterprise or Workspace</div>
+                <p style="color:var(--text-3);font-size:13px;max-width:360px;margin:0 auto 20px;">Connect your favorite tools on an Enterprise or Workspace plan.</p>
+                <button class="btn btn-default" onclick="navigate('subscription')">Upgrade Plan</button>
+            </div>`;
+        return;
+    }
+
+    document.getElementById('integrationsContent').innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto;"></div></div>`;
+
+    try {
+        const res = await apiFetch('/integrations/status');
+        const data = await res.json();
+        _integrationStatus = data.connected || {};
+    } catch(e) {
+        _integrationStatus = {};
+    }
+
+    renderIntegrationsPage();
+}
+
+function renderIntegrationsPage() {
+    const categories = [...new Set(INTEGRATION_DEFS.map(i => i.category))];
+
+    let html = `
+        <div style="max-width:960px;">
+            <div style="margin-bottom:28px;">
+                <p style="color:var(--text-2);font-size:13px;line-height:1.6;max-width:600px;">
+                    Connect your existing tools. Data syncs automatically in the background — no manual imports needed.
+                </p>
+            </div>`;
+
+    // Webhooks (Zapier/Make) section first if connected
+    const webhookDef = INTEGRATION_DEFS.find(i => i.isWebhook);
+    const webhookStatus = _integrationStatus[webhookDef?.key];
+
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px;">`;
+
+    for (const intg of INTEGRATION_DEFS) {
+        if (intg.isWebhook) continue; // Zapier gets its own section
+        const status = _integrationStatus[intg.key];
+        const isConnected = status?.status === 'active';
+
+        html += `
+            <div class="card" style="margin:0;position:relative;${isConnected ? 'border-color:rgba(34,197,94,0.3);' : 'opacity:.85;'}">
+                ${isConnected ? `<div style="position:absolute;top:12px;right:12px;width:8px;height:8px;background:#22c55e;border-radius:50%;box-shadow:0 0 0 3px rgba(34,197,94,0.15);"></div>` : ''}
+                <div class="card-body" style="padding:20px;">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+                        <div style="width:40px;height:40px;flex-shrink:0;">${intg.logo}</div>
+                        <div>
+                            <div style="font-size:14px;font-weight:700;color:var(--text-0);">${intg.name}</div>
+                            <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;">${intg.category}</div>
+                        </div>
+                    </div>
+                    <p style="font-size:12px;color:var(--text-2);line-height:1.55;margin-bottom:14px;">${intg.description}</p>
+                    <ul style="list-style:none;padding:0;margin:0 0 16px;display:flex;flex-direction:column;gap:5px;">
+                        ${intg.features.map(f => `<li style="font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:6px;"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg>${f}</li>`).join('')}
+                    </ul>
+                    ${isConnected ? `
+                        <div style="font-size:11px;color:var(--text-3);margin-bottom:12px;">
+                            Connected as <strong style="color:var(--text-1);">${status.account_name || status.account_email || 'Account'}</strong>
+                            ${status.last_synced_at ? `<br>Last synced: ${new Date(status.last_synced_at).toLocaleDateString()}` : ''}
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            ${intg.key === 'mailchimp' ? `<button class="btn btn-ghost btn-sm" onclick="openMailchimpSync()">Sync Now</button>` : ''}
+                            ${intg.key === 'stripe' ? `<button class="btn btn-ghost btn-sm" onclick="syncStripeNow()">Sync Payments</button>` : ''}
+                            ${intg.key === 'hubspot' ? `<button class="btn btn-ghost btn-sm" onclick="syncHubspotNow()">Import Contacts</button>` : ''}
+                            <button class="btn btn-danger btn-sm" onclick="disconnectIntegration('${intg.key}','${intg.name}')">Disconnect</button>
+                        </div>
+                    ` : `
+                        <button class="btn btn-default btn-sm" style="width:100%;" onclick="connectIntegration('${intg.key}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="margin-right:6px;vertical-align:-2px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            Connect ${intg.name}
+                        </button>
+                    `}
+                </div>
+            </div>`;
+    }
+    html += `</div>`;
+
+    // Zapier / Webhooks section
+    html += `
+        <div class="card" style="margin-bottom:24px;">
+            <div class="card-header">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    ${webhookDef.logo}
+                    <div>
+                        <div class="card-title">Zapier / Make / Webhooks</div>
+                        <div style="font-size:12px;color:var(--text-3);">Send CRM events to any app via HTTP webhooks</div>
+                    </div>
+                </div>
+                <button class="btn btn-default btn-sm" style="margin-left:auto;" onclick="openAddWebhookModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="margin-right:5px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Webhook
+                </button>
+            </div>
+            <div class="card-body" id="webhooksList" style="padding:0;">
+                <div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px;">Loading webhooks...</div>
+            </div>
+        </div>`;
+
+    // Env vars reminder
+    html += `
+        <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:16px 20px;">
+            <div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;">⚙ Setup Required</div>
+            <p style="font-size:12px;color:var(--text-2);line-height:1.6;margin:0;">
+                Each integration requires API credentials added to your server's <code style="background:var(--bg-3);padding:1px 5px;border-radius:3px;">.env</code> file.
+                Webhooks (Zapier/Make) work immediately with no setup. For all others, add the corresponding
+                <code style="background:var(--bg-3);padding:1px 5px;border-radius:3px;">_CLIENT_ID</code> and <code style="background:var(--bg-3);padding:1px 5px;border-radius:3px;">_CLIENT_SECRET</code> variables and restart the server.
+            </p>
+        </div>
+    </div>`;
+
+    document.getElementById('integrationsContent').innerHTML = html;
+    loadWebhooksList();
+}
+
+async function connectIntegration(key) {
+    try {
+        const res = await apiFetch(`/integrations/${key}/connect`);
+        const data = await res.json();
+        if (!data.success) { toast(data.message || 'Could not start connection', 'error'); return; }
+        window.location.href = data.url;
+    } catch(e) { toast('Connection failed: ' + e.message, 'error'); }
+}
+
+async function disconnectIntegration(key, name) {
+    if (!confirm(`Disconnect ${name}? Your data in Diamondback won't be deleted.`)) return;
+    try {
+        const res = await apiFetch(`/integrations/${key}`, 'DELETE');
+        const data = await res.json();
+        if (data.success) { toast(`${name} disconnected`, 'success'); loadIntegrations(); }
+        else toast(data.message || 'Could not disconnect', 'error');
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function syncStripeNow() {
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Syncing...';
+    try {
+        const res = await apiFetch('/integrations/stripe/sync', 'POST', {});
+        const d = await res.json();
+        toast(d.success ? `Synced ${d.synced} lead(s) from Stripe payments` : (d.message || 'Sync failed'), d.success ? 'success' : 'error');
+    } catch(e) { toast('Sync error', 'error'); }
+    btn.disabled = false; btn.textContent = 'Sync Payments';
+}
+
+async function syncHubspotNow() {
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = 'Importing...';
+    try {
+        const res = await apiFetch('/integrations/hubspot/sync', 'POST', {});
+        const d = await res.json();
+        toast(d.success ? `Imported ${d.imported} contacts from HubSpot` : (d.message || 'Import failed'), d.success ? 'success' : 'error');
+    } catch(e) { toast('Import error', 'error'); }
+    btn.disabled = false; btn.textContent = 'Import Contacts';
+}
+
+async function openMailchimpSync() {
+    try {
+        const res = await apiFetch('/integrations/mailchimp/lists');
+        const d = await res.json();
+        if (!d.success || !d.lists?.length) { toast('No Mailchimp audiences found', 'error'); return; }
+        const listOptions = d.lists.map(l => `<option value="${l.id}">${escHtml(l.name)} (${l.stats?.member_count||0} members)</option>`).join('');
+        document.getElementById('mcSyncModal')?.remove();
+        const modal = document.createElement('div');
+        modal.id = 'mcSyncModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `<div class="modal" style="max-width:420px;" onclick="event.stopPropagation()">
+            <div class="modal-header"><div class="modal-title">Sync to Mailchimp</div><button class="modal-close" onclick="this.closest('.modal-overlay').remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+            <div class="modal-body" style="padding:20px;">
+                <label class="form-label">Choose Audience</label>
+                <select id="mcListSelect" class="form-input" style="margin-bottom:16px;">${listOptions}</select>
+                <button class="btn btn-default" style="width:100%;" onclick="doMailchimpSync()">Sync All Leads Now</button>
+            </div>
+        </div>`;
+        modal.onclick = e => { if(e.target===modal) modal.remove(); };
+        document.body.appendChild(modal);
+        modal.classList.add('open');
+    } catch(e) { toast('Error loading lists', 'error'); }
+}
+
+async function doMailchimpSync() {
+    const listId = document.getElementById('mcListSelect')?.value;
+    if (!listId) return;
+    const btn = document.querySelector('#mcSyncModal .btn-default');
+    if (btn) { btn.disabled=true; btn.textContent='Syncing...'; }
+    try {
+        const res = await apiFetch('/integrations/mailchimp/sync', 'POST', { listId });
+        const d = await res.json();
+        document.getElementById('mcSyncModal')?.remove();
+        toast(d.success ? `Synced: ${d.added} added, ${d.updated} updated, ${d.errors} errors` : (d.message||'Sync failed'), d.success ? 'success' : 'error');
+    } catch(e) { toast('Sync error', 'error'); if(btn){btn.disabled=false;btn.textContent='Sync All Leads Now';} }
+}
+
+// ── Webhooks ──────────────────────────────────────────────────────────────────
+
+async function loadWebhooksList() {
+    const el = document.getElementById('webhooksList');
+    if (!el) return;
+    try {
+        const res = await apiFetch('/integrations/webhooks');
+        const d = await res.json();
+        if (!d.webhooks?.length) {
+            el.innerHTML = `<div style="padding:20px 24px;color:var(--text-3);font-size:13px;">No webhooks yet. Add one above to start sending events to Zapier, Make, or any HTTP endpoint.</div>`;
+            return;
+        }
+        const ALL_EVENTS = ['lead.created','lead.updated','lead.status_changed','lead.deleted','customer.created','invoice.created'];
+        el.innerHTML = `<table style="width:100%;border-collapse:collapse;">
+            <thead><tr style="border-bottom:1px solid var(--border);">
+                <th style="padding:10px 16px;font-size:11px;color:var(--text-3);font-weight:600;text-align:left;">NAME</th>
+                <th style="padding:10px 16px;font-size:11px;color:var(--text-3);font-weight:600;text-align:left;">URL</th>
+                <th style="padding:10px 16px;font-size:11px;color:var(--text-3);font-weight:600;text-align:left;">TRIGGERS</th>
+                <th style="padding:10px 16px;font-size:11px;color:var(--text-3);font-weight:600;text-align:left;">FIRES</th>
+                <th style="padding:10px 4px;font-size:11px;color:var(--text-3);font-weight:600;"></th>
+            </tr></thead><tbody>
+            ${d.webhooks.map(wh => `
+                <tr style="border-bottom:1px solid var(--border-light);">
+                    <td style="padding:12px 16px;font-size:13px;color:var(--text-1);font-weight:500;">${escHtml(wh.name||'Webhook')}</td>
+                    <td style="padding:12px 16px;font-size:12px;color:var(--text-2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(wh.url)}</td>
+                    <td style="padding:12px 16px;font-size:11px;color:var(--text-3);">${(wh.trigger_events||[]).length} events</td>
+                    <td style="padding:12px 16px;font-size:12px;color:var(--text-3);">${wh.fire_count||0}</td>
+                    <td style="padding:12px 8px;">
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-ghost btn-xs" onclick="testWebhook(${wh.id})">Test</button>
+                            <button class="btn btn-danger btn-xs" onclick="deleteWebhook(${wh.id})">Delete</button>
+                        </div>
+                    </td>
+                </tr>`).join('')}
+            </tbody></table>`;
+    } catch(e) { if(el) el.innerHTML = `<div style="padding:20px;color:var(--red);font-size:13px;">Failed to load webhooks</div>`; }
+}
+
+function openAddWebhookModal() {
+    document.getElementById('addWebhookModal')?.remove();
+    const ALL_EVENTS = ['lead.created','lead.updated','lead.status_changed','lead.deleted','customer.created','invoice.created'];
+    const modal = document.createElement('div');
+    modal.id = 'addWebhookModal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `<div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">Add Webhook</div>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body" style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+            <div><label class="form-label">Name (optional)</label><input id="whName" class="form-input" placeholder="e.g. Zapier — New Lead"/></div>
+            <div><label class="form-label">Webhook URL <span style="color:var(--red)">*</span></label><input id="whUrl" class="form-input" placeholder="https://hooks.zapier.com/..."/></div>
+            <div>
+                <label class="form-label">Trigger Events</label>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+                    ${ALL_EVENTS.map(e => `<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-1);cursor:pointer;">
+                        <input type="checkbox" value="${e}" ${['lead.created','lead.updated','lead.status_changed'].includes(e) ? 'checked' : ''} style="accent-color:var(--accent);width:14px;height:14px;"> ${e}
+                    </label>`).join('')}
+                </div>
+            </div>
+            <button class="btn btn-default" onclick="saveWebhook()">Save Webhook</button>
+        </div>
+    </div>`;
+    modal.onclick = e => { if(e.target===modal) modal.remove(); };
+    document.body.appendChild(modal);
+    modal.classList.add('open');
+}
+
+async function saveWebhook() {
+    const url = document.getElementById('whUrl')?.value?.trim();
+    if (!url) { toast('Webhook URL is required', 'error'); return; }
+    const name = document.getElementById('whName')?.value?.trim() || 'Webhook';
+    const trigger_events = [...document.querySelectorAll('#addWebhookModal input[type=checkbox]:checked')].map(cb => cb.value);
+    try {
+        const res = await apiFetch('/integrations/webhooks', 'POST', { name, url, trigger_events });
+        const d = await res.json();
+        if (d.success) {
+            document.getElementById('addWebhookModal')?.remove();
+            toast('Webhook added', 'success');
+            loadWebhooksList();
+        } else toast(d.message || 'Failed to save', 'error');
+    } catch(e) { toast('Error saving webhook', 'error'); }
+}
+
+async function testWebhook(id) {
+    try {
+        const res = await apiFetch(`/integrations/webhooks/test/${id}`, 'POST', {});
+        const d = await res.json();
+        toast(d.success ? `Test sent! Server responded with ${d.statusCode}` : (d.message||'Test failed'), d.success ? 'success' : 'error');
+    } catch(e) { toast('Test failed', 'error'); }
+}
+
+async function deleteWebhook(id) {
+    if (!confirm('Delete this webhook?')) return;
+    try {
+        const res = await apiFetch(`/integrations/webhooks/${id}`, 'DELETE');
+        const d = await res.json();
+        if (d.success) { toast('Webhook deleted', 'success'); loadWebhooksList(); }
+        else toast(d.message || 'Could not delete', 'error');
+    } catch(e) { toast('Error', 'error'); }
+}
+
 function initAiWidget() {
-    // Show for enterprise or workspace plans — check planLimits flag OR planKey directly
+    // Show for enterprise or workspace plans
+    // Check BOTH the planLimits flag AND the planKey string directly as fallback
     const key = S.planKey || '';
-    const hasAI = !!(S.planLimits?.aiEnabled) || key === 'crm-enterprise' || key === 'crm-workspace';
+    const hasAI = !!(S.planLimits?.aiEnabled)
+        || key === 'crm-enterprise'
+        || key === 'crm-workspace'
+        || key.includes('enterprise')
+        || key.includes('workspace');
+
     const widget = document.getElementById('aiAnalystWidget');
-    if (widget) widget.style.display = hasAI ? 'block' : 'none';
+    if (!widget) return;
+
+    // Must override inline style AND remove any parent visibility constraints
+    widget.style.setProperty('display', hasAI ? 'block' : 'none', 'important');
+
     if (hasAI && !AI_CHAT.messages.length) addAiWelcome();
 }
 

@@ -89,26 +89,28 @@ const PLAN_LIMITS = {
         bgCustomEnabled:   true,
     },
     'crm-enterprise': {
-        displayName:       'Enterprise CRM',
-        maxRecords:        null,
-        maxProducts:       null,
-        maxFollowUpsDay:   null,
-        smsEnabled:        true,
-        sequencesEnabled:  true,
-        marketingEnabled:  true,
-        bgCustomEnabled:   true,
-        aiEnabled:         true,
+        displayName:           'Enterprise CRM',
+        maxRecords:            null,
+        maxProducts:           null,
+        maxFollowUpsDay:       null,
+        smsEnabled:            true,
+        sequencesEnabled:      true,
+        marketingEnabled:      true,
+        bgCustomEnabled:       true,
+        aiEnabled:             true,
+        integrationsEnabled:   true,
     },
     'crm-workspace': {
-        displayName:       'CRM Workspace',
-        maxRecords:        null,
-        maxProducts:       null,
-        maxFollowUpsDay:   null,
-        smsEnabled:        true,
-        sequencesEnabled:  true,
-        marketingEnabled:  true,
-        bgCustomEnabled:   true,
-        aiEnabled:         true,
+        displayName:           'CRM Workspace',
+        maxRecords:            null,
+        maxProducts:           null,
+        maxFollowUpsDay:       null,
+        smsEnabled:            true,
+        sequencesEnabled:      true,
+        marketingEnabled:      true,
+        bgCustomEnabled:       true,
+        aiEnabled:             true,
+        integrationsEnabled:   true,
     },
     // Fallback — most permissive so nothing silently breaks for unknown plan keys
     '_default': {
@@ -22557,38 +22559,48 @@ app.post('/api/client/invoice/:id/email', authenticateClient, async (req, res) =
 app.post('/api/client/leads/:leadId/followup', authenticateClient, async (req, res) => {
     try {
         const { leadId } = req.params;
-        const { message, subject } = req.body;
+        const { message, subject, templateId } = req.body;
         const senderEmail = req.user.email;
 
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+        if (!message || !message.trim()) {
+            return res.status(400).json({ success: false, message: 'Message is required' });
+        }
 
-        const leadResult = await pool.query(
-            `SELECT id, email, name FROM leads WHERE id=$1 AND client_portal_id=$2 LIMIT 1`,
-            [leadId, portalId]
-        );
+        // Support both portal users and individual account owners
+        const portalId = await getClientPortalId(req.user.id);
+
+        const leadResult = portalId
+            ? await pool.query(
+                `SELECT id, email, name FROM leads WHERE id=$1 AND client_portal_id=$2
+                 AND client_password IS NULL LIMIT 1`, [leadId, portalId])
+            : await pool.query(
+                `SELECT id, email, name FROM leads WHERE id=$1 AND individual_owner_id=$2
+                 AND client_password IS NULL LIMIT 1`, [leadId, req.user.id]);
+
         if (!leadResult.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
         const lead = leadResult.rows[0];
+        if (!lead.email) return res.status(400).json({ success: false, message: 'Lead has no email address' });
 
-        // Check not unsubscribed
-        const unsub = await pool.query(
-            `SELECT 1 FROM client_unsubscribes WHERE client_portal_id=$1 AND LOWER(email)=LOWER($2)`,
-            [portalId, lead.email]
-        );
-        if (unsub.rows.length) return res.status(400).json({ success: false, message: 'Lead has unsubscribed' });
+        // Check unsubscribed (skip for individual — they have no portal)
+        if (portalId) {
+            const unsub = await pool.query(
+                `SELECT 1 FROM client_unsubscribes WHERE client_portal_id=$1 AND LOWER(email)=LOWER($2)`,
+                [portalId, lead.email]
+            );
+            if (unsub.rows.length) return res.status(400).json({ success: false, message: 'This lead has unsubscribed' });
+        }
 
-        const settings = await getClientEmailSettings(portalId);
+        const settings = portalId ? await getClientEmailSettings(portalId) : null;
         const fromName = settings?.sender_name || settings?.company_name || 'Team';
 
-        const bodyText = message || `Hi ${lead.name || 'there'},\n\nJust following up to see if you had any questions. Feel free to reply anytime.\n\n${fromName}`;
+        const bodyText = message.trim();
         const escapedBody = bodyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
         const html = buildClientEmailHTML(escapedBody, {}, settings || {});
-        const emailSubject = subject || `Following up — ${fromName}`;
+        const emailSubject = (subject || '').trim() || `Following up — ${fromName}`;
 
-        // Use sendClientEmail so it logs to client_email_log (analytics, tracking)
-        console.log('[FOLLOWUP] Sending to:', lead.email, '| portalId:', portalId, '| sender:', senderEmail);
+        console.log('[FOLLOWUP] Sending to:', lead.email, '| portalId:', portalId || 'individual', '| sender:', senderEmail);
         await sendClientEmail({
-            portalId,
+            portalId: portalId || null,
             leadId: lead.id,
             leadEmail: lead.email,
             senderUserEmail: senderEmail,
@@ -22598,14 +22610,13 @@ app.post('/api/client/leads/:leadId/followup', authenticateClient, async (req, r
             emailType: 'follow-up'
         });
 
-        // Update last_contact_date and follow_up_count
+        // Update contact tracking
         await pool.query(
             `UPDATE leads SET last_contact_date=CURRENT_DATE,
              follow_up_count=COALESCE(follow_up_count,0)+1,
              status=CASE WHEN status='new' THEN 'contacted' ELSE status END,
              updated_at=CURRENT_TIMESTAMP
-             WHERE id=$1`,
-            [lead.id]
+             WHERE id=$1`, [lead.id]
         );
 
         res.json({ success: true, message: `Follow-up sent to ${lead.email}` });
@@ -23566,6 +23577,606 @@ app.delete('/api/client/bg-images/:id', authenticateClient, async (req, res) => 
         res.json({ success: true });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
+
+
+
+// ============================================================
+// INTEGRATIONS — Full suite
+// All routes require Enterprise or Workspace plan
+// ============================================================
+
+// Helper: resolve integration scope (lead_id for individual, portal_id for workspace)
+async function getIntegrationScope(userId) {
+    const portalId = await getClientPortalId(userId);
+    return { portalId: portalId || null, leadId: portalId ? null : userId };
+}
+
+// Helper: check integrations are enabled on this plan
+async function requireIntegrations(req, res) {
+    const plan = await getClientPlanLimits(req.user.id);
+    if (!plan.integrationsEnabled) {
+        res.status(403).json({ success: false, message: 'Integrations are available on Enterprise and Workspace plans.' });
+        return false;
+    }
+    return true;
+}
+
+// Helper: fetch a stored integration
+async function getIntegration(userId, key) {
+    const { portalId, leadId } = await getIntegrationScope(userId);
+    const r = portalId
+        ? await pool.query(`SELECT * FROM crm_integrations WHERE client_portal_id=$1 AND integration_key=$2 AND status='active'`, [portalId, key])
+        : await pool.query(`SELECT * FROM crm_integrations WHERE lead_id=$1 AND integration_key=$2 AND status='active'`, [leadId, key]);
+    return r.rows[0] || null;
+}
+
+// Helper: save/update an integration
+async function upsertIntegration(userId, key, data) {
+    const { portalId, leadId } = await getIntegrationScope(userId);
+    if (portalId) {
+        await pool.query(`
+            INSERT INTO crm_integrations (client_portal_id, integration_key, access_token, refresh_token, token_expires_at, account_id, account_name, account_email, metadata, connected_at, status)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),'active')
+            ON CONFLICT (client_portal_id, integration_key) DO UPDATE SET
+                access_token=$3, refresh_token=$4, token_expires_at=$5, account_id=$6,
+                account_name=$7, account_email=$8, metadata=$9, connected_at=NOW(), status='active'
+        `, [portalId, key, data.accessToken||null, data.refreshToken||null, data.expiresAt||null,
+            data.accountId||null, data.accountName||null, data.accountEmail||null, JSON.stringify(data.metadata||{})]);
+    } else {
+        await pool.query(`
+            INSERT INTO crm_integrations (lead_id, integration_key, access_token, refresh_token, token_expires_at, account_id, account_name, account_email, metadata, connected_at, status)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),'active')
+            ON CONFLICT (lead_id, integration_key) DO UPDATE SET
+                access_token=$3, refresh_token=$4, token_expires_at=$5, account_id=$6,
+                account_name=$7, account_email=$8, metadata=$9, connected_at=NOW(), status='active'
+        `, [leadId, key, data.accessToken||null, data.refreshToken||null, data.expiresAt||null,
+            data.accountId||null, data.accountName||null, data.accountEmail||null, JSON.stringify(data.metadata||{})]);
+    }
+}
+
+// Helper: disconnect an integration
+async function removeIntegration(userId, key) {
+    const { portalId, leadId } = await getIntegrationScope(userId);
+    if (portalId) {
+        await pool.query(`UPDATE crm_integrations SET status='disconnected' WHERE client_portal_id=$1 AND integration_key=$2`, [portalId, key]);
+    } else {
+        await pool.query(`UPDATE crm_integrations SET status='disconnected' WHERE lead_id=$1 AND integration_key=$2`, [leadId, key]);
+    }
+}
+
+// ── GET /api/integrations/status — list all connected integrations for this user ──
+app.get('/api/integrations/status', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const { portalId, leadId } = await getIntegrationScope(req.user.id);
+        const r = portalId
+            ? await pool.query(`SELECT integration_key, account_name, account_email, connected_at, last_synced_at, status FROM crm_integrations WHERE client_portal_id=$1`, [portalId])
+            : await pool.query(`SELECT integration_key, account_name, account_email, connected_at, last_synced_at, status FROM crm_integrations WHERE lead_id=$1`, [leadId]);
+        const connected = {};
+        r.rows.forEach(row => { connected[row.integration_key] = row; });
+        res.json({ success: true, connected });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ── DISCONNECT any integration ─────────────────────────────────────────────────
+app.delete('/api/integrations/:key', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        await removeIntegration(req.user.id, req.params.key);
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// STRIPE CONNECT
+// ============================================================
+
+app.get('/api/integrations/stripe/connect', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const clientId = process.env.STRIPE_CONNECT_CLIENT_ID;
+        if (!clientId) return res.status(500).json({ success: false, message: 'Stripe Connect not configured. Add STRIPE_CONNECT_CLIENT_ID to environment.' });
+        const state = Buffer.from(JSON.stringify({ userId: req.user.id, ts: Date.now() })).toString('base64');
+        const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${clientId}&scope=read_write&state=${encodeURIComponent(state)}&redirect_uri=${encodeURIComponent(BASE_URL + '/api/integrations/stripe/callback')}`;
+        res.json({ success: true, url });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/integrations/stripe/callback', async (req, res) => {
+    try {
+        const { code, state, error } = req.query;
+        if (error) return res.redirect(`/client_portal.html?integration_error=stripe&msg=${encodeURIComponent(error)}`);
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        const response = await fetch('https://connect.stripe.com/oauth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ grant_type: 'authorization_code', code, client_secret: process.env.STRIPE_SECRET_KEY })
+        });
+        const data = await response.json();
+        if (data.error) return res.redirect(`/client_portal.html?integration_error=stripe&msg=${encodeURIComponent(data.error_description)}`);
+        // Fetch account details
+        const acct = await stripe.accounts.retrieve(data.stripe_user_id);
+        await upsertIntegration(stateData.userId, 'stripe', {
+            accessToken: data.access_token,
+            refreshToken: data.refresh_token,
+            accountId: data.stripe_user_id,
+            accountName: acct.business_profile?.name || acct.settings?.dashboard?.display_name || 'Stripe Account',
+            accountEmail: acct.email || '',
+            metadata: { publishableKey: data.stripe_publishable_key, scope: data.scope }
+        });
+        res.redirect('/client_portal.html?integration_success=stripe&page=integrations');
+    } catch(e) { res.redirect(`/client_portal.html?integration_error=stripe&msg=${encodeURIComponent(e.message)}`); }
+});
+
+// GET /api/integrations/stripe/customers — pull Stripe customers, match to leads
+app.get('/api/integrations/stripe/customers', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const intg = await getIntegration(req.user.id, 'stripe');
+        if (!intg) return res.status(404).json({ success: false, message: 'Stripe not connected' });
+        const stripeClient = require('stripe')(intg.access_token);
+        const customers = await stripeClient.customers.list({ limit: 100 });
+        res.json({ success: true, customers: customers.data });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// GET /api/integrations/stripe/lead/:leadId — payment history for a specific lead
+app.get('/api/integrations/stripe/lead/:leadId', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const intg = await getIntegration(req.user.id, 'stripe');
+        if (!intg) return res.status(404).json({ success: false, message: 'Stripe not connected' });
+        const lead = await pool.query(`SELECT email FROM leads WHERE id=$1`, [req.params.leadId]);
+        if (!lead.rows[0]) return res.status(404).json({ success: false, message: 'Lead not found' });
+        const stripeClient = require('stripe')(intg.access_token);
+        const customers = await stripeClient.customers.list({ email: lead.rows[0].email, limit: 5 });
+        if (!customers.data.length) return res.json({ success: true, payments: [], customer: null });
+        const customer = customers.data[0];
+        const charges = await stripeClient.charges.list({ customer: customer.id, limit: 20 });
+        res.json({ success: true, customer, payments: charges.data });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/integrations/stripe/sync — when Stripe payment succeeds, update lead status
+app.post('/api/integrations/stripe/sync', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const intg = await getIntegration(req.user.id, 'stripe');
+        if (!intg) return res.status(404).json({ success: false, message: 'Stripe not connected' });
+        const stripeClient = require('stripe')(intg.access_token);
+        const charges = await stripeClient.charges.list({ limit: 50 });
+        let synced = 0;
+        const { portalId, leadId } = await getIntegrationScope(req.user.id);
+        for (const charge of charges.data) {
+            if (charge.status !== 'succeeded' || !charge.billing_details?.email) continue;
+            const q = portalId
+                ? `UPDATE leads SET status='closed', is_customer=true, updated_at=NOW() WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2 AND status NOT IN ('closed') RETURNING id`
+                : `UPDATE leads SET status='closed', is_customer=true, updated_at=NOW() WHERE LOWER(email)=LOWER($1) AND individual_owner_id=$2 AND status NOT IN ('closed') RETURNING id`;
+            const r = await pool.query(q, [charge.billing_details.email, portalId || leadId]);
+            synced += r.rowCount;
+        }
+        await pool.query(`UPDATE crm_integrations SET last_synced_at=NOW() WHERE integration_key='stripe' AND ${portalId ? 'client_portal_id=$1' : 'lead_id=$1'}`, [portalId || leadId]);
+        res.json({ success: true, synced });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// MAILCHIMP
+// ============================================================
+
+app.get('/api/integrations/mailchimp/connect', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const clientId = process.env.MAILCHIMP_CLIENT_ID;
+        if (!clientId) return res.status(500).json({ success: false, message: 'Mailchimp not configured. Add MAILCHIMP_CLIENT_ID + MAILCHIMP_CLIENT_SECRET to environment.' });
+        const state = Buffer.from(JSON.stringify({ userId: req.user.id, ts: Date.now() })).toString('base64');
+        const url = `https://login.mailchimp.com/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(BASE_URL + '/api/integrations/mailchimp/callback')}&state=${encodeURIComponent(state)}`;
+        res.json({ success: true, url });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/integrations/mailchimp/callback', async (req, res) => {
+    try {
+        const { code, state, error } = req.query;
+        if (error) return res.redirect(`/client_portal.html?integration_error=mailchimp`);
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        const tokenRes = await fetch('https://login.mailchimp.com/oauth2/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ grant_type: 'authorization_code', client_id: process.env.MAILCHIMP_CLIENT_ID, client_secret: process.env.MAILCHIMP_CLIENT_SECRET, redirect_uri: BASE_URL + '/api/integrations/mailchimp/callback', code })
+        });
+        const tokenData = await tokenRes.json();
+        // Get server prefix (data center) for API URL
+        const metaRes = await fetch('https://login.mailchimp.com/oauth2/metadata', { headers: { Authorization: `OAuth ${tokenData.access_token}` } });
+        const meta = await metaRes.json();
+        await upsertIntegration(stateData.userId, 'mailchimp', {
+            accessToken: tokenData.access_token,
+            accountId: meta.accountname,
+            accountName: meta.accountname,
+            accountEmail: meta.login?.email || '',
+            metadata: { dc: meta.dc, apiBase: `https://${meta.dc}.api.mailchimp.com/3.0` }
+        });
+        res.redirect('/client_portal.html?integration_success=mailchimp&page=integrations');
+    } catch(e) { res.redirect(`/client_portal.html?integration_error=mailchimp&msg=${encodeURIComponent(e.message)}`); }
+});
+
+// GET /api/integrations/mailchimp/lists — fetch audience lists
+app.get('/api/integrations/mailchimp/lists', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const intg = await getIntegration(req.user.id, 'mailchimp');
+        if (!intg) return res.status(404).json({ success: false, message: 'Mailchimp not connected' });
+        const apiBase = intg.metadata?.apiBase;
+        const r = await fetch(`${apiBase}/lists?count=100`, { headers: { Authorization: `Bearer ${intg.access_token}` } });
+        const d = await r.json();
+        res.json({ success: true, lists: d.lists || [] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/integrations/mailchimp/sync — push all CRM leads to a Mailchimp list
+app.post('/api/integrations/mailchimp/sync', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const { listId } = req.body;
+        if (!listId) return res.status(400).json({ success: false, message: 'listId required' });
+        const intg = await getIntegration(req.user.id, 'mailchimp');
+        if (!intg) return res.status(404).json({ success: false, message: 'Mailchimp not connected' });
+        const { portalId, leadId } = await getIntegrationScope(req.user.id);
+        const leadsRes = portalId
+            ? await pool.query(`SELECT name, email FROM leads WHERE client_portal_id=$1 AND email IS NOT NULL AND client_password IS NULL AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))`, [portalId])
+            : await pool.query(`SELECT name, email FROM leads WHERE individual_owner_id=$1 AND email IS NOT NULL AND client_password IS NULL`, [leadId]);
+        const members = leadsRes.rows.map(l => ({
+            email_address: l.email,
+            status_if_new: 'subscribed',
+            merge_fields: { FNAME: (l.name || '').split(' ')[0] || '', LNAME: (l.name || '').split(' ').slice(1).join(' ') || '' }
+        }));
+        const apiBase = intg.metadata?.apiBase;
+        const r = await fetch(`${apiBase}/lists/${listId}/members`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${intg.access_token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ members, update_existing: true })
+        });
+        const d = await r.json();
+        const { portalId: pid, leadId: lid } = await getIntegrationScope(req.user.id);
+        await pool.query(`UPDATE crm_integrations SET last_synced_at=NOW() WHERE integration_key='mailchimp' AND ${pid ? 'client_portal_id=$1' : 'lead_id=$1'}`, [pid || lid]);
+        res.json({ success: true, added: d.new_members?.length || 0, updated: d.updated_members?.length || 0, errors: d.error_count || 0 });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// ZAPIER / MAKE — Outbound webhooks
+// ============================================================
+
+app.get('/api/integrations/webhooks', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const { portalId, leadId } = await getIntegrationScope(req.user.id);
+        const r = portalId
+            ? await pool.query(`SELECT * FROM crm_integration_webhooks WHERE client_portal_id=$1 ORDER BY created_at DESC`, [portalId])
+            : await pool.query(`SELECT * FROM crm_integration_webhooks WHERE lead_id=$1 ORDER BY created_at DESC`, [leadId]);
+        res.json({ success: true, webhooks: r.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.post('/api/integrations/webhooks', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const { name, url, trigger_events } = req.body;
+        if (!url) return res.status(400).json({ success: false, message: 'Webhook URL required' });
+        const { portalId, leadId } = await getIntegrationScope(req.user.id);
+        const r = portalId
+            ? await pool.query(`INSERT INTO crm_integration_webhooks (client_portal_id, name, url, trigger_events) VALUES ($1,$2,$3,$4) RETURNING *`, [portalId, name||'Webhook', url, trigger_events||['lead.created','lead.updated','lead.status_changed']])
+            : await pool.query(`INSERT INTO crm_integration_webhooks (lead_id, name, url, trigger_events) VALUES ($1,$2,$3,$4) RETURNING *`, [leadId, name||'Webhook', url, trigger_events||['lead.created','lead.updated','lead.status_changed']]);
+        res.json({ success: true, webhook: r.rows[0] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.delete('/api/integrations/webhooks/:id', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const { portalId, leadId } = await getIntegrationScope(req.user.id);
+        const r = portalId
+            ? await pool.query(`DELETE FROM crm_integration_webhooks WHERE id=$1 AND client_portal_id=$2 RETURNING id`, [req.params.id, portalId])
+            : await pool.query(`DELETE FROM crm_integration_webhooks WHERE id=$1 AND lead_id=$2 RETURNING id`, [req.params.id, leadId]);
+        if (!r.rows.length) return res.status(404).json({ success: false, message: 'Webhook not found' });
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// POST /api/integrations/webhooks/test/:id — send a test payload
+app.post('/api/integrations/webhooks/test/:id', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const { portalId, leadId } = await getIntegrationScope(req.user.id);
+        const r = portalId
+            ? await pool.query(`SELECT * FROM crm_integration_webhooks WHERE id=$1 AND client_portal_id=$2`, [req.params.id, portalId])
+            : await pool.query(`SELECT * FROM crm_integration_webhooks WHERE id=$1 AND lead_id=$2`, [req.params.id, leadId]);
+        if (!r.rows[0]) return res.status(404).json({ success: false, message: 'Webhook not found' });
+        const webhook = r.rows[0];
+        const payload = { event: 'test', timestamp: new Date().toISOString(), data: { message: 'This is a test webhook from Diamondback CRM', lead: { id: 0, name: 'Test Lead', email: 'test@example.com', status: 'new' } } };
+        const resp = await fetch(webhook.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Diamondback-Event': 'test' }, body: JSON.stringify(payload) });
+        res.json({ success: true, statusCode: resp.status });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// Internal helper — fire webhooks on lead events
+async function fireWebhooks(userId, portalId, event, data) {
+    try {
+        const { portalId: pid, leadId: lid } = portalId ? { portalId, leadId: null } : await getIntegrationScope(userId);
+        const r = pid
+            ? await pool.query(`SELECT * FROM crm_integration_webhooks WHERE client_portal_id=$1 AND is_active=true AND $2=ANY(trigger_events)`, [pid, event])
+            : await pool.query(`SELECT * FROM crm_integration_webhooks WHERE lead_id=$1 AND is_active=true AND $2=ANY(trigger_events)`, [lid, event]);
+        for (const wh of r.rows) {
+            fetch(wh.url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Diamondback-Event': event },
+                body: JSON.stringify({ event, timestamp: new Date().toISOString(), data })
+            }).catch(() => {});
+            pool.query(`UPDATE crm_integration_webhooks SET last_fired_at=NOW(), fire_count=fire_count+1 WHERE id=$1`, [wh.id]).catch(() => {});
+        }
+    } catch(e) { /* non-blocking */ }
+}
+
+// ============================================================
+// QUICKBOOKS
+// ============================================================
+
+app.get('/api/integrations/quickbooks/connect', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const clientId = process.env.QUICKBOOKS_CLIENT_ID;
+        if (!clientId) return res.status(500).json({ success: false, message: 'QuickBooks not configured. Add QUICKBOOKS_CLIENT_ID + QUICKBOOKS_CLIENT_SECRET to environment.' });
+        const state = Buffer.from(JSON.stringify({ userId: req.user.id, ts: Date.now() })).toString('base64');
+        const url = `https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&redirect_uri=${encodeURIComponent(BASE_URL + '/api/integrations/quickbooks/callback')}&response_type=code&scope=com.intuit.quickbooks.accounting&state=${encodeURIComponent(state)}`;
+        res.json({ success: true, url });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/integrations/quickbooks/callback', async (req, res) => {
+    try {
+        const { code, state, realmId, error } = req.query;
+        if (error) return res.redirect(`/client_portal.html?integration_error=quickbooks`);
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        const creds = Buffer.from(`${process.env.QUICKBOOKS_CLIENT_ID}:${process.env.QUICKBOOKS_CLIENT_SECRET}`).toString('base64');
+        const tokenRes = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+            method: 'POST',
+            headers: { Authorization: `Basic ${creds}`, 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+            body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: BASE_URL + '/api/integrations/quickbooks/callback' })
+        });
+        const tokenData = await tokenRes.json();
+        await upsertIntegration(stateData.userId, 'quickbooks', {
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            expiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+            accountId: realmId,
+            accountName: 'QuickBooks Company',
+            metadata: { realmId }
+        });
+        res.redirect('/client_portal.html?integration_success=quickbooks&page=integrations');
+    } catch(e) { res.redirect(`/client_portal.html?integration_error=quickbooks&msg=${encodeURIComponent(e.message)}`); }
+});
+
+// ============================================================
+// SLACK
+// ============================================================
+
+app.get('/api/integrations/slack/connect', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const clientId = process.env.SLACK_CLIENT_ID;
+        if (!clientId) return res.status(500).json({ success: false, message: 'Slack not configured. Add SLACK_CLIENT_ID + SLACK_CLIENT_SECRET to environment.' });
+        const state = Buffer.from(JSON.stringify({ userId: req.user.id, ts: Date.now() })).toString('base64');
+        const scopes = 'incoming-webhook,chat:write,channels:read';
+        const url = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(BASE_URL + '/api/integrations/slack/callback')}&state=${encodeURIComponent(state)}`;
+        res.json({ success: true, url });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/integrations/slack/callback', async (req, res) => {
+    try {
+        const { code, state, error } = req.query;
+        if (error) return res.redirect(`/client_portal.html?integration_error=slack`);
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        const r = await fetch('https://slack.com/api/oauth.v2.access', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ client_id: process.env.SLACK_CLIENT_ID, client_secret: process.env.SLACK_CLIENT_SECRET, code, redirect_uri: BASE_URL + '/api/integrations/slack/callback' })
+        });
+        const d = await r.json();
+        if (!d.ok) return res.redirect(`/client_portal.html?integration_error=slack&msg=${encodeURIComponent(d.error)}`);
+        await upsertIntegration(stateData.userId, 'slack', {
+            accessToken: d.access_token,
+            accountId: d.team?.id,
+            accountName: d.team?.name,
+            metadata: { webhookUrl: d.incoming_webhook?.url, channel: d.incoming_webhook?.channel, botToken: d.access_token }
+        });
+        res.redirect('/client_portal.html?integration_success=slack&page=integrations');
+    } catch(e) { res.redirect(`/client_portal.html?integration_error=slack&msg=${encodeURIComponent(e.message)}`); }
+});
+
+// POST /api/integrations/slack/notify — send a message to Slack
+app.post('/api/integrations/slack/notify', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const { message } = req.body;
+        const intg = await getIntegration(req.user.id, 'slack');
+        if (!intg) return res.status(404).json({ success: false, message: 'Slack not connected' });
+        const webhookUrl = intg.metadata?.webhookUrl;
+        if (!webhookUrl) return res.status(400).json({ success: false, message: 'No webhook URL found' });
+        await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: message }) });
+        res.json({ success: true });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// GOOGLE (Calendar + Gmail) — one OAuth app for both
+// ============================================================
+
+app.get('/api/integrations/google/connect', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const clientId = process.env.GOOGLE_CLIENT_ID;
+        if (!clientId) return res.status(500).json({ success: false, message: 'Google not configured. Add GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET to environment.' });
+        const state = Buffer.from(JSON.stringify({ userId: req.user.id, ts: Date.now() })).toString('base64');
+        const scopes = [
+            'https://www.googleapis.com/auth/calendar',
+            'https://www.googleapis.com/auth/gmail.readonly',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile'
+        ].join(' ');
+        const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(BASE_URL + '/api/integrations/google/callback')}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent&state=${encodeURIComponent(state)}`;
+        res.json({ success: true, url });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/integrations/google/callback', async (req, res) => {
+    try {
+        const { code, state, error } = req.query;
+        if (error) return res.redirect(`/client_portal.html?integration_error=google`);
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: BASE_URL + '/api/integrations/google/callback', grant_type: 'authorization_code' })
+        });
+        const tokenData = await tokenRes.json();
+        const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${tokenData.access_token}` } });
+        const profile = await profileRes.json();
+        await upsertIntegration(stateData.userId, 'google', {
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            expiresAt: new Date(Date.now() + (tokenData.expires_in || 3600) * 1000),
+            accountId: profile.id,
+            accountName: profile.name,
+            accountEmail: profile.email
+        });
+        res.redirect('/client_portal.html?integration_success=google&page=integrations');
+    } catch(e) { res.redirect(`/client_portal.html?integration_error=google&msg=${encodeURIComponent(e.message)}`); }
+});
+
+// GET /api/integrations/google/calendar/events — upcoming events
+app.get('/api/integrations/google/calendar/events', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const intg = await getIntegration(req.user.id, 'google');
+        if (!intg) return res.status(404).json({ success: false, message: 'Google not connected' });
+        const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=20&orderBy=startTime&singleEvents=true&timeMin=${new Date().toISOString()}`, { headers: { Authorization: `Bearer ${intg.access_token}` } });
+        const d = await r.json();
+        res.json({ success: true, events: d.items || [] });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// ============================================================
+// MICROSOFT (Outlook email + Outlook Calendar) — one Azure app
+// ============================================================
+
+app.get('/api/integrations/microsoft/connect', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const clientId = process.env.MICROSOFT_CLIENT_ID;
+        if (!clientId) return res.status(500).json({ success: false, message: 'Microsoft/Outlook not configured. Add MICROSOFT_CLIENT_ID + MICROSOFT_CLIENT_SECRET to environment.' });
+        const state = Buffer.from(JSON.stringify({ userId: req.user.id, ts: Date.now() })).toString('base64');
+        const scopes = 'offline_access Mail.Read Mail.Send Calendars.ReadWrite User.Read';
+        const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(BASE_URL + '/api/integrations/microsoft/callback')}&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(state)}`;
+        res.json({ success: true, url });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/integrations/microsoft/callback', async (req, res) => {
+    try {
+        const { code, state, error } = req.query;
+        if (error) return res.redirect(`/client_portal.html?integration_error=microsoft`);
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        const tokenRes = await fetch(`https://login.microsoftonline.com/common/oauth2/v2.0/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ client_id: process.env.MICROSOFT_CLIENT_ID, client_secret: process.env.MICROSOFT_CLIENT_SECRET, code, redirect_uri: BASE_URL + '/api/integrations/microsoft/callback', grant_type: 'authorization_code' })
+        });
+        const tokenData = await tokenRes.json();
+        const profileRes = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: `Bearer ${tokenData.access_token}` } });
+        const profile = await profileRes.json();
+        await upsertIntegration(stateData.userId, 'microsoft', {
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            expiresAt: new Date(Date.now() + (tokenData.expires_in || 3600) * 1000),
+            accountId: profile.id,
+            accountName: profile.displayName,
+            accountEmail: profile.mail || profile.userPrincipalName
+        });
+        res.redirect('/client_portal.html?integration_success=microsoft&page=integrations');
+    } catch(e) { res.redirect(`/client_portal.html?integration_error=microsoft&msg=${encodeURIComponent(e.message)}`); }
+});
+
+// ============================================================
+// HUBSPOT
+// ============================================================
+
+app.get('/api/integrations/hubspot/connect', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const clientId = process.env.HUBSPOT_CLIENT_ID;
+        if (!clientId) return res.status(500).json({ success: false, message: 'HubSpot not configured. Add HUBSPOT_CLIENT_ID + HUBSPOT_CLIENT_SECRET to environment.' });
+        const state = Buffer.from(JSON.stringify({ userId: req.user.id, ts: Date.now() })).toString('base64');
+        const scopes = 'crm.objects.contacts.read crm.objects.contacts.write crm.objects.deals.read';
+        const url = `https://app.hubspot.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(BASE_URL + '/api/integrations/hubspot/callback')}&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(state)}`;
+        res.json({ success: true, url });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.get('/api/integrations/hubspot/callback', async (req, res) => {
+    try {
+        const { code, state, error } = req.query;
+        if (error) return res.redirect(`/client_portal.html?integration_error=hubspot`);
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        const tokenRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ grant_type: 'authorization_code', client_id: process.env.HUBSPOT_CLIENT_ID, client_secret: process.env.HUBSPOT_CLIENT_SECRET, redirect_uri: BASE_URL + '/api/integrations/hubspot/callback', code })
+        });
+        const tokenData = await tokenRes.json();
+        const profileRes = await fetch('https://api.hubapi.com/oauth/v1/access-tokens/' + tokenData.access_token);
+        const profile = await profileRes.json();
+        await upsertIntegration(stateData.userId, 'hubspot', {
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            expiresAt: new Date(Date.now() + (tokenData.expires_in || 21600) * 1000),
+            accountId: String(profile.hub_id),
+            accountName: profile.hub_domain || 'HubSpot Account',
+            accountEmail: profile.user
+        });
+        res.redirect('/client_portal.html?integration_success=hubspot&page=integrations');
+    } catch(e) { res.redirect(`/client_portal.html?integration_error=hubspot&msg=${encodeURIComponent(e.message)}`); }
+});
+
+// POST /api/integrations/hubspot/sync — import HubSpot contacts as leads
+app.post('/api/integrations/hubspot/sync', authenticateClient, async (req, res) => {
+    try {
+        if (!await requireIntegrations(req, res)) return;
+        const intg = await getIntegration(req.user.id, 'hubspot');
+        if (!intg) return res.status(404).json({ success: false, message: 'HubSpot not connected' });
+        const r = await fetch('https://api.hubapi.com/crm/v3/objects/contacts?limit=100&properties=firstname,lastname,email,company,phone', { headers: { Authorization: `Bearer ${intg.access_token}` } });
+        const d = await r.json();
+        const { portalId, leadId } = await getIntegrationScope(req.user.id);
+        let imported = 0;
+        for (const contact of (d.results || [])) {
+            const props = contact.properties;
+            if (!props.email) continue;
+            const name = [props.firstname, props.lastname].filter(Boolean).join(' ') || props.email;
+            try {
+                if (portalId) {
+                    await pool.query(`INSERT INTO leads (name, email, phone, company, status, source, client_portal_id, created_at, updated_at) VALUES ($1,$2,$3,$4,'new','hubspot-import',$5,NOW(),NOW()) ON CONFLICT DO NOTHING`, [name, props.email, props.phone||null, props.company||null, portalId]);
+                } else {
+                    await pool.query(`INSERT INTO leads (name, email, phone, company, status, source, individual_owner_id, created_at, updated_at) VALUES ($1,$2,$3,$4,'new','hubspot-import',$5,NOW(),NOW()) ON CONFLICT DO NOTHING`, [name, props.email, props.phone||null, props.company||null, leadId]);
+                }
+                imported++;
+            } catch(e) { /* skip dupes */ }
+        }
+        const { portalId: pid, leadId: lid } = await getIntegrationScope(req.user.id);
+        await pool.query(`UPDATE crm_integrations SET last_synced_at=NOW() WHERE integration_key='hubspot' AND ${pid ? 'client_portal_id=$1' : 'lead_id=$1'}`, [pid || lid]);
+        res.json({ success: true, imported });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 
 
 console.log('\n[ROUTES] Listing all registered API routes:');
@@ -25016,6 +25627,48 @@ async function startServer() {
         startEmailConfirmationJob();
         // Start recurring invoice scheduler
         startRecurringInvoiceJob();
+
+        // Migration: integrations — stores OAuth tokens and webhook configs per user
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS crm_integrations (
+                id                SERIAL PRIMARY KEY,
+                lead_id           INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                client_portal_id  VARCHAR(20),
+                integration_key   VARCHAR(50) NOT NULL,
+                access_token      TEXT,
+                refresh_token     TEXT,
+                token_expires_at  TIMESTAMP,
+                account_id        VARCHAR(255),
+                account_name      VARCHAR(255),
+                account_email     VARCHAR(255),
+                metadata          JSONB DEFAULT '{}'::jsonb,
+                connected_at      TIMESTAMP DEFAULT NOW(),
+                last_synced_at    TIMESTAMP,
+                status            VARCHAR(20) DEFAULT 'active',
+                UNIQUE(lead_id, integration_key),
+                UNIQUE(client_portal_id, integration_key)
+            )
+        `).catch(() => {});
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS crm_integration_webhooks (
+                id                SERIAL PRIMARY KEY,
+                lead_id           INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+                client_portal_id  VARCHAR(20),
+                name              VARCHAR(100),
+                url               TEXT NOT NULL,
+                trigger_events    TEXT[] DEFAULT ARRAY['lead.created','lead.updated','lead.status_changed'],
+                is_active         BOOLEAN DEFAULT TRUE,
+                created_at        TIMESTAMP DEFAULT NOW(),
+                last_fired_at     TIMESTAMP,
+                fire_count        INTEGER DEFAULT 0
+            )
+        `).catch(() => {});
+
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_crm_integrations_lead ON crm_integrations(lead_id);
+            CREATE INDEX IF NOT EXISTS idx_crm_integrations_portal ON crm_integrations(client_portal_id);
+        `).catch(() => {});
 
         // Migration: individual_owner_id on leads — scopes CRM leads for individual subscribers
         await pool.query(`

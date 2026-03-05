@@ -97,6 +97,7 @@ const PLAN_LIMITS = {
         sequencesEnabled:  true,
         marketingEnabled:  true,
         bgCustomEnabled:   true,
+        aiEnabled:         true,
     },
     'crm-workspace': {
         displayName:       'CRM Workspace',
@@ -107,6 +108,7 @@ const PLAN_LIMITS = {
         sequencesEnabled:  true,
         marketingEnabled:  true,
         bgCustomEnabled:   true,
+        aiEnabled:         true,
     },
     // Fallback — most permissive so nothing silently breaks for unknown plan keys
     '_default': {
@@ -1796,12 +1798,6 @@ await client.query(`
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                               WHERE table_name='leads' AND column_name='password_reset_required') THEN
                     ALTER TABLE leads ADD COLUMN password_reset_required BOOLEAN DEFAULT FALSE;
-                END IF;
-
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                              WHERE table_name='leads' AND column_name='crm_individual_owner') THEN
-                    ALTER TABLE leads ADD COLUMN crm_individual_owner INTEGER REFERENCES leads(id);
-                    CREATE INDEX IF NOT EXISTS idx_leads_crm_individual_owner ON leads(crm_individual_owner);
                 END IF;
 
                 -- Add unsubscribe columns for email opt-out
@@ -9211,27 +9207,12 @@ app.get('/api/client/leads', authenticateClient, async (req, res) => {
             `;
             params = [clientPortalId];
         } else {
-            // Individual (no portal) — show all CRM leads they have created/own
-            // These are leads without client_password (not portal user accounts) that were
-            // added by this individual user (crm_assigned_to = their company_users id, or
-            // stored with crm_individual_owner = userId as fallback).
-            // We match on crm_assigned_to OR on leads that were inserted with this user's
-            // lead ID (i.e. the owner is the individual subscriber themselves).
+            // Individual (no portal) — their own leads only
             query = `
                 SELECT l.*, NULL as assigned_to_name, NULL as assigned_to_label, NULL as assigned_to_email
                 FROM leads l
-                WHERE l.client_password IS NULL
-                  AND (l.source IS NULL OR l.source NOT IN ('company-user', 'subscription-direct'))
-                  AND l.id != $1
-                  AND (
-                      l.crm_individual_owner = $1
-                      OR l.crm_assigned_to IN (
-                          SELECT id FROM company_users WHERE LOWER(user_email) = (
-                              SELECT LOWER(email) FROM leads WHERE id = $1
-                          )
-                      )
-                  )
-                ORDER BY l.updated_at DESC NULLS LAST, l.created_at DESC
+                WHERE l.id = $1
+                ORDER BY l.created_at DESC
             `;
             params = [userId];
         }
@@ -9280,28 +9261,16 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
         // Use the helper which falls back to client_companies for admins missing client_portal_id on their lead
         const clientPortalId = await getClientPortalId(userId);
 
-        // Individual users (no company portal) are allowed — their leads are scoped by crm_individual_owner.
-        // Only block if there is genuinely no way to identify the user at all.
-        const isIndividualUser = !clientPortalId;
-        if (!clientPortalId && !userId) {
-            console.error('[CLIENT LEADS] User has no client_portal_id and no userId — refusing lead creation');
+        // HARD GUARD: Never create a lead without a portal ID from this endpoint.
+        if (!clientPortalId) {
+            console.error('[CLIENT LEADS] User has no client_portal_id — refusing lead creation', userId);
             return res.status(400).json({ success: false, message: 'Your account is not linked to a portal. Please contact support.' });
         }
 
         // ── Record cap (Essential: 1000 / Professional: 5000 / Enterprise+: unlimited) ──
         const planData = await getClientPlanLimits(userId);
         if (planData.maxRecords !== null) {
-            let total = 0;
-            if (clientPortalId) {
-                total = await getClientRecordCount(clientPortalId);
-            } else {
-                // Individual user — count their personally-owned CRM leads
-                const indCount = await pool.query(
-                    `SELECT COUNT(*) AS n FROM leads WHERE crm_individual_owner = $1 AND client_password IS NULL`,
-                    [userId]
-                );
-                total = parseInt(indCount.rows[0]?.n || 0);
-            }
+            const total = await getClientRecordCount(clientPortalId);
             if (total >= planData.maxRecords) {
                 return res.status(403).json({
                     success: false,
@@ -9312,38 +9281,31 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
             }
         }
 
-        // Get the creator's company_users record for auto-assign (company users only)
+        // Get the creator's company_users record for auto-assign
         let assignedTo = null;
-        if (assignToSelf !== false && clientPortalId) {
+        if (assignToSelf !== false) {
             const cuRecord = await getCompanyUserRecord(userId);
             if (cuRecord) assignedTo = cuRecord.id;
         }
 
-        // Check if lead with this email already exists (portal-scoped or individual-scoped)
-        if (email) {
-            let dupQuery, dupParams;
-            if (clientPortalId) {
-                dupQuery = `SELECT id FROM leads WHERE LOWER(email) = LOWER($1) AND client_portal_id = $2 AND client_password IS NULL`;
-                dupParams = [email, clientPortalId];
-            } else {
-                dupQuery = `SELECT id FROM leads WHERE LOWER(email) = LOWER($1) AND crm_individual_owner = $2 AND client_password IS NULL`;
-                dupParams = [email, userId];
-            }
-            const existing = await pool.query(dupQuery, dupParams);
+        // Check if lead with this email already exists in portal
+        if (email && clientPortalId) {
+            const existing = await pool.query(
+                `SELECT id FROM leads WHERE LOWER(email) = LOWER($1) AND client_portal_id = $2`,
+                [email, clientPortalId]
+            );
             if (existing.rows.length > 0) {
                 return res.status(409).json({ success: false, message: 'A lead with this email already exists' });
             }
         }
 
-        // For individual users, store crm_individual_owner so they can retrieve their leads later
         const result = await pool.query(`
             INSERT INTO leads (name, email, phone, company, status, notes, source,
-                lead_temperature, client_portal_id, crm_assigned_to, crm_individual_owner, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, 'crm-portal', 'cold', $7, $8, $9, NOW(), NOW())
+                lead_temperature, client_portal_id, crm_assigned_to, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, 'crm-portal', 'cold', $7, $8, NOW(), NOW())
             RETURNING *
         `, [name, email || null, phone || null, company || null,
-            status || 'new', notes || null, clientPortalId || null, assignedTo,
-            !clientPortalId ? userId : null]);
+            status || 'new', notes || null, clientPortalId, assignedTo]);
 
         res.json({ success: true, lead: result.rows[0] });
 
@@ -9366,12 +9328,8 @@ app.patch('/api/client/leads/:id', authenticateClient, async (req, res) => {
         const clientPortalId = await getClientPortalId(userId);
 
         const check = await pool.query(
-            `SELECT id, lead_temperature as current_temp FROM leads 
-             WHERE id = $1 AND (
-                 client_portal_id = $2
-                 OR crm_individual_owner = $3
-             )`,
-            [leadId, clientPortalId || -1, userId]
+            `SELECT id, lead_temperature as current_temp FROM leads WHERE id = $1 AND (client_portal_id = $2 OR id = $3)`,
+            [leadId, clientPortalId, userId]
         );
         if (!check.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
 
@@ -9426,29 +9384,17 @@ app.delete('/api/client/leads/:id', authenticateClient, async (req, res) => {
 
         // Get the requesting user's portal ID
         const clientPortalId = await getClientPortalId(userId);
+        if (!clientPortalId) return res.status(403).json({ success: false, message: 'No portal found' });
 
-        // Verify the lead belongs to this portal/individual AND is not a portal user account
-        let check;
-        if (clientPortalId) {
-            check = await pool.query(
-                `SELECT id, email FROM leads
-                 WHERE id = $1
-                   AND client_portal_id = $2
-                   AND client_password IS NULL
-                   AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))`,
-                [leadId, clientPortalId]
-            );
-        } else {
-            // Individual user — can only delete their own CRM leads
-            check = await pool.query(
-                `SELECT id, email FROM leads
-                 WHERE id = $1
-                   AND crm_individual_owner = $2
-                   AND client_password IS NULL
-                   AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))`,
-                [leadId, userId]
-            );
-        }
+        // Verify the lead belongs to this portal AND is not a portal user account
+        const check = await pool.query(
+            `SELECT id, email FROM leads
+             WHERE id = $1
+               AND client_portal_id = $2
+               AND client_password IS NULL
+               AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))`,
+            [leadId, clientPortalId]
+        );
         if (!check.rows.length) {
             return res.status(404).json({ success: false, message: 'Lead not found or cannot be deleted' });
         }
@@ -11293,14 +11239,12 @@ async function processSubscriptionWebhook(event) {
         }
 
         // Convert lead to customer (whether they were cold, warm, or hot lead)
-        // NOTE: We do NOT set status='closed' here — 'closed' is a CRM sales stage meaning
-        // "won deal" and should not be applied to the user's own account record. Setting it
-        // to 'closed' was causing individual users to appear as a closed lead in their own CRM.
         if (lead && lead.id) {
             await pool.query(`
                 UPDATE leads 
                 SET is_customer = TRUE, 
                     customer_status = 'active',
+                    status = 'closed',
                     lead_temperature = 'hot',
                     updated_at = NOW() 
                 WHERE id = $1
@@ -15623,7 +15567,7 @@ app.post('/api/client/login', async (req, res) => {
                 [clientPortalId, lead.id]
             ).catch(() => {});
         } else if (!clientPortalId) {
-            // Not an admin — still try to find portal via company_users
+            // Not a company admin — try to find portal via company_users (workspace member)
             const cu = await pool.query(
                 `SELECT client_portal_id FROM company_users WHERE LOWER(user_email)=LOWER($1) AND status='active' LIMIT 1`,
                 [lead.email]
@@ -15634,6 +15578,10 @@ app.post('/api/client/login', async (req, res) => {
                     'UPDATE leads SET client_portal_id=$1 WHERE id=$2',
                     [clientPortalId, lead.id]
                 ).catch(() => {});
+            } else {
+                // Pure individual subscription — no company, no team.
+                // They are the sole owner of their account so they get full admin rights.
+                isCompanyAdmin = true;
             }
         }
 

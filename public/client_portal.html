@@ -3030,9 +3030,10 @@ function showApp() {
     document.getElementById('sidebarAvatar').textContent = initials;
     document.getElementById('sidebarName').textContent = user.name || user.email;
     document.getElementById('sidebarRole').textContent =
-        S.isTrueAdmin ? 'Admin' :
-        S.isAdmin     ? 'Co-Admin' :
-        S.isCompanyMember ? 'Member' : 'Individual';
+        S.isIndividual    ? 'Account Owner' :
+        S.isTrueAdmin     ? 'Admin' :
+        S.isAdmin         ? 'Co-Admin' :
+        'Member';
 
     // Admin-only nav items (Team, Company tabs + admin workspace items)
     document.querySelectorAll('.nav-item-admin-only').forEach(el => {
@@ -10432,7 +10433,7 @@ async function runImport() {
     // Footer: just close
     const footer = document.getElementById('importModalFooter');
     footer.style.display = 'flex';
-    footer.innerHTML = '<button class="btn btn-default" onclick="closeModal('importLeadsModal')">Done</button>';
+    footer.innerHTML = '<button class="btn btn-default" onclick="closeModal(\'importLeadsModal\')">Done</button>';
 }
 
 function downloadImportTemplate() {
@@ -10450,11 +10451,8 @@ function downloadImportTemplate() {
 const AI_CHAT = { messages: [], isOpen: false, isTyping: false };
 
 function initAiWidget() {
-    // Only show for enterprise individual or workspace plan
-    const key = S.planKey || '';
-    const isEnterprise = key === 'crm-enterprise';
-    const isWorkspace  = key === 'crm-workspace';
-    const hasAI = isEnterprise || isWorkspace;
+    // Show for any user whose plan has aiEnabled — available to all users on that plan, not just admins
+    const hasAI = !!(S.planLimits?.aiEnabled);
     const widget = document.getElementById('aiAnalystWidget');
     if (widget) widget.style.display = hasAI ? 'block' : 'none';
     if (hasAI && !AI_CHAT.messages.length) addAiWelcome();

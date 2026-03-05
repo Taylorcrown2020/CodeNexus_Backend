@@ -9989,8 +9989,8 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 <!-- ════════════════════════════════════════════════════
      IMPORT LEADS MODAL
      ════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="importLeadsModal" onclick="closeOnOverlay(event,'importLeadsModal')" style="display:none;z-index:2000;">
-  <div class="modal-box" onclick="event.stopPropagation()" style="max-width:520px;width:calc(100% - 32px);">
+<div class="modal-overlay" id="importLeadsModal" onclick="closeOnOverlay(event,'importLeadsModal')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;width:calc(100% - 32px);">
     <div class="modal-header">
       <div class="modal-title">Import Leads from Excel / CSV</div>
       <button class="modal-close" onclick="closeModal('importLeadsModal')">
@@ -10451,8 +10451,9 @@ function downloadImportTemplate() {
 const AI_CHAT = { messages: [], isOpen: false, isTyping: false };
 
 function initAiWidget() {
-    // Show for any user whose plan has aiEnabled — available to all users on that plan, not just admins
-    const hasAI = !!(S.planLimits?.aiEnabled);
+    // Show for enterprise or workspace plans — check planLimits flag OR planKey directly
+    const key = S.planKey || '';
+    const hasAI = !!(S.planLimits?.aiEnabled) || key === 'crm-enterprise' || key === 'crm-workspace';
     const widget = document.getElementById('aiAnalystWidget');
     if (widget) widget.style.display = hasAI ? 'block' : 'none';
     if (hasAI && !AI_CHAT.messages.length) addAiWelcome();
@@ -10652,23 +10653,9 @@ function exportAiDataToExcel(msgIndex) {
 // Initialize AI widget after login (hook into existing showApp)
 const _origShowApp = typeof showApp === 'function' ? showApp : null;
 // We patch post-login instead:
-document.addEventListener('DOMContentLoaded', () => {
-    // Re-init AI widget whenever plan data is available
-    const observer = new MutationObserver(() => {
-        if (S.planKey) { initAiWidget(); observer.disconnect(); }
-    });
-    // Fallback: also call on navigate
-});
+// AI widget is initialised in showApp() after login
 
-// Hook into navigate to keep AI widget visible across pages
-const _origNavigate = window.navigate;
-if (typeof navigate === 'function') {
-    window.navigate = function(page) {
-        _origNavigate && _origNavigate(page);
-        // Ensure AI widget stays in DOM
-        setTimeout(initAiWidget, 100);
-    };
-}
+// AI widget persists globally in the DOM — no re-init needed on page change
 </script>
 
 <!-- SheetJS for XLSX support -->

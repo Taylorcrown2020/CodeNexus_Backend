@@ -9207,12 +9207,15 @@ app.get('/api/client/leads', authenticateClient, async (req, res) => {
             `;
             params = [clientPortalId];
         } else {
-            // Individual (no portal) — their own leads only
+            // Individual (no portal) — their CRM leads scoped by individual_owner_id
+            // NEVER return their own account row (which also lives in leads table)
             query = `
                 SELECT l.*, NULL as assigned_to_name, NULL as assigned_to_label, NULL as assigned_to_email
                 FROM leads l
-                WHERE l.id = $1
-                ORDER BY l.created_at DESC
+                WHERE l.individual_owner_id = $1
+                  AND l.client_password IS NULL
+                  AND (l.source IS NULL OR l.source NOT IN ('company-user', 'subscription-direct'))
+                ORDER BY l.updated_at DESC NULLS LAST, l.created_at DESC
             `;
             params = [userId];
         }
@@ -9258,19 +9261,23 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
 
         if (!name) return res.status(400).json({ success: false, message: 'Name is required' });
 
-        // Use the helper which falls back to client_companies for admins missing client_portal_id on their lead
+        // Resolve portal — individual users have no portal ID
         const clientPortalId = await getClientPortalId(userId);
+        const isIndividualLead = !clientPortalId;
 
-        // HARD GUARD: Never create a lead without a portal ID from this endpoint.
-        if (!clientPortalId) {
-            console.error('[CLIENT LEADS] User has no client_portal_id — refusing lead creation', userId);
-            return res.status(400).json({ success: false, message: 'Your account is not linked to a portal. Please contact support.' });
-        }
-
-        // ── Record cap (Essential: 1000 / Professional: 5000 / Enterprise+: unlimited) ──
+        // ── Record cap ──
         const planData = await getClientPlanLimits(userId);
         if (planData.maxRecords !== null) {
-            const total = await getClientRecordCount(clientPortalId);
+            let total;
+            if (isIndividualLead) {
+                const r = await pool.query(
+                    `SELECT COUNT(*) FROM leads WHERE individual_owner_id=$1 AND client_password IS NULL AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))`,
+                    [userId]
+                );
+                total = parseInt(r.rows[0].count);
+            } else {
+                total = await getClientRecordCount(clientPortalId);
+            }
             if (total >= planData.maxRecords) {
                 return res.status(403).json({
                     success: false,
@@ -9281,31 +9288,38 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
             }
         }
 
-        // Get the creator's company_users record for auto-assign
+        // Get the creator's company_users record for auto-assign (workspace only)
         let assignedTo = null;
-        if (assignToSelf !== false) {
+        if (!isIndividualLead && assignToSelf !== false) {
             const cuRecord = await getCompanyUserRecord(userId);
             if (cuRecord) assignedTo = cuRecord.id;
         }
 
-        // Check if lead with this email already exists in portal
-        if (email && clientPortalId) {
-            const existing = await pool.query(
-                `SELECT id FROM leads WHERE LOWER(email) = LOWER($1) AND client_portal_id = $2`,
-                [email, clientPortalId]
-            );
-            if (existing.rows.length > 0) {
+        // Duplicate email check
+        if (email) {
+            const dupCheck = isIndividualLead
+                ? await pool.query(`SELECT id FROM leads WHERE LOWER(email)=LOWER($1) AND individual_owner_id=$2 AND client_password IS NULL`, [email, userId])
+                : await pool.query(`SELECT id FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2`, [email, clientPortalId]);
+            if (dupCheck.rows.length > 0) {
                 return res.status(409).json({ success: false, message: 'A lead with this email already exists' });
             }
         }
 
-        const result = await pool.query(`
-            INSERT INTO leads (name, email, phone, company, status, notes, source,
-                lead_temperature, client_portal_id, crm_assigned_to, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, 'crm-portal', 'cold', $7, $8, NOW(), NOW())
-            RETURNING *
-        `, [name, email || null, phone || null, company || null,
-            status || 'new', notes || null, clientPortalId, assignedTo]);
+        const result = isIndividualLead
+            ? await pool.query(`
+                INSERT INTO leads (name, email, phone, company, status, notes, source,
+                    lead_temperature, individual_owner_id, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, 'crm-portal', 'cold', $7, NOW(), NOW())
+                RETURNING *
+              `, [name, email || null, phone || null, company || null,
+                  status || 'new', notes || null, userId])
+            : await pool.query(`
+                INSERT INTO leads (name, email, phone, company, status, notes, source,
+                    lead_temperature, client_portal_id, crm_assigned_to, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, 'crm-portal', 'cold', $7, $8, NOW(), NOW())
+                RETURNING *
+              `, [name, email || null, phone || null, company || null,
+                  status || 'new', notes || null, clientPortalId, assignedTo]);
 
         res.json({ success: true, lead: result.rows[0] });
 
@@ -9324,11 +9338,15 @@ app.patch('/api/client/leads/:id', authenticateClient, async (req, res) => {
         const leadId = req.params.id;
         const { name, email, phone, company, status, notes, lead_temperature } = req.body;
 
-        // Verify this lead belongs to user's portal
+        // Verify this lead belongs to user's portal or individual account — never their own account row
         const clientPortalId = await getClientPortalId(userId);
 
         const check = await pool.query(
-            `SELECT id, lead_temperature as current_temp FROM leads WHERE id = $1 AND (client_portal_id = $2 OR id = $3)`,
+            `SELECT id, lead_temperature as current_temp FROM leads
+             WHERE id = $1
+               AND client_password IS NULL
+               AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
+               AND (client_portal_id = $2 OR individual_owner_id = $3)`,
             [leadId, clientPortalId, userId]
         );
         if (!check.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
@@ -9382,18 +9400,16 @@ app.delete('/api/client/leads/:id', authenticateClient, async (req, res) => {
         const userId = req.user.id;
         const leadId = req.params.id;
 
-        // Get the requesting user's portal ID
+        // Verify ownership — works for both portal users and individual account owners
         const clientPortalId = await getClientPortalId(userId);
-        if (!clientPortalId) return res.status(403).json({ success: false, message: 'No portal found' });
 
-        // Verify the lead belongs to this portal AND is not a portal user account
         const check = await pool.query(
             `SELECT id, email FROM leads
              WHERE id = $1
-               AND client_portal_id = $2
                AND client_password IS NULL
-               AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))`,
-            [leadId, clientPortalId]
+               AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))
+               AND (client_portal_id = $2 OR individual_owner_id = $3)`,
+            [leadId, clientPortalId, userId]
         );
         if (!check.rows.length) {
             return res.status(404).json({ success: false, message: 'Lead not found or cannot be deleted' });
@@ -23416,11 +23432,19 @@ const bgImageUpload = require('multer')({
 // Serve uploaded bg images statically
 app.use('/uploads/bg-images', require('express').static(require('path').join(__dirname, 'uploads', 'bg-images')));
 
-// GET /api/client/bg-images — list all bg images for this portal (available to all users)
+// GET /api/client/bg-images — list all bg images for this portal or individual account
 app.get('/api/client/bg-images', authenticateClient, async (req, res) => {
     try {
         const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.json({ success: true, images: [] });
+        if (!portalId) {
+            // Individual user — fetch their own uploaded bg images by lead_id
+            const result = await pool.query(
+                `SELECT id, url, label, uploaded_by, created_at FROM portal_bg_images
+                 WHERE lead_id=$1 ORDER BY created_at ASC`,
+                [req.user.id]
+            );
+            return res.json({ success: true, images: result.rows });
+        }
         const result = await pool.query(
             `SELECT id, url, label, uploaded_by, created_at FROM portal_bg_images
              WHERE client_portal_id=$1 ORDER BY created_at ASC`,
@@ -23430,38 +23454,48 @@ app.get('/api/client/bg-images', authenticateClient, async (req, res) => {
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
-// POST /api/client/bg-images — admin uploads a new bg image
+// POST /api/client/bg-images — upload a new bg image (admin or individual account owner)
 app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('image'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+
         let portalId = await getClientPortalId(req.user.id);
-        if (!portalId && req.user.email) {
-            const cc = await pool.query('SELECT client_portal_id FROM client_companies WHERE LOWER(admin_email)=LOWER($1) LIMIT 1', [req.user.email]);
-            portalId = cc.rows[0]?.client_portal_id || null;
-        }
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found for this account' });
-        // Admin check — check leads table, then company_users as fallback
-        const adminCheck = await pool.query(
-            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
-        );
-        const u = adminCheck.rows[0];
-        let isAdminBg = u?.is_company_admin || u?.is_co_admin;
-        if (!isAdminBg) {
-            const cuAdmin = await pool.query(
-                `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
-                [portalId, req.user.email]
-            ).catch(() => ({ rows: [] }));
-            isAdminBg = cuAdmin.rows[0]?.is_admin || false;
-        }
-        if (!isAdminBg) {
-            return res.status(403).json({ success: false, message: 'Admin only' });
+        let isIndividualBg = false;
+
+        if (!portalId) {
+            // Individual user — they own their account, allow upload using their lead ID as scope
+            const leadRow = await pool.query(
+                `SELECT id, email FROM leads WHERE id=$1`, [req.user.id]
+            );
+            if (!leadRow.rows[0]) {
+                require('fs').unlink(req.file.path, () => {});
+                return res.status(400).json({ success: false, message: 'User not found' });
+            }
+            isIndividualBg = true;
+        } else {
+            // Workspace/company — admin only
+            const adminCheck = await pool.query(
+                `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+            );
+            const u = adminCheck.rows[0];
+            let isAdminBg = u?.is_company_admin || u?.is_co_admin;
+            if (!isAdminBg) {
+                const cuAdmin = await pool.query(
+                    `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
+                    [portalId, req.user.email]
+                ).catch(() => ({ rows: [] }));
+                isAdminBg = cuAdmin.rows[0]?.is_admin || false;
+            }
+            if (!isAdminBg) {
+                require('fs').unlink(req.file.path, () => {});
+                return res.status(403).json({ success: false, message: 'Admin only' });
+            }
         }
 
-
-        // Limit to 10 custom backgrounds per portal
-        const countRes = await pool.query(
-            `SELECT COUNT(*) FROM portal_bg_images WHERE client_portal_id=$1`, [portalId]
-        );
+        // Limit to 10 custom backgrounds per account
+        const countRes = isIndividualBg
+            ? await pool.query(`SELECT COUNT(*) FROM portal_bg_images WHERE lead_id=$1`, [req.user.id])
+            : await pool.query(`SELECT COUNT(*) FROM portal_bg_images WHERE client_portal_id=$1`, [portalId]);
         if (parseInt(countRes.rows[0].count) >= 10) {
             require('fs').unlink(req.file.path, () => {});
             return res.status(400).json({ success: false, message: 'Maximum 10 custom backgrounds per account. Delete one first.' });
@@ -23469,11 +23503,19 @@ app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('imag
 
         const url = '/uploads/bg-images/' + req.file.filename;
         const label = req.body.label?.trim().slice(0, 40) || 'Custom';
-        const row = await pool.query(
-            `INSERT INTO portal_bg_images (client_portal_id, url, label, uploaded_by)
-             VALUES ($1,$2,$3,$4) RETURNING id, url, label, uploaded_by, created_at`,
-            [portalId, url, label, req.user.email]
-        );
+
+        // Insert — individual uses lead_id column, workspace uses client_portal_id
+        const row = isIndividualBg
+            ? await pool.query(
+                `INSERT INTO portal_bg_images (lead_id, url, label, uploaded_by)
+                 VALUES ($1,$2,$3,$4) RETURNING id, url, label, uploaded_by, created_at`,
+                [req.user.id, url, label, req.user.email]
+              )
+            : await pool.query(
+                `INSERT INTO portal_bg_images (client_portal_id, url, label, uploaded_by)
+                 VALUES ($1,$2,$3,$4) RETURNING id, url, label, uploaded_by, created_at`,
+                [portalId, url, label, req.user.email]
+              );
         res.json({ success: true, image: row.rows[0] });
     } catch(e) {
         console.error('[BG IMAGE UPLOAD]', e);
@@ -23481,36 +23523,43 @@ app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('imag
     }
 });
 
-// DELETE /api/client/bg-images/:id — admin deletes a custom bg image
+// DELETE /api/client/bg-images/:id — delete a custom bg image (admin or individual owner)
 app.delete('/api/client/bg-images/:id', authenticateClient, async (req, res) => {
     try {
         const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal' });
+        let isIndividualDel = false;
 
-        // Admin check — check leads table, then company_users as fallback
-        const adminCheck = await pool.query(
-            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
-        );
-        const u = adminCheck.rows[0];
-        let isAdminDel = u?.is_company_admin || u?.is_co_admin;
-        if (!isAdminDel) {
-            const cuAdmin = await pool.query(
-                `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
-                [portalId, req.user.email]
-            ).catch(() => ({ rows: [] }));
-            isAdminDel = cuAdmin.rows[0]?.is_admin || false;
-        }
-        if (!isAdminDel) {
-            return res.status(403).json({ success: false, message: 'Admin only' });
+        if (!portalId) {
+            // Individual user — owns all their own bg images
+            isIndividualDel = true;
+        } else {
+            // Workspace/company — admin only
+            const adminCheck = await pool.query(
+                `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+            );
+            const u = adminCheck.rows[0];
+            let isAdminDel = u?.is_company_admin || u?.is_co_admin;
+            if (!isAdminDel) {
+                const cuAdmin = await pool.query(
+                    `SELECT is_admin FROM company_users WHERE client_portal_id=$1 AND LOWER(user_email)=LOWER($2) AND status='active' LIMIT 1`,
+                    [portalId, req.user.email]
+                ).catch(() => ({ rows: [] }));
+                isAdminDel = cuAdmin.rows[0]?.is_admin || false;
+            }
+            if (!isAdminDel) return res.status(403).json({ success: false, message: 'Admin only' });
         }
 
-        const imgRes = await pool.query(
-            `DELETE FROM portal_bg_images WHERE id=$1 AND client_portal_id=$2 RETURNING url`,
-            [req.params.id, portalId]
-        );
+        const imgRes = isIndividualDel
+            ? await pool.query(
+                `DELETE FROM portal_bg_images WHERE id=$1 AND lead_id=$2 RETURNING url`,
+                [req.params.id, req.user.id]
+              )
+            : await pool.query(
+                `DELETE FROM portal_bg_images WHERE id=$1 AND client_portal_id=$2 RETURNING url`,
+                [req.params.id, portalId]
+              );
         if (!imgRes.rows[0]) return res.status(404).json({ success: false, message: 'Image not found' });
 
-        // Delete file from disk (non-blocking)
         const filePath = require('path').join(__dirname, imgRes.rows[0].url);
         require('fs').unlink(filePath, () => {});
 
@@ -23683,15 +23732,37 @@ app.get('/api/admin/usage/analytics', authenticateToken, async (req, res) => {
 // ========================================
 app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+        // Resolve portalId — individual users have no portal ID so we use their lead email
+        // to look up their personal subscription directly.
+        let portalId = await getClientPortalId(req.user.id);
+        let isIndividual = false;
 
-        // Billing is admin-only — company members should not see billing data
-        const adminCheck = await pool.query(
-            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
-        );
-        const isAdmin = adminCheck.rows[0]?.is_company_admin || adminCheck.rows[0]?.is_co_admin;
-        if (!isAdmin) return res.status(403).json({ success: false, message: 'Billing is only accessible to company admins.' });
+        if (!portalId) {
+            // Individual user — verify they have an active individual subscription
+            const leadRow = await pool.query(
+                `SELECT id, email, is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+            );
+            const lead = leadRow.rows[0];
+            if (!lead) return res.status(400).json({ success: false, message: 'User not found' });
+
+            // Check for an active individual subscription by email
+            const subCheck = await pool.query(
+                `SELECT id FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status='active' AND user_type='individual' LIMIT 1`,
+                [lead.email]
+            );
+            if (!subCheck.rows.length) {
+                return res.status(400).json({ success: false, message: 'No active subscription found' });
+            }
+            // Individual users are their own admin — grant access
+            isIndividual = true;
+        } else {
+            // Workspace/company user — only admins can see billing
+            const adminCheck = await pool.query(
+                `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+            );
+            const isAdmin = adminCheck.rows[0]?.is_company_admin || adminCheck.rows[0]?.is_co_admin;
+            if (!isAdmin) return res.status(403).json({ success: false, message: 'Billing is only accessible to company admins.' });
+        }
 
         // Ensure tables exist (safe — runs only if missing, no-op otherwise)
         await initializeUsageTables().catch(() => {});
@@ -23700,14 +23771,34 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
         const thisMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0];
         const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().split('T')[0];
 
-        // Subscription charge
-        const subResult = await pool.query(
-            `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active'`,
-            [portalId]
-        );
-        const subscriptionCharge = subResult.rows[0]?.sub_total || 0;
+        // Subscription charge — individual users look up by email; workspace users by portalId
+        let subscriptionCharge = 0;
+        if (isIndividual) {
+            const userEmail = (await pool.query(`SELECT email FROM leads WHERE id=$1`, [req.user.id])).rows[0]?.email;
+            const subResult = await pool.query(
+                `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status='active'`,
+                [userEmail]
+            );
+            subscriptionCharge = subResult.rows[0]?.sub_total || 0;
+        } else {
+            const subResult = await pool.query(
+                `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active'`,
+                [portalId]
+            );
+            subscriptionCharge = subResult.rows[0]?.sub_total || 0;
+        }
 
         const getUsage = async (month) => {
+            if (isIndividual) {
+                // Individual users: usage tracked by lead_id, not portal_id
+                const r = await pool.query(
+                    `SELECT COALESCE(SUM(email_count),0) AS email_count, COALESCE(SUM(sms_count),0) AS sms_count,
+                            COALESCE(SUM(email_revenue),0) AS email_revenue, COALESCE(SUM(sms_revenue),0) AS sms_revenue
+                     FROM portal_usage_log WHERE lead_id=$1 AND billing_month=$2`,
+                    [req.user.id, month]
+                );
+                return r.rows[0] || { email_count:0, sms_count:0, email_revenue:0, sms_revenue:0 };
+            }
             const r = await pool.query(
                 `SELECT email_count, sms_count, email_revenue, sms_revenue FROM portal_usage_log WHERE client_portal_id=$1 AND billing_month=$2`,
                 [portalId, month]
@@ -24925,7 +25016,23 @@ async function startServer() {
         startEmailConfirmationJob();
         // Start recurring invoice scheduler
         startRecurringInvoiceJob();
-        
+
+        // Migration: individual_owner_id on leads — scopes CRM leads for individual subscribers
+        await pool.query(`
+            ALTER TABLE leads
+                ADD COLUMN IF NOT EXISTS individual_owner_id INTEGER REFERENCES leads(id) ON DELETE SET NULL
+        `).catch(() => {});
+
+        // Migration: allow portal_bg_images to support individual users (no portal ID)
+        await pool.query(`
+            ALTER TABLE portal_bg_images
+                ALTER COLUMN client_portal_id DROP NOT NULL
+        `).catch(() => {}); // no-op if already nullable or table doesn't exist yet
+        await pool.query(`
+            ALTER TABLE portal_bg_images
+                ADD COLUMN IF NOT EXISTS lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE
+        `).catch(() => {});
+
         app.listen(PORT, () => {
             console.log('');
             console.log('========================================');

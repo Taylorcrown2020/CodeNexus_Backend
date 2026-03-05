@@ -21941,7 +21941,7 @@ app.get('/api/client/follow-ups', authenticateClient, async (req, res) => {
         // Get user's company_users record for assignment filtering
         const cuRec = await getCompanyUserRecord(userId);
 
-        let whereExtra = portalId ? `l.client_portal_id = '${portalId}'` : `l.id = ${userId}`;
+        let whereExtra = portalId ? `l.client_portal_id = '${portalId}'` : `l.individual_owner_id = ${userId}`;
         if (mine === '1' && cuRec) {
             whereExtra += ` AND l.crm_assigned_to = ${cuRec.id}`;
         } else if (portalId) {
@@ -23310,8 +23310,10 @@ app.post('/api/client/leads/:id/convert', authenticateClient, async (req, res) =
 
 app.get('/api/client/charts', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+        const userId = req.user.id;
+        const portalId = await getClientPortalId(userId);
+        // Support both workspace (portalId) and individual users
+        const isIndividual = !portalId;
 
         // Build array of last 12 months (YYYY-MM strings, oldest first)
         const months = [];
@@ -23325,6 +23327,9 @@ app.get('/api/client/charts', authenticateClient, async (req, res) => {
         // ── Income data: sum of product prices per lead per month
         //    "potential" = leads (not yet customers) with products
         //    "actual"    = customers with products
+        const incomeFilter = isIndividual
+            ? `l.individual_owner_id = ${userId}`
+            : `l.client_portal_id = '${portalId}'`;
         const incomeRows = await pool.query(`
             SELECT
                 TO_CHAR(l.created_at, 'YYYY-MM') as month,
@@ -23333,27 +23338,30 @@ app.get('/api/client/charts', authenticateClient, async (req, res) => {
             FROM leads l
             JOIN lead_products lp ON lp.lead_id = l.id
             JOIN client_products p ON p.id = lp.product_id
-            WHERE l.client_portal_id = $1
+            WHERE ${incomeFilter}
               AND l.client_password IS NULL
-              AND l.created_at >= $2::date
+              AND l.created_at >= $1::date
             GROUP BY month, income_type
             ORDER BY month ASC
-        `, [portalId, oldest]);
+        `, [oldest]);
 
         // ── Growth data: leads and customers created per month
+        const growthFilter = isIndividual
+            ? `individual_owner_id = ${userId}`
+            : `client_portal_id = '${portalId}'`;
         const growthRows = await pool.query(`
             SELECT
                 TO_CHAR(created_at, 'YYYY-MM') as month,
                 COUNT(*) FILTER (WHERE is_customer IS NOT TRUE) as leads,
                 COUNT(*) FILTER (WHERE is_customer = TRUE) as customers
             FROM leads
-            WHERE client_portal_id = $1
+            WHERE ${growthFilter}
               AND client_password IS NULL
               AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
-              AND created_at >= $2::date
+              AND created_at >= $1::date
             GROUP BY month
             ORDER BY month ASC
-        `, [portalId, oldest]);
+        `, [oldest]);
 
         // ── Product popularity: how many leads assigned each product per month
         const productRows = await pool.query(`
@@ -23365,12 +23373,12 @@ app.get('/api/client/charts', authenticateClient, async (req, res) => {
             FROM leads l
             JOIN lead_products lp ON lp.lead_id = l.id
             JOIN client_products p ON p.id = lp.product_id
-            WHERE l.client_portal_id = $1
+            WHERE ${incomeFilter}
               AND l.client_password IS NULL
-              AND l.created_at >= $2::date
+              AND l.created_at >= $1::date
             GROUP BY month, p.id, p.name
             ORDER BY month ASC, p.name ASC
-        `, [portalId, oldest]);
+        `, [oldest]);
 
         // ── Current month vs previous month actual income
         const curMonth = months[11]; // most recent
@@ -24358,7 +24366,7 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
 
             // Check for an active individual subscription by email
             const subCheck = await pool.query(
-                `SELECT id FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status='active' AND user_type='individual' LIMIT 1`,
+                `SELECT id FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status='active' AND is_company_subscription IS NOT TRUE LIMIT 1`,
                 [lead.email]
             );
             if (!subCheck.rows.length) {

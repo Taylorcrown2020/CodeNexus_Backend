@@ -15071,6 +15071,15 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
 
         const subscriptions = Object.values(subMap);
 
+        // For all subscriptions: if monthly_total is 0 but price_per_user exists, compute it.
+        // This handles cases where the Stripe webhook stored price_per_user but not monthly_total.
+        subscriptions.forEach(sub => {
+            if (!parseFloat(sub.monthly_total) && parseFloat(sub.price_per_user)) {
+                const count = parseInt(sub.user_count) || 1;
+                sub.monthly_total = parseFloat(sub.price_per_user) * count;
+            }
+        });
+
         // For company admins: override monthly_total on the primary subscription with the
         // true billing amount = purchased_seats × price_per_user.
         // This ensures the Subscription tab always shows what was actually purchased, not
@@ -25693,6 +25702,58 @@ async function startServer() {
             ALTER TABLE portal_bg_images
                 ADD COLUMN IF NOT EXISTS lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE
         `).catch(() => {});
+
+// ============================================================
+// AI CRM ANALYST PROXY — forwards requests to Anthropic API
+// Avoids CORS issues and keeps the API key server-side
+// ============================================================
+app.post('/api/client/ai-chat', authenticateClient, async (req, res) => {
+    try {
+        const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+        if (!ANTHROPIC_KEY) {
+            return res.status(503).json({ success: false, message: 'AI service not configured. Set ANTHROPIC_API_KEY in environment.' });
+        }
+
+        // Only available on plans with aiEnabled
+        const planData = await getClientPlanLimits(req.user.id);
+        if (!planData?.aiEnabled) {
+            return res.status(403).json({ success: false, message: 'AI Analyst is not available on your current plan.' });
+        }
+
+        const { messages, system } = req.body;
+        if (!messages || !Array.isArray(messages)) {
+            return res.status(400).json({ success: false, message: 'messages array required' });
+        }
+
+        const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': ANTHROPIC_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 1024,
+                system: system || 'You are an AI CRM Analyst.',
+                messages: messages.slice(-20) // cap context window
+            })
+        });
+
+        if (!anthropicRes.ok) {
+            const errText = await anthropicRes.text();
+            console.error('[AI PROXY] Anthropic error:', anthropicRes.status, errText);
+            return res.status(502).json({ success: false, message: 'AI service error. Please try again.' });
+        }
+
+        const data = await anthropicRes.json();
+        const reply = data.content?.[0]?.text || '';
+        res.json({ success: true, reply });
+    } catch (e) {
+        console.error('[AI PROXY]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
 
         app.listen(PORT, () => {
             console.log('');

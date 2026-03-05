@@ -3053,9 +3053,10 @@ function showApp() {
         S.isAdmin         ? 'Co-Admin' :
         'Member';
 
-    // Admin-only nav items (Team, Company tabs + admin workspace items)
+    // Admin-only nav items (Team, Company, Billing tabs + admin workspace items)
+    // Only show for workspace admins (have a clientPortalId), NOT individual account owners
     document.querySelectorAll('.nav-item-admin-only').forEach(el => {
-        el.style.display = S.isAdmin ? 'flex' : 'none';
+        el.style.display = (S.isAdmin && S.isCompanyMember) ? 'flex' : 'none';
     });
 
     // Show Integrations nav for Enterprise and Workspace plans
@@ -3704,6 +3705,37 @@ function renderChartTooltip(ctx, series, idx, labels, PAD, CW, CH, niceMax, W, H
     ctx.restore();
 }
 
+// ── Live dashboard refresh — updates stats + recent leads without a full API reload ──
+function _refreshDashboardLeads() {
+    const leads     = (S.leads || []).filter(l => !l._optimistic);
+    const customers = (S.customers || []);
+    const openTasks = (S.tasks || []).filter(t => t.status !== 'completed').length;
+    const dStat1 = document.getElementById('dStat1');
+    const dStat2 = document.getElementById('dStat2');
+    const dStat3 = document.getElementById('dStat3');
+    if (dStat1) dStat1.textContent = leads.length;
+    if (dStat2) dStat2.textContent = customers.length;
+    if (dStat3) dStat3.textContent = openTasks;
+    const dashLeadsEl = document.getElementById('dashLeads');
+    if (!dashLeadsEl) return;
+    const recentLeads = leads.slice(0, 5);
+    if (recentLeads.length) {
+        dashLeadsEl.innerHTML = `
+            <table style="width:100%;">
+                <thead><tr><th>Name</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody>
+                    ${recentLeads.map(l=>`<tr>
+                        <td style="font-weight:500;">${escHtml(l.name||l.email||'—')}</td>
+                        <td>${statusBadge(l.status||l.lead_temperature||'new')}</td>
+                        <td style="color:var(--text-3);font-size:12px;">${fmtDate(l.created_at)}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+    } else {
+        dashLeadsEl.innerHTML = '<div class="empty-state"><p>No leads yet</p></div>';
+    }
+}
+
 async function loadDashboard() {
     try {
         const [dashRes, chartRes] = await Promise.all([
@@ -3956,7 +3988,17 @@ async function saveLead() {
     };
     S.leads = [optimisticLead, ...(S.leads || [])];
     closeModal('addLeadModal');
+    // Always switch to 'all' tab so the new lead is immediately visible
+    S.leadTab = 'all';
+    document.querySelectorAll('.lead-tab').forEach(b => {
+        const isAll = b.dataset?.tab === 'all' || b.textContent?.trim().toLowerCase() === 'all';
+        b.classList.toggle('active-tab', isAll);
+        b.style.borderBottom = isAll ? '2px solid var(--text-0)' : '';
+    });
     renderLeads();
+    // Update dashboard lead count live
+    const dStat1 = document.getElementById('dStat1');
+    if (dStat1) dStat1.textContent = (S.leads || []).filter(l => !l._optimistic || l.id === optimisticLead.id).length;
     toast('Lead created', 'success');
 
     try {
@@ -3978,6 +4020,7 @@ async function saveLead() {
             const realLead = data.lead || { ...optimisticLead, id: newLeadId, _optimistic: false };
             S.leads = S.leads.map(l => l.id === optimisticLead.id ? { ...realLead, _optimistic: false } : l);
             renderLeads();
+            _refreshDashboardLeads(); // live-update the dashboard recent leads panel
             if (newLeadId && selectedProducts.length) {
                 apiFetch(`/client/leads/${newLeadId}/products`, 'POST', { product_ids: selectedProducts }).catch(()=>{});
             }
@@ -4149,6 +4192,7 @@ async function convertLeadToCustomer(leadId) {
         if (data.success) {
             loadCustomers();
             if (S.currentPage === 'followups') loadFollowups();
+            _refreshDashboardLeads();
             apiFetch('/client/charts').then(r=>r.json()).then(d=>{ if (!d.success) return; DC.data = d; if (S.currentPage === 'dashboard') renderChart(); }).catch(()=>{});
         } else {
             if (removedLead) S.leads = [removedLead, ...(S.leads || [])];
@@ -8010,7 +8054,7 @@ function renderSubscription(subs) {
     let html = '';
 
     // ── COMPANY ADMIN — full company subscription control ──────────────────
-    if (S.isAdmin) {
+    if (S.isAdmin && S.isCompanyMember) {
         const sub = active.sort((a,b)=>parseFloat(b.monthly_total)-parseFloat(a.monthly_total))[0];
         const sc = sCfg[sub.status] || sCfg.cancelled;
         const canCancel = ['active','past_due'].includes(sub.status);
@@ -8067,8 +8111,8 @@ function renderSubscription(subs) {
                         ${sub.status==='canceling'?`<span style="font-size:12px;color:var(--text-3);margin-left:8px;">Access ends ${fmtDate2(sub.current_period_end)}</span>`:''}
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-size:26px;font-weight:700;color:var(--text-0);">$${parseFloat(sub.monthly_total||0).toFixed(2)}</div>
-                        <div style="font-size:12px;color:var(--text-3);">${sub.user_count||1} user${(sub.user_count||1)!==1?'s':''}/month</div>
+                        <div style="font-size:26px;font-weight:700;color:var(--text-0);">$${parseFloat(sub.monthly_total || sub.price_per_user || 0).toFixed(2)}</div>
+                        <div style="font-size:12px;color:var(--text-3);">per month</div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -8076,7 +8120,7 @@ function renderSubscription(subs) {
 
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:14px;background:var(--bg-3);border-radius:var(--r-sm);margin-bottom:16px;">
                         <div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Current Period</div><div style="font-size:12px;font-weight:500;">${fmtDate2(sub.current_period_start)}</div><div style="font-size:11px;color:var(--text-3);">to ${fmtDate2(sub.current_period_end)}</div></div>
-                        <div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Next Charge</div><div style="font-size:12px;font-weight:500;">${sub.status==='canceling'?'None':'$'+parseFloat(sub.monthly_total||0).toFixed(2)}</div><div style="font-size:11px;color:var(--text-3);">${sub.status==='canceling'?'Cancelling':'on '+fmtDate2(sub.current_period_end)}</div></div>
+                        <div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Next Charge</div><div style="font-size:12px;font-weight:500;">${sub.status==='canceling'?'None':'$'+parseFloat(sub.monthly_total||sub.price_per_user||0).toFixed(2)}</div><div style="font-size:11px;color:var(--text-3);">${sub.status==='canceling'?'Cancelling':'on '+fmtDate2(sub.current_period_end)}</div></div>
                         <div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Member Since</div><div style="font-size:12px;font-weight:500;">${fmtDate2(sub.created_at)}</div></div>
                     </div>
 
@@ -11050,21 +11094,16 @@ async function sendAiMessage() {
 
     try {
         const systemPrompt = buildAiSystemPrompt();
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 1000,
-                system: systemPrompt,
-                messages: AI_CHAT.messages.map(m => ({ role: m.role, content: m.content }))
-            })
+        const response = await apiFetch('/client/ai-chat', 'POST', {
+            system: systemPrompt,
+            messages: AI_CHAT.messages.map(m => ({ role: m.role, content: m.content }))
         });
         const data = await response.json();
-        const reply = data.content?.[0]?.text || "I couldn't process that request. Please try again.";
+        if (!data.success) throw new Error(data.message || 'AI service error');
+        const reply = data.reply || "I couldn't process that request. Please try again.";
         AI_CHAT.messages.push({ role: 'assistant', content: reply, _exportable: looksExportable(reply) });
     } catch(e) {
-        AI_CHAT.messages.push({ role: 'assistant', content: "⚠️ Connection error. Please try again." });
+        AI_CHAT.messages.push({ role: 'assistant', content: `⚠️ ${e.message || 'Connection error. Please try again.'}` });
     }
 
     AI_CHAT.isTyping = false;

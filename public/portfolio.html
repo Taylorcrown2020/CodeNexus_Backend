@@ -1803,6 +1803,100 @@
             }
         }
     </style>
+
+    <style>
+        /* ── Diamondback CRM Interactive Mockup ── */
+        .crm-mockup-wrap { width: 100%; overflow: visible; }
+        .crm-mockup {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #222;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.05);
+            transform: perspective(1100px) rotateY(4deg) rotateX(1deg);
+            transition: transform 0.5s ease;
+            font-family: -apple-system, BlinkMacSystemFont, 'Geist', sans-serif;
+        }
+        .crm-mockup:hover { transform: perspective(1100px) rotateY(1deg) rotateX(0deg); }
+        .cm-sidebar {
+            width: 148px; min-width: 148px;
+            background: #000; border-right: 1px solid #1a1a1a;
+            display: flex; flex-direction: column;
+            padding: 12px 8px 10px; gap: 1px;
+            overflow: hidden; flex-shrink: 0;
+        }
+        .cm-brand { display: flex; align-items: center; gap: 7px; padding: 4px 4px 10px; border-bottom: 1px solid #181818; margin-bottom: 8px; flex-shrink: 0; }
+        .cm-brand-icon { width: 22px; height: 22px; background: #fff; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .cm-brand-icon svg { color: #000; }
+        .cm-brand-name { font-size: 9.5px; font-weight: 700; color: #fff; line-height: 1.2; }
+        .cm-brand-sub { font-size: 8.5px; color: #444; }
+        .cm-nav-section-title { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #383838; padding: 6px 6px 2px; flex-shrink: 0; }
+        .cm-nav-item { display: flex; align-items: center; gap: 6px; padding: 5px 7px; border-radius: 5px; font-size: 10.5px; color: #555; cursor: default; white-space: nowrap; flex-shrink: 0; }
+        .cm-nav-item svg { opacity: 0.45; flex-shrink: 0; }
+        .cm-active { background: #1c1c1c; color: #e0e0e0; }
+        .cm-active svg { opacity: 1; }
+        .cm-badge { margin-left: auto; background: #1f1f1f; color: #555; font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 10px; flex-shrink: 0; }
+        .cm-badge-green { background: rgba(34,197,94,0.13); color: #22c55e; }
+        .cm-user { margin-top: auto; display: flex; align-items: center; gap: 6px; padding: 7px 5px; border-top: 1px solid #181818; flex-shrink: 0; }
+        .cm-avatar { width: 22px; height: 22px; border-radius: 50%; background: #1f1f1f; color: #777; font-size: 7.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .cm-user-name { font-size: 9.5px; color: #bbb; font-weight: 600; }
+        .cm-user-role { font-size: 8.5px; color: #3a3a3a; }
+        .cm-main { flex: 1; background: #080808; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+        .cm-topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #141414; background: #050505; flex-shrink: 0; }
+        .cm-page-title { font-size: 12px; font-weight: 700; color: #fff; }
+        .cm-page-sub { font-size: 9px; color: #383838; margin-top: 1px; }
+        .cm-new-lead-btn { display: flex; align-items: center; gap: 4px; background: #fff; color: #000; font-size: 9.5px; font-weight: 600; padding: 4px 9px; border-radius: 5px; flex-shrink: 0; }
+        .cm-stats { display: flex; border-bottom: 1px solid #141414; flex-shrink: 0; }
+        .cm-stat { flex: 1; padding: 8px 10px; border-right: 1px solid #141414; min-width: 0; }
+        .cm-stat:last-child { border-right: none; }
+        .cm-stat-label { font-size: 8px; color: #383838; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cm-stat-value { font-size: 13px; font-weight: 800; color: #fff; letter-spacing: -0.5px; white-space: nowrap; }
+        .cm-stat-change { font-size: 8px; color: #22c55e; margin-top: 1px; }
+        .cm-card { background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 7px; overflow: hidden; margin: 7px 8px 0; flex-shrink: 0; }
+        .cm-card-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-bottom: 1px solid #161616; }
+        .cm-card-title { font-size: 10px; font-weight: 600; color: #aaa; }
+        .cm-card-sub { font-size: 8px; color: #383838; margin-top: 1px; }
+        .cm-view-all { font-size: 8px; color: #444; }
+        .cm-legend { display: flex; align-items: center; gap: 3px; font-size: 8px; color: #444; }
+        .cm-legend-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+        .cm-chart { padding: 6px 10px 2px; }
+        .cm-bottom-grid { display: flex; flex: 1; overflow: hidden; padding: 7px 8px 8px; gap: 7px; min-height: 0; }
+        .cm-bottom-grid .cm-card { margin: 0; overflow-y: auto; }
+        .cm-bottom-grid .cm-card::-webkit-scrollbar { display: none; }
+        .cm-leads-list { padding: 2px 0; }
+        .cm-lead-row { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border-bottom: 1px solid #111; }
+        .cm-lead-row:last-child { border-bottom: none; }
+        .cm-lead-avatar { width: 20px; height: 20px; border-radius: 50%; font-size: 7.5px; font-weight: 700; color: #999; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .cm-lead-name { font-size: 9.5px; font-weight: 600; color: #ccc; }
+        .cm-lead-detail { font-size: 8px; color: #3a3a3a; }
+        .cm-lead-info { flex: 1; min-width: 0; }
+        .cm-status { font-size: 7.5px; font-weight: 700; padding: 2px 5px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+        .cm-status-hot { background: rgba(239,68,68,0.13); color: #ef4444; }
+        .cm-status-warm { background: rgba(245,158,11,0.13); color: #f59e0b; }
+        .cm-status-new { background: rgba(59,130,246,0.13); color: #3b82f6; }
+        .cm-upcoming-item { display: flex; align-items: flex-start; gap: 7px; padding: 5px 10px; border-bottom: 1px solid #111; }
+        .cm-upcoming-item:last-child { border-bottom: none; }
+        .cm-dot { width: 5px; height: 5px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+        .cm-upcoming-name { font-size: 9.5px; color: #bbb; font-weight: 500; }
+        .cm-upcoming-time { font-size: 8px; color: #383838; margin-top: 1px; }
+        .cm-task-item { display: flex; align-items: center; gap: 7px; padding: 5px 10px; font-size: 9.5px; color: #888; border-bottom: 1px solid #111; }
+        .cm-task-item:last-child { border-bottom: none; }
+        .cm-task-check { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid #2a2a2a; flex-shrink: 0; }
+        .cm-checked { background: #22c55e; border-color: #22c55e; color: #000; font-size: 6.5px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+        .cm-task-done { opacity: 0.35; text-decoration: line-through; }
+        /* Make the visual container a flex context so the mockup fills height */
+        .case-study-visual.crm-visual {
+            background: #050505;
+            padding: 24px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .case-study-visual.crm-visual .crm-mockup-wrap { height: 100%; }
+    </style>
 </head>
 <body itemscope itemtype="https://schema.org/WebPage">
 
@@ -2092,8 +2186,184 @@
                 </ul>
                 <a href="pricing.html" class="case-study-btn">LEARN MORE ABOUT CRM</a>
             </div>
-            <div class="case-study-visual">
-                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80" alt="Diamondback CRM customer relationship management software for US businesses" class="case-study-image" itemprop="image" loading="lazy">
+            <div class="case-study-visual crm-visual">
+                <div class="crm-mockup-wrap">
+                    <div class="crm-mockup">
+                        <!-- Sidebar -->
+                        <div class="cm-sidebar">
+                            <div class="cm-brand">
+                                <div class="cm-brand-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z"/><path d="M12 12L3 7.5"/><path d="M12 12V21"/><path d="M12 12L21 7.5"/></svg>
+                                </div>
+                                <div>
+                                    <div class="cm-brand-name">Diamondback</div>
+                                    <div class="cm-brand-sub">CRM</div>
+                                </div>
+                            </div>
+                            <div class="cm-nav-section-title">Workspace</div>
+                            <div class="cm-nav-item cm-active">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                                Dashboard
+                            </div>
+                            <div class="cm-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                Leads
+                                <span class="cm-badge">24</span>
+                            </div>
+                            <div class="cm-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                                Customers
+                            </div>
+                            <div class="cm-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                Follow-ups
+                                <span class="cm-badge cm-badge-green">7</span>
+                            </div>
+                            <div class="cm-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                                Marketing
+                            </div>
+                            <div class="cm-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                Scheduling
+                            </div>
+                            <div class="cm-nav-section-title">Financials</div>
+                            <div class="cm-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                Invoices
+                            </div>
+                            <div class="cm-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                                Analytics
+                            </div>
+                            <div class="cm-nav-section-title">Account</div>
+                            <div class="cm-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                Tasks
+                            </div>
+                            <div class="cm-nav-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                Support
+                                <span class="cm-badge cm-badge-green">2</span>
+                            </div>
+                            <div class="cm-user">
+                                <div class="cm-avatar">JD</div>
+                                <div>
+                                    <div class="cm-user-name">John D.</div>
+                                    <div class="cm-user-role">Admin</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Main Content -->
+                        <div class="cm-main">
+                            <div class="cm-topbar">
+                                <div>
+                                    <div class="cm-page-title">Good morning, John</div>
+                                    <div class="cm-page-sub">Here's what's happening today</div>
+                                </div>
+                                <div class="cm-new-lead-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    New Lead
+                                </div>
+                            </div>
+                            <div class="cm-stats">
+                                <div class="cm-stat"><div class="cm-stat-label">Total Leads</div><div class="cm-stat-value">124</div></div>
+                                <div class="cm-stat"><div class="cm-stat-label">Customers</div><div class="cm-stat-value">38</div></div>
+                                <div class="cm-stat"><div class="cm-stat-label">Open Tasks</div><div class="cm-stat-value">11</div></div>
+                                <div class="cm-stat">
+                                    <div class="cm-stat-label" style="color:rgba(74,222,128,0.7);">Revenue — This Month</div>
+                                    <div class="cm-stat-value" style="color:#4ade80;">$14,820</div>
+                                    <div class="cm-stat-change">↑ 18% vs last month</div>
+                                </div>
+                            </div>
+                            <div class="cm-card">
+                                <div class="cm-card-header">
+                                    <div>
+                                        <div class="cm-card-title">Revenue Overview</div>
+                                        <div class="cm-card-sub">Pipeline Value vs. Revenue — last 6 months</div>
+                                    </div>
+                                    <div class="cm-legend">
+                                        <span class="cm-legend-dot" style="background:#4ade80;"></span><span>Revenue</span>
+                                        <span class="cm-legend-dot" style="background:#3b82f6;margin-left:8px;"></span><span>Pipeline</span>
+                                    </div>
+                                </div>
+                                <div class="cm-chart">
+                                    <svg viewBox="0 0 340 90" width="100%" height="90" preserveAspectRatio="none">
+                                        <line x1="0" y1="22" x2="340" y2="22" stroke="#2a2a2a" stroke-width="0.5"/>
+                                        <line x1="0" y1="45" x2="340" y2="45" stroke="#2a2a2a" stroke-width="0.5"/>
+                                        <line x1="0" y1="68" x2="340" y2="68" stroke="#2a2a2a" stroke-width="0.5"/>
+                                        <path d="M0,72 C60,55 120,48 180,38 C240,28 290,18 340,10 L340,90 L0,90 Z" fill="rgba(59,130,246,0.12)"/>
+                                        <path d="M0,72 C60,55 120,48 180,38 C240,28 290,18 340,10" fill="none" stroke="#3b82f6" stroke-width="1.5"/>
+                                        <path d="M0,80 C60,70 120,62 180,52 C240,42 290,30 340,20 L340,90 L0,90 Z" fill="rgba(74,222,128,0.1)"/>
+                                        <path d="M0,80 C60,70 120,62 180,52 C240,42 290,30 340,20" fill="none" stroke="#4ade80" stroke-width="1.5"/>
+                                        <circle cx="0" cy="80" r="2.5" fill="#4ade80"/>
+                                        <circle cx="68" cy="70" r="2.5" fill="#4ade80"/>
+                                        <circle cx="136" cy="62" r="2.5" fill="#4ade80"/>
+                                        <circle cx="204" cy="50" r="2.5" fill="#4ade80"/>
+                                        <circle cx="272" cy="36" r="2.5" fill="#4ade80"/>
+                                        <circle cx="340" cy="20" r="2.5" fill="#4ade80"/>
+                                        <text x="0" y="89" fill="#444" font-size="7" font-family="sans-serif">Sep</text>
+                                        <text x="60" y="89" fill="#444" font-size="7" font-family="sans-serif">Oct</text>
+                                        <text x="122" y="89" fill="#444" font-size="7" font-family="sans-serif">Nov</text>
+                                        <text x="184" y="89" fill="#444" font-size="7" font-family="sans-serif">Dec</text>
+                                        <text x="246" y="89" fill="#444" font-size="7" font-family="sans-serif">Jan</text>
+                                        <text x="308" y="89" fill="#444" font-size="7" font-family="sans-serif">Feb</text>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="cm-bottom-grid">
+                                <div class="cm-card" style="flex:1.4;">
+                                    <div class="cm-card-header"><div class="cm-card-title">Leads Pipeline</div><span class="cm-view-all">View all →</span></div>
+                                    <div class="cm-leads-list">
+                                        <div class="cm-lead-row">
+                                            <div class="cm-lead-avatar" style="background:#1d3a5f;">MR</div>
+                                            <div class="cm-lead-info"><div class="cm-lead-name">Marcus Rivera</div><div class="cm-lead-detail">Website Redesign · $4,200</div></div>
+                                            <div class="cm-status cm-status-hot">Hot</div>
+                                        </div>
+                                        <div class="cm-lead-row">
+                                            <div class="cm-lead-avatar" style="background:#2d1a4f;">SK</div>
+                                            <div class="cm-lead-info"><div class="cm-lead-name">Sarah Kim</div><div class="cm-lead-detail">SEO Package · $899/mo</div></div>
+                                            <div class="cm-status cm-status-warm">Warm</div>
+                                        </div>
+                                        <div class="cm-lead-row">
+                                            <div class="cm-lead-avatar" style="background:#1a3a2a;">TJ</div>
+                                            <div class="cm-lead-info"><div class="cm-lead-name">Tyler Johnson</div><div class="cm-lead-detail">CRM Setup · $1,500</div></div>
+                                            <div class="cm-status cm-status-new">New</div>
+                                        </div>
+                                        <div class="cm-lead-row">
+                                            <div class="cm-lead-avatar" style="background:#3a2a1a;">AP</div>
+                                            <div class="cm-lead-info"><div class="cm-lead-name">Amanda Park</div><div class="cm-lead-detail">E-Commerce · $7,800</div></div>
+                                            <div class="cm-status cm-status-warm">Warm</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display:flex;flex-direction:column;gap:8px;flex:1;">
+                                    <div class="cm-card">
+                                        <div class="cm-card-header"><div class="cm-card-title">Upcoming</div></div>
+                                        <div class="cm-upcoming-item">
+                                            <div class="cm-dot" style="background:#3b82f6;"></div>
+                                            <div><div class="cm-upcoming-name">Call — Marcus Rivera</div><div class="cm-upcoming-time">Today, 2:00 PM</div></div>
+                                        </div>
+                                        <div class="cm-upcoming-item">
+                                            <div class="cm-dot" style="background:#a855f7;"></div>
+                                            <div><div class="cm-upcoming-name">Demo — Sarah Kim</div><div class="cm-upcoming-time">Tomorrow, 10:30 AM</div></div>
+                                        </div>
+                                        <div class="cm-upcoming-item">
+                                            <div class="cm-dot" style="background:#f59e0b;"></div>
+                                            <div><div class="cm-upcoming-name">Follow-up — Tyler J.</div><div class="cm-upcoming-time">Feb 28, 9:00 AM</div></div>
+                                        </div>
+                                    </div>
+                                    <div class="cm-card">
+                                        <div class="cm-card-header"><div class="cm-card-title">Tasks Due</div></div>
+                                        <div class="cm-task-item"><div class="cm-task-check"></div><span>Send proposal to Rivera</span></div>
+                                        <div class="cm-task-item"><div class="cm-task-check"></div><span>Review SEO audit — Kim</span></div>
+                                        <div class="cm-task-item cm-task-done"><div class="cm-task-check cm-checked">✓</div><span>Invoice #1042 sent</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </article>
 

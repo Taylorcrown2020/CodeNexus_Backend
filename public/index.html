@@ -2981,6 +2981,7 @@ window.addEventListener('load', function() {
     position: absolute;
     top: 24px;
     right: 24px;
+    z-index: 10;
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -3886,9 +3887,9 @@ nav {
         <div class="growth-features-grid">
             <div class="growth-feature-card">
                 <img src="Brand2.jpg" alt="Launch your dream website">
+                <button class="feature-explore-btn" onclick="openFeatureModal('featureModal1')">+</button>
                 <div class="growth-feature-overlay">
                     <h3>Turn your online presence into a business asset</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
                 </div>
             </div>
             
@@ -3943,33 +3944,33 @@ nav {
     </div>
   </div>
 </div>
+                <button class="feature-explore-btn" onclick="openFeatureModal('featureModal2')">+</button>
                 <div class="growth-feature-overlay">
                     <h3>Diamondback Coding® CRM</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
                 </div>
             </div>
             
             <div class="growth-feature-card">
                 <img src="seo.jpg" alt="AI Lead Nurture">
+                <button class="feature-explore-btn" onclick="openFeatureModal('featureModal3')">+</button>
                 <div class="growth-feature-overlay">
                     <h3>Automated follow-ups that feel personal</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
                 </div>
             </div>
             
             <div class="growth-feature-card">
                 <img src="sara-kurfess-6lcT2kRPvnI-unsplash.jpg" alt="Branded App">
+                <button class="feature-explore-btn" onclick="openFeatureModal('featureModal4')">+</button>
                 <div class="growth-feature-overlay">
                     <h3>Give customers a dedicated mobile experience</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
                 </div>
             </div>
             
             <div class="growth-feature-card">
                 <img src="Paid.jpg" alt="Paid Ads">
+                <button class="feature-explore-btn" onclick="openFeatureModal('featureModal5')">+</button>
                 <div class="growth-feature-overlay">
                     <h3>Ads built for performance.</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
                 </div>
             </div>
         </div>
@@ -7963,5 +7964,295 @@ document.addEventListener('DOMContentLoaded', function() {
 .success-btn-secondary:hover {
     background: var(--grey-50);
 }
+
+/* ── Feature Detail Modals ── */
+.feature-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999999;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(6px);
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.feature-modal-overlay.open {
+    display: flex;
+}
+.feature-modal {
+    background: #0d0d0d;
+    border: 1px solid #222;
+    border-radius: 20px;
+    max-width: 580px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.8);
+    animation: fmSlideUp 0.3s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes fmSlideUp {
+    from { opacity:0; transform: translateY(28px) scale(0.97); }
+    to   { opacity:1; transform: translateY(0)   scale(1);    }
+}
+.feature-modal-close {
+    position: absolute;
+    top: 18px; right: 18px;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    color: #888;
+    font-size: 18px;
+    font-weight: 300;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    line-height: 1;
+}
+.feature-modal-close:hover { background: #252525; color: #fff; }
+.feature-modal-hero {
+    height: 180px;
+    border-radius: 18px 18px 0 0;
+    overflow: hidden;
+    position: relative;
+}
+.feature-modal-hero img {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block;
+}
+.feature-modal-hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 100%);
+}
+.feature-modal-body {
+    padding: 32px 36px 36px;
+}
+.feature-modal-tag {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--gold, #c9a84c);
+    margin-bottom: 10px;
+}
+.feature-modal-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 28px; font-weight: 600; color: #fff;
+    line-height: 1.25; margin-bottom: 14px;
+}
+.feature-modal-desc {
+    font-size: 15px; line-height: 1.7; color: #888;
+    margin-bottom: 24px;
+}
+.feature-modal-bullets {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 32px;
+}
+.feature-modal-bullets li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 14px; color: #bbb; line-height: 1.5;
+}
+.feature-modal-bullets li svg {
+    flex-shrink: 0; margin-top: 2px;
+}
+.feature-modal-cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #fff; color: #000;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.5px;
+    text-decoration: none; text-transform: uppercase;
+    transition: all 0.25s;
+    border: none; cursor: pointer;
+}
+.feature-modal-cta:hover {
+    background: var(--gold, #c9a84c);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(201,168,76,0.3);
+}
+@media (max-width: 600px) {
+    .feature-modal-body { padding: 24px 22px 28px; }
+    .feature-modal-title { font-size: 22px; }
+}
+
 </style>
+
+<!-- ═══════════════════════════════════════════════════
+     FEATURE DETAIL MODALS
+═══════════════════════════════════════════════════ -->
+
+<!-- Modal 1: Web Design & Development -->
+<div class="feature-modal-overlay" id="featureModal1" onclick="closeFeatureModal(event,'featureModal1')">
+    <div class="feature-modal">
+        <button class="feature-modal-close" onclick="document.getElementById('featureModal1').classList.remove('open')">✕</button>
+        <div class="feature-modal-hero">
+            <img src="Brand2.jpg" alt="Web Design & Development">
+            <div class="feature-modal-hero-overlay"></div>
+        </div>
+        <div class="feature-modal-body">
+            <div class="feature-modal-tag">Web Design &amp; Development</div>
+            <h2 class="feature-modal-title">Turn your online presence into a business asset</h2>
+            <p class="feature-modal-desc">We build custom websites and web platforms that are fast, conversion-focused, and designed to grow with your business — no templates, no shortcuts.</p>
+            <ul class="feature-modal-bullets">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Custom design from scratch — built around your brand</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Mobile-first, lightning-fast, and SEO-ready out of the box</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>E-commerce, landing pages, portfolios &amp; full web apps</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Ongoing maintenance &amp; hosting plans available</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Serving businesses in all 50 states</li>
+            </ul>
+            <a href="pricing.html#development" class="feature-modal-cta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                View Web Dev Pricing
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Diamondback CRM -->
+<div class="feature-modal-overlay" id="featureModal2" onclick="closeFeatureModal(event,'featureModal2')">
+    <div class="feature-modal">
+        <button class="feature-modal-close" onclick="document.getElementById('featureModal2').classList.remove('open')">✕</button>
+        <div class="feature-modal-hero" style="background:#050505;display:flex;align-items:center;justify-content:center;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:42px;height:42px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" width="22" height="22"><path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z"/><path d="M12 12L3 7.5"/><path d="M12 12V21"/><path d="M12 12L21 7.5"/></svg>
+                </div>
+                <div style="color:#fff;font-family:-apple-system,sans-serif;">
+                    <div style="font-size:22px;font-weight:700;letter-spacing:-.02em;">Diamondback CRM</div>
+                    <div style="font-size:13px;color:#555;margin-top:2px;">Built for small &amp; mid-size businesses</div>
+                </div>
+            </div>
+        </div>
+        <div class="feature-modal-body">
+            <div class="feature-modal-tag">CRM Solutions</div>
+            <h2 class="feature-modal-title">Your entire customer pipeline, in one place</h2>
+            <p class="feature-modal-desc">Diamondback CRM is our flagship platform — purpose-built for growing businesses. Track leads, automate follow-ups, send emails &amp; SMS, manage invoices, and get AI-powered insights, all from one dashboard.</p>
+            <ul class="feature-modal-bullets">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Lead &amp; contact management with pipeline tracking</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Automated follow-up email &amp; SMS sequences</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Invoice creation, scheduling &amp; task management</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>AI CRM Analyst — ask questions, get instant reports</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Team workspace plans with role-based access</li>
+            </ul>
+            <a href="pricing.html#crm-solutions" class="feature-modal-cta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                View CRM Pricing
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 3: Automated Follow-ups -->
+<div class="feature-modal-overlay" id="featureModal3" onclick="closeFeatureModal(event,'featureModal3')">
+    <div class="feature-modal">
+        <button class="feature-modal-close" onclick="document.getElementById('featureModal3').classList.remove('open')">✕</button>
+        <div class="feature-modal-hero">
+            <img src="seo.jpg" alt="Automated Follow-ups">
+            <div class="feature-modal-hero-overlay"></div>
+        </div>
+        <div class="feature-modal-body">
+            <div class="feature-modal-tag">CRM &amp; Automation</div>
+            <h2 class="feature-modal-title">Automated follow-ups that feel personal</h2>
+            <p class="feature-modal-desc">Never let a lead go cold again. Our CRM's built-in automation sends perfectly timed emails and SMS messages on your behalf — so every prospect feels like your only priority.</p>
+            <ul class="feature-modal-bullets">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Smart email &amp; SMS sequences triggered by lead activity</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Customizable templates with your brand voice</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Manual &amp; automatic follow-up modes</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Track open rates, responses &amp; conversions</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Included in all Diamondback CRM plans</li>
+            </ul>
+            <a href="pricing.html#crm-solutions" class="feature-modal-cta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                Explore CRM Plans
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 4: Mobile / Branded App Experience -->
+<div class="feature-modal-overlay" id="featureModal4" onclick="closeFeatureModal(event,'featureModal4')">
+    <div class="feature-modal">
+        <button class="feature-modal-close" onclick="document.getElementById('featureModal4').classList.remove('open')">✕</button>
+        <div class="feature-modal-hero">
+            <img src="sara-kurfess-6lcT2kRPvnI-unsplash.jpg" alt="Branded Mobile Experience">
+            <div class="feature-modal-hero-overlay"></div>
+        </div>
+        <div class="feature-modal-body">
+            <div class="feature-modal-tag">Web &amp; Mobile Apps</div>
+            <h2 class="feature-modal-title">Give customers a dedicated mobile experience</h2>
+            <p class="feature-modal-desc">We design and build custom web applications and mobile-optimized platforms that put your brand directly in your customers' hands — fast, polished, and built to scale.</p>
+            <ul class="feature-modal-bullets">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Progressive web apps (PWA) &amp; responsive platforms</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Custom portals, dashboards &amp; client-facing tools</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Branded UI tailored to your business identity</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Secure logins, real-time data &amp; API integrations</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Scoped and quoted per project</li>
+            </ul>
+            <a href="pricing.html#development" class="feature-modal-cta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                View Development Pricing
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 5: Paid Ads / Digital Marketing -->
+<div class="feature-modal-overlay" id="featureModal5" onclick="closeFeatureModal(event,'featureModal5')">
+    <div class="feature-modal">
+        <button class="feature-modal-close" onclick="document.getElementById('featureModal5').classList.remove('open')">✕</button>
+        <div class="feature-modal-hero">
+            <img src="Paid.jpg" alt="Paid Ads & Digital Marketing">
+            <div class="feature-modal-hero-overlay"></div>
+        </div>
+        <div class="feature-modal-body">
+            <div class="feature-modal-tag">SEO &amp; Digital Marketing</div>
+            <h2 class="feature-modal-title">Ads built for performance</h2>
+            <p class="feature-modal-desc">We create and manage paid ad campaigns across Google, Meta, and more — targeting the right audience at the right time so your budget works harder and your pipeline fills faster.</p>
+            <ul class="feature-modal-bullets">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Google Ads, Meta (Facebook &amp; Instagram) campaigns</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Full SEO strategy — local, national &amp; technical</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Conversion-focused landing page design</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Monthly reporting &amp; performance analytics</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>Strategy built around your revenue goals</li>
+            </ul>
+            <a href="pricing.html#seo" class="feature-modal-cta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                View Marketing Pricing
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+window.openFeatureModal = function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = 'flex';
+    el.classList.add('open');
+    document.body.style.overflow = 'hidden';
+};
+window.closeFeatureModal = function(e, id) {
+    if (e.target === e.currentTarget) {
+        var el = document.getElementById(id);
+        if (el) { el.style.display = 'none'; el.classList.remove('open'); }
+        document.body.style.overflow = '';
+    }
+};
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.feature-modal-overlay').forEach(function(m) {
+            m.style.display = 'none';
+            m.classList.remove('open');
+        });
+        document.body.style.overflow = '';
+    }
+});
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.classList.contains('feature-modal-close')) {
+        var overlay = e.target.closest('.feature-modal-overlay');
+        if (overlay) { overlay.style.display = 'none'; overlay.classList.remove('open'); }
+        document.body.style.overflow = '';
+    }
+});
+</script>
 </body>

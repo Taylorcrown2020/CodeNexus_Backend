@@ -10413,6 +10413,18 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
             return res.status(403).json({ success: false, message: 'You can only add users to your own company' });
         }
 
+        // ── Essential plan hard block ─────────────────────────────────────────
+        // Essential is a strictly individual subscription. Adding users is never
+        // permitted, regardless of any other condition.
+        const planCheckRes = await pool.query(
+            `SELECT plan_key FROM leads WHERE LOWER(email) = LOWER($1)`,
+            [requesterEmail]
+        );
+        const requesterPlanKey = planCheckRes.rows[0]?.plan_key || '';
+        if (requesterPlanKey === 'crm-essential') {
+            return res.status(403).json({ success: false, message: 'Adding users is not available on the Essential plan. Essential is an individual subscription.' });
+        }
+
         // Get company info including purchased_seats
         const companyRes = await pool.query('SELECT * FROM client_companies WHERE client_portal_id = $1', [clientPortalId]);
         if (!companyRes.rows[0]) {

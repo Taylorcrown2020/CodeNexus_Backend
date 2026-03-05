@@ -2406,7 +2406,7 @@ tr:hover .row-actions { opacity: 1; }
                 New leads are automatically added to the Follow-ups queue as Cold leads. Temperature updates based on email engagement.
             </div>
             <div class="form-row">
-                <div class="form-field"><label class="form-label">Name</label><input class="form-input" id="leadName" placeholder="Full name"></div>
+                <div class="form-field"><label class="form-label">Name <span style="color:var(--red);">*</span></label><input class="form-input" id="leadName" placeholder="Full name"></div>
                 <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="leadEmail" type="email" placeholder="email@example.com"></div>
             </div>
             <div class="form-row">
@@ -3165,6 +3165,19 @@ function applyPlanRestrictions() {
         setVis('navCompany', false);
     }
 
+    // ─── ESSENTIAL PLAN: no team features whatsoever ───────────────────────────
+    // Essential is a strictly individual subscription. Hide Team/Company tabs
+    // and the Add User button unconditionally — regardless of any other state.
+    const isEssential = S.planKey === 'crm-essential';
+    if (isEssential) {
+        setVis('navTeam',    false);
+        setVis('navCompany', false);
+        // Hide the "Add User" button on the Team page
+        document.querySelectorAll('[onclick="openAddUserModal()"]').forEach(el => {
+            el.style.display = 'none';
+        });
+    }
+
     // ─── MARKETING tab ────────────────────────────────────────────────────────
     // Essential CRM: NO marketing access at all.
     // Professional, Enterprise, Workspace: marketing enabled.
@@ -3286,9 +3299,9 @@ function setupNavigation() {
 }
 
 function navigate(page) {
-    // Block individual users from accessing team/company pages
+    // Block individual users (including Essential plan) from accessing team/company pages
     const teamPages = ['team', 'company'];
-    if (S.isIndividual && teamPages.includes(page)) {
+    if ((S.isIndividual || S.planKey === 'crm-essential') && teamPages.includes(page)) {
         toast('This section is only available for CRM Workspace (team) accounts.', 'error');
         return;
     }
@@ -4034,7 +4047,7 @@ function openAddLeadModal() {
 async function saveLead() {
     const name = document.getElementById('leadName').value.trim();
     const email = document.getElementById('leadEmail').value.trim();
-    if (!name || !email) { toast('Name and email required', 'error'); return; }
+    if (!name) { toast('Name is required', 'error'); return; }
 
     const followupMode = document.getElementById('leadFollowupMode')?.value || 'manual';
     const chainId = document.getElementById('leadChainSelect')?.value || null;
@@ -7477,6 +7490,11 @@ async function loadCompany() {
 
 async function openAddUserModal() {
     if (!S.isAdmin) return;
+    // Essential is a strictly individual plan — adding users is never permitted.
+    if (S.planKey === 'crm-essential' || S.isIndividual) {
+        toast('Adding users is not available on the Essential plan. Essential is an individual subscription.', 'error');
+        return;
+    }
 
     ['addUserName','addUserUsername','addUserEmail','addUserSendingEmail','addUserPassword','addUserLabel','addUserSmsSender'].forEach(id=>{
         const el = document.getElementById(id);

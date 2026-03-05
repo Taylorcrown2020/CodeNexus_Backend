@@ -1774,7 +1774,7 @@ body.crm-active .hero,
                     <p class="lp-hero-description">
                         Diamondback Coding® CRM helps you streamline operations, track leads, and grow your business with powerful automation tools.
                     </p>
-                    <button class="lp-cta-btn" onclick="openModal()">GET EARLY ACCESS</button>
+                    <button class="lp-cta-btn" onclick="document.getElementById('crm-pricing').scrollIntoView({behavior:'smooth'})">GET STARTED</button>
                 </div>
                 <div class="lp-hero-visual">
                     <div class="crm-mockup-wrap">
@@ -2035,7 +2035,7 @@ body.crm-active .hero,
         </section>
 
 <!-- Services/Pricing Section -->
-<section class="services-section">
+<section class="services-section" id="crm-pricing">
     <div class="section-header">
         <div class="section-subtitle">FLEXIBLE PRICING</div>
         <h2 class="section-title">Choose Your CRM Solution</h2>
@@ -2119,7 +2119,16 @@ body.crm-active .hero,
                 <li>Higher email &amp; SMS sending limits</li>
                 <li>Custom training sessions</li>
                 <li>Priority email support</li>
+                <li style="color:#F4C87E;font-weight:600;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#F4C87E" stroke-width="2" width="16" height="16" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    AI CRM Analyst — ask questions, get instant reports
+                </li>
+                <li style="color:#F4C87E;font-weight:600;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#F4C87E" stroke-width="2" width="16" height="16" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    Import leads from Excel / CSV
+                </li>
             </ul>
+
             <div class="crm-subscribe-group">
                 <button class="service-btn crm-subscribe-btn" onclick="openCRMSubscribeModal('crm-enterprise', 'Enterprise CRM', 64.99)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:7px;"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
@@ -2151,6 +2160,14 @@ body.crm-active .hero,
                 <li style="color:rgba(255,255,255,0.75);">Team email &amp; SMS campaigns</li>
                 <li style="color:rgba(255,255,255,0.75);">Dedicated account manager</li>
                 <li style="color:rgba(255,255,255,0.75);">Priority email support</li>
+                <li style="color:#F4C87E;font-weight:600;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#F4C87E" stroke-width="2" width="16" height="16" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    AI CRM Analyst — ask questions, get instant reports
+                </li>
+                <li style="color:#F4C87E;font-weight:600;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#F4C87E" stroke-width="2" width="16" height="16" style="vertical-align:-3px;margin-right:6px;flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    Import leads from Excel / CSV
+                </li>
             </ul>
             <div class="crm-subscribe-group">
                 <button class="service-btn crm-subscribe-btn" style="background:#FF6B35;" onclick="openCRMSubscribeModal('crm-workspace', 'CRM Workspace', 84.99, true)">
@@ -2900,9 +2917,9 @@ body.crm-active .hero,
                 <div class="lp-final-cta-container">
                     <h2 class="lp-final-cta-title">Turn your relationships into deal flow</h2>
                     <p class="lp-final-cta-description">
-                        Get early access to Diamondback® CRM and start uncovering deals already hiding in your network.
+                        Start using Diamondback® CRM today and uncover deals already hiding in your network.
                     </p>
-                    <button class="lp-cta-btn" onclick="openModal()">GET EARLY ACCESS</button>
+                    <button class="lp-cta-btn" onclick="openModal()">GET STARTED TODAY</button>
                 </div>
             </div>
         </section>
@@ -2980,12 +2997,12 @@ body.crm-active .hero,
 
                 <div class="lp-faq-item" onclick="toggleFaq(this)">
                     <div class="lp-faq-question">
-                        <span>When will I get access?</span>
+                        <span>How quickly can I get started?</span>
                         <div class="lp-faq-toggle">+</div>
                     </div>
                     <div class="lp-faq-answer">
                         <p class="lp-faq-answer-text">
-                            We're currently in early access and rolling out to new users every week. Join the waitlist to secure your spot.
+                            You can sign up and get access immediately. Once you complete your subscription, your account is activated and ready to use right away — no delays.
                         </p>
                     </div>
                 </div>

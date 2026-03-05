@@ -1414,6 +1414,10 @@ tr:hover .row-actions { opacity: 1; }
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         Add Lead
                     </button>
+                    <button class="btn btn-ghost" onclick="openImportLeadsModal()" style="border:1px solid var(--border);display:flex;align-items:center;gap:6px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                        Import Leads
+                    </button>
                 </div>
             </div>
             <div class="page-body">
@@ -3071,6 +3075,8 @@ function showApp() {
     initMobileUI();
     navigate('dashboard');
     loadInitialData();
+    // Init AI widget (shows only for Enterprise / Workspace plans)
+    setTimeout(initAiWidget, 300);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -9978,3 +9984,694 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         <span>Settings</span>
     </div>
+
+<!-- ════════════════════════════════════════════════════
+     IMPORT LEADS MODAL
+     ════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="importLeadsModal" onclick="closeOnOverlay(event,'importLeadsModal')" style="display:none;z-index:2000;">
+  <div class="modal-box" onclick="event.stopPropagation()" style="max-width:520px;width:calc(100% - 32px);">
+    <div class="modal-header">
+      <div class="modal-title">Import Leads from Excel / CSV</div>
+      <button class="modal-close" onclick="closeModal('importLeadsModal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:24px;">
+
+      <!-- Step 1: Upload -->
+      <div id="importStep1">
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;">
+          Upload an Excel (.xlsx, .xls) or CSV file. The first row should be column headers.
+          We'll automatically detect <strong>Name</strong>, <strong>Email</strong>, <strong>Phone</strong>,
+          <strong>Company</strong>, and <strong>Notes</strong> columns.
+        </p>
+
+        <!-- Template download -->
+        <div style="background:rgba(244,200,126,0.07);border:1px solid rgba(244,200,126,0.2);border-radius:var(--r-md);padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="font-size:12px;color:var(--text-2);">
+            <strong style="color:var(--text-1);">Need a template?</strong> Download our pre-formatted spreadsheet.
+          </div>
+          <button onclick="downloadImportTemplate()" style="background:var(--accent);color:#000;border:none;border-radius:var(--r-sm);padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
+            ↓ Template
+          </button>
+        </div>
+
+        <!-- Drop zone -->
+        <div id="importDropZone"
+          onclick="document.getElementById('importFileInput').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleImportDrop(event)"
+          style="border:2px dashed var(--border);border-radius:var(--r-md);padding:36px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36" style="opacity:0.35;margin-bottom:10px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div style="font-size:14px;font-weight:600;color:var(--text-1);margin-bottom:4px;">Drop your file here</div>
+          <div style="font-size:12px;color:var(--text-3);">or click to browse · .xlsx, .xls, .csv</div>
+        </div>
+        <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleImportFile(this.files[0])">
+        <div id="importFileStatus" style="margin-top:10px;font-size:12px;color:var(--text-2);display:none;"></div>
+      </div>
+
+      <!-- Step 2: Preview / column map -->
+      <div id="importStep2" style="display:none;">
+        <div id="importPreviewInfo" style="font-size:13px;color:var(--text-2);margin-bottom:12px;"></div>
+        <div style="overflow-x:auto;max-height:220px;border:1px solid var(--border);border-radius:var(--r-sm);">
+          <table id="importPreviewTable" style="width:100%;border-collapse:collapse;font-size:12px;"></table>
+        </div>
+        <div id="importColumnMap" style="margin-top:16px;"></div>
+      </div>
+
+      <!-- Step 3: Progress -->
+      <div id="importStep3" style="display:none;text-align:center;padding:20px 0;">
+        <div style="font-size:28px;margin-bottom:8px;">⏳</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-1);margin-bottom:6px;">Importing leads...</div>
+        <div style="background:var(--border);border-radius:20px;height:6px;overflow:hidden;margin:16px 0 8px;">
+          <div id="importProgressBar" style="height:100%;background:var(--accent);border-radius:20px;width:0%;transition:width 0.3s;"></div>
+        </div>
+        <div id="importProgressText" style="font-size:12px;color:var(--text-3);">0 of 0 imported</div>
+      </div>
+
+      <!-- Step 4: Done -->
+      <div id="importStep4" style="display:none;text-align:center;padding:20px 0;">
+        <div style="font-size:36px;margin-bottom:8px;">✅</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text-0);margin-bottom:6px;" id="importDoneTitle">Import Complete</div>
+        <div style="font-size:13px;color:var(--text-2);" id="importDoneText"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer" id="importModalFooter">
+      <button class="btn btn-ghost" onclick="closeModal('importLeadsModal')">Cancel</button>
+      <button class="btn btn-default" id="importActionBtn" onclick="runImportAction()" disabled style="min-width:110px;">Next</button>
+    </div>
+  </div>
+</div>
+
+<style>
+#importDropZone.drag-over { border-color: var(--accent); background: rgba(244,200,126,0.06); }
+#importDropZone:hover { border-color: var(--text-3); }
+#importPreviewTable th { background:var(--surface-1);color:var(--text-2);font-size:11px;font-weight:600;padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;position:sticky;top:0; }
+#importPreviewTable td { padding:5px 10px;border-bottom:1px solid var(--border);color:var(--text-1);font-size:11.5px; }
+#importPreviewTable tr:last-child td { border-bottom:none; }
+.col-map-row { display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px; }
+.col-map-row label { color:var(--text-2);min-width:90px; }
+.col-map-row select { flex:1;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text-1);padding:5px 8px;font-size:12px; }
+</style>
+
+<!-- ════════════════════════════════════════════════════
+     AI CRM ANALYST WIDGET
+     ════════════════════════════════════════════════════ -->
+<div id="aiAnalystWidget" style="display:none;">
+  <!-- Floating trigger button -->
+  <div id="aiAnalystBtn" onclick="toggleAiPanel()" title="AI CRM Analyst"
+    style="position:fixed;bottom:28px;right:28px;width:52px;height:52px;border-radius:50%;
+           background:linear-gradient(135deg,#c9983a,#F4C87E);
+           box-shadow:0 4px 20px rgba(244,200,126,0.35);
+           display:flex;align-items:center;justify-content:center;
+           cursor:pointer;z-index:9000;transition:transform .2s,box-shadow .2s;
+           border:2px solid rgba(255,255,255,0.15);">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="22" height="22">
+      <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/>
+      <path d="M12 16v-4"/>
+      <path d="M12 8h.01"/>
+      <path d="M9 12h3"/>
+    </svg>
+    <div id="aiPulse" style="position:absolute;top:-3px;right:-3px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid var(--bg-0,#000);"></div>
+  </div>
+
+  <!-- Chat Panel -->
+  <div id="aiAnalystPanel"
+    style="display:none;position:fixed;bottom:90px;right:28px;
+           width:380px;max-width:calc(100vw - 40px);
+           height:520px;max-height:calc(100vh - 110px);
+           background:var(--bg-1,#0d0d0d);
+           border:1px solid rgba(244,200,126,0.2);
+           border-radius:16px;
+           box-shadow:0 20px 60px rgba(0,0,0,0.6),0 0 0 1px rgba(244,200,126,0.08);
+           display:none;flex-direction:column;
+           z-index:8999;overflow:hidden;">
+
+    <!-- Header -->
+    <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.06);
+                background:linear-gradient(135deg,rgba(244,200,126,0.10),rgba(244,200,126,0.04));
+                display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#c9983a,#F4C87E);
+                    display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="16" height="16">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fff;">AI CRM Analyst</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);">Ask anything about your data</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button onclick="clearAiChat()" title="Clear chat"
+          style="background:rgba(255,255,255,0.05);border:none;border-radius:6px;padding:5px;cursor:pointer;color:rgba(255,255,255,0.4);display:flex;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+        <button onclick="toggleAiPanel()"
+          style="background:rgba(255,255,255,0.05);border:none;border-radius:6px;padding:5px;cursor:pointer;color:rgba(255,255,255,0.4);display:flex;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="aiChatMessages"
+      style="flex:1;overflow-y:auto;padding:14px 14px 6px;display:flex;flex-direction:column;gap:10px;
+             scrollbar-width:thin;scrollbar-color:rgba(244,200,126,0.3) transparent;">
+      <!-- Welcome message inserted by JS -->
+    </div>
+
+    <!-- Quick prompts -->
+    <div id="aiQuickPrompts" style="padding:0 10px 8px;display:flex;flex-wrap:wrap;gap:5px;flex-shrink:0;">
+      <button onclick="aiSendQuick('How many leads do I have?')" class="ai-quick-btn">Total leads</button>
+      <button onclick="aiSendQuick('Show my top leads by status')" class="ai-quick-btn">By status</button>
+      <button onclick="aiSendQuick('Which leads were added this month?')" class="ai-quick-btn">This month</button>
+      <button onclick="aiSendQuick('Show revenue summary')" class="ai-quick-btn">Revenue</button>
+    </div>
+
+    <!-- Input -->
+    <div style="padding:10px 12px;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0;
+                display:flex;gap:8px;align-items:flex-end;">
+      <textarea id="aiChatInput" rows="1" placeholder="Ask about your leads, revenue, customers..."
+        onkeydown="aiInputKeydown(event)"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
+        style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+               border-radius:10px;color:#fff;font-size:13px;padding:8px 12px;resize:none;
+               outline:none;font-family:inherit;line-height:1.4;max-height:100px;overflow-y:auto;
+               scrollbar-width:none;"></textarea>
+      <button onclick="sendAiMessage()" id="aiSendBtn"
+        style="background:linear-gradient(135deg,#c9983a,#F4C87E);border:none;border-radius:10px;
+               width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+               cursor:pointer;flex-shrink:0;transition:opacity .2s;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" width="16" height="16">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* AI widget styles */
+#aiAnalystBtn:hover { transform:scale(1.08);box-shadow:0 6px 28px rgba(244,200,126,0.45); }
+#aiAnalystBtn:active { transform:scale(0.96); }
+.ai-quick-btn {
+  background:rgba(244,200,126,0.08);border:1px solid rgba(244,200,126,0.2);
+  color:rgba(255,255,255,0.6);border-radius:20px;padding:4px 10px;
+  font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.ai-quick-btn:hover { background:rgba(244,200,126,0.18);color:#fff;border-color:rgba(244,200,126,0.45); }
+.ai-msg { display:flex;flex-direction:column;max-width:88%; }
+.ai-msg.user { align-self:flex-end;align-items:flex-end; }
+.ai-msg.assistant { align-self:flex-start;align-items:flex-start; }
+.ai-bubble {
+  padding:9px 13px;border-radius:12px;font-size:12.5px;line-height:1.55;
+  word-break:break-word;white-space:pre-wrap;
+}
+.ai-msg.user .ai-bubble {
+  background:linear-gradient(135deg,#b8842a,#F4C87E);color:#000;
+  border-bottom-right-radius:3px;
+}
+.ai-msg.assistant .ai-bubble {
+  background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85);
+  border:1px solid rgba(255,255,255,0.07);border-bottom-left-radius:3px;
+}
+.ai-bubble table { border-collapse:collapse;width:100%;margin-top:6px;font-size:11px; }
+.ai-bubble th { background:rgba(255,255,255,0.08);padding:5px 8px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-weight:600; }
+.ai-bubble td { padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.8); }
+.ai-export-btn {
+  margin-top:8px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);
+  color:#22c55e;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:600;
+  cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s;
+}
+.ai-export-btn:hover { background:rgba(34,197,94,0.25); }
+.ai-typing { display:flex;gap:4px;align-items:center;padding:10px 13px; }
+.ai-typing span {
+  width:6px;height:6px;background:rgba(244,200,126,0.6);border-radius:50%;
+  animation:aiDot 1.2s ease-in-out infinite;
+}
+.ai-typing span:nth-child(2) { animation-delay:.2s; }
+.ai-typing span:nth-child(3) { animation-delay:.4s; }
+@keyframes aiDot { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-5px);opacity:1} }
+#aiChatMessages::-webkit-scrollbar { width:4px; }
+#aiChatMessages::-webkit-scrollbar-thumb { background:rgba(244,200,126,0.35);border-radius:2px; }
+</style>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// IMPORT LEADS
+// ════════════════════════════════════════════════════════════════
+let _importData = { rows: [], headers: [], colMap: {}, step: 1 };
+
+function openImportLeadsModal() {
+    _importData = { rows: [], headers: [], colMap: {}, step: 1 };
+    ['importStep1','importStep2','importStep3','importStep4'].forEach((id,i) => {
+        document.getElementById(id).style.display = i === 0 ? 'block' : 'none';
+    });
+    document.getElementById('importFileStatus').style.display = 'none';
+    document.getElementById('importFileInput').value = '';
+    document.getElementById('importActionBtn').disabled = true;
+    document.getElementById('importActionBtn').textContent = 'Next';
+    document.getElementById('importModalFooter').style.display = 'flex';
+    openModal('importLeadsModal');
+}
+
+function handleImportDrop(e) {
+    e.preventDefault();
+    document.getElementById('importDropZone').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleImportFile(file);
+}
+
+async function handleImportFile(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['xlsx','xls','csv'].includes(ext)) {
+        toast('Please upload an .xlsx, .xls, or .csv file', 'error'); return;
+    }
+    const statusEl = document.getElementById('importFileStatus');
+    statusEl.textContent = '⏳ Reading file...';
+    statusEl.style.display = 'block';
+
+    try {
+        let rows = [], headers = [];
+        if (ext === 'csv') {
+            const text = await file.text();
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            if (!lines.length) throw new Error('Empty file');
+            headers = parseCSVRow(lines[0]);
+            for (let i = 1; i < lines.length; i++) {
+                const cells = parseCSVRow(lines[i]);
+                if (cells.some(c => c.trim())) {
+                    const row = {};
+                    headers.forEach((h, idx) => row[h] = (cells[idx] || '').trim());
+                    rows.push(row);
+                }
+            }
+        } else {
+            // XLSX — use SheetJS if available, else fallback message
+            if (typeof XLSX === 'undefined') {
+                throw new Error('Please save as .csv for import, or use the CSV format.');
+            }
+            const buf = await file.arrayBuffer();
+            const wb = XLSX.read(buf, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            if (!data.length) throw new Error('Empty file');
+            headers = data[0].map(h => String(h).trim());
+            for (let i = 1; i < data.length; i++) {
+                if (data[i].some(v => String(v).trim())) {
+                    const row = {};
+                    headers.forEach((h, idx) => row[h] = String(data[i][idx] || '').trim());
+                    rows.push(row);
+                }
+            }
+        }
+        if (!rows.length) throw new Error('No data rows found');
+        _importData.headers = headers;
+        _importData.rows = rows;
+        statusEl.textContent = `✓ Found ${rows.length} lead${rows.length !== 1 ? 's' : ''} · ${headers.length} columns detected`;
+        statusEl.style.color = 'var(--green)';
+        buildImportPreview();
+        document.getElementById('importActionBtn').disabled = false;
+    } catch(err) {
+        statusEl.textContent = '✗ Error: ' + err.message;
+        statusEl.style.color = 'var(--red, #ef4444)';
+        document.getElementById('importActionBtn').disabled = true;
+    }
+}
+
+function parseCSVRow(line) {
+    const res = []; let cur = ''; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+        if (line[i] === '"') { inQ = !inQ; }
+        else if (line[i] === ',' && !inQ) { res.push(cur.trim()); cur = ''; }
+        else cur += line[i];
+    }
+    res.push(cur.trim());
+    return res;
+}
+
+function buildImportPreview() {
+    const { headers, rows } = _importData;
+    const preview = rows.slice(0, 5);
+
+    // Auto-detect column mapping
+    const fieldMap = { name: null, email: null, phone: null, company: null, notes: null };
+    const matchers = {
+        name:    /^(full.?name|name|contact.?name|first.?name|lead.?name)$/i,
+        email:   /^(email|e.?mail|email.?address)$/i,
+        phone:   /^(phone|mobile|cell|phone.?number|tel|telephone)$/i,
+        company: /^(company|business|organization|org|firm)$/i,
+        notes:   /^(notes|note|description|desc|comments|comment)$/i,
+    };
+    headers.forEach(h => {
+        Object.entries(matchers).forEach(([field, rx]) => {
+            if (!fieldMap[field] && rx.test(h)) fieldMap[field] = h;
+        });
+    });
+    _importData.colMap = fieldMap;
+
+    // Preview table
+    const table = document.getElementById('importPreviewTable');
+    table.innerHTML = '<thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead>' +
+        '<tbody>' + preview.map(row =>
+            '<tr>' + headers.map(h => `<td>${row[h] || ''}</td>`).join('') + '</tr>'
+        ).join('') + '</tbody>';
+
+    // Column mapping selectors
+    const mapEl = document.getElementById('importColumnMap');
+    const opts = ['(skip)', ...headers].map(h => `<option value="${h}">${h}</option>`).join('');
+    mapEl.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;">Map columns to CRM fields:</div>' +
+        Object.keys(fieldMap).map(field => `
+            <div class="col-map-row">
+                <label>${field.charAt(0).toUpperCase()+field.slice(1)}</label>
+                <select id="colMap_${field}" onchange="_importData.colMap.${field}=this.value==='(skip)'?null:this.value">
+                    <option value="(skip)">(skip)</option>
+                    ${headers.map(h => `<option value="${h}"${fieldMap[field]===h?' selected':''}>${h}</option>`).join('')}
+                </select>
+            </div>`).join('');
+
+    document.getElementById('importPreviewInfo').textContent =
+        `${rows.length} leads found. Showing first ${Math.min(5,rows.length)} rows. Adjust column mapping below if needed.`;
+
+    document.getElementById('importStep1').style.display = 'none';
+    document.getElementById('importStep2').style.display = 'block';
+}
+
+let _importActionStep = 1;
+async function runImportAction() {
+    const btn = document.getElementById('importActionBtn');
+    const step = _importData.step || 1;
+    if (step === 1) {
+        // Move to preview (file already processed by handleImportFile)
+        if (!_importData.rows.length) return;
+        buildImportPreview();
+        _importData.step = 2;
+        btn.textContent = 'Import ' + _importData.rows.length + ' Leads';
+    } else if (step === 2) {
+        // Read final colMap from selectors
+        ['name','email','phone','company','notes'].forEach(f => {
+            const sel = document.getElementById('colMap_' + f);
+            if (sel) _importData.colMap[f] = sel.value === '(skip)' ? null : sel.value;
+        });
+        await runImport();
+    }
+}
+
+async function runImport() {
+    const { rows, colMap } = _importData;
+    document.getElementById('importStep2').style.display = 'none';
+    document.getElementById('importStep3').style.display = 'block';
+    document.getElementById('importModalFooter').style.display = 'none';
+
+    const bar = document.getElementById('importProgressBar');
+    const txt = document.getElementById('importProgressText');
+    let imported = 0, failed = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const payload = {
+            name:    colMap.name    ? (row[colMap.name]    || '').trim() : '',
+            email:   colMap.email   ? (row[colMap.email]   || '').trim() : '',
+            phone:   colMap.phone   ? (row[colMap.phone]   || '').trim() : '',
+            company: colMap.company ? (row[colMap.company] || '').trim() : '',
+            notes:   colMap.notes   ? (row[colMap.notes]   || '').trim() : '',
+            status:  'new',
+            lead_temperature: 'cold',
+            followup_mode: 'none',
+        };
+        if (!payload.name && !payload.email) { failed++; continue; }
+        try {
+            const res = await apiFetch('/client/leads', 'POST', payload);
+            const data = await res.json();
+            if (data.success || data.lead || data.id) imported++;
+            else failed++;
+        } catch { failed++; }
+        const pct = Math.round(((i+1)/rows.length)*100);
+        bar.style.width = pct + '%';
+        txt.textContent = `${i+1} of ${rows.length} processed`;
+    }
+
+    // Done
+    document.getElementById('importStep3').style.display = 'none';
+    document.getElementById('importStep4').style.display = 'block';
+    document.getElementById('importDoneTitle').textContent = imported + ' Lead' + (imported!==1?'s':'') + ' Imported';
+    document.getElementById('importDoneText').textContent =
+        failed ? `${imported} succeeded, ${failed} skipped (missing name/email).` : 'All leads imported successfully.';
+
+    // Reload leads
+    await loadLeadsData();
+    renderLeads();
+
+    // Footer: just close
+    const footer = document.getElementById('importModalFooter');
+    footer.style.display = 'flex';
+    footer.innerHTML = '<button class="btn btn-default" onclick="closeModal('importLeadsModal')">Done</button>';
+}
+
+function downloadImportTemplate() {
+    const csvContent = "Name,Email,Phone,Company,Notes\nJohn Smith,john@example.com,(512) 555-1234,Acme Co,Met at conference\nJane Doe,jane@example.com,(512) 555-5678,XYZ Corp,Referral from Bob";
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'diamondback_leads_template.csv';
+    a.click();
+}
+
+// ════════════════════════════════════════════════════════════════
+// AI CRM ANALYST
+// ════════════════════════════════════════════════════════════════
+const AI_CHAT = { messages: [], isOpen: false, isTyping: false };
+
+function initAiWidget() {
+    // Only show for enterprise individual or workspace plan
+    const key = S.planKey || '';
+    const isEnterprise = key === 'crm-enterprise';
+    const isWorkspace  = key === 'crm-workspace';
+    const hasAI = isEnterprise || isWorkspace;
+    const widget = document.getElementById('aiAnalystWidget');
+    if (widget) widget.style.display = hasAI ? 'block' : 'none';
+    if (hasAI && !AI_CHAT.messages.length) addAiWelcome();
+}
+
+function addAiWelcome() {
+    const msg = {
+        role: 'assistant',
+        content: "👋 Hi! I'm your AI CRM Analyst. I have access to all your leads, customers, tasks, and revenue data.\n\nTry asking me:\n• **How many leads do I have?**\n• **Show my revenue this month**\n• **Which leads are hot?**\n• **Export all contacts to Excel**"
+    };
+    AI_CHAT.messages.push(msg);
+    renderAiMessages();
+}
+
+function toggleAiPanel() {
+    const panel = document.getElementById('aiAnalystPanel');
+    AI_CHAT.isOpen = !AI_CHAT.isOpen;
+    panel.style.display = AI_CHAT.isOpen ? 'flex' : 'none';
+    if (AI_CHAT.isOpen) {
+        document.getElementById('aiChatInput').focus();
+        scrollAiChat();
+    }
+}
+
+function clearAiChat() {
+    AI_CHAT.messages = [];
+    addAiWelcome();
+}
+
+function aiInputKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAiMessage(); }
+}
+
+function aiSendQuick(prompt) {
+    document.getElementById('aiChatInput').value = prompt;
+    sendAiMessage();
+}
+
+async function sendAiMessage() {
+    const inp = document.getElementById('aiChatInput');
+    const text = inp.value.trim();
+    if (!text || AI_CHAT.isTyping) return;
+    inp.value = '';
+    inp.style.height = 'auto';
+
+    AI_CHAT.messages.push({ role: 'user', content: text });
+    renderAiMessages();
+    AI_CHAT.isTyping = true;
+    showAiTyping();
+
+    try {
+        const systemPrompt = buildAiSystemPrompt();
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 1000,
+                system: systemPrompt,
+                messages: AI_CHAT.messages.map(m => ({ role: m.role, content: m.content }))
+            })
+        });
+        const data = await response.json();
+        const reply = data.content?.[0]?.text || "I couldn't process that request. Please try again.";
+        AI_CHAT.messages.push({ role: 'assistant', content: reply, _exportable: looksExportable(reply) });
+    } catch(e) {
+        AI_CHAT.messages.push({ role: 'assistant', content: "⚠️ Connection error. Please try again." });
+    }
+
+    AI_CHAT.isTyping = false;
+    renderAiMessages();
+    scrollAiChat();
+}
+
+function buildAiSystemPrompt() {
+    const leads = S.leads || [];
+    const customers = S.customers || [];
+    const tasks = (S.tasks || []).slice(0, 50);
+    const now = new Date();
+    const thisMonth = leads.filter(l => {
+        const d = new Date(l.created_at);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const statusCounts = {};
+    leads.forEach(l => { statusCounts[l.status] = (statusCounts[l.status]||0)+1; });
+    const hotLeads = leads.filter(l => l.lead_temperature === 'hot').slice(0,20);
+
+    // Revenue from customers
+    const revenue = customers.reduce((s, c) => s + (parseFloat(c.total_revenue)||0), 0);
+
+    return `You are an AI CRM Analyst for Diamondback Coding CRM. You have access to the user's live CRM data.
+
+CURRENT CRM DATA SNAPSHOT:
+- Total leads: ${leads.length}
+- Total customers (converted): ${customers.length}
+- Leads this month: ${thisMonth.length}
+- Lead status breakdown: ${JSON.stringify(statusCounts)}
+- Hot leads: ${hotLeads.map(l => l.name).join(', ') || 'none'}
+- Open tasks: ${tasks.filter(t=>!t.completed).length}
+- Total customer revenue tracked: $${revenue.toFixed(2)}
+- User name: ${S.user?.name || 'User'}
+- Plan: ${S.planKey || 'unknown'}
+
+RECENT LEADS (first 30):
+${JSON.stringify(leads.slice(0,30).map(l => ({
+    name: l.name, email: l.email, phone: l.phone, company: l.company,
+    status: l.status, temperature: l.lead_temperature, created: l.created_at?.slice(0,10)
+})), null, 2)}
+
+INSTRUCTIONS:
+- Answer questions about the user's CRM data concisely and helpfully.
+- When showing lists or tables, use markdown table format.
+- When the user asks for an export or says "export to Excel" or "download", include the exact text "[EXPORT_AVAILABLE]" at the end of your response so the UI can show an export button.
+- Be conversational but data-driven. Keep responses under 300 words unless a table is needed.
+- If asked something you don't have data for, say so clearly.`;
+}
+
+function looksExportable(text) {
+    return text.includes('[EXPORT_AVAILABLE]') ||
+        /export|excel|xlsx|download|spreadsheet/i.test(text);
+}
+
+function renderAiMessages() {
+    const container = document.getElementById('aiChatMessages');
+    const prompts = document.getElementById('aiQuickPrompts');
+    if (!container) return;
+
+    // Hide quick prompts once conversation starts
+    if (AI_CHAT.messages.length > 1 && prompts) prompts.style.display = 'none';
+
+    const html = AI_CHAT.messages.map(msg => {
+        let content = msg.content
+            .replace('[EXPORT_AVAILABLE]', '')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^• /gm, '&bull; ')
+            .replace(/\n/g, '<br>');
+
+        // Convert markdown tables
+        content = content.replace(/\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g, (match, header, body) => {
+            const headers = header.split('|').map(h=>h.trim()).filter(Boolean);
+            const rows = body.trim().split('\n').map(r => r.split('|').map(c=>c.trim()).filter(Boolean));
+            return '<table><thead><tr>' + headers.map(h=>`<th>${h}</th>`).join('') + '</tr></thead><tbody>' +
+                rows.map(r => '<tr>' + r.map(c=>`<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
+        });
+
+        const exportBtn = (msg.role === 'assistant' && msg._exportable)
+            ? `<button class="ai-export-btn" onclick="exportAiDataToExcel(${AI_CHAT.messages.indexOf(msg)})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export to Excel
+              </button>` : '';
+
+        return `<div class="ai-msg ${msg.role}">
+            <div class="ai-bubble">${content}</div>
+            ${exportBtn}
+        </div>`;
+    }).join('');
+
+    container.innerHTML = html;
+}
+
+function showAiTyping() {
+    const container = document.getElementById('aiChatMessages');
+    if (!container) return;
+    const dot = document.createElement('div');
+    dot.className = 'ai-msg assistant';
+    dot.id = 'aiTypingDot';
+    dot.innerHTML = '<div class="ai-bubble ai-typing"><span></span><span></span><span></span></div>';
+    container.appendChild(dot);
+    scrollAiChat();
+}
+
+function scrollAiChat() {
+    const c = document.getElementById('aiChatMessages');
+    if (c) setTimeout(() => c.scrollTop = c.scrollHeight, 50);
+    // Remove typing indicator
+    document.getElementById('aiTypingDot')?.remove();
+}
+
+function exportAiDataToExcel(msgIndex) {
+    // Build CSV from current leads data
+    const leads = S.leads || [];
+    if (!leads.length) { toast('No leads to export', 'error'); return; }
+    const headers = ['Name','Email','Phone','Company','Status','Temperature','Notes','Created'];
+    const rows = leads.map(l => [
+        l.name||'', l.email||'', l.phone||'', l.company||'',
+        l.status||'', l.lead_temperature||'', (l.notes||'').replace(/,/g,''), l.created_at?.slice(0,10)||''
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `crm_leads_export_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    toast('Exported ' + leads.length + ' leads', 'success');
+}
+
+// Initialize AI widget after login (hook into existing showApp)
+const _origShowApp = typeof showApp === 'function' ? showApp : null;
+// We patch post-login instead:
+document.addEventListener('DOMContentLoaded', () => {
+    // Re-init AI widget whenever plan data is available
+    const observer = new MutationObserver(() => {
+        if (S.planKey) { initAiWidget(); observer.disconnect(); }
+    });
+    // Fallback: also call on navigate
+});
+
+// Hook into navigate to keep AI widget visible across pages
+const _origNavigate = window.navigate;
+if (typeof navigate === 'function') {
+    window.navigate = function(page) {
+        _origNavigate && _origNavigate(page);
+        // Ensure AI widget stays in DOM
+        setTimeout(initAiWidget, 100);
+    };
+}
+</script>
+
+<!-- SheetJS for XLSX support -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>

@@ -3710,6 +3710,15 @@ body.graffiti-mode .sidebar::after {
                 Schedule
                 <span class="nav-badge" id="scheduleBadge">0</span>
             </div>
+            <div class="nav-item" data-section="setupCalls">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                    <path d="m9 12 2 2 4-4"/>
+                </svg>
+                Setup Calls
+                <span class="nav-badge" id="setupCallsBadge" style="display:none;background:#FF6B35;color:#fff;"></span>
+            </div>
             <div class="nav-item" data-section="team">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -4071,6 +4080,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 loadSettings();  // ADD THIS LINE
 setupNavigation();
 renderSection('dashboard');
+// Load setup calls badge count on startup
+setTimeout(refreshSetupCallsBadge, 1500);
 });
 
 // ========================================
@@ -4775,6 +4786,10 @@ case 'client-portal':
 
         case 'schedule':
             renderSchedule(content);
+            break;
+
+        case 'setupCalls':
+            renderSetupCalls(content);
             break;
             
         case 'team':
@@ -9161,7 +9176,9 @@ function renderSchedule(content) {
                                              ${apt.lead_email}
                                         </div>
                                         <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
-                                            ${apt.event_type || 'Consultation'}
+                                            ${apt.event_type === 'CRM Setup'
+                                                ? `<span style="background:#FF6B3522;color:#FF6B35;padding:2px 8px;border-radius:10px;font-weight:700;font-size:11px;">⚙️ CRM Setup Call</span>`
+                                                : (apt.event_type || 'Consultation')}
                                         </div>
                                     </div>
                                     <span style="background:#dcfce7;color:#16a34a;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">Scheduled</span>
@@ -9267,6 +9284,179 @@ function renderSchedule(content) {
     };
     
     renderCalendarView();
+}
+
+// ==================== SETUP CALLS (CRM ONBOARDING) ====================
+
+async function renderSetupCalls(content) {
+    content.innerHTML = `
+        <div class="section-header" style="margin-bottom:24px;">
+            <div>
+                <h2 style="font-size:24px;font-weight:800;">CRM Setup Calls</h2>
+                <p style="font-size:14px;color:var(--text-muted);margin-top:4px;">Onboarding calls booked by workspace customers to configure email, SMS &amp; domain settings.</p>
+            </div>
+            <button onclick="renderSetupCalls(document.querySelector('.content-area'))" class="btn btn-secondary" style="display:flex;align-items:center;gap:6px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                Refresh
+            </button>
+        </div>
+        <div id="setupCallsBody">
+            <div style="text-align:center;padding:60px;color:var(--text-muted);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;opacity:.3;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Loading...
+            </div>
+        </div>
+    `;
+
+    try {
+        const res  = await fetch(`${API_URL}/api/appointments/setup-calls`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+
+        const appointments = data.appointments || [];
+        const now = new Date();
+
+        const upcoming = appointments.filter(a =>
+            new Date(a.scheduled_time) > now && a.status === 'scheduled'
+        );
+
+        // Update sidebar badge
+        const badge = document.getElementById('setupCallsBadge');
+        if (badge) {
+            badge.textContent = upcoming.length;
+            badge.style.display = upcoming.length > 0 ? '' : 'none';
+        }
+
+        const fmtDate = d => new Date(d).toLocaleDateString('en-US', {
+            weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago'
+        }) + ' CT';
+
+        const statusStyles = {
+            scheduled: { bg: '#dcfce7', color: '#16a34a', label: 'Scheduled' },
+            completed: { bg: '#ede9fe', color: '#7c3aed', label: 'Completed' },
+            cancelled: { bg: '#fee2e2', color: '#dc2626', label: 'Cancelled' }
+        };
+
+        const bodyEl = document.getElementById('setupCallsBody');
+
+        if (!appointments.length) {
+            bodyEl.innerHTML = `
+                <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:60px;text-align:center;color:var(--text-muted);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;opacity:.3;margin-bottom:16px;display:block;margin-left:auto;margin-right:auto;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <p style="font-size:16px;font-weight:600;margin-bottom:8px;">No CRM setup calls yet</p>
+                    <p style="font-size:13px;">These appear when a workspace customer clicks "Schedule Setup Call" from their client portal settings.</p>
+                </div>`;
+            return;
+        }
+
+        // Upcoming banner
+        let bannerHtml = '';
+        if (upcoming.length > 0) {
+            const next = upcoming[0];
+            bannerHtml = `
+                <div style="background:#FF6B3514;border:2px solid #FF6B3540;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#FF6B35" stroke-width="2" style="width:22px;height:22px;flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <div>
+                        <div style="font-weight:700;color:#FF6B35;font-size:13px;">${upcoming.length} upcoming setup call${upcoming.length !== 1 ? 's' : ''}</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Next: <strong>${next.lead_name || next.lead_email}</strong> — ${fmtDate(next.scheduled_time)}</div>
+                    </div>
+                </div>`;
+        }
+
+        bodyEl.innerHTML = bannerHtml + `
+            <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);overflow:hidden;">
+                <div style="display:grid;grid-template-columns:2fr 1.5fr 2fr 1fr 1.5fr;gap:0;padding:10px 20px;border-bottom:1px solid var(--border-color);">
+                    ${['Customer','Company','Scheduled Time','Status','Actions'].map(h =>
+                        `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">${h}</div>`
+                    ).join('')}
+                </div>
+                ${appointments.map(a => {
+                    const isPast = new Date(a.scheduled_time) < now;
+                    const st = statusStyles[a.status] || { bg: '#f3f4f6', color: '#6b7280', label: a.status };
+                    const rowStyle = isPast && a.status === 'scheduled' ? 'background:#fef9c322;' : '';
+                    return `
+                    <div style="display:grid;grid-template-columns:2fr 1.5fr 2fr 1fr 1.5fr;gap:0;padding:14px 20px;border-bottom:1px solid var(--border-color);align-items:center;${rowStyle}">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">${a.lead_name || '—'}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">${a.lead_email}</div>
+                            ${a.phone ? `<div style="font-size:11px;color:var(--text-muted);">${a.phone}</div>` : ''}
+                        </div>
+                        <div style="font-size:13px;color:var(--text-muted);">${a.company || '—'}</div>
+                        <div>
+                            <div style="font-size:13px;font-weight:${!isPast ? '600' : '400'};color:${!isPast ? 'var(--text-primary)' : 'var(--text-muted)'};">${fmtDate(a.scheduled_time)}</div>
+                            ${isPast && a.status === 'scheduled' ? '<div style="font-size:11px;color:#f59e0b;font-weight:600;margin-top:2px;">⚠ Past — needs action</div>' : ''}
+                        </div>
+                        <div>
+                            <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${st.bg};color:${st.color};">${st.label}</span>
+                        </div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            ${a.status === 'scheduled' ? `
+                                <button class="btn btn-primary" style="font-size:11px;padding:5px 10px;" onclick="markSetupCallComplete(${a.id})">✓ Complete</button>
+                                <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="cancelSetupCallAdmin(${a.id})">Cancel</button>
+                            ` : ''}
+                            ${a.lead_id ? `<button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="openLead(${a.lead_id})">View Lead</button>` : ''}
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+
+    } catch(e) {
+        document.getElementById('setupCallsBody').innerHTML =
+            `<div style="padding:40px;text-align:center;color:var(--status-danger);">Failed to load setup calls: ${e.message}</div>`;
+    }
+}
+
+async function markSetupCallComplete(appointmentId) {
+    try {
+        const res = await fetch(`${API_URL}/api/appointments/${appointmentId}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'completed' })
+        });
+        const data = await res.json();
+        if (data.success || data.id || res.ok) {
+            showToast('Setup call marked as complete', 'success');
+            renderSetupCalls(document.querySelector('.content-area') || document.querySelector('.main-content'));
+        } else throw new Error(data.message);
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function cancelSetupCallAdmin(appointmentId) {
+    if (!confirm('Cancel this setup call?')) return;
+    try {
+        const res = await fetch(`${API_URL}/api/appointments/${appointmentId}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'cancelled' })
+        });
+        const data = await res.json();
+        if (data.success || data.id || res.ok) {
+            showToast('Setup call cancelled', 'success');
+            renderSetupCalls(document.querySelector('.content-area') || document.querySelector('.main-content'));
+        } else throw new Error(data.message);
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function refreshSetupCallsBadge() {
+    try {
+        const res  = await fetch(`${API_URL}/api/appointments/setup-calls`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        const data = await res.json();
+        if (!data.success) return;
+        const now = new Date();
+        const count = (data.appointments || []).filter(a =>
+            new Date(a.scheduled_time) > now && a.status === 'scheduled'
+        ).length;
+        const badge = document.getElementById('setupCallsBadge');
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? '' : 'none';
+        }
+    } catch {}
 }
 
 // ==================== ADD APPOINTMENT (ADMIN) ====================

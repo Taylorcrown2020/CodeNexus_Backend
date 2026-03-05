@@ -61,6 +61,146 @@ const BREVO_COST_SMS    = 0.00900;   // Brevo charges $0.009/SMS
 const CLIENT_RATE_EMAIL = 0.00300;   // We charge $0.003/email (2×)
 const CLIENT_RATE_SMS   = 0.01800;   // We charge $0.018/SMS (2×)
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM PLAN LIMITS
+// Single source of truth. Enforced server-side (API guards) AND returned to
+// the client portal on login so the UI can hide/disable features immediately.
+// null = unlimited.  Workspace inherits enterprise-level permissions.
+// ─────────────────────────────────────────────────────────────────────────────
+const PLAN_LIMITS = {
+    'crm-essential': {
+        displayName:       'Essential CRM',
+        maxRecords:        1000,   // leads + contacts + customers combined
+        maxProducts:       10,
+        maxFollowUpsDay:   200,
+        smsEnabled:        false,
+        sequencesEnabled:  false,
+        marketingEnabled:  false,
+        bgCustomEnabled:   false,
+    },
+    'crm-professional': {
+        displayName:       'Professional CRM',
+        maxRecords:        5000,
+        maxProducts:       50,
+        maxFollowUpsDay:   1000,
+        smsEnabled:        true,
+        sequencesEnabled:  true,
+        marketingEnabled:  true,
+        bgCustomEnabled:   true,
+    },
+    'crm-enterprise': {
+        displayName:       'Enterprise CRM',
+        maxRecords:        null,
+        maxProducts:       null,
+        maxFollowUpsDay:   null,
+        smsEnabled:        true,
+        sequencesEnabled:  true,
+        marketingEnabled:  true,
+        bgCustomEnabled:   true,
+    },
+    'crm-workspace': {
+        displayName:       'CRM Workspace',
+        maxRecords:        null,
+        maxProducts:       null,
+        maxFollowUpsDay:   null,
+        smsEnabled:        true,
+        sequencesEnabled:  true,
+        marketingEnabled:  true,
+        bgCustomEnabled:   true,
+    },
+    // Fallback — most permissive so nothing silently breaks for unknown plan keys
+    '_default': {
+        displayName:       'CRM',
+        maxRecords:        null,
+        maxProducts:       null,
+        maxFollowUpsDay:   null,
+        smsEnabled:        true,
+        sequencesEnabled:  true,
+        marketingEnabled:  true,
+        bgCustomEnabled:   true,
+    },
+};
+
+/**
+ * Resolves the active plan limits object for a logged-in client user.
+ * Looks up their subscription via portal ID first (covers workspace members),
+ * then falls back to individual subscription by email.
+ * Returns { planKey, ...limits }
+ */
+async function getClientPlanLimits(userId) {
+    try {
+        // 1. Try via portal ID (workspace users + individual users who have one)
+        const leadRow = await pool.query(
+            'SELECT client_portal_id, email FROM leads WHERE id=$1', [userId]
+        );
+        const { client_portal_id: portalId, email } = leadRow.rows[0] || {};
+
+        if (portalId) {
+            const sub = await pool.query(
+                `SELECT package_key FROM crm_subscriptions
+                 WHERE client_portal_id=$1 AND status='active'
+                 ORDER BY created_at DESC LIMIT 1`,
+                [portalId]
+            );
+            const key = sub.rows[0]?.package_key;
+            if (key && PLAN_LIMITS[key]) return { planKey: key, ...PLAN_LIMITS[key] };
+        }
+
+        // 2. Fallback: individual subscription by email
+        if (email) {
+            const sub = await pool.query(
+                `SELECT package_key FROM crm_subscriptions
+                 WHERE LOWER(lead_email)=LOWER($1) AND status='active'
+                 ORDER BY created_at DESC LIMIT 1`,
+                [email]
+            );
+            const key = sub.rows[0]?.package_key;
+            if (key && PLAN_LIMITS[key]) return { planKey: key, ...PLAN_LIMITS[key] };
+        }
+    } catch(e) {
+        console.error('[PLAN_LIMITS] lookup error:', e.message);
+    }
+    return { planKey: '_default', ...PLAN_LIMITS['_default'] };
+}
+
+/**
+ * Returns the combined count of leads + contacts + customers for a portal.
+ * Used to enforce the per-plan record cap.
+ */
+async function getClientRecordCount(portalId) {
+    try {
+        const [leads, contacts, customers] = await Promise.all([
+            pool.query('SELECT COUNT(*) AS n FROM leads WHERE client_portal_id=$1', [portalId]),
+            pool.query('SELECT COUNT(*) AS n FROM client_contacts WHERE client_id IN (SELECT id FROM leads WHERE client_portal_id=$1)', [portalId])
+                .catch(() => ({ rows: [{ n: 0 }] })),
+            pool.query('SELECT COUNT(*) AS n FROM customers WHERE client_portal_id=$1', [portalId])
+                .catch(() => ({ rows: [{ n: 0 }] })),
+        ]);
+        return (
+            parseInt(leads.rows[0]?.n || 0) +
+            parseInt(contacts.rows[0]?.n || 0) +
+            parseInt(customers.rows[0]?.n || 0)
+        );
+    } catch { return 0; }
+}
+
+/**
+ * Returns how many follow-up emails this user has sent today.
+ * Used to enforce the per-plan daily follow-up cap.
+ */
+async function getFollowUpsTodayCount(userEmail) {
+    try {
+        const r = await pool.query(
+            `SELECT COUNT(*) AS n FROM client_email_log
+             WHERE LOWER(sender_email)=LOWER($1)
+               AND email_type IN ('follow-up','manual','email')
+               AND created_at >= CURRENT_DATE`,
+            [userEmail]
+        );
+        return parseInt(r.rows[0]?.n || 0);
+    } catch { return 0; }
+}
+
 function currentBillingMonth() {
     const d = new Date();
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().split('T')[0];
@@ -2693,7 +2833,13 @@ app.post('/api/scheduling/webhook', async (req, res) => {
         const inviteeEmail = payload?.email || payload?.invitee?.email;
         const inviteeName = payload?.name || payload?.invitee?.name;
         const scheduledTime = payload?.scheduled_event?.start_time || payload?.start_time;
-        const eventType = payload?.event_type?.name || payload?.event_name || 'Consultation';
+        const rawEventType = payload?.event_type?.name || payload?.event_name || 'Consultation';
+        // Detect CRM setup calls booked via client portal links (?type=setup)
+        const appointmentSource = payload?.appointment_source || payload?.notes_contains_setup || '';
+        const isSetupCall = rawEventType === 'CRM Setup' || 
+                            (payload?.notes || '').toLowerCase().includes('crm setup') ||
+                            appointmentSource === 'crm_setup';
+        const eventType = isSetupCall ? 'CRM Setup' : rawEventType;
         
         if (!inviteeEmail) {
             console.error('[SCHEDULING WEBHOOK] No email found in payload');
@@ -2873,6 +3019,34 @@ app.get('/api/appointments/upcoming', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('[APPOINTMENTS] Error fetching upcoming:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// GET /api/appointments/setup-calls — CRM onboarding setup calls only (admin portal)
+app.get('/api/appointments/setup-calls', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                a.id,
+                a.lead_email,
+                a.lead_name,
+                a.scheduled_time,
+                a.event_type,
+                a.status,
+                a.created_at,
+                l.id      AS lead_id,
+                l.company AS company,
+                l.phone   AS phone
+            FROM appointments a
+            LEFT JOIN leads l ON LOWER(l.email) = LOWER(a.lead_email)
+            WHERE a.event_type = 'CRM Setup'
+            ORDER BY a.scheduled_time DESC
+            LIMIT 200
+        `);
+        res.json({ success: true, appointments: result.rows });
+    } catch(e) {
+        console.error('[SETUP CALLS]', e);
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 
@@ -9091,6 +9265,20 @@ app.post('/api/client/leads', authenticateClient, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Your account is not linked to a portal. Please contact support.' });
         }
 
+        // ── Record cap (Essential: 1000 / Professional: 5000 / Enterprise+: unlimited) ──
+        const planData = await getClientPlanLimits(userId);
+        if (planData.maxRecords !== null) {
+            const total = await getClientRecordCount(clientPortalId);
+            if (total >= planData.maxRecords) {
+                return res.status(403).json({
+                    success: false,
+                    limitReached: 'records',
+                    limit: planData.maxRecords,
+                    message: `Your ${planData.displayName} plan is limited to ${planData.maxRecords.toLocaleString()} total leads, contacts, and customers. Upgrade your plan to add more.`
+                });
+            }
+        }
+
         // Get the creator's company_users record for auto-assign
         let assignedTo = null;
         if (assignToSelf !== false) {
@@ -9339,7 +9527,20 @@ app.get('/api/client/contacts', authenticateClient, async (req, res) => {
 app.post('/api/client/contacts', authenticateClient, async (req, res) => {
     try {
         const { name, email, phone, company, notes } = req.body;
-        
+
+        // ── Record cap ──
+        const planData   = await getClientPlanLimits(req.user.id);
+        const portalId   = await getClientPortalId(req.user.id);
+        if (planData.maxRecords !== null && portalId) {
+            const total = await getClientRecordCount(portalId);
+            if (total >= planData.maxRecords) {
+                return res.status(403).json({
+                    success: false, limitReached: 'records', limit: planData.maxRecords,
+                    message: `Your ${planData.displayName} plan is limited to ${planData.maxRecords.toLocaleString()} total records. Upgrade to add more.`
+                });
+            }
+        }
+
         const result = await pool.query(
             `INSERT INTO client_contacts (
                 client_id, name, email, phone, company, notes, created_at, updated_at
@@ -11118,7 +11319,7 @@ async function processSubscriptionWebhook(event) {
                             <p style="font-size:13px;color:#555;margin:0 0 16px 0;line-height:1.7;">
                                 To activate your <strong>email sending, SMS messaging, and domain verification</strong>, you'll need a quick 15-minute setup call with our team. We'll get everything configured so you can start reaching leads from day one.
                             </p>
-                            <a href="${BASE_URL}/schedule.html" style="display:inline-block;background:#FF6B35;color:#fff;text-decoration:none;font-weight:700;font-size:13px;padding:12px 24px;border-radius:6px;">
+                            <a href="${BASE_URL}/schedule.html?type=setup" style="display:inline-block;background:#FF6B35;color:#fff;text-decoration:none;font-weight:700;font-size:13px;padding:12px 24px;border-radius:6px;">
                                 📅 Book Your Setup Call →
                             </a>
                             <p style="font-size:11px;color:#888;margin:12px 0 0 0;">Takes 15 minutes. We handle everything — no technical knowledge required.</p>
@@ -13170,6 +13371,19 @@ app.get('/api/analytics/revenue', authenticateToken, async (req, res) => {
 });
 
 // Client Dashboard Data
+// GET /api/client/plan-limits — current plan, limits, and live usage counts
+app.get('/api/client/plan-limits', authenticateClient, async (req, res) => {
+    try {
+        const limits    = await getClientPlanLimits(req.user.id);
+        const portalId  = await getClientPortalId(req.user.id);
+        const recordCount    = (limits.maxRecords   !== null && portalId) ? await getClientRecordCount(portalId) : 0;
+        const followUpsToday = (limits.maxFollowUpsDay !== null)          ? await getFollowUpsTodayCount(req.user.email) : 0;
+        res.json({ success: true, limits, recordCount, followUpsToday });
+    } catch(e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
     try {
         const clientId = req.user.id;
@@ -15378,6 +15592,9 @@ app.post('/api/client/login', async (req, res) => {
             { expiresIn: '7d' }
         );
 
+        // Resolve plan limits so the frontend can enforce UI restrictions immediately
+        const planData = await getClientPlanLimits(lead.id);
+
         res.json({
             success: true,
             token,
@@ -15388,7 +15605,9 @@ app.post('/api/client/login', async (req, res) => {
                 company: lead.company,
                 isCompanyAdmin,
                 isCoAdmin: lead.is_co_admin || false,
-                clientPortalId
+                clientPortalId,
+                planKey:    planData.planKey,
+                planLimits: planData,
             }
         });
 
@@ -21181,6 +21400,18 @@ app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res
         if (!body)    return res.status(400).json({ success: false, message: 'body required' });
         if (!toEmail) return res.status(400).json({ success: false, message: 'toEmail required' });
 
+        // ── Daily follow-up cap (Essential: 200 / Professional: 1000 / Enterprise+: unlimited) ──
+        const planData = await getClientPlanLimits(req.user.id);
+        if (planData.maxFollowUpsDay !== null) {
+            const sentToday = await getFollowUpsTodayCount(req.user.email);
+            if (sentToday >= planData.maxFollowUpsDay) {
+                return res.status(403).json({
+                    success: false, limitReached: 'followUpsDay', limit: planData.maxFollowUpsDay,
+                    message: `You've reached your ${planData.displayName} daily limit of ${planData.maxFollowUpsDay.toLocaleString()} follow-ups. Limit resets at midnight. Upgrade your plan for a higher limit.`
+                });
+            }
+        }
+
         // Always use Diamondback's platform Brevo key — NOT per-portal key
         console.log('[SEND-EMAIL] portalId:', portalId, '| PLATFORM_BREVO_KEY set:', !!PLATFORM_BREVO_KEY);
         if (!PLATFORM_BREVO_KEY) {
@@ -21251,6 +21482,15 @@ app.post('/api/client/leads/:id/send-sms', authenticateClient, async (req, res) 
         const portalId = await getClientPortalId(req.user.id);
         const { message } = req.body;
         if (!message) return res.status(400).json({ success: false, message: 'message required' });
+
+        // ── SMS plan gate (Essential: no SMS) ──
+        const planData = await getClientPlanLimits(req.user.id);
+        if (!planData.smsEnabled) {
+            return res.status(403).json({
+                success: false, limitReached: 'sms',
+                message: `SMS messaging is not available on your ${planData.displayName} plan. Upgrade to Professional CRM or higher to unlock SMS.`
+            });
+        }
 
         // Always use Diamondback's platform Brevo key
         if (!PLATFORM_BREVO_KEY) {
@@ -22551,6 +22791,17 @@ app.post('/api/client/leads/:leadId/assign-sequence', authenticateClient, async 
         const check = await pool.query('SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2', [leadId, portalId]);
         if (!check.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
 
+        // ── Sequence plan gate (Essential: no sequences) — only block enabling ──
+        if (enabled) {
+            const planData = await getClientPlanLimits(userId);
+            if (!planData.sequencesEnabled) {
+                return res.status(403).json({
+                    success: false, limitReached: 'sequences',
+                    message: `Email sequences are not available on your ${planData.displayName} plan. Upgrade to Professional CRM or higher to unlock sequences.`
+                });
+            }
+        }
+
         if (!enabled) {
             // Disable: deactivate all queue entries for this lead
             await pool.query('UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1', [leadId]);
@@ -22865,6 +23116,22 @@ app.post('/api/client/products', authenticateClient, async (req, res) => {
         if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
         const { name, description, price, sku, category } = req.body;
         if (!name) return res.status(400).json({ success: false, message: 'Name required' });
+
+        // ── Product cap (Essential: 10 / Professional: 50 / Enterprise+: unlimited) ──
+        const planData = await getClientPlanLimits(req.user.id);
+        if (planData.maxProducts !== null) {
+            const countRes = await pool.query(
+                `SELECT COUNT(*) AS n FROM client_products WHERE client_portal_id=$1 AND is_active IS NOT FALSE`,
+                [portalId]
+            );
+            if (parseInt(countRes.rows[0]?.n || 0) >= planData.maxProducts) {
+                return res.status(403).json({
+                    success: false, limitReached: 'products', limit: planData.maxProducts,
+                    message: `Your ${planData.displayName} plan is limited to ${planData.maxProducts} active products. Deactivate or delete a product, or upgrade your plan.`
+                });
+            }
+        }
+
         const result = await pool.query(
             `INSERT INTO client_products (client_portal_id, name, description, price, sku, category)
              VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
@@ -23412,6 +23679,13 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
     try {
         const portalId = await getClientPortalId(req.user.id);
         if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+
+        // Billing is admin-only — company members should not see billing data
+        const adminCheck = await pool.query(
+            `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+        );
+        const isAdmin = adminCheck.rows[0]?.is_company_admin || adminCheck.rows[0]?.is_co_admin;
+        if (!isAdmin) return res.status(403).json({ success: false, message: 'Billing is only accessible to company admins.' });
 
         // Ensure tables exist (safe — runs only if missing, no-op otherwise)
         await initializeUsageTables().catch(() => {});

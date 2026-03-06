@@ -3609,7 +3609,15 @@ function renderChart() {
     const hasData = series.some(s => s.values.some(v => v > 0));
     if (!hasData) {
         canvas.style.display = 'none';
-        emptyEl.style.display = 'block';
+        const emptyMsgs = [
+            'No revenue data yet — assign products to leads and customers to see revenue charts.',
+            'No lead or customer activity yet — add leads to see growth over time.',
+            'No product data yet — assign products to leads to see popularity trends.',
+        ];
+        emptyEl.textContent = emptyMsgs[DC.slide] || emptyMsgs[0];
+        emptyEl.style.display = 'flex';
+        emptyEl.style.alignItems = 'center';
+        emptyEl.style.justifyContent = 'center';
         return;
     }
     canvas.style.display = 'block';
@@ -3836,14 +3844,16 @@ async function loadDashboard() {
         const chartData = await chartRes.json();
 
         // Refresh cached state with fresh data
-        if (leadsRes.leads)     { S.leads     = leadsRes.leads;     }
+        if (leadsRes.leads)         { S.leads     = leadsRes.leads;     }
         if (customersRes.customers) { S.customers = customersRes.customers; _customers = S.customers; }
-        if (tasksRes.tasks)     { S.tasks     = tasksRes.tasks;     }
+        if (tasksRes.tasks)         { S.tasks     = tasksRes.tasks;     }
 
         const d = dashData.dashboard || {};
-        const leads     = S.leads || [];
-        const customers = S.customers || [];
-        const invoices  = d.invoices || [];
+        const myEmail = (S.user?.email || '').toLowerCase();
+        // Active leads = not yet converted, not the logged-in user's own account row
+        const activeLeads = (S.leads || []).filter(l => !l.is_customer && (l.email||'').toLowerCase() !== myEmail);
+        const customers   = S.customers || [];
+        const invoices    = d.invoices || [];
 
         // Stats
         const openTasks = (S.tasks || []).filter(t => !t.completed && t.status !== 'completed').length;
@@ -3853,7 +3863,7 @@ async function loadDashboard() {
         const actualIncome   = cm.actual   || 0;
         const potentialTotal = (chartData.income || []).reduce((s,m) => s + m.potential, 0);
 
-        document.getElementById('dStat1').textContent = leads.length;
+        document.getElementById('dStat1').textContent = activeLeads.length;
         document.getElementById('dStat2').textContent = customers.length;
         document.getElementById('dStat3').textContent = openTasks;
         document.getElementById('dStat4').textContent = '$' + actualIncome.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
@@ -3898,7 +3908,7 @@ async function loadDashboard() {
 
         // Recent leads
         const dashLeadsEl = document.getElementById('dashLeads');
-        const recentLeads = leads.slice(0,5);
+        const recentLeads = activeLeads.slice(0,5);
         if (recentLeads.length) {
             dashLeadsEl.innerHTML = `
                 <table style="width:100%;">

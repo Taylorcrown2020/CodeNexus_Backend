@@ -1677,6 +1677,19 @@ await client.query(`
     ON client_tasks(client_id, created_at DESC)
 `);
 
+// Migrate client_tasks: add columns that may not exist in older DB instances
+for (const col of [
+    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS created_by_name VARCHAR(255)`,
+    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS assigned_to_name VARCHAR(255)`,
+    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
+    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`,
+    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP`,
+    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS related_to_type VARCHAR(100)`,
+    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS related_to_id INTEGER`,
+]) {
+    await client.query(col).catch(() => {});
+}
+
 // Create indexes for better performance
 await client.query(`
     CREATE INDEX IF NOT EXISTS idx_client_uploads_lead 
@@ -22309,12 +22322,12 @@ app.get('/api/client/analytics', authenticateClient, async (req, res) => {
             `, [me?.email || '']).catch(() => ({ rows: [{}] }));
             const indLeadStats = await pool.query(`
                 SELECT
-                    COUNT(*) as total_assigned,
-                    COUNT(*) FILTER (WHERE lead_temperature='hot') as hot,
-                    COUNT(*) FILTER (WHERE lead_temperature!='hot' OR lead_temperature IS NULL) as cold,
+                    COUNT(*) FILTER (WHERE is_customer IS NOT TRUE AND status NOT IN ('lost','closed')) as total_assigned,
+                    COUNT(*) FILTER (WHERE lead_temperature='hot' AND is_customer IS NOT TRUE) as hot,
+                    COUNT(*) FILTER (WHERE (lead_temperature IS NULL OR lead_temperature!='hot') AND is_customer IS NOT TRUE) as cold,
                     COUNT(*) FILTER (WHERE status='closed' OR is_customer=TRUE) as closed,
                     COUNT(*) FILTER (WHERE status='lost') as lost,
-                    COUNT(*) FILTER (WHERE status='new' OR status IS NULL) as new
+                    COUNT(*) FILTER (WHERE (status='new' OR status IS NULL) AND is_customer IS NOT TRUE) as new
                 FROM leads
                 WHERE individual_owner_id=$1 AND client_password IS NULL
             `, [userId]).catch(() => ({ rows: [{}] }));
@@ -22376,26 +22389,25 @@ app.get('/api/client/analytics', authenticateClient, async (req, res) => {
         const leadStats = viewAll
             ? await pool.query(`
                 SELECT
-                    COUNT(*) as total_assigned,
-                    COUNT(*) FILTER (WHERE lead_temperature='hot') as hot,
-                    COUNT(*) FILTER (WHERE lead_temperature!='hot' OR lead_temperature IS NULL) as cold,
+                    COUNT(*) FILTER (WHERE is_customer IS NOT TRUE AND status NOT IN ('lost','closed')) as total_assigned,
+                    COUNT(*) FILTER (WHERE lead_temperature='hot' AND is_customer IS NOT TRUE) as hot,
+                    COUNT(*) FILTER (WHERE (lead_temperature IS NULL OR lead_temperature!='hot') AND is_customer IS NOT TRUE) as cold,
                     COUNT(*) FILTER (WHERE status='closed' OR is_customer=TRUE) as closed,
                     COUNT(*) FILTER (WHERE status='lost') as lost,
-                    COUNT(*) FILTER (WHERE status='new' OR status IS NULL) as new
+                    COUNT(*) FILTER (WHERE (status='new' OR status IS NULL) AND is_customer IS NOT TRUE) as new
                 FROM leads
                 WHERE client_portal_id=$1
                   AND client_password IS NULL
-                  AND is_customer IS NOT TRUE
                   AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
             `, [portalId])
             : await pool.query(`
                 SELECT
-                    COUNT(*) as total_assigned,
-                    COUNT(*) FILTER (WHERE lead_temperature='hot') as hot,
-                    COUNT(*) FILTER (WHERE lead_temperature!='hot' OR lead_temperature IS NULL) as cold,
+                    COUNT(*) FILTER (WHERE is_customer IS NOT TRUE AND status NOT IN ('lost','closed')) as total_assigned,
+                    COUNT(*) FILTER (WHERE lead_temperature='hot' AND is_customer IS NOT TRUE) as hot,
+                    COUNT(*) FILTER (WHERE (lead_temperature IS NULL OR lead_temperature!='hot') AND is_customer IS NOT TRUE) as cold,
                     COUNT(*) FILTER (WHERE status='closed' OR is_customer=TRUE) as closed,
                     COUNT(*) FILTER (WHERE status='lost') as lost,
-                    COUNT(*) FILTER (WHERE status='new' OR status IS NULL) as new
+                    COUNT(*) FILTER (WHERE (status='new' OR status IS NULL) AND is_customer IS NOT TRUE) as new
                 FROM leads
                 WHERE client_portal_id=$1 AND crm_assigned_to=$2
             `, [portalId, cu?.id || -1]);
@@ -23754,7 +23766,7 @@ app.post('/api/client/leads/:id/convert', authenticateClient, async (req, res) =
 
 app.get('/api/client/charts', authenticateClient, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         const portalId = await getClientPortalId(userId);
         // Support both workspace (portalId) and individual users
         const isIndividual = !portalId;
@@ -23771,71 +23783,65 @@ app.get('/api/client/charts', authenticateClient, async (req, res) => {
         // ── Income data: sum of product prices per lead per month
         //    "potential" = leads (not yet customers) with products
         //    "actual"    = customers with products
-        const incomeFilter = isIndividual
-            ? `l.individual_owner_id = ${userId}`
-            : `l.client_portal_id = '${portalId}'`;
-        const incomeRows = await pool.query(`
-            SELECT
-                TO_CHAR(l.created_at, 'YYYY-MM') as month,
-                CASE WHEN l.is_customer = TRUE THEN 'actual' ELSE 'potential' END as income_type,
-                COALESCE(SUM(p.price), 0) as total
-            FROM leads l
-            JOIN lead_products lp ON lp.lead_id = l.id
-            JOIN client_products p ON p.id = lp.product_id
-            WHERE ${incomeFilter}
-              AND l.client_password IS NULL
-              AND l.created_at >= $1::date
-            GROUP BY month, income_type
-            ORDER BY month ASC
-        `, [oldest]);
+        const incomeRows = isIndividual
+            ? await pool.query(`
+                SELECT TO_CHAR(l.created_at,'YYYY-MM') as month,
+                    CASE WHEN l.is_customer=TRUE THEN 'actual' ELSE 'potential' END as income_type,
+                    COALESCE(SUM(p.price),0) as total
+                FROM leads l
+                JOIN lead_products lp ON lp.lead_id=l.id
+                JOIN client_products p ON p.id=lp.product_id
+                WHERE l.individual_owner_id=$1 AND l.client_password IS NULL AND l.created_at>=$2::date
+                GROUP BY month,income_type ORDER BY month ASC`, [userId, oldest])
+            : await pool.query(`
+                SELECT TO_CHAR(l.created_at,'YYYY-MM') as month,
+                    CASE WHEN l.is_customer=TRUE THEN 'actual' ELSE 'potential' END as income_type,
+                    COALESCE(SUM(p.price),0) as total
+                FROM leads l
+                JOIN lead_products lp ON lp.lead_id=l.id
+                JOIN client_products p ON p.id=lp.product_id
+                WHERE l.client_portal_id=$1 AND l.client_password IS NULL AND l.created_at>=$2::date
+                GROUP BY month,income_type ORDER BY month ASC`, [portalId, oldest]);
 
         // ── Growth data: leads added per month and customers converted per month
-        // Leads are bucketed by created_at; customers by updated_at (conversion date)
-        const growthFilter = isIndividual
-            ? `individual_owner_id = ${userId}`
-            : `client_portal_id = '${portalId}'`;
-        const growthRows = await pool.query(`
-            SELECT
-                TO_CHAR(created_at, 'YYYY-MM') as month,
-                COUNT(*) FILTER (WHERE is_customer IS NOT TRUE) as leads,
-                0 as customers
-            FROM leads
-            WHERE ${growthFilter}
-              AND client_password IS NULL
-              AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
-              AND created_at >= $1::date
-            GROUP BY month
-            UNION ALL
-            SELECT
-                TO_CHAR(updated_at, 'YYYY-MM') as month,
-                0 as leads,
-                COUNT(*) as customers
-            FROM leads
-            WHERE ${growthFilter}
-              AND client_password IS NULL
-              AND is_customer = TRUE
-              AND updated_at >= $1::date
-              AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
-            GROUP BY month
-            ORDER BY month ASC
-        `, [oldest]);
+        const growthRows = isIndividual
+            ? await pool.query(`
+                SELECT TO_CHAR(created_at,'YYYY-MM') as month,
+                    COUNT(*) FILTER (WHERE is_customer IS NOT TRUE) as leads, 0 as customers
+                FROM leads WHERE individual_owner_id=$1 AND client_password IS NULL
+                  AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
+                  AND created_at>=$2::date GROUP BY month
+                UNION ALL
+                SELECT TO_CHAR(updated_at,'YYYY-MM') as month, 0 as leads, COUNT(*) as customers
+                FROM leads WHERE individual_owner_id=$1 AND client_password IS NULL AND is_customer=TRUE
+                  AND updated_at>=$2::date
+                  AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
+                GROUP BY month ORDER BY month ASC`, [userId, oldest])
+            : await pool.query(`
+                SELECT TO_CHAR(created_at,'YYYY-MM') as month,
+                    COUNT(*) FILTER (WHERE is_customer IS NOT TRUE) as leads, 0 as customers
+                FROM leads WHERE client_portal_id=$1 AND client_password IS NULL
+                  AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
+                  AND created_at>=$2::date GROUP BY month
+                UNION ALL
+                SELECT TO_CHAR(updated_at,'YYYY-MM') as month, 0 as leads, COUNT(*) as customers
+                FROM leads WHERE client_portal_id=$1 AND client_password IS NULL AND is_customer=TRUE
+                  AND updated_at>=$2::date
+                  AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
+                GROUP BY month ORDER BY month ASC`, [portalId, oldest]);
 
         // ── Product popularity: how many leads assigned each product per month
-        const productRows = await pool.query(`
-            SELECT
-                TO_CHAR(l.created_at, 'YYYY-MM') as month,
-                p.id as product_id,
-                p.name as product_name,
-                COUNT(*) as count
-            FROM leads l
-            JOIN lead_products lp ON lp.lead_id = l.id
-            JOIN client_products p ON p.id = lp.product_id
-            WHERE ${incomeFilter}
-              AND l.client_password IS NULL
-              AND l.created_at >= $1::date
-            GROUP BY month, p.id, p.name
-            ORDER BY month ASC, p.name ASC
-        `, [oldest]);
+        const productRows = isIndividual
+            ? await pool.query(`
+                SELECT TO_CHAR(l.created_at,'YYYY-MM') as month, p.id as product_id, p.name as product_name, COUNT(*) as count
+                FROM leads l JOIN lead_products lp ON lp.lead_id=l.id JOIN client_products p ON p.id=lp.product_id
+                WHERE l.individual_owner_id=$1 AND l.client_password IS NULL AND l.created_at>=$2::date
+                GROUP BY month,p.id,p.name ORDER BY month ASC,p.name ASC`, [userId, oldest])
+            : await pool.query(`
+                SELECT TO_CHAR(l.created_at,'YYYY-MM') as month, p.id as product_id, p.name as product_name, COUNT(*) as count
+                FROM leads l JOIN lead_products lp ON lp.lead_id=l.id JOIN client_products p ON p.id=lp.product_id
+                WHERE l.client_portal_id=$1 AND l.client_password IS NULL AND l.created_at>=$2::date
+                GROUP BY month,p.id,p.name ORDER BY month ASC,p.name ASC`, [portalId, oldest]);
 
         // ── Current month vs previous month actual income
         const curMonth = months[11]; // most recent
@@ -24881,14 +24887,40 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
 
         const getUsage = async (month) => {
             if (isIndividual) {
-                // Individual users: usage tracked by lead_id, not portal_id
-                const r = await pool.query(
-                    `SELECT COALESCE(SUM(email_count),0) AS email_count, COALESCE(SUM(sms_count),0) AS sms_count,
-                            COALESCE(SUM(email_revenue),0) AS email_revenue, COALESCE(SUM(sms_revenue),0) AS sms_revenue
-                     FROM portal_usage_log WHERE lead_id=$1 AND billing_month=$2`,
+                // Individual users have no portal_id.
+                // Count sends from portal_usage_events by lead_id (most accurate),
+                // fall back to client_email_log counts × platform rates if no events yet.
+                const evR = await pool.query(
+                    `SELECT
+                        COUNT(*) FILTER (WHERE event_type='email') AS email_count,
+                        COUNT(*) FILTER (WHERE event_type='sms')   AS sms_count,
+                        COALESCE(SUM(client_charge) FILTER (WHERE event_type='email'),0) AS email_revenue,
+                        COALESCE(SUM(client_charge) FILTER (WHERE event_type='sms'),0)   AS sms_revenue
+                     FROM portal_usage_events
+                     WHERE lead_id=$1 AND TO_CHAR(sent_at,'YYYY-MM-01')::date=$2::date`,
                     [req.user.id, month]
-                );
-                return r.rows[0] || { email_count:0, sms_count:0, email_revenue:0, sms_revenue:0 };
+                ).catch(() => ({ rows: [{}] }));
+                const ev = evR.rows[0] || {};
+                if (parseInt(ev.email_count) || parseInt(ev.sms_count)) {
+                    return { email_count: parseInt(ev.email_count)||0, sms_count: parseInt(ev.sms_count)||0,
+                             email_revenue: parseFloat(ev.email_revenue)||0, sms_revenue: parseFloat(ev.sms_revenue)||0 };
+                }
+                // Fallback: count from client_email_log
+                const lgR = await pool.query(
+                    `SELECT
+                        COUNT(*) FILTER (WHERE email_type != 'sms') AS email_count,
+                        COUNT(*) FILTER (WHERE email_type = 'sms')  AS sms_count
+                     FROM client_email_log
+                     WHERE LOWER(assigned_to_user_email)=LOWER($1)
+                       AND status != 'failed'
+                       AND TO_CHAR(COALESCE(sent_at,created_at),'YYYY-MM-01')::date=$2::date`,
+                    [req.user.email, month]
+                ).catch(() => ({ rows: [{}] }));
+                const lg = lgR.rows[0] || {};
+                const ec = parseInt(lg.email_count)||0, sc = parseInt(lg.sms_count)||0;
+                return { email_count: ec, sms_count: sc,
+                         email_revenue: ec * CLIENT_RATE_EMAIL,
+                         sms_revenue:   sc * CLIENT_RATE_SMS };
             }
             const r = await pool.query(
                 `SELECT email_count, sms_count, email_revenue, sms_revenue FROM portal_usage_log WHERE client_portal_id=$1 AND billing_month=$2`,

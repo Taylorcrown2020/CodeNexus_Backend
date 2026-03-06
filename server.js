@@ -13471,7 +13471,7 @@ app.get('/api/client/plan-limits', authenticateClient, async (req, res) => {
 
 app.get('/api/client/dashboard', authenticateClient, async (req, res) => {
     try {
-        const clientId = req.user.id;
+        const clientId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         
         console.log('[DASHBOARD] Loading dashboard for client:', clientId);
         
@@ -13940,7 +13940,7 @@ app.get('/api/client/files', authenticateClient, async (req, res) => {
 
 app.post('/api/client/files/upload', authenticateClient, upload.single('file'), async (req, res) => {
     try {
-        const clientId = req.user.id;
+        const clientId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         const file = req.file;
         
         if (!file) {
@@ -14668,10 +14668,11 @@ app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
     const { subject, message, priority, category } = req.body;
     
     try {
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         // Get client info for the ticket
         const clientResult = await pool.query(
             'SELECT name, email, company FROM leads WHERE id = $1',
-            [req.user.id]
+            [resolvedId]
         );
         
         const client = clientResult.rows[0] || {};
@@ -14691,7 +14692,7 @@ app.post('/api/client/support/ticket', authenticateClient, async (req, res) => {
             VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', CURRENT_TIMESTAMP)
             RETURNING *
         `, [
-            req.user.id, 
+            resolvedId, 
             client.name || 'Unknown',
             client.email || '',
             subject, 
@@ -15406,6 +15407,31 @@ app.post('/api/client/subscription/:id/cancel', authenticateClient, async (req, 
 
 // POST /api/client/subscription/:id/change-plan — upgrade or downgrade (individual plans only)
 // Company workspace subscriptions are a fixed $84.99/user plan — no plan changes permitted.
+// POST /api/client/subscription/:id/reinstate — undo a canceling subscription
+app.post('/api/client/subscription/:id/reinstate', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const subResult = await pool.query(
+            `SELECT * FROM crm_subscriptions WHERE id=$1 AND lead_email=$2`,
+            [id, req.user.email]
+        );
+        if (!subResult.rows.length) return res.status(404).json({ success: false, message: 'Subscription not found' });
+        const sub = subResult.rows[0];
+        if (sub.status !== 'canceling') return res.status(400).json({ success: false, message: 'Subscription is not in a canceling state' });
+        if (!sub.stripe_subscription_id) return res.status(400).json({ success: false, message: 'No Stripe subscription on record. Contact support.' });
+
+        await stripe.subscriptions.update(sub.stripe_subscription_id, { cancel_at_period_end: false });
+        await pool.query(
+            `UPDATE crm_subscriptions SET status='active', cancel_at_period_end=FALSE, updated_at=NOW() WHERE id=$1`,
+            [id]
+        );
+        res.json({ success: true, message: 'Subscription reinstated successfully.' });
+    } catch(e) {
+        console.error('[CLIENT REINSTATE]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (req, res) => {
     try {
         const { id } = req.params;
@@ -22193,7 +22219,7 @@ app.get('/api/client/follow-ups', authenticateClient, async (req, res) => {
 
 app.get('/api/client/analytics', authenticateClient, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         const portalId = await getClientPortalId(userId);
         const { user_email } = req.query;
 
@@ -23554,13 +23580,14 @@ app.post('/api/client/customers', authenticateClient, async (req, res) => {
 
 app.post('/api/client/leads/:id/convert', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
+        const userId = await resolveLeadId(req.user.id, req.user.email);
+        if (!userId) return res.status(400).json({ success: false, message: 'Account not found. Please log out and log back in.' });
+        const portalId = await getClientPortalId(userId);
         const leadId = req.params.id;
-        // Verify lead belongs to portal and is not a portal account
-        const check = await pool.query(
-            `SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2 AND client_password IS NULL`,
-            [leadId, portalId]
-        );
+        // Verify lead belongs to this account (portal or individual)
+        const check = portalId
+            ? await pool.query(`SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2 AND client_password IS NULL`, [leadId, portalId])
+            : await pool.query(`SELECT id FROM leads WHERE id=$1 AND individual_owner_id=$2 AND client_password IS NULL`, [leadId, userId]);
         if (!check.rows.length) return res.status(404).json({ success: false, message: 'Lead not found' });
         // Convert to customer
         await pool.query(`

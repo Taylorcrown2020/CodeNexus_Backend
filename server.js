@@ -1678,18 +1678,8 @@ await client.query(`
 `);
 
 // Migrate client_tasks: add columns that may not exist in older DB instances
-for (const col of [
-    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS created_by_name VARCHAR(255)`,
-    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS assigned_to_name VARCHAR(255)`,
-    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
-    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`,
-    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP`,
-    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS related_to_type VARCHAR(100)`,
-    `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS related_to_id INTEGER`,
-]) {
-    await client.query(col).catch(() => {});
-}
-
+// NOTE: Run OUTSIDE the transaction via pool.query to avoid poisoning the transaction
+// if any earlier statement failed. These are safe to run multiple times.
 // Create indexes for better performance
 await client.query(`
     CREATE INDEX IF NOT EXISTS idx_client_uploads_lead 
@@ -20875,7 +20865,11 @@ app.get('/api/client-track/click/:logId', async (req, res) => {
             `, [lead_id]);
 
             if (!wasHot) {
-                // Lead just turned hot — pause ALL active chain queue entries (cold sequences stop)
+                // Lead just turned hot — mark the email log row that triggered it
+                await pool.query(`
+                    UPDATE client_email_log SET lead_became_hot=TRUE WHERE id=$1
+                `, [logId]);
+                // Pause ALL active chain queue entries (cold sequences stop)
                 await pool.query(`
                     UPDATE client_chain_queue SET is_active=FALSE
                     WHERE lead_id=$1 AND is_active=TRUE
@@ -20916,6 +20910,8 @@ app.post('/api/client-brevo/webhook/:portalId', async (req, res) => {
                 const wasHot = before.rows[0]?.lead_temperature === 'hot';
                 await pool.query(`UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at,NOW()), last_contact_date=NULL, follow_up_count=0, updated_at=NOW() WHERE id=$1 AND (lead_temperature IS NULL OR lead_temperature != 'hot')`, [log.lead_id]);
                 if (!wasHot) {
+                    // Mark the email that triggered the hot conversion
+                    await pool.query(`UPDATE client_email_log SET lead_became_hot=TRUE WHERE id=$1`, [log.id]);
                     await pool.query(`UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1 AND is_active=TRUE`, [log.lead_id]);
                     console.log(`[CLIENT BREVO]  Lead ${log.lead_id} HOT via Brevo click — cold chains paused`);
                 }
@@ -25852,14 +25848,10 @@ app.get('/schedule-form.html', async (req, res) => {
             }
 
             const formContent = buildScheduleFormContent();
-            // Render using uid instead of portalId — pass uid as PORTAL_ID placeholder,
-            // the submit handler sends it as uid field
+            // Inject UID constant into the page JS — the form's submitSchedForm already
+            // checks `typeof UID !== 'undefined'` and uses it instead of portalId.
             const html = portalFormHtml({ title: 'Schedule an Appointment', formContent, portalId: '', brand })
-                .replace("const PORTAL_ID = '';", `const PORTAL_ID = ''; const UID = '${uid}';`)
-                .replace(
-                    "portalId: PORTAL_ID, leadId: LEAD_ID,",
-                    "uid: UID, leadId: LEAD_ID,"
-                );
+                .replace("const PORTAL_ID = '';", `const PORTAL_ID = ''; const UID = '${uid}';`);
             return res.send(html);
         } catch(e) {
             console.error('[SCHEDULE FORM uid]', e);
@@ -25878,10 +25870,85 @@ app.get('/schedule-form.html', async (req, res) => {
     }
 });
 
-// GET /contact-form.html?portal=XXX&lead=YYY
+// GET /contact-form.html?portal=XXX&lead=YYY  (workspace)
+// GET /contact-form.html?uid=LEAD_ID&lead=YYY  (individual)
 app.get('/contact-form.html', async (req, res) => {
     const portalId = req.query.portal;
-    if (!portalId) return res.status(400).send('Portal ID required');
+    const uid      = req.query.uid;
+
+    // ── Individual user path ──────────────────────────────────────────────────
+    if (!portalId && uid) {
+        try {
+            const leadRes = await pool.query(
+                `SELECT l.id, l.name, l.email FROM leads WHERE l.id=$1 AND l.client_password IS NOT NULL LIMIT 1`,
+                [uid]
+            );
+            if (!leadRes.rows.length) return res.status(404).send('Account not found');
+            const lr = leadRes.rows[0];
+            const settingsRes = await pool.query(
+                `SELECT company_name, accent_color, company_logo_url, sender_name
+                 FROM client_email_settings WHERE LOWER(sender_email)=LOWER($1) ORDER BY updated_at DESC LIMIT 1`,
+                [lr.email]
+            );
+            const s = settingsRes.rows[0] || {};
+            const brand = {
+                companyName: s.company_name || s.sender_name || lr.name || 'My Business',
+                accentColor: s.accent_color || '#6366f1',
+                logoUrl:     s.company_logo_url || null,
+            };
+            const formContent = `
+<form id="contactForm" onsubmit="submitContactForm(event)">
+    <div class="form-field"><label class="form-label">Full Name *</label><input class="form-input" id="cf_name" placeholder="Your name" required></div>
+    <div class="form-field"><label class="form-label">Email *</label><input class="form-input" id="cf_email" type="email" placeholder="your@email.com" required></div>
+    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="cf_phone" placeholder="(555) 000-0000"></div>
+    <div class="form-field"><label class="form-label">Message *</label><textarea class="form-input" id="cf_msg" placeholder="How can we help?" required></textarea></div>
+    <button class="submit-btn" type="submit" id="cf_btn">Send Message</button>
+</form>
+<script>
+async function submitContactForm(e) {
+    e.preventDefault();
+    const btn = document.getElementById('cf_btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    try {
+        const res = await fetch(BASE + '/api/client-forms/contact', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                uid: UID, leadId: LEAD_ID,
+                name: document.getElementById('cf_name').value,
+                email: document.getElementById('cf_email').value,
+                phone: document.getElementById('cf_phone').value,
+                message: document.getElementById('cf_msg').value,
+            })
+        });
+        const d = await res.json();
+        if (d.success) {
+            document.getElementById('formContent').style.display = 'none';
+            document.getElementById('successMsg').style.display = 'block';
+            document.getElementById('successText').textContent = 'Message received! We\\u2019ll get back to you soon.';
+        } else {
+            errEl.textContent = d.message || 'Something went wrong. Please try again.';
+            errEl.style.display = 'block';
+            btn.disabled = false; btn.textContent = 'Send Message';
+        }
+    } catch(err) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Send Message';
+    }
+}
+</script>`;
+            const html = portalFormHtml({ title: 'Get In Touch', formContent, portalId: '', brand })
+                .replace("const PORTAL_ID = '';", `const PORTAL_ID = ''; const UID = '${uid}';`);
+            return res.send(html);
+        } catch(e) {
+            console.error('[CONTACT FORM uid]', e);
+            return res.status(500).send('Error loading form');
+        }
+    }
+
+    if (!portalId) return res.status(400).send('Portal ID or UID required');
     try {
         const brand = await getPortalBranding(portalId);
         const formContent = `
@@ -25937,9 +26004,36 @@ async function submitContactForm(e) {
 // POST /api/client-forms/contact
 app.post('/api/client-forms/contact', async (req, res) => {
     try {
-        const { portalId, name, email, phone, message, leadId } = req.body;
-        if (!portalId || !email) return res.status(400).json({ success: false, message: 'Missing required fields' });
+        const { portalId, uid, name, email, phone, message, leadId } = req.body;
+        if ((!portalId && !uid) || !email) return res.status(400).json({ success: false, message: 'Missing required fields' });
 
+        // ── Individual user path (uid = owner's lead ID) ───────────────────────
+        if (uid && !portalId) {
+            const ownerRes = await pool.query('SELECT id, email FROM leads WHERE id=$1 AND client_password IS NOT NULL LIMIT 1', [uid]);
+            if (!ownerRes.rows.length) return res.status(404).json({ success: false, message: 'Account not found' });
+            const owner = ownerRes.rows[0];
+            let lead;
+            const existing = await pool.query('SELECT * FROM leads WHERE LOWER(email)=LOWER($1) AND individual_owner_id=$2', [email, uid]);
+            if (existing.rows.length) {
+                lead = existing.rows[0];
+                await pool.query(`UPDATE leads SET lead_temperature='hot', became_hot_at=COALESCE(became_hot_at,NOW()), status='contacted', updated_at=NOW() WHERE id=$1`, [lead.id]);
+            } else {
+                const nl = await pool.query(
+                    `INSERT INTO leads (name, email, phone, notes, source, lead_temperature, became_hot_at, individual_owner_id, status, created_at, updated_at)
+                     VALUES ($1,$2,$3,$4,'contact-form','hot',NOW(),$5,'new',NOW(),NOW()) RETURNING *`,
+                    [name, email, phone||null, message||null, uid]
+                );
+                lead = nl.rows[0];
+            }
+            await pool.query(
+                `INSERT INTO client_email_log (lead_id, assigned_to_user_email, email_type, status, sent_at, lead_became_hot, subject, to_email)
+                 VALUES ($1,$2,'form-contact','submitted',NOW(),TRUE,'Contact Form Submission',$3)`,
+                [lead.id, owner.email, email]
+            ).catch(()=>{});
+            return res.json({ success: true, leadId: lead.id });
+        }
+
+        // ── Workspace/portal path ─────────────────────────────────────────────
         const settingsRes = await pool.query('SELECT * FROM client_email_settings WHERE client_portal_id=$1 LIMIT 1', [portalId]);
         const settings = settingsRes.rows[0] || {};
 
@@ -26093,6 +26187,22 @@ async function startServer() {
             `);
             console.log('[STARTUP] company_users.access_until + cancelled_date + sender_name + sms columns ensured');
         } catch(e) { console.warn('[STARTUP] company_users column migration skipped:', e.message); }
+
+        // ── client_tasks: add columns added after initial schema ─────────────────
+        // Must run OUTSIDE the initializeDatabase transaction to avoid poisoning it.
+        for (const col of [
+            `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS created_by_name VARCHAR(255)`,
+            `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS assigned_to_name VARCHAR(255)`,
+            `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
+            `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`,
+            `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP`,
+            `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS related_to_type VARCHAR(100)`,
+            `ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS related_to_id INTEGER`,
+        ]) {
+            await pool.query(col).catch(() => {});
+        }
+        console.log('[STARTUP] client_tasks column migrations applied');
+
         
         // ── STARTUP: Purge orphaned crm_subscriptions (deleted customers whose rows survived) ──
         try {

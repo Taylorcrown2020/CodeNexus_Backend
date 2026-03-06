@@ -7193,7 +7193,10 @@ async function loadAnalytics() {
                 </div>`;
         }
 
+        const marketingEnabled = S.planLimits?.marketingEnabled === true;
+
         el.innerHTML = `
+            ${marketingEnabled ? `
             <!-- Marketing Email Performance -->
             <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#6366f1;">Marketing Email Performance</div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px;">
@@ -7205,6 +7208,7 @@ async function loadAnalytics() {
             <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:var(--r-md);padding:8px 14px;font-size:11px;color:#a5b4fc;margin-bottom:20px;">
                 Marketing emails are mass campaigns sent from the Email Marketing tab.
             </div>
+            ` : ''}
 
             <!-- Follow-up Email Performance -->
             <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#f59e0b;">Follow-up Email Performance</div>

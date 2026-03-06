@@ -169,9 +169,11 @@ async function resolveLeadId(jwtId, jwtEmail) {
  */
 async function getClientPlanLimits(userId) {
     try {
+        // Resolve stale JWT ids before any DB lookups
+        const resolvedId = await resolveLeadId(userId, null).catch(() => userId) || userId;
         // 1. Try via portal ID (workspace users + individual users who have one)
         const leadRow = await pool.query(
-            'SELECT client_portal_id, email FROM leads WHERE id=$1', [userId]
+            'SELECT client_portal_id, email FROM leads WHERE id=$1', [resolvedId]
         );
         const { client_portal_id: portalId, email } = leadRow.rows[0] || {};
 
@@ -2714,7 +2716,9 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
             billing_cycle_anchor: isUpgrade ? 'now' : 'unchanged'
         });
         
-        // Update in database
+        // Update in database — must set status='active' and cancel_at_period_end=FALSE
+        // to reactivate any subscription that was in 'canceling' state
+        const targetQty = parseInt(newUserCount) || 1;
         await pool.query(
             `UPDATE crm_subscriptions 
              SET package_key = $1, 
@@ -2722,9 +2726,12 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
                  user_count = $3, 
                  price_per_user = $4, 
                  monthly_total = $5,
+                 status = 'active',
+                 cancel_at_period_end = FALSE,
+                 stripe_price_id = $6,
                  updated_at = NOW()
-             WHERE id = $6`,
-            [newPackageKey, newPlan.name, newUserCount, newPlan.price, newMonthlyTotal, id]
+             WHERE id = $7`,
+            [newPackageKey, newPlan.name, targetQty, newPlan.price, newMonthlyTotal, newPlan.stripePriceId, id]
         );
         
         // Log event
@@ -9470,26 +9477,40 @@ app.patch('/api/client/leads/:id', authenticateClient, async (req, res) => {
 // ========================================
 app.delete('/api/client/leads/:id', authenticateClient, async (req, res) => {
     try {
-        const userId = await resolveLeadId(req.user.id, req.user.email);
-        if (!userId) return res.status(400).json({ success: false, message: 'Account not found. Please log out and log back in.' });
+        const userId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         const leadId = req.params.id;
 
-        // Verify ownership — works for both portal users and individual account owners
+        // Verify ownership. Individual accounts own leads via individual_owner_id OR
+        // via the email on the account (covers leads created before id-stamping was added).
+        // Portal accounts own leads via client_portal_id.
         const clientPortalId = await getClientPortalId(userId);
+
+        // Get the account email for fallback matching
+        const acctRow = await pool.query('SELECT email FROM leads WHERE id=$1', [userId]);
+        const acctEmail = acctRow.rows[0]?.email || req.user.email;
 
         const check = await pool.query(
             `SELECT id, email FROM leads
              WHERE id = $1
                AND client_password IS NULL
                AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))
-               AND (client_portal_id = $2 OR individual_owner_id = $3)`,
-            [leadId, clientPortalId, userId]
+               AND (
+                   client_portal_id = $2
+                   OR individual_owner_id = $3
+                   OR (individual_owner_id IS NULL AND $4 IS NOT NULL
+                       AND EXISTS (
+                           SELECT 1 FROM leads owner
+                           WHERE owner.id = $3
+                              OR LOWER(owner.email) = LOWER($4)
+                       ))
+               )`,
+            [leadId, clientPortalId, userId, acctEmail]
         );
         if (!check.rows.length) {
             return res.status(404).json({ success: false, message: 'Lead not found or cannot be deleted' });
         }
 
-        // Safe delete: only remove CRM-related data for this lead, nothing subscription-related
+        // Safe delete — only CRM data, never subscription/auth data
         await pool.query(`DELETE FROM client_chain_queue WHERE lead_id = $1`, [leadId]).catch(() => {});
         await pool.query(`DELETE FROM lead_notes WHERE lead_id = $1`, [leadId]).catch(() => {});
         await pool.query(`DELETE FROM client_email_log WHERE lead_id = $1`, [leadId]).catch(() => {});
@@ -13607,8 +13628,9 @@ app.get('/api/analytics/revenue', authenticateToken, async (req, res) => {
 // GET /api/client/plan-limits — current plan, limits, and live usage counts
 app.get('/api/client/plan-limits', authenticateClient, async (req, res) => {
     try {
-        const limits    = await getClientPlanLimits(req.user.id);
-        const portalId  = await getClientPortalId(req.user.id);
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const limits    = await getClientPlanLimits(resolvedId);
+        const portalId  = await getClientPortalId(resolvedId);
         const recordCount    = (limits.maxRecords   !== null && portalId) ? await getClientRecordCount(portalId) : 0;
         const followUpsToday = (limits.maxFollowUpsDay !== null)          ? await getFollowUpsTodayCount(req.user.email) : 0;
         res.json({ success: true, limits, recordCount, followUpsToday });
@@ -15583,170 +15605,7 @@ app.post('/api/client/subscription/:id/reinstate', authenticateClient, async (re
     }
 });
 
-app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { newPackageKey, newUserCount } = req.body;
-
-        // Verify ownership — individual owns via lead_email; company admin owns via client_portal_id
-        let subResult = await pool.query(
-            `SELECT * FROM crm_subscriptions WHERE id = $1 AND lead_email = $2`,
-            [id, req.user.email]
-        );
-
-        // If not found by email, check if the requester is a company admin for the company that owns this sub
-        if (!subResult.rows.length) {
-            const adminCheck = await pool.query(
-                `SELECT client_portal_id FROM leads
-                 WHERE LOWER(email)=LOWER($1) AND (is_company_admin=TRUE OR is_co_admin=TRUE)`,
-                [req.user.email]
-            );
-            if (adminCheck.rows[0]?.client_portal_id) {
-                subResult = await pool.query(
-                    `SELECT * FROM crm_subscriptions WHERE id=$1 AND client_portal_id=$2`,
-                    [id, adminCheck.rows[0].client_portal_id]
-                );
-            }
-        }
-
-        if (subResult.rows.length === 0) {
-            return res.status(404).json({ success: false, message: 'Subscription not found' });
-        }
-
-        const sub = subResult.rows[0];
-
-        // Company workspace subscriptions are a fixed $84.99/user plan — no plan changes allowed.
-        // The only option for a company subscription is to cancel it.
-        const currentPkgMeta = servicePackages[sub.package_key];
-        if (currentPkgMeta?.isCompanyPlan) {
-            return res.status(400).json({
-                success: false,
-                message: 'Company workspace subscriptions cannot be changed. The plan is $84.99/user. To cancel, use the Cancel Subscription option.'
-            });
-        }
-
-        if (!['active', 'canceling'].includes(sub.status)) {
-            return res.status(400).json({ success: false, message: 'Subscription must be active to change plans' });
-        }
-
-        // Validate new plan — individual plans only
-        const validPlans = ['crm-essential', 'crm-professional', 'crm-enterprise', 'crm-workspace'];
-        if (newPackageKey && !validPlans.includes(newPackageKey)) {
-            return res.status(400).json({ success: false, message: 'Invalid plan' });
-        }
-        // Prevent switching an individual plan to a company plan and vice versa
-        const newPkgMeta = servicePackages[newPackageKey || sub.package_key];
-        if (newPkgMeta?.isCompanyPlan) {
-            return res.status(400).json({ success: false, message: 'Cannot switch to a company plan via this endpoint. Please contact support.' });
-        }
-
-        const targetPkgKey  = newPackageKey || sub.package_key;
-        const targetPkg     = servicePackages[targetPkgKey];
-        const targetPriceId = targetPkg?.stripePriceId;
-        const targetQty     = parseInt(newUserCount) || sub.user_count;
-
-        if (!targetPriceId) {
-            return res.status(400).json({ success: false, message: 'Plan price not configured. Please contact support.' });
-        }
-
-        // Fetch the live subscription from Stripe to get the item ID
-        const stripeSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
-        const itemId    = stripeSub.items.data[0].id;
-
-        // Update via Stripe — changes take effect at next billing period (no proration)
-        await stripe.subscriptions.update(sub.stripe_subscription_id, {
-            items: [{ id: itemId, price: targetPriceId, quantity: targetQty }],
-            proration_behavior: 'none',    // No proration — changes at renewal
-            billing_cycle_anchor: 'unchanged',  // Keep current billing cycle
-            cancel_at_period_end: false   // reactivate if was canceling
-        });
-
-        // Update our DB
-        const newMonthly = targetPkg.price * targetQty;
-        await pool.query(`
-            UPDATE crm_subscriptions
-            SET package_key = $1, package_name = $2, user_count = $3,
-                price_per_user = $4, monthly_total = $5, stripe_price_id = $6,
-                status = 'active', cancel_at_period_end = FALSE, updated_at = NOW()
-            WHERE id = $7
-        `, [targetPkgKey, targetPkg.name, targetQty, targetPkg.price, newMonthly, targetPriceId, id]);
-
-        await logSubscriptionEvent(sub.stripe_subscription_id, sub.lead_email,
-            'subscription_updated', newMonthly,
-            `Plan changed to ${targetPkg.name} × ${targetQty} users by customer`);
-
-        // Recalculate total MRR for this customer across all their subscriptions
-        const mrrResult = await pool.query(`
-            SELECT COALESCE(SUM(monthly_total), 0) as total_mrr
-            FROM crm_subscriptions
-            WHERE lead_email = $1 AND status IN ('active', 'past_due', 'canceling')
-        `, [sub.lead_email]);
-        
-        const totalMRR = parseFloat(mrrResult.rows[0]?.total_mrr || 0);
-        console.log(`[CLIENT SUB] Total MRR for ${sub.lead_email}: $${totalMRR.toFixed(2)} across all subscriptions`);
-
-        // Send email confirming the plan change
-        const isUpgrade = targetPkg.price > (sub.monthly_total / sub.user_count);
-        const changeType = isUpgrade ? 'upgrade' : 'downgrade';
-        
-        try {
-            const changeEmail = buildEmailHTML(
-                '<p>Hi ' + (sub.lead_name || 'there') + ',</p>' +
-                '<p>Your subscription plan change has been confirmed. Starting at your next billing period, your plan will ' + changeType + ' to <strong>' + targetPkg.name + '</strong>.</p>' +
-                '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0;border-radius:6px;overflow:hidden;border:1px solid #e8e8e8;">' +
-                '<tr><td style="background:#f7f9fb;padding:14px 24px;border-bottom:1px solid #e8e8e8;">' +
-                '<span style="font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#999;">Plan Change Summary</span>' +
-                '</td></tr>' +
-                '<tr><td style="padding:0;">' +
-                '<table width="100%" cellpadding="0" cellspacing="0" border="0">' +
-                '<tr><td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Current Plan</td>' +
-                '<td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">' + sub.package_name + ' (' + sub.user_count + ' users)</td></tr>' +
-                '<tr><td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">New Plan</td>' +
-                '<td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#222;text-align:right;">' + targetPkg.name + ' (' + targetQty + ' users)</td></tr>' +
-                '<tr><td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;">Current Monthly</td>' +
-                '<td style="padding:13px 24px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#888;text-align:right;">$' + sub.monthly_total.toFixed(2) + '</td></tr>' +
-                '<tr style="background:#f7f9fb;"><td style="padding:16px 24px;font-size:14px;font-weight:800;color:#222;">New Monthly</td>' +
-                '<td style="padding:16px 24px;font-size:22px;font-weight:800;color:' + (isUpgrade ? '#FF6B35' : '#1a7a3a') + ';text-align:right;">$' + newMonthly.toFixed(2) + '</td></tr>' +
-                '</table></td></tr></table>' +
-                '<p style="background:#f7f9fb;border:1px solid #e8e8e8;border-radius:6px;padding:14px;font-size:13px;color:#555;margin:28px 0;">' +
-                '<strong>Effective Date:</strong> Your next billing period. You will continue paying $' + sub.monthly_total.toFixed(2) + '/month until then.' +
-                '</p>' +
-                '<p style="font-size:13px;color:#888;">Questions? Call us at <strong>(512) 980-0393</strong> or reply to this email.</p>',
-                {
-                    eyebrow: 'SUBSCRIPTION ' + changeType.toUpperCase(),
-                    headline: 'Your plan change is confirmed.',
-                    accentColor: isUpgrade ? '#FF6B35' : '#1a7a3a',
-                    tagline: 'MANAGE LEADS. CLOSE DEALS.',
-                    ctaLabel: 'View Subscription',
-                    ctaUrl: BASE_URL + '/client_portal.html'
-                }
-            );
-
-            await sendTrackedEmail({
-                leadId: sub.lead_id || null,
-                to: sub.lead_email,
-                subject: 'Subscription ' + (isUpgrade ? 'Upgrade' : 'Downgrade') + ' Confirmed — ' + targetPkg.name,
-                html: changeEmail,
-                emailType: 'subscription_change'
-            });
-            
-            console.log('[CLIENT SUB] Plan change email sent to ' + sub.lead_email);
-        } catch (emailErr) {
-            console.error('[CLIENT SUB] Plan change email failed:', emailErr.message);
-        }
-
-        res.json({
-            success: true,
-            message: `Plan change scheduled. Starting at your next billing period, you'll be on ${targetPkg.name} for ${targetQty} user${targetQty > 1 ? 's' : ''} at $${newMonthly.toFixed(2)}/month.`,
-            newMonthly: newMonthly.toFixed(2),
-            effectiveDate: 'next_billing_period'
-        });
-
-    } catch (error) {
-        console.error('[CLIENT SUB] Change plan error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
+// (change-plan: duplicate removed — primary registration handles all plan changes)
 
 // POST /api/client/subscription/:id/billing-portal — open Stripe self-service portal
 app.post('/api/client/subscription/:id/billing-portal', authenticateClient, async (req, res) => {
@@ -23786,18 +23645,26 @@ app.get('/api/client/customers', authenticateClient, async (req, res) => {
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
+// PUT /api/client/customers/:id — Edit a customer record
 app.put('/api/client/customers/:id', authenticateClient, async (req, res) => {
     try {
-        const userId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const userId   = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         const portalId = await getClientPortalId(userId);
-        const { id } = req.params;
+        const { id }   = req.params;
         const { name, email, phone, company, notes } = req.body;
         if (!name) return res.status(400).json({ success: false, message: 'Name required' });
 
-        // Verify ownership before updating
+        // Verify ownership
+        const acctRow  = await pool.query('SELECT email FROM leads WHERE id=$1', [userId]);
+        const acctEmail = acctRow.rows[0]?.email || req.user.email;
         const check = portalId
-            ? await pool.query(`SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2 AND is_customer=TRUE AND client_password IS NULL`, [id, portalId])
-            : await pool.query(`SELECT id FROM leads WHERE id=$1 AND individual_owner_id=$2 AND is_customer=TRUE AND client_password IS NULL`, [id, userId]);
+            ? await pool.query(
+                `SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2 AND is_customer=TRUE AND client_password IS NULL`,
+                [id, portalId])
+            : await pool.query(
+                `SELECT id FROM leads WHERE id=$1 AND (individual_owner_id=$2) AND is_customer=TRUE AND client_password IS NULL`,
+                [id, userId]);
+
         if (!check.rows.length) return res.status(404).json({ success: false, message: 'Customer not found' });
 
         const result = await pool.query(
@@ -23805,7 +23672,10 @@ app.put('/api/client/customers/:id', authenticateClient, async (req, res) => {
             [name, email||null, phone||null, company||null, notes||null, id]
         );
         res.json({ success: true, customer: result.rows[0] });
-    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+    } catch(e) {
+        console.error('[PUT CUSTOMERS]', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
 });
 
 app.post('/api/client/customers', authenticateClient, async (req, res) => {

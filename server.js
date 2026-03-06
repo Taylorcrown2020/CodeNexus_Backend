@@ -9782,7 +9782,8 @@ app.delete('/api/client/deals/:id', authenticateClient, async (req, res) => {
 // GET /api/client/tasks - List tasks
 app.get('/api/client/tasks', authenticateClient, async (req, res) => {
     try {
-        const userIds = await getCompanyUserIds(req.user.id);
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const userIds = await getCompanyUserIds(resolvedId);
         
         const result = await pool.query(
             `SELECT * FROM client_tasks 
@@ -9827,7 +9828,8 @@ app.put('/api/client/tasks/:id', authenticateClient, async (req, res) => {
     try {
         const { id } = req.params;
         const { title, description, dueDate, priority, completed } = req.body;
-        const userIds = await getCompanyUserIds(req.user.id);
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const userIds = await getCompanyUserIds(resolvedId);
         
         const result = await pool.query(
             `UPDATE client_tasks 
@@ -9854,7 +9856,8 @@ app.put('/api/client/tasks/:id', authenticateClient, async (req, res) => {
 app.delete('/api/client/tasks/:id', authenticateClient, async (req, res) => {
     try {
         const { id } = req.params;
-        const userIds = await getCompanyUserIds(req.user.id);
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const userIds = await getCompanyUserIds(resolvedId);
         
         await pool.query(
             `DELETE FROM client_tasks WHERE id = $1 AND client_id = ANY($2)`,
@@ -22212,10 +22215,10 @@ app.post('/api/client/email/send', authenticateClient, async (req, res) => {
                     ? `${BASE_URL}/api/client-unsub/${portalId}?email=${encodeURIComponent(lead.email)}`
                     : `${BASE_URL}/api/client-unsub-individual/${userId}?email=${encodeURIComponent(lead.email)}`;
                 const contactFormUrl = t.include_contact_form
-                    ? (portalId ? `${BASE_URL}/contact-form.html?portal=${portalId}&lead=${lead.id}` : `${BASE_URL}/contact-form.html?uid=${userId}&lead=${lead.id}`)
+                    ? (portalId ? `${BASE_URL}/contact-form.html?portal=${portalId}&lead=${lead.id}` : (userId ? `${BASE_URL}/contact-form.html?uid=${userId}&lead=${lead.id}` : ''))
                     : '';
                 const scheduleFormUrl = t.include_schedule_btn
-                    ? (portalId ? `${BASE_URL}/schedule-form.html?portal=${portalId}&lead=${lead.id}` : `${BASE_URL}/schedule-form.html?uid=${userId}&lead=${lead.id}`)
+                    ? (portalId ? `${BASE_URL}/schedule-form.html?portal=${portalId}&lead=${lead.id}` : (userId ? `${BASE_URL}/schedule-form.html?uid=${userId}&lead=${lead.id}` : ''))
                     : '';
                 const html = buildClientEmailHTML(t.body_html, {
                     eyebrow: t.eyebrow, headline: t.headline, ctaLabel: t.cta_label, ctaUrl: settings?.website_url,
@@ -23780,6 +23783,28 @@ app.get('/api/client/customers', authenticateClient, async (req, res) => {
             `, [userId]);
         }
         res.json({ success: true, customers: result.rows });
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.put('/api/client/customers/:id', authenticateClient, async (req, res) => {
+    try {
+        const userId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const portalId = await getClientPortalId(userId);
+        const { id } = req.params;
+        const { name, email, phone, company, notes } = req.body;
+        if (!name) return res.status(400).json({ success: false, message: 'Name required' });
+
+        // Verify ownership before updating
+        const check = portalId
+            ? await pool.query(`SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2 AND is_customer=TRUE AND client_password IS NULL`, [id, portalId])
+            : await pool.query(`SELECT id FROM leads WHERE id=$1 AND individual_owner_id=$2 AND is_customer=TRUE AND client_password IS NULL`, [id, userId]);
+        if (!check.rows.length) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+        const result = await pool.query(
+            `UPDATE leads SET name=$1, email=$2, phone=$3, company=$4, notes=$5, updated_at=NOW() WHERE id=$6 RETURNING *`,
+            [name, email||null, phone||null, company||null, notes||null, id]
+        );
+        res.json({ success: true, customer: result.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 

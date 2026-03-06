@@ -1651,6 +1651,32 @@ await client.query(`
     )
 `);
 
+// Client tasks table (used by client portal task management)
+await client.query(`
+    CREATE TABLE IF NOT EXISTS client_tasks (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        title VARCHAR(500) NOT NULL,
+        description TEXT,
+        due_date TIMESTAMP,
+        priority VARCHAR(50) DEFAULT 'medium',
+        status VARCHAR(50) DEFAULT 'pending',
+        completed BOOLEAN DEFAULT FALSE,
+        completed_at TIMESTAMP,
+        related_to_type VARCHAR(100),
+        related_to_id INTEGER,
+        assigned_to_name VARCHAR(255),
+        created_by_name VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_client_tasks_client
+    ON client_tasks(client_id, created_at DESC)
+`);
+
 // Create indexes for better performance
 await client.query(`
     CREATE INDEX IF NOT EXISTS idx_client_uploads_lead 
@@ -9772,21 +9798,24 @@ app.get('/api/client/tasks', authenticateClient, async (req, res) => {
 // POST /api/client/tasks - Create task
 app.post('/api/client/tasks', authenticateClient, async (req, res) => {
     try {
-        const { title, description, dueDate, priority, relatedToType, relatedToId } = req.body;
+        const { title, description, dueDate, priority, relatedToType, relatedToId, createdByName, assignedToName } = req.body;
+        if (!title) return res.status(400).json({ success: false, message: 'Title is required' });
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         
         const result = await pool.query(
             `INSERT INTO client_tasks (
                 client_id, title, description, due_date, priority, 
-                related_to_type, related_to_id, created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+                related_to_type, related_to_id, created_by_name, assigned_to_name, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
             RETURNING *`,
-            [req.user.id, title, description, dueDate, priority, relatedToType, relatedToId]
+            [resolvedId, title, description || null, dueDate || null, priority || 'medium',
+             relatedToType || null, relatedToId || null, createdByName || null, assignedToName || null]
         );
         
         res.json({ success: true, task: result.rows[0] });
     } catch (error) {
         console.error('[TASKS] Create error:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        res.status(500).json({ success: false, message: error.message || 'Server error' });
     }
 });
 
@@ -9833,6 +9862,29 @@ app.delete('/api/client/tasks/:id', authenticateClient, async (req, res) => {
     } catch (error) {
         console.error('[TASKS] Delete error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// POST /api/client/tasks/:id/toggle - Toggle task completion (alias)
+app.post('/api/client/tasks/:id/toggle', authenticateClient, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userIds = await getCompanyUserIds(req.user.id);
+        const current = await pool.query(
+            `SELECT completed FROM client_tasks WHERE id=$1 AND client_id=ANY($2)`, [id, userIds]
+        );
+        if (!current.rows.length) return res.status(404).json({ success: false, message: 'Task not found' });
+        const nowComplete = !current.rows[0].completed;
+        const result = await pool.query(
+            `UPDATE client_tasks SET completed=$1, status=$2,
+             completed_at=CASE WHEN $1 THEN NOW() ELSE NULL END, updated_at=NOW()
+             WHERE id=$3 AND client_id=ANY($4) RETURNING *`,
+            [nowComplete, nowComplete ? 'completed' : 'pending', id, userIds]
+        );
+        res.json({ success: true, task: result.rows[0] });
+    } catch(e) {
+        console.error('[TASKS] Toggle error:', e);
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 
@@ -23588,51 +23640,73 @@ app.post('/api/client/leads/:id/products', authenticateClient, async (req, res) 
 
 app.get('/api/client/customers', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
-        const result = await pool.query(`
-            SELECT l.*, cu.user_name as assigned_to_name
-            FROM leads l
-            LEFT JOIN company_users cu ON l.crm_assigned_to = cu.id
-            WHERE l.client_portal_id=$1
-              AND l.is_customer = TRUE
-              AND l.client_password IS NULL
-              AND (l.source IS NULL OR l.source NOT IN ('company-user','subscription-direct'))
-            ORDER BY l.updated_at DESC NULLS LAST
-        `, [portalId]);
+        const userId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const portalId = await getClientPortalId(userId);
+        let result;
+        if (portalId) {
+            result = await pool.query(`
+                SELECT l.*, cu.user_name as assigned_to_name
+                FROM leads l
+                LEFT JOIN company_users cu ON l.crm_assigned_to = cu.id
+                WHERE l.client_portal_id=$1
+                  AND l.is_customer = TRUE
+                  AND l.client_password IS NULL
+                  AND (l.source IS NULL OR l.source NOT IN ('company-user','subscription-direct'))
+                ORDER BY l.updated_at DESC NULLS LAST
+            `, [portalId]);
+        } else {
+            // Individual user — query by individual_owner_id
+            result = await pool.query(`
+                SELECT l.*
+                FROM leads l
+                WHERE l.individual_owner_id=$1
+                  AND l.is_customer = TRUE
+                  AND l.client_password IS NULL
+                ORDER BY l.updated_at DESC NULLS LAST
+            `, [userId]);
+        }
         res.json({ success: true, customers: result.rows });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.post('/api/client/customers', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+        const userId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const portalId = await getClientPortalId(userId);
         const { name, email, phone, company, notes } = req.body;
         if (!name) return res.status(400).json({ success: false, message: 'Name required' });
-        // Check if lead already exists for this portal
+
+        // Check if lead already exists
         if (email) {
-            const existing = await pool.query(
-                `SELECT id FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2 AND client_password IS NULL`,
-                [email, portalId]
-            );
+            const existingQ = portalId
+                ? `SELECT id FROM leads WHERE LOWER(email)=LOWER($1) AND client_portal_id=$2 AND client_password IS NULL`
+                : `SELECT id FROM leads WHERE LOWER(email)=LOWER($1) AND individual_owner_id=$2 AND client_password IS NULL`;
+            const existing = await pool.query(existingQ, [email, portalId || userId]);
             if (existing.rows.length) {
-                // Convert existing lead to customer
                 await pool.query(
                     `UPDATE leads SET is_customer=TRUE, customer_status='active', status='closed', updated_at=NOW() WHERE id=$1`,
                     [existing.rows[0].id]
                 );
-                // Remove from follow-up chains
-                await pool.query(`UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1`, [existing.rows[0].id]);
+                await pool.query(`UPDATE client_chain_queue SET is_active=FALSE WHERE lead_id=$1`, [existing.rows[0].id]).catch(()=>{});
                 const updated = await pool.query(`SELECT * FROM leads WHERE id=$1`, [existing.rows[0].id]);
                 return res.json({ success: true, customer: updated.rows[0] });
             }
         }
-        const result = await pool.query(`
-            INSERT INTO leads (name, email, phone, company, notes, source, is_customer, customer_status,
-                status, lead_temperature, client_portal_id, created_at, updated_at)
-            VALUES ($1,$2,$3,$4,$5,'crm-portal',TRUE,'active','closed','cold',$6,NOW(),NOW()) RETURNING *
-        `, [name, email||null, phone||null, company||null, notes||null, portalId]);
+
+        let result;
+        if (portalId) {
+            result = await pool.query(`
+                INSERT INTO leads (name, email, phone, company, notes, source, is_customer, customer_status,
+                    status, lead_temperature, client_portal_id, created_at, updated_at)
+                VALUES ($1,$2,$3,$4,$5,'crm-portal',TRUE,'active','closed','cold',$6,NOW(),NOW()) RETURNING *
+            `, [name, email||null, phone||null, company||null, notes||null, portalId]);
+        } else {
+            result = await pool.query(`
+                INSERT INTO leads (name, email, phone, company, notes, source, is_customer, customer_status,
+                    status, lead_temperature, individual_owner_id, created_at, updated_at)
+                VALUES ($1,$2,$3,$4,$5,'crm-portal',TRUE,'active','closed','cold',$6,NOW(),NOW()) RETURNING *
+            `, [name, email||null, phone||null, company||null, notes||null, userId]);
+        }
         res.json({ success: true, customer: result.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -24744,7 +24818,7 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
             // Check for an active subscription by email — include company subscriptions for
             // individual users who have is_company_subscription=TRUE on their personal plan
             const subCheck = await pool.query(
-                `SELECT id FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status='active' LIMIT 1`,
+                `SELECT id FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status IN ('active','canceling') LIMIT 1`,
                 [lead.email]
             );
             if (!subCheck.rows.length) {
@@ -24775,13 +24849,13 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
             // the lead id has drifted or was remapped.
             const userEmail = req.user.email;
             const subResult = await pool.query(
-                `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status='active'`,
+                `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status IN ('active','canceling')`,
                 [userEmail]
             );
             subscriptionCharge = subResult.rows[0]?.sub_total || 0;
         } else {
             const subResult = await pool.query(
-                `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE client_portal_id=$1 AND status='active'`,
+                `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE client_portal_id=$1 AND status IN ('active','canceling')`,
                 [portalId]
             );
             subscriptionCharge = subResult.rows[0]?.sub_total || 0;

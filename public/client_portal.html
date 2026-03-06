@@ -4277,10 +4277,18 @@ async function convertLeadToCustomer(leadId) {
         const res = await apiFetch(`/client/leads/${leadId}/convert`, 'POST');
         const data = await res.json();
         if (data.success) {
+            // Add converted lead to customers state immediately
+            if (data.customer || removedLead) {
+                const newCustomer = data.customer || { ...removedLead, is_customer: true, status: 'closed' };
+                S.customers = [newCustomer, ...(S.customers || [])];
+                _customers = S.customers;
+            }
             loadCustomers();
             if (S.currentPage === 'followups') loadFollowups();
             _refreshDashboardLeads();
             apiFetch('/client/charts').then(r=>r.json()).then(d=>{ if (!d.success) return; DC.data = d; if (S.currentPage === 'dashboard') renderChart(); }).catch(()=>{});
+            // Navigate to customers tab so user sees where the lead went
+            setTimeout(() => navigate('customers'), 300);
         } else {
             if (removedLead) S.leads = [removedLead, ...(S.leads || [])];
             renderLeads();
@@ -7308,7 +7316,7 @@ async function saveTask() {
             title: optimistic.title,
             description: optimistic.description,
             priority: optimistic.priority,
-            due_date: optimistic.due_date,
+            dueDate: optimistic.due_date || null,
             createdByName: S.user.name || S.user.email,
         });
         const data = await res.json();
@@ -7331,14 +7339,21 @@ async function saveTask() {
 async function toggleTask(taskId) {
     const task = S.tasks.find(t => t.id === taskId);
     if (!task) return;
-    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-    S.tasks = S.tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
+    const nowComplete = task.status !== 'completed' && !task.completed;
+    const newStatus = nowComplete ? 'completed' : 'pending';
+    S.tasks = S.tasks.map(t => t.id === taskId ? { ...t, status: newStatus, completed: nowComplete } : t);
     renderTasks();
     try {
-        await apiFetch(`/client/tasks/${taskId}/toggle`, 'POST', {});
+        await apiFetch(`/client/tasks/${taskId}`, 'PUT', {
+            title: task.title,
+            description: task.description,
+            priority: task.priority,
+            dueDate: task.due_date || null,
+            completed: nowComplete,
+        });
     } catch {
         // Rollback
-        S.tasks = S.tasks.map(t => t.id === taskId ? { ...t, status: task.status } : t);
+        S.tasks = S.tasks.map(t => t.id === taskId ? { ...t, status: task.status, completed: task.completed } : t);
         renderTasks();
     }
 }
@@ -8199,18 +8214,20 @@ function renderSubscription(subs) {
         const sub = active.sort((a,b)=>parseFloat(b.monthly_total)-parseFloat(a.monthly_total))[0];
         const sc = sCfg[sub.status] || sCfg.cancelled;
         const canCancel = ['active','past_due'].includes(sub.status);
+        const canChange = ['active','canceling'].includes(sub.status);
+        const isCompanyPlan = sub.package_key === 'crm-workspace' || sub.is_company_plan;
 
         html += `
         <div class="card" style="margin-bottom:16px;">
             <div class="card-header" style="flex-wrap:wrap;gap:12px;">
                 <div>
-                    <div style="font-size:16px;font-weight:600;color:var(--text-0);margin-bottom:4px;">${escHtml(sub.package_name)} <span style="font-size:12px;color:var(--text-3);font-weight:400;">— Company Plan</span></div>
+                    <div style="font-size:16px;font-weight:600;color:var(--text-0);margin-bottom:4px;">${escHtml(sub.package_name)}${isCompanyPlan ? ` <span style="font-size:12px;color:var(--text-3);font-weight:400;">— Company Plan</span>` : ''}</div>
                     <span class="badge ${sc.cls}">${sc.label}</span>
                     ${sub.status==='canceling'?`<span style="font-size:12px;color:var(--text-3);margin-left:8px;">Access ends ${fmtDate2(sub.current_period_end)}</span>`:''}
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:26px;font-weight:700;color:var(--text-0);">$${parseFloat(sub.monthly_total||0).toFixed(2)}</div>
-                    <div style="font-size:12px;color:var(--text-3);">${sub.user_count||1} seat${(sub.user_count||1)!==1?'s':''}/month</div>
+                    <div style="font-size:12px;color:var(--text-3);">${isCompanyPlan ? `${sub.user_count||1} seat${(sub.user_count||1)!==1?'s':''}` : 'per user'}/month</div>
                 </div>
             </div>
             <div class="card-body">
@@ -8222,6 +8239,23 @@ function renderSubscription(subs) {
                     <div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;margin-bottom:4px;">Member Since</div><div style="font-size:12px;font-weight:500;">${fmtDate2(sub.created_at)}</div></div>
                 </div>
 
+                ${canChange && !isCompanyPlan ? `
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:12px;font-weight:600;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;">Upgrade / Downgrade Plan</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                        ${CRM_PLANS.map(plan=>{
+                            const isCur = plan.key===sub.package_key;
+                            const curPkg = CRM_PLANS.find(p=>p.key===sub.package_key);
+                            const arrow = plan.price>(curPkg?.price||0)?'↑ Upgrade':plan.price<(curPkg?.price||0)?'↓ Downgrade':'';
+                            return `<div class="plan-card ${isCur?'current':''}" onclick="${isCur?'':(`openChangePlan(${sub.id},'${plan.key}','${plan.name}',${plan.price},${sub.user_count||1},'${escHtml(sub.package_key||'')}',${parseFloat(sub.monthly_total||0)})`)}" style="${isCur?'cursor:default;':''}">
+                                <div class="plan-name">${plan.name}</div>
+                                <div class="plan-price">$${plan.price.toFixed(2)}<span>/user/mo</span></div>
+                                ${isCur?'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600;">CURRENT</div>':`<div style="font-size:11px;color:var(--text-3);margin-top:4px;">${arrow}</div>`}
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>` : ''}
+
                 <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border);">
                     <button class="btn btn-default btn-sm" onclick="openBillingPortal(${sub.id})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
@@ -8230,6 +8264,10 @@ function renderSubscription(subs) {
                     ${canCancel?`<button class="btn btn-danger btn-sm" onclick="openCancelSub(${sub.id},'${escHtml(sub.package_name||'')}','${fmtDate2(sub.current_period_end)}')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                         Cancel Subscription
+                    </button>`:''}
+                    ${sub.status==='canceling'?`<button class="btn btn-default btn-sm" onclick="reinstateSubscription(${sub.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+                        Reinstate Subscription
                     </button>`:''}
                 </div>
                 ${renderHistory(sub.events)}

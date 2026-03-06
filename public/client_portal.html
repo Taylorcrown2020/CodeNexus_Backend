@@ -4458,6 +4458,8 @@ async function submitFollowupEmail(leadId, email) {
             document.getElementById('followupEmailModal')?.remove();
             toast('Follow-up email sent ✓', 'success');
             loadFollowups();
+            // Refresh the plan limit bar so Follow-ups today counter updates immediately
+            _refreshPlanLimitBar();
             // Refresh analytics and dashboard stats to reflect the new email sent
             if (S.currentPage === 'analytics') loadAnalytics();
             if (S.currentPage === 'dashboard') loadDashboard();

@@ -23496,30 +23496,44 @@ app.post('/api/client/sequences/run', authenticateToken, async (req, res) => {
 
 app.get('/api/client/products', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
-        const result = await pool.query(
-            `SELECT * FROM client_products WHERE client_portal_id=$1 ORDER BY name ASC`,
-            [portalId]
-        );
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const portalId = await getClientPortalId(resolvedId);
+        let result;
+        if (portalId) {
+            result = await pool.query(
+                `SELECT * FROM client_products WHERE client_portal_id=$1 ORDER BY name ASC`,
+                [portalId]
+            );
+        } else {
+            // Individual user — scope by individual_owner_id
+            result = await pool.query(
+                `SELECT * FROM client_products WHERE individual_owner_id=$1 ORDER BY name ASC`,
+                [resolvedId]
+            );
+        }
         res.json({ success: true, products: result.rows });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.post('/api/client/products', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        if (!portalId) return res.status(400).json({ success: false, message: 'No portal found' });
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const portalId = await getClientPortalId(resolvedId);
         const { name, description, price, sku, category } = req.body;
         if (!name) return res.status(400).json({ success: false, message: 'Name required' });
 
         // ── Product cap (Essential: 10 / Professional: 50 / Enterprise+: unlimited) ──
-        const planData = await getClientPlanLimits(req.user.id);
+        const planData = await getClientPlanLimits(resolvedId);
         if (planData.maxProducts !== null) {
-            const countRes = await pool.query(
-                `SELECT COUNT(*) AS n FROM client_products WHERE client_portal_id=$1 AND is_active IS NOT FALSE`,
-                [portalId]
-            );
+            const countRes = portalId
+                ? await pool.query(
+                    `SELECT COUNT(*) AS n FROM client_products WHERE client_portal_id=$1 AND is_active IS NOT FALSE`,
+                    [portalId]
+                  )
+                : await pool.query(
+                    `SELECT COUNT(*) AS n FROM client_products WHERE individual_owner_id=$1 AND is_active IS NOT FALSE`,
+                    [resolvedId]
+                  );
             if (parseInt(countRes.rows[0]?.n || 0) >= planData.maxProducts) {
                 return res.status(403).json({
                     success: false, limitReached: 'products', limit: planData.maxProducts,
@@ -23528,28 +23542,51 @@ app.post('/api/client/products', authenticateClient, async (req, res) => {
             }
         }
 
-        const result = await pool.query(
-            `INSERT INTO client_products (client_portal_id, name, description, price, sku, category)
-             VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-            [portalId, name, description||null, price||null, sku||null, category||null]
-        );
+        let result;
+        if (portalId) {
+            result = await pool.query(
+                `INSERT INTO client_products (client_portal_id, name, description, price, sku, category)
+                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+                [portalId, name, description||null, price||null, sku||null, category||null]
+            );
+        } else {
+            result = await pool.query(
+                `INSERT INTO client_products (individual_owner_id, name, description, price, sku, category)
+                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+                [resolvedId, name, description||null, price||null, sku||null, category||null]
+            );
+        }
         res.json({ success: true, product: result.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.patch('/api/client/products/:id', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const portalId = await getClientPortalId(resolvedId);
         const { name, description, price, sku, category, is_active } = req.body;
-        const result = await pool.query(
-            `UPDATE client_products SET
-                name=COALESCE($1,name), description=COALESCE($2,description),
-                price=COALESCE($3,price), sku=COALESCE($4,sku),
-                category=COALESCE($5,category), is_active=COALESCE($6,is_active),
-                updated_at=NOW()
-             WHERE id=$7 AND client_portal_id=$8 RETURNING *`,
-            [name,description,price,sku,category,is_active,req.params.id,portalId]
-        );
+        let result;
+        if (portalId) {
+            result = await pool.query(
+                `UPDATE client_products SET
+                    name=COALESCE($1,name), description=COALESCE($2,description),
+                    price=COALESCE($3,price), sku=COALESCE($4,sku),
+                    category=COALESCE($5,category), is_active=COALESCE($6,is_active),
+                    updated_at=NOW()
+                 WHERE id=$7 AND client_portal_id=$8 RETURNING *`,
+                [name,description,price,sku,category,is_active,req.params.id,portalId]
+            );
+        } else {
+            result = await pool.query(
+                `UPDATE client_products SET
+                    name=COALESCE($1,name), description=COALESCE($2,description),
+                    price=COALESCE($3,price), sku=COALESCE($4,sku),
+                    category=COALESCE($5,category), is_active=COALESCE($6,is_active),
+                    updated_at=NOW()
+                 WHERE id=$7 AND individual_owner_id=$8 RETURNING *`,
+                [name,description,price,sku,category,is_active,req.params.id,resolvedId]
+            );
+        }
         if (!result.rows.length) return res.status(404).json({ success: false, message: 'Product not found' });
         res.json({ success: true, product: result.rows[0] });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
@@ -23557,8 +23594,13 @@ app.patch('/api/client/products/:id', authenticateClient, async (req, res) => {
 
 app.delete('/api/client/products/:id', authenticateClient, async (req, res) => {
     try {
-        const portalId = await getClientPortalId(req.user.id);
-        await pool.query(`DELETE FROM client_products WHERE id=$1 AND client_portal_id=$2`, [req.params.id, portalId]);
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+        const portalId = await getClientPortalId(resolvedId);
+        if (portalId) {
+            await pool.query(`DELETE FROM client_products WHERE id=$1 AND client_portal_id=$2`, [req.params.id, portalId]);
+        } else {
+            await pool.query(`DELETE FROM client_products WHERE id=$1 AND individual_owner_id=$2`, [req.params.id, resolvedId]);
+        }
         res.json({ success: true });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
@@ -23895,13 +23937,16 @@ app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('imag
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
-        let portalId = await getClientPortalId(req.user.id);
+        // Resolve real lead id in case JWT id is stale
+        const resolvedUserId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+
+        let portalId = await getClientPortalId(resolvedUserId);
         let isIndividualBg = false;
 
         if (!portalId) {
             // Individual user — they own their account, allow upload using their lead ID as scope
             const leadRow = await pool.query(
-                `SELECT id, email FROM leads WHERE id=$1`, [req.user.id]
+                `SELECT id, email FROM leads WHERE id=$1`, [resolvedUserId]
             );
             if (!leadRow.rows[0]) {
                 require('fs').unlink(req.file.path, () => {});
@@ -23911,7 +23956,7 @@ app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('imag
         } else {
             // Workspace/company — admin only
             const adminCheck = await pool.query(
-                `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+                `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [resolvedUserId]
             );
             const u = adminCheck.rows[0];
             let isAdminBg = u?.is_company_admin || u?.is_co_admin;
@@ -23930,7 +23975,7 @@ app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('imag
 
         // Limit to 10 custom backgrounds per account
         const countRes = isIndividualBg
-            ? await pool.query(`SELECT COUNT(*) FROM portal_bg_images WHERE lead_id=$1`, [req.user.id])
+            ? await pool.query(`SELECT COUNT(*) FROM portal_bg_images WHERE lead_id=$1`, [resolvedUserId])
             : await pool.query(`SELECT COUNT(*) FROM portal_bg_images WHERE client_portal_id=$1`, [portalId]);
         if (parseInt(countRes.rows[0].count) >= 10) {
             require('fs').unlink(req.file.path, () => {});
@@ -23945,7 +23990,7 @@ app.post('/api/client/bg-images', authenticateClient, bgImageUpload.single('imag
             ? await pool.query(
                 `INSERT INTO portal_bg_images (lead_id, url, label, uploaded_by)
                  VALUES ($1,$2,$3,$4) RETURNING id, url, label, uploaded_by, created_at`,
-                [req.user.id, url, label, req.user.email]
+                [resolvedUserId, url, label, req.user.email]
               )
             : await pool.query(
                 `INSERT INTO portal_bg_images (client_portal_id, url, label, uploaded_by)
@@ -27291,7 +27336,8 @@ process.on('SIGINT', async () => {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS client_products (
                 id SERIAL PRIMARY KEY,
-                client_portal_id VARCHAR(50) NOT NULL,
+                client_portal_id VARCHAR(50),
+                individual_owner_id INTEGER,
                 name VARCHAR(255) NOT NULL,
                 description TEXT,
                 price NUMERIC(10,2),
@@ -27301,6 +27347,14 @@ process.on('SIGINT', async () => {
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
             )
+        `);
+        // Backfill migration: add individual_owner_id if missing on existing deployments
+        await pool.query(`
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='client_products' AND column_name='individual_owner_id') THEN
+                    ALTER TABLE client_products ADD COLUMN individual_owner_id INTEGER;
+                END IF;
+            END $$;
         `);
         // Ensure lead_products join table exists
         await pool.query(`

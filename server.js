@@ -14965,6 +14965,7 @@ app.delete('/api/tickets/:id', authenticateToken, async (req, res) => {
 // Get client's tickets
 app.get('/api/client/tickets', authenticateClient, async (req, res) => {
     try {
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         const result = await pool.query(`
             SELECT 
                 st.*,
@@ -14973,7 +14974,7 @@ app.get('/api/client/tickets', authenticateClient, async (req, res) => {
             FROM support_tickets st
             WHERE st.lead_id = $1
             ORDER BY st.created_at DESC
-        `, [req.user.id]);
+        `, [resolvedId]);
         
         res.json({
             success: true,
@@ -14989,10 +14990,11 @@ app.get('/api/client/tickets', authenticateClient, async (req, res) => {
 app.get('/api/client/tickets/:id', authenticateClient, async (req, res) => {
     try {
         const ticketId = req.params.id;
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         
         const ticketResult = await pool.query(
             'SELECT * FROM support_tickets WHERE id = $1 AND lead_id = $2',
-            [ticketId, req.user.id]
+            [ticketId, resolvedId]
         );
         
         if (ticketResult.rows.length === 0) {
@@ -15022,6 +15024,7 @@ app.post('/api/client/tickets/:id/responses', authenticateClient, async (req, re
     try {
         const ticketId = req.params.id;
         const { message } = req.body;
+        const resolvedId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         
         if (!message || !message.trim()) {
             return res.status(400).json({ success: false, message: 'Message is required' });
@@ -15030,7 +15033,7 @@ app.post('/api/client/tickets/:id/responses', authenticateClient, async (req, re
         // Verify ticket belongs to client
         const ticketCheck = await pool.query(
             'SELECT id, lead_id FROM support_tickets WHERE id = $1 AND lead_id = $2',
-            [ticketId, req.user.id]
+            [ticketId, resolvedId]
         );
         
         if (ticketCheck.rows.length === 0) {
@@ -15040,7 +15043,7 @@ app.post('/api/client/tickets/:id/responses', authenticateClient, async (req, re
         // Get client name
         const clientResult = await pool.query(
             'SELECT name FROM leads WHERE id = $1',
-            [req.user.id]
+            [resolvedId]
         );
         
         const clientName = clientResult.rows[0]?.name || 'Client';
@@ -15056,7 +15059,7 @@ app.post('/api/client/tickets/:id/responses', authenticateClient, async (req, re
             )
             VALUES ($1, $2, 'client', $3, $4, CURRENT_TIMESTAMP)
             RETURNING *
-        `, [ticketId, req.user.id, clientName, message.trim()]);
+        `, [ticketId, resolvedId, clientName, message.trim()]);
         
         // Update ticket's updated_at and potentially status
         await pool.query(`
@@ -21613,6 +21616,18 @@ app.post('/api/client/leads/:id/send-email', authenticateClient, async (req, res
             VALUES ($1,$2,'outbound','email',$3,$4,$5,$6,'sent',NOW())
         `, [leadId, portalId, emailSubject, body, fromEmail, toEmail]);
 
+        // Log to client_email_log for analytics tracking
+        try {
+            await pool.query(`
+                INSERT INTO client_email_log
+                    (client_portal_id, lead_id, lead_email, assigned_to_user_email,
+                     subject, email_type, status, sent_at, created_at)
+                VALUES ($1,$2,$3,$4,$5,'email','sent',NOW(),NOW())
+            `, [portalId, leadId, toEmail, req.user.email, emailSubject]);
+        } catch(logErr) {
+            console.warn('[SEND-EMAIL] client_email_log insert failed (non-fatal):', logErr.message);
+        }
+
         // Count as contact
         await pool.query(`
             UPDATE leads SET last_contact_date=CURRENT_DATE,
@@ -22231,12 +22246,52 @@ app.get('/api/client/analytics', authenticateClient, async (req, res) => {
         const viewAll = isAdmin && !user_email;
 
         if (!portalId) {
+            // Individual (non-workspace) user — query their own data
+            const indEmailStats = await pool.query(`
+                SELECT
+                    COUNT(*) FILTER (WHERE status IN ('sent','pending') OR status IS NULL) as sent,
+                    COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
+                    COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked
+                FROM client_email_log
+                WHERE LOWER(assigned_to_user_email)=LOWER($1) AND status != 'failed'
+            `, [me?.email || '']).catch(() => ({ rows: [{}] }));
+            const indLeadStats = await pool.query(`
+                SELECT
+                    COUNT(*) as total_assigned,
+                    COUNT(*) FILTER (WHERE lead_temperature='hot') as hot,
+                    COUNT(*) FILTER (WHERE lead_temperature!='hot' OR lead_temperature IS NULL) as cold,
+                    COUNT(*) FILTER (WHERE status='closed' OR is_customer=TRUE) as closed,
+                    COUNT(*) FILTER (WHERE status='lost') as lost,
+                    COUNT(*) FILTER (WHERE status='new' OR status IS NULL) as new
+                FROM leads
+                WHERE individual_owner_id=$1 AND client_password IS NULL
+            `, [userId]).catch(() => ({ rows: [{}] }));
+            const ies = indEmailStats.rows[0];
+            const ils = indLeadStats.rows[0];
+            const iSent = parseInt(ies.sent) || 0;
+            const iOpened = parseInt(ies.opened) || 0;
+            const iClicked = parseInt(ies.clicked) || 0;
+            const iTotal = parseInt(ils.total_assigned) || 0;
+            const iClosed = parseInt(ils.closed) || 0;
             return res.json({
                 success: true,
                 analytics: {
                     user_email: targetEmail, user_name: me?.name || targetEmail,
-                    email: { sent: 0, open_rate: 0, click_rate: 0, opened: 0, clicked: 0 },
-                    leads: { total_assigned: 0, hot: 0, cold: 0, new: 0, closed: 0, lost: 0, close_rate: 0 }
+                    email: {
+                        sent: iSent,
+                        open_rate:  iSent > 0 ? parseFloat(((iOpened  / iSent) * 100).toFixed(1)) : 0,
+                        click_rate: iSent > 0 ? parseFloat(((iClicked / iSent) * 100).toFixed(1)) : 0,
+                        opened: iOpened, clicked: iClicked
+                    },
+                    leads: {
+                        total_assigned: iTotal,
+                        hot:  parseInt(ils.hot)  || 0,
+                        cold: parseInt(ils.cold) || 0,
+                        new:  parseInt(ils.new)  || 0,
+                        closed: iClosed,
+                        lost: parseInt(ils.lost) || 0,
+                        close_rate: iTotal > 0 ? parseFloat(((iClosed / iTotal) * 100).toFixed(1)) : 0
+                    }
                 }
             });
         }
@@ -22251,18 +22306,18 @@ app.get('/api/client/analytics', authenticateClient, async (req, res) => {
         const emailStats = viewAll
             ? await pool.query(`
                 SELECT
-                    COUNT(*) FILTER (WHERE status='sent') as sent,
+                    COUNT(*) FILTER (WHERE status IN ('sent','pending') OR status IS NULL) as sent,
                     COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
                     COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked
-                FROM client_email_log WHERE client_portal_id=$1
+                FROM client_email_log WHERE client_portal_id=$1 AND status != 'failed'
             `, [portalId])
             : await pool.query(`
                 SELECT
-                    COUNT(*) FILTER (WHERE status='sent') as sent,
+                    COUNT(*) FILTER (WHERE status IN ('sent','pending') OR status IS NULL) as sent,
                     COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
                     COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked
                 FROM client_email_log
-                WHERE client_portal_id=$1 AND LOWER(assigned_to_user_email)=LOWER($2)
+                WHERE client_portal_id=$1 AND LOWER(assigned_to_user_email)=LOWER($2) AND status != 'failed'
             `, [portalId, targetEmail]);
 
         // Lead stats — account-wide for admin overview, per-user otherwise
@@ -22984,27 +23039,31 @@ app.get('/api/client/analytics/email', authenticateClient, async (req, res) => {
         if (!portalId) return res.json({ success: true, marketing: { sent:0, opened:0, clicked:0, open_rate:0, click_rate:0, hot_conversions:0 }, followup: { sent:0, opened:0, clicked:0, open_rate:0, click_rate:0, hot_conversions:0 } });
 
         const getStats = async (emailType) => {
+            // For follow-up type, also include 'email' type (quick-compose from thread)
+            const typeFilter = emailType === 'follow-up'
+                ? `email_type IN ('follow-up','email','manual')`
+                : `email_type = '${emailType}'`;
             const r = viewAll
                 ? await pool.query(`
                     SELECT
-                        COUNT(*) FILTER (WHERE status='sent') as sent,
+                        COUNT(*) FILTER (WHERE status IN ('sent','pending') OR status IS NULL) as sent,
                         COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
                         COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked,
                         COUNT(*) FILTER (WHERE lead_became_hot = TRUE) as hot_conversions
                     FROM client_email_log
-                    WHERE client_portal_id=$1 AND email_type=$2
-                `, [portalId, emailType])
+                    WHERE client_portal_id=$1 AND ${typeFilter} AND status != 'failed'
+                `, [portalId])
                 : await pool.query(`
                     SELECT
-                        COUNT(*) FILTER (WHERE status='sent') as sent,
+                        COUNT(*) FILTER (WHERE status IN ('sent','pending') OR status IS NULL) as sent,
                         COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
                         COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked,
                         COUNT(*) FILTER (WHERE lead_became_hot = TRUE) as hot_conversions
                     FROM client_email_log
                     WHERE client_portal_id=$1
                       AND LOWER(assigned_to_user_email)=LOWER($2)
-                      AND email_type=$3
-                `, [portalId, targetEmail, emailType]);
+                      AND ${typeFilter} AND status != 'failed'
+                `, [portalId, targetEmail]);
             const d = r.rows[0];
             const sent = parseInt(d.sent)||0;
             const opened = parseInt(d.opened)||0;
@@ -23640,7 +23699,8 @@ app.get('/api/client/charts', authenticateClient, async (req, res) => {
             ORDER BY month ASC
         `, [oldest]);
 
-        // ── Growth data: leads and customers created per month
+        // ── Growth data: leads added per month and customers converted per month
+        // Leads are bucketed by created_at; customers by updated_at (conversion date)
         const growthFilter = isIndividual
             ? `individual_owner_id = ${userId}`
             : `client_portal_id = '${portalId}'`;
@@ -23648,12 +23708,24 @@ app.get('/api/client/charts', authenticateClient, async (req, res) => {
             SELECT
                 TO_CHAR(created_at, 'YYYY-MM') as month,
                 COUNT(*) FILTER (WHERE is_customer IS NOT TRUE) as leads,
-                COUNT(*) FILTER (WHERE is_customer = TRUE) as customers
+                0 as customers
             FROM leads
             WHERE ${growthFilter}
               AND client_password IS NULL
               AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
               AND created_at >= $1::date
+            GROUP BY month
+            UNION ALL
+            SELECT
+                TO_CHAR(updated_at, 'YYYY-MM') as month,
+                0 as leads,
+                COUNT(*) as customers
+            FROM leads
+            WHERE ${growthFilter}
+              AND client_password IS NULL
+              AND is_customer = TRUE
+              AND updated_at >= $1::date
+              AND (source IS NULL OR source NOT IN ('company-user','subscription-direct'))
             GROUP BY month
             ORDER BY month ASC
         `, [oldest]);
@@ -23697,9 +23769,13 @@ app.get('/api/client/charts', authenticateClient, async (req, res) => {
             actual:    incomeMap[m]?.actual    || 0,
         }));
 
-        // ── Shape growth data
+        // ── Shape growth data (UNION ALL may produce multiple rows per month — aggregate)
         const growthMap = {};
-        for (const r of growthRows.rows) growthMap[r.month] = { leads: parseInt(r.leads)||0, customers: parseInt(r.customers)||0 };
+        for (const r of growthRows.rows) {
+            if (!growthMap[r.month]) growthMap[r.month] = { leads: 0, customers: 0 };
+            growthMap[r.month].leads     += parseInt(r.leads)||0;
+            growthMap[r.month].customers += parseInt(r.customers)||0;
+        }
         const growth = months.map(m => ({ month: m, leads: growthMap[m]?.leads||0, customers: growthMap[m]?.customers||0 }));
 
         // ── Shape product data

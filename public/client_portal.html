@@ -4400,6 +4400,11 @@ async function submitFollowupEmail(leadId, email) {
             document.getElementById('followupEmailModal')?.remove();
             toast('Follow-up email sent ✓', 'success');
             loadFollowups();
+            // Refresh analytics and dashboard stats to reflect the new email sent
+            if (S.currentPage === 'analytics') loadAnalytics();
+            if (S.currentPage === 'dashboard') loadDashboard();
+            // Async refresh charts even if not on dashboard so data is fresh on next visit
+            apiFetch('/client/charts').then(r=>r.json()).then(d=>{ if(d.success){ DC.data=d; if(S.currentPage==='dashboard') renderChart(); }}).catch(()=>{});
         } else {
             toast(data.message || 'Failed to send', 'error');
             if (btn) { btn.disabled = false; btn.textContent = 'Send Email'; }
@@ -6241,6 +6246,10 @@ async function quickSendEmail(leadId) {
                 toast('Email sent', 'success');
                 // Refresh followups so last_contact_date and counts update
                 loadFollowups();
+                // Refresh analytics and charts so email count appears immediately
+                if (S.currentPage === 'analytics') loadAnalytics();
+                if (S.currentPage === 'dashboard') loadDashboard();
+                apiFetch('/client/charts').then(r=>r.json()).then(c=>{ if(c.success){ DC.data=c; if(S.currentPage==='dashboard') renderChart(); }}).catch(()=>{});
             } else {
                 toast(d.message || 'Failed to send', 'error');
             }
@@ -8162,12 +8171,24 @@ function renderSubscription(subs) {
     const past   = subs.filter(s=>s.status==='cancelled');
 
     if (!active.length) {
-        el.innerHTML = `<div class="card" style="max-width:560px;text-align:center;padding:48px 24px;">
+        const hasPast = past.length > 0;
+        el.innerHTML = `<div class="card" style="max-width:560px;text-align:center;padding:40px 24px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin:0 auto 16px;opacity:0.2;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             <h3 style="margin-bottom:8px;">No active subscription</h3>
-            <p style="font-size:13px;color:var(--text-3);">Contact us at (512) 980-0393 to get started.</p>
+            <p style="font-size:13px;color:var(--text-3);margin-bottom:20px;">${hasPast ? 'Your subscription has ended. Choose a plan below to resubscribe, or contact us to reinstate.' : 'Choose a plan below to get started.'}</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;text-align:left;">
+                ${CRM_PLANS.map(plan=>`<div class="plan-card" style="cursor:default;">
+                    <div class="plan-name">${plan.name}</div>
+                    <div class="plan-price">$${plan.price.toFixed(2)}<span>/user/mo</span></div>
+                </div>`).join('')}
+            </div>
+            <a href="tel:+15129800393" class="btn btn-default" style="margin-right:8px;text-decoration:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.18 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54A16 16 0 0 0 12 12a16 16 0 0 0 3.46 2.09l.46-.46a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                Call (512) 980-0393
+            </a>
+            <a href="mailto:contact@diamondbackcoding.com" class="btn btn-ghost" style="text-decoration:none;">Email Us</a>
         </div>
-        ${past.length?`<div class="card" style="margin-top:16px;"><div class="card-header"><span class="card-title">Past Subscriptions</span></div><div class="card-body" style="padding:0;"><table><thead><tr><th>Plan</th><th>Amount</th><th>Cancelled</th></tr></thead><tbody>${past.map(s=>`<tr><td>${escHtml(s.package_name)}</td><td>$${parseFloat(s.monthly_total||0).toFixed(2)}/mo</td><td style="font-size:12px;color:var(--text-3);">${fmtDate2(s.cancelled_at)}</td></tr>`).join('')}</tbody></table></div></div>`:''}`;
+        ${hasPast?`<div class="card" style="margin-top:16px;"><div class="card-header"><span class="card-title">Past Subscriptions</span></div><div class="card-body" style="padding:0;"><table><thead><tr><th>Plan</th><th>Amount</th><th>Cancelled</th></tr></thead><tbody>${past.map(s=>`<tr><td style="font-weight:500;">${escHtml(s.package_name)}</td><td style="color:var(--text-3);">$${parseFloat(s.monthly_total||0).toFixed(2)}/mo</td><td style="font-size:12px;color:var(--text-3);">${fmtDate2(s.cancelled_at)}</td></tr>`).join('')}</tbody></table></div></div>`:''}`;
         return;
     }
 

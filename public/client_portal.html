@@ -3179,7 +3179,8 @@ function applyPlanRestrictions() {
     }
 
     // ─── MARKETING tab ────────────────────────────────────────────────────────
-    // Essential CRM: no marketing. Professional+: full access.
+    // Essential CRM: marketing nav visible (templates allowed), but campaign/chains tabs hidden.
+    // Professional+: full marketing access.
     const mkMarketing = L.marketingEnabled === true;
     setVis('navMarketing',      mkMarketing);
     setVis('mkTabSend',         mkMarketing);
@@ -3214,9 +3215,9 @@ function applyPlanRestrictions() {
     setVis('navIntegrations', L.integrationsEnabled === true);
 
     // ─── AI WIDGET ───────────────────────────────────────────────────────────
-    // Enterprise and Workspace only (handled by initAiWidget, but double-enforce here)
-    const aiWidget = document.getElementById('aiChatWidget');
-    if (aiWidget) aiWidget.style.display = L.aiEnabled === true ? '' : 'none';
+    // Enterprise and Workspace only — re-run initAiWidget so the widget appears
+    // immediately after an upgrade without requiring a page reload.
+    initAiWidget();
 
     // ─── Sidebar usage bar ────────────────────────────────────────────────────
     _refreshPlanLimitBar();
@@ -4705,51 +4706,159 @@ function openLeadProfile(lead) {
     openModal('leadProfileModal');
 }
 
-// ── Delete lead (all users are admin of their own records) ──────────────────
+// Toggle lead temperature (hot ↔ cold) from profile modal
 async function confirmDeleteLead(leadId, leadName) {
     if (!confirm(`Delete "${leadName}"?\n\nThis cannot be undone.`)) return;
     try {
         const res  = await apiFetch(`/client/leads/${leadId}`, 'DELETE');
         const data = await res.json();
         if (data.success) {
-            S.leads    = (S.leads    || []).filter(l => l.id !== leadId && l.id !== Number(leadId));
-            _customers = (_customers || []).filter(c => c.id !== leadId && c.id !== Number(leadId));
+            S.leads     = (S.leads     || []).filter(l => l.id !== leadId && l.id !== Number(leadId));
+            _customers  = (_customers  || []).filter(c => c.id !== leadId && c.id !== Number(leadId));
             S.customers = _customers;
             toast('Lead deleted', 'success');
             if      (S.currentPage === 'leads')     renderLeads();
             else if (S.currentPage === 'myleads')   renderMyLeads?.();
             else if (S.currentPage === 'customers') renderCustomers();
             if      (S.currentPage === 'dashboard') loadDashboard();
-        } else {
-            toast(data.message || 'Could not delete lead', 'error');
-        }
-    } catch(e) {
-        console.error('[DELETE LEAD]', e);
-        toast('Error deleting lead', 'error');
-    }
+        } else { toast(data.message || 'Could not delete lead', 'error'); }
+    } catch(e) { toast('Error deleting lead', 'error'); }
 }
 
-// ── Delete customer ───────────────────────────────────────────────────────────
 async function confirmDeleteCustomer(customerId, customerName) {
     if (!confirm(`Delete "${customerName}"?\n\nThis cannot be undone.`)) return;
     try {
         const res  = await apiFetch(`/client/leads/${customerId}`, 'DELETE');
         const data = await res.json();
         if (data.success) {
-            _customers  = (_customers || []).filter(c => c.id !== customerId && c.id !== Number(customerId));
+            _customers  = (_customers  || []).filter(c => c.id !== customerId && c.id !== Number(customerId));
             S.customers = _customers;
-            S.leads     = (S.leads    || []).filter(l => l.id !== customerId && l.id !== Number(customerId));
+            S.leads     = (S.leads     || []).filter(l => l.id !== customerId && l.id !== Number(customerId));
             toast('Customer deleted', 'success');
             renderCustomers();
             if (S.currentPage === 'dashboard') loadDashboard();
-        } else {
-            toast(data.message || 'Could not delete customer', 'error');
-        }
-    } catch(e) {
-        console.error('[DELETE CUSTOMER]', e);
-        toast('Error deleting customer', 'error');
-    }
+        } else { toast(data.message || 'Could not delete customer', 'error'); }
+    } catch(e) { toast('Error deleting customer', 'error'); }
 }
+
+function openCustomerProfile(customer) {
+    let modal = document.getElementById('customerProfileModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'customerProfileModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('customerProfileModal'); };
+        document.body.appendChild(modal);
+    }
+    const since = customer.created_at ? new Date(customer.created_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '—';
+    modal.innerHTML = `
+        <div class="modal" style="max-width:520px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Customer Profile</div>
+                <button class="modal-close" onclick="closeModal('customerProfileModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--bg-3);border-radius:var(--r-md);margin-bottom:20px;">
+                    <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0;">
+                        ${escHtml((customer.name||'?')[0].toUpperCase())}
+                    </div>
+                    <div>
+                        <div style="font-size:16px;font-weight:700;color:var(--text-0);">${escHtml(customer.name||'—')}</div>
+                        ${customer.company?`<div style="font-size:13px;color:var(--text-3);">${escHtml(customer.company)}</div>`:''}
+                        <div style="font-size:11px;color:var(--green);margin-top:2px;">Customer since ${since}</div>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                    <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;">
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:4px;">Email</div>
+                        <div style="font-size:13px;">${customer.email?`<a href="mailto:${escHtml(customer.email)}" style="color:var(--accent);text-decoration:none;">${escHtml(customer.email)}</a>`:'—'}</div>
+                    </div>
+                    <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;">
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:4px;">Phone</div>
+                        <div style="font-size:13px;">${customer.phone?`<a href="tel:${escHtml(customer.phone)}" style="color:var(--accent);text-decoration:none;">${escHtml(customer.phone)}</a>`:'—'}</div>
+                    </div>
+                    <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;">
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:4px;">Company</div>
+                        <div style="font-size:13px;color:var(--text-0);">${escHtml(customer.company||'—')}</div>
+                    </div>
+                    <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;">
+                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:4px;">Assigned To</div>
+                        <div style="font-size:13px;color:var(--text-0);">${escHtml(customer.assigned_to_name||'Unassigned')}</div>
+                    </div>
+                </div>
+                ${customer.notes?`<div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px;">Notes</div><div style="font-size:13px;color:var(--text-2);white-space:pre-wrap;">${escHtml(customer.notes)}</div></div>`:''}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('customerProfileModal')">Close</button>
+                <button class="btn btn-default" onclick="closeModal('customerProfileModal');openEditCustomerModal(${JSON.stringify(customer).replace(/"/g,'&quot;')})">Edit</button>
+                <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="closeModal('customerProfileModal');confirmDeleteCustomer(${customer.id},'${escHtml(customer.name||customer.email||'this customer')}')">Delete</button>
+            </div>
+        </div>`;
+    openModal('customerProfileModal');
+}
+
+function openEditCustomerModal(customer) {
+    let modal = document.getElementById('editCustomerModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'editCustomerModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('editCustomerModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:480px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Edit Customer</div>
+                <button class="modal-close" onclick="closeModal('editCustomerModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editCustId" value="${customer.id}">
+                <div class="form-row">
+                    <div class="form-field"><label class="form-label">Name *</label><input class="form-input" id="editCustName" value="${escHtml(customer.name||'')}"></div>
+                    <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="editCustEmail" type="email" value="${escHtml(customer.email||'')}"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="editCustPhone" value="${escHtml(customer.phone||'')}"></div>
+                    <div class="form-field"><label class="form-label">Company</label><input class="form-input" id="editCustCompany" value="${escHtml(customer.company||'')}"></div>
+                </div>
+                <div class="form-field"><label class="form-label">Notes</label><textarea class="form-input" id="editCustNotes">${escHtml(customer.notes||'')}</textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('editCustomerModal')">Cancel</button>
+                <button class="btn btn-white" onclick="saveEditCustomer()">Save Changes</button>
+            </div>
+        </div>`;
+    openModal('editCustomerModal');
+}
+
+async function saveEditCustomer() {
+    const id = document.getElementById('editCustId')?.value;
+    const name = document.getElementById('editCustName')?.value.trim();
+    if (!name) { toast('Name is required', 'error'); return; }
+    try {
+        const res = await apiFetch(`/client/customers/${id}`, 'PUT', {
+            name, email: document.getElementById('editCustEmail')?.value.trim(),
+            phone: document.getElementById('editCustPhone')?.value.trim(),
+            company: document.getElementById('editCustCompany')?.value.trim(),
+            notes: document.getElementById('editCustNotes')?.value.trim(),
+        });
+        const data = await res.json();
+        if (data.success) {
+            _customers = _customers.map(c => String(c.id) === String(id) ? { ...c, ...(data.customer||{}) } : c);
+            S.customers = _customers;
+            closeModal('editCustomerModal');
+            renderCustomers();
+            toast('Customer updated', 'success');
+        } else { toast(data.message || 'Failed to update', 'error'); }
+    } catch { toast('Error updating customer', 'error'); }
+}
+
+function filterCustomers() { renderCustomers(); }
 
 // Toggle lead temperature (hot ↔ cold) from profile modal
 async function toggleLeadTemperature(leadId, newTemp, closeModalId) {
@@ -6471,12 +6580,10 @@ async function loadScheduling() {
     // Both point to schedule-form.html which is branded per account.
     const _uid = S.user?.id;
     const _pid = S.user?.clientPortalId;
-    // Use != null check — a numeric 0 is falsy but valid, so never use bare truthiness here
     const link = (_pid != null && _pid !== '' && _pid !== 'null')
         ? `${window.location.origin}/schedule-form.html?portal=${_pid}`
         : (_uid != null && _uid !== '' && _uid !== 'null'
-            ? `${window.location.origin}/schedule-form.html?uid=${_uid}`
-            : '');
+            ? `${window.location.origin}/schedule-form.html?uid=${_uid}` : '');
     if (linkEl) linkEl.textContent = link || 'Log in to view your booking link';
 
     listEl.innerHTML = `<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>`;
@@ -6710,8 +6817,7 @@ function copySchedulingLink() {
     const link = (_pid != null && _pid !== '' && _pid !== 'null')
         ? `${window.location.origin}/schedule-form.html?portal=${_pid}`
         : (_uid != null && _uid !== '' && _uid !== 'null'
-            ? `${window.location.origin}/schedule-form.html?uid=${_uid}`
-            : '');
+            ? `${window.location.origin}/schedule-form.html?uid=${_uid}` : '');
     if (!link) { toast('Unable to generate booking link — please log out and back in', 'error'); return; }
     navigator.clipboard.writeText(link).then(() => toast('Booking link copied!', 'success'));
 }
@@ -8597,7 +8703,7 @@ async function confirmPlanChange() {
         });
         const data = await res.json();
         if(data.success) {
-            toast(data.message||'Plan updated — your new features are now active.','success');
+            toast(data.message||'Plan updated — refreshing your features...','success');
             closeModal('changePlanModal');
             loadSubscription();
             // Re-fetch plan limits and re-apply feature gates immediately
@@ -10184,133 +10290,6 @@ function renderCustomers() {
                 </tr>`).join('')}
             </tbody>
         </table>`;
-}
-
-function filterCustomers() { renderCustomers(); }
-
-function openCustomerProfile(customer) {
-    let modal = document.getElementById('customerProfileModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'customerProfileModal';
-        modal.className = 'modal-overlay';
-        modal.onclick = e => { if (e.target === modal) closeModal('customerProfileModal'); };
-        document.body.appendChild(modal);
-    }
-    const since = customer.created_at
-        ? new Date(customer.created_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
-        : '—';
-    modal.innerHTML = `
-        <div class="modal" style="max-width:520px;width:calc(100% - 32px);">
-            <div class="modal-header">
-                <div class="modal-title">Customer Profile</div>
-                <button class="modal-close" onclick="closeModal('customerProfileModal')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--bg-3);border-radius:var(--r-md);margin-bottom:20px;">
-                    <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0;">
-                        ${escHtml((customer.name||'?')[0].toUpperCase())}
-                    </div>
-                    <div>
-                        <div style="font-size:16px;font-weight:700;color:var(--text-0);">${escHtml(customer.name||'—')}</div>
-                        ${customer.company?`<div style="font-size:13px;color:var(--text-3);">${escHtml(customer.company)}</div>`:''}
-                        <div style="font-size:11px;color:var(--green);margin-top:2px;">Customer since ${since}</div>
-                    </div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-                    <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;">
-                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:4px;">Email</div>
-                        <div style="font-size:13px;color:var(--text-0);">${customer.email?`<a href="mailto:${escHtml(customer.email)}" style="color:var(--accent);text-decoration:none;">${escHtml(customer.email)}</a>`:'—'}</div>
-                    </div>
-                    <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;">
-                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:4px;">Phone</div>
-                        <div style="font-size:13px;color:var(--text-0);">${customer.phone?`<a href="tel:${escHtml(customer.phone)}" style="color:var(--accent);text-decoration:none;">${escHtml(customer.phone)}</a>`:'—'}</div>
-                    </div>
-                    <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;">
-                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:4px;">Company</div>
-                        <div style="font-size:13px;color:var(--text-0);">${escHtml(customer.company||'—')}</div>
-                    </div>
-                    <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;">
-                        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:4px;">Assigned To</div>
-                        <div style="font-size:13px;color:var(--text-0);">${escHtml(customer.assigned_to_name||'Unassigned')}</div>
-                    </div>
-                </div>
-                ${customer.notes?`
-                <div style="background:var(--bg-3);border-radius:var(--r-md);padding:12px 14px;">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px;">Notes</div>
-                    <div style="font-size:13px;color:var(--text-2);white-space:pre-wrap;">${escHtml(customer.notes)}</div>
-                </div>`:''}
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-ghost" onclick="closeModal('customerProfileModal')">Close</button>
-                <button class="btn btn-default" onclick="closeModal('customerProfileModal');openEditCustomerModal(${JSON.stringify(customer).replace(/"/g,'&quot;')})">Edit</button>
-                <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="closeModal('customerProfileModal');confirmDeleteCustomer(${customer.id},'${escHtml(customer.name||customer.email||'this customer')}')">Delete</button>
-            </div>
-        </div>`;
-    openModal('customerProfileModal');
-}
-
-function openEditCustomerModal(customer) {
-    let modal = document.getElementById('editCustomerModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'editCustomerModal';
-        modal.className = 'modal-overlay';
-        modal.onclick = e => { if (e.target === modal) closeModal('editCustomerModal'); };
-        document.body.appendChild(modal);
-    }
-    modal.innerHTML = `
-        <div class="modal" style="max-width:480px;width:calc(100% - 32px);">
-            <div class="modal-header">
-                <div class="modal-title">Edit Customer</div>
-                <button class="modal-close" onclick="closeModal('editCustomerModal')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="editCustId" value="${customer.id}">
-                <div class="form-row">
-                    <div class="form-field"><label class="form-label">Name *</label><input class="form-input" id="editCustName" value="${escHtml(customer.name||'')}"></div>
-                    <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="editCustEmail" type="email" value="${escHtml(customer.email||'')}"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-field"><label class="form-label">Phone</label><input class="form-input" id="editCustPhone" value="${escHtml(customer.phone||'')}"></div>
-                    <div class="form-field"><label class="form-label">Company</label><input class="form-input" id="editCustCompany" value="${escHtml(customer.company||'')}"></div>
-                </div>
-                <div class="form-field"><label class="form-label">Notes</label><textarea class="form-input" id="editCustNotes">${escHtml(customer.notes||'')}</textarea></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-ghost" onclick="closeModal('editCustomerModal')">Cancel</button>
-                <button class="btn btn-white" onclick="saveEditCustomer()">Save Changes</button>
-            </div>
-        </div>`;
-    openModal('editCustomerModal');
-}
-
-async function saveEditCustomer() {
-    const id   = document.getElementById('editCustId')?.value;
-    const name = document.getElementById('editCustName')?.value.trim();
-    if (!name) { toast('Name is required', 'error'); return; }
-    try {
-        const res = await apiFetch(`/client/customers/${id}`, 'PUT', {
-            name,
-            email:   document.getElementById('editCustEmail')?.value.trim(),
-            phone:   document.getElementById('editCustPhone')?.value.trim(),
-            company: document.getElementById('editCustCompany')?.value.trim(),
-            notes:   document.getElementById('editCustNotes')?.value.trim(),
-        });
-        const data = await res.json();
-        if (data.success) {
-            const updated = data.customer || {};
-            _customers  = _customers.map(c => String(c.id) === String(id) ? { ...c, ...updated } : c);
-            S.customers = _customers;
-            closeModal('editCustomerModal');
-            renderCustomers();
-            toast('Customer updated', 'success');
-        } else { toast(data.message || 'Failed to update', 'error'); }
-    } catch { toast('Error updating customer', 'error'); }
 }
 
 function openAddCustomerModal() {

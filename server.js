@@ -169,7 +169,6 @@ async function resolveLeadId(jwtId, jwtEmail) {
  */
 async function getClientPlanLimits(userId) {
     try {
-        // Resolve stale JWT ids before any DB lookups
         const resolvedId = await resolveLeadId(userId, null).catch(() => userId) || userId;
         // 1. Try via portal ID (workspace users + individual users who have one)
         const leadRow = await pool.query(
@@ -2716,8 +2715,7 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
             billing_cycle_anchor: isUpgrade ? 'now' : 'unchanged'
         });
         
-        // Update in database — must set status='active' and cancel_at_period_end=FALSE
-        // to reactivate any subscription that was in 'canceling' state
+        // Update in database — status='active' reactivates any canceling sub, stripe_price_id kept in sync
         const targetQty = parseInt(newUserCount) || 1;
         await pool.query(
             `UPDATE crm_subscriptions 
@@ -2733,6 +2731,14 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
              WHERE id = $7`,
             [newPackageKey, newPlan.name, targetQty, newPlan.price, newMonthlyTotal, newPlan.stripePriceId, id]
         );
+
+        // Sync client_companies so the subscription page recalculates correctly on next load
+        if (sub.client_portal_id) {
+            pool.query(
+                `UPDATE client_companies SET monthly_total=$1 WHERE client_portal_id=$2`,
+                [newMonthlyTotal, sub.client_portal_id]
+            ).catch(() => {});
+        }
         
         // Log event
         await logSubscriptionEvent(
@@ -9479,38 +9485,20 @@ app.delete('/api/client/leads/:id', authenticateClient, async (req, res) => {
     try {
         const userId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         const leadId = req.params.id;
-
-        // Verify ownership. Individual accounts own leads via individual_owner_id OR
-        // via the email on the account (covers leads created before id-stamping was added).
-        // Portal accounts own leads via client_portal_id.
         const clientPortalId = await getClientPortalId(userId);
-
-        // Get the account email for fallback matching
-        const acctRow = await pool.query('SELECT email FROM leads WHERE id=$1', [userId]);
-        const acctEmail = acctRow.rows[0]?.email || req.user.email;
 
         const check = await pool.query(
             `SELECT id, email FROM leads
              WHERE id = $1
                AND client_password IS NULL
                AND (source IS NULL OR source NOT IN ('company-user', 'subscription-direct'))
-               AND (
-                   client_portal_id = $2
-                   OR individual_owner_id = $3
-                   OR (individual_owner_id IS NULL AND $4 IS NOT NULL
-                       AND EXISTS (
-                           SELECT 1 FROM leads owner
-                           WHERE owner.id = $3
-                              OR LOWER(owner.email) = LOWER($4)
-                       ))
-               )`,
-            [leadId, clientPortalId, userId, acctEmail]
+               AND (client_portal_id = $2 OR individual_owner_id = $3)`,
+            [leadId, clientPortalId, userId]
         );
         if (!check.rows.length) {
             return res.status(404).json({ success: false, message: 'Lead not found or cannot be deleted' });
         }
 
-        // Safe delete — only CRM data, never subscription/auth data
         await pool.query(`DELETE FROM client_chain_queue WHERE lead_id = $1`, [leadId]).catch(() => {});
         await pool.query(`DELETE FROM lead_notes WHERE lead_id = $1`, [leadId]).catch(() => {});
         await pool.query(`DELETE FROM client_email_log WHERE lead_id = $1`, [leadId]).catch(() => {});
@@ -15321,8 +15309,8 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
 
         // For company admins: override monthly_total on the primary subscription with the
         // true billing amount = purchased_seats × price_per_user.
-        // This ensures the Subscription tab always shows what was actually purchased, not
-        // just what's been configured so far.
+        // ALWAYS recalculate from price_per_user — never trust client_companies.monthly_total
+        // which can be stale after a plan upgrade/downgrade.
         const leadRes = await pool.query(
             `SELECT client_portal_id, is_company_admin, is_co_admin FROM leads WHERE LOWER(email)=LOWER($1)`,
             [req.user.email]
@@ -15330,28 +15318,22 @@ app.get('/api/client/subscription', authenticateClient, async (req, res) => {
         const lead = leadRes.rows[0];
         if (lead?.client_portal_id && (lead.is_company_admin || lead.is_co_admin)) {
             const companyRes = await pool.query(
-                `SELECT monthly_total, total_active_seats, purchased_seats FROM client_companies WHERE client_portal_id=$1`,
+                `SELECT total_active_seats, purchased_seats FROM client_companies WHERE client_portal_id=$1`,
                 [lead.client_portal_id]
             );
             const company = companyRes.rows[0];
             if (company) {
                 const primary = subscriptions.find(s => s.status === 'active' && s.is_company_subscription) || subscriptions[0];
                 if (primary) {
-                    // purchased_seats may be 0 if not stamped yet — fall back to user_count or 1
                     const purchasedSeats = parseInt(company.purchased_seats || 0) || parseInt(primary.user_count || 0) || 1;
                     const ppu = parseFloat(primary.price_per_user) || 0;
-                    let displayTotal = parseFloat(company.monthly_total || 0);
-                    // Never show $0 when a seat price exists — always calculate from price_per_user
-                    if ((displayTotal === 0 || isNaN(displayTotal)) && ppu > 0) {
-                        displayTotal = purchasedSeats * ppu;
-                        // Persist corrected totals so future loads are instant
+                    // Always recalculate — price_per_user is always up to date after a plan change
+                    const displayTotal = ppu > 0 ? purchasedSeats * ppu : parseFloat(primary.monthly_total || 0);
+                    // Sync client_companies so billing/usage endpoint stays consistent
+                    if (displayTotal > 0) {
                         pool.query(
                             `UPDATE client_companies SET monthly_total=$1, purchased_seats=GREATEST(purchased_seats,$2) WHERE client_portal_id=$3`,
                             [displayTotal, purchasedSeats, lead.client_portal_id]
-                        ).catch(() => {});
-                        pool.query(
-                            `UPDATE crm_subscriptions SET monthly_total=$1, user_count=$2 WHERE id=$3`,
-                            [displayTotal, purchasedSeats, primary.id]
                         ).catch(() => {});
                     }
                     primary.monthly_total   = displayTotal;
@@ -15605,7 +15587,7 @@ app.post('/api/client/subscription/:id/reinstate', authenticateClient, async (re
     }
 });
 
-// (change-plan: duplicate removed — primary registration handles all plan changes)
+// (change-plan: duplicate removed — primary at line 2654 handles all plan changes)
 
 // POST /api/client/subscription/:id/billing-portal — open Stripe self-service portal
 app.post('/api/client/subscription/:id/billing-portal', authenticateClient, async (req, res) => {
@@ -23653,29 +23635,16 @@ app.put('/api/client/customers/:id', authenticateClient, async (req, res) => {
         const { id }   = req.params;
         const { name, email, phone, company, notes } = req.body;
         if (!name) return res.status(400).json({ success: false, message: 'Name required' });
-
-        // Verify ownership
-        const acctRow  = await pool.query('SELECT email FROM leads WHERE id=$1', [userId]);
-        const acctEmail = acctRow.rows[0]?.email || req.user.email;
         const check = portalId
-            ? await pool.query(
-                `SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2 AND is_customer=TRUE AND client_password IS NULL`,
-                [id, portalId])
-            : await pool.query(
-                `SELECT id FROM leads WHERE id=$1 AND (individual_owner_id=$2) AND is_customer=TRUE AND client_password IS NULL`,
-                [id, userId]);
-
+            ? await pool.query(`SELECT id FROM leads WHERE id=$1 AND client_portal_id=$2 AND is_customer=TRUE AND client_password IS NULL`, [id, portalId])
+            : await pool.query(`SELECT id FROM leads WHERE id=$1 AND individual_owner_id=$2 AND is_customer=TRUE AND client_password IS NULL`, [id, userId]);
         if (!check.rows.length) return res.status(404).json({ success: false, message: 'Customer not found' });
-
         const result = await pool.query(
             `UPDATE leads SET name=$1, email=$2, phone=$3, company=$4, notes=$5, updated_at=NOW() WHERE id=$6 RETURNING *`,
             [name, email||null, phone||null, company||null, notes||null, id]
         );
         res.json({ success: true, customer: result.rows[0] });
-    } catch(e) {
-        console.error('[PUT CUSTOMERS]', e);
-        res.status(500).json({ success: false, message: e.message });
-    }
+    } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 app.post('/api/client/customers', authenticateClient, async (req, res) => {

@@ -23078,25 +23078,39 @@ app.post('/api/admin/cleanup-orphaned-companies', authenticateToken, async (req,
 
 app.get('/api/client/analytics/email', authenticateClient, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
         const portalId = await getClientPortalId(userId);
         const { user_email, type } = req.query;
 
-        const userInfo = await pool.query('SELECT is_company_admin, is_co_admin, email FROM leads WHERE id=$1', [userId]);
+        const userInfo = await pool.query(
+            'SELECT is_company_admin, is_co_admin, email FROM leads WHERE id=$1 OR LOWER(email)=LOWER($2) LIMIT 1',
+            [userId, req.user.email || '']
+        );
         const me = userInfo.rows[0];
         const isAdmin = me?.is_company_admin || me?.is_co_admin;
         const targetEmail = (user_email && isAdmin) ? user_email : me?.email;
         const viewAll = isAdmin && !user_email;
-
-        if (!portalId) return res.json({ success: true, marketing: { sent:0, opened:0, clicked:0, open_rate:0, click_rate:0, hot_conversions:0 }, followup: { sent:0, opened:0, clicked:0, open_rate:0, click_rate:0, hot_conversions:0 } });
 
         const getStats = async (emailType) => {
             // For follow-up type, also include 'email' type (quick-compose from thread)
             const typeFilter = emailType === 'follow-up'
                 ? `email_type IN ('follow-up','email','manual')`
                 : `email_type = '${emailType}'`;
-            const r = viewAll
-                ? await pool.query(`
+
+            let r;
+            if (!portalId) {
+                // Individual user — query by assigned_to_user_email (no portal ID)
+                r = await pool.query(`
+                    SELECT
+                        COUNT(*) FILTER (WHERE status IN ('sent','pending') OR status IS NULL) as sent,
+                        COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
+                        COUNT(*) FILTER (WHERE clicked_at IS NOT NULL) as clicked,
+                        COUNT(*) FILTER (WHERE lead_became_hot = TRUE) as hot_conversions
+                    FROM client_email_log
+                    WHERE LOWER(assigned_to_user_email)=LOWER($1) AND ${typeFilter} AND status != 'failed'
+                `, [me?.email || '']);
+            } else if (viewAll) {
+                r = await pool.query(`
                     SELECT
                         COUNT(*) FILTER (WHERE status IN ('sent','pending') OR status IS NULL) as sent,
                         COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
@@ -23104,8 +23118,9 @@ app.get('/api/client/analytics/email', authenticateClient, async (req, res) => {
                         COUNT(*) FILTER (WHERE lead_became_hot = TRUE) as hot_conversions
                     FROM client_email_log
                     WHERE client_portal_id=$1 AND ${typeFilter} AND status != 'failed'
-                `, [portalId])
-                : await pool.query(`
+                `, [portalId]);
+            } else {
+                r = await pool.query(`
                     SELECT
                         COUNT(*) FILTER (WHERE status IN ('sent','pending') OR status IS NULL) as sent,
                         COUNT(*) FILTER (WHERE opened_at IS NOT NULL) as opened,
@@ -23116,6 +23131,7 @@ app.get('/api/client/analytics/email', authenticateClient, async (req, res) => {
                       AND LOWER(assigned_to_user_email)=LOWER($2)
                       AND ${typeFilter} AND status != 'failed'
                 `, [portalId, targetEmail]);
+            }
             const d = r.rows[0];
             const sent = parseInt(d.sent)||0;
             const opened = parseInt(d.opened)||0;
@@ -24828,8 +24844,10 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
             isIndividual = true;
         } else {
             // Workspace/company user — only admins can see billing
+            // Use email fallback in case JWT id has drifted (remapped lead)
             const adminCheck = await pool.query(
-                `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
+                `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1 OR LOWER(email)=LOWER($2) LIMIT 1`,
+                [req.user.id, req.user.email || '']
             );
             const isAdmin = adminCheck.rows[0]?.is_company_admin || adminCheck.rows[0]?.is_co_admin;
             if (!isAdmin) return res.status(403).json({ success: false, message: 'Billing is only accessible to company admins.' });

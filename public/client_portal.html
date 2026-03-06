@@ -3825,12 +3825,20 @@ function _refreshDashboardLeads() {
 
 async function loadDashboard() {
     try {
-        const [dashRes, chartRes] = await Promise.all([
+        const [dashRes, chartRes, leadsRes, customersRes, tasksRes] = await Promise.all([
             apiFetch('/client/dashboard'),
             apiFetch('/client/charts'),
+            apiFetch('/client/leads').then(r=>r.json()).catch(()=>({leads:[]})),
+            apiFetch('/client/customers').then(r=>r.json()).catch(()=>({customers:[]})),
+            apiFetch('/client/tasks').then(r=>r.json()).catch(()=>({tasks:[]})),
         ]);
         const dashData  = await dashRes.json();
         const chartData = await chartRes.json();
+
+        // Refresh cached state with fresh data
+        if (leadsRes.leads)     { S.leads     = leadsRes.leads;     }
+        if (customersRes.customers) { S.customers = customersRes.customers; _customers = S.customers; }
+        if (tasksRes.tasks)     { S.tasks     = tasksRes.tasks;     }
 
         const d = dashData.dashboard || {};
         const leads     = S.leads || [];
@@ -3838,7 +3846,7 @@ async function loadDashboard() {
         const invoices  = d.invoices || [];
 
         // Stats
-        const openTasks = (S.tasks || []).filter(t => t.status !== 'completed').length;
+        const openTasks = (S.tasks || []).filter(t => !t.completed && t.status !== 'completed').length;
 
         // Income from chart data
         const cm = chartData.currentMonthIncome || {};
@@ -8247,7 +8255,7 @@ function renderSubscription(subs) {
                             const isCur = plan.key===sub.package_key;
                             const curPkg = CRM_PLANS.find(p=>p.key===sub.package_key);
                             const arrow = plan.price>(curPkg?.price||0)?'↑ Upgrade':plan.price<(curPkg?.price||0)?'↓ Downgrade':'';
-                            return `<div class="plan-card ${isCur?'current':''}" onclick="${isCur?'':(`openChangePlan(${sub.id},'${plan.key}','${plan.name}',${plan.price},${sub.user_count||1},'${escHtml(sub.package_key||'')}',${parseFloat(sub.monthly_total||0)})`)}" style="${isCur?'cursor:default;':''}">
+                            return `<div class="plan-card ${isCur?'current':''}" onclick="${isCur?'':(`openChangePlan(${sub.id},'${plan.key}','${plan.name}',${plan.price},${sub.user_count||1},'${escHtml(sub.package_key||'')}',${parseFloat(sub.monthly_total||0)},false)`)}" style="${isCur?'cursor:default;':''}">
                                 <div class="plan-name">${plan.name}</div>
                                 <div class="plan-price">$${plan.price.toFixed(2)}<span>/user/mo</span></div>
                                 ${isCur?'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600;">CURRENT</div>':`<div style="font-size:11px;color:var(--text-3);margin-top:4px;">${arrow}</div>`}
@@ -8311,7 +8319,7 @@ function renderSubscription(subs) {
                                 const isCur = plan.key===sub.package_key;
                                 const curPkg = CRM_PLANS.find(p=>p.key===sub.package_key);
                                 const arrow = plan.price>(curPkg?.price||0)?'↑ Upgrade':plan.price<(curPkg?.price||0)?'↓ Downgrade':'';
-                                return `<div class="plan-card ${isCur?'current':''}" onclick="${isCur?'':(`openChangePlan(${sub.id},'${plan.key}','${plan.name}',${plan.price},${sub.user_count||1},'${escHtml(sub.package_key||'')}',${parseFloat(sub.monthly_total||0)})`)}" style="${isCur?'cursor:default;':''}">
+                                return `<div class="plan-card ${isCur?'current':''}" onclick="${isCur?'':(`openChangePlan(${sub.id},'${plan.key}','${plan.name}',${plan.price},1,'${escHtml(sub.package_key||'')}',${parseFloat(sub.monthly_total||0)},false)`)}" style="${isCur?'cursor:default;':''}">
                                     <div class="plan-name">${plan.name}</div>
                                     <div class="plan-price">$${plan.price.toFixed(2)}<span>/user/mo</span></div>
                                     ${isCur?'<div style="font-size:10px;color:var(--green);margin-top:4px;font-weight:600;">CURRENT</div>':`<div style="font-size:11px;color:var(--text-3);margin-top:4px;">${arrow}</div>`}
@@ -8362,16 +8370,19 @@ function renderSubscription(subs) {
 // ── Individual / Admin own-plan change (existing changePlanModal) ──────────
 let _planState = {};
 
-function openChangePlan(subId, planKey, planName, price, currentQty, currentPlanKey, currentTotal) {
-    _planState = { subId, selectedKey: planKey, selectedPrice: price, currentQty };
-    const opts = CRM_PLANS.map(p => `<div class="plan-card ${p.key===planKey?'selected current':''}" id="popt-${p.key}" onclick="selectPlan('${p.key}',${p.price})">
+function openChangePlan(subId, planKey, planName, price, currentQty, currentPlanKey, currentTotal, isCompany) {
+    _planState = { subId, selectedKey: planKey, selectedPrice: price, currentQty: isCompany ? currentQty : 1 };
+    const planList = isCompany ? COMPANY_PLANS : CRM_PLANS;
+    const opts = planList.map(p => `<div class="plan-card ${p.key===planKey?'selected current':''}" id="popt-${p.key}" onclick="selectPlan('${p.key}',${p.price})">
         <div class="plan-name">${p.name}</div>
         <div class="plan-price">$${p.price.toFixed(2)}<span>/user/mo</span></div>
         ${p.key===currentPlanKey?'<div style="font-size:10px;color:var(--green);margin-top:4px;">CURRENT</div>':''}
     </div>`).join('');
     document.getElementById('changePlanOptions').innerHTML = opts;
-    document.getElementById('changePlanUsersField').style.display = 'block';
-    document.getElementById('changePlanQty').value = currentQty;
+    // Only show user count field for company/workspace plans — individual plans are always 1 seat
+    const usersField = document.getElementById('changePlanUsersField');
+    if (usersField) usersField.style.display = isCompany ? 'block' : 'none';
+    document.getElementById('changePlanQty').value = isCompany ? currentQty : 1;
     document.getElementById('planCurrentAmt').textContent = '$' + parseFloat(currentTotal||0).toFixed(2) + '/mo';
     updatePlanTotal();
     openModal('changePlanModal');

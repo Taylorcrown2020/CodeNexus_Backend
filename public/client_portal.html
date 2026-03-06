@@ -3925,6 +3925,39 @@ async function loadDashboard() {
             dashLeadsEl.innerHTML = '<div class="empty-state"><p>No leads yet</p></div>';
         }
 
+        // Tasks Due — show open tasks sorted by due date
+        const dashTasksEl = document.getElementById('dashTasks');
+        if (dashTasksEl) {
+            const openTasks2 = (S.tasks || [])
+                .filter(t => !t.completed && t.status !== 'completed')
+                .sort((a,b) => {
+                    if (!a.due_date && !b.due_date) return 0;
+                    if (!a.due_date) return 1;
+                    if (!b.due_date) return -1;
+                    return new Date(a.due_date) - new Date(b.due_date);
+                })
+                .slice(0, 6);
+            if (openTasks2.length) {
+                const priorityColor = p => p === 'high' ? '#ef4444' : p === 'medium' ? '#f59e0b' : '#6b7280';
+                dashTasksEl.innerHTML = openTasks2.map(t => {
+                    const overdue = t.due_date && new Date(t.due_date) < new Date();
+                    const dueLabel = t.due_date
+                        ? `<span style="font-size:10px;color:${overdue ? '#ef4444' : 'var(--text-3)'};">${overdue ? '⚠ ' : ''}${new Date(t.due_date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`
+                        : '';
+                    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-light);" onclick="navigate('tasks')" style="cursor:pointer;">
+                        <div style="width:8px;height:8px;border-radius:50%;background:${priorityColor(t.priority)};flex-shrink:0;"></div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:500;color:var(--text-0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(t.title||'Untitled')}</div>
+                            ${t.assigned_to_name ? `<div style="font-size:11px;color:var(--text-3);">${escHtml(t.assigned_to_name)}</div>` : ''}
+                        </div>
+                        ${dueLabel}
+                    </div>`;
+                }).join('') + (openTasks.length > 6 ? `<div style="text-align:center;padding-top:8px;"><button class="btn btn-ghost btn-sm" onclick="navigate('tasks')">View all ${openTasks} tasks</button></div>` : '');
+            } else {
+                dashTasksEl.innerHTML = '<div class="empty-state"><p>No tasks due</p></div>';
+            }
+        }
+
     } catch(e) {
         console.error('Dashboard load error:', e);
     }
@@ -7346,6 +7379,8 @@ async function saveTask() {
             const real = data.task || { ...optimistic, id: data.id || optimistic.id, _optimistic: false };
             S.tasks = S.tasks.map(t => t.id === optimistic.id ? { ...real, _optimistic: false } : t);
             renderTasks();
+            // Refresh dashboard task panel if visible
+            if (S.currentPage === 'dashboard') loadDashboard();
         } else {
             S.tasks = S.tasks.filter(t => t.id !== optimistic.id);
             renderTasks();
@@ -7987,39 +8022,85 @@ async function loadBilling() {
     el.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
 
     try {
-        const res = await apiFetch('/client/billing/usage', 'GET');
+        const res  = await apiFetch('/client/billing/usage', 'GET');
         const data = await res.json();
-        if (!data || !data.success) throw new Error(data?.message || 'Failed to load billing data');
+        if (!data?.success) throw new Error(data?.message || 'Failed to load billing data');
 
-        const { lastMonth, currentMonth, rates } = data;
+        const { lastMonth, currentMonth, rates, subscription: sub } = data;
+        const fmtMoney = v => '$' + parseFloat(v || 0).toFixed(2);
+        const fmtCount = v => parseInt(v || 0).toLocaleString();
+        const fmtDate4 = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
 
-    const fmtMoney = v => '$' + parseFloat(v || 0).toFixed(2);
-    const fmtCount = v => parseInt(v || 0).toLocaleString();
+        const now    = new Date();
+        const lmDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+        const lmLabel = lmDate.toLocaleString('default', { month:'long', year:'numeric' });
+        const cmLabel = now.toLocaleString('default',    { month:'long', year:'numeric' });
 
-    // Determine last month label
-    const now = new Date();
-    const lmDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-    const lmLabel = lmDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-    const cmLabel = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const periodEnd   = sub?.periodEnd   ? fmtDate4(sub.periodEnd)   : 'end of billing period';
+        const periodStart = sub?.periodStart ? fmtDate4(sub.periodStart) : null;
 
-    el.innerHTML = `
-        <div style="max-width:820px;">
+        // Seat breakdown line (workspace or individual)
+        const seatsLine = sub?.isWorkspace
+            ? `${sub.seats} seat${sub.seats !== 1 ? 's' : ''} × ${fmtMoney(sub.pricePerSeat)}/seat = <strong>${fmtMoney(sub.baseCharge || currentMonth.subscriptionCharge)}</strong>`
+            : `${escHtml(sub?.planName || 'Subscription')}: <strong>${fmtMoney(currentMonth.subscriptionCharge)}</strong>`;
 
-            <!-- Rates Banner -->
-            <div style="background:linear-gradient(135deg,#6366f115,#8b5cf615);border:1px solid #6366f133;border-radius:12px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-                <div style="flex:1;min-width:180px;">
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:6px;">Platform Billing Rates</div>
-                    <div style="font-size:13px;color:var(--text-2);">
-                        <span style="margin-right:20px;">✉️ Email &nbsp;<strong style="color:var(--text-0);">${fmtMoney(rates.perEmail)}</strong> per send</span>
-                        <span>💬 SMS &nbsp;<strong style="color:var(--text-0);">${fmtMoney(rates.perSms)}</strong> per send</span>
-                    </div>
+        // Workspace user table
+        const usersTable = (sub?.isWorkspace && sub.users?.length)
+            ? `<div style="margin-top:16px;">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:8px;">Included Users</div>
+                <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+                    ${sub.users.map((u,i) => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;font-size:12px;${i < sub.users.length-1 ? 'border-bottom:1px solid var(--border-light);':''}">
+                        <div style="color:var(--text-1);">${escHtml(u.user_name || u.user_email)}</div>
+                        <div style="color:var(--text-3);">${fmtMoney(u.price_per_user)}/mo</div>
+                    </div>`).join('')}
                 </div>
-                <div style="font-size:11px;color:var(--text-3);text-align:right;line-height:1.5;">
-                    Usage billed at end of each month<br>alongside your subscription.
+               </div>`
+            : '';
+
+        el.innerHTML = `
+        <div style="max-width:860px;">
+
+            <!-- Projected Due Banner -->
+            <div style="background:linear-gradient(135deg,rgba(99,102,241,0.13),rgba(139,92,246,0.10));border:1px solid rgba(99,102,241,0.35);border-radius:14px;padding:22px 26px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+                <div>
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#a5b4fc;margin-bottom:8px;">Projected Amount Due — ${cmLabel}</div>
+                    <div style="font-size:40px;font-weight:800;color:#fff;letter-spacing:-1.5px;line-height:1;">${fmtMoney(currentMonth.projectedTotal)}</div>
+                    <div style="font-size:12px;color:var(--text-3);margin-top:6px;">Due ${periodEnd}${periodStart ? ' &nbsp;·&nbsp; Period: ' + periodStart + ' – ' + periodEnd : ''}</div>
+                    <div style="font-size:11px;color:#818cf8;margin-top:4px;">Resets each billing period &nbsp;·&nbsp; Usage auto-added to your Stripe invoice</div>
+                </div>
+                <div style="background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 18px;min-width:220px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;">Breakdown</div>
+                    <div style="font-size:13px;color:var(--text-2);line-height:1.9;">
+                        <div style="display:flex;justify-content:space-between;gap:16px;">
+                            <span>${sub?.isWorkspace ? sub.seats+' seat'+(sub.seats!==1?'s':'')+' × '+fmtMoney(sub.pricePerSeat) : 'Subscription'}</span>
+                            <strong style="color:#e2e8f0;">${fmtMoney(currentMonth.subscriptionCharge)}</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;gap:16px;">
+                            <span>Usage so far</span>
+                            <strong style="color:#e2e8f0;">${fmtMoney(currentMonth.usageChargeSoFar)}</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;gap:16px;">
+                            <span>Projected usage</span>
+                            <strong style="color:#e2e8f0;">${fmtMoney(currentMonth.projectedUsageCharge)}</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;gap:16px;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px;margin-top:4px;">
+                            <span style="font-weight:700;color:#fff;">Total (projected)</span>
+                            <strong style="color:#a5b4fc;">${fmtMoney(currentMonth.projectedTotal)}</strong>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Two-column cards -->
+            <!-- Rates bar -->
+            <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:12px 18px;margin-bottom:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-3);">Usage Rates</div>
+                <span style="font-size:13px;color:var(--text-2);">✉️ Email <strong style="color:var(--text-0);">${fmtMoney(rates.perEmail)}</strong>/send</span>
+                <span style="font-size:13px;color:var(--text-2);">💬 SMS <strong style="color:var(--text-0);">${fmtMoney(rates.perSms)}</strong>/send</span>
+                <span style="font-size:11px;color:var(--text-3);margin-left:auto;">Automatically billed via Stripe at period end</span>
+            </div>
+
+            <!-- Month cards -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
 
                 <!-- Last Month -->
@@ -8031,22 +8112,22 @@ async function loadBilling() {
                     <div class="card-body" style="padding:18px;">
                         <div style="display:flex;gap:12px;margin-bottom:16px;">
                             <div style="flex:1;background:var(--bg-2);border-radius:8px;padding:12px;text-align:center;">
-                                <div style="font-size:22px;font-weight:700;color:var(--text-0);">${fmtCount(lastMonth.emails)}</div>
-                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Emails Sent</div>
+                                <div style="font-size:22px;font-weight:700;">${fmtCount(lastMonth.emails)}</div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Emails</div>
                             </div>
                             <div style="flex:1;background:var(--bg-2);border-radius:8px;padding:12px;text-align:center;">
-                                <div style="font-size:22px;font-weight:700;color:var(--text-0);">${fmtCount(lastMonth.sms)}</div>
-                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">SMS Sent</div>
+                                <div style="font-size:22px;font-weight:700;">${fmtCount(lastMonth.sms)}</div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">SMS</div>
                             </div>
                         </div>
                         <div style="border-top:1px solid var(--border-1);padding-top:14px;">
                             <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;">
-                                <span style="color:var(--text-3);">Usage charges</span>
-                                <span style="color:var(--text-0);">${fmtMoney(lastMonth.usageCharge)}</span>
+                                <span style="color:var(--text-3);">${sub?.isWorkspace ? sub.seats+' seats × '+fmtMoney(sub.pricePerSeat) : 'Subscription'}</span>
+                                <span>${fmtMoney(lastMonth.subscriptionCharge)}</span>
                             </div>
                             <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px;">
-                                <span style="color:var(--text-3);">Subscription</span>
-                                <span style="color:var(--text-0);">${fmtMoney(lastMonth.subscriptionCharge)}</span>
+                                <span style="color:var(--text-3);">Usage charges</span>
+                                <span>${fmtMoney(lastMonth.usageCharge)}</span>
                             </div>
                             <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;border-top:1px solid var(--border-1);padding-top:10px;">
                                 <span>Total Billed</span>
@@ -8056,35 +8137,35 @@ async function loadBilling() {
                     </div>
                 </div>
 
-                <!-- Current Month Projection -->
-                <div class="card" style="margin:0;border:1px solid #6366f133;">
+                <!-- Current Month -->
+                <div class="card" style="margin:0;border:1px solid rgba(99,102,241,0.25);">
                     <div class="card-header" style="border-bottom:1px solid var(--border-1);">
                         <span class="card-title">This Month</span>
-                        <span style="font-size:11px;background:#6366f122;color:#818cf8;padding:2px 8px;border-radius:4px;margin-left:auto;">Projected</span>
+                        <span style="font-size:11px;background:#6366f122;color:#818cf8;padding:2px 8px;border-radius:4px;margin-left:auto;">Live</span>
                     </div>
                     <div class="card-body" style="padding:18px;">
                         <div style="display:flex;gap:12px;margin-bottom:16px;">
                             <div style="flex:1;background:var(--bg-2);border-radius:8px;padding:12px;text-align:center;">
-                                <div style="font-size:22px;font-weight:700;color:var(--text-0);">${fmtCount(currentMonth.emails)}</div>
+                                <div style="font-size:22px;font-weight:700;">${fmtCount(currentMonth.emails)}</div>
                                 <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Emails So Far</div>
                             </div>
                             <div style="flex:1;background:var(--bg-2);border-radius:8px;padding:12px;text-align:center;">
-                                <div style="font-size:22px;font-weight:700;color:var(--text-0);">${fmtCount(currentMonth.sms)}</div>
+                                <div style="font-size:22px;font-weight:700;">${fmtCount(currentMonth.sms)}</div>
                                 <div style="font-size:11px;color:var(--text-3);margin-top:2px;">SMS So Far</div>
                             </div>
                         </div>
                         <div style="border-top:1px solid var(--border-1);padding-top:14px;">
                             <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;">
-                                <span style="color:var(--text-3);">Usage so far</span>
-                                <span style="color:var(--text-0);">${fmtMoney(currentMonth.usageChargeSoFar)}</span>
+                                <span style="color:var(--text-3);">${sub?.isWorkspace ? sub.seats+' seats × '+fmtMoney(sub.pricePerSeat) : 'Subscription'}</span>
+                                <span>${fmtMoney(currentMonth.subscriptionCharge)}</span>
                             </div>
                             <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;">
-                                <span style="color:var(--text-3);">Projected usage</span>
-                                <span style="color:var(--text-0);">${fmtMoney(currentMonth.projectedUsageCharge)}</span>
+                                <span style="color:var(--text-3);">Usage so far</span>
+                                <span>${fmtMoney(currentMonth.usageChargeSoFar)}</span>
                             </div>
                             <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px;">
-                                <span style="color:var(--text-3);">Subscription</span>
-                                <span style="color:var(--text-0);">${fmtMoney(currentMonth.subscriptionCharge)}</span>
+                                <span style="color:var(--text-3);">Projected usage (full month)</span>
+                                <span>${fmtMoney(currentMonth.projectedUsageCharge)}</span>
                             </div>
                             <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;border-top:1px solid var(--border-1);padding-top:10px;">
                                 <span>Projected Total</span>
@@ -8095,14 +8176,15 @@ async function loadBilling() {
                 </div>
             </div>
 
-            <div style="font-size:11px;color:var(--text-3);text-align:center;padding:8px;">
-                Projections are based on your current month's pace. Actual charges may vary. Billing occurs on the 1st of each month.
+            ${usersTable}
+
+            <div style="font-size:11px;color:var(--text-3);text-align:center;padding:10px;">
+                Projections scale current month pace to the full period. Usage is added automatically to your Stripe invoice before each renewal — you will always see it on your receipt.
             </div>
         </div>
-    `;
+        `;
     } catch(e) {
-        // Check if this is a "no active subscription" error for individual users
-        if (e.message && e.message.includes('No active subscription')) {
+        if (e.message?.includes('No active subscription')) {
             el.innerHTML = `<div class="empty-state">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;opacity:.3;margin-bottom:16px;"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                 <p style="color:var(--text-2);">No active subscription found.</p>
@@ -8132,10 +8214,15 @@ async function loadSubscription() {
     const el = document.getElementById('subscriptionContent');
     el.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
     try {
-        const res = await apiFetch('/client/subscription');
-        const data = await res.json();
-        if (!data.success) throw new Error(data.message || 'Failed to load');
-        renderSubscription(data.subscriptions || []);
+        // Fetch subscription + billing data in parallel
+        const [subRes, billingRes] = await Promise.all([
+            apiFetch('/client/subscription'),
+            apiFetch('/client/billing/usage', 'GET').catch(() => null),
+        ]);
+        const subData     = await subRes.json();
+        const billingData = billingRes ? await billingRes.json().catch(() => null) : null;
+        if (!subData.success) throw new Error(subData.message || 'Failed to load');
+        renderSubscription(subData.subscriptions || [], billingData?.success ? billingData : null);
     } catch(e) {
         el.innerHTML = `<div class="empty-state">
             <h3>Could not load subscription</h3><p>${e.message}</p>
@@ -8144,14 +8231,37 @@ async function loadSubscription() {
     }
 }
 
-function renderSubscription(subs) {
+function renderSubscription(subs, billing) {
     const el = document.getElementById('subscriptionContent');
-    const fmtDate2 = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    const fmtDate2  = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    const fmtMoney2 = v => '$' + parseFloat(v || 0).toFixed(2);
     const sCfg = {
         active:    {label:'Active',    cls:'badge-green'},
         canceling: {label:'Canceling', cls:'badge-yellow'},
         past_due:  {label:'Past Due',  cls:'badge-red'},
         cancelled: {label:'Cancelled', cls:'badge-gray'},
+    };
+
+    // ── Projected Due Banner (shown to admins with an active subscription) ───
+    const projectedBanner = () => {
+        if (!billing || S.isCompanyMember && !S.isAdmin) return '';
+        const cm  = billing.currentMonth || {};
+        const sub = billing.subscription || {};
+        const periodEnd = sub.periodEnd ? fmtDate2(sub.periodEnd) : 'period end';
+        return `
+        <div style="background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(139,92,246,0.09));border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+            <div>
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#a5b4fc;margin-bottom:6px;">Projected Amount Due This Period</div>
+                <div style="font-size:34px;font-weight:800;color:#fff;letter-spacing:-1px;line-height:1;">${fmtMoney2(cm.projectedTotal)}</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:5px;">Due ${periodEnd} &nbsp;·&nbsp; Resets each billing period</div>
+            </div>
+            <div style="font-size:12px;color:var(--text-2);line-height:2;text-align:right;">
+                <div>${sub.isWorkspace ? (sub.seats||1)+' seat'+(sub.seats!==1?'s':'')+' × '+fmtMoney2(sub.pricePerSeat) : (sub.planName||'Subscription')} <strong style="color:var(--text-0);">${fmtMoney2(cm.subscriptionCharge)}</strong></div>
+                <div>Usage so far <strong style="color:var(--text-0);">${fmtMoney2(cm.usageChargeSoFar)}</strong></div>
+                <div>Projected usage <strong style="color:var(--text-0);">${fmtMoney2(cm.projectedUsageCharge)}</strong></div>
+                <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="navigate('billing')">View Full Billing Detail →</button>
+            </div>
+        </div>`;
     };
 
     // Shared billing history renderer
@@ -8229,7 +8339,7 @@ function renderSubscription(subs) {
         return;
     }
 
-    let html = '';
+    let html = projectedBanner();
 
     // ── COMPANY ADMIN — full company subscription control ──────────────────
     if (S.isAdmin && S.isCompanyMember) {
@@ -8249,7 +8359,7 @@ function renderSubscription(subs) {
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:26px;font-weight:700;color:var(--text-0);">$${parseFloat(sub.monthly_total||0).toFixed(2)}</div>
-                    <div style="font-size:12px;color:var(--text-3);">${isCompanyPlan ? `${sub.user_count||1} seat${(sub.user_count||1)!==1?'s':''}` : 'per user'}/month</div>
+                    <div style="font-size:12px;color:var(--text-3);">${isCompanyPlan ? `${sub.user_count||1} seat${(sub.user_count||1)!==1?'s':''} × $${parseFloat(sub.price_per_user||0).toFixed(2)}/seat` : 'per user'}/month</div>
                 </div>
             </div>
             <div class="card-body">

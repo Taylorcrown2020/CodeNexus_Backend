@@ -11896,9 +11896,99 @@ async function processSubscriptionWebhook(event) {
 
         console.log(`[SUB WEBHOOK] Subscription deleted: ${subId}`);
     }
-}
 
-// Helper — resolve package key from Stripe price ID
+    // ── invoice.upcoming: add usage as invoice item before next billing cycle ──
+    else if (event.type === 'invoice.upcoming') {
+        const inv = event.data.object;
+        const stripeCustomerId = inv.customer;
+        const stripeSubId      = inv.subscription;
+        if (!stripeSubId) return;
+
+        try {
+            // Find our subscription record
+            const subRes = await pool.query(
+                `SELECT cs.*, cc.company_name
+                 FROM crm_subscriptions cs
+                 LEFT JOIN client_companies cc ON cc.client_portal_id = cs.client_portal_id
+                 WHERE cs.stripe_subscription_id = $1 AND cs.status IN ('active','canceling')
+                 LIMIT 1`,
+                [stripeSubId]
+            );
+            const sub = subRes.rows[0];
+            if (!sub) return;
+
+            // Billing month = the period that is ending (period_start of the upcoming invoice)
+            const periodStart  = inv.period_start ? new Date(inv.period_start * 1000) : new Date();
+            const billingMonth = new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth(), 1))
+                .toISOString().split('T')[0];
+
+            let emailRevenue = 0, smsRevenue = 0, emailCount = 0, smsCount = 0;
+
+            if (sub.client_portal_id) {
+                // Workspace — use portal_usage_log which aggregates all users
+                const ur = await pool.query(
+                    `SELECT email_count, sms_count, email_revenue, sms_revenue
+                     FROM portal_usage_log WHERE client_portal_id=$1 AND billing_month=$2`,
+                    [sub.client_portal_id, billingMonth]
+                );
+                const u = ur.rows[0] || {};
+                emailRevenue = parseFloat(u.email_revenue) || 0;
+                smsRevenue   = parseFloat(u.sms_revenue)   || 0;
+                emailCount   = parseInt(u.email_count)     || 0;
+                smsCount     = parseInt(u.sms_count)       || 0;
+            } else {
+                // Individual user — count from client_email_log
+                const ur = await pool.query(
+                    `SELECT
+                        COUNT(*) FILTER (WHERE email_type != 'sms') AS email_count,
+                        COUNT(*) FILTER (WHERE email_type = 'sms')  AS sms_count
+                     FROM client_email_log
+                     WHERE LOWER(assigned_to_user_email)=LOWER($1)
+                       AND status != 'failed'
+                       AND TO_CHAR(COALESCE(sent_at,created_at),'YYYY-MM-01')::date=$2::date`,
+                    [sub.lead_email, billingMonth]
+                ).catch(() => ({ rows: [{}] }));
+                const u = ur.rows[0] || {};
+                emailCount   = parseInt(u.email_count) || 0;
+                smsCount     = parseInt(u.sms_count)   || 0;
+                emailRevenue = emailCount * CLIENT_RATE_EMAIL;
+                smsRevenue   = smsCount   * CLIENT_RATE_SMS;
+            }
+
+            const totalUsage = emailRevenue + smsRevenue;
+            if (totalUsage < 0.01) {
+                console.log(`[USAGE BILLING] No usage for ${sub.lead_email} period ${billingMonth} — no invoice item added`);
+                return;
+            }
+
+            // Add line items on the upcoming invoice
+            if (emailRevenue > 0) {
+                await stripe.invoiceItems.create({
+                    customer:     stripeCustomerId,
+                    subscription: stripeSubId,
+                    amount:       Math.round(emailRevenue * 100),
+                    currency:     'usd',
+                    description:  `Email usage: ${emailCount} emails × $${CLIENT_RATE_EMAIL.toFixed(4)} — ${billingMonth.substring(0,7)}`,
+                });
+            }
+            if (smsRevenue > 0) {
+                await stripe.invoiceItems.create({
+                    customer:     stripeCustomerId,
+                    subscription: stripeSubId,
+                    amount:       Math.round(smsRevenue * 100),
+                    currency:     'usd',
+                    description:  `SMS usage: ${smsCount} messages × $${CLIENT_RATE_SMS.toFixed(4)} — ${billingMonth.substring(0,7)}`,
+                });
+            }
+
+            console.log(`[USAGE BILLING] Added $${totalUsage.toFixed(4)} usage to invoice for ${sub.lead_email} (${billingMonth}): ${emailCount} emails + ${smsCount} SMS`);
+            await logSubscriptionEvent(stripeSubId, sub.lead_email, 'usage_billed', totalUsage,
+                `Usage billed: ${emailCount} emails + ${smsCount} SMS = $${totalUsage.toFixed(4)}`);
+        } catch(err) {
+            console.error('[USAGE BILLING] invoice.upcoming error:', err.message);
+        }
+    }
+}
 function resolvePackageFromPrice(priceId) {
     if (!priceId) return null;
     if (priceId === process.env.STRIPE_CRM_ESSENTIAL_PRICE_ID)    return 'crm-essential';
@@ -24814,13 +24904,10 @@ app.get('/api/admin/usage/analytics', authenticateToken, async (req, res) => {
 // ========================================
 app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
     try {
-        // Resolve portalId — individual users have no portal ID so we use their lead email
-        // to look up their personal subscription directly.
         let portalId = await getClientPortalId(req.user.id);
         let isIndividual = false;
 
         if (!portalId) {
-            // Individual user — look up by id, fall back to email if id lookup fails
             let leadRow = await pool.query(
                 `SELECT id, email, is_company_admin, is_co_admin FROM leads WHERE id=$1`, [req.user.id]
             );
@@ -24833,8 +24920,6 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
             const lead = leadRow.rows[0];
             if (!lead) return res.status(400).json({ success: false, message: 'User not found' });
 
-            // Check for an active subscription by email — include company subscriptions for
-            // individual users who have is_company_subscription=TRUE on their personal plan
             const subCheck = await pool.query(
                 `SELECT id FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status IN ('active','canceling') LIMIT 1`,
                 [lead.email]
@@ -24842,11 +24927,8 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
             if (!subCheck.rows.length) {
                 return res.status(400).json({ success: false, message: 'No active subscription found' });
             }
-            // Individual users are their own admin — grant access
             isIndividual = true;
         } else {
-            // Workspace/company user — only admins can see billing
-            // Use email fallback in case JWT id has drifted (remapped lead)
             const adminCheck = await pool.query(
                 `SELECT is_company_admin, is_co_admin FROM leads WHERE id=$1 OR LOWER(email)=LOWER($2) LIMIT 1`,
                 [req.user.id, req.user.email || '']
@@ -24855,37 +24937,88 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
             if (!isAdmin) return res.status(403).json({ success: false, message: 'Billing is only accessible to company admins.' });
         }
 
-        // Ensure tables exist (safe — runs only if missing, no-op otherwise)
         await initializeUsageTables().catch(() => {});
 
         const now = new Date();
         const thisMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0];
         const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().split('T')[0];
 
-        // Subscription charge — individual users look up by email; workspace users by portalId
+        // ── Subscription details ───────────────────────────────────────────────
         let subscriptionCharge = 0;
+        let subscriptionInfo = {};   // seats, pricePerSeat, periodStart, periodEnd, planName, users[]
+
         if (isIndividual) {
-            // Use the email directly from the JWT — avoids a round-trip and works even if
-            // the lead id has drifted or was remapped.
-            const userEmail = req.user.email;
-            const subResult = await pool.query(
-                `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE LOWER(lead_email)=LOWER($1) AND status IN ('active','canceling')`,
-                [userEmail]
+            const subRes = await pool.query(
+                `SELECT monthly_total::float, price_per_user::float, package_name,
+                        current_period_start, current_period_end
+                 FROM crm_subscriptions
+                 WHERE LOWER(lead_email)=LOWER($1) AND status IN ('active','canceling')
+                 ORDER BY created_at DESC LIMIT 1`,
+                [req.user.email]
             );
-            subscriptionCharge = subResult.rows[0]?.sub_total || 0;
+            const s = subRes.rows[0] || {};
+            subscriptionCharge = parseFloat(s.monthly_total) || 0;
+            subscriptionInfo = {
+                isWorkspace:  false,
+                planName:     s.package_name || 'CRM Plan',
+                seats:        1,
+                pricePerSeat: parseFloat(s.price_per_user) || subscriptionCharge,
+                periodStart:  s.current_period_start || null,
+                periodEnd:    s.current_period_end   || null,
+                users:        [],
+            };
         } else {
-            const subResult = await pool.query(
-                `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE client_portal_id=$1 AND status IN ('active','canceling')`,
+            // Workspace — get seats × price from client_companies + crm_subscriptions
+            const subRes = await pool.query(
+                `SELECT cs.price_per_user::float, cs.package_name,
+                        cs.current_period_start, cs.current_period_end,
+                        cc.purchased_seats, cc.total_active_seats,
+                        cc.monthly_total::float AS company_monthly_total
+                 FROM crm_subscriptions cs
+                 JOIN client_companies cc ON cc.client_portal_id = cs.client_portal_id
+                 WHERE cs.client_portal_id=$1 AND cs.status IN ('active','canceling')
+                   AND cs.is_company_subscription = TRUE
+                 ORDER BY cs.created_at ASC LIMIT 1`,
                 [portalId]
             );
-            subscriptionCharge = subResult.rows[0]?.sub_total || 0;
+            const s = subRes.rows[0];
+            if (s) {
+                const seats       = parseInt(s.purchased_seats) || 1;
+                const ppu         = parseFloat(s.price_per_user) || 0;
+                subscriptionCharge = parseFloat(s.company_monthly_total) || (seats * ppu);
+
+                // Get individual user list under this workspace
+                const usersRes = await pool.query(
+                    `SELECT cu.user_email, cu.user_name, cu.price_per_user::float, cu.status
+                     FROM company_users cu
+                     WHERE cu.client_portal_id=$1 AND cu.status IN ('active','cancelling')
+                     ORDER BY cu.created_at ASC`,
+                    [portalId]
+                );
+                subscriptionInfo = {
+                    isWorkspace:  true,
+                    planName:     s.package_name || 'CRM Workspace',
+                    seats,
+                    pricePerSeat: ppu,
+                    baseCharge:   subscriptionCharge,
+                    periodStart:  s.current_period_start || null,
+                    periodEnd:    s.current_period_end   || null,
+                    users:        usersRes.rows,
+                };
+            } else {
+                // Fallback if company record not found
+                const fallback = await pool.query(
+                    `SELECT COALESCE(SUM(monthly_total),0)::float AS sub_total FROM crm_subscriptions WHERE client_portal_id=$1 AND status IN ('active','canceling')`,
+                    [portalId]
+                );
+                subscriptionCharge = fallback.rows[0]?.sub_total || 0;
+                subscriptionInfo = { isWorkspace: true, planName: 'CRM Workspace', seats: 1, pricePerSeat: subscriptionCharge, baseCharge: subscriptionCharge, users: [] };
+            }
         }
 
+        // ── Usage by month ─────────────────────────────────────────────────────
         const getUsage = async (month) => {
             if (isIndividual) {
-                // Individual users have no portal_id.
-                // Count sends from portal_usage_events by lead_id (most accurate),
-                // fall back to client_email_log counts × platform rates if no events yet.
                 const evR = await pool.query(
                     `SELECT
                         COUNT(*) FILTER (WHERE event_type='email') AS email_count,
@@ -24918,8 +25051,10 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
                          email_revenue: ec * CLIENT_RATE_EMAIL,
                          sms_revenue:   sc * CLIENT_RATE_SMS };
             }
+            // Workspace — portal_usage_log already aggregates ALL users under the portal
             const r = await pool.query(
-                `SELECT email_count, sms_count, email_revenue, sms_revenue FROM portal_usage_log WHERE client_portal_id=$1 AND billing_month=$2`,
+                `SELECT email_count, sms_count, email_revenue, sms_revenue
+                 FROM portal_usage_log WHERE client_portal_id=$1 AND billing_month=$2`,
                 [portalId, month]
             );
             return r.rows[0] || { email_count:0, sms_count:0, email_revenue:0, sms_revenue:0 };
@@ -24929,28 +25064,31 @@ app.get('/api/client/billing/usage', authenticateClient, async (req, res) => {
         const cm = await getUsage(thisMonth);
 
         // Projection: scale current usage to full month
-        const dayOfMonth = now.getUTCDate();
+        const dayOfMonth  = now.getUTCDate();
         const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
         const scale = daysInMonth / Math.max(dayOfMonth, 1);
-        const projectedUsage = parseFloat(((parseFloat(cm.email_revenue) + parseFloat(cm.sms_revenue)) * scale).toFixed(4));
+        const cmUsageSoFar    = parseFloat(cm.email_revenue) + parseFloat(cm.sms_revenue);
+        const projectedUsage  = parseFloat((cmUsageSoFar * scale).toFixed(4));
 
         res.json({
             success: true,
-            rates: { perEmail: CLIENT_RATE_EMAIL, perSms: CLIENT_RATE_SMS },
+            rates:        { perEmail: CLIENT_RATE_EMAIL, perSms: CLIENT_RATE_SMS },
+            subscription: subscriptionInfo,
             lastMonth: {
-                emails: lm.email_count,
-                sms: lm.sms_count,
-                usageCharge: parseFloat((parseFloat(lm.email_revenue) + parseFloat(lm.sms_revenue)).toFixed(4)),
+                emails:             parseInt(lm.email_count),
+                sms:                parseInt(lm.sms_count),
+                usageCharge:        parseFloat((parseFloat(lm.email_revenue) + parseFloat(lm.sms_revenue)).toFixed(4)),
                 subscriptionCharge,
-                total: parseFloat((parseFloat(lm.email_revenue) + parseFloat(lm.sms_revenue) + subscriptionCharge).toFixed(2))
+                total:              parseFloat((parseFloat(lm.email_revenue) + parseFloat(lm.sms_revenue) + subscriptionCharge).toFixed(2))
             },
             currentMonth: {
-                emails: cm.email_count,
-                sms: cm.sms_count,
-                usageChargeSoFar: parseFloat((parseFloat(cm.email_revenue) + parseFloat(cm.sms_revenue)).toFixed(4)),
-                projectedUsageCharge: projectedUsage,
+                emails:                 parseInt(cm.email_count),
+                sms:                    parseInt(cm.sms_count),
+                usageChargeSoFar:       parseFloat(cmUsageSoFar.toFixed(4)),
+                projectedUsageCharge:   projectedUsage,
                 subscriptionCharge,
-                projectedTotal: parseFloat((projectedUsage + subscriptionCharge).toFixed(2))
+                projectedTotal:         parseFloat((projectedUsage + subscriptionCharge).toFixed(2)),
+                totalSoFar:             parseFloat((cmUsageSoFar + subscriptionCharge).toFixed(2)),
             }
         });
     } catch(e) {
@@ -25812,8 +25950,10 @@ const LEAD_ID = getParam('lead');
 // GET /schedule-form.html?portal=XXX&lead=YYY  (workspace)
 // GET /schedule-form.html?uid=LEAD_ID           (individual)
 app.get('/schedule-form.html', async (req, res) => {
-    const portalId = req.query.portal;
-    const uid      = req.query.uid;
+    const rawPortal = req.query.portal;
+    const uid       = req.query.uid;
+    // Guard against literal "null"/"undefined" strings generated by JS template literals
+    const portalId  = (rawPortal && rawPortal !== 'null' && rawPortal !== 'undefined') ? rawPortal : null;
 
     // ── Individual user path ──────────────────────────────────────────────────
     if (!portalId && uid) {
@@ -25873,8 +26013,10 @@ app.get('/schedule-form.html', async (req, res) => {
 // GET /contact-form.html?portal=XXX&lead=YYY  (workspace)
 // GET /contact-form.html?uid=LEAD_ID&lead=YYY  (individual)
 app.get('/contact-form.html', async (req, res) => {
-    const portalId = req.query.portal;
-    const uid      = req.query.uid;
+    const rawPortal = req.query.portal;
+    const uid       = req.query.uid;
+    // Guard against literal "null"/"undefined" strings generated by JS template literals
+    const portalId  = (rawPortal && rawPortal !== 'null' && rawPortal !== 'undefined') ? rawPortal : null;
 
     // ── Individual user path ──────────────────────────────────────────────────
     if (!portalId && uid) {
@@ -27057,9 +27199,25 @@ async function processClientEmailChains() {
             if (unsub.rows.length) { await pool.query('UPDATE client_chain_queue SET is_active=FALSE WHERE id=$1', [item.id]); continue; }
 
             try {
-                const unsubUrl = `${BASE_URL}/api/client-unsub/${item.client_portal_id}?email=${encodeURIComponent(item.lead_email)}`;
-                const contactFormUrl = t.include_contact_form ? `${BASE_URL}/contact-form.html?portal=${item.client_portal_id}&lead=${item.lead_id}` : '';
-                const scheduleFormUrl = t.include_schedule_btn ? `${BASE_URL}/schedule-form.html?portal=${item.client_portal_id}&lead=${item.lead_id}` : '';
+                // Determine if this is a workspace or individual user chain
+                const isWorkspace = !!item.client_portal_id;
+                let unsubUrl, contactFormUrl, scheduleFormUrl;
+
+                if (isWorkspace) {
+                    unsubUrl       = `${BASE_URL}/api/client-unsub/${item.client_portal_id}?email=${encodeURIComponent(item.lead_email)}`;
+                    contactFormUrl = t.include_contact_form ? `${BASE_URL}/contact-form.html?portal=${item.client_portal_id}&lead=${item.lead_id}` : '';
+                    scheduleFormUrl = t.include_schedule_btn ? `${BASE_URL}/schedule-form.html?portal=${item.client_portal_id}&lead=${item.lead_id}` : '';
+                } else {
+                    // Individual user — uid must be the OWNER's lead id (template's individual_owner_id)
+                    const ownerRes = await pool.query(
+                        `SELECT individual_owner_id FROM client_email_templates WHERE id=$1 LIMIT 1`,
+                        [step.template_id]
+                    );
+                    const ownerUid = ownerRes.rows[0]?.individual_owner_id || item.lead_id;
+                    unsubUrl       = `${BASE_URL}/api/client-unsub-individual/${ownerUid}?email=${encodeURIComponent(item.lead_email)}`;
+                    contactFormUrl = t.include_contact_form ? `${BASE_URL}/contact-form.html?uid=${ownerUid}&lead=${item.lead_id}` : '';
+                    scheduleFormUrl = t.include_schedule_btn ? `${BASE_URL}/schedule-form.html?uid=${ownerUid}&lead=${item.lead_id}` : '';
+                }
                 const html = buildClientEmailHTML(t.body_html, {
                     eyebrow: t.eyebrow, headline: t.headline, ctaLabel: t.cta_label,
                     ctaUrl: settings?.website_url,

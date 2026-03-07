@@ -235,7 +235,7 @@ async function getFollowUpsTodayCount(userEmail) {
     try {
         const r = await pool.query(
             `SELECT COUNT(*) AS n FROM client_email_log
-             WHERE LOWER(sender_email)=LOWER($1)
+             WHERE LOWER(assigned_to_user_email)=LOWER($1)
                AND email_type IN ('follow-up','manual','email')
                AND created_at >= CURRENT_DATE`,
             [userEmail]
@@ -26667,7 +26667,7 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
                 template_id INTEGER,
                 chain_id INTEGER,
                 subject VARCHAR(500),
-                email_type VARCHAR(100) DEFAULT 'marketing',
+                email_type VARCHAR(100) DEFAULT 'follow-up',
                 status VARCHAR(50) DEFAULT 'pending',
                 brevo_message_id VARCHAR(255),
                 sent_at TIMESTAMP,
@@ -26932,7 +26932,7 @@ ${actionButtonsHtml}
 // ── Helper: send via client's own Brevo key, or fall back to EmailJS ─
 // senderUserEmail = the authenticated user making the request — this
 // becomes the "From" address so every email comes from the actual person.
-async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, assignedToUserEmail, templateId, chainId, subject, html, emailType = 'marketing' }) {
+async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, assignedToUserEmail, templateId, chainId, subject, html, emailType = 'follow-up' }) {
     const settings = await getClientEmailSettings(portalId);
 
     // ── Per-portal rate limit & suspension check ─────────────────

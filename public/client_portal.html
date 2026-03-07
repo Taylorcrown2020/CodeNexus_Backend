@@ -851,14 +851,38 @@ tr:hover .row-actions { opacity: 1; }
 /* ── Mobile ──────────────────────────────────────────────── */
 @media (max-width: 640px) {
 
-    /* === SIDEBAR: hidden off-canvas, slides in === */
+    /* === LOGIN: full viewport, no chrome === */
+    .login-screen {
+        padding: 40px 24px 48px;
+        min-height: 100vh;
+        min-height: 100dvh;
+        align-items: flex-start;
+        padding-top: 64px;
+    }
+    .login-box { max-width: 100%; }
+    .login-heading { font-size: 28px; }
+    .login-logo { margin-bottom: 32px; }
+    .login-logo-mark { width: 42px; height: 42px; border-radius: 10px; }
+    .login-logo-mark svg { width: 22px; height: 22px; }
+    .login-logo-name { font-size: 17px; }
+    .field input { font-size: 16px; padding: 13px 14px; }  /* prevents iOS zoom */
+    .btn-primary { padding: 14px; font-size: 15px; }
+
+    /* === SIDEBAR: hidden off-canvas, slides in. 
+         Use visibility so it is completely invisible until app loads === */
     .sidebar {
         transform: translateX(-100%);
         transition: transform 0.25s ease;
         z-index: 500;
-        width: 260px;
+        width: 270px;
+        visibility: hidden;
+        pointer-events: none;
     }
-    .sidebar.mobile-open {
+    body.app-ready .sidebar {
+        visibility: visible;
+        pointer-events: auto;
+    }
+    body.app-ready .sidebar.mobile-open {
         transform: translateX(0);
         box-shadow: 4px 0 32px rgba(0,0,0,0.6);
     }
@@ -874,11 +898,11 @@ tr:hover .row-actions { opacity: 1; }
     .sidebar-backdrop.show { display: block; }
 
     /* === MAIN: full width + bottom nav padding === */
-    .main { margin-left: 0; padding-bottom: 64px; }
+    .main { margin-left: 0; padding-bottom: 68px; }
 
-    /* === MOBILE TOP BAR === */
+    /* === MOBILE TOP BAR — hidden until app ready === */
     .mobile-topbar {
-        display: flex;
+        display: none;
         align-items: center;
         justify-content: space-between;
         padding: 0 16px;
@@ -887,6 +911,7 @@ tr:hover .row-actions { opacity: 1; }
         position: sticky; top: 0; z-index: 400;
         height: 52px;
     }
+    body.app-ready .mobile-topbar { display: flex; }
     .mobile-topbar-brand {
         display: flex; align-items: center; gap: 8px;
         font-size: 14px; font-weight: 600; color: var(--text-0);
@@ -909,9 +934,9 @@ tr:hover .row-actions { opacity: 1; }
     }
     .mobile-menu-btn svg { width: 22px; height: 22px; display: block; }
 
-    /* === BOTTOM NAV BAR === */
+    /* === BOTTOM NAV BAR — hidden until app ready === */
     .mobile-bottom-nav {
-        display: flex;
+        display: none;
         position: fixed; bottom: 0; left: 0; right: 0;
         height: 60px;
         background: var(--bg-0);
@@ -919,6 +944,7 @@ tr:hover .row-actions { opacity: 1; }
         z-index: 400;
         padding-bottom: env(safe-area-inset-bottom, 0);
     }
+    body.app-ready .mobile-bottom-nav { display: flex; }
     .mobile-nav-item {
         flex: 1; display: flex; flex-direction: column;
         align-items: center; justify-content: center;
@@ -957,15 +983,16 @@ tr:hover .row-actions { opacity: 1; }
     .mobile-more-btn svg { width: 20px; height: 20px; }
     .mobile-more-btn.active { color: var(--text-0); }
 
-    /* More menu drawer */
+    /* More menu drawer — hidden until app ready */
     .mobile-more-menu {
         display: none;
         position: fixed; bottom: 60px; left: 0; right: 0;
         background: var(--bg-0); border-top: 1px solid var(--border);
         z-index: 401; padding: 8px;
         flex-direction: column; gap: 2px;
+        max-height: 70vh; overflow-y: auto;
     }
-    .mobile-more-menu.show { display: flex; }
+    body.app-ready .mobile-more-menu.show { display: flex; }
     .mobile-more-menu-item {
         display: flex; align-items: center; gap: 12px;
         padding: 12px 14px; border-radius: var(--r-md);
@@ -981,19 +1008,27 @@ tr:hover .row-actions { opacity: 1; }
 
     /* === PAGE LAYOUT === */
     .page-header {
-        padding: 12px 16px;
+        padding: 14px 16px;
         flex-wrap: wrap; gap: 8px;
-        position: static;
+        position: sticky; top: 52px; z-index: 50;
+        background: var(--bg-1);
     }
-    .page-title { font-size: 15px; }
+    .page-title { font-size: 16px; }
     .page-subtitle { font-size: 12px; }
-    .page-actions { gap: 6px; flex-wrap: wrap; width: 100%; }
-    .page-body { padding: 12px 16px; }
+    .page-actions {
+        gap: 6px; flex-wrap: wrap;
+        width: 100%;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 2px;
+    }
+    .page-body { padding: 14px 14px; }
 
     /* === STATS ROW: 2-col grid === */
     .stats-row { grid-template-columns: repeat(2, 1fr); }
-    .stat-cell { padding: 14px 16px; }
+    .stat-cell { padding: 14px 14px; }
     .stat-value { font-size: 22px; }
+    .stat-label { font-size: 10px; }
 
     /* === TABLES: card rows on mobile === */
     .table-wrap { border-radius: var(--r-md); overflow: hidden; }
@@ -1026,14 +1061,16 @@ tr:hover .row-actions { opacity: 1; }
     .modal-overlay { padding: 0; align-items: flex-end; }
     .modal {
         max-width: 100%; border-radius: var(--r-lg) var(--r-lg) 0 0;
-        max-height: 88vh; animation: slideUp 0.25s ease;
+        max-height: 92vh; max-height: 92dvh;
+        animation: slideUp 0.25s ease;
+        padding-bottom: env(safe-area-inset-bottom, 0);
     }
     @keyframes slideUp {
-        from { transform: translateY(30px); opacity: 0; }
+        from { transform: translateY(40px); opacity: 0; }
         to   { transform: translateY(0);    opacity: 1; }
     }
     .modal-footer { flex-direction: column; }
-    .modal-footer .btn { width: 100%; justify-content: center; }
+    .modal-footer .btn { width: 100%; justify-content: center; min-height: 44px; }
 
     /* === DETAIL PANEL: full screen slide up === */
     .detail-panel { width: 100%; top: 0; border-left: none; animation: slideUp 0.2s ease; }
@@ -1043,20 +1080,21 @@ tr:hover .row-actions { opacity: 1; }
     .card-header { padding: 12px 16px; }
     .card[style*="max-width"] { max-width: 100% !important; }
 
-    /* === BUTTONS: bigger tap targets === */
+    /* === BUTTONS: bigger tap targets (min 44px for accessibility) === */
     .btn { min-height: 40px; }
-    .btn-sm { min-height: 36px; padding: 7px 12px; }
-    .btn-xs { min-height: 28px; font-size: 11px; }
+    .btn-sm { min-height: 38px; padding: 8px 12px; font-size: 13px; }
+    .btn-xs { min-height: 30px; font-size: 11px; }
 
     /* === SEARCH === */
     .search-input input { width: 100%; flex: 1; }
+    .search-input { flex: 1; }
 
     /* === KANBAN: swipeable === */
     .kanban { scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
     .kanban-col { min-width: 82vw; scroll-snap-align: start; }
 
     /* === TOAST: above bottom nav === */
-    .toast-container { right: 12px; left: 12px; bottom: 68px; }
+    .toast-container { right: 12px; left: 12px; bottom: 72px; }
     .toast { max-width: 100%; }
 
     /* === DASHBOARD GRID === */
@@ -1064,14 +1102,30 @@ tr:hover .row-actions { opacity: 1; }
     .col-8, .col-4, .col-6, .col-12 { grid-column: span 1; }
 
     /* === FOLLOW-UP TABS: scrollable === */
-    #fuMainTabBar { overflow-x: auto; flex-wrap: nowrap; }
+    #fuMainTabBar { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
     #fuMainTabBar .btn { white-space: nowrap; font-size: 12px; padding: 7px 10px; }
 
     /* === EMPTY STATE === */
-    .empty-state { padding: 36px 16px; }
+    .empty-state { padding: 40px 16px; }
 
     /* === QTY CONTROL === */
-    .qty-btn { width: 40px; height: 40px; }
+    .qty-btn { width: 44px; height: 44px; }
+
+    /* === PLAN LIMIT BAR === */
+    #planLimitBar { padding: 8px 12px; }
+
+    /* === HIDE SCROLLBARS on horizontal scroll containers === */
+    #fuMainTabBar::-webkit-scrollbar,
+    .page-actions::-webkit-scrollbar { display: none; }
+    #fuMainTabBar,
+    .page-actions { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* === SAFE AREA for devices with notch/home bar === */
+    .mobile-bottom-nav {
+        padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
+        height: calc(60px + max(env(safe-area-inset-bottom, 0px), 0px));
+    }
+    .main { padding-bottom: calc(68px + max(env(safe-area-inset-bottom, 0px), 0px)); }
 }
 
 /* ============================================================
@@ -1147,7 +1201,7 @@ tr:hover .row-actions { opacity: 1; }
 <div id="app" class="app">
 
     <!-- MOBILE TOPBAR (hidden on desktop via JS-injected display) -->
-    <div class="mobile-topbar" id="mobileTopbar" style="display:none;">
+    <div class="mobile-topbar" id="mobileTopbar">
         <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Menu">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -3022,6 +3076,7 @@ function setupLoginForm() {
 function showApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
+    document.body.classList.add('app-ready');
     const vbl = document.getElementById('videoBgLayer');
     if (vbl) vbl.style.display = 'block';
     applyUserBackground();
@@ -3284,6 +3339,7 @@ function logout() {
     S.token = null; S.user = null;
     document.getElementById('app').classList.remove('visible');
     document.getElementById('loginScreen').style.display = 'flex';
+    document.body.classList.remove('app-ready');
     const vbl = document.getElementById('videoBgLayer');
     if (vbl) vbl.style.display = 'none';
     // Pause all videos and strip all theme/bg classes so login is always clean default
@@ -3394,11 +3450,13 @@ const MOBILE_PAGE_NAMES = {
 function isMobile() { return window.innerWidth <= 640; }
 
 function initMobileUI() {
-    const mobile = isMobile();
-    const topbar = document.getElementById('mobileTopbar');
-    const bottomNav = document.getElementById('mobileBottomNav');
-    if (topbar)    topbar.style.display    = mobile ? 'flex'  : 'none';
-    if (bottomNav) bottomNav.style.display = mobile ? 'flex'  : 'none';
+    // The CSS media query + body.app-ready class controls visibility of all
+    // mobile chrome (topbar, bottom nav, more-menu). This function now only
+    // handles things that need JS (e.g. resize cleanup).
+    if (!isMobile()) {
+        closeMobileSidebar();
+        closeMobileMoreMenu();
+    }
 }
 
 function mobileNavigate(page, btnEl) {
@@ -3462,7 +3520,6 @@ document.addEventListener('click', (e) => {
 
 // Re-evaluate on resize
 window.addEventListener('resize', () => {
-    initMobileUI();
     if (!isMobile()) {
         closeMobileSidebar();
         closeMobileMoreMenu();
@@ -10610,7 +10667,7 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 </script>
 
 <!-- MOBILE BOTTOM NAV (shown only on mobile via JS) -->
-<nav class="mobile-bottom-nav" id="mobileBottomNav" style="display:none;">
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
     <button class="mobile-nav-item active" data-mobile-page="dashboard" onclick="mobileNavigate('dashboard',this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Home
@@ -11234,15 +11291,33 @@ const INTEGRATION_DEFS = [
 let _integrationStatus = {};
 
 async function loadIntegrations() {
-    // Check BOTH the planLimits flag AND the planKey string directly as fallback
-    // (same defensive pattern as initAiWidget — planLimits may be missing the flag
-    //  if it came from a legacy or default plan object)
-    const key = S.planKey || '';
-    const hasIntegrations = !!(S.planLimits?.integrationsEnabled)
-        || key === 'crm-enterprise'
-        || key === 'crm-workspace'
-        || key.includes('enterprise')
-        || key.includes('workspace');
+    // Re-fetch fresh plan limits so we don't rely on the cached S.planLimits
+    // which may have been set from a stale login token or default fallback.
+    let hasIntegrations = false;
+    try {
+        const limitsRes = await apiFetch('/client/plan-limits');
+        const limitsData = await limitsRes.json();
+        if (limitsData.success) {
+            const freshLimits = limitsData.limits || {};
+            const freshKey    = freshLimits.planKey || S.planKey || '';
+            hasIntegrations = !!(freshLimits.integrationsEnabled)
+                || freshKey === 'crm-enterprise'
+                || freshKey === 'crm-workspace'
+                || freshKey.includes('enterprise')
+                || freshKey.includes('workspace');
+            // Keep S in sync with the freshest data
+            if (freshKey) S.planKey = freshKey;
+            if (freshLimits) S.planLimits = freshLimits;
+        }
+    } catch {
+        // Fallback to cached values if the fresh fetch fails
+        const key = S.planKey || '';
+        hasIntegrations = !!(S.planLimits?.integrationsEnabled)
+            || key === 'crm-enterprise'
+            || key === 'crm-workspace'
+            || key.includes('enterprise')
+            || key.includes('workspace');
+    }
 
     if (!hasIntegrations) {
         document.getElementById('integrationsContent').innerHTML = `

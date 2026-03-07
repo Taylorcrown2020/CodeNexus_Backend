@@ -122,6 +122,8 @@ const PLAN_LIMITS = {
         sequencesEnabled:  true,
         marketingEnabled:  true,
         bgCustomEnabled:   true,
+        aiEnabled:         false,
+        integrationsEnabled: false,
     },
 };
 
@@ -24064,7 +24066,15 @@ async function getIntegrationScope(userId) {
 // Helper: check integrations are enabled on this plan
 async function requireIntegrations(req, res) {
     const plan = await getClientPlanLimits(req.user.id);
-    if (!plan.integrationsEnabled) {
+    // Check the flag first; also allow by planKey directly in case the flag is missing
+    // from a legacy or fallback plan object (defensive double-check)
+    const key = plan.planKey || '';
+    const allowed = !!(plan.integrationsEnabled)
+        || key === 'crm-enterprise'
+        || key === 'crm-workspace'
+        || key.includes('enterprise')
+        || key.includes('workspace');
+    if (!allowed) {
         res.status(403).json({ success: false, message: 'Integrations are available on Enterprise and Workspace plans.' });
         return false;
     }
@@ -26941,17 +26951,25 @@ async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, a
     let fromName  = null;
 
     if (senderUserEmail) {
-        // Look up the sending user's record — use their email + admin-assigned sender_name
-        const userRow = await pool.query(
-            `SELECT user_name, sender_name FROM company_users
-             WHERE LOWER(user_email) = LOWER($1) AND client_portal_id = $2 LIMIT 1`,
-            [senderUserEmail, portalId]
-        ).catch(() => ({ rows: [] }));
-        const cu = userRow.rows[0];
-        if (cu) {
+        // For individual users (portalId=null), skip the company_users lookup entirely —
+        // PostgreSQL's "= NULL" never matches, so we just use the email directly.
+        if (portalId) {
+            // Look up the sending user's record — use their email + admin-assigned sender_name
+            const userRow = await pool.query(
+                `SELECT user_name, sender_name FROM company_users
+                 WHERE LOWER(user_email) = LOWER($1) AND client_portal_id = $2 LIMIT 1`,
+                [senderUserEmail, portalId]
+            ).catch(() => ({ rows: [] }));
+            const cu = userRow.rows[0];
+            if (cu) {
+                fromEmail = senderUserEmail.toLowerCase();
+                // Use admin-assigned sender_name if set, otherwise fall back to user_name
+                fromName = cu.sender_name || cu.user_name || senderUserEmail.split('@')[0];
+            }
+        } else {
+            // Individual (no portal) — use their own email directly as the sender
             fromEmail = senderUserEmail.toLowerCase();
-            // Use admin-assigned sender_name if set, otherwise fall back to user_name
-            fromName = cu.sender_name || cu.user_name || senderUserEmail.split('@')[0];
+            fromName  = senderUserEmail.split('@')[0];
         }
     }
 

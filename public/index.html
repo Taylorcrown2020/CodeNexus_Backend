@@ -3902,7 +3902,7 @@ nav {
                 <img src="Brand2.jpg" alt="Launch your dream website">
                 <div class="growth-feature-overlay">
                     <h3>Turn your online presence into a business asset</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
+                    <button class="feature-explore-btn" onclick="openFeaturePopup('web-dev')">+</button>
                 </div>
             </div>
             
@@ -3959,7 +3959,7 @@ nav {
 </div>
                 <div class="growth-feature-overlay">
                     <h3>Diamondback Coding® CRM</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
+                    <button class="feature-explore-btn" onclick="openFeaturePopup('crm')">+</button>
                 </div>
             </div>
             
@@ -3967,7 +3967,7 @@ nav {
                 <img src="seo.jpg" alt="AI Lead Nurture">
                 <div class="growth-feature-overlay">
                     <h3>Automated follow-ups that feel personal</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
+                    <button class="feature-explore-btn" onclick="openFeaturePopup('seo')">+</button>
                 </div>
             </div>
             
@@ -3975,7 +3975,7 @@ nav {
                 <img src="sara-kurfess-6lcT2kRPvnI-unsplash.jpg" alt="Branded App">
                 <div class="growth-feature-overlay">
                     <h3>Give customers a dedicated mobile experience</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
+                    <button class="feature-explore-btn" onclick="openFeaturePopup('mobile')">+</button>
                 </div>
             </div>
             
@@ -3983,7 +3983,7 @@ nav {
                 <img src="Paid.jpg" alt="Paid Ads">
                 <div class="growth-feature-overlay">
                     <h3>Ads built for performance.</h3>
-                    <button class="feature-explore-btn" onclick="openModal()">+</button>
+                    <button class="feature-explore-btn" onclick="openFeaturePopup('ads')">+</button>
                 </div>
             </div>
         </div>
@@ -7978,4 +7978,237 @@ document.addEventListener('DOMContentLoaded', function() {
     background: var(--grey-50);
 }
 </style>
+
+<!-- FEATURE INFO POPUPS -->
+<div class="feature-popup-overlay" id="featurePopupOverlay" onclick="closeFeaturePopup()">
+    <div class="feature-popup" id="featurePopup" onclick="event.stopPropagation()">
+        <button class="feature-popup-close" onclick="closeFeaturePopup()">&#x2715;</button>
+        <div class="feature-popup-tag" id="featurePopupTag"></div>
+        <h2 class="feature-popup-title" id="featurePopupTitle"></h2>
+        <p class="feature-popup-desc" id="featurePopupDesc"></p>
+        <ul class="feature-popup-list" id="featurePopupList"></ul>
+        <a class="feature-popup-btn" id="featurePopupBtn" href="#">Learn More</a>
+    </div>
+</div>
+
+<style>
+/* FEATURE INFO POPUPS */
+.feature-popup-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(4px);
+    animation: fpFadeIn 0.25s ease;
+}
+.feature-popup-overlay.active {
+    display: flex;
+}
+@keyframes fpFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.feature-popup {
+    background: #fff;
+    border-radius: 16px;
+    max-width: 480px;
+    width: 100%;
+    padding: 40px 36px 36px;
+    position: relative;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+    animation: fpSlideUp 0.3s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+@keyframes fpSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.feature-popup-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #999;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px;
+    transition: color 0.2s;
+}
+.feature-popup-close:hover { color: #000; }
+.feature-popup-tag {
+    display: inline-block;
+    background: var(--gold, #f4c87e);
+    color: #000;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 4px;
+    margin-bottom: 18px;
+}
+.feature-popup-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #0a0a0a;
+    margin-bottom: 14px;
+}
+.feature-popup-desc {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #555;
+    margin-bottom: 20px;
+}
+.feature-popup-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.feature-popup-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.5;
+}
+.feature-popup-list li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    background: var(--gold, #f4c87e);
+    border-radius: 50%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+    background-size: 11px;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin-top: 1px;
+}
+.feature-popup-btn {
+    display: inline-block;
+    background: #0a0a0a;
+    color: #fff;
+    padding: 14px 32px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.3s, transform 0.2s;
+}
+.feature-popup-btn:hover {
+    background: #333;
+    transform: translateY(-1px);
+}
+@media (max-width: 600px) {
+    .feature-popup {
+        padding: 32px 22px 28px;
+        border-radius: 12px;
+        max-height: 85vh;
+    }
+    .feature-popup-title { font-size: 22px; }
+    .feature-popup-desc { font-size: 14px; }
+    .feature-popup-btn { width: 100%; text-align: center; padding: 15px; }
+}
+</style>
+
+<script>
+const featurePopupData = {
+    'web-dev': {
+        tag: 'Web Development',
+        title: 'Custom Websites That Drive Results',
+        desc: 'We build fully custom, high-performance websites designed to convert visitors into customers. From stunning designs to rock-solid code — your site becomes your best salesperson.',
+        bullets: [
+            'Responsive design for every device',
+            'SEO-optimized from the ground up',
+            'Fast load times & secure hosting',
+            'Custom branding & premium UI/UX'
+        ],
+        link: 'pricing.html#development'
+    },
+    'crm': {
+        tag: 'CRM Solution',
+        title: 'Diamondback Coding® CRM',
+        desc: 'Our purpose-built CRM gives you total visibility over your leads, clients, and revenue — all in one clean dashboard. Stop losing deals to disorganization.',
+        bullets: [
+            'Lead pipeline & deal tracking',
+            'Automated follow-up sequences',
+            'Revenue dashboards & reporting',
+            'Seamlessly integrates with your website'
+        ],
+        link: 'pricing.html#crm-solutions'
+    },
+    'seo': {
+        tag: 'SEO & Marketing',
+        title: 'Automated Follow-Ups That Close Deals',
+        desc: 'Our SEO and digital marketing services put your business in front of the right people at the right time — and keep them engaged with smart, automated communication.',
+        bullets: [
+            'Local & national SEO optimization',
+            'Email & SMS automation sequences',
+            'Content strategy & blog management',
+            'Monthly performance reporting'
+        ],
+        link: 'pricing.html#seo'
+    },
+    'mobile': {
+        tag: 'Mobile Experience',
+        title: 'A Branded App for Your Business',
+        desc: 'Give your customers a premium, branded mobile experience. Whether it\'s a Progressive Web App or a native-style solution, we make your business feel world-class on every screen.',
+        bullets: [
+            'Custom branded mobile interface',
+            'Push notifications & re-engagement',
+            'Seamless booking & e-commerce',
+            'Works on iOS & Android'
+        ],
+        link: 'pricing.html#development'
+    },
+    'ads': {
+        tag: 'Paid Advertising',
+        title: 'Ads Built for Real Performance',
+        desc: 'We run data-driven paid ad campaigns on Google, Meta, and more — built to deliver measurable ROI. Every dollar is tracked, optimized, and working hard for your business.',
+        bullets: [
+            'Google Ads & Meta campaign management',
+            'Conversion-focused ad creative',
+            'A/B testing & continuous optimization',
+            'Transparent ROI reporting'
+        ],
+        link: 'pricing.html#marketing'
+    }
+};
+
+function openFeaturePopup(id) {
+    const data = featurePopupData[id];
+    if (!data) return;
+    document.getElementById('featurePopupTag').textContent = data.tag;
+    document.getElementById('featurePopupTitle').textContent = data.title;
+    document.getElementById('featurePopupDesc').textContent = data.desc;
+    const list = document.getElementById('featurePopupList');
+    list.innerHTML = data.bullets.map(b => `<li>${b}</li>`).join('');
+    const btn = document.getElementById('featurePopupBtn');
+    btn.href = data.link;
+    document.getElementById('featurePopupOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeFeaturePopup() {
+    document.getElementById('featurePopupOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeFeaturePopup();
+});
+</script>
 </body>

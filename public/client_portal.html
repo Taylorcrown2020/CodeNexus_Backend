@@ -11234,7 +11234,17 @@ const INTEGRATION_DEFS = [
 let _integrationStatus = {};
 
 async function loadIntegrations() {
-    if (!S.planLimits?.integrationsEnabled) {
+    // Check BOTH the planLimits flag AND the planKey string directly as fallback
+    // (same defensive pattern as initAiWidget — planLimits may be missing the flag
+    //  if it came from a legacy or default plan object)
+    const key = S.planKey || '';
+    const hasIntegrations = !!(S.planLimits?.integrationsEnabled)
+        || key === 'crm-enterprise'
+        || key === 'crm-workspace'
+        || key.includes('enterprise')
+        || key.includes('workspace');
+
+    if (!hasIntegrations) {
         document.getElementById('integrationsContent').innerHTML = `
             <div class="empty-state" style="padding:60px 20px;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;opacity:.3;margin:0 auto 16px;display:block;"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><line x1="7" y1="11.5" x2="17" y2="6"/><line x1="7" y1="12.5" x2="17" y2="18"/></svg>

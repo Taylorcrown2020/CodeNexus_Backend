@@ -235,7 +235,7 @@ async function getFollowUpsTodayCount(userEmail) {
     try {
         const r = await pool.query(
             `SELECT COUNT(*) AS n FROM client_email_log
-             WHERE LOWER(assigned_to_user_email)=LOWER($1)
+             WHERE LOWER(sender_email)=LOWER($1)
                AND email_type IN ('follow-up','manual','email')
                AND created_at >= CURRENT_DATE`,
             [userEmail]
@@ -24065,7 +24065,10 @@ async function getIntegrationScope(userId) {
 
 // Helper: check integrations are enabled on this plan
 async function requireIntegrations(req, res) {
-    const plan = await getClientPlanLimits(req.user.id);
+    // Use resolveLeadId so JWT id mismatches (stale token, re-mapped lead rows)
+    // don't silently fall through to the _default plan which blocks integrations.
+    const resolvedId = await resolveLeadId(req.user.id, req.user.email).catch(() => req.user.id) || req.user.id;
+    const plan = await getClientPlanLimits(resolvedId);
     // Check the flag first; also allow by planKey directly in case the flag is missing
     // from a legacy or fallback plan object (defensive double-check)
     const key = plan.planKey || '';
@@ -26667,7 +26670,7 @@ async function buildMarketingTemplateHTML(template, name, subject, bodyText, uns
                 template_id INTEGER,
                 chain_id INTEGER,
                 subject VARCHAR(500),
-                email_type VARCHAR(100) DEFAULT 'follow-up',
+                email_type VARCHAR(100) DEFAULT 'marketing',
                 status VARCHAR(50) DEFAULT 'pending',
                 brevo_message_id VARCHAR(255),
                 sent_at TIMESTAMP,
@@ -26932,7 +26935,7 @@ ${actionButtonsHtml}
 // ── Helper: send via client's own Brevo key, or fall back to EmailJS ─
 // senderUserEmail = the authenticated user making the request — this
 // becomes the "From" address so every email comes from the actual person.
-async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, assignedToUserEmail, templateId, chainId, subject, html, emailType = 'follow-up' }) {
+async function sendClientEmail({ portalId, leadId, leadEmail, senderUserEmail, assignedToUserEmail, templateId, chainId, subject, html, emailType = 'marketing' }) {
     const settings = await getClientEmailSettings(portalId);
 
     // ── Per-portal rate limit & suspension check ─────────────────

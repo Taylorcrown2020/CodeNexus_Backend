@@ -152,6 +152,7 @@ window.addEventListener('load', function() {
 
         html {
     overflow-x: hidden;
+    max-width: 100%;
 }
         
         body {
@@ -161,7 +162,9 @@ window.addEventListener('load', function() {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             overflow-x: hidden;
+            max-width: 100%;
             width: 100%;
+            position: relative;
         }
         
         .announcement-banner {
@@ -351,7 +354,7 @@ window.addEventListener('load', function() {
     min-height: 50vh;
     display: flex;
     align-items: center;
-    overflow: visible;
+    overflow: hidden;
     background: #1a1a1a;
     margin-top: 113px;
     padding-bottom: 80px;
@@ -2574,7 +2577,10 @@ window.addEventListener('load', function() {
     bottom: 100px;
     right: 24px;
     width: 380px;
-    height: 600px;
+    /* Nav bottom on desktop: banner(40px) + nav top(40px) + nav height(~68px) = ~148px. Add 8px gap. */
+    top: 156px;
+    height: auto;
+    max-height: calc(100vh - 256px);
     background: white;
     border-radius: 16px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -2822,9 +2828,13 @@ window.addEventListener('load', function() {
 @media (max-width: 768px) {
     .chatbot-window {
         width: calc(100% - 32px);
-        height: calc(100% - 140px);
         right: 16px;
+        left: 16px;
         bottom: 90px;
+        /* Mobile nav bottom: banner(38px) + nav top(38px) + nav height(~75px) = ~151px. Add 8px gap. */
+        top: 159px;
+        height: auto;
+        max-height: none;
         border-radius: 12px;
     }
 }

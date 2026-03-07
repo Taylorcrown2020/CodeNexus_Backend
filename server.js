@@ -24065,8 +24065,6 @@ async function getIntegrationScope(userId) {
 
 // Helper: check integrations are enabled on this plan
 async function requireIntegrations(req, res) {
-    // Use resolveLeadId so JWT id mismatches (stale token, re-mapped lead rows)
-    // don't silently fall through to the _default plan which blocks integrations.
     const resolvedId = await resolveLeadId(req.user.id, req.user.email).catch(() => req.user.id) || req.user.id;
     const plan = await getClientPlanLimits(resolvedId);
     // Check the flag first; also allow by planKey directly in case the flag is missing

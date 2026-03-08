@@ -16861,11 +16861,7 @@ async function sendClientWelcomeEmail(email, name, temporaryPassword) {
     };
 
     try {
-        await sendSystemEmail({
-            to: mailOptions.to,
-            subject: mailOptions.subject,
-            html: mailOptions.html
-        });
+        await transporter.sendMail(mailOptions);
         console.log('[EMAIL] Welcome email sent to:', email);
     } catch (error) {
         console.error('[EMAIL] Failed to send welcome email:', error);

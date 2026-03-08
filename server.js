@@ -24065,8 +24065,7 @@ async function getIntegrationScope(userId) {
 
 // Helper: check integrations are enabled on this plan
 async function requireIntegrations(req, res) {
-    const resolvedId = await resolveLeadId(req.user.id, req.user.email).catch(() => req.user.id) || req.user.id;
-    const plan = await getClientPlanLimits(resolvedId);
+    const plan = await getClientPlanLimits(req.user.id);
     // Check the flag first; also allow by planKey directly in case the flag is missing
     // from a legacy or fallback plan object (defensive double-check)
     const key = plan.planKey || '';

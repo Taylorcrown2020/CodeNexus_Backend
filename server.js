@@ -232,15 +232,36 @@ async function getClientRecordCount(portalId) {
  * Used to enforce the per-plan daily follow-up cap.
  */
 async function getFollowUpsTodayCount(userEmail) {
+    // Combined daily cap: counts ALL outbound sends — follow-up emails, marketing emails, AND SMS
+    // Analytics separates them, but the daily limit applies to the total
     try {
-        const r = await pool.query(
+        const emailCount = await pool.query(
             `SELECT COUNT(*) AS n FROM client_email_log
-             WHERE LOWER(sender_email)=LOWER($1)
-               AND email_type IN ('follow-up','manual','email')
+             WHERE LOWER(assigned_to_user_email)=LOWER($1)
+               AND email_type IN ('follow-up','manual','email','marketing')
                AND created_at >= CURRENT_DATE`,
             [userEmail]
         );
-        return parseInt(r.rows[0]?.n || 0);
+        // SMS sends are logged to message_log (outbound channel='sms')
+        // We identify user's SMS by portal — get portalId from email
+        const smsCount = await pool.query(
+            `SELECT COUNT(*) AS n FROM message_log ml
+             JOIN leads l ON ml.lead_id = l.id
+             WHERE ml.direction='outbound' AND ml.channel='sms'
+               AND ml.sent_at >= CURRENT_DATE
+               AND (
+                 LOWER(l.email)=LOWER($1)
+                 OR EXISTS (
+                   SELECT 1 FROM leads lu
+                   WHERE LOWER(lu.email)=LOWER($1)
+                     AND lu.client_portal_id IS NOT NULL
+                     AND ml.client_portal_id = lu.client_portal_id
+                   LIMIT 1
+                 )
+               )`,
+            [userEmail]
+        ).catch(() => ({ rows: [{ n: 0 }] }));
+        return (parseInt(emailCount.rows[0]?.n || 0)) + (parseInt(smsCount.rows[0]?.n || 0));
     } catch { return 0; }
 }
 
@@ -24065,7 +24086,17 @@ async function getIntegrationScope(userId) {
 
 // Helper: check integrations are enabled on this plan
 async function requireIntegrations(req, res) {
-    const plan = await getClientPlanLimits(req.user.id);
+    // Try multiple ID resolution strategies to avoid false denials for enterprise users
+    const originalId = req.user.id;
+    const resolvedId = await resolveLeadId(originalId, req.user.email).catch(() => originalId) || originalId;
+
+    // Try resolved ID first, then fall back to original ID if resolved gives default plan
+    let plan = await getClientPlanLimits(resolvedId);
+    if ((plan.planKey === '_default' || !plan.integrationsEnabled) && resolvedId !== originalId) {
+        const planByOriginal = await getClientPlanLimits(originalId);
+        if (planByOriginal.planKey !== '_default') plan = planByOriginal;
+    }
+
     // Check the flag first; also allow by planKey directly in case the flag is missing
     // from a legacy or fallback plan object (defensive double-check)
     const key = plan.planKey || '';

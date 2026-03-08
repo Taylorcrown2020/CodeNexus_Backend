@@ -836,7 +836,8 @@ tr:hover .row-actions { opacity: 1; }
 ============================================================ */
 .mobile-bottom-nav { display: none; }
 .mobile-more-menu  { display: none; }
-.mobile-topbar     { display: none; }
+.mobile-topbar     { display: none !important; }
+body.app-ready .mobile-topbar { display: none; } /* re-enabled per media query below */
 
 @media (max-width: 900px) {
     :root { --sidebar-w: 220px; }
@@ -851,34 +852,70 @@ tr:hover .row-actions { opacity: 1; }
 /* ── Mobile ──────────────────────────────────────────────── */
 @media (max-width: 640px) {
 
-    /* === SIDEBAR: hidden off-canvas, slides in === */
+    /* === LOGIN: clean full-screen — NO app chrome === */
+    .login-screen {
+        padding: 48px 24px 56px;
+        min-height: 100vh;
+        min-height: 100dvh;
+        align-items: flex-start;
+        padding-top: 72px;
+        position: relative;
+        z-index: 1000; /* always on top — hides any app elements behind it */
+    }
+    .login-box { max-width: 100%; }
+    .login-heading { font-size: 26px; }
+    .login-logo { margin-bottom: 28px; }
+    .login-logo-mark { width: 44px; height: 44px; border-radius: 11px; }
+    .login-logo-mark svg { width: 22px; height: 22px; }
+    .login-logo-name { font-size: 16px; }
+    .field input { font-size: 16px; padding: 13px 14px; }
+    .btn-primary { padding: 15px; font-size: 15px; }
+
+    /* === SIDEBAR: completely hidden until app loads === */
     .sidebar {
         transform: translateX(-100%);
-        transition: transform 0.25s ease;
+        transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
         z-index: 500;
-        width: 260px;
+        width: 280px;
+        max-width: 80vw;
+        visibility: hidden;
+        pointer-events: none;
+        position: fixed;
+        top: 0; bottom: 0; left: 0;
+        overflow-y: auto;
     }
-    .sidebar.mobile-open {
+    body.app-ready .sidebar {
+        visibility: visible;
+        pointer-events: auto;
+    }
+    body.app-ready .sidebar.mobile-open {
         transform: translateX(0);
-        box-shadow: 4px 0 32px rgba(0,0,0,0.6);
+        box-shadow: 6px 0 40px rgba(0,0,0,0.7);
     }
 
     /* Backdrop when sidebar is open */
     .sidebar-backdrop {
         display: none;
         position: fixed; inset: 0;
-        background: rgba(0,0,0,0.55);
+        background: rgba(0,0,0,0.6);
         z-index: 499;
-        backdrop-filter: blur(2px);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
     }
     .sidebar-backdrop.show { display: block; }
 
-    /* === MAIN: full width + bottom nav padding === */
-    .main { margin-left: 0; padding-bottom: 64px; }
+    /* === MAIN: full width + correct bottom padding === */
+    .main {
+        margin-left: 0;
+        padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+        min-height: 100vh;
+        width: 100%;
+        overflow-x: hidden;
+    }
 
-    /* === MOBILE TOP BAR === */
+    /* === MOBILE TOP BAR — hidden globally, shown ONLY in app-ready state === */
     .mobile-topbar {
-        display: flex;
+        display: none;
         align-items: center;
         justify-content: space-between;
         padding: 0 16px;
@@ -886,7 +923,9 @@ tr:hover .row-actions { opacity: 1; }
         border-bottom: 1px solid var(--border);
         position: sticky; top: 0; z-index: 400;
         height: 52px;
+        flex-shrink: 0;
     }
+    body.app-ready .mobile-topbar { display: flex; }
     .mobile-topbar-brand {
         display: flex; align-items: center; gap: 8px;
         font-size: 14px; font-weight: 600; color: var(--text-0);
@@ -909,9 +948,9 @@ tr:hover .row-actions { opacity: 1; }
     }
     .mobile-menu-btn svg { width: 22px; height: 22px; display: block; }
 
-    /* === BOTTOM NAV BAR === */
+    /* === BOTTOM NAV BAR — hidden until app ready === */
     .mobile-bottom-nav {
-        display: flex;
+        display: none;
         position: fixed; bottom: 0; left: 0; right: 0;
         height: 60px;
         background: var(--bg-0);
@@ -919,6 +958,7 @@ tr:hover .row-actions { opacity: 1; }
         z-index: 400;
         padding-bottom: env(safe-area-inset-bottom, 0);
     }
+    body.app-ready .mobile-bottom-nav { display: flex; }
     .mobile-nav-item {
         flex: 1; display: flex; flex-direction: column;
         align-items: center; justify-content: center;
@@ -957,15 +997,16 @@ tr:hover .row-actions { opacity: 1; }
     .mobile-more-btn svg { width: 20px; height: 20px; }
     .mobile-more-btn.active { color: var(--text-0); }
 
-    /* More menu drawer */
+    /* More menu drawer — hidden until app ready */
     .mobile-more-menu {
         display: none;
         position: fixed; bottom: 60px; left: 0; right: 0;
         background: var(--bg-0); border-top: 1px solid var(--border);
         z-index: 401; padding: 8px;
         flex-direction: column; gap: 2px;
+        max-height: 70vh; overflow-y: auto;
     }
-    .mobile-more-menu.show { display: flex; }
+    body.app-ready .mobile-more-menu.show { display: flex; }
     .mobile-more-menu-item {
         display: flex; align-items: center; gap: 12px;
         padding: 12px 14px; border-radius: var(--r-md);
@@ -983,17 +1024,32 @@ tr:hover .row-actions { opacity: 1; }
     .page-header {
         padding: 12px 16px;
         flex-wrap: wrap; gap: 8px;
-        position: static;
+        position: sticky; top: 52px; z-index: 50;
+        background: var(--bg-0);
+        border-bottom: 1px solid var(--border-light);
     }
-    .page-title { font-size: 15px; }
-    .page-subtitle { font-size: 12px; }
-    .page-actions { gap: 6px; flex-wrap: wrap; width: 100%; }
-    .page-body { padding: 12px 16px; }
+    .page-title { font-size: 17px; font-weight: 700; }
+    .page-subtitle { font-size: 11px; display: none; } /* hide subtitle on mobile to save space */
+    .page-title-group { gap: 2px; }
+    .page-actions {
+        gap: 6px;
+        width: 100%;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 2px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .page-body { padding: 12px 14px; }
 
     /* === STATS ROW: 2-col grid === */
-    .stats-row { grid-template-columns: repeat(2, 1fr); }
-    .stat-cell { padding: 14px 16px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat-cell {
+        padding: 14px 14px;
+        border-radius: var(--r-md);
+    }
     .stat-value { font-size: 22px; }
+    .stat-label { font-size: 10px; }
+    .stat-sub { display: none; }
 
     /* === TABLES: card rows on mobile === */
     .table-wrap { border-radius: var(--r-md); overflow: hidden; }
@@ -1026,14 +1082,16 @@ tr:hover .row-actions { opacity: 1; }
     .modal-overlay { padding: 0; align-items: flex-end; }
     .modal {
         max-width: 100%; border-radius: var(--r-lg) var(--r-lg) 0 0;
-        max-height: 88vh; animation: slideUp 0.25s ease;
+        max-height: 92vh; max-height: 92dvh;
+        animation: slideUp 0.25s ease;
+        padding-bottom: env(safe-area-inset-bottom, 0);
     }
     @keyframes slideUp {
-        from { transform: translateY(30px); opacity: 0; }
+        from { transform: translateY(40px); opacity: 0; }
         to   { transform: translateY(0);    opacity: 1; }
     }
     .modal-footer { flex-direction: column; }
-    .modal-footer .btn { width: 100%; justify-content: center; }
+    .modal-footer .btn { width: 100%; justify-content: center; min-height: 44px; }
 
     /* === DETAIL PANEL: full screen slide up === */
     .detail-panel { width: 100%; top: 0; border-left: none; animation: slideUp 0.2s ease; }
@@ -1042,21 +1100,31 @@ tr:hover .row-actions { opacity: 1; }
     .card-body { padding: 14px 16px; }
     .card-header { padding: 12px 16px; }
     .card[style*="max-width"] { max-width: 100% !important; }
+    .card { border-radius: var(--r-md) !important; margin-left: 0 !important; margin-right: 0 !important; }
+    /* Analytics grid: single col on mobile */
+    #analyticsContent > div[style*="grid-template-columns:repeat(4"] { 
+        grid-template-columns: repeat(2,1fr) !important; gap: 8px !important; 
+    }
+    /* Integrations grid: single col on mobile */
+    div[style*="grid-template-columns:repeat(auto-fill,minmax(280px"] {
+        grid-template-columns: 1fr !important;
+    }
 
-    /* === BUTTONS: bigger tap targets === */
+    /* === BUTTONS: bigger tap targets (min 44px for accessibility) === */
     .btn { min-height: 40px; }
-    .btn-sm { min-height: 36px; padding: 7px 12px; }
-    .btn-xs { min-height: 28px; font-size: 11px; }
+    .btn-sm { min-height: 38px; padding: 8px 12px; font-size: 13px; }
+    .btn-xs { min-height: 30px; font-size: 11px; }
 
     /* === SEARCH === */
     .search-input input { width: 100%; flex: 1; }
+    .search-input { flex: 1; }
 
     /* === KANBAN: swipeable === */
     .kanban { scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
     .kanban-col { min-width: 82vw; scroll-snap-align: start; }
 
     /* === TOAST: above bottom nav === */
-    .toast-container { right: 12px; left: 12px; bottom: 68px; }
+    .toast-container { right: 12px; left: 12px; bottom: 72px; }
     .toast { max-width: 100%; }
 
     /* === DASHBOARD GRID === */
@@ -1064,14 +1132,30 @@ tr:hover .row-actions { opacity: 1; }
     .col-8, .col-4, .col-6, .col-12 { grid-column: span 1; }
 
     /* === FOLLOW-UP TABS: scrollable === */
-    #fuMainTabBar { overflow-x: auto; flex-wrap: nowrap; }
+    #fuMainTabBar { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
     #fuMainTabBar .btn { white-space: nowrap; font-size: 12px; padding: 7px 10px; }
 
     /* === EMPTY STATE === */
-    .empty-state { padding: 36px 16px; }
+    .empty-state { padding: 40px 16px; }
 
     /* === QTY CONTROL === */
-    .qty-btn { width: 40px; height: 40px; }
+    .qty-btn { width: 44px; height: 44px; }
+
+    /* === PLAN LIMIT BAR === */
+    #planLimitBar { padding: 8px 12px; }
+
+    /* === HIDE SCROLLBARS on horizontal scroll containers === */
+    #fuMainTabBar::-webkit-scrollbar,
+    .page-actions::-webkit-scrollbar { display: none; }
+    #fuMainTabBar,
+    .page-actions { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* === SAFE AREA for devices with notch/home bar === */
+    .mobile-bottom-nav {
+        padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
+        height: calc(60px + max(env(safe-area-inset-bottom, 0px), 0px));
+    }
+    .main { padding-bottom: calc(68px + max(env(safe-area-inset-bottom, 0px), 0px)); }
 }
 
 /* ============================================================
@@ -1147,7 +1231,7 @@ tr:hover .row-actions { opacity: 1; }
 <div id="app" class="app">
 
     <!-- MOBILE TOPBAR (hidden on desktop via JS-injected display) -->
-    <div class="mobile-topbar" id="mobileTopbar" style="display:none;">
+    <div class="mobile-topbar" id="mobileTopbar">
         <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Menu">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -1706,33 +1790,36 @@ tr:hover .row-actions { opacity: 1; }
                     </div>
                 </div>
 
-        </div>
+            </div><!-- /page-body -->
+        </div><!-- /page-followups -->
 
         <!-- ==============================
-             MARKETING / EMAIL
+             MARKETING
         ============================== -->
         <div class="page" id="page-marketing">
             <div class="page-header">
                 <div class="page-title-group">
-                    <div class="page-title">Email Marketing</div>
-                    <div class="page-subtitle">Templates, campaigns &amp; automated chains</div>
+                    <div class="page-title">Marketing</div>
+                    <div class="page-subtitle">Email &amp; SMS campaigns — separate from follow-up templates</div>
                 </div>
-                <div class="page-actions">
-                    <button id="mkChainsHeaderBtn" class="btn btn-ghost" onclick="setMKTab('chains',document.querySelector('[data-mktab=chains]'))">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                        Chains
-                    </button>
-                    <button class="btn btn-default" onclick="openTemplateBuilder(null)">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        New Template
-                    </button>
+                <div class="page-actions" id="mkHeaderActions">
+                    <!-- dynamic per-tab action buttons injected by renderMarketing() -->
                 </div>
             </div>
             <div class="page-body">
-                <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);">
-                    <button class="btn btn-ghost mk-tab active-tab" data-mktab="templates" onclick="setMKTab('templates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">Templates</button>
+                <!-- Tab bar -->
+                <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);" id="mkTabBar">
+                    <button class="btn btn-ghost mk-tab active-tab" data-mktab="email_templates" onclick="setMKTab('email_templates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom:2px solid var(--text-0);">Email Templates</button>
                     <button id="mkTabSend" class="btn btn-ghost mk-tab" data-mktab="send" onclick="setMKTab('send',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Send Campaign</button>
-                    <button id="mkTabChains" class="btn btn-ghost mk-tab" data-mktab="chains" onclick="setMKTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Automated Chains</button>
+                    <button id="mkTabChains" class="btn btn-ghost mk-tab" data-mktab="chains" onclick="setMKTab('chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;">Email Chains</button>
+                    <button class="btn btn-ghost mk-tab" data-mktab="sms_templates" onclick="setMKTab('sms_templates',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;color:#10b981;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        SMS Templates
+                    </button>
+                    <button id="mkTabSmsChains" class="btn btn-ghost mk-tab" data-mktab="sms_chains" onclick="setMKTab('sms_chains',this)" style="border-radius:var(--r-sm) var(--r-sm) 0 0;color:#10b981;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        SMS Chains
+                    </button>
                 </div>
                 <div id="marketingContent"></div>
             </div>
@@ -3022,6 +3109,7 @@ function setupLoginForm() {
 function showApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
+    document.body.classList.add('app-ready');
     const vbl = document.getElementById('videoBgLayer');
     if (vbl) vbl.style.display = 'block';
     applyUserBackground();
@@ -3251,7 +3339,7 @@ function _renderPlanLimitBar(limits, recordCount, followUpsToday) {
     if (limits.maxFollowUpsDay !== null) {
         const pct   = Math.min(100, Math.round((followUpsToday / limits.maxFollowUpsDay) * 100));
         const color = pct >= 95 ? '#ef4444' : pct >= 80 ? '#f59e0b' : 'var(--green)';
-        items.push({ label: 'Follow-ups today', used: followUpsToday, max: limits.maxFollowUpsDay, pct, color });
+        items.push({ label: 'Daily sends (email + SMS)', used: followUpsToday, max: limits.maxFollowUpsDay, pct, color });
     }
     if (!items.length) return;
 
@@ -3284,6 +3372,7 @@ function logout() {
     S.token = null; S.user = null;
     document.getElementById('app').classList.remove('visible');
     document.getElementById('loginScreen').style.display = 'flex';
+    document.body.classList.remove('app-ready');
     const vbl = document.getElementById('videoBgLayer');
     if (vbl) vbl.style.display = 'none';
     // Pause all videos and strip all theme/bg classes so login is always clean default
@@ -3394,11 +3483,13 @@ const MOBILE_PAGE_NAMES = {
 function isMobile() { return window.innerWidth <= 640; }
 
 function initMobileUI() {
-    const mobile = isMobile();
-    const topbar = document.getElementById('mobileTopbar');
-    const bottomNav = document.getElementById('mobileBottomNav');
-    if (topbar)    topbar.style.display    = mobile ? 'flex'  : 'none';
-    if (bottomNav) bottomNav.style.display = mobile ? 'flex'  : 'none';
+    // The CSS media query + body.app-ready class controls visibility of all
+    // mobile chrome (topbar, bottom nav, more-menu). This function now only
+    // handles things that need JS (e.g. resize cleanup).
+    if (!isMobile()) {
+        closeMobileSidebar();
+        closeMobileMoreMenu();
+    }
 }
 
 function mobileNavigate(page, btnEl) {
@@ -3462,7 +3553,6 @@ document.addEventListener('click', (e) => {
 
 // Re-evaluate on resize
 window.addEventListener('resize', () => {
-    initMobileUI();
     if (!isMobile()) {
         closeMobileSidebar();
         closeMobileMoreMenu();
@@ -4012,7 +4102,7 @@ function renderLeads() {
         <table>
             <thead><tr>
                 <th>Name</th><th>Email</th><th>Company</th>
-                <th>Status</th><th>Assigned To</th><th>Added</th><th></th>
+                <th>Status</th>${!S.isIndividual ? '<th>Assigned To</th>' : ''}<th>Added</th><th></th>
             </tr></thead>
             <tbody>
                 ${filtered.map(l=>`<tr>
@@ -4020,24 +4110,20 @@ function renderLeads() {
                     <td style="color:var(--text-2);">${escHtml(l.email||'—')}</td>
                     <td style="color:var(--text-2);">${escHtml(l.company||'—')}</td>
                     <td>${statusBadge(l.status||l.lead_temperature||'new')}</td>
-                    <td>
+                    ${!S.isIndividual ? `<td>
                         ${l.assigned_to_name
                             ? `<span style="font-size:12px;background:var(--bg-1);padding:3px 8px;border-radius:4px;white-space:nowrap;">${escHtml(l.assigned_to_name)}</span>`
                             : `<span style="font-size:12px;color:var(--text-3);">Unassigned</span>`
                         }
-                    </td>
+                    </td>` : ''}
                     <td style="color:var(--text-3);font-size:12px;">${fmtDate(l.created_at)}</td>
                     <td>
                         <div class="row-actions">
-                            <button class="btn btn-ghost btn-xs" onclick="openAssignModal(${l.id},'${escHtml(l.name||'')}',${l.crm_assigned_to||'null'})">
+                            ${!S.isIndividual ? `<button class="btn btn-ghost btn-xs" onclick="openAssignModal(${l.id},'${escHtml(l.name||'')}',${l.crm_assigned_to||'null'})">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                                 Assign
-                            </button>
-                            <button class="btn btn-ghost btn-xs" onclick="sendFollowUpEmail(${l.id},'${escHtml(l.email||'')}','${escHtml(l.name||'')}')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                                Email
-                            </button>
-                            <button class="btn btn-ghost btn-xs" onclick="openEditLeadModal(${JSON.stringify(l).replace(/'/g,'&#39;')})">Edit</button>
+                            </button>` : ''}
+                            <button class="btn btn-ghost btn-xs" onclick="openEditLeadById(${l.id})">Edit</button>
                         </div>
                     </td>
                 </tr>`).join('')}
@@ -4063,7 +4149,7 @@ function openAddLeadModal() {
     document.getElementById('leadChainField').style.display = 'none';
 
     // Load chains for the automatic follow-up option
-    apiFetch('/client/email-chains').then(r=>r.json()).then(d=>{
+    apiFetch('/client/email-chains?chain_type=followup').then(r=>r.json()).then(d=>{
         const chains = d.chains || [];
         const sel = document.getElementById('leadChainSelect');
         if (sel) {
@@ -4173,6 +4259,15 @@ async function saveLead() {
         renderLeads();
         toast('Error creating lead', 'error');
     }
+}
+
+// Safe wrapper to open edit modal by lead ID (avoids JSON encoding issues in onclick attributes)
+function openEditLeadById(leadId) {
+    const lead = (S.leads || []).find(l => l.id === leadId)
+        || (S.customers || []).find(l => l.id === leadId)
+        || (S.contacts || []).find(l => l.id === leadId);
+    if (!lead) { toast('Lead not found — please refresh', 'error'); return; }
+    openEditLeadModal(lead);
 }
 
 function openEditLeadModal(lead) {
@@ -4354,10 +4449,10 @@ async function convertLeadToCustomer(leadId) {
 async function sendFollowUpEmail(leadId, email, leadName) {
     if (!email) { toast('No email on file for this lead', 'error'); return; }
 
-    // Load templates first — user must choose one (or write custom)
+    // Load follow-up templates only (not marketing templates)
     let templates = [];
     try {
-        const res = await apiFetch('/client/email-templates');
+        const res = await apiFetch('/client/email-templates?template_type=followup');
         const d = await res.json();
         templates = (d.templates || []).filter(t => t.is_active !== false);
     } catch(e) {}
@@ -4395,8 +4490,8 @@ async function sendFollowUpEmail(leadId, email, leadName) {
                     </select>
                 </div>` : `
                 <div style="font-size:12px;color:var(--text-3);background:var(--bg-2);padding:10px 12px;border-radius:8px;">
-                    💡 No email templates yet. You can still send a custom message below, or
-                    <a href="#" onclick="document.getElementById('followupEmailModal').remove();navigate('marketing');" style="color:var(--accent);">create templates in Marketing →</a>
+                    💡 No follow-up templates yet. You can still send a custom message below, or
+                    <a href="#" onclick="document.getElementById('followupEmailModal').remove();navigate('followups');setFUMainTab('templates',null);" style="color:var(--accent);">create follow-up templates →</a>
                 </div>`}
                 <div>
                     <label class="form-label">Subject</label>
@@ -4696,11 +4791,10 @@ function openLeadProfile(lead) {
             </div>
             <div class="modal-footer">
                 <button class="btn btn-ghost" onclick="closeModal('leadProfileModal')">Close</button>
-                <button class="btn btn-ghost" onclick="closeModal('leadProfileModal');openAssignModal(${lead.id},'${escHtml(lead.name||'')}',${lead.crm_assigned_to||'null'})">
+                ${!S.isIndividual ? `<button class="btn btn-ghost" onclick="closeModal('leadProfileModal');openAssignModal(${lead.id},'${escHtml(lead.name||'')}',${lead.crm_assigned_to||'null'})">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                    Reassign
-                </button>
-                <button class="btn btn-default" onclick="closeModal('leadProfileModal');openEditLeadModal(${JSON.stringify(lead).replace(/"/g,'&quot;')})">Edit Lead</button>
+                    Reassign</button>` : ''}
+                <button class="btn btn-default" onclick="closeModal('leadProfileModal');openEditLeadById(${lead.id})">Edit Lead</button>
                 <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="closeModal('leadProfileModal');confirmDeleteLead(${lead.id},'${escHtml(lead.name||lead.email||'this lead')}')">Delete</button>
             </div>
         </div>`;
@@ -4901,7 +4995,7 @@ async function openAssignSequenceModal(leadId, leadName, leadEmail) {
     }
     let chains = [];
     try {
-        const r = await apiFetch('/client/email-chains');
+        const r = await apiFetch('/client/email-chains?chain_type=followup');
         const d = await r.json();
         chains = d.chains || [];
     } catch {}
@@ -5537,6 +5631,8 @@ async function msgComposeSend(leadId) {
             FU.msgCountsLoaded = false;
             await _refreshMsgThread(leadId);
             if (S.currentPage === 'followups') loadFollowups();
+            // SMS counts toward daily send limit — refresh bar
+            _refreshPlanLimitBar();
         } else {
             // Mark as failed in thread — remove optimistic and show failed state
             const tmp = document.getElementById(tmpId);
@@ -5729,7 +5825,7 @@ async function loadFUTemplates() {
     const el = document.getElementById('fuTemplatesContent');
     el.innerHTML = `<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>`;
     try {
-        const r = await apiFetch('/client/email-templates');
+        const r = await apiFetch('/client/email-templates?template_type=followup');
         const d = await r.json();
         FU_MK.templates = d.templates || [];
         renderFUTemplates();
@@ -5766,8 +5862,8 @@ function renderFUTemplates() {
 }
 
 function openFUTemplateBuilder(existing) {
-    // Delegate to the shared template builder — same builder used for marketing
-    // but tagged as follow-up template
+    // Tag as follow-up template — separate pool from marketing
+    window._templateBuilderContext = 'followup';
     openTemplateBuilder(existing);
 }
 
@@ -5775,10 +5871,7 @@ async function deleteFUTemplate(id) {
     if (!confirm('Delete this template?')) return;
     const removed = FU_MK.templates.find(t => t.id === id);
     FU_MK.templates = FU_MK.templates.filter(t => t.id !== id);
-    // MK.templates is the same data — keep in sync
-    if (MK.templates) MK.templates = MK.templates.filter(t => t.id !== id);
     renderFUTemplates();
-    renderMarketing();
     toast('Template deleted', 'success');
     apiFetch(`/client/email-templates/${id}`, 'DELETE').catch(() => {
         if (removed) { FU_MK.templates = [removed, ...FU_MK.templates]; renderFUTemplates(); }
@@ -5790,7 +5883,7 @@ async function loadFUChains() {
     const el = document.getElementById('fuChainsContent');
     el.innerHTML = `<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>`;
     try {
-        const r = await apiFetch('/client/email-chains');
+        const r = await apiFetch('/client/email-chains?chain_type=followup');
         const d = await r.json();
         FU_MK.chains = d.chains || [];
         renderFUChains();
@@ -5834,7 +5927,8 @@ function renderFUChains() {
 }
 
 function openFUChainBuilder() {
-    // Reuse the same chain builder modal
+    // FU chain builder uses follow-up templates only
+    window._chainBuilderContext = 'followup';
     openChainBuilder();
 }
 
@@ -5842,10 +5936,7 @@ async function deleteFUChain(id) {
     if (!confirm('Delete this chain?')) return;
     const removed = FU_MK.chains.find(c => c.id === id);
     FU_MK.chains = FU_MK.chains.filter(c => c.id !== id);
-    // MK.chains is the same data — keep in sync
-    if (MK.chains) MK.chains = MK.chains.filter(c => c.id !== id);
     renderFUChains();
-    renderMarketing();
     toast('Chain deleted', 'success');
     apiFetch(`/client/email-chains/${id}`, 'DELETE').catch(() => {
         if (removed) { FU_MK.chains = [removed, ...FU_MK.chains]; renderFUChains(); }
@@ -5864,7 +5955,7 @@ async function loadSmsTemplates() {
     if (!el) return;
     el.innerHTML = '<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>';
     try {
-        const r = await apiFetch('/client/sms-templates');
+        const r = await apiFetch('/client/sms-templates?template_type=followup');
         const d = await r.json();
         SMS_TMPL.templates = d.templates || [];
         renderSmsTemplates();
@@ -5903,7 +5994,8 @@ function renderSmsTemplates() {
     </div>`;
 }
 
-function openSmsTemplateBuilder(existing) {
+function openSmsTemplateBuilder(existing, context) {
+    if (context) window._smsBuilderContext = context;
     let modal = document.getElementById('smsTemplateBuilderModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -5983,41 +6075,69 @@ async function saveSmsTemplate(id) {
     const contact = document.getElementById('smsTplContact')?.checked || false;
     if (!name || !body) { toast('Name and message body required', 'error'); return; }
 
-    const payload = { name, body, include_schedule_link: sched, include_contact_link: contact };
+    // Determine whether this is a marketing or followup SMS template
+    const isMK = (window._smsBuilderContext === 'marketing');
+    window._smsBuilderContext = null;
+
+    const payload = {
+        name, body,
+        include_schedule_link: sched,
+        include_contact_link: contact,
+        template_type: isMK ? 'marketing' : 'followup'
+    };
 
     if (id) {
-        // Optimistic update
-        const prev = SMS_TMPL.templates.find(t => t.id === id);
-        SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === id ? { ...t, ...payload } : t);
+        const prev = isMK
+            ? MK.sms_templates.find(t => t.id === id)
+            : SMS_TMPL.templates.find(t => t.id === id);
+        if (isMK) MK.sms_templates = MK.sms_templates.map(t => t.id === id ? { ...t, ...payload } : t);
+        else SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === id ? { ...t, ...payload } : t);
         closeModal('smsTemplateBuilderModal');
-        renderSmsTemplates();
+        if (isMK) renderMarketing(); else renderSmsTemplates();
         toast('Template updated', 'success');
         apiFetch(`/client/sms-templates/${id}`, 'PUT', payload)
             .then(r => r.json())
-            .then(d => { if (!d.success) { if (prev) SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === id ? prev : t); renderSmsTemplates(); toast(d.message||'Failed', 'error'); } })
-            .catch(() => { if (prev) SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === id ? prev : t); renderSmsTemplates(); });
+            .then(d => {
+                if (!d.success) {
+                    if (prev && isMK) MK.sms_templates = MK.sms_templates.map(t => t.id === id ? prev : t);
+                    else if (prev) SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === id ? prev : t);
+                    if (isMK) renderMarketing(); else renderSmsTemplates();
+                    toast(d.message||'Failed', 'error');
+                }
+            })
+            .catch(() => {
+                if (prev && isMK) MK.sms_templates = MK.sms_templates.map(t => t.id === id ? prev : t);
+                else if (prev) SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === id ? prev : t);
+                if (isMK) renderMarketing(); else renderSmsTemplates();
+            });
     } else {
-        // Optimistic add
         const tmpId = 'tmp_' + Date.now();
         const optimistic = { id: tmpId, ...payload, _optimistic: true };
-        SMS_TMPL.templates = [optimistic, ...SMS_TMPL.templates];
+        if (isMK) MK.sms_templates = [optimistic, ...MK.sms_templates];
+        else SMS_TMPL.templates = [optimistic, ...SMS_TMPL.templates];
         closeModal('smsTemplateBuilderModal');
-        renderSmsTemplates();
+        if (isMK) renderMarketing(); else renderSmsTemplates();
         toast('Template saved', 'success');
         apiFetch('/client/sms-templates', 'POST', payload)
             .then(r => r.json())
             .then(d => {
                 if (d.success) {
                     const real = d.template || { ...optimistic, id: d.id || tmpId, _optimistic: false };
-                    SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === tmpId ? { ...real, _optimistic: false } : t);
-                    renderSmsTemplates();
+                    if (isMK) MK.sms_templates = MK.sms_templates.map(t => t.id === tmpId ? { ...real, _optimistic: false } : t);
+                    else SMS_TMPL.templates = SMS_TMPL.templates.map(t => t.id === tmpId ? { ...real, _optimistic: false } : t);
+                    if (isMK) renderMarketing(); else renderSmsTemplates();
                 } else {
-                    SMS_TMPL.templates = SMS_TMPL.templates.filter(t => t.id !== tmpId);
-                    renderSmsTemplates();
+                    if (isMK) MK.sms_templates = MK.sms_templates.filter(t => t.id !== tmpId);
+                    else SMS_TMPL.templates = SMS_TMPL.templates.filter(t => t.id !== tmpId);
+                    if (isMK) renderMarketing(); else renderSmsTemplates();
                     toast(d.message || 'Failed', 'error');
                 }
             })
-            .catch(() => { SMS_TMPL.templates = SMS_TMPL.templates.filter(t => t.id !== tmpId); renderSmsTemplates(); });
+            .catch(() => {
+                if (isMK) MK.sms_templates = MK.sms_templates.filter(t => t.id !== tmpId);
+                else SMS_TMPL.templates = SMS_TMPL.templates.filter(t => t.id !== tmpId);
+                if (isMK) renderMarketing(); else renderSmsTemplates();
+            });
     }
 }
 
@@ -6044,7 +6164,7 @@ async function loadSmsChains() {
     if (!el) return;
     el.innerHTML = '<div style="padding:40px;text-align:center;"><div class="spinner" style="margin:0 auto;"></div></div>';
     try {
-        const r = await apiFetch('/client/sms-chains');
+        const r = await apiFetch('/client/sms-chains?chain_type=followup');
         const d = await r.json();
         SMS_CHAIN.chains = d.chains || [];
         renderSmsChains();
@@ -6093,9 +6213,11 @@ function renderSmsChains() {
         </div>`).join('');
 }
 
-function openSmsChainBuilder() {
-    // Load SMS templates first so we can pick from them
-    const templates = SMS_TMPL.templates;
+function openSmsChainBuilder(context) {
+    if (context) window._smsChainBuilderContext = context;
+    const isMK = (window._smsChainBuilderContext === 'marketing');
+    // Use the right pool of templates
+    const templates = isMK ? MK.sms_templates : SMS_TMPL.templates;
 
     let modal = document.getElementById('smsChainBuilderModal');
     if (!modal) {
@@ -6116,7 +6238,7 @@ function openSmsChainBuilder() {
         : '';
 
     modal.innerHTML =
-        '<div class="modal" style="max-width:600px;width:calc(100% - 32px);max-height:90vh;overflow-y:auto;">'
+        '<div class="modal" style="max-width:600px;width:calc(100% - 32px);max-height:85vh;overflow-y:auto;margin-top:auto;">'
         + '<div class="modal-header"><span class="modal-title">New SMS Chain</span>'
         + '<button class="modal-close" onclick="closeModal(\'smsChainBuilderModal\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
         + '<div class="modal-body">'
@@ -6196,28 +6318,38 @@ async function saveSmsChain() {
 
     if (!steps.length) { toast('Add at least one step', 'error'); return; }
 
-    // Optimistic
+    const isMK = (window._smsChainBuilderContext === 'marketing');
+    window._smsChainBuilderContext = null;
+
     const tmpId = 'tmp_' + Date.now();
     const optimistic = { id: tmpId, name, loop, steps, step_count: steps.length, _optimistic: true };
-    SMS_CHAIN.chains = [optimistic, ...(SMS_CHAIN.chains || [])];
+    if (isMK) MK.sms_chains = [optimistic, ...(MK.sms_chains || [])];
+    else SMS_CHAIN.chains = [optimistic, ...(SMS_CHAIN.chains || [])];
     closeModal('smsChainBuilderModal');
-    renderSmsChains();
+    if (isMK) renderMarketing(); else renderSmsChains();
     toast('SMS chain saved', 'success');
 
-    apiFetch('/client/sms-chains', 'POST', { name, loop, steps })
+    apiFetch('/client/sms-chains', 'POST', { name, loop, steps, chain_type: isMK ? 'marketing' : 'followup' })
         .then(r => r.json())
         .then(d => {
             if (d.success) {
                 const real = d.chain || { ...optimistic, id: d.id || tmpId, _optimistic: false };
-                SMS_CHAIN.chains = SMS_CHAIN.chains.map(c => c.id === tmpId ? { ...real, _optimistic: false } : c);
-                renderSmsChains();
+                if (isMK) MK.sms_chains = MK.sms_chains.map(c => c.id === tmpId ? { ...real, _optimistic: false } : c);
+                else SMS_CHAIN.chains = SMS_CHAIN.chains.map(c => c.id === tmpId ? { ...real, _optimistic: false } : c);
+                if (isMK) renderMarketing(); else renderSmsChains();
             } else {
-                SMS_CHAIN.chains = SMS_CHAIN.chains.filter(c => c.id !== tmpId);
-                renderSmsChains();
+                if (isMK) MK.sms_chains = MK.sms_chains.filter(c => c.id !== tmpId);
+                else SMS_CHAIN.chains = SMS_CHAIN.chains.filter(c => c.id !== tmpId);
+                if (isMK) renderMarketing(); else renderSmsChains();
                 toast(d.message || 'Failed to save', 'error');
             }
         })
-        .catch(() => { SMS_CHAIN.chains = SMS_CHAIN.chains.filter(c => c.id !== tmpId); renderSmsChains(); toast('Error saving chain', 'error'); });
+        .catch(() => {
+            if (isMK) MK.sms_chains = MK.sms_chains.filter(c => c.id !== tmpId);
+            else SMS_CHAIN.chains = SMS_CHAIN.chains.filter(c => c.id !== tmpId);
+            if (isMK) renderMarketing(); else renderSmsChains();
+            toast('Error saving chain', 'error');
+        });
 }
 
 async function deleteSmsChain(id) {
@@ -6330,7 +6462,7 @@ async function toggleSmsAutoSequence() {
     if (newState) {
         // Check if email auto chains are running
         try {
-            const r = await apiFetch('/client/email-chains');
+        const r = await apiFetch('/client/email-chains?chain_type=followup');
             const d = await r.json();
             const activeChain = (d.chains || []).find(c => c.is_active);
             if (activeChain) {
@@ -6400,10 +6532,10 @@ async function saveSmsAutoSequence() {
 
 
 async function openSendEmailModal(leadId, leadEmail, leadName) {
-    // Load templates
+    // Load follow-up templates only (not marketing templates)
     let templates = [];
     try {
-        const r = await apiFetch('/client/email-templates');
+        const r = await apiFetch('/client/email-templates?template_type=followup');
         const d = await r.json();
         templates = d.templates || [];
     } catch {}
@@ -6425,7 +6557,7 @@ async function openSendEmailModal(leadId, leadEmail, leadName) {
             </div>
             <div class="modal-body">
                 ${templates.length === 0
-                    ? `<p style="color:var(--text-3);font-size:13px;">No templates yet. <a href="#" onclick="navigateTo('marketing')">Create one in Email Marketing →</a></p>`
+                    ? `<p style="color:var(--text-3);font-size:13px;">No follow-up templates yet. <a href="#" onclick="closeModal('quickSendModal');navigate('followups');setFUMainTab('templates',null);">Create one in Follow-ups →</a></p>`
                     : `<div class="form-field">
                         <label>Choose Template</label>
                         <select id="quickSendTemplate">
@@ -8780,7 +8912,14 @@ async function openBillingPortal(subId) {
 // ============================================================
 // EMAIL MARKETING — template builder, campaigns, chains
 // ============================================================
-const MK = { templates: [], chains: [], tab: 'templates', settings: null };
+const MK = { 
+    email_templates: [], 
+    chains: [], 
+    sms_templates: [], 
+    sms_chains: [], 
+    tab: 'email_templates', 
+    settings: null 
+};
 
 const EMAIL_TOPICS = [
     { value: 'intro',         label: 'Introduction / First Contact' },
@@ -8891,24 +9030,33 @@ const TOPIC_TEMPLATES = {
 };
 
 async function loadMarketing() {
-    // Load settings + templates + chains in parallel
+    // Load settings + marketing-only templates + chains + SMS in parallel
     try {
-        const [settingsRes, templatesRes, chainsRes] = await Promise.all([
+        const [settingsRes, emailTplRes, chainsRes, smsTplRes, smsChainRes] = await Promise.all([
             apiFetch('/client/email-settings').then(r=>r.json()).catch(()=>({})),
-            apiFetch('/client/email-templates').then(r=>r.json()).catch(()=>({})),
-            apiFetch('/client/email-chains').then(r=>r.json()).catch(()=>({chains:[]}))
+            apiFetch('/client/email-templates?template_type=marketing').then(r=>r.json()).catch(()=>({})),
+            apiFetch('/client/email-chains?chain_type=marketing').then(r=>r.json()).catch(()=>({chains:[]})),
+            apiFetch('/client/sms-templates?template_type=marketing').then(r=>r.json()).catch(()=>({templates:[]})),
+            apiFetch('/client/sms-chains?chain_type=marketing').then(r=>r.json()).catch(()=>({chains:[]}))
         ]);
-        MK.settings  = settingsRes.settings || {};
-        MK.templates = templatesRes.templates || [];
-        MK.chains    = chainsRes.chains || [];
+        MK.settings       = settingsRes.settings || {};
+        MK.email_templates = emailTplRes.templates || [];
+        MK.chains          = chainsRes.chains || [];
+        MK.sms_templates   = smsTplRes.templates || [];
+        MK.sms_chains      = smsChainRes.chains || [];
     } catch {}
     renderMarketing();
 }
 
 function setMKTab(tab, el) {
-    // Block campaign and chain tabs on Essential plan
-    if ((tab === 'send' || tab === 'chains') && S.planLimits?.marketingEnabled === false) {
+    // Block campaign/chain tabs on Essential plan
+    if ((tab === 'send' || tab === 'chains' || tab === 'sms_chains') && S.planLimits?.marketingEnabled === false) {
         toast('This feature is not available on the Essential plan. Upgrade to Professional or higher.', 'error');
+        return;
+    }
+    // Block SMS tabs if SMS not enabled
+    if ((tab === 'sms_templates' || tab === 'sms_chains') && S.planLimits?.smsEnabled === false) {
+        toast('SMS features require a Professional or higher plan.', 'error');
         return;
     }
     MK.tab = tab;
@@ -8918,8 +9066,12 @@ function setMKTab(tab, el) {
     });
     if (el) {
         el.classList.add('active-tab');
-        el.style.borderBottom = '2px solid var(--text-0)';
+        const isSms = (tab === 'sms_templates' || tab === 'sms_chains');
+        el.style.borderBottom = `2px solid ${isSms ? '#10b981' : 'var(--text-0)'}`;
     }
+    // Load data for SMS tabs
+    if (tab === 'sms_templates') _loadMKSmsTemplates();
+    if (tab === 'sms_chains')    _loadMKSmsChains();
     renderMarketing();
 }
 
@@ -8927,49 +9079,90 @@ function renderMarketing() {
     const el = document.getElementById('marketingContent');
     if (!el) return;
 
-    const brevoWarning = ''; // Brevo is handled by the Diamondback platform — no per-portal key needed
+    // Update header action button based on active tab
+    const headerActions = document.getElementById('mkHeaderActions');
+    if (headerActions) {
+        if (MK.tab === 'email_templates') {
+            headerActions.innerHTML = `<button class="btn btn-default" onclick="openMKTemplateBuilder(null)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New Email Template</button>`;
+        } else if (MK.tab === 'sms_templates') {
+            headerActions.innerHTML = `<button class="btn btn-default" onclick="openMKSmsTemplateBuilder(null)" style="color:#10b981;border-color:#10b98133;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New SMS Template</button>`;
+        } else if (MK.tab === 'chains') {
+            headerActions.innerHTML = `<button class="btn btn-default" onclick="openMKChainBuilder()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                New Email Chain</button>`;
+        } else if (MK.tab === 'sms_chains') {
+            headerActions.innerHTML = `<button class="btn btn-default" onclick="openMKSmsChainBuilder()" style="color:#10b981;border-color:#10b98133;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New SMS Chain</button>`;
+        } else {
+            headerActions.innerHTML = '';
+        }
+    }
 
-    if (MK.tab === 'templates') {
-        el.innerHTML = brevoWarning + `
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
-                <div onclick="openTemplateBuilder(null)" style="border:2px dashed var(--border);border-radius:var(--r-lg);padding:28px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-3);transition:border-color .2s;" onmouseover="this.style.borderColor='var(--text-0)'" onmouseout="this.style.borderColor='var(--border)'">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    <span style="font-size:13px;font-weight:600;">New Template</span>
+    const tplCard = (t, isMarketing=true) => `
+        <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                <div>
+                    <div style="font-size:14px;font-weight:700;color:var(--text-0);">${escHtml(t.name)}</div>
+                    <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${escHtml(t.topic||'custom')}</div>
                 </div>
-                ${MK.templates.map(t => `
-                    <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-                            <div>
-                                <div style="font-size:14px;font-weight:700;color:var(--text-0);">${escHtml(t.name)}</div>
-                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${escHtml(t.topic||'custom')}</div>
-                            </div>
-                            ${t.is_automated ? `<span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:20px;background:#6366f122;color:#6366f1;">Auto</span>` : ''}
-                        </div>
-                        <div style="font-size:12px;color:var(--text-2);margin-bottom:14px;font-style:italic;">"${escHtml(t.subject)}"</div>
-                        <div style="display:flex;gap:8px;">
-                            <button class="btn btn-ghost btn-xs" onclick="openTemplateBuilder(${JSON.stringify(t).replace(/"/g,'&quot;')})">Edit</button>
-                            <button class="btn btn-ghost btn-xs" onclick="sendTemplateNow(${t.id},'${escHtml(t.name)}')">Send</button>
-                            <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteTemplate(${t.id})">Delete</button>
-                        </div>
-                    </div>`).join('')}
-                ${MK.templates.length === 0 ? `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-3);font-size:13px;">No templates yet. Click the card above to create your first one.</div>` : ''}
+                <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:20px;background:#6366f122;color:#6366f1;">Marketing</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:14px;font-style:italic;">"${escHtml(t.subject||t.body_text?.substring(0,60)||'')}"</div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-ghost btn-xs" onclick="openMKTemplateBuilder(${JSON.stringify(t).replace(/"/g,'&quot;')})">Edit</button>
+                <button class="btn btn-ghost btn-xs" onclick="sendMKTemplateNow(${t.id},'${escHtml(t.name)}')">Send</button>
+                <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteMKTemplate(${t.id})">Delete</button>
+            </div>
+        </div>`;
+
+    const smsTplCard = (t) => `
+        <div style="background:var(--bg-1);border:1px solid rgba(16,185,129,0.2);border-radius:var(--r-lg);padding:20px 22px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                <div style="font-size:14px;font-weight:700;color:var(--text-0);">${escHtml(t.name)}</div>
+                <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:20px;background:#10b98120;color:#10b981;">SMS · Marketing</span>
+            </div>
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:14px;">${escHtml((t.body_text||'').substring(0,100))}${(t.body_text||'').length>100?'…':''}</div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-ghost btn-xs" onclick="openMKSmsTemplateBuilder(${JSON.stringify(t).replace(/"/g,'&quot;')})">Edit</button>
+                <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteMKSmsTemplate(${t.id})">Delete</button>
+            </div>
+        </div>`;
+
+    if (MK.tab === 'email_templates') {
+        el.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+                <div onclick="openMKTemplateBuilder(null)" style="border:2px dashed var(--border);border-radius:var(--r-lg);padding:28px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-3);transition:border-color .2s;" onmouseover="this.style.borderColor='var(--text-0)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span style="font-size:13px;font-weight:600;">New Email Template</span>
+                </div>
+                ${MK.email_templates.map(t => tplCard(t)).join('')}
+                ${MK.email_templates.length === 0 ? `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-3);font-size:13px;">No marketing email templates yet. Click the card above to create one.<br><span style="font-size:11px;color:var(--text-3);margin-top:6px;display:block;">Marketing templates are separate from follow-up templates.</span></div>` : ''}
             </div>`;
+
     } else if (MK.tab === 'send') {
-        el.innerHTML = brevoWarning + `
+        el.innerHTML = `
             <div style="max-width:640px;">
                 <div class="card">
-                    <div class="card-header"><span class="card-title">Send to Leads</span></div>
+                    <div class="card-header"><span class="card-title">Send Email Campaign</span></div>
                     <div class="card-body">
+                        <div style="font-size:12px;color:#a5b4fc;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:16px;">
+                            Campaigns use <strong>Marketing templates only</strong> — not follow-up templates. Lead engagement (opens, clicks, form fills) still triggers Hot/Dead lead status changes.
+                        </div>
                         <div class="form-field">
                             <label>Template</label>
-                            <select id="sendTemplate">
-                                <option value="">— Choose a template —</option>
-                                ${MK.templates.map(t=>`<option value="${t.id}">${escHtml(t.name)}</option>`).join('')}
+                            <select id="sendTemplate" class="form-select">
+                                <option value="">— Choose a marketing template —</option>
+                                ${MK.email_templates.map(t=>`<option value="${t.id}">${escHtml(t.name)}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-field">
                             <label>Recipients</label>
-                            <select id="sendRecipientType" onchange="updateRecipientCount()">
+                            <select id="sendRecipientType" class="form-select" onchange="updateRecipientCount()">
                                 <option value="all">All leads</option>
                                 <option value="cold">Cold leads only</option>
                                 <option value="hot">Hot leads only</option>
@@ -8988,19 +9181,23 @@ function renderMarketing() {
                 </div>
             </div>`;
         updateRecipientCount();
+
     } else if (MK.tab === 'chains') {
-        el.innerHTML = brevoWarning + `
+        el.innerHTML = `
+            <div style="margin-bottom:8px;font-size:12px;color:#a5b4fc;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.2);border-radius:var(--r-md);padding:8px 14px;">
+                Email chains in Marketing use <strong>Marketing email templates only</strong>. Lead engagement still triggers Hot/Dead status changes.
+            </div>
             <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
-                <button class="btn btn-default" onclick="openChainBuilder()">
+                <button class="btn btn-default" onclick="openMKChainBuilder()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    New Chain
+                    New Email Chain
                 </button>
             </div>
             ${MK.chains.length === 0
                 ? `<div class="empty-state">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                    <h3>No chains yet</h3>
-                    <p>Build a chain to automate a sequence of emails that sends on a schedule and loops indefinitely.</p>
+                    <h3>No marketing chains yet</h3>
+                    <p>Build a chain to automate a sequence of marketing emails that sends on a schedule.</p>
                    </div>`
                 : MK.chains.map(c => `
                     <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:12px;">
@@ -9011,7 +9208,7 @@ function renderMarketing() {
                             </div>
                             <div style="display:flex;gap:8px;">
                                 <button class="btn btn-ghost btn-xs" onclick="enrollInChain(${c.id},'${escHtml(c.name)}')">Enroll Leads</button>
-                                <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteChain(${c.id})">Delete</button>
+                                <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteMKChain(${c.id})">Delete</button>
                             </div>
                         </div>
                         <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;">
@@ -9024,6 +9221,52 @@ function renderMarketing() {
                                     </div>
                                     ${i < (c.steps.length-1) ? `<div style="padding:0 6px;color:var(--text-3);">→</div>` : c.loop ? `<div style="padding:0 6px;color:#6366f1;font-size:11px;font-weight:700;">→ (loop)</div>` : ''}
                                 </div>`).join('')}
+                        </div>
+                    </div>`).join('')
+            }`;
+
+    } else if (MK.tab === 'sms_templates') {
+        el.innerHTML = `
+            <div style="margin-bottom:12px;font-size:12px;color:#6ee7b7;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:var(--r-md);padding:8px 14px;">
+                SMS Marketing templates are <strong>separate from Follow-up SMS templates</strong>. Lead engagement still triggers Hot/Dead status changes.
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+                <div onclick="openMKSmsTemplateBuilder(null)" style="border:2px dashed rgba(16,185,129,0.3);border-radius:var(--r-lg);padding:28px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#10b981;transition:border-color .2s;" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='rgba(16,185,129,0.3)'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span style="font-size:13px;font-weight:600;">New SMS Template</span>
+                </div>
+                ${MK.sms_templates.map(t => smsTplCard(t)).join('')}
+                ${MK.sms_templates.length === 0 ? `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-3);font-size:13px;">No marketing SMS templates yet.</div>` : ''}
+            </div>`;
+
+    } else if (MK.tab === 'sms_chains') {
+        el.innerHTML = `
+            <div style="margin-bottom:8px;font-size:12px;color:#6ee7b7;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);border-radius:var(--r-md);padding:8px 14px;">
+                SMS chains in Marketing use <strong>Marketing SMS templates only</strong>. Lead engagement still triggers Hot/Dead status changes.
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+                <button class="btn btn-default" onclick="openMKSmsChainBuilder()" style="color:#10b981;border-color:#10b98133;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    New SMS Chain
+                </button>
+            </div>
+            ${MK.sms_chains.length === 0
+                ? `<div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:#10b981;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <h3>No marketing SMS chains yet</h3>
+                    <p>Build a chain to automate a sequence of marketing SMS messages on a schedule.</p>
+                   </div>`
+                : MK.sms_chains.map(c => `
+                    <div style="background:var(--bg-1);border:1px solid rgba(16,185,129,0.2);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                            <div>
+                                <div style="font-size:15px;font-weight:700;">${escHtml(c.name)}</div>
+                                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${c.steps?.length||0} steps · ${c.loop?'Loops':'Runs once'}</div>
+                            </div>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn btn-ghost btn-xs" onclick="enrollInMKSmsChain(${c.id},'${escHtml(c.name)}')">Enroll Leads</button>
+                                <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="deleteMKSmsChain(${c.id})">Delete</button>
+                            </div>
                         </div>
                     </div>`).join('')
             }`;
@@ -9248,59 +9491,86 @@ async function saveTemplate(existingId) {
         contact_btn_label:    document.getElementById('tb_contact_label')?.value.trim() || 'Fill Out Contact Form',
         website_btn_label:    document.getElementById('tb_website_btn_label')?.value.trim() || 'Visit Our Website',
         is_automated: document.getElementById('tb_automated').checked,
+        // Tag template type based on which builder opened this
+        template_type: (window._templateBuilderContext === 'marketing') ? 'marketing' : 'followup',
     };
+    // Clear context flag
+    window._templateBuilderContext = null;
+
+    // Determine which in-memory pool to update
+    const isMKContext = payload.template_type === 'marketing';
 
     try {
         const method = existingId ? 'PUT' : 'POST';
         const url    = existingId ? `/client/email-templates/${existingId}` : '/client/email-templates';
-        // Optimistic update
+        // Optimistic update into the right pool
         if (existingId) {
-            MK.templates = MK.templates.map(t => t.id === existingId ? { ...t, ...payload, id: existingId } : t);
+            if (isMKContext) {
+                MK.email_templates = MK.email_templates.map(t => t.id === existingId ? { ...t, ...payload, id: existingId } : t);
+            } else {
+                FU_MK.templates = FU_MK.templates.map(t => t.id === existingId ? { ...t, ...payload, id: existingId } : t);
+            }
         } else {
             const tmpId = 'tmp_' + Date.now();
-            MK.templates = [{ ...payload, id: tmpId, _optimistic: true }, ...(MK.templates || [])];
+            if (isMKContext) {
+                MK.email_templates = [{ ...payload, id: tmpId, _optimistic: true }, ...(MK.email_templates || [])];
+            } else {
+                FU_MK.templates = [{ ...payload, id: tmpId, _optimistic: true }, ...(FU_MK.templates || [])];
+            }
             window._pendingTemplateId = tmpId;
         }
         closeModal('templateBuilderModal');
-        renderMarketing();
+        if (isMKContext) renderMarketing(); else renderFUTemplates();
         toast('Template saved', 'success');
         const res = await apiFetch(url, method, payload);
         const data = await res.json();
         if (data.success || data.template) {
             if (!existingId && window._pendingTemplateId) {
                 const real = data.template || { ...payload, id: data.id || window._pendingTemplateId };
-                MK.templates = MK.templates.map(t => t.id === window._pendingTemplateId ? { ...real, _optimistic: false } : t);
+                if (isMKContext) {
+                    MK.email_templates = MK.email_templates.map(t => t.id === window._pendingTemplateId ? { ...real, _optimistic: false } : t);
+                } else {
+                    FU_MK.templates = FU_MK.templates.map(t => t.id === window._pendingTemplateId ? { ...real, _optimistic: false } : t);
+                }
                 window._pendingTemplateId = null;
-                renderMarketing();
+                if (isMKContext) renderMarketing(); else renderFUTemplates();
             }
         } else {
             if (!existingId && window._pendingTemplateId) {
-                MK.templates = MK.templates.filter(t => t.id !== window._pendingTemplateId);
+                if (isMKContext) {
+                    MK.email_templates = MK.email_templates.filter(t => t.id !== window._pendingTemplateId);
+                } else {
+                    FU_MK.templates = FU_MK.templates.filter(t => t.id !== window._pendingTemplateId);
+                }
                 window._pendingTemplateId = null;
             }
-            renderMarketing();
+            if (isMKContext) renderMarketing(); else renderFUTemplates();
             toast(data.message||'Failed to save', 'error');
         }
     } catch(e) {
         if (!existingId && window._pendingTemplateId) {
-            MK.templates = MK.templates.filter(t => t.id !== window._pendingTemplateId);
+            if (isMKContext) {
+                MK.email_templates = MK.email_templates.filter(t => t.id !== window._pendingTemplateId);
+            } else {
+                FU_MK.templates = FU_MK.templates.filter(t => t.id !== window._pendingTemplateId);
+            }
             window._pendingTemplateId = null;
         }
-        renderMarketing();
+        if (isMKContext) renderMarketing(); else renderFUTemplates();
         toast('Error saving template', 'error');
     }
 }
 
 async function deleteTemplate(id) {
     if (!confirm('Delete this template?')) return;
-    const removed = MK.templates.find(t => t.id === id);
-    MK.templates = MK.templates.filter(t => t.id !== id);
+    const removed = MK.email_templates.find(t => t.id === id);
+    MK.email_templates = MK.email_templates.filter(t => t.id !== id);
     renderMarketing();
     toast('Template deleted', 'success');
     try {
         await apiFetch(`/client/email-templates/${id}`, 'DELETE');
     } catch {
-        if (removed) MK.templates = [removed, ...(MK.templates || [])];
+        if (removed) MK.email_templates = [removed, ...(MK.email_templates || [])];
         renderMarketing();
         toast('Error', 'error');
     }
@@ -9338,15 +9608,268 @@ async function sendCampaignNow() {
     if (!_campaignLeadIds.length) { toast('No recipients found', 'error'); return; }
     if (!confirm(`Send to ${_campaignLeadIds.length} leads?`)) return;
     try {
-        const res = await apiFetch('/client/email/send', 'POST', { template_id: parseInt(templateId), lead_ids: _campaignLeadIds });
+        const res = await apiFetch('/client/email/send', 'POST', {
+            template_id: parseInt(templateId),
+            lead_ids: _campaignLeadIds,
+            email_type: 'marketing'   // ← ensures marketing analytics tracked separately
+        });
         const data = await res.json();
         if (data.success) {
             toast(`Campaign sent — ${data.sent} delivered, ${data.skipped} skipped, ${data.errors} errors`, 'success');
+            // Refresh plan limit bar — marketing sends count toward the combined daily cap
+            _refreshPlanLimitBar();
+            if (S.currentPage === 'analytics') loadAnalytics();
         } else { toast(data.message||'Failed', 'error'); }
     } catch(e) { toast('Error sending campaign', 'error'); }
 }
 
-// ── Chain Builder Modal ───────────────────────────────────────────
+// ── Marketing Template Builder (marketing-scoped, separate from FU) ───────────
+function openMKTemplateBuilder(existing) {
+    // Pass context so saveTemplate knows which pool to update
+    window._templateBuilderContext = 'marketing';
+    openTemplateBuilder(existing);
+}
+
+async function deleteMKTemplate(id) {
+    if (!confirm('Delete this marketing template?')) return;
+    const removed = MK.email_templates.find(t => t.id === id);
+    MK.email_templates = MK.email_templates.filter(t => t.id !== id);
+    renderMarketing();
+    toast('Template deleted', 'success');
+    try {
+        await apiFetch(`/client/email-templates/${id}`, 'DELETE');
+    } catch {
+        if (removed) MK.email_templates = [removed, ...(MK.email_templates || [])];
+        renderMarketing();
+        toast('Error deleting template', 'error');
+    }
+}
+
+async function sendMKTemplateNow(templateId, templateName) {
+    if (!confirm(`Send "${templateName}" to your selected leads?`)) return;
+    document.getElementById('sendTemplate').value = templateId;
+    setMKTab('send', document.querySelector('[data-mktab=send]'));
+}
+
+async function deleteMKChain(id) {
+    if (!confirm('Delete this marketing chain?')) return;
+    const removed = MK.chains.find(c => c.id === id);
+    MK.chains = MK.chains.filter(c => c.id !== id);
+    renderMarketing();
+    toast('Chain deleted', 'success');
+    try {
+        await apiFetch(`/client/email-chains/${id}`, 'DELETE');
+    } catch {
+        if (removed) MK.chains = [removed, ...(MK.chains || [])];
+        renderMarketing();
+        toast('Error', 'error');
+    }
+}
+
+// ── Marketing Chain Builder ───────────────────────────────────────────────────
+let _mkChainSteps = [];
+
+async function openMKChainBuilder() {
+    _mkChainSteps = [];
+    let modal = document.getElementById('mkChainBuilderModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'mkChainBuilderModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('mkChainBuilderModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:600px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Build Marketing Email Chain</div>
+                <button class="modal-close" onclick="closeModal('mkChainBuilderModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field"><label>Chain Name</label><input class="form-input" id="mkChainName" placeholder="e.g. New Lead Marketing Sequence"></div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:16px;">
+                    <input type="checkbox" id="mkChainLoop" checked> Loop indefinitely
+                </label>
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:10px;">Steps</div>
+                <div id="mkChainStepsList"><p style="color:var(--text-3);font-size:13px;">No steps yet.</p></div>
+                <div style="background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-top:12px;">
+                    <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:10px;">Add Step</div>
+                    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                        <div class="form-field" style="flex:2;min-width:160px;margin:0;">
+                            <label>Marketing Template</label>
+                            <select id="mkChainAddTemplate" class="form-select">
+                                <option value="">— Choose —</option>
+                                ${MK.email_templates.map(t=>`<option value="${t.id}" data-name="${escHtml(t.name)}">${escHtml(t.name)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-field" style="width:110px;margin:0;"><label>Delay (days)</label>
+                            <input class="form-input" id="mkChainAddDelay" type="number" min="1" max="365" value="3">
+                        </div>
+                        <button class="btn btn-ghost" style="margin-bottom:2px;" onclick="_addMKChainStep()">Add</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('mkChainBuilderModal')">Cancel</button>
+                <button class="btn btn-default" onclick="_saveMKChain()">Save Chain</button>
+            </div>
+        </div>`;
+    openModal('mkChainBuilderModal');
+    _renderMKChainSteps();
+}
+
+function _renderMKChainSteps() {
+    const el = document.getElementById('mkChainStepsList');
+    if (!el) return;
+    if (!_mkChainSteps.length) { el.innerHTML = `<p style="color:var(--text-3);font-size:13px;">No steps yet.</p>`; return; }
+    el.innerHTML = _mkChainSteps.map((s,i) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:6px;">
+            <div style="font-size:12px;font-weight:700;color:var(--text-3);width:20px;">S${i+1}</div>
+            <div style="flex:1;font-size:13px;font-weight:600;">${escHtml(s.name)}</div>
+            <div style="font-size:12px;color:var(--text-3);">${i===0?'Immediate':`After ${s.delay_days}d`}</div>
+            <button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="_mkChainSteps.splice(${i},1);_renderMKChainSteps()">✕</button>
+        </div>`).join('');
+}
+
+function _addMKChainStep() {
+    const sel = document.getElementById('mkChainAddTemplate');
+    const delay = parseInt(document.getElementById('mkChainAddDelay').value) || 3;
+    const id = sel.value;
+    const name = sel.options[sel.selectedIndex]?.dataset?.name || '?';
+    if (!id) { toast('Select a template', 'error'); return; }
+    _mkChainSteps.push({ template_id: parseInt(id), name, delay_days: delay });
+    _renderMKChainSteps();
+}
+
+async function _saveMKChain() {
+    const name = document.getElementById('mkChainName')?.value.trim();
+    const loop = document.getElementById('mkChainLoop')?.checked !== false;
+    if (!name) { toast('Chain name required', 'error'); return; }
+    if (_mkChainSteps.length < 2) { toast('A chain needs at least 2 steps', 'error'); return; }
+    const optimistic = { id: 'tmp_' + Date.now(), name, loop, steps: _mkChainSteps, _optimistic: true };
+    MK.chains = [optimistic, ...(MK.chains || [])];
+    closeModal('mkChainBuilderModal');
+    renderMarketing();
+    toast('Chain saved', 'success');
+    try {
+        const res = await apiFetch('/client/email-chains', 'POST', { name, loop, steps: _mkChainSteps, chain_type: 'marketing' });
+        const data = await res.json();
+        if (data.success || data.chain) {
+            const real = data.chain || { ...optimistic, id: data.id || optimistic.id, _optimistic: false };
+            MK.chains = MK.chains.map(c => c.id === optimistic.id ? { ...real, _optimistic: false } : c);
+        } else {
+            MK.chains = MK.chains.filter(c => c.id !== optimistic.id);
+            toast(data.message||'Failed', 'error');
+        }
+        renderMarketing();
+    } catch {
+        MK.chains = MK.chains.filter(c => c.id !== optimistic.id);
+        renderMarketing();
+        toast('Error saving chain', 'error');
+    }
+}
+
+// ── Marketing SMS Templates (separate pool from FU SMS) ───────────────────────
+const MK_SMS = { templates: [], chains: [] };
+
+async function _loadMKSmsTemplates() {
+    try {
+        const r = await apiFetch('/client/sms-templates?template_type=marketing');
+        const d = await r.json();
+        MK.sms_templates = d.templates || [];
+        renderMarketing();
+    } catch {}
+}
+
+async function _loadMKSmsChains() {
+    try {
+        const r = await apiFetch('/client/sms-chains?chain_type=marketing');
+        const d = await r.json();
+        MK.sms_chains = d.chains || [];
+        renderMarketing();
+    } catch {}
+}
+
+function openMKSmsTemplateBuilder(existing) {
+    // Reuse the shared SMS template builder but tag as marketing
+    window._smsBuilderContext = 'marketing';
+    openSmsTemplateBuilder(existing, 'marketing');
+}
+
+async function deleteMKSmsTemplate(id) {
+    if (!confirm('Delete this SMS template?')) return;
+    MK.sms_templates = MK.sms_templates.filter(t => t.id !== id);
+    renderMarketing();
+    toast('Template deleted', 'success');
+    apiFetch(`/client/sms-templates/${id}`, 'DELETE').catch(() => {
+        toast('Error deleting', 'error');
+    });
+}
+
+function openMKSmsChainBuilder() {
+    // Build a simple SMS chain modal for marketing
+    window._smsChainBuilderContext = 'marketing';
+    // Temporarily set SMS_CHAIN options to MK.sms_templates for the builder
+    openSmsChainBuilder('marketing');
+}
+
+async function deleteMKSmsChain(id) {
+    if (!confirm('Delete this SMS chain?')) return;
+    MK.sms_chains = MK.sms_chains.filter(c => c.id !== id);
+    renderMarketing();
+    toast('Chain deleted', 'success');
+    apiFetch(`/client/sms-chains/${id}`, 'DELETE').catch(() => toast('Error', 'error'));
+}
+
+async function enrollInMKSmsChain(chainId, chainName) {
+    // Reuse the existing SMS chain enrollment modal
+    const res = await apiFetch('/client/leads');
+    const data = await res.json();
+    const leads = data.leads || [];
+    let modal = document.getElementById('mkSmsEnrollModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'mkSmsEnrollModal';
+        modal.className = 'modal-overlay';
+        modal.onclick = e => { if (e.target === modal) closeModal('mkSmsEnrollModal'); };
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `
+        <div class="modal" style="max-width:460px;width:calc(100% - 32px);">
+            <div class="modal-header">
+                <div class="modal-title">Enroll in SMS Chain</div>
+                <div style="font-size:13px;color:var(--text-3);">${escHtml(chainName)}</div>
+                <button class="modal-close" onclick="closeModal('mkSmsEnrollModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">
+                    ${leads.map(l=>`<label style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r-sm);cursor:pointer;">
+                        <input type="checkbox" value="${l.id}" style="accent-color:var(--text-0);">
+                        <span style="font-size:13px;">${escHtml(l.name||l.email)}</span>
+                        ${l.phone?`<span style="font-size:11px;color:var(--text-3);">${escHtml(l.phone)}</span>`:''}
+                    </label>`).join('')}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeModal('mkSmsEnrollModal')">Cancel</button>
+                <button class="btn btn-default" onclick="_submitMKSmsEnroll(${chainId})">Enroll</button>
+            </div>
+        </div>`;
+    openModal('mkSmsEnrollModal');
+}
+
+async function _submitMKSmsEnroll(chainId) {
+    const checked = Array.from(document.querySelectorAll('#mkSmsEnrollModal input[type=checkbox]:checked')).map(c=>parseInt(c.value));
+    if (!checked.length) { toast('Select at least one lead', 'error'); return; }
+    try {
+        const res = await apiFetch('/client/sms-chains/enroll', 'POST', { chain_id: chainId, lead_ids: checked });
+        const d = await res.json();
+        if (d.success) { closeModal('mkSmsEnrollModal'); toast(`Enrolled ${checked.length} lead(s)`, 'success'); }
+        else toast(d.message||'Failed', 'error');
+    } catch { toast('Error enrolling leads', 'error'); }
+}
+
+// ── Chain Builder Modal (FU) ───────────────────────────────────────────────────
 let _chainSteps = [];
 
 async function openChainBuilder() {
@@ -9389,10 +9912,10 @@ function renderChainBuilderModal(modal) {
                     <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:10px;">Add Step</div>
                     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
                         <div class="form-field" style="flex:2;min-width:160px;margin:0;">
-                            <label>Template</label>
+                            <label>Follow-up Template</label>
                             <select id="chainAddTemplate">
                                 <option value="">— Choose —</option>
-                                ${MK.templates.map(t=>`<option value="${t.id}" data-name="${escHtml(t.name)}">${escHtml(t.name)}</option>`).join('')}
+                                ${FU_MK.templates.map(t=>`<option value="${t.id}" data-name="${escHtml(t.name)}">${escHtml(t.name)}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-field" style="width:110px;margin:0;">
@@ -9439,27 +9962,28 @@ async function saveChain() {
     const loop = document.getElementById('chainLoop')?.checked !== false;
     if (!name) { toast('Chain name required', 'error'); return; }
     if (_chainSteps.length < 2) { toast('A chain needs at least 2 steps', 'error'); return; }
-    // Optimistic: add chain to MK.chains and close modal immediately
     const optimistic = { id: 'tmp_' + Date.now(), name, loop, steps: _chainSteps, step_count: _chainSteps.length, _optimistic: true };
-    MK.chains = [optimistic, ...(MK.chains || [])];
+    // Add to FU pool (follow-up chains), not MK pool
+    FU_MK.chains = [optimistic, ...(FU_MK.chains || [])];
     closeModal('chainBuilderModal');
-    renderMarketing();
+    renderFUChains();
     toast('Chain saved', 'success');
+    window._chainBuilderContext = null;
     try {
-        const res  = await apiFetch('/client/email-chains', 'POST', { name, loop, steps: _chainSteps });
+        const res  = await apiFetch('/client/email-chains', 'POST', { name, loop, steps: _chainSteps, chain_type: 'followup' });
         const data = await res.json();
         if (data.success || data.chain) {
             const real = data.chain || { ...optimistic, id: data.id || optimistic.id, _optimistic: false };
-            MK.chains = MK.chains.map(c => c.id === optimistic.id ? { ...real, _optimistic: false } : c);
-            renderMarketing();
+            FU_MK.chains = FU_MK.chains.map(c => c.id === optimistic.id ? { ...real, _optimistic: false } : c);
+            renderFUChains();
         } else {
-            MK.chains = MK.chains.filter(c => c.id !== optimistic.id);
-            renderMarketing();
+            FU_MK.chains = FU_MK.chains.filter(c => c.id !== optimistic.id);
+            renderFUChains();
             toast(data.message||'Failed', 'error');
         }
     } catch {
-        MK.chains = MK.chains.filter(c => c.id !== optimistic.id);
-        renderMarketing();
+        FU_MK.chains = FU_MK.chains.filter(c => c.id !== optimistic.id);
+        renderFUChains();
         toast('Error saving chain', 'error');
     }
 }
@@ -10610,7 +11134,7 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 </script>
 
 <!-- MOBILE BOTTOM NAV (shown only on mobile via JS) -->
-<nav class="mobile-bottom-nav" id="mobileBottomNav" style="display:none;">
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
     <button class="mobile-nav-item active" data-mobile-page="dashboard" onclick="mobileNavigate('dashboard',this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Home
@@ -11234,15 +11758,45 @@ const INTEGRATION_DEFS = [
 let _integrationStatus = {};
 
 async function loadIntegrations() {
-    // Check BOTH the planLimits flag AND the planKey string directly as fallback
-    // (same defensive pattern as initAiWidget — planLimits may be missing the flag
-    //  if it came from a legacy or default plan object)
-    const key = S.planKey || '';
-    const hasIntegrations = !!(S.planLimits?.integrationsEnabled)
-        || key === 'crm-enterprise'
-        || key === 'crm-workspace'
-        || key.includes('enterprise')
-        || key.includes('workspace');
+    // Determine access: check fresh plan limits, but fall back to login-time cache.
+    // If the nav item is already visible (meaning login confirmed access), trust it —
+    // don't let a stale re-fetch silently block an Enterprise user.
+    let hasIntegrations = false;
+
+    // Check login-time cached values first as a strong signal
+    const cachedKey = S.planKey || '';
+    const cachedAllowed = !!(S.planLimits?.integrationsEnabled)
+        || cachedKey === 'crm-enterprise'
+        || cachedKey === 'crm-workspace'
+        || cachedKey.includes('enterprise')
+        || cachedKey.includes('workspace');
+
+    try {
+        const limitsRes = await apiFetch('/client/plan-limits');
+        const limitsData = await limitsRes.json();
+        if (limitsData.success) {
+            const freshLimits = limitsData.limits || {};
+            const freshKey    = freshLimits.planKey || '';
+            const freshAllowed = !!(freshLimits.integrationsEnabled)
+                || freshKey === 'crm-enterprise'
+                || freshKey === 'crm-workspace'
+                || freshKey.includes('enterprise')
+                || freshKey.includes('workspace');
+            // Grant access if EITHER the fresh fetch OR the cached login data says yes
+            hasIntegrations = freshAllowed || cachedAllowed;
+            // Keep S in sync with the freshest data only if it looks valid
+            if (freshKey && freshKey !== '_default') {
+                S.planKey    = freshKey;
+                S.planLimits = freshLimits;
+            }
+        } else {
+            // Endpoint returned success:false — fall back to cached
+            hasIntegrations = cachedAllowed;
+        }
+    } catch {
+        // Network/parse failure — fall back to cached login-time data
+        hasIntegrations = cachedAllowed;
+    }
 
     if (!hasIntegrations) {
         document.getElementById('integrationsContent').innerHTML = `

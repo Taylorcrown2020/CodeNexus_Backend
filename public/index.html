@@ -3042,10 +3042,13 @@ window.addEventListener('load', function() {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     z-index: 999999;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
 
 .modal-overlay.active {
@@ -3053,136 +3056,257 @@ window.addEventListener('load', function() {
 }
 
 .modal-content {
-    background: white;
-    max-width: 900px;
-    width: 90%;
-    max-height: 90vh;
+    background: #fff;
+    max-width: 880px;
+    width: 100%;
+    max-height: 92vh;
     overflow-y: auto;
     position: relative;
-}
-
-.modal-header {
-    background: #000;
-    padding: 48px 60px;
-    position: relative;
-}
-
-.modal-header .modal-close {
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    background: none;
-    border: none;
-    color: white;
-    font-size: 32px;
-    cursor: pointer;
-    width: 40px;
-    height: 40px;
-    line-height: 1;
-}
-
-.modal-header h2 {
-    font-size: 36px;
-    font-weight: 600;
-    color: white;
-    margin-bottom: 12px;
-}
-
-.modal-header p {
-    font-size: 16px;
-    color: rgba(255,255,255,0.8);
-}
-
-.modal-form {
-    padding: 60px;
-}
-
-.modal-form .form-row {
+    border-radius: 20px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin-bottom: 24px;
+    grid-template-columns: 320px 1fr;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.35);
+    overflow: hidden;
 }
 
-.modal-form .form-group {
-    margin-bottom: 24px;
+/* ── Left panel ── */
+.modal-left {
+    background: linear-gradient(160deg, #111 0%, #1a1a1a 100%);
+    padding: 48px 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
 }
-
-.modal-form label {
+.modal-left::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    right: -60px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(244,200,126,0.18) 0%, transparent 70%);
+    pointer-events: none;
+}
+.modal-left-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(244,200,126,0.12);
+    border: 1px solid rgba(244,200,126,0.25);
+    color: #f4c87e;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 7px 14px;
+    border-radius: 100px;
+    margin-bottom: 28px;
+    width: fit-content;
+}
+.modal-left-badge svg { flex-shrink: 0; }
+.modal-left-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.25;
+    margin-bottom: 16px;
+}
+.modal-left-subtitle {
+    font-size: 14px;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.6;
+    margin-bottom: 36px;
+}
+.modal-trust-items {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 40px;
+}
+.modal-trust-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+}
+.modal-trust-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(244,200,126,0.12);
+    border: 1px solid rgba(244,200,126,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.modal-trust-icon svg { color: #f4c87e; }
+.modal-trust-text strong {
     display: block;
     font-size: 13px;
     font-weight: 600;
-    text-transform: uppercase;
-    margin-bottom: 12px;
+    color: #fff;
+    margin-bottom: 2px;
 }
+.modal-trust-text span {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+}
+.modal-left-stars {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+.modal-left-stars svg { color: #f4c87e; }
+.modal-left-stars-text {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    margin-left: 4px;
+}
+.modal-left-stars-text strong { color: #fff; }
 
+/* ── Right panel ── */
+.modal-right {
+    padding: 48px 44px;
+    background: #fff;
+    overflow-y: auto;
+    max-height: 92vh;
+}
+.modal-right-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+}
+.modal-right-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #0a0a0a;
+    font-family: 'Inter', sans-serif;
+}
+.modal-close {
+    background: #f5f5f5;
+    border: none;
+    color: #555;
+    font-size: 18px;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.modal-close:hover { background: #e5e5e5; color: #000; }
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.modal-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.modal-form .form-group {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+}
+.modal-form label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #555;
+    margin-bottom: 8px;
+}
 .modal-form input,
 .modal-form select,
 .modal-form textarea {
     width: 100%;
-    padding: 16px 20px;
-    font-size: 15px;
-    border: 2px solid #ddd;
+    padding: 13px 16px;
+    font-size: 14px;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 10px;
     font-family: 'Inter', sans-serif;
+    color: #0a0a0a;
+    background: #fafafa;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
 }
-
 .modal-form input:focus,
 .modal-form select:focus,
 .modal-form textarea:focus {
     outline: none;
-    border-color: #000;
+    border-color: #f4c87e;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(244,200,126,0.15);
 }
-
 .modal-form textarea {
-    min-height: 120px;
+    min-height: 110px;
     resize: vertical;
 }
-
 .modal-form button[type="submit"] {
-    background: #F4C87E;
-    color: #000;
-    padding: 18px 48px;
+    background: #0a0a0a;
+    color: #fff;
+    padding: 16px 32px;
     font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
+    font-weight: 700;
+    letter-spacing: 1px;
     text-transform: uppercase;
     border: none;
+    border-radius: 10px;
     cursor: pointer;
     width: 100%;
-    transition: all 0.3s;
+    transition: background 0.25s, transform 0.2s;
+    margin-top: 8px;
+    font-family: 'Inter', sans-serif;
 }
-
 .modal-form button[type="submit"]:hover {
-    background: #e6b86b;
+    background: #222;
+    transform: translateY(-1px);
 }
-
 .modal-form button[type="submit"]:disabled {
-    opacity: 0.6;
+    opacity: 0.55;
     cursor: not-allowed;
+    transform: none;
+}
+.modal-form-note {
+    text-align: center;
+    font-size: 12px;
+    color: #999;
+    margin-top: 12px;
 }
 
-/* Mobile Responsive */
+/* Mobile */
 @media (max-width: 768px) {
     .modal-content {
-        width: 95%;
+        grid-template-columns: 1fr;
+        border-radius: 16px;
         max-height: 95vh;
     }
-
-    .modal-header {
+    .modal-left {
+        padding: 32px 28px 28px;
+    }
+    .modal-left-title { font-size: 24px; }
+    .modal-trust-items { gap: 12px; margin-bottom: 28px; }
+    .modal-right {
         padding: 32px 24px;
+        max-height: none;
     }
-
-    .modal-header h2 {
-        font-size: 28px;
-    }
-
-    .modal-form {
-        padding: 32px 24px;
-    }
-
     .modal-form .form-row {
         grid-template-columns: 1fr;
-        gap: 20px;
     }
 }
 
@@ -3835,7 +3959,7 @@ nav {
             preload="auto"
             webkit-playsinline
         >
-            <source src="computer.mp4" type="video/mp4">
+            <source src="8523640-hd_1920_1080_25fps.mp4" type="video/mp4">
         </video>
         
         <!-- Mobile: Static image (NO PLAY BUTTON!) -->
@@ -3849,15 +3973,89 @@ nav {
     
     <div class="hero-content">
         <div class="hero-text">
-            <h1 class="hero-title">Professional Website Design & Development Nationwide</h1>
+            <h1 class="hero-title">Professional Web Development & CRM Solutions Nationwide</h1>
             <p class="hero-subtitle">Expert web development agency delivering custom websites, CRM solutions, and digital marketing services to businesses across the United States.</p>
             <div class="hero-cta">
                 <button class="btn-primary" onclick="openModal()">GET STARTED</button>
                 <a href="portfolio.html" class="btn-secondary">VIEW OUR WORK</a>
             </div>
+
+            <!-- Social Proof Bar -->
+            <div class="hero-social-proof">
+                <div class="hero-social-proof-stars">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#f4c87e" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#f4c87e" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#f4c87e" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#f4c87e" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#f4c87e" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <span class="hero-social-proof-text"><strong>5.0/5</strong> based on client reviews</span>
+                </div>
+                <div class="hero-social-proof-avatars">
+                    <img class="hero-avatar" src="https://i.pravatar.cc/80?img=32" alt="Happy client" title="Client">
+                    <img class="hero-avatar" src="https://i.pravatar.cc/80?img=47" alt="Happy client" title="Client">
+                    <img class="hero-avatar" src="https://i.pravatar.cc/80?img=12" alt="Happy client" title="Client">
+                    <img class="hero-avatar" src="https://i.pravatar.cc/80?img=58" alt="Happy client" title="Client">
+                </div>
+            </div>
         </div>
     </div>
 </section>
+
+<style>
+.hero-social-proof {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+}
+.hero-social-proof-stars {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.hero-social-proof-text {
+    margin-left: 8px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.85);
+    white-space: nowrap;
+}
+.hero-social-proof-text strong {
+    color: #fff;
+    font-weight: 700;
+}
+.hero-social-proof-avatars {
+    display: flex;
+    align-items: center;
+}
+.hero-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(255,255,255,0.9);
+    margin-left: -10px;
+    display: block;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.hero-avatar:first-child {
+    margin-left: 0;
+}
+@media (max-width: 600px) {
+    .hero-social-proof {
+        gap: 14px;
+        margin-top: 20px;
+    }
+    .hero-social-proof-text {
+        font-size: 12px;
+    }
+    .hero-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+}
+</style>
 
 <!-- Logo Carousel -->
 <div class="logo-carousel">
@@ -3997,8 +4195,8 @@ nav {
     </div>
 
     <div class="brand-tabs">
-        <button class="brand-tab" onclick="switchBrandTab(0)">Stand Out in Your Market</button>
-        <button class="brand-tab active" onclick="switchBrandTab(1)">Increase Your Impact</button>
+        <button class="brand-tab active" onclick="switchBrandTab(0)">Stand Out in Your Market</button>
+        <button class="brand-tab" onclick="switchBrandTab(1)">Increase Your Impact</button>
         <button class="brand-tab" onclick="switchBrandTab(2)">Create Lasting Impressions</button>
     </div>
 
@@ -6740,101 +6938,112 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="footer-payment-methods">
             <p class="payment-methods-label">We Accept</p>
             <div class="payment-methods-icons">
+
+                <!-- Visa -->
                 <div class="payment-icon" aria-label="Visa">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#1434CB"/>
-                        <path d="M20.5 11L18 21h-2.5l-1.5-7.5c-.1-.3-.2-.5-.5-.6-.5-.3-1.3-.5-2-.7l.1-.2h3.4c.5 0 .9.3 1 .8l.9 4.8L19 11h2.5zm9.5 6.7c0-2.6-3.6-2.7-3.6-3.9 0-.3.3-.7 1-.8.3 0 1.3-.1 2.4.4l.4-2c-.6-.2-1.4-.4-2.4-.4-2.5 0-4.3 1.3-4.3 3.2 0 1.4 1.2 2.1 2.2 2.6 1 .5 1.3.8 1.3 1.2 0 .6-.8.9-1.5.9-1.3 0-2-.2-2.6-.4l-.5 2.1c.6.3 1.7.5 2.8.5 2.7 0 4.4-1.3 4.4-3.3zm6.7 3.3h2.2L37 11h-2c-.4 0-.8.2-1 .6l-3.5 9.4h2.6l.5-1.4h3.2l.3 1.4zm-2.8-3.3l1.3-3.6.8 3.6h-2.1zM25.5 11L23.1 21h-2.5l2.4-10h2.5z" fill="white"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#1A1F71"/>
+                        <text x="40" y="31" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="900" font-style="italic" fill="#fff" letter-spacing="2">VISA</text>
                     </svg>
                 </div>
+
+                <!-- Mastercard -->
                 <div class="payment-icon" aria-label="Mastercard">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#EB001B"/>
-                        <circle cx="18" cy="16" r="9" fill="#FF5F00"/>
-                        <circle cx="30" cy="16" r="9" fill="#F79E1B"/>
-                        <path d="M24 9.5c-1.7 1.5-2.8 3.7-2.8 6.2s1.1 4.7 2.8 6.2c1.7-1.5 2.8-3.7 2.8-6.2s-1.1-4.7-2.8-6.2z" fill="#FF5F00"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#fff" stroke="#e2e4e8" stroke-width="1.5"/>
+                        <circle cx="30" cy="25" r="14" fill="#EB001B"/>
+                        <circle cx="50" cy="25" r="14" fill="#F79E1B"/>
+                        <path d="M40,13.6c2.6,2.8,4.2,6.6,4.2,10.8s-1.6,8-4.2,10.8c-2.6-2.8-4.2-6.6-4.2-10.8s1.6-8,4.2-10.8z" fill="#FF5F00"/>
                     </svg>
                 </div>
+
+                <!-- American Express -->
                 <div class="payment-icon" aria-label="American Express">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#006FCF"/>
-                        <path d="M10 13h2.5l.6 1.4.6-1.4h2.5v6h-1.7v-4l-.8 1.8h-1.2l-.8-1.8v4H10v-6zm8.5 0h4.8v1.3h-3.1v1h3v1.2h-3v1.2h3.1V19h-4.8v-6zm5.5 0h1.8l1.2 2 1.2-2h1.8l-2.3 3.2V19h-1.7v-2.8L24 13zm9 4.7V19h-4.8v-6h4.8v1.3h-3.1v1h3v1.2h-3v1.2h3.1z" fill="white"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#016FD0"/>
+                        <text x="40" y="21" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.5" font-weight="800" fill="#fff" letter-spacing="1.5">AMERICAN</text>
+                        <text x="40" y="32" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.5" font-weight="800" fill="#fff" letter-spacing="1.5">EXPRESS</text>
                     </svg>
                 </div>
+
+                <!-- Discover -->
                 <div class="payment-icon" aria-label="Discover">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#FF6000"/>
-                        <path d="M38 16c0 4.4-3.6 8-8 8s-8-3.6-8-8 3.6-8 8-8 8 3.6 8 8z" fill="#F8991D"/>
-                        <path d="M10 13h2.2c1.3 0 2.3.9 2.3 2.2v1.6c0 1.3-1 2.2-2.3 2.2H10v-6zm1.5 1.2v3.6h.7c.5 0 .8-.4.8-.8v-2c0-.4-.3-.8-.8-.8h-.7zm4 4.8h-1.5v-6h1.5v6zm2.5-1.5c.2.3.5.5.9.5.3 0 .6-.2.6-.5 0-.4-.4-.6-.8-.8-.7-.3-1.3-.7-1.3-1.5 0-.9.7-1.5 1.6-1.5.6 0 1.1.3 1.4.7l-.8.7c-.2-.2-.4-.4-.7-.4-.3 0-.5.2-.5.4 0 .3.3.5.7.7.8.3 1.4.7 1.4 1.6 0 .9-.7 1.6-1.7 1.6-.7 0-1.3-.3-1.6-.9l.8-.6z" fill="white"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#fff" stroke="#e2e4e8" stroke-width="1.5"/>
+                        <text x="30" y="29" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="900" fill="#231F20" letter-spacing="0.8">DISCOVER</text>
+                        <circle cx="65" cy="25" r="11" fill="#F76F20"/>
+                        <circle cx="65" cy="25" r="8" fill="#F9A01B"/>
                     </svg>
                 </div>
+
+                <!-- PayPal -->
                 <div class="payment-icon" aria-label="PayPal">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#0070BA"/>
-                        <path d="M19.5 11c.8 0 1.4.2 1.9.5.5.4.7 1 .7 1.7 0 1.3-.9 2.3-2.1 2.3h-1l-.5 2.5h-1.4l1.4-7h1zm-.3 1.2h-.5l-.4 2h.5c.7 0 1.1-.4 1.1-1 0-.6-.3-1-.7-1zm4.8-.2c.8 0 1.4.2 1.9.5.5.4.7 1 .7 1.7 0 1.3-.9 2.3-2.1 2.3h-1l-.5 2.5h-1.4l1.4-7h1zm-.3 1.2h-.5l-.4 2h.5c.7 0 1.1-.4 1.1-1 0-.6-.3-1-.7-1zm5.3 5.8l-.2 1h-3.9l1.4-7h1.4l-1 5h2.3zm-16.5-7l-1.4 7h-1.4l1.4-7h1.4z" fill="white"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#fff" stroke="#e2e4e8" stroke-width="1.5"/>
+                        <!-- P monogram -->
+                        <path d="M24,13h6.5c3.6,0,5.8,1.8,5.3,5.2c-0.6,4.2-3.4,6.3-7.4,6.3H26l-1.2,5.5H21L24,13z M26.5,21.5h2c1.7,0,3-0.8,3.2-2.6c0.2-1.4-0.7-2.2-2.2-2.2h-2.1L26.5,21.5z" fill="#003087"/>
+                        <!-- a monogram (offset) -->
+                        <path d="M30,16h6.5c3.6,0,5.8,1.8,5.3,5.2c-0.6,4.2-3.4,6.3-7.4,6.3H32l-1.2,5.5H27L30,16z M32.5,24.5h2c1.7,0,3-0.8,3.2-2.6c0.2-1.4-0.7-2.2-2.2-2.2h-2.1L32.5,24.5z" fill="#009CDE"/>
+                        <text x="50" y="29" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="#003087">Pay</text>
+                        <text x="62" y="29" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="#009CDE">Pal</text>
                     </svg>
                 </div>
+
             </div>
         </div>
         <style>
-            /* Payment Methods Section */
         .footer-payment-methods {
             max-width: 1280px;
             margin: 40px auto 0;
-            padding: 30px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
+            padding: 28px 40px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
         }
-
         .payment-methods-label {
-            font-size: 11px;
-            font-weight: 500;
+            font-size: 10px;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 2px;
-            color: var(--grey-600);
-            margin-bottom: 20px;
+            color: rgba(255,255,255,0.4);
+            white-space: nowrap;
+            flex-shrink: 0;
         }
-
         .payment-methods-icons {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 16px;
+            gap: 10px;
             flex-wrap: wrap;
         }
-
         .payment-icon {
-            width: 60px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--white);
+            width: 72px;
+            height: 45px;
+            display: block;
+            flex-shrink: 0;
             border-radius: 6px;
-            padding: 6px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.18s, box-shadow 0.18s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
-
         .payment-icon:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.4);
         }
-
         .payment-icon svg {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            display: block;
         }
-
         @media (max-width: 768px) {
-            .payment-methods-icons {
-                gap: 12px;
+            .footer-payment-methods {
+                flex-direction: column;
+                gap: 14px;
+                padding: 24px 20px;
             }
-
-            .payment-icon {
-                width: 50px;
-                height: 34px;
-            }
+            .payment-icon { width: 62px; height: 39px; }
         }
         </style>
     </footer>
@@ -6842,48 +7051,112 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- CONTACT MODAL -->
 <div class="modal-overlay" id="contactModal">
     <div class="modal-content">
-        <div class="modal-header">
-            <button class="modal-close" onclick="closeModal()">&times;</button>
-            <h2>Start Your Project</h2>
-            <p>Tell us about your needs and we'll get back to you within 24 hours.</p>
+
+        <!-- Left trust panel -->
+        <div class="modal-left">
+            <div>
+                <div class="modal-left-badge">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    Trusted by Businesses Nationwide
+                </div>
+                <h2 class="modal-left-title">Let's Build Something Great Together</h2>
+                <p class="modal-left-subtitle">Tell us about your project and we'll follow up within 24 hours with a custom plan — no pressure, no pushy sales.</p>
+
+                <div class="modal-trust-items">
+                    <div class="modal-trust-item">
+                        <div class="modal-trust-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <div class="modal-trust-text">
+                            <strong>Secure & Confidential</strong>
+                            <span>Your info is never shared or sold</span>
+                        </div>
+                    </div>
+                    <div class="modal-trust-item">
+                        <div class="modal-trust-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <div class="modal-trust-text">
+                            <strong>Response Within 24 Hours</strong>
+                            <span>Usually much faster on business days</span>
+                        </div>
+                    </div>
+                    <div class="modal-trust-item">
+                        <div class="modal-trust-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div class="modal-trust-text">
+                            <strong>Free Strategy Consultation</strong>
+                            <span>No obligation — just honest advice</span>
+                        </div>
+                    </div>
+                    <div class="modal-trust-item">
+                        <div class="modal-trust-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <div class="modal-trust-text">
+                            <strong>Dedicated Account Manager</strong>
+                            <span>One point of contact from start to launch</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-left-stars">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <span class="modal-left-stars-text"><strong>5.0/5</strong> · 27+ happy clients</span>
+            </div>
         </div>
-        <form class="modal-form" id="contactForm" onsubmit="handleSubmit(event)">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Full Name *</label>
-                    <input type="text" id="fullName" required>
-                </div>
-                <div class="form-group">
-                    <label>Email *</label>
-                    <input type="email" id="email" required>
-                </div>
+
+        <!-- Right form panel -->
+        <div class="modal-right">
+            <div class="modal-right-header">
+                <p class="modal-right-title">Start Your Project</p>
+                <button class="modal-close" onclick="closeModal()" aria-label="Close">&#10005;</button>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Phone *</label>
-                    <input type="tel" id="phone" required>
+            <form class="modal-form" id="contactForm" onsubmit="handleSubmit(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" id="fullName" placeholder="John Smith" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" id="email" placeholder="john@company.com" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" id="phone" placeholder="(555) 000-0000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Service *</label>
+                        <select id="service" required>
+                            <option value="">Select a service...</option>
+                            <option>Website Design</option>
+                            <option>Web Development</option>
+                            <option>E-commerce Development</option>
+                            <option>CRM Solutions</option>
+                            <option>SEO Services</option>
+                            <option>Digital Marketing</option>
+                            <option>Custom Web Applications</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Service *</label>
-                    <select id="service" required>
-                        <option value="">Select a service...</option>
-                        <option>Website Design</option>
-                        <option>Web Development</option>
-                        <option>E-commerce Development</option>
-                        <option>CRM Solutions</option>
-                        <option>SEO Services</option>
-                        <option>Digital Marketing</option>
-                        <option>Custom Web Applications</option>
-                        <option>Other</option>
-                    </select>
+                    <label>Tell Us About Your Project *</label>
+                    <textarea id="details" placeholder="Share a brief overview of what you're looking to build or improve..." required></textarea>
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Details *</label>
-                <textarea id="details" required></textarea>
-            </div>
-            <button type="submit">Send Request</button>
-        </form>
+                <button type="submit">Send My Request &rarr;</button>
+                <p class="modal-form-note">🔒 Your information is 100% secure and never shared.</p>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -7149,7 +7422,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==========================================
     // BRAND SECTION MOBILE CAROUSEL
     // ==========================================
-    let currentBrandSlide = 1; // Start with middle tab active
+    let currentBrandSlide = 0; // Start with first tab active
     
     function mobileBrandCarousel(direction) {
         const totalSlides = 3;
@@ -8210,5 +8483,86 @@ function closeFeaturePopup() {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeFeaturePopup();
 });
+</script>
+
+<!-- =====================================================
+     SCROLL REVEAL — IntersectionObserver (no scroll listeners,
+     only animates opacity + transform so no layout reflow)
+     ===================================================== -->
+<style>
+.sr {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.sr.sr-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+/* Stagger delays for sibling groups */
+.sr.sr-d1 { transition-delay: 0.07s; }
+.sr.sr-d2 { transition-delay: 0.14s; }
+.sr.sr-d3 { transition-delay: 0.21s; }
+.sr.sr-d4 { transition-delay: 0.28s; }
+.sr.sr-d5 { transition-delay: 0.35s; }
+/* Respect user preference */
+@media (prefers-reduced-motion: reduce) {
+    .sr { opacity: 1 !important; transform: none !important; transition: none !important; }
+}
+</style>
+
+<script>
+(function () {
+    // Bail early on reduced-motion preference
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // ── Selectors to reveal (section-level, not every element) ──
+    const SECTION_SELECTORS = [
+        '.logo-carousel',
+        '.growth-features-section .growth-features-title',
+        '.growth-features-section .growth-features-grid',
+        '.brand-building-section .section-header',
+        '.brand-tabs',
+        '.brand-content-wrapper',
+        '.maps-section .maps-content',
+        '.footer-cta-section',
+        '.footer-payment-methods',
+    ];
+
+    // ── Selectors to stagger as individual children ──
+    const STAGGER_SELECTORS = [
+        '.growth-feature-card',
+        '.pricing-card',
+        '.modal-trust-item',
+    ];
+
+    // Tag section blocks
+    document.querySelectorAll(SECTION_SELECTORS.join(',')).forEach(el => {
+        if (!el.closest('.hero')) el.classList.add('sr');
+    });
+
+    // Tag + stagger child groups
+    STAGGER_SELECTORS.forEach(sel => {
+        document.querySelectorAll(sel).forEach((el, i) => {
+            if (el.closest('.hero')) return;
+            el.classList.add('sr', `sr-d${Math.min(i % 5 + 1, 5)}`);
+        });
+    });
+
+    // Single observer — fires once per element, then unobserves
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('sr-in');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.08,
+        rootMargin: '0px 0px -30px 0px'
+    });
+
+    document.querySelectorAll('.sr').forEach(el => observer.observe(el));
+})();
 </script>
 </body>

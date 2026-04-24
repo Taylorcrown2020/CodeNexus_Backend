@@ -1597,6 +1597,234 @@ window.addEventListener('load', function() {
             }
         }
     </style>
+<style>
+/* CHATBOT BUBBLE */
+.chatbot-bubble {
+    position: fixed;
+    bottom: 96px;
+    right: 24px;
+    background: white;
+    border-radius: 16px 16px 4px 16px;
+    padding: 14px 18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 9998;
+    animation: bubble-in 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    cursor: pointer;
+    border: 1px solid rgba(0,0,0,0.06);
+    max-width: 220px;
+}
+.chatbot-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    right: 20px;
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 0px solid transparent;
+    border-top: 8px solid white;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.08));
+}
+.chatbot-bubble.hidden {
+    animation: bubble-out 0.3s ease forwards;
+    pointer-events: none;
+}
+.chatbot-bubble-logo {
+    width: 32px; height: 32px;
+    background: #f4c87e;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.chatbot-bubble-logo svg { width: 16px; height: 16px; }
+.chatbot-bubble-text { font-size: 13px; font-weight: 600; color: #1a1a1a; line-height: 1.3; }
+.chatbot-bubble-sub { font-size: 11px; color: #888; font-weight: 400; margin-top: 1px; }
+.chatbot-bubble-close {
+    position: absolute; top: -8px; right: -8px;
+    width: 20px; height: 20px;
+    background: #888; border-radius: 50%; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 11px; line-height: 1; padding: 0;
+    opacity: 0.7; transition: opacity 0.2s;
+}
+.chatbot-bubble-close:hover { opacity: 1; }
+@keyframes bubble-in {
+    from { opacity: 0; transform: scale(0.8) translateY(10px); transform-origin: bottom right; }
+    to   { opacity: 1; transform: scale(1) translateY(0); transform-origin: bottom right; }
+}
+@keyframes bubble-out {
+    from { opacity: 1; transform: scale(1); transform-origin: bottom right; }
+    to   { opacity: 0; transform: scale(0.8) translateY(6px); transform-origin: bottom right; }
+}
+</style>
+<style>
+/* CONTACT MODAL */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 999999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal-content {
+    background: #fff;
+    max-width: 880px;
+    width: 100%;
+    max-height: 92vh;
+    position: relative;
+    border-radius: 20px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.35);
+    overflow: hidden;
+}
+.modal-left {
+    background: linear-gradient(160deg, #111 0%, #1a1a1a 100%);
+    padding: 48px 36px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    position: relative; overflow: hidden;
+}
+.modal-left::before {
+    content: '';
+    position: absolute; top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(244,200,126,0.18) 0%, transparent 70%);
+    pointer-events: none;
+}
+.modal-left-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(244,200,126,0.12);
+    border: 1px solid rgba(244,200,126,0.25);
+    color: #f4c87e;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 7px 14px; border-radius: 100px;
+    margin-bottom: 28px; width: fit-content;
+}
+.modal-left-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 30px; font-weight: 700; color: #fff;
+    line-height: 1.25; margin-bottom: 16px;
+}
+.modal-left-subtitle {
+    font-size: 14px; color: rgba(255,255,255,0.55);
+    line-height: 1.6; margin-bottom: 36px;
+}
+.modal-trust-items { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; }
+.modal-trust-item { display: flex; align-items: flex-start; gap: 13px; }
+.modal-trust-icon {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: rgba(244,200,126,0.12);
+    border: 1px solid rgba(244,200,126,0.2);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.modal-trust-icon svg { color: #f4c87e; }
+.modal-trust-text strong { display: block; font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 2px; }
+.modal-trust-text span { font-size: 12px; color: rgba(255,255,255,0.45); }
+.modal-left-stars {
+    display: flex; align-items: center; gap: 6px;
+    padding-top: 28px; border-top: 1px solid rgba(255,255,255,0.08);
+}
+.modal-left-stars svg { color: #f4c87e; }
+.modal-left-stars-text { font-size: 12px; color: rgba(255,255,255,0.5); margin-left: 4px; }
+.modal-left-stars-text strong { color: #fff; }
+.modal-right {
+    padding: 48px 44px; background: #fff;
+    overflow-y: auto; max-height: 92vh;
+}
+.modal-right-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 32px;
+}
+.modal-right-title { font-size: 22px; font-weight: 700; color: #0a0a0a; }
+.modal-close {
+    background: #f5f5f5; border: none; color: #555; font-size: 18px;
+    cursor: pointer; width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, color 0.2s; flex-shrink: 0;
+}
+.modal-close:hover { background: #e5e5e5; color: #000; }
+.modal-form { display: flex; flex-direction: column; gap: 0; }
+.modal-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.modal-form .form-group { margin-bottom: 16px; display: flex; flex-direction: column; }
+.modal-form label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #555; margin-bottom: 8px; }
+.modal-form input, .modal-form select, .modal-form textarea {
+    width: 100%; padding: 13px 16px; font-size: 14px;
+    border: 1.5px solid #e5e5e5; border-radius: 10px;
+    font-family: 'Inter', sans-serif; color: #0a0a0a;
+    background: #fafafa;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+}
+.modal-form input:focus, .modal-form select:focus, .modal-form textarea:focus {
+    outline: none; border-color: #f4c87e; background: #fff;
+    box-shadow: 0 0 0 3px rgba(244,200,126,0.15);
+}
+.modal-form textarea { min-height: 110px; resize: vertical; }
+.modal-form button[type="submit"] {
+    background: #0a0a0a; color: #fff;
+    padding: 16px 32px; font-size: 13px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    border: none; border-radius: 10px; cursor: pointer; width: 100%;
+    transition: background 0.25s, transform 0.2s;
+    margin-top: 8px; font-family: 'Inter', sans-serif;
+}
+.modal-form button[type="submit"]:hover { background: #222; transform: translateY(-1px); }
+.modal-form button[type="submit"]:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.modal-form-note { text-align: center; font-size: 12px; color: #999; margin-top: 12px; }
+@media (max-width: 768px) {
+    .modal-content { grid-template-columns: 1fr; border-radius: 16px; max-height: 95vh; }
+    .modal-left { padding: 32px 28px 28px; }
+    .modal-left-title { font-size: 24px; }
+    .modal-trust-items { gap: 12px; margin-bottom: 28px; }
+    .modal-right { padding: 32px 24px; max-height: none; }
+    .modal-form .form-row { grid-template-columns: 1fr; }
+}
+</style>
+<style>
+/* ── Back to top button ── */
+.back-to-top-btn {
+    position: fixed;
+    left: 24px;
+    bottom: 170px;
+    width: 44px;
+    height: 44px;
+    background: #1a1a1a;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9997;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease, background 0.2s ease;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+.back-to-top-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.back-to-top-btn:hover {
+    background: #f4c87e;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.back-to-top-btn svg { stroke: #fff; }
+.back-to-top-btn:hover svg { stroke: #000; }
+@media (max-width: 768px) {
+    .back-to-top-btn { left: 16px; bottom: 180px; width: 40px; height: 40px; }
+}
+</style>
 </head>
 <body>
 
@@ -1773,12 +2001,12 @@ window.addEventListener('load', function() {
         </div>
 
         <div class="footer-column">
-            <h4>SOLUTIONS</h4>
-            <ul class="footer-links">
-                <li><a href="pricing.html">Small Businesses</a></li>
-                <li><a href="pricing.html">Enterprise Solutions</a></li>
-                <li><a href="pricing.html">Startups</a></li>
-            </ul>
+            <h4>SERVICES</h4>
+                <ul class="footer-links">
+                    <li><a href="pricing.html#development">Local Businesses</a></li>
+                    <li><a href="pricing.html#development">Enterprises</a></li>
+                    <li><a href="pricing.html#development">Free Lance</a></li>
+                </ul>
         </div>
 
         <div class="footer-column">
@@ -1805,112 +2033,112 @@ window.addEventListener('load', function() {
     <div class="footer-bottom">
         <p class="footer-copyright">© Copyright 2026 Diamondback Coding, Inc. — All rights reserved. Serving businesses nationwide across the United States.</p>
     </div>
-            <!-- Payment Methods Section -->
+                <!-- Payment Methods Section -->
         <div class="footer-payment-methods">
             <p class="payment-methods-label">We Accept</p>
             <div class="payment-methods-icons">
+                <!-- Visa -->
                 <div class="payment-icon" aria-label="Visa">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#1434CB"/>
-                        <path d="M20.5 11L18 21h-2.5l-1.5-7.5c-.1-.3-.2-.5-.5-.6-.5-.3-1.3-.5-2-.7l.1-.2h3.4c.5 0 .9.3 1 .8l.9 4.8L19 11h2.5zm9.5 6.7c0-2.6-3.6-2.7-3.6-3.9 0-.3.3-.7 1-.8.3 0 1.3-.1 2.4.4l.4-2c-.6-.2-1.4-.4-2.4-.4-2.5 0-4.3 1.3-4.3 3.2 0 1.4 1.2 2.1 2.2 2.6 1 .5 1.3.8 1.3 1.2 0 .6-.8.9-1.5.9-1.3 0-2-.2-2.6-.4l-.5 2.1c.6.3 1.7.5 2.8.5 2.7 0 4.4-1.3 4.4-3.3zm6.7 3.3h2.2L37 11h-2c-.4 0-.8.2-1 .6l-3.5 9.4h2.6l.5-1.4h3.2l.3 1.4zm-2.8-3.3l1.3-3.6.8 3.6h-2.1zM25.5 11L23.1 21h-2.5l2.4-10h2.5z" fill="white"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#1A1F71"/>
+                        <text x="40" y="31" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="900" font-style="italic" fill="#fff" letter-spacing="2">VISA</text>
                     </svg>
                 </div>
+                <!-- Mastercard -->
                 <div class="payment-icon" aria-label="Mastercard">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#EB001B"/>
-                        <circle cx="18" cy="16" r="9" fill="#FF5F00"/>
-                        <circle cx="30" cy="16" r="9" fill="#F79E1B"/>
-                        <path d="M24 9.5c-1.7 1.5-2.8 3.7-2.8 6.2s1.1 4.7 2.8 6.2c1.7-1.5 2.8-3.7 2.8-6.2s-1.1-4.7-2.8-6.2z" fill="#FF5F00"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#fff" stroke="#e2e4e8" stroke-width="1.5"/>
+                        <circle cx="30" cy="25" r="14" fill="#EB001B"/>
+                        <circle cx="50" cy="25" r="14" fill="#F79E1B"/>
+                        <path d="M40,13.6c2.6,2.8,4.2,6.6,4.2,10.8s-1.6,8-4.2,10.8c-2.6-2.8-4.2-6.6-4.2-10.8s1.6-8,4.2-10.8z" fill="#FF5F00"/>
                     </svg>
                 </div>
+                <!-- American Express -->
                 <div class="payment-icon" aria-label="American Express">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#006FCF"/>
-                        <path d="M10 13h2.5l.6 1.4.6-1.4h2.5v6h-1.7v-4l-.8 1.8h-1.2l-.8-1.8v4H10v-6zm8.5 0h4.8v1.3h-3.1v1h3v1.2h-3v1.2h3.1V19h-4.8v-6zm5.5 0h1.8l1.2 2 1.2-2h1.8l-2.3 3.2V19h-1.7v-2.8L24 13zm9 4.7V19h-4.8v-6h4.8v1.3h-3.1v1h3v1.2h-3v1.2h3.1z" fill="white"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#016FD0"/>
+                        <text x="40" y="21" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.5" font-weight="800" fill="#fff" letter-spacing="1.5">AMERICAN</text>
+                        <text x="40" y="32" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.5" font-weight="800" fill="#fff" letter-spacing="1.5">EXPRESS</text>
                     </svg>
                 </div>
+                <!-- Discover -->
                 <div class="payment-icon" aria-label="Discover">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#FF6000"/>
-                        <path d="M38 16c0 4.4-3.6 8-8 8s-8-3.6-8-8 3.6-8 8-8 8 3.6 8 8z" fill="#F8991D"/>
-                        <path d="M10 13h2.2c1.3 0 2.3.9 2.3 2.2v1.6c0 1.3-1 2.2-2.3 2.2H10v-6zm1.5 1.2v3.6h.7c.5 0 .8-.4.8-.8v-2c0-.4-.3-.8-.8-.8h-.7zm4 4.8h-1.5v-6h1.5v6zm2.5-1.5c.2.3.5.5.9.5.3 0 .6-.2.6-.5 0-.4-.4-.6-.8-.8-.7-.3-1.3-.7-1.3-1.5 0-.9.7-1.5 1.6-1.5.6 0 1.1.3 1.4.7l-.8.7c-.2-.2-.4-.4-.7-.4-.3 0-.5.2-.5.4 0 .3.3.5.7.7.8.3 1.4.7 1.4 1.6 0 .9-.7 1.6-1.7 1.6-.7 0-1.3-.3-1.6-.9l.8-.6z" fill="white"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#fff" stroke="#e2e4e8" stroke-width="1.5"/>
+                        <text x="30" y="29" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="900" fill="#231F20" letter-spacing="0.8">DISCOVER</text>
+                        <circle cx="65" cy="25" r="11" fill="#F76F20"/>
+                        <circle cx="65" cy="25" r="8" fill="#F9A01B"/>
                     </svg>
                 </div>
+                <!-- PayPal -->
                 <div class="payment-icon" aria-label="PayPal">
-                    <svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="48" height="32" rx="4" fill="#0070BA"/>
-                        <path d="M19.5 11c.8 0 1.4.2 1.9.5.5.4.7 1 .7 1.7 0 1.3-.9 2.3-2.1 2.3h-1l-.5 2.5h-1.4l1.4-7h1zm-.3 1.2h-.5l-.4 2h.5c.7 0 1.1-.4 1.1-1 0-.6-.3-1-.7-1zm4.8-.2c.8 0 1.4.2 1.9.5.5.4.7 1 .7 1.7 0 1.3-.9 2.3-2.1 2.3h-1l-.5 2.5h-1.4l1.4-7h1zm-.3 1.2h-.5l-.4 2h.5c.7 0 1.1-.4 1.1-1 0-.6-.3-1-.7-1zm5.3 5.8l-.2 1h-3.9l1.4-7h1.4l-1 5h2.3zm-16.5-7l-1.4 7h-1.4l1.4-7h1.4z" fill="white"/>
+                    <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="80" height="50" rx="6" fill="#fff" stroke="#e2e4e8" stroke-width="1.5"/>
+                        <path d="M24,13h6.5c3.6,0,5.8,1.8,5.3,5.2c-0.6,4.2-3.4,6.3-7.4,6.3H26l-1.2,5.5H21L24,13z M26.5,21.5h2c1.7,0,3-0.8,3.2-2.6c0.2-1.4-0.7-2.2-2.2-2.2h-2.1L26.5,21.5z" fill="#003087"/>
+                        <path d="M30,16h6.5c3.6,0,5.8,1.8,5.3,5.2c-0.6,4.2-3.4,6.3-7.4,6.3H32l-1.2,5.5H27L30,16z M32.5,24.5h2c1.7,0,3-0.8,3.2-2.6c0.2-1.4-0.7-2.2-2.2-2.2h-2.1L32.5,24.5z" fill="#009CDE"/>
+                        <text x="50" y="29" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="#003087">Pay</text>
+                        <text x="62" y="29" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="#009CDE">Pal</text>
                     </svg>
                 </div>
             </div>
         </div>
         <style>
-            /* Payment Methods Section */
         .footer-payment-methods {
             max-width: 1280px;
             margin: 40px auto 0;
-            padding: 30px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
-        }
-
-        .payment-methods-label {
-            font-size: 11px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--grey-600);
-            margin-bottom: 20px;
-        }
-
-        .payment-methods-icons {
+            padding: 28px 40px;
+            border-top: 1px solid rgba(255,255,255,0.1);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
+            gap: 20px;
             flex-wrap: wrap;
         }
-
+        .payment-methods-label {
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .payment-methods-icons { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .payment-icon {
-            width: 60px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--white);
-            border-radius: 6px;
-            padding: 6px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: 72px; height: 45px;
+            display: block; flex-shrink: 0;
+            border-radius: 6px; overflow: hidden;
+            transition: transform 0.18s, box-shadow 0.18s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
-
-        .payment-icon:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .payment-icon svg {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
+        .payment-icon:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+        .payment-icon svg { width: 100%; height: 100%; display: block; }
         @media (max-width: 768px) {
-            .payment-methods-icons {
-                gap: 12px;
-            }
-
-            .payment-icon {
-                width: 50px;
-                height: 34px;
-            }
+            .footer-payment-methods { flex-direction: column; gap: 14px; padding: 24px 20px; }
+            .payment-icon { width: 62px; height: 39px; }
         }
         </style>
+
 </footer>
 
 <!-- Chatbot -->
 <div class="chatbot-container">
-    <button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
+    
+<!-- Have a question? bubble -->
+<div class="chatbot-bubble" id="chatbotBubble" onclick="toggleChatbot()">
+    <button class="chatbot-bubble-close" id="chatbotBubbleClose"
+            onclick="event.stopPropagation(); dismissBubble()">&#x2715;</button>
+    <div class="chatbot-bubble-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+            <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z"/>
+            <path d="M12 12L3 7.5"/>
+            <path d="M12 12V21"/>
+            <path d="M12 12L21 7.5"/>
+        </svg>
+    </div>
+    <div>
+        <div class="chatbot-bubble-text">Have a question?</div>
+        <div class="chatbot-bubble-sub">We typically reply instantly</div>
+    </div>
+</div>
+<button class="chatbot-toggle" id="chatbotToggle" onclick="toggleChatbot()">
         <svg class="chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
@@ -1995,46 +2223,77 @@ window.addEventListener('load', function() {
 </div>
 
 <!-- CONTACT MODAL -->
-<div class="modal" id="contactModal">
+<!-- CONTACT MODAL -->
+<div class="modal-overlay" id="contactModal">
     <div class="modal-content">
-        <div class="modal-header">
-            <button class="modal-close" onclick="closeModal()">&times;</button>
-            <h2>Start Your Project</h2>
-            <p>Tell us about your needs and we'll get back to you within 24 hours.</p>
-        </div>
-        <div class="modal-body">
-            <form id="contactForm" onsubmit="handleSubmit(event)">
-                <div class="form-row">
-                    <div>
-                        <label>Full Name *</label>
-                        <input type="text" name="fullName" required>
+        <!-- Left trust panel -->
+        <div class="modal-left">
+            <div>
+                <div class="modal-left-badge">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    Trusted by Businesses Nationwide
+                </div>
+                <h2 class="modal-left-title">Let's Build Something Great Together</h2>
+                <p class="modal-left-subtitle">Tell us about your project and we'll follow up within 24 hours with a custom plan &mdash; no pressure, no pushy sales.</p>
+                <div class="modal-trust-items">
+                    <div class="modal-trust-item">
+                        <div class="modal-trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                        <div class="modal-trust-text"><strong>Secure &amp; Confidential</strong><span>Your info is never shared or sold</span></div>
                     </div>
-                    <div>
-                        <label>Email *</label>
-                        <input type="email" name="email" required>
+                    <div class="modal-trust-item">
+                        <div class="modal-trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                        <div class="modal-trust-text"><strong>Response Within 24 Hours</strong><span>Usually much faster on business days</span></div>
+                    </div>
+                    <div class="modal-trust-item">
+                        <div class="modal-trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg></div>
+                        <div class="modal-trust-text"><strong>Free Strategy Consultation</strong><span>No obligation &mdash; just honest advice</span></div>
+                    </div>
+                    <div class="modal-trust-item">
+                        <div class="modal-trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                        <div class="modal-trust-text"><strong>Dedicated Account Manager</strong><span>One point of contact from start to launch</span></div>
                     </div>
                 </div>
+            </div>
+            <div class="modal-left-stars">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <span class="modal-left-stars-text"><strong>5.0/5</strong> &middot; 27+ happy clients</span>
+            </div>
+        </div>
+        <!-- Right form panel -->
+        <div class="modal-right">
+            <div class="modal-right-header">
+                <p class="modal-right-title">Start Your Project</p>
+                <button class="modal-close" onclick="closeModal()" aria-label="Close">&#10005;</button>
+            </div>
+            <form class="modal-form" id="contactForm" onsubmit="handleSubmit(event)">
                 <div class="form-row">
-                    <div>
-                        <label>Phone *</label>
-                        <input type="tel" name="phone" required>
-                    </div>
-                    <div>
+                    <div class="form-group"><label>Full Name *</label><input type="text" id="fullName" placeholder="John Smith" required></div>
+                    <div class="form-group"><label>Email *</label><input type="email" id="email" placeholder="john@company.com" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Phone *</label><input type="tel" id="phone" placeholder="(555) 000-0000" required></div>
+                    <div class="form-group">
                         <label>Service *</label>
-                        <select name="service" required>
-                            <option value="">Select</option>
-                            <option>Website</option>
-                            <option>CRM</option>
-                            <option>SEO</option>
-                            <option>Marketing</option>
+                        <select id="service" required>
+                            <option value="">Select a service...</option>
+                            <option>Website Design</option>
+                            <option>Web Development</option>
+                            <option>E-commerce Development</option>
+                            <option>CRM Solutions</option>
+                            <option>SEO Services</option>
+                            <option>Digital Marketing</option>
+                            <option>Custom Web Applications</option>
+                            <option>Other</option>
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Details *</label>
-                    <textarea name="details" required rows="5"></textarea>
-                </div>
-                <button type="submit" class="submit-btn">Send Request</button>
+                <div class="form-group"><label>Tell Us About Your Project *</label><textarea id="details" placeholder="Share a brief overview of what you're looking to build or improve..." required></textarea></div>
+                <button type="submit">Send My Request &rarr;</button>
+                <p class="modal-form-note"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Your information is 100% secure and never shared.</p>
             </form>
         </div>
     </div>
@@ -2076,11 +2335,27 @@ window.addEventListener('load', function() {
     const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
     const navLinks = document.querySelector('.nav-links');
 
-    if (mobileMenuBtn) {
+    if (mobileMenuBtn && navLinks) {
         mobileMenuBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             navLinks.classList.toggle('active');
             this.classList.toggle('active');
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('nav')) {
+                navLinks.classList.remove('active');
+                mobileMenuBtn.classList.remove('active');
+            }
+        });
+
+        // Close menu when a nav link is clicked
+        navLinks.querySelectorAll('a').forEach(function(link) {
+            link.addEventListener('click', function() {
+                navLinks.classList.remove('active');
+                mobileMenuBtn.classList.remove('active');
+            });
         });
     }
 
@@ -2106,12 +2381,12 @@ window.addEventListener('load', function() {
 
     // Modal Functions
     function openModal() {
-        document.getElementById('contactModal').style.display = 'flex';
+        document.getElementById('contactModal').classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 
     function closeModal() {
-        document.getElementById('contactModal').style.display = 'none';
+        document.getElementById('contactModal').classList.remove('active');
         document.body.style.overflow = 'auto';
     }
 
@@ -2195,7 +2470,7 @@ window.addEventListener('load', function() {
     // Close modals with Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            if (document.getElementById('contactModal').style.display === 'flex') {
+            if (document.getElementById('contactModal').classList.contains('active')) {
                 closeModal();
             }
             if (document.getElementById('successModal').style.display === 'flex') {
@@ -2236,6 +2511,15 @@ window.addEventListener('load', function() {
         if (toggle.classList.contains('active') && badge) {
             badge.style.display = 'none';
         }
+
+function dismissBubble() {
+    const bubble = document.getElementById('chatbotBubble');
+    if (bubble) {
+        bubble.classList.add('hidden');
+        setTimeout(() => bubble.style.display = 'none', 300);
+    }
+}
+
     }
 
     function addUserMessage(text) {
@@ -2420,5 +2704,108 @@ window.addEventListener('load', function() {
 
 </script>
 
+
+<!-- Back to top button -->
+<button id="backToTopBtn" class="back-to-top-btn"
+        onclick="window.scrollTo({top:0,behavior:'smooth'})"
+        aria-label="Back to top">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2.5">
+        <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+</button>
+
+<script>
+// ── Back to top visibility ──
+(function() {
+    var btn = document.getElementById('backToTopBtn');
+    if (!btn) return;
+    window.addEventListener('scroll', function() {
+        if (window.scrollY > 300) btn.classList.add('visible');
+        else btn.classList.remove('visible');
+    }, { passive: true });
+})();
+</script>
+<script>
+// ── Persistent Chatbot (survives page navigation) ──────────
+(function () {
+    'use strict';
+    var OPEN_KEY  = 'dbc_chat_open';
+    var MSGS_KEY  = 'dbc_chat_msgs';
+
+    function $id(id) { return document.getElementById(id); }
+
+    /* ── Save all current messages to sessionStorage ── */
+    function saveMsgs() {
+        var c = $id('chatbotMessages');
+        if (!c) return;
+        var out = [];
+        c.querySelectorAll('.message').forEach(function (m) {
+            var p = m.querySelector('p');
+            if (p) out.push({ bot: m.classList.contains('bot-message'), html: p.innerHTML });
+        });
+        try { sessionStorage.setItem(MSGS_KEY, JSON.stringify(out)); } catch (e) {}
+    }
+
+    /* ── Restore messages from sessionStorage ── */
+    function loadMsgs() {
+        var c = $id('chatbotMessages');
+        if (!c) return;
+        var raw; try { raw = sessionStorage.getItem(MSGS_KEY); } catch (e) { return; }
+        if (!raw) return;
+        var msgs; try { msgs = JSON.parse(raw); } catch (e) { return; }
+        if (!msgs || msgs.length === 0) return;
+        c.innerHTML = '';
+        msgs.forEach(function (m) {
+            var div = document.createElement('div');
+            div.className = 'message ' + (m.bot ? 'bot-message' : 'user-message');
+            var icon = m.bot
+                ? '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>'
+                : '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>';
+            div.innerHTML =
+                '<div class="message-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'
+                + icon + '</svg></div>'
+                + '<div class="message-content"><p>' + m.html + '</p></div>';
+            c.appendChild(div);
+        });
+        c.scrollTop = c.scrollHeight;
+    }
+
+    /* ── Watch for DOM changes to auto-save ── */
+    function watchMsgs() {
+        var c = $id('chatbotMessages');
+        if (!c || !window.MutationObserver) return;
+        new MutationObserver(saveMsgs).observe(c, { childList: true, subtree: true });
+    }
+
+    /* ── Restore open/closed state ── */
+    function restoreOpen() {
+        var open; try { open = sessionStorage.getItem(OPEN_KEY) === '1'; } catch (e) { return; }
+        if (!open) return;
+        var t = $id('chatbotToggle'), w = $id('chatbotWindow'), b = $id('chatbotBubble');
+        if (t) t.classList.add('active');
+        if (w) w.classList.add('active');
+        if (b) { b.classList.add('hidden'); b.style.display = 'none'; }
+    }
+
+    /* ── Patch toggleChatbot to save open state ── */
+    function patchToggle() {
+        var orig = window.toggleChatbot;
+        if (typeof orig !== 'function') return;
+        window.toggleChatbot = function () {
+            orig.apply(this, arguments);
+            var t = $id('chatbotToggle');
+            try { sessionStorage.setItem(OPEN_KEY, (t && t.classList.contains('active')) ? '1' : '0'); } catch (e) {}
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        loadMsgs();
+        restoreOpen();
+        watchMsgs();
+        setTimeout(patchToggle, 50);   // wait for page scripts to define toggleChatbot
+    });
+})();
+</script>
 </body>
 </html>

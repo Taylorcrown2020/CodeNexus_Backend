@@ -7,7 +7,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const PDFDocument = require('pdfkit');
 const { Pool } = require('pg');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const path = require('path');
@@ -918,12 +918,10 @@ ${ctaLabel && ctaUrl ? `
 </html>`;
 }
 
-const pool = new Pool({  // Create pool FIRST
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
-});
+// Pool + schema bootstrap live in db.js. ensureSchema() must run before
+// initializeDatabase() (see startServer below) because initializeDatabase's
+// first statements ALTER tables it assumes already exist.
+const { pool, ensureSchema, verifySchema } = require('./db');
 
 // Test database connection
 pool.connect((err, client, release) => {
@@ -26216,6 +26214,10 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
     try {
+        // Create/repair every table before anything tries to ALTER them.
+        await ensureSchema();
+        await verifySchema();
+
         await initializeDatabase(pool);
         await initializeExpenseTables();
         await addLeadSourceTracking();

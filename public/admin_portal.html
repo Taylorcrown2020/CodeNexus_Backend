@@ -4499,6 +4499,24 @@ const standardWebsitePhases = [
 // ========================================
 // NAVIGATION
 // ========================================
+
+// ------------------------------------------------------------------
+// showSection / showNotification were called from several places but
+// never defined anywhere in this file. Defined here against the real
+// implementations (renderSection / showToast).
+// showSection routes through the nav item so the sidebar highlight and
+// the pre-render data load both happen, matching a real click.
+// ------------------------------------------------------------------
+function showSection(section) {
+    const item = document.querySelector(`.nav-item[data-section="${section}"]`);
+    if (item) { item.click(); return; }
+    renderSection(section);   // section with no nav entry
+}
+
+function showNotification(message, type = 'success') {
+    return showToast(message, type);
+}
+
 function setupNavigation() {
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', async function() {
@@ -7375,7 +7393,7 @@ DIAMONDBACK`
         category: 'billing',
         body: `Hi {{clientName}},
 
-This is a friendly reminder that invoice {{invoiceNumber}} for ${{amount}} is due on {{dueDate}}.
+This is a friendly reminder that invoice {{invoiceNumber}} for \${{amount}} is due on {{dueDate}}.
 
 You can view and pay your invoice here: {{paymentLink}}
 
@@ -10948,11 +10966,21 @@ function switchSettingsTab(tab) {
     state.currentSettingsTab = tab;
     document.getElementById('settingsPanelContent').innerHTML = renderSettingsTabContent(tab);
     
-    // Update nav items
+    // Update nav items.
+    // Was `event.target.closest(...)`, relying on the deprecated implicit
+    // global `event`. That only exists when called from an inline onclick, so
+    // any programmatic call threw "Cannot read properties of undefined". Now
+    // resolves the tab from the argument, with the event path as a fallback.
     document.querySelectorAll('.settings-nav-item').forEach(item => {
         item.classList.remove('active');
     });
-    event.target.closest('.settings-nav-item').classList.add('active');
+    const target = document.querySelector(`.settings-nav-item[data-tab="${tab}"]`)
+        || (typeof window.event !== 'undefined' && window.event && window.event.target
+            ? window.event.target.closest('.settings-nav-item')
+            : null)
+        || [...document.querySelectorAll('.settings-nav-item')]
+            .find(i => (i.textContent || '').toLowerCase().includes(String(tab).toLowerCase()));
+    if (target) target.classList.add('active');
 }
 // ========================================
 // MODAL FUNCTIONS
@@ -15262,291 +15290,18 @@ function saveProjectTimeline() {
 }
 
 // ==================== CLIENT SUPPORT TICKET ENDPOINTS ====================
-
-// Get all tickets for authenticated client
-app.get('/api/client/tickets', authenticateClient, async (req, res) => {
-    try {
-        const clientId = req.user.id;
-        
-        const result = await pool.query(`
-            SELECT st.*,
-                   COUNT(tr.id) as response_count,
-                   MAX(tr.created_at) as last_response_at
-            FROM support_tickets st
-            LEFT JOIN ticket_responses tr ON st.id = tr.ticket_id
-            WHERE st.lead_id = $1
-            GROUP BY st.id
-            ORDER BY st.created_at DESC
-        `, [clientId]);
-        
-        res.json({
-            success: true,
-            tickets: result.rows
-        });
-    } catch (error) {
-        console.error('Get client tickets error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to load tickets' 
-        });
-    }
-});
-
-// Create new ticket (client)
-app.post('/api/client/tickets', authenticateClient, async (req, res) => {
-    try {
-        const clientId = req.user.id;
-        const { subject, message, priority } = req.body;
-        
-        const result = await pool.query(`
-            INSERT INTO support_tickets (lead_id, subject, message, priority, status)
-            VALUES ($1, $2, $3, $4, 'open')
-            RETURNING *
-        `, [clientId, subject, message, priority || 'normal']);
-        
-        res.json({
-            success: true,
-            ticket: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Create ticket error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to create ticket' 
-        });
-    }
-});
-
-// Get responses for a ticket (client)
-app.get('/api/client/tickets/:ticketId/responses', authenticateClient, async (req, res) => {
-    try {
-        const clientId = req.user.id;
-        const ticketId = req.params.ticketId;
-        
-        // Verify ticket belongs to client
-        const ticketCheck = await pool.query(
-            'SELECT id FROM support_tickets WHERE id = $1 AND lead_id = $2',
-            [ticketId, clientId]
-        );
-        
-        if (ticketCheck.rows.length === 0) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Ticket not found' 
-            });
-        }
-        
-        const result = await pool.query(`
-            SELECT tr.*,
-                   CASE 
-                       WHEN tr.user_type = 'client' THEN l.name
-                       WHEN tr.user_type = 'admin' THEN u.username
-                   END as user_name
-            FROM ticket_responses tr
-            LEFT JOIN leads l ON tr.user_type = 'client' AND tr.user_id = l.id
-            LEFT JOIN users u ON tr.user_type = 'admin' AND tr.user_id = u.id
-            WHERE tr.ticket_id = $1
-            ORDER BY tr.created_at ASC
-        `, [ticketId]);
-        
-        res.json({
-            success: true,
-            responses: result.rows
-        });
-    } catch (error) {
-        console.error('Get ticket responses error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to load responses' 
-        });
-    }
-});
-
-// Add response to ticket (client)
-app.post('/api/client/tickets/:ticketId/responses', authenticateClient, async (req, res) => {
-    try {
-        const clientId = req.user.id;
-        const ticketId = req.params.ticketId;
-        const { message } = req.body;
-        
-        // Verify ticket belongs to client
-        const ticketCheck = await pool.query(
-            'SELECT id FROM support_tickets WHERE id = $1 AND lead_id = $2',
-            [ticketId, clientId]
-        );
-        
-        if (ticketCheck.rows.length === 0) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Ticket not found' 
-            });
-        }
-        
-        const result = await pool.query(`
-            INSERT INTO ticket_responses (ticket_id, user_type, user_id, message)
-            VALUES ($1, 'client', $2, $3)
-            RETURNING *
-        `, [ticketId, clientId, message]);
-        
-        // Update ticket status to 'in-progress' if it was 'open'
-        await pool.query(`
-            UPDATE support_tickets 
-            SET status = CASE WHEN status = 'open' THEN 'in-progress' ELSE status END,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $1
-        `, [ticketId]);
-        
-        res.json({
-            success: true,
-            response: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Add ticket response error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to add response' 
-        });
-    }
-});
-
-// ==================== ADMIN SUPPORT TICKET ENDPOINTS ====================
-
-// Get all tickets (admin)
-app.get('/api/tickets', authenticateToken, async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT st.*, l.name as client_name, l.email as client_email,
-                   COUNT(tr.id) as response_count,
-                   MAX(tr.created_at) as last_response_at
-            FROM support_tickets st
-            LEFT JOIN leads l ON st.lead_id = l.id
-            LEFT JOIN ticket_responses tr ON st.id = tr.ticket_id
-            GROUP BY st.id, l.name, l.email
-            ORDER BY 
-                CASE st.status 
-                    WHEN 'open' THEN 1
-                    WHEN 'in-progress' THEN 2
-                    WHEN 'resolved' THEN 3
-                    WHEN 'closed' THEN 4
-                END,
-                st.created_at DESC
-        `);
-        
-        res.json({
-            success: true,
-            tickets: result.rows
-        });
-    } catch (error) {
-        console.error('Get tickets error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to load tickets' 
-        });
-    }
-});
-
-// Get responses for a ticket (admin)
-app.get('/api/tickets/:ticketId/responses', authenticateToken, async (req, res) => {
-    try {
-        const ticketId = req.params.ticketId;
-        
-        const result = await pool.query(`
-            SELECT tr.*,
-                   CASE 
-                       WHEN tr.user_type = 'client' THEN l.name
-                       WHEN tr.user_type = 'admin' THEN u.username
-                   END as user_name
-            FROM ticket_responses tr
-            LEFT JOIN leads l ON tr.user_type = 'client' AND tr.user_id = l.id
-            LEFT JOIN users u ON tr.user_type = 'admin' AND tr.user_id = u.id
-            WHERE tr.ticket_id = $1
-            ORDER BY tr.created_at ASC
-        `, [ticketId]);
-        
-        res.json({
-            success: true,
-            responses: result.rows
-        });
-    } catch (error) {
-        console.error('Get ticket responses error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to load responses' 
-        });
-    }
-});
-
-// Add response to ticket (admin)
-app.post('/api/tickets/:ticketId/responses', authenticateToken, async (req, res) => {
-    try {
-        const ticketId = req.params.ticketId;
-        const adminId = req.user.id;
-        const { message } = req.body;
-        
-        const result = await pool.query(`
-            INSERT INTO ticket_responses (ticket_id, user_type, user_id, message)
-            VALUES ($1, 'admin', $2, $3)
-            RETURNING *
-        `, [ticketId, adminId, message]);
-        
-        // Update ticket timestamp
-        await pool.query(`
-            UPDATE support_tickets 
-            SET updated_at = CURRENT_TIMESTAMP
-            WHERE id = $1
-        `, [ticketId]);
-        
-        res.json({
-            success: true,
-            response: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Add ticket response error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to add response' 
-        });
-    }
-});
-
-// Update ticket status (admin)
-app.put('/api/tickets/:ticketId/status', authenticateToken, async (req, res) => {
-    try {
-        const ticketId = req.params.ticketId;
-        const { status } = req.body;
-        
-        const resolvedAt = status === 'resolved' || status === 'closed' 
-            ? 'CURRENT_TIMESTAMP' 
-            : 'NULL';
-        
-        const result = await pool.query(`
-            UPDATE support_tickets 
-            SET status = $1, 
-                updated_at = CURRENT_TIMESTAMP,
-                resolved_at = ${resolvedAt}
-            WHERE id = $2
-            RETURNING *
-        `, [status, ticketId]);
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Ticket not found' 
-            });
-        }
-        
-        res.json({
-            success: true,
-            ticket: result.rows[0]
-        });
-    } catch (error) {
-        console.error('Update ticket status error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to update ticket status' 
-        });
-    }
-});
+// REMOVED: ~286 lines of server-side Express route handlers were pasted into
+// this browser file (app.get('/api/client/tickets', authenticateClient, ...)
+// and seven more). In the browser `app` is undefined, so the whole block threw
+// ReferenceError at parse-evaluation time and killed every top-level statement
+// after it in this script.
+//
+// They were also redundant: server.js already implements all of them, using
+// :id instead of :ticketId —
+//   GET/PUT/DELETE /api/tickets/:id, GET/POST /api/tickets/:id/responses,
+//   PUT /api/tickets/:id/status, GET/POST /api/client/tickets
+// Nothing was lost by deleting them here.
+// ==========================================================================
 
 // Open Timeline Preview Modal
 // Open Timeline Preview Modal
@@ -18343,7 +18098,7 @@ function renderScoringRules(content) {
                                 </td>
                                 <td>
                                     <span class="badge badge-${rule.rule_type}">
-                                        ${rule.rule_type.charAt(0).toUpperCase() + rule.rule_type.slice(1)}
+                                        ${(rule.rule_type || 'custom').charAt(0).toUpperCase() + (rule.rule_type || 'custom').slice(1)}
                                     </span>
                                 </td>
                                 <td>
@@ -20013,14 +19768,20 @@ function renderLeadNotes(notes) {
 // In your follow-up rendering code (e.g., inside the loop that renders leads in categories), add notes display.
 // Assuming you have a function like renderCategoryLeads(category):
 // Append this to each lead's HTML:
-`
-<div class="notes-section" style="margin-top: 12px;">
-    <button onclick="toggleNotes(this)" class="btn btn-secondary btn-sm">View Notes</button>
-    <div class="notes-content" style="display: none; margin-top: 12px;">
-        ${renderLeadNotes(lead.notes)}
-    </div>
-</div>
-`
+//
+// COMMENTED OUT: this was a documentation snippet left as LIVE CODE. As a
+// bare top-level template literal it evaluated on load and referenced `lead`,
+// which doesn't exist in that scope — throwing ReferenceError and killing
+// every top-level statement after it in this script block.
+//
+// `
+// <div class="notes-section" style="margin-top: 12px;">
+//     <button onclick="toggleNotes(this)" class="btn btn-secondary btn-sm">View Notes</button>
+//     <div class="notes-content" style="display: none; margin-top: 12px;">
+//         ${renderLeadNotes(lead.notes)}
+//     </div>
+// </div>
+// `
 
 // Add toggle function
 function toggleNotes(button) {
@@ -20050,8 +19811,8 @@ async function renderFollowUps(content) {
         if (!tempResponse.ok) throw new Error(`API error: ${tempResponse.status}`);
         
         const data = await tempResponse.json();
-        const hotLeadsDueNow = data.data.hot || [];
-        const coldLeadsDueNow = data.data.cold || [];
+        const hotLeadsDueNow = data.data?.hot || [];
+        const coldLeadsDueNow = data.data?.cold || [];
         const deadLeads = deadResponse.ok ? ((await deadResponse.json()).leads || []) : [];
         
         // Get TOTAL counts from all leads
@@ -21707,6 +21468,42 @@ document.getElementById('subCancelModal').addEventListener('click', function(e) 
 
 
 // ============================================================
+// Handlers referenced from markup but never defined. Each of these
+// was wired to a live button that did nothing when clicked.
+// ============================================================
+
+// Schedule tab: "View Lead" on an appointment card.
+// Delegates to the existing lead detail opener.
+function openLead(leadId) {
+    if (typeof viewLead === 'function') return viewLead(leadId);
+    if (typeof openLeadDetailModal === 'function') return openLeadDetailModal(leadId);
+    console.warn('openLead: no lead detail opener available for', leadId);
+}
+
+// Follow-ups tab: lead name link on a follow-up row. Same target as openLead.
+function openLeadModal(leadId) {
+    return openLead(leadId);
+}
+
+// Client Portal tab: "Create Project" in the client detail modal.
+// Opens the project create modal pre-scoped to that client.
+function createProjectForClient(clientId) {
+    state.createProjectForClientId = clientId;
+    if (typeof openCreateModal === 'function') {
+        openCreateModal('project');
+        // Preselect the client once the modal body has rendered.
+        setTimeout(() => {
+            const sel = document.getElementById('projectClientId')
+                     || document.getElementById('projectLeadId')
+                     || document.querySelector('#createModalBody select[name="lead_id"]');
+            if (sel) sel.value = String(clientId);
+        }, 120);
+        return;
+    }
+    console.warn('createProjectForClient: openCreateModal unavailable');
+}
+
+// ============================================================
 // PORTED FROM CROWN - service requests, sales agreements, surveys
 // ============================================================
 async function renderServiceRequests(content) {
@@ -21755,6 +21552,22 @@ async function renderServiceRequests(content) {
                 </table>
             </div>
         </div>`;
+}
+
+// Ported alongside renderServiceRequests — the status <select> in that table
+// calls this. It was missed in the first extraction pass.
+async function updateServiceRequestStatus(id, status) {
+    const token = getAuthToken();
+    try {
+        await fetch(`${API_URL}/api/admin/service-requests/${id}`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        if (typeof showToast === 'function') showToast('Request updated', 'success');
+    } catch (e) {
+        if (typeof showToast === 'function') showToast('Update failed', 'error');
+    }
 }
 
 async function renderSurveys(content) {
@@ -21807,6 +21620,64 @@ async function renderSurveys(content) {
         </div>`;
 }
 
+
+// ============================================================
+// SALES AGREEMENTS (Diamondback Coding)
+// Service catalog, packages, and scope presets.
+// Ported from Crown; the ceramic-coating catalog was replaced
+// with software services. Prices are placeholders — set your own.
+// ============================================================
+
+const SA_SERVICES = {
+    web_development: {
+        label: 'Web Development',
+        packages: [
+            { name: 'Starter Site — up to 5 pages', price: 2500.00 },
+            { name: 'Business Site — up to 12 pages + CMS', price: 6500.00 },
+            { name: 'Custom Platform — application build', price: 15000.00 }
+        ]
+    },
+    crm_implementation: {
+        label: 'CRM Implementation',
+        packages: [
+            { name: 'CRM Setup — single workspace', price: 3500.00 },
+            { name: 'CRM Professional — data migration + automations', price: 8500.00 },
+            { name: 'CRM Enterprise — multi-team, custom modules', price: 18000.00 }
+        ]
+    },
+    custom_software: {
+        label: 'Custom Software',
+        packages: [
+            { name: 'Internal Tool — single workflow', price: 7500.00 },
+            { name: 'Custom Application — multi-module', price: 20000.00 },
+            { name: 'Platform Build — full product', price: 45000.00 }
+        ]
+    },
+    integration: {
+        label: 'Integrations & API Work',
+        packages: [
+            { name: 'Single Integration', price: 1800.00 },
+            { name: 'Multi-System Integration', price: 5500.00 },
+            { name: 'Custom API Development', price: 12000.00 }
+        ]
+    },
+    maintenance: {
+        label: 'Maintenance & Support',
+        packages: [
+            { name: 'Essential — monthly updates + monitoring', price: 250.00 },
+            { name: 'Standard — priority support, 5 hrs/mo', price: 750.00 },
+            { name: 'Managed — dedicated hours, SLA', price: 2000.00 }
+        ]
+    }
+};
+
+const SA_STATUSES = ['draft', 'sent', 'signed', 'scheduled', 'completed', 'cancelled'];
+let SA_CACHE = [];
+
+function saServiceLabel(type) { return (SA_SERVICES[type] && SA_SERVICES[type].label) || type || '—'; }
+function saMoney(n) { const v = Number(n || 0); return '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function saEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
 async function renderSalesAgreements(content) {
     const token = getAuthToken();
     content.innerHTML = `<div style="padding:24px;color:var(--text-muted);">Loading sales agreements…</div>`;
@@ -21853,6 +21724,463 @@ async function renderSalesAgreements(content) {
                 </table>
             </div>
         </div>`;
+}
+
+// Preset scope language per service type — auto-fills the terms field.
+const SA_SERVICE_TERMS = {
+    web_development: 'Scope: Design and development of the website or web application described in the selected package, including responsive layout, content integration, and deployment to production hosting. Includes one round of revisions per major milestone. Content (copy, images, logos) is supplied by the client unless quoted separately. Third-party services, licenses, domains, and hosting fees are billed at cost. Additional pages, features, or revision rounds beyond the agreed scope are quoted before any extra work begins.',
+    crm_implementation: 'Scope: Configuration and deployment of the CRM per the selected package, including workspace setup, user and role provisioning, pipeline and field configuration, and handover training. Data migration is included only where the selected package states it, and assumes source data is provided in a machine-readable export. Custom modules, bespoke reporting, and integrations to systems not named in this agreement are quoted separately.',
+    custom_software: 'Scope: Design, development, testing, and deployment of the custom software described in the selected package. Work proceeds through agreed milestones; each milestone is reviewed and signed off before the next begins. The estimate assumes the requirements documented at signing — material changes to requirements will be re-quoted as a change order. Ongoing hosting, third-party service fees, and post-launch support are billed separately unless a maintenance package is attached.',
+    integration: 'Scope: Development of the integration described in the selected package, including authentication, data mapping, error handling, and deployment. Assumes the client provides working credentials and documented API access for all systems involved. Rate limits, breaking changes, or undocumented behaviour in third-party APIs may affect timeline and are outside our control. Ongoing monitoring is included only under a maintenance package.',
+    maintenance: 'Scope: Ongoing maintenance per the selected package, including dependency and security updates, uptime monitoring, backups, and support requests within the stated hour allowance. Billed monthly in advance. Unused hours do not roll over. New feature development is quoted separately. Either party may cancel with 30 days written notice.'
+};
+
+// Preset "what's included" detail per package — auto-fills so you never type it.
+const SA_PACKAGE_TERMS = {
+    'Starter Site — up to 5 pages':
+`Starter Site — up to 5 pages
+What's included:
+• Custom responsive design, mobile through desktop
+• Up to 5 pages built and populated
+• Contact form with email delivery
+• Basic on-page SEO and analytics setup
+• Deployment to production hosting
+Note: Client supplies copy and images. One revision round per milestone. Domain and hosting billed at cost.`,
+
+    'Business Site — up to 12 pages + CMS':
+`Business Site — up to 12 pages + CMS
+What's included:
+• Custom responsive design across all breakpoints
+• Up to 12 pages built and populated
+• Content management so your team can edit pages
+• Forms, analytics, and on-page SEO
+• Deployment plus a staging environment for review
+• Handover walkthrough of the CMS
+Note: Client supplies copy and images. Two revision rounds per milestone. Domain, hosting, and third-party licenses billed at cost.`,
+
+    'Custom Platform — application build':
+`Custom Platform — application build
+What's included:
+• Discovery and technical scoping document
+• Custom application built to the agreed specification
+• User authentication and role-based access
+• Database design and deployment
+• Staging environment and milestone reviews
+• Production deployment and handover documentation
+Note: Delivered against agreed milestones. Requirement changes are re-quoted as change orders. Hosting and third-party service fees billed separately.`,
+
+    'CRM Setup — single workspace':
+`CRM Setup — single workspace
+What's included:
+• Workspace provisioning and branding
+• Pipeline stages and custom fields configured to your process
+• User accounts and permission roles
+• Email sending configured and verified
+• Handover training session
+Note: Does not include data migration or custom modules.`,
+
+    'CRM Professional — data migration + automations':
+`CRM Professional — data migration + automations
+What's included:
+• Everything in CRM Setup
+• Migration of existing contacts, deals, and history from a provided export
+• Automated follow-up sequences and lead scoring rules
+• Reporting dashboards configured to your metrics
+• Two training sessions plus 30 days of post-launch support
+Note: Migration assumes source data in a machine-readable export (CSV or API). Data cleanup beyond deduplication is quoted separately.`,
+
+    'CRM Enterprise — multi-team, custom modules':
+`CRM Enterprise — multi-team, custom modules
+What's included:
+• Everything in CRM Professional
+• Multi-team workspaces with separate permission structures
+• Custom modules built to your workflows
+• Integrations to your existing systems
+• Bespoke reporting and data exports
+• 90 days of post-launch support
+Note: Integration scope is fixed at signing; systems not named are quoted separately.`,
+
+    'Internal Tool — single workflow':
+`Internal Tool — single workflow
+What's included:
+• Scoping of the workflow to be automated
+• Custom tool built and deployed
+• User authentication
+• Handover documentation
+Note: Covers one workflow. Additional workflows quoted separately.`,
+
+    'Custom Application — multi-module':
+`Custom Application — multi-module
+What's included:
+• Discovery and technical specification
+• Multi-module application built to specification
+• Role-based access control
+• Database design, migrations, and backups
+• Staging environment with milestone sign-offs
+• Production deployment and documentation
+Note: Milestone-based delivery. Change orders re-quoted.`,
+
+    'Platform Build — full product':
+`Platform Build — full product
+What's included:
+• Full discovery, technical architecture, and specification
+• Complete platform build across all agreed modules
+• Authentication, billing, and admin tooling
+• Automated testing and CI deployment
+• Staging plus production environments
+• Documentation and team handover
+• 90 days of post-launch support
+Note: Delivered in phases with sign-off at each. Hosting and third-party services billed separately.`,
+
+    'Single Integration':
+`Single Integration
+What's included:
+• Authentication and credential setup
+• Data mapping between the two systems
+• Error handling and retry logic
+• Deployment and verification
+Note: Client provides working credentials and API documentation. Covers one system pair.`,
+
+    'Multi-System Integration':
+`Multi-System Integration
+What's included:
+• Authentication across all named systems
+• Data mapping and transformation rules
+• Error handling, retries, and failure alerting
+• Deployment and verification across environments
+Note: Systems are fixed at signing. Third-party API changes are outside our control.`,
+
+    'Custom API Development':
+`Custom API Development
+What's included:
+• API design and endpoint specification
+• Implementation with authentication and rate limiting
+• Documentation for consumers
+• Staging and production deployment
+Note: Ongoing monitoring requires a maintenance package.`,
+
+    'Essential — monthly updates + monitoring':
+`Essential — monthly updates and monitoring
+What's included:
+• Dependency and security updates
+• Uptime monitoring with alerting
+• Weekly backups
+• Email support, next-business-day response
+Note: Billed monthly in advance. Does not include new feature work. 30 days notice to cancel.`,
+
+    'Standard — priority support, 5 hrs/mo':
+`Standard — priority support, 5 hours per month
+What's included:
+• Everything in Essential
+• 5 hours per month of development or support time
+• Priority response, same business day
+• Monthly health report
+Note: Unused hours do not roll over. Feature work beyond the allowance quoted separately.`,
+
+    'Managed — dedicated hours, SLA':
+`Managed — dedicated hours with SLA
+What's included:
+• Everything in Standard
+• Dedicated monthly hour allocation
+• Written SLA on response and resolution times
+• Quarterly roadmap and architecture review
+• Direct escalation contact
+Note: Allocation and SLA terms set in the attached schedule. 30 days notice to cancel.`
+};
+
+const SA_ALL_PRESETS = Object.values(SA_SERVICE_TERMS).concat(Object.values(SA_PACKAGE_TERMS));
+// Fill the scope/terms box with the best preset (package-specific if chosen, else service),
+// unless the admin has typed their own custom text.
+function saApplyPreset() {
+    const termsEl = document.getElementById('saTerms');
+    if (!termsEl) return;
+    const cur = (termsEl.value || '').trim();
+    const isPreset = cur === '' || SA_ALL_PRESETS.some(t => t.trim() === cur);
+    if (!isPreset) return; // admin customised it — leave alone
+    const st = document.getElementById('saServiceType') && document.getElementById('saServiceType').value;
+    const pkg = document.getElementById('saPackage') && document.getElementById('saPackage').value;
+    if (pkg && SA_PACKAGE_TERMS[pkg]) termsEl.value = SA_PACKAGE_TERMS[pkg];
+    else if (st && SA_SERVICE_TERMS[st]) termsEl.value = SA_SERVICE_TERMS[st];
+}
+function saPackageOptions(serviceType, selected) {
+    const list = (SA_SERVICES[serviceType] && SA_SERVICES[serviceType].packages) || [];
+    return ['<option value="">Select a package…</option>'].concat(
+        list.map(p => {
+            const name = (typeof p === 'string') ? p : p.name;
+            const price = (typeof p === 'string') ? '' : p.price;
+            const label = price ? `${name} — $${Number(price).toFixed(2)}` : name;
+            return `<option value="${saEsc(name)}" data-price="${price}" ${name === selected ? 'selected' : ''}>${saEsc(label)}</option>`;
+        })
+    ).join('');
+}
+function saOnServiceChange() {
+    const st = document.getElementById('saServiceType').value;
+    document.getElementById('saPackage').innerHTML = saPackageOptions(st, '');
+    saApplyPreset();
+    saSyncPrice();
+}
+// When a package is chosen, suggest its price + fill its preset scope (admin can still edit).
+function saSyncPrice() {
+    const sel = document.getElementById('saPackage');
+    const priceEl = document.getElementById('saPrice');
+    if (sel && priceEl) {
+        const opt = sel.options[sel.selectedIndex];
+        const price = opt && opt.getAttribute('data-price');
+        if (price) priceEl.value = Number(price).toFixed(2);
+    }
+    saApplyPreset();
+    saSyncDeposit();
+}
+function saToggleDeposit() {
+    const reqEl = document.getElementById('saRequireDeposit');
+    const row = document.getElementById('saDepRow');
+    if (row) row.style.display = (reqEl && reqEl.checked) ? 'grid' : 'none';
+    saSyncDeposit();
+}
+// Show the live down-payment / balance split.
+function saSyncDeposit() {
+    const calc = document.getElementById('saDepCalc');
+    if (!calc) return;
+    const reqEl = document.getElementById('saRequireDeposit');
+    if (!(reqEl && reqEl.checked)) { calc.innerHTML = ''; return; }
+    const price = parseFloat(document.getElementById('saPrice') && document.getElementById('saPrice').value) || 0;
+    const pctEl = document.getElementById('saDepositPct');
+    const pct = Math.min(Math.max(parseFloat(pctEl && pctEl.value) || 0, 0), 100);
+    const dep = Math.round(price * pct) / 100;
+    const bal = Math.round((price - dep) * 100) / 100;
+    const fmt = n => '$' + (n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    calc.innerHTML = `Down payment now: <strong style="color:#c9a14a;">${fmt(dep)}</strong><br>Balance due on completion: <strong>${fmt(bal)}</strong>`;
+}
+
+// Live, formatted preview of the agreement from the current form values (mirrors the PDF).
+function saPreviewAgreement() {
+    const fmt = n => '$' + (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const g = id => document.getElementById(id);
+    const st = g('saServiceType').value;
+    const serviceLabel = (SA_SERVICES[st] && SA_SERVICES[st].label) || st || '—';
+    const pkg = g('saPackage').value || '—';
+    const project = g('saVehicle').value.trim() || '—';
+    const price = parseFloat(g('saPrice').value) || 0;
+    const start = g('saStart').value;
+    const startTxt = start ? new Date(start + 'T12:00:00').toLocaleDateString('en-US') : 'To be scheduled';
+    const reqDep = !!(g('saRequireDeposit') && g('saRequireDeposit').checked);
+    const pct = reqDep ? Math.min(Math.max(parseFloat(g('saDepositPct').value) || 0, 0), 100) : 0;
+    const dep = reqDep ? Math.round(price * pct) / 100 : 0;
+    const bal = Math.round((price - dep) * 100) / 100;
+    const terms = (g('saTerms').value || '').trim();
+    const leadSel = g('saLeadId');
+    const clientTxt = (leadSel && leadSel.selectedIndex > 0) ? leadSel.options[leadSel.selectedIndex].textContent.trim() : 'Unassigned';
+    const payClause = reqDep
+        ? `A down payment of ${pct}% (${fmt(dep)}) is due upon signing this agreement to reserve your service. The remaining balance of ${fmt(bal)} is due upon completion of the service.`
+        : `The full amount of ${fmt(price)} is due upon completion of the service.`;
+    const row = (k, v) => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #eee;"><div style="min-width:150px;color:#666;font-weight:600;">${k}</div><div style="color:#111;">${v}</div></div>`;
+    const esc = s => saEsc(s);
+    const html = `
+      <div style="background:#fff;color:#1a1a1a;border-radius:12px;max-width:640px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+        <div style="background:#0a0a0a;padding:22px 26px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:flex-start;">
+           <div><div style="color:#c9a14a;font-size:18px;font-weight:800;letter-spacing:1px;">DIAMONDBACK CERAMIC COATING</div>
+           <div style="color:#cfc6b4;font-size:11px;margin-top:3px;">Ceramic Coating • Paint Correction • Detailing — Rockwall &amp; Dallas, TX</div></div>
+           <button onclick="closeSalesAgreementPreview()" style="background:none;border:none;color:#bbb;font-size:26px;cursor:pointer;line-height:1;">&times;</button>
+        </div>
+        <div style="padding:26px;">
+           <h2 style="text-align:center;font-family:'Playfair Display',Georgia,serif;margin:0 0 4px;color:#111;">Sales Agreement</h2>
+           <p style="text-align:center;color:#999;font-size:12px;margin:0 0 20px;">Preview — this agreement has not been created yet</p>
+           ${row('Customer', esc(clientTxt))}
+           ${row('Service', esc(serviceLabel))}
+           ${row('Package', esc(pkg))}
+           ${row('Project', esc(project))}
+           ${row('Start date', esc(startTxt))}
+           ${row('Total price', fmt(price))}
+           ${reqDep ? row('Down payment', pct + '% — ' + fmt(dep) + ' (due at signing)') : ''}
+           ${reqDep ? row('Balance on completion', fmt(bal)) : ''}
+           <h3 style="margin:20px 0 6px;font-size:15px;color:#111;">Payment Terms</h3>
+           <p style="color:#444;font-size:13px;line-height:1.6;margin:0;">${esc(payClause)}</p>
+           <h3 style="margin:20px 0 6px;font-size:15px;color:#111;">Services Performed</h3>
+           <div style="color:#444;font-size:13px;line-height:1.6;white-space:pre-wrap;">${terms ? esc(terms) : '<span style="color:#aaa;">Select a service &amp; package and this fills in automatically.</span>'}</div>
+           <p style="margin-top:26px;color:#555;font-size:12px;">Authorized signature: ______________________________&nbsp;&nbsp;&nbsp;Date: ____________</p>
+           <div style="text-align:right;margin-top:18px;">
+             <button class="btn btn-secondary" onclick="closeSalesAgreementPreview()" style="padding:8px 16px;">Close preview</button>
+           </div>
+        </div>
+      </div>`;
+    let ov = document.getElementById('saPreviewOverlay');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'saPreviewOverlay'; document.body.appendChild(ov); }
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    ov.onclick = (ev) => { if (ev.target === ov) closeSalesAgreementPreview(); };
+    ov.innerHTML = html;
+}
+function closeSalesAgreementPreview() {
+    const o = document.getElementById('saPreviewOverlay');
+    if (o) o.remove();
+}
+
+async function openSalesAgreementModal(id) {
+    const token = getAuthToken();
+    const editing = SA_CACHE.find(a => a.id === id) || null;
+
+    // Load clients for the assign dropdown.
+    let clients = [];
+    try {
+        const r = await fetch(`${API_URL}/api/sales-agreement-clients`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const d = await r.json();
+        clients = (d && d.clients) || [];
+    } catch (e) { /* dropdown will still allow saving without assignment */ }
+
+    const clientOpts = ['<option value="">— Unassigned —</option>'].concat(
+        clients.map(c => `<option value="${c.id}" ${editing && editing.lead_id === c.id ? 'selected' : ''}>${saEsc(c.name || ('Lead #' + c.id))}${c.is_customer ? ' (customer)' : ''}${c.email ? ' · ' + saEsc(c.email) : ''}</option>`)
+    ).join('');
+
+    const serviceOpts = ['<option value="">Select a service…</option>'].concat(
+        Object.keys(SA_SERVICES).map(k => `<option value="${k}" ${editing && editing.service_type === k ? 'selected' : ''}>${SA_SERVICES[k].label}</option>`)
+    ).join('');
+    const statusOpts = SA_STATUSES.map(s => `<option value="${s}" ${editing && editing.status === s ? 'selected' : ''}>${s}</option>`).join('');
+
+    const e = editing || {};
+    const overlay = document.createElement('div');
+    overlay.id = 'saModalOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.onclick = (ev) => { if (ev.target === overlay) closeSalesAgreementModal(); };
+    overlay.innerHTML = `
+        <div style="background:var(--bg-secondary,#1c1c1c);color:var(--text-primary,#fff);max-width:640px;width:100%;max-height:90vh;overflow-y:auto;border-radius:14px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                <h2 style="margin:0;font-size:20px;">${editing ? 'Edit' : 'New'} Sales Agreement</h2>
+                <button onclick="closeSalesAgreementModal()" style="background:none;border:none;color:var(--text-muted,#999);font-size:26px;cursor:pointer;line-height:1;">&times;</button>
+            </div>
+            <input type="hidden" id="saId" value="${editing ? editing.id : ''}">
+            <div style="display:grid;gap:14px;">
+                <div>
+                    <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Assign to client or lead</label>
+                    <select id="saLeadId" style="width:100%;padding:10px;border-radius:8px;">${clientOpts}</select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div>
+                        <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Service type *</label>
+                        <select id="saServiceType" onchange="saOnServiceChange()" style="width:100%;padding:10px;border-radius:8px;">${serviceOpts}</select>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Package</label>
+                        <select id="saPackage" onchange="saSyncPrice()" style="width:100%;padding:10px;border-radius:8px;">${saPackageOptions(e.service_type, e.package_name)}</select>
+                    </div>
+                </div>
+                <div>
+                    <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Project (year / make / model)</label>
+                    <input id="saVehicle" value="${saEsc(e.project || '')}" placeholder="e.g. 2022 Tesla Model 3" style="width:100%;padding:10px;border-radius:8px;">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div>
+                        <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Total price ($)</label>
+                        <input id="saPrice" type="number" step="0.01" value="${e.price != null ? e.price : ''}" oninput="saSyncDeposit()" style="width:100%;padding:10px;border-radius:8px;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Start date</label>
+                        <input id="saStart" type="date" value="${e.start_date ? String(e.start_date).split('T')[0] : ''}" style="width:100%;padding:10px;border-radius:8px;">
+                    </div>
+                </div>
+                <div style="background:rgba(201,161,74,0.06);border:1px solid rgba(201,161,74,0.22);border-radius:10px;padding:14px 16px;">
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;font-weight:600;">
+                        <input type="checkbox" id="saRequireDeposit" onchange="saToggleDeposit()" ${e.require_deposit ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;">
+                        Require a down payment toward the total
+                    </label>
+                    <div id="saDepRow" style="display:${e.require_deposit ? 'grid' : 'none'};grid-template-columns:150px 1fr;gap:14px;align-items:center;margin-top:12px;">
+                        <div>
+                            <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Down payment %</label>
+                            <input id="saDepositPct" type="number" min="0" max="100" step="1" value="${e.deposit_pct != null && e.deposit_pct !== 0 ? e.deposit_pct : 50}" oninput="saSyncDeposit()" style="width:100%;padding:10px;border-radius:8px;">
+                        </div>
+                        <div id="saDepCalc" style="font-size:13px;line-height:1.6;color:var(--text-muted,#bbb);"></div>
+                    </div>
+                </div>
+                <div>
+                    <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Status</label>
+                    <select id="saStatus" style="width:100%;padding:10px;border-radius:8px;">${statusOpts}</select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Services performed <span style="color:var(--text-muted,#888);font-weight:400;">(preset — auto-fills from the package; edit only if you need to)</span></label>
+                    <textarea id="saTerms" rows="9" placeholder="Pick a service & package and this fills in automatically…" style="width:100%;padding:10px;border-radius:8px;font-size:13px;line-height:1.5;">${saEsc(e.terms || '')}</textarea>
+                </div>
+                <div>
+                    <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Internal notes</label>
+                    <textarea id="saNotes" rows="2" style="width:100%;padding:10px;border-radius:8px;">${saEsc(e.notes || '')}</textarea>
+                </div>
+            </div>
+            ${editing ? '' : `<div style="margin-top:14px;font-size:12.5px;color:var(--text-muted,#9a9a9a);background:rgba(201,161,74,0.08);border:1px solid rgba(201,161,74,0.28);border-radius:8px;padding:10px 12px;">
+                On <strong>create</strong>, an invoice for the price above is generated automatically, emailed to the client with this agreement attached, and added to their account log${''} & client portal.
+            </div>`}
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px;">
+                <button class="btn btn-secondary" onclick="closeSalesAgreementModal()">Cancel</button>
+                <button class="btn btn-secondary" onclick="saPreviewAgreement()">👁 Preview</button>
+                <button class="btn btn-primary" id="saSaveBtn" onclick="saveSalesAgreement()">${editing ? 'Save Changes' : 'Create Agreement'}</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    saApplyPreset();
+    saSyncDeposit();
+}
+function closeSalesAgreementModal() {
+    const o = document.getElementById('saModalOverlay');
+    if (o) o.remove();
+}
+
+async function saveSalesAgreement() {
+    const token = getAuthToken();
+    const id = document.getElementById('saId').value;
+    const body = {
+        lead_id: document.getElementById('saLeadId').value || null,
+        service_type: document.getElementById('saServiceType').value,
+        package_name: document.getElementById('saPackage').value,
+        project: document.getElementById('saVehicle').value.trim(),
+        price: parseFloat(document.getElementById('saPrice').value) || 0,
+        require_deposit: !!(document.getElementById('saRequireDeposit') && document.getElementById('saRequireDeposit').checked),
+        deposit_pct: parseFloat(document.getElementById('saDepositPct') && document.getElementById('saDepositPct').value) || 0,
+        start_date: document.getElementById('saStart').value || null,
+        status: document.getElementById('saStatus').value,
+        terms: document.getElementById('saTerms').value.trim(),
+        notes: document.getElementById('saNotes').value.trim()
+    };
+    if (!body.service_type) { showToast('Please choose a service type.', 'error'); return; }
+    const btn = document.getElementById('saSaveBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+        const url = id ? `${API_URL}/api/sales-agreements/${id}` : `${API_URL}/api/sales-agreements`;
+        const method = id ? 'PATCH' : 'POST';
+        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!data.success) { showToast(data.message || 'Could not save agreement.', 'error'); if (btn) { btn.disabled = false; btn.textContent = id ? 'Save Changes' : 'Create Agreement'; } return; }
+        if (id) {
+            showToast('Sales agreement updated.', 'success');
+        } else {
+            const a = data.automation || {};
+            const two = (a.invoiceCount || 0) === 2;
+            let msg = 'Sales agreement created.';
+            if (a.invoice && a.emailed) msg += two ? ' Down-payment & balance invoices generated and emailed to the client.' : ' Invoice generated & emailed to the client.';
+            else if (a.invoice) msg += two ? ' Down-payment & balance invoices generated.' : ' Invoice generated.';
+            else if (a.emailed) msg += ' Emailed to the client.';
+            showToast(msg, 'success');
+        }
+        closeSalesAgreementModal();
+        renderSection('salesAgreements');
+    } catch (e) {
+        showToast('Error saving agreement: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = id ? 'Save Changes' : 'Create Agreement'; }
+    }
+}
+
+async function updateSalesAgreementStatus(id, status) {
+    const token = getAuthToken();
+    try {
+        await fetch(`${API_URL}/api/sales-agreements/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ status }) });
+        const a = SA_CACHE.find(x => x.id === id); if (a) a.status = status;
+        showToast('Status updated.', 'success');
+    } catch (e) { showToast('Could not update status.', 'error'); }
+}
+
+async function deleteSalesAgreement(id) {
+    if (!confirm('Delete this sales agreement? This cannot be undone.')) return;
+    const token = getAuthToken();
+    try {
+        await fetch(`${API_URL}/api/sales-agreements/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        showToast('Sales agreement deleted.', 'success');
+        renderSection('salesAgreements');
+    } catch (e) { showToast('Could not delete agreement.', 'error'); }
 }
 </script>
 

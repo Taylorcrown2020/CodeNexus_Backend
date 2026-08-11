@@ -26185,6 +26185,43 @@ app.post('/api/client/email-chains/:id/toggle', authenticateClient, async (req, 
         res.json({ success: true, active });
     } catch(e) { res.status(500).json({ success: false, message: e.message }); }
 });
+// ============================================================================
+// CUSTOMER PORTAL / MESSAGING / SMS MODULES
+//
+// Mounted here: after pool, stripe, transporter, JWT_SECRET, resolveLeadId,
+// sendViaBrevo and sendSmsViaBrevo all exist, and BEFORE the 404 handler.
+// Order matters — anything mounted after app.use((req,res)=>...) is dead.
+// ============================================================================
+
+// Reads the Brevo key from platform_settings, falling back to the env var.
+async function getBrevoKey() {
+    try {
+        const r = await pool.query('SELECT brevo_api_key FROM platform_settings LIMIT 1');
+        const k = r.rows[0] && r.rows[0].brevo_api_key;
+        if (k) return k;
+    } catch (e) { /* table may not exist yet */ }
+    return process.env.BREVO_API_KEY || process.env.PLATFORM_BREVO_KEY || null;
+}
+
+const initPortal = require('./diamondback-portal.js');
+initPortal({
+    app, pool, stripe, transporter,
+    authenticateToken, resolveLeadId,
+    JWT_SECRET, jwt,
+    PLATFORM_BREVO_KEY, PLATFORM_SENDER_EMAIL, PLATFORM_SENDER_NAME, sendViaBrevo,
+});
+
+const initDiamondbackSms = require('./diamondback-sms.js');
+initDiamondbackSms({ app, pool, authenticateToken, sendSmsViaBrevo, getBrevoKey });
+
+// diamondback-automation.js also registers /api/public/availability and
+// /api/public/schedule, which diamondback-portal.js already owns. Express uses
+// the FIRST match, so those two would be silently shadowed. Surveys and
+// sales-agreement email are the parts worth having — uncomment once you've
+// deleted the duplicate pair from one side.
+// const initDiamondbackAutomation = require('./diamondback-automation.js');
+// initDiamondbackAutomation({ app, pool, transporter, stripe });
+
 // ========================================
 // 404 HANDLER
 // ========================================

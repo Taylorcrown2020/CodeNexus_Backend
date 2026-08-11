@@ -1,23 +1,79 @@
+# ============================================================================
+# render.yaml — Diamondback Coding
+#
+# WHAT WAS WRONG WITH THE PREVIOUS FILE
+#   A second `services:` key was nested inside the first service's `envVars`
+#   list, and the second `- type: web` sat at the wrong indent level. Render
+#   would not have read this as two services.
+#
+#   Also: the first service declared PUPPETEER_SKIP_CHROMIUM_DOWNLOAD while the
+#   build command installs Chrome — those contradict each other. Chrome is
+#   installed to a cache path, so PUPPETEER_CACHE_DIR is set instead and the
+#   skip flag is gone.
+# ============================================================================
+
 services:
   - type: web
     name: diamondback-coding
     env: node
     plan: free
+    region: oregon
     buildCommand: |
       npm install
       npx puppeteer browsers install chrome
     startCommand: node server.js
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
-        value: false
-    services:
+      - key: NODE_VERSION
+        value: 22.11.0
+      # Puppeteer writes Chrome here during build; the runtime must look in the
+      # same place or PDF generation fails with "Could not find Chrome".
+      - key: PUPPETEER_CACHE_DIR
+        value: /opt/render/project/.cache/puppeteer
+      # --- set these in the Render dashboard, not here ---
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_HOST
+        value: smtp-relay.brevo.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        value: Diamondback Coding <contact@diamondbackcoding.com>
+
   - type: web
     name: codenexus-backend
     env: node
+    plan: free
+    region: oregon
     buildCommand: npm install
     startCommand: node server.js
+    healthCheckPath: /
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: NODE_VERSION
-        value: 18.17.0
+        value: 22.11.0
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false

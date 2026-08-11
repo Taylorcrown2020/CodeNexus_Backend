@@ -2,7 +2,7 @@
   "name": "craftedcode-co",
   "version": "1.0.0",
   "type": "commonjs",
-  "description": "CraftedCode Co. Backend Server with CRM, Admin Portal & Client Features",
+  "description": "Diamondback Coding \u2014 backend, CRM, admin portal, customer portal, billing, email/SMS",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,7 +10,8 @@
     "db:setup": "node db.js",
     "build": "npx puppeteer browsers install chrome",
     "lint": "eslint . --ext .js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:migrate": "psql \"$DATABASE_URL\" -f migrations/001_customer_portal.sql"
   },
   "author": "Taylor <contact@diamondbackcoding.com>",
   "license": "MIT",

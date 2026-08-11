@@ -3693,6 +3693,27 @@ body.graffiti-mode .sidebar::after {
                 Invoices
                 <span class="nav-badge" id="invoicesBadge">0</span>
             </div>
+            <div class="nav-item" data-section="serviceRequests">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                </svg>
+                Service Requests
+                <span class="nav-badge" id="serviceRequestsBadge" style="display:none;">0</span>
+            </div>
+            <div class="nav-item" data-section="salesAgreements">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                Sales Agreements
+            </div>
+            <div class="nav-item" data-section="surveys">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                Surveys
+            </div>
             <div class="nav-item" data-section="subscriptions">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -4719,6 +4740,18 @@ async function renderSection(section) {
             
         case 'invoices':
             renderInvoices(content);
+            break;
+
+        case 'serviceRequests':
+            renderServiceRequests(content);
+            break;
+
+        case 'salesAgreements':
+            renderSalesAgreements(content);
+            break;
+
+        case 'surveys':
+            renderSurveys(content);
             break;
 
         case 'subscriptions':
@@ -21671,6 +21704,756 @@ function _closeSubModal() {
 document.getElementById('subCancelModal').addEventListener('click', function(e) {
     if (e.target === this) _closeSubModal();
 });
+
+
+// ============================================================
+// PORTED FROM CROWN - service requests, sales agreements, surveys
+// ============================================================
+async function renderServiceRequests(content) {
+    const token = getAuthToken();
+    content.innerHTML = `<div style="padding:24px;color:var(--text-muted);">Loading service requests…</div>`;
+    let requests = [];
+    try {
+        const res = await fetch(`${API_URL}/api/admin/service-requests`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        requests = (data && data.requests) || [];
+    } catch (e) {
+        content.innerHTML = `<div style="padding:24px;color:#e25;">Failed to load service requests.</div>`;
+        return;
+    }
+    const badge = document.getElementById('serviceRequestsBadge');
+    const openCount = requests.filter(r => r.status !== 'completed' && r.status !== 'closed').length;
+    if (badge) { badge.textContent = openCount; badge.style.display = openCount > 0 ? 'inline-block' : 'none'; }
+
+    const statusOptions = ['new', 'scheduled', 'in-progress', 'completed', 'closed'];
+    const rows = requests.map(r => {
+        const created = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+        const pref = r.preferred_date ? new Date(r.preferred_date).toLocaleDateString() : '—';
+        const sel = statusOptions.map(s => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s}</option>`).join('');
+        const responded = r.admin_response
+            ? `<div style="margin-top:6px;font-size:12px;color:#7fc99b;border-left:2px solid #3fae6b;padding-left:8px;">Replied: ${(r.admin_response).replace(/</g,'&lt;').slice(0,120)}${r.admin_response.length>120?'…':''}</div>`
+            : '';
+        return `<tr>
+            <td>${created}</td>
+            <td><strong>${(r.customer_name || 'Unknown')}</strong><br><span style="color:var(--text-muted);font-size:12px;">${r.customer_email || ''}${r.customer_phone ? ' · ' + r.customer_phone : ''}</span></td>
+            <td>${r.service_type || '—'}</td>
+            <td>${r.project || '—'}</td>
+            <td>${pref}</td>
+            <td style="max-width:280px;">${(r.details || '').replace(/</g, '&lt;')}${responded}</td>
+            <td><select onchange="updateServiceRequestStatus(${r.id}, this.value)" style="padding:6px;border-radius:6px;">${sel}</select></td>
+            <td><button class="btn btn-primary" style="padding:6px 12px;white-space:nowrap;" onclick='openServiceReply(${r.id}, ${JSON.stringify((r.customer_name||"")).replace(/'/g,"&#39;")})'>${r.admin_response ? 'Reply again' : 'Reply'}</button></td>
+        </tr>`;
+    }).join('');
+
+    content.innerHTML = `
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Service Requests (${requests.length})</h2></div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead><tr><th>Received</th><th>Customer</th><th>Service</th><th>Project</th><th>Preferred</th><th>Details</th><th>Status</th><th>Reply</th></tr></thead>
+                    <tbody>${rows || `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">No service requests yet.</td></tr>`}</tbody>
+                </table>
+            </div>
+        </div>`;
+}
+
+async function renderSurveys(content) {
+    const token = getAuthToken();
+    content.innerHTML = `<div style="padding:24px;color:var(--text-muted);">Loading surveys…</div>`;
+    let surveys = [];
+    try {
+        const res = await fetch(`${API_URL}/api/admin/surveys`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        surveys = (data && data.surveys) || [];
+    } catch (e) {
+        content.innerHTML = `<div style="padding:24px;color:#e25;">Failed to load surveys.</div>`;
+        return;
+    }
+    const stars = n => '★★★★★☆☆☆☆☆'.slice(5 - (n || 0), 10 - (n || 0));
+    const completed = surveys.filter(s => s.completed_at);
+    const avg = completed.length ? (completed.reduce((a, s) => a + (s.rating || 0), 0) / completed.length).toFixed(1) : '—';
+    const esc = t => (t == null ? '' : String(t)).replace(/</g, '&lt;');
+
+    const rows = surveys.map(s => {
+        const who = s.customer_name || s.lead_name || 'Unknown';
+        const email = s.customer_email || s.lead_email || '';
+        const done = s.completed_at ? new Date(s.completed_at).toLocaleDateString() : null;
+        const resp = s.responses && typeof s.responses === 'object'
+            ? Object.entries(s.responses).map(([k, v]) => `<span style="display:inline-block;background:#222;border-radius:5px;padding:2px 8px;margin:2px;font-size:11px;color:#bbb;">${esc(k)}: ${esc(v)}</span>`).join('')
+            : '';
+        return `<tr>
+            <td><strong>${esc(who)}</strong><br><span style="color:var(--text-muted);font-size:12px;">${esc(email)}</span></td>
+            <td>${esc(s.service_type) || '—'}</td>
+            <td>${done ? `<span style="color:#e6c879;font-size:16px;">${stars(s.rating)}</span> <span style="color:var(--text-muted);font-size:12px;">(${s.rating || 0}/5)</span>` : '<span style="color:var(--text-muted);">Awaiting response</span>'}</td>
+            <td style="max-width:340px;">${esc(s.comments) || '<span style="color:var(--text-muted);">—</span>'}${resp ? '<div style="margin-top:5px;">' + resp + '</div>' : ''}</td>
+            <td>${done || `<span style="color:var(--text-muted);font-size:12px;">sent ${s.sent_at ? new Date(s.sent_at).toLocaleDateString() : ''}</span>`}</td>
+        </tr>`;
+    }).join('');
+
+    content.innerHTML = `
+        <div style="display:flex;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
+            <div class="card" style="flex:1;min-width:160px;padding:18px 22px;"><div style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:1px;">Avg. rating</div><div style="font-size:30px;font-weight:700;color:#e6c879;">${avg} <span style="font-size:15px;">/ 5</span></div></div>
+            <div class="card" style="flex:1;min-width:160px;padding:18px 22px;"><div style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:1px;">Completed</div><div style="font-size:30px;font-weight:700;">${completed.length}</div></div>
+            <div class="card" style="flex:1;min-width:160px;padding:18px 22px;"><div style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:1px;">Sent</div><div style="font-size:30px;font-weight:700;">${surveys.length}</div></div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Customer Surveys</h2></div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead><tr><th>Customer</th><th>Service</th><th>Rating</th><th>Feedback</th><th>Completed</th></tr></thead>
+                    <tbody>${rows || `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">No surveys yet. They're sent automatically when a service is marked completed.</td></tr>`}</tbody>
+                </table>
+            </div>
+        </div>`;
+}
+
+async function renderSalesAgreements(content) {
+    const token = getAuthToken();
+    content.innerHTML = `<div style="padding:24px;color:var(--text-muted);">Loading sales agreements…</div>`;
+    let warning = '';
+    try {
+        const res = await fetch(`${API_URL}/api/sales-agreements`, { headers: { 'Authorization': `Bearer ${token}` } });
+        let data = {};
+        try { data = await res.json(); } catch (_) { data = {}; }
+        SA_CACHE = (data && Array.isArray(data.agreements)) ? data.agreements : [];
+        if (!res.ok && !(data && data.agreements)) warning = (data && data.message) || '';
+    } catch (e) {
+        // Don't show a dead-end error — render the (empty) UI so "New Sales Agreement" still works.
+        SA_CACHE = [];
+    }
+    const rows = SA_CACHE.map(a => {
+        const created = a.created_at ? new Date(a.created_at).toLocaleDateString() : '';
+        const start = a.start_date ? new Date(a.start_date).toLocaleDateString() : '—';
+        const who = a.customer_name || a.lead_name || 'Unassigned';
+        const email = a.customer_email || a.lead_email || '';
+        const sel = SA_STATUSES.map(s => `<option value="${s}" ${a.status === s ? 'selected' : ''}>${s}</option>`).join('');
+        return `<tr>
+            <td><strong>${saEsc(a.agreement_number || ('#' + a.id))}</strong><br><span style="color:var(--text-muted);font-size:12px;">${created}</span></td>
+            <td><strong>${saEsc(who)}</strong><br><span style="color:var(--text-muted);font-size:12px;">${saEsc(email)}</span></td>
+            <td>${saEsc(saServiceLabel(a.service_type))}<br><span style="color:var(--text-muted);font-size:12px;">${saEsc(a.package_name || '')}</span></td>
+            <td>${saEsc(a.project || '—')}</td>
+            <td>${saMoney(a.price)}</td>
+            <td>${start}</td>
+            <td><select onchange="updateSalesAgreementStatus(${a.id}, this.value)" style="padding:6px;border-radius:6px;">${sel}</select></td>
+            <td style="white-space:nowrap;">
+                <button class="btn btn-secondary" style="padding:6px 10px;" onclick="openSalesAgreementModal(${a.id})">Edit</button>
+                <button class="btn btn-secondary" style="padding:6px 10px;color:#e25;" onclick="deleteSalesAgreement(${a.id})">Delete</button>
+            </td>
+        </tr>`;
+    }).join('');
+    content.innerHTML = `
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Sales Agreements (${SA_CACHE.length})</h2>
+                <button class="btn btn-primary" onclick="openSalesAgreementModal()">New Sales Agreement</button>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead><tr><th>Agreement</th><th>Client / Lead</th><th>Service</th><th>Project</th><th>Price</th><th>Start</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>${rows || `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">No sales agreements yet. Click “New Sales Agreement” to create one.</td></tr>`}</tbody>
+                </table>
+            </div>
+        </div>`;
+}
+</script>
+
+<!-- ============================================================
+     PORTED FROM CROWN - admin messaging inbox (shared client_messages
+     thread), notifications, SMS threads, marketing blast, unread badges.
+     Self-contained: own <style> and IIFE <script> blocks.
+     Crown's 'overhaul-js' block was NOT ported (decorative sparklines and
+     a second mobile drawer that would fight this portal's layout).
+     ============================================================ -->
+<script id="db-messenger">
+/* =====================================================================
+   DIAMONDBACK MESSENGER (admin) — per-client conversations over the SHARED
+   inbox. Reads/writes the same client_messages the client portal uses,
+   so both sides see the identical thread. Admin sends notify the client
+   by email (link only — the message lives in the portal).
+   ===================================================================== */
+(function () {
+    const MSG = { convos: [], activeLead: null, threads: {}, loaded: false, totalUnread: 0 };
+    window.__MSG = MSG;
+
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const initials = (name) => { const p = String(name || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase(); };
+    const AV = ['#e0518a', '#b08bff', '#4ec1ff', '#3fae6b', '#f5a623', '#6b8cff', '#ef6c5a', '#27b3a3'];
+    const avatarColor = (name) => { let h = 0; for (const ch of String(name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return AV[h % AV.length]; };
+    const tok = () => (typeof getAuthToken === 'function' ? getAuthToken() : (window.authToken || localStorage.getItem('adminToken')));
+    const when = (d) => {
+        if (!d) return '';
+        const t = new Date(d), now = new Date(); if (isNaN(t)) return '';
+        if (t.toDateString() === now.toDateString()) return t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const days = Math.round((now - t) / 86400000);
+        if (days === 1) return 'Yesterday';
+        if (days < 7) return t.toLocaleDateString([], { weekday: 'short' });
+        return t.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    };
+
+    async function loadMessengerData() {
+        const token = tok(); if (!token) return;
+        try {
+            const res = await fetch(`${API_URL}/api/admin/conversations`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            MSG.convos = (data && data.conversations) || [];
+            MSG.totalUnread = MSG.convos.reduce((s, c) => s + (Number(c.unread) || 0), 0);
+            MSG.loaded = true;
+            updateMsgBadges();
+            refreshSmsUnread();
+            if (document.querySelector('.msg-overlay.open')) renderConvoList();
+        } catch (e) { /* offline */ }
+    }
+    window.loadMessengerData = loadMessengerData;
+    window.refreshMsgBadge = function () { try { updateMsgBadges(); } catch (e) {} };
+
+    async function refreshSmsUnread() {
+        const token = tok(); if (!token) return;
+        try {
+            const res = await fetch(`${API_URL}/api/admin/sms/unread-count`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            MSG.smsUnread = (data && data.count) || 0;
+            updateMsgBadges();
+        } catch (e) { /* offline */ }
+    }
+    window.refreshSmsBadge = refreshSmsUnread;
+
+    function updateMsgBadges() {
+        const portal = MSG.totalUnread || 0;
+        const env = portal + (MSG.smsUnread || 0);   // envelope = portal messages + unread texts
+        const tb = document.getElementById('msgTriggerBadge');
+        if (tb) { tb.textContent = env > 99 ? '99+' : env; tb.style.display = env > 0 ? 'flex' : 'none'; }
+        const nb = document.getElementById('notifBadge');
+        if (nb) { nb.textContent = portal > 99 ? '99+' : portal; nb.style.display = portal > 0 ? 'flex' : 'none'; }
+    }
+
+    function ensureOverlay() {
+        let ov = document.getElementById('msgOverlay');
+        if (ov) return ov;
+        ov = document.createElement('div');
+        ov.id = 'msgOverlay';
+        ov.className = 'msg-overlay';
+        ov.innerHTML = `
+            <div class="msg-window" id="msgWindow">
+                <div class="msg-list-pane">
+                    <div class="msg-list-head">
+                        <h3><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent)"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg> Messages</h3>
+                        <input class="msg-search" id="msgSearch" placeholder="Search clients" oninput="renderConvoList()">
+                    </div>
+                    <div class="msg-list" id="msgList"></div>
+                </div>
+                <div class="msg-thread-pane" id="msgThreadPane"></div>
+            </div>`;
+        ov.addEventListener('click', (e) => { if (e.target === ov) closeMessenger(); });
+        document.body.appendChild(ov);
+        return ov;
+    }
+
+    function openMessenger(focusLead) {
+        const ov = ensureOverlay();
+        renderConvoList();
+        if (focusLead != null) openThread(focusLead);
+        else if (MSG.activeLead) openThread(MSG.activeLead);
+        else if (window.innerWidth > 720 && MSG.convos.length) openThread(MSG.convos[0].lead_id);
+        else renderEmptyThread();
+        requestAnimationFrame(() => ov.classList.add('open'));
+        if (!MSG.loaded) loadMessengerData();
+    }
+    window.openMessenger = openMessenger;
+    function closeMessenger() { const ov = document.getElementById('msgOverlay'); if (ov) ov.classList.remove('open'); }
+    window.closeMessenger = closeMessenger;
+
+    function renderConvoList() {
+        const list = document.getElementById('msgList'); if (!list) return;
+        const q = (document.getElementById('msgSearch')?.value || '').toLowerCase().trim();
+        let convos = [...MSG.convos];
+        if (q) convos = convos.filter(c => (`${c.name} ${c.email} ${c.last_body || ''}`).toLowerCase().includes(q));
+        if (!convos.length) { list.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--text-muted);font-size:13px;">${MSG.loaded ? 'No conversations yet.' : 'Loading…'}</div>`; return; }
+        list.innerHTML = convos.map(c => {
+            const unread = Number(c.unread) || 0;
+            const preview = c.last_body ? (c.last_sender === 'admin' ? 'You: ' + c.last_body : c.last_body) : (c.request_count > 0 ? c.request_count + ' service request(s)' : 'No messages yet');
+            return `<div class="msg-convo ${String(c.lead_id) === String(MSG.activeLead) ? 'active' : ''} ${unread ? 'unread' : ''}" onclick="__openThread(${c.lead_id})">
+                <div class="msg-avatar" style="background:${avatarColor(c.name)}">${esc(initials(c.name))}</div>
+                <div class="msg-convo-body">
+                    <div class="msg-convo-top"><span class="msg-convo-name">${esc(c.name || 'Unknown')}</span><span class="msg-convo-time">${esc(when(c.last_at))}</span></div>
+                    <div class="msg-convo-preview">${esc(preview).slice(0, 64)}</div>
+                </div>
+                ${unread ? `<span class="msg-unread-dot"></span>` : ''}
+            </div>`;
+        }).join('');
+    }
+    window.renderConvoList = renderConvoList;
+
+    function renderEmptyThread() {
+        const pane = document.getElementById('msgThreadPane'); if (!pane) return;
+        pane.innerHTML = `<div class="msg-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg><div>Pick a client to read and reply.</div></div>`;
+    }
+
+    async function openThread(leadId) {
+        MSG.activeLead = leadId;
+        const pane = document.getElementById('msgThreadPane'); const win = document.getElementById('msgWindow');
+        if (win) win.classList.add('show-thread');
+        if (pane) pane.innerHTML = `<div class="msg-empty">Loading…</div>`;
+        let data;
+        try {
+            data = await (await fetch(`${API_URL}/api/admin/conversations/${leadId}/messages`, { headers: { 'Authorization': `Bearer ${tok()}` } })).json();
+        } catch (e) { if (pane) pane.innerHTML = `<div class="msg-empty">Could not load conversation.</div>`; return; }
+        const client = data.client || {}; const messages = data.messages || []; const requests = data.requests || [];
+        MSG.threads[leadId] = messages;
+        // mark read locally
+        const cv = MSG.convos.find(c => String(c.lead_id) === String(leadId)); if (cv) cv.unread = 0;
+        MSG.totalUnread = MSG.convos.reduce((s, c) => s + (Number(c.unread) || 0), 0); updateMsgBadges();
+
+        const reqCard = requests.length ? `<div class="msg-req-card"><div class="rh">Service Requests (${requests.length})</div>${requests.slice(0, 4).map(r => `<div class="row"><b>${esc(r.service_type || 'Service')}</b> — ${esc(r.project || '—')} · <span style="text-transform:capitalize">${esc(r.status || '')}</span></div>`).join('')}</div>` : '';
+        let lastDay = '';
+        const bubbles = messages.map(m => {
+            const day = m.created_at ? new Date(m.created_at).toLocaleDateString([], { month: 'long', day: 'numeric' }) : '';
+            let dd = ''; if (day && day !== lastDay) { dd = `<div class="msg-daydiv">${esc(day)}</div>`; lastDay = day; }
+            const txt = esc(m.body).replace(/\n/g, '<br>');
+            if (m.kind === 'marketing') return `${dd}<div class="msg-req-card" style="align-self:stretch;max-width:100%;"><div class="rh">★ Marketing — ${esc(m.subject || 'Offer')}</div><div style="font-size:14px;color:var(--text-primary);">${txt}</div></div><div class="msg-meta me">Sent</div>`;
+            const side = m.sender === 'admin' ? 'me' : 'them';
+            return `${dd}<div class="msg-bubble ${side}">${txt}</div><div class="msg-meta ${side}">${m.sender === 'admin' ? 'You' : esc((client.name || 'Client').split(' ')[0])} · ${esc(when(m.created_at))}</div>`;
+        }).join('');
+
+        const sub = [client.email, client.phone].filter(Boolean).join(' · ');
+        pane.innerHTML = `
+            <div class="msg-thread-head">
+                <button class="msg-back" onclick="document.getElementById('msgWindow').classList.remove('show-thread')" aria-label="Back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+                <div class="msg-avatar" style="background:${avatarColor(client.name)}">${esc(initials(client.name))}</div>
+                <div class="msg-thread-title"><div class="n">${esc(client.name || 'Client')}</div><div class="s">${esc(sub)}</div></div>
+                <button class="msg-close" onclick="closeMessenger()" aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="msg-body" id="msgBody">${reqCard}${bubbles || '<div style="text-align:center;color:var(--text-muted);font-size:13px;margin-top:20px;">No messages yet — say hello.</div>'}</div>
+            <div class="msg-composer">
+                <textarea id="msgInput" placeholder="Message ${esc((client.name || 'client').split(' ')[0])}…" rows="1"
+                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();__sendMsg(${leadId});}"></textarea>
+                <button class="msg-send" id="msgSendBtn" onclick="__sendMsg(${leadId})" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+            </div>`;
+        const body = document.getElementById('msgBody'); if (body) body.scrollTop = body.scrollHeight;
+        const inp = document.getElementById('msgInput'); if (inp && window.innerWidth > 720) inp.focus();
+        renderConvoList();
+    }
+    window.__openThread = openThread;
+
+    async function sendMsg(leadId) {
+        const inp = document.getElementById('msgInput'); const text = (inp?.value || '').trim(); if (!text) return;
+        const btn = document.getElementById('msgSendBtn'); if (btn) btn.disabled = true;
+        try {
+            const res = await fetch(`${API_URL}/api/admin/conversations/${leadId}/messages`, {
+                method: 'POST', headers: { 'Authorization': `Bearer ${tok()}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ body: text })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
+                if (inp) { inp.value = ''; inp.style.height = 'auto'; }
+                const body = document.getElementById('msgBody');
+                if (body) { body.insertAdjacentHTML('beforeend', `<div class="msg-bubble me">${esc(text).replace(/\n/g, '<br>')}</div><div class="msg-meta me">You · just now · client notified</div>`); body.scrollTop = body.scrollHeight; }
+                const cv = MSG.convos.find(c => String(c.lead_id) === String(leadId));
+                if (cv) { cv.last_body = text; cv.last_at = new Date().toISOString(); cv.last_sender = 'admin'; }
+                if (typeof showToast === 'function') showToast('Message sent — client emailed a link', 'success');
+                renderConvoList();
+            } else if (typeof showToast === 'function') showToast(data.message || 'Failed to send', 'error');
+        } catch (e) { if (typeof showToast === 'function') showToast('Network error', 'error'); }
+        finally { if (btn) btn.disabled = false; }
+    }
+    window.__sendMsg = sendMsg;
+
+    // Service Requests page "Reply" -> open that customer's conversation.
+    window.openServiceReply = async function (reqId) {
+        try {
+            const data = await (await fetch(`${API_URL}/api/admin/service-requests`, { headers: { 'Authorization': `Bearer ${tok()}` } })).json();
+            const r = (data.requests || []).find(x => String(x.id) === String(reqId));
+            if (r && r.lead_id) { await loadMessengerData(); openMessenger(r.lead_id); return; }
+        } catch (e) {}
+        openMessenger();
+    };
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMessenger(); });
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(loadMessengerData, 1800);
+        setInterval(loadMessengerData, 60000);
+    });
+})();
+</script>
+<script id="db-marketing-and-badges">
+/* ---- Portal message deal templates (Marketing) ---- */
+const DIAMONDBACK_PORTAL_TEMPLATES = {
+    launch: {
+        label: 'Website / platform launch offer',
+        body: "Hi! We're taking on new website and platform builds this month. If a rebuild has been on your list, this is a good window - we can scope it and quote a fixed price.\n\nReply here or book a call through your portal.",
+    },
+    polishing: {
+        subject: 'Polishing Special — Bring Back the Shine',
+        body: "Hi! Treat your project to a machine polish at a special rate this month. We'll remove light swirls and oxidation to restore a deep, wet-look gloss.\n\nReply here to schedule, or book right from your portal."
+    },
+    paint: {
+        subject: 'CRM Implementation Offer — Erase Swirls & Scratches',
+        body: "Hi! We're running a deal on multi-stage paint correction. Perfect for removing swirl marks, water spots, and scratches before a coating.\n\nReply to this message and we'll get you on the calendar."
+    },
+    detail: {
+        subject: 'Detailing Package Deal — Inside & Out',
+        body: "Hi! Refresh your ride with our full interior + exterior detailing package, now at a special price. Includes deep interior clean, exterior wash, and finishing touches.\n\nReply here to book your appointment."
+    },
+    summer: {
+        subject: 'Summer Deals at Diamondback Coding ☀️',
+        body: "Hi! Summer is the perfect time to protect your paint from heat, UV, and bugs. We've got special summer pricing across web builds, CRM work, and integrations.\n\nReply to this message or book through your portal to claim your summer deal."
+    },
+    maintenance: {
+        subject: 'Maintenance Plan — Keep It Looking New',
+        body: "Hi! Keep your coating performing its best with our maintenance plan — scheduled wash + decontamination + top-up at a member rate.\n\nReply here and we'll set you up."
+    },
+    custom: { subject: '', body: '' }
+};
+window.applyPortalTemplate = function (key) {
+    const t = DIAMONDBACK_PORTAL_TEMPLATES[key]; if (!t) return;
+    const s = document.getElementById('portalSubject'); const b = document.getElementById('portalBody');
+    if (s) s.value = t.subject; if (b) b.value = t.body;
+};
+window.sendPortalBroadcast = async function () {
+    const subject = (document.getElementById('portalSubject')?.value || '').trim();
+    const body = (document.getElementById('portalBody')?.value || '').trim();
+    const audience = document.getElementById('portalAudience')?.value || 'customers';
+    const msg = document.getElementById('portalSendMsg');
+    if (!body) { if (msg) { msg.style.color = '#ef4444'; msg.textContent = 'Write a message first.'; } return; }
+    const token = (typeof getAuthToken === 'function' ? getAuthToken() : (window.authToken || localStorage.getItem('adminToken')));
+    if (msg) { msg.style.color = 'var(--text-secondary)'; msg.textContent = 'Sending…'; }
+    try {
+        const res = await fetch(`${API_URL}/api/admin/marketing/broadcast`, {
+            method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audience, subject, body })
+        });
+        const d = await res.json();
+        if (res.ok && d.success) {
+            if (msg) { msg.style.color = '#16a34a'; msg.textContent = `Sent to ${d.sent} portal inbox${d.sent === 1 ? '' : 'es'}.`; }
+            const sb = document.getElementById('portalSubject'), bb = document.getElementById('portalBody');
+            if (sb) sb.value = ''; if (bb) bb.value = '';
+            if (typeof showToast === 'function') showToast(`Posted to ${d.sent} portal inbox(es)`, 'success');
+        } else if (msg) { msg.style.color = '#ef4444'; msg.textContent = d.message || 'Could not send.'; }
+    } catch (e) { if (msg) { msg.style.color = '#ef4444'; msg.textContent = 'Network error.'; } }
+};
+
+/* ---- Badge audit: make every sidebar badge populate on load, not only
+        when its tab is opened. Runs after the app's own updateBadges(). ---- */
+(function () {
+    function tok() { return (typeof getAuthToken === 'function' ? getAuthToken() : (window.authToken || localStorage.getItem('adminToken'))); }
+    function setBadge(id, n) {
+        const b = document.getElementById(id); if (!b) return;
+        b.textContent = n; b.style.display = (Number(n) > 0) ? '' : (b.classList.contains('nav-badge') ? '' : 'none');
+    }
+    async function refreshAuxBadges() {
+        const token = tok(); if (!token) return;
+        const H = { 'Authorization': `Bearer ${token}` };
+        // service requests (open)
+        try {
+            const d = await (await fetch(`${API_URL}/api/admin/service-requests`, { headers: H })).json();
+            const open = (d.requests || []).filter(r => r.status !== 'completed' && r.status !== 'closed').length;
+            setBadge('serviceRequestsBadge', open);
+        } catch (e) {}
+        // schedule (upcoming appointments)
+        try {
+            const d = await (await fetch(`${API_URL}/api/appointments/upcoming`, { headers: H })).json();
+            const arr = d.appointments || d.data || [];
+            setBadge('scheduleBadge', arr.length);
+        } catch (e) {}
+        // setup calls
+        try {
+            const d = await (await fetch(`${API_URL}/api/appointments/setup-calls`, { headers: H })).json();
+            const now = new Date();
+            const c = (d.appointments || []).filter(a => new Date(a.scheduled_time) > now && a.status === 'scheduled').length;
+            setBadge('setupCallsBadge', c);
+        } catch (e) {}
+        // subscriptions (if endpoint exists)
+        try {
+            const r = await fetch(`${API_URL}/api/admin/subscriptions`, { headers: H });
+            if (r.ok) { const d = await r.json(); const arr = d.subscriptions || d.data || []; setBadge('subscriptionsBadge', (arr.filter ? arr.filter(s => (s.status || '') === 'active').length : arr.length)); }
+        } catch (e) {}
+    }
+    window.refreshAuxBadges = refreshAuxBadges;
+
+    // Wrap the app's updateBadges so aux badges refresh whenever it runs.
+    function hook() {
+        if (typeof window.updateBadges === 'function' && !window.__auxHooked) {
+            const orig = window.updateBadges;
+            window.updateBadges = async function () { try { await orig.apply(this, arguments); } finally { refreshAuxBadges(); } };
+            window.__auxHooked = true;
+        }
+        refreshAuxBadges();
+    }
+    document.addEventListener('DOMContentLoaded', () => setTimeout(hook, 2000));
+    setInterval(refreshAuxBadges, 60000);
+})();
+</script>
+<script id="db-notifications-live">
+/* Notifications bell (separate from Messages) + live refresh so badges
+   update without a manual page refresh. */
+(function () {
+    const SEEN_KEY = 'dbNotifSeen';
+    const NT = { items: [], lastSeen: parseInt(localStorage.getItem(SEEN_KEY) || '0', 10) || 0 };
+    function tok() { return (typeof getAuthToken === 'function' ? getAuthToken() : (window.authToken || localStorage.getItem('adminToken'))); }
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const when = (d) => { if (!d) return ''; const t = new Date(d), now = new Date(); const m = Math.round((now - t) / 60000); if (m < 1) return 'just now'; if (m < 60) return m + 'm ago'; const h = Math.round(m / 60); if (h < 24) return h + 'h ago'; return t.toLocaleDateString([], { month: 'short', day: 'numeric' }); };
+    const ICONS = {
+        request: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+        lead: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+        payment: '<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>'
+    };
+
+    async function loadNotifications() {
+        const t = tok(); if (!t) return;
+        try {
+            const d = await (await fetch(`${API_URL}/api/admin/notifications`, { headers: { 'Authorization': `Bearer ${t}` } })).json();
+            NT.items = (d && d.notifications) || [];
+        } catch (e) { return; }
+        const unseen = NT.items.filter(n => new Date(n.time || 0).getTime() > NT.lastSeen).length;
+        const b = document.getElementById('notifBadge');
+        if (b) { b.textContent = unseen > 99 ? '99+' : unseen; b.style.display = unseen > 0 ? 'flex' : 'none'; }
+        if (document.getElementById('notifPanel')) renderPanel();
+    }
+    window.loadNotifications = loadNotifications;
+
+    function renderPanel() {
+        const panel = document.getElementById('notifPanel'); if (!panel) return;
+        const rows = NT.items.length ? NT.items.map(n => `
+            <div class="notif-row" onclick="gotoNotif('${n.section}')">
+                <div class="notif-ic notif-${n.type}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${ICONS[n.icon] || ICONS.lead}</svg></div>
+                <div class="notif-tx"><div class="notif-t">${esc(n.title)}</div>${n.detail ? `<div class="notif-d">${esc(n.detail)}</div>` : ''}</div>
+                <div class="notif-tm">${esc(when(n.time))}</div>
+            </div>`).join('') : `<div style="padding:34px 16px;text-align:center;color:var(--text-muted);font-size:13px;">You're all caught up.</div>`;
+        panel.querySelector('.notif-list').innerHTML = rows;
+    }
+    window.gotoNotif = function (section) { closeNotifications(); if (window.renderSection) renderSection(section); };
+
+    function ensurePanel() {
+        let p = document.getElementById('notifPanel'); if (p) return p;
+        p = document.createElement('div'); p.id = 'notifPanel'; p.className = 'notif-panel';
+        p.innerHTML = `<div class="notif-head">Notifications</div><div class="notif-list"></div>`;
+        document.body.appendChild(p);
+        return p;
+    }
+    window.openNotifications = function (e) {
+        if (e) e.stopPropagation();
+        const existing = document.getElementById('notifPanel');
+        if (existing && existing.classList.contains('open')) { closeNotifications(); return; }
+        const p = ensurePanel();
+        const btn = document.getElementById('notifBtn'); const r = btn.getBoundingClientRect();
+        p.style.top = (r.bottom + 8) + 'px';
+        p.style.right = Math.max(12, window.innerWidth - r.right) + 'px';
+        renderPanel();
+        requestAnimationFrame(() => p.classList.add('open'));
+        // mark seen
+        NT.lastSeen = Date.now(); localStorage.setItem(SEEN_KEY, String(NT.lastSeen));
+        const b = document.getElementById('notifBadge'); if (b) b.style.display = 'none';
+    };
+    window.closeNotifications = function () { const p = document.getElementById('notifPanel'); if (p) p.classList.remove('open'); };
+    document.addEventListener('click', (e) => {
+        const p = document.getElementById('notifPanel');
+        if (p && p.classList.contains('open') && !p.contains(e.target) && e.target.closest('#notifBtn') === null) closeNotifications();
+    });
+
+    // ---- LIVE REFRESH: poll faster + refresh instantly when tab regains focus ----
+    function refreshAll() {
+        if (window.loadMessengerData) loadMessengerData();   // envelope badge
+        if (window.updateBadges) updateBadges();              // leads / clients / follow-ups / invoices nav badges
+        if (window.refreshAuxBadges) refreshAuxBadges();      // service / schedule / setup-call / subscription badges
+        loadNotifications();                                  // bell badge
+    }
+    window.dbRefreshAll = refreshAll;
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshAll(); });
+    window.addEventListener('focus', refreshAll);
+    document.addEventListener('DOMContentLoaded', () => { setTimeout(refreshAll, 2200); });
+    setInterval(refreshAll, 20000);  // every 20s while open
+})();
+</script>
+<style id="db-notif-css">
+.notif-panel{position:fixed;width:360px;max-width:calc(100vw - 24px);max-height:70vh;overflow:hidden;display:flex;flex-direction:column;
+  background:var(--bg-primary);border:1px solid var(--border-default);border-radius:16px;box-shadow:var(--shadow-xl);
+  z-index:10050;opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .16s,transform .16s;}
+.notif-panel.open{opacity:1;transform:none;pointer-events:auto;}
+.notif-head{padding:16px 18px;font-weight:800;font-size:15px;color:var(--text-primary);border-bottom:1px solid var(--border-subtle);}
+.notif-list{overflow-y:auto;}
+.notif-row{display:flex;gap:12px;align-items:flex-start;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--border-subtle);transition:background .12s;}
+.notif-row:hover{background:var(--bg-hover);}
+.notif-ic{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;}
+.notif-ic svg{width:17px;height:17px;}
+.notif-request{background:#4C6FFF;}.notif-lead{background:#9B6DFF;}.notif-payment{background:#16a34a;}
+.notif-tx{flex:1;min-width:0;}
+.notif-t{font-size:13.5px;font-weight:600;color:var(--text-primary);}
+.notif-d{font-size:12px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.notif-tm{font-size:11px;color:var(--text-faint);flex-shrink:0;}
+</style>
+
+<style id="db-sms-css">
+/* ===== SMS conversation (iMessage-style) + bulk blast ===== */
+.sms-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10000;}
+.sms-modal{width:420px;max-width:94vw;height:620px;max-height:90vh;background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35);}
+.sms-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border-subtle);background:var(--bg-secondary);}
+.sms-head .av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand-gold-light),var(--brand-gold));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;}
+.sms-head .who{flex:1;min-width:0;}
+.sms-head .who .n{font-weight:700;font-size:14px;color:var(--text-primary);}
+.sms-head .who .s{font-size:11px;color:var(--text-muted);}
+.sms-head .x{background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted);}
+.sms-feed{flex:1;overflow-y:auto;padding:18px 14px;display:flex;flex-direction:column;gap:3px;background:var(--bg-primary);}
+.sms-day{align-self:center;font-size:11px;color:var(--text-faint);margin:10px 0 6px;}
+.sms-bub{max-width:74%;padding:9px 13px;border-radius:18px;font-size:14px;line-height:1.4;word-wrap:break-word;white-space:pre-wrap;}
+.sms-bub.them{align-self:flex-start;background:var(--bg-tertiary);color:var(--text-primary);border-bottom-left-radius:5px;}
+.sms-bub.me{align-self:flex-end;background:linear-gradient(135deg,var(--brand-gold-light),var(--brand-gold));color:#fff;border-bottom-right-radius:5px;}
+.sms-meta{font-size:10.5px;color:var(--text-faint);margin:1px 2px 8px;}
+.sms-meta.me{align-self:flex-end;}
+.sms-meta.them{align-self:flex-start;}
+.sms-compose{display:flex;gap:8px;align-items:flex-end;padding:12px 14px;border-top:1px solid var(--border-subtle);background:var(--bg-secondary);}
+.sms-compose textarea{flex:1;resize:none;max-height:120px;padding:10px 14px;border:1px solid var(--border-default);border-radius:20px;background:var(--bg-primary);color:var(--text-primary);font-size:14px;font-family:inherit;}
+.sms-send{flex-shrink:0;width:38px;height:38px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--brand-gold-light),var(--brand-gold));color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.sms-send:disabled{opacity:.5;cursor:default;}
+.sms-empty{margin:auto;text-align:center;color:var(--text-muted);font-size:13px;padding:0 24px;}
+.sms-optout{margin:auto;text-align:center;color:var(--status-lost,#c0392b);font-size:12.5px;padding:14px 20px;background:var(--bg-tertiary);border-radius:12px;}
+</style>
+
+<script id="db-sms-ui">
+(function () {
+  const tok = () => (typeof getAuthToken === 'function' ? getAuthToken() : (window.authToken || localStorage.getItem('adminToken')));
+  const H = () => ({ 'Authorization': `Bearer ${tok()}`, 'Content-Type': 'application/json' });
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+  const initials = (n) => (n || 'DB').trim().split(/\s+/).map(s => s[0]).slice(0,2).join('').toUpperCase() || 'CC';
+  function fmtTime(d){ if(!d) return ''; const t=new Date(d); if(isNaN(t)) return ''; return t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); }
+  function fmtDay(d){ if(!d) return ''; const t=new Date(d), now=new Date(); if(isNaN(t)) return '';
+    if(t.toDateString()===now.toDateString()) return 'Today';
+    const diff=Math.round((now-t)/86400000); if(diff===1) return 'Yesterday';
+    return t.toLocaleDateString([], {month:'long',day:'numeric'}); }
+
+  let CUR = { leadId:null, name:'', poll:null, sig:'', optOut:false };
+
+  function sig(msgs){ return msgs.length + '|' + (msgs.length ? (msgs[msgs.length-1].id || msgs[msgs.length-1].sent_at) : ''); }
+
+  function feedHTML(msgs){
+    if(!msgs.length) return `<div class="sms-empty">No texts yet. Send the first message below.</div>`;
+    let lastDay='', out='';
+    msgs.forEach(m => {
+      const day = fmtDay(m.sent_at);
+      if(day && day!==lastDay){ out += `<div class="sms-day">${esc(day)}</div>`; lastDay=day; }
+      const me = m.direction==='outbound';
+      out += `<div class="sms-bub ${me?'me':'them'}">${esc(m.content)}</div>`;
+      out += `<div class="sms-meta ${me?'me':'them'}">${me?'Sent':'Reply'} · ${esc(fmtTime(m.sent_at))}</div>`;
+    });
+    return out;
+  }
+
+  async function load(){
+    try{
+      const d = await (await fetch(`${API_URL}/api/admin/leads/${CUR.leadId}/sms-thread`, { headers: H() })).json();
+      if(!d.success) return null;
+      CUR.optOut = !!(d.lead && d.lead.sms_opt_out);
+      return d;
+    }catch(e){ return null; }
+  }
+
+  function paint(d){
+    const feed = document.getElementById('smsFeed'); if(!feed) return;
+    const msgs = (d && d.messages) || [];
+    const newSig = sig(msgs);
+    if(newSig === CUR.sig) return;       // nothing changed — don't disrupt
+    const ta = document.getElementById('smsInput'); const draft = ta ? ta.value : '';
+    feed.innerHTML = feedHTML(msgs);
+    feed.scrollTop = feed.scrollHeight;
+    const ta2 = document.getElementById('smsInput'); if(ta2 && draft){ ta2.value = draft; }
+    CUR.sig = newSig;
+    // opt-out lock
+    const comp = document.getElementById('smsCompose');
+    if(comp){
+      if(CUR.optOut){ comp.innerHTML = `<div class="sms-optout">This contact replied STOP and has opted out of texts. You can't message them until they reply START.</div>`; }
+    }
+  }
+
+  window.openSmsThread = async function(leadId, name){
+    CUR = { leadId, name: name || '', poll:null, sig:'', optOut:false };
+    const ov = document.createElement('div');
+    ov.className = 'sms-overlay'; ov.id = 'smsOverlay';
+    ov.innerHTML = `
+      <div class="sms-modal" onclick="event.stopPropagation()">
+        <div class="sms-head">
+          <div class="av">${esc(initials(name))}</div>
+          <div class="who"><div class="n">${esc(name || 'Lead')}</div><div class="s">Text message · Diamondback Coding</div></div>
+          <button class="x" onclick="closeSmsThread()">&times;</button>
+        </div>
+        <div class="sms-feed" id="smsFeed"><div class="sms-empty">Loading…</div></div>
+        <div class="sms-compose" id="smsCompose">
+          <textarea id="smsInput" rows="1" placeholder="Text message…"
+            oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendSmsInThread();}"></textarea>
+          <button class="sms-send" id="smsSendBtn" onclick="sendSmsInThread()" aria-label="Send">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>`;
+    ov.onclick = closeSmsThread;
+    document.body.appendChild(ov);
+
+    const d = await load(); paint(d);
+    // mark inbound read
+    fetch(`${API_URL}/api/admin/leads/${leadId}/sms-thread/read`, { method:'POST', headers: H() }).catch(()=>{});
+    // poll for replies while open
+    CUR.poll = setInterval(async () => { paint(await load()); }, 7000);
+  };
+
+  window.closeSmsThread = function(){
+    if(CUR.poll) clearInterval(CUR.poll);
+    const ov = document.getElementById('smsOverlay'); if(ov) ov.remove();
+    if(window.refreshSmsBadge) window.refreshSmsBadge();
+  };
+
+  window.sendSmsInThread = async function(){
+    const inp = document.getElementById('smsInput'); const txt = (inp?.value || '').trim(); if(!txt) return;
+    const btn = document.getElementById('smsSendBtn'); if(btn) btn.disabled = true;
+    try{
+      const r = await fetch(`${API_URL}/api/admin/leads/${CUR.leadId}/send-sms`, { method:'POST', headers: H(), body: JSON.stringify({ message: txt }) });
+      const d = await r.json();
+      if(r.ok && d.success){
+        if(inp){ inp.value=''; inp.style.height='auto'; }
+        CUR.sig=''; paint(await load());
+      } else {
+        if(typeof showToast==='function') showToast(d.message || 'Could not send text.', 'error');
+        else alert(d.message || 'Could not send text.');
+      }
+    }catch(e){ if(typeof showToast==='function') showToast('Network error sending text.', 'error'); }
+    finally{ if(btn) btn.disabled = false; }
+  };
+
+  /* ----- Bulk SMS blast modal ----- */
+  window.openSmsBlast = function(audience, label, count){
+    const ov = document.createElement('div');
+    ov.className='sms-overlay'; ov.id='smsBlastOverlay';
+    ov.innerHTML = `
+      <div class="sms-modal" style="height:auto;max-height:80vh;" onclick="event.stopPropagation()">
+        <div class="sms-head">
+          <div class="who"><div class="n">Text ${esc(label || 'Audience')}</div><div class="s">${count} recipient${count==1?'':'s'} with a phone number</div></div>
+          <button class="x" onclick="closeSmsBlast()">&times;</button>
+        </div>
+        <div style="padding:18px 18px 6px;">
+          <textarea id="smsBlastBody" rows="5" placeholder="Write your text… Use {{name}} to personalize." style="width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid var(--border-default);border-radius:12px;background:var(--bg-primary);color:var(--text-primary);font-size:14px;font-family:inherit;resize:vertical;"></textarea>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Contacts who replied STOP are skipped automatically. Standard message rates apply.</div>
+        </div>
+        <div class="sms-compose" style="justify-content:flex-end;">
+          <button class="btn btn-secondary" onclick="closeSmsBlast()">Cancel</button>
+          <button class="btn btn-primary" id="smsBlastBtn" onclick="sendSmsBlast('${audience}', ${count})">Send Texts</button>
+        </div>
+      </div>`;
+    ov.onclick = closeSmsBlast;
+    document.body.appendChild(ov);
+  };
+  window.closeSmsBlast = function(){ const ov=document.getElementById('smsBlastOverlay'); if(ov) ov.remove(); };
+  window.sendSmsBlast = async function(audience, count){
+    const body = (document.getElementById('smsBlastBody')?.value || '').trim();
+    if(!body){ if(typeof showToast==='function') showToast('Write a message first.', 'error'); return; }
+    if(!confirm(`Send this text to ${count} recipient${count==1?'':'s'}? This sends immediately.`)) return;
+    const btn = document.getElementById('smsBlastBtn'); if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
+    try{
+      const r = await fetch(`${API_URL}/api/admin/sms/blast`, { method:'POST', headers: H(), body: JSON.stringify({ audience, message: body }) });
+      const d = await r.json();
+      if(r.ok && d.success){
+        if(typeof showToast==='function') showToast(`Sent ${d.sent} text${d.sent==1?'':'s'}.${d.skipped?` ${d.skipped} skipped.`:''}`, 'success');
+        closeSmsBlast();
+      } else { if(typeof showToast==='function') showToast(d.message || 'Blast failed.', 'error'); if(btn){ btn.disabled=false; btn.textContent='Send Texts'; } }
+    }catch(e){ if(typeof showToast==='function') showToast('Network error.', 'error'); if(btn){ btn.disabled=false; btn.textContent='Send Texts'; } }
+  };
+})();
 </script>
 </body>
 </html>

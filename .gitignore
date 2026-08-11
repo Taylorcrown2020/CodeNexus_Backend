@@ -1,1 +1,2 @@
 .env"node_modules/"  then echo ".env"  then git rm -r --cached node_modules
+.env 

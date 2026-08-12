@@ -552,6 +552,61 @@
             }
         }
     </style>
+
+<style id="db-portal-css">
+/* Dual-portal login menu. Values match the existing .dropdown-menu in this
+   page's nav so the two are visually identical. */
+.db-portal { position: relative; display: inline-flex; align-items: center; }
+.db-portal-trigger {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: var(--white, #fff); font: inherit; font-size: 13px;
+    text-transform: uppercase; letter-spacing: .5px;
+}
+.db-portal-trigger svg { transition: transform .3s ease; }
+.db-portal[data-open="true"] .db-portal-trigger svg { transform: rotate(180deg); }
+.db-portal-panel {
+    position: absolute; top: calc(100% + 20px); right: 0;
+    background: #1a1a1a; min-width: 268px; padding: 8px 0;
+    border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.3);
+    opacity: 0; visibility: hidden; transition: all .3s ease; z-index: 1000;
+}
+.db-portal:hover .db-portal-panel,
+.db-portal[data-open="true"] .db-portal-panel {
+    opacity: 1; visibility: visible; top: calc(100% + 10px);
+}
+.db-portal-panel a {
+    display: block; padding: 12px 24px; text-decoration: none;
+    color: rgba(255,255,255,.8); transition: all .2s ease;
+}
+.db-portal-panel a:hover { background: rgba(255,255,255,.1); padding-left: 28px; }
+.db-portal-panel strong {
+    display: block; font-size: 13px; font-weight: 600;
+    letter-spacing: .3px; color: #fff; text-transform: none;
+}
+.db-portal-panel span {
+    display: block; margin-top: 2px; font-size: 11px;
+    color: rgba(255,255,255,.5); letter-spacing: .2px; text-transform: none;
+}
+.db-portal-trigger:focus-visible,
+.db-portal-panel a:focus-visible {
+    outline: 2px solid var(--gold, #f4c87e); outline-offset: 2px;
+}
+/* Mobile: the desktop menu rides on .login-link, which the page already hides
+   under 768px. These list items take over inside the nav overlay. */
+.db-portal-mobile { display: none; }
+@media (max-width: 768px) {
+    .db-portal-mobile { display: block; }
+    .db-portal-mobile > a { display: block; }
+    .db-portal-mobile small {
+        display: block; font-size: 11px; opacity: .55;
+        text-transform: none; letter-spacing: .2px; margin-top: 2px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .db-portal-panel, .db-portal-trigger svg { transition: none; }
+}
+</style>
 </head>
 <body>
 
@@ -567,6 +622,13 @@
             </svg>
             <span>DIAMONDBACK CODING</span>
         </a>
+        <div class="db-portal">
+                    <button type="button" class="db-portal-trigger" aria-expanded="false" aria-haspopup="true">LOG IN <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                    <div class="db-portal-panel" role="menu">
+                        <a href="customer_portal.html" role="menuitem"><strong>Customer Portal</strong><span>Invoices, agreements and messages</span></a>
+                        <a href="client_portal.html" role="menuitem"><strong>CodeNexus CRM</strong><span>For CRM subscribers</span></a>
+                    </div>
+                </div>
         <a href="careers.html" class="back-link">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="19" y1="12" x2="5" y2="12"></line>

@@ -1187,7 +1187,30 @@ async function sendTrackedEmail({ leadId, to, subject, html, isMarketing = false
         'subscription_cancelled',
         'subscription_change',
         'subscription_payment_failed',
-        'subscription_duplicate'
+        'subscription_duplicate',
+        // --- lifecycle / billing (diamondback-lifecycle.js) ---------------
+        // These are transactional. Listing them here strips the open pixel and
+        // link wrapping, which is what keeps a receipt or a dunning notice from
+        // registering as engagement and reheating a lead.
+        'portal_credentials',
+        'sla_ready_to_sign',
+        'sla_signed',
+        'admin_assigned',
+        'invoice_created',
+        'invoice_due',
+        'invoice_paid',
+        'milestone_completed',
+        'project_completed',
+        'portal_message_waiting',
+        'maintenance_agreement',
+        'maintenance_charged',
+        'maintenance_charge_failed',
+        'cancellation_confirmed',
+        'cancellation_reminder',
+        'cancellation_completed',
+        'refund_issued',
+        'crm_subscription_active',
+        'dunning_reminder'
     ];
     const shouldTrack = !confirmationTypes.includes(emailType);
     
@@ -14413,114 +14436,102 @@ app.get('/api/admin/client-accounts', authenticateToken, async (req, res) => {
 
 // Create client account
 app.post('/api/admin/client-accounts', authenticateToken, async (req, res) => {
-    const { leadId, email, temporaryPassword, sendWelcomeEmail } = req.body;
+    // ------------------------------------------------------------------
+    // Creates a CUSTOMER PORTAL account for a customer. Nothing else.
+    //
+    // WHAT CHANGED AND WHY
+    //   This route used to create CRM scaffolding for every promoted lead:
+    //   a client_companies tenant row, client_email_settings, a Brevo sender,
+    //   is_company_admin = TRUE — and it never set portal_kind, leaving it at
+    //   the migration default of 'crm'. The result was that a brand-new
+    //   customer could not sign in at customer_portal.html (which requires
+    //   portal_kind IN ('customer','both')) but COULD sign in to the CodeNexus
+    //   CRM. That is exactly backwards.
+    //
+    //   CRM access is now additive and granted only when someone buys a
+    //   CodeNexus subscription — see lifecycle.onCrmSubscriptionActivated,
+    //   which is the only place client_companies is created.
+    // ------------------------------------------------------------------
+    const { leadId, email, temporaryPassword, sendWelcomeEmail = true } = req.body;
 
     try {
-        // Check the lead exists and is a customer
         const leadCheck = await pool.query(
-            'SELECT id, name, email, company, is_customer, client_password, client_portal_id FROM leads WHERE id = $1',
+            'SELECT id, name, email, is_customer, client_password, portal_kind FROM leads WHERE id = $1',
             [leadId]
         );
-
         if (leadCheck.rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Lead not found.' });
         }
-
         const lead = leadCheck.rows[0];
 
         if (!lead.is_customer) {
             return res.status(403).json({
                 success: false,
-                message: 'Client portals can only be created for customers. Convert this lead to a customer first.'
+                message: 'Convert this lead to a customer first, then create their portal account.'
             });
         }
-
         if (lead.client_password) {
             return res.status(409).json({
                 success: false,
-                message: 'A client portal already exists for this customer. Use Reset Password to change credentials.'
+                message: 'This customer already has a portal account. Use Reset Password to change their credentials.'
             });
         }
 
-        // Generate a unique client_portal_id if this lead doesn't already have one
-        let clientPortalId = lead.client_portal_id;
-        if (!clientPortalId) {
-            // Generate a unique 8-char alphanumeric ID
-            const genId = () => {
-                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-                let id = '';
-                for (let i = 0; i < 8; i++) id += chars[Math.floor(Math.random() * chars.length)];
-                return id;
-            };
-
-            let attempts = 0;
-            while (attempts < 20) {
-                const candidate = genId();
-                const exists = await pool.query('SELECT 1 FROM client_companies WHERE client_portal_id = $1', [candidate]);
-                if (exists.rows.length === 0) { clientPortalId = candidate; break; }
-                attempts++;
-            }
-            if (!clientPortalId) throw new Error('Could not generate a unique portal ID');
-
-            // Create the client_companies record for this portal
-            const companyName = lead.company || lead.name + "'s Company";
-            await pool.query(`
-                INSERT INTO client_companies (client_portal_id, company_name, admin_email, admin_name, total_active_seats, monthly_total, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, 1, 0, NOW(), NOW())
-                ON CONFLICT (client_portal_id) DO NOTHING
-            `, [clientPortalId, companyName, email || lead.email, lead.name]);
-
-            // Link the portal ID to the admin's lead record
-            await pool.query(`
-                UPDATE leads SET client_portal_id = $1, is_company_admin = TRUE, updated_at = NOW() WHERE id = $2
-            `, [clientPortalId, leadId]);
-
-            // Create default email settings so Brevo config is immediately available
-            await pool.query(`
-                INSERT INTO client_email_settings (client_portal_id, company_name, company_email, created_at, updated_at)
-                VALUES ($1, $2, $3, NOW(), NOW())
-                ON CONFLICT (client_portal_id) DO NOTHING
-            `, [clientPortalId, companyName, email || lead.email]).catch(() => {});
-
-            // Auto-register the admin's email as a verified sender in Diamondback's platform Brevo account
-            // so emails from this portal can be sent with their address as the "from" field.
-            brevoRegisterSender(email || lead.email, lead.name).catch(() => {});
-
-            console.log('[CLIENT ACCOUNT] Created portal ID:', clientPortalId, 'for lead:', lead.name);
+        // Update the login email first if the admin supplied a different one.
+        if (email && email.toLowerCase() !== String(lead.email || '').toLowerCase()) {
+            await pool.query('UPDATE leads SET email = $1, updated_at = NOW() WHERE id = $2', [email, leadId]);
         }
 
-        // Hash password and activate the account
-        const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+        const result = await lifecycle.onCustomerCreated({
+            leadId,
+            temporaryPassword,
+            sendCredentials: sendWelcomeEmail,
+        });
 
-        await pool.query(`
-            UPDATE leads
-            SET email = $1,
-                client_password = $2,
-                customer_status = 'active',
-                is_company_admin = TRUE,
-                client_account_created_at = CURRENT_TIMESTAMP,
-                updated_at = NOW()
-            WHERE id = $3
-        `, [email || lead.email, hashedPassword, leadId]);
-
-        const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
-        const updatedLead = leadResult.rows[0];
-
-        if (sendWelcomeEmail && updatedLead) {
-            await sendClientWelcomeEmail(updatedLead.email, updatedLead.name, temporaryPassword);
-        }
-
-        console.log('[CLIENT ACCOUNT] Portal activated for:', updatedLead.name, '| Portal ID:', clientPortalId);
+        const finalEmail = email || lead.email;
+        console.log(`[CUSTOMER ACCOUNT] Customer portal account created for ${lead.name} <${finalEmail}>`);
 
         res.json({
             success: true,
-            message: 'Client portal created successfully.',
-            client_portal_id: clientPortalId,
-            credentials: { email: email || lead.email, temporaryPassword }
+            message: 'Customer portal account created.',
+            portal: 'customer',
+            credentials: {
+                email: finalEmail,
+                temporaryPassword: result.temporaryPassword || temporaryPassword,
+            },
         });
     } catch (error) {
-        console.error('[CLIENT ACCOUNT] Creation failed:', error);
+        console.error('[CUSTOMER ACCOUNT] Creation failed:', error);
         res.status(500).json({ success: false, message: 'Failed to create account: ' + error.message });
+    }
+});
+
+// Grant CodeNexus CRM access on top of an existing customer account. This is
+// the ONLY path that creates CRM tenant scaffolding.
+app.post('/api/admin/client-accounts/:leadId/grant-crm', authenticateToken, async (req, res) => {
+    try {
+        const { companyName, seats } = req.body || {};
+        const lead = (await pool.query(
+            'SELECT id, name, client_password FROM leads WHERE id = $1', [req.params.leadId]
+        )).rows[0];
+        if (!lead) return res.status(404).json({ success: false, message: 'Customer not found.' });
+        if (!lead.client_password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Create their customer portal account first — CRM access is added on top of it.'
+            });
+        }
+        const out = await lifecycle.onCrmSubscriptionActivated({
+            leadId: lead.id, companyName, seats: seats || 1,
+        });
+        res.json({
+            success: true,
+            message: `CRM access granted to ${lead.name}.`,
+            clientPortalId: out.clientPortalId,
+        });
+    } catch (e) {
+        console.error('[GRANT CRM]', e.message);
+        res.status(500).json({ success: false, message: e.message });
     }
 });
 
@@ -15666,7 +15677,13 @@ app.post('/api/client/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password required.' });
 
     try {
-        // Look up by email — must have a client_password (CRM portal account)
+        // This is the CodeNexus CRM door, and it is NOT for ordinary customers.
+        //
+        // It used to accept anyone holding a client_password, which meant every
+        // promoted customer could sign in to the CRM. /api/portal/login already
+        // gates on portal_kind; without the matching gate here, only one side of
+        // the door was locked. CRM access requires crm_access = TRUE or
+        // portal_kind IN ('crm','both') — i.e. they bought a subscription.
         const result = await pool.query(
             `SELECT * FROM leads WHERE LOWER(email) = LOWER($1) AND client_password IS NOT NULL LIMIT 1`,
             [email]
@@ -15681,10 +15698,27 @@ app.post('/api/client/login', async (req, res) => {
 
         const lead = result.rows[0];
 
-        // Verify password
+        // Verify password BEFORE reporting anything about entitlement, so this
+        // route can't be used to enumerate which addresses hold CRM accounts.
         const passwordMatch = await bcrypt.compare(password, lead.client_password);
         if (!passwordMatch) {
             return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+        }
+
+        // Correct credentials, wrong door. Send them to their customer portal
+        // rather than a bare failure — otherwise a real customer typing a real
+        // password gets "invalid password" and has no idea why.
+        const hasCrm = lead.crm_access === true
+            || ['crm', 'both'].includes(String(lead.portal_kind || ''));
+        if (!hasCrm) {
+            console.log(`[CLIENT LOGIN] ${lead.email} authenticated but has no CRM subscription — redirecting to customer portal`);
+            return res.status(403).json({
+                success: false,
+                code: 'NO_CRM_SUBSCRIPTION',
+                portal: 'customer',
+                portalUrl: '/customer_portal.html',
+                message: 'This sign-in is for CodeNexus CRM subscribers. Your account is a customer portal account — please sign in at your customer portal.'
+            });
         }
 
         // Resolve clientPortalId and admin status
@@ -26214,6 +26248,42 @@ initPortal({
 const initDiamondbackSms = require('./diamondback-sms.js');
 initDiamondbackSms({ app, pool, authenticateToken, sendSmsViaBrevo, getBrevoKey });
 
+// ---------------------------------------------------------------------------
+// Lifecycle engine — customer provisioning, SLA signing, invoice generation,
+// payment ledger with refunds, maintenance plans, 30-day cancellations.
+//
+// authenticatePortal lives inside diamondback-portal.js, so it is re-declared
+// here rather than imported. Both verify the same 'portal' token type; keep
+// them in step if either changes.
+function authenticatePortalForLifecycle(req, res, next) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Access denied. Please log in.' });
+    }
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.type !== 'portal') {
+            return res.status(403).json({ success: false, message: 'Invalid access token.' });
+        }
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+    }
+}
+
+const initLifecycle = require('./diamondback-lifecycle.js');
+const lifecycle = initLifecycle({
+    app, pool, stripe, transporter,
+    authenticateToken,
+    authenticatePortal: authenticatePortalForLifecycle,
+    resolveLeadId,
+    JWT_SECRET, jwt,
+    PLATFORM_BREVO_KEY, PLATFORM_SENDER_EMAIL, PLATFORM_SENDER_NAME,
+    sendViaBrevo, sendSmsViaBrevo, getBrevoKey,
+});
+
 // diamondback-automation.js also registers /api/public/availability and
 // /api/public/schedule, which diamondback-portal.js already owns. Express uses
 // the FIRST match, so those two would be silently shadowed. Surveys and
@@ -26373,12 +26443,27 @@ async function startServer() {
         // Fix existing customer accounts that have no client_portal_id
         // These were created before the portal ID was auto-generated on account creation
         try {
+            // SCOPED TO CRM HOLDERS ONLY.
+            //
+            // This loop used to select every customer with a portal password
+            // and mint a client_companies tenant for each one. That is CRM
+            // scaffolding, and building it for plain customers is what put
+            // them in the CRM instead of the customer portal — on EVERY BOOT,
+            // which would silently undo the provisioning fix.
+            //
+            // A customer only needs a client_portal_id if they actually hold
+            // CRM access, so the crm_access / portal_kind filter is the whole
+            // point of this clause. Do not remove it.
             const orphanAdmins = await pool.query(`
                 SELECT id, name, email, company
                 FROM leads
                 WHERE is_customer = TRUE
                   AND client_password IS NOT NULL
                   AND (client_portal_id IS NULL OR client_portal_id = '')
+                  AND (
+                        COALESCE(crm_access, FALSE) = TRUE
+                     OR COALESCE(portal_kind, 'customer') IN ('crm', 'both')
+                  )
             `);
 
             for (const admin of orphanAdmins.rows) {

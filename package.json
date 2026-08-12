@@ -11,7 +11,8 @@
     "build": "npx puppeteer browsers install chrome",
     "lint": "eslint . --ext .js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:migrate": "psql \"$DATABASE_URL\" -f migrations/001_customer_portal.sql"
+    "db:migrate": "psql \"$DATABASE_URL\" -f migrations/001_customer_portal.sql && psql \"$DATABASE_URL\" -f migrations/002_billing_and_portal_kind.sql && psql \"$DATABASE_URL\" -f migrations/003_customer_first_and_maintenance.sql",
+    "db:verify": "node db.js"
   },
   "author": "Taylor <contact@diamondbackcoding.com>",
   "license": "MIT",

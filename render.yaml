@@ -1,18 +1,35 @@
 # ============================================================================
 # render.yaml — Diamondback Coding
 #
-# WHAT WAS WRONG WITH THE PREVIOUS FILE
-#   A second `services:` key was nested inside the first service's `envVars`
-#   list, and the second `- type: web` sat at the wrong indent level. Render
-#   would not have read this as two services.
+# WHAT CHANGED FROM THE PREVIOUS FILE
 #
-#   Also: the first service declared PUPPETEER_SKIP_CHROMIUM_DOWNLOAD while the
-#   build command installs Chrome — those contradict each other. Chrome is
-#   installed to a cache path, so PUPPETEER_CACHE_DIR is set instead and the
-#   skip flag is gone.
+#  1. MIGRATIONS NOW RUN. The old build was `npm install` plus the Chrome
+#     install and nothing else, so migrations 001/002/003 never ran on deploy.
+#     That is why the customer portal 500'd on missing tables: the code was
+#     deployed and the schema was not. `npm run db:migrate` is now part of the
+#     build, and it runs all three in order.
+#
+#  2. ONE WEB SERVICE, NOT TWO. The old file declared `diamondback-coding` and
+#     `codenexus-backend` as separate services both running `node server.js`
+#     from the same repo against the same DATABASE_URL. That is two copies of
+#     the same app: two schedulers and duplicate charges if both ever ran the
+#     billing jobs. server.js already serves the CRM at /api/client/* and the
+#     customer portal at /api/portal/*, so one service covers both audiences.
+#     If you want CodeNexus on its own host later it needs its own repo and its
+#     own database — not a second process against this one.
+#
+#  3. A CRON JOB for the daily lifecycle work: maintenance charges, the 10-day
+#     dunning ladder, cancellation reminders, and finalizing cancellations.
+#     Without this nothing recurring ever fires — the engine is complete but
+#     never invoked.
+#
+#  4. CRON_TOKEN and PORTAL_URL added. /api/cron/lifecycle-daily refuses to run
+#     without a matching CRON_TOKEN, so it can't be triggered by anyone who
+#     finds the URL.
 # ============================================================================
 
 services:
+  # --------------------------------------------------------------- web app
   - type: web
     name: diamondback-coding
     env: node
@@ -21,8 +38,9 @@ services:
     buildCommand: |
       npm install
       npx puppeteer browsers install chrome
+      npm run db:migrate
     startCommand: node server.js
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -32,6 +50,15 @@ services:
       # same place or PDF generation fails with "Could not find Chrome".
       - key: PUPPETEER_CACHE_DIR
         value: /opt/render/project/.cache/puppeteer
+
+      # Where the customer portal lives. Used in every transactional email's
+      # call to action, so if it's wrong every "pay now" link is wrong.
+      - key: PORTAL_URL
+        value: https://diamondbackcoding.com/customer_portal.html
+      # Notice period for cancelling a recurring plan.
+      - key: CANCELLATION_NOTICE_DAYS
+        value: "30"
+
       # --- set these in the Render dashboard, not here ---
       - key: DATABASE_URL
         sync: false
@@ -39,11 +66,15 @@ services:
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
+      # The browser needs this to mount Stripe Elements for cards and ACH.
       - key: STRIPE_PUBLISHABLE_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
       - key: BREVO_API_KEY
+        sync: false
+      # Shared secret for the cron job below. Use a long random string.
+      - key: CRON_TOKEN
         sync: false
       - key: EMAIL_HOST
         value: smtp-relay.brevo.com
@@ -51,29 +82,38 @@ services:
         value: "587"
       - key: EMAIL_USER
         sync: false
+      # NOTE: EMAIL_PASS is your Brevo SMTP key, NOT your Brevo API key.
+      # Brevo -> SMTP & API -> SMTP. The API key here fails on the first send.
       - key: EMAIL_PASS
         sync: false
       - key: EMAIL_FROM
         value: Diamondback Coding <contact@diamondbackcoding.com>
 
-  - type: web
-    name: codenexus-backend
+  # ------------------------------------------------------- daily automation
+  # Runs once a day at 13:00 UTC (08:00 CDT / 07:00 CST) — inside business
+  # hours in Texas, so a failed charge or dunning email lands when someone is
+  # around to notice it.
+  #
+  # The endpoint is idempotent: every stage is once-guarded, so a retry or an
+  # accidental double-run cannot double-charge or double-send.
+  - type: cron
+    name: diamondback-lifecycle-daily
     env: node
     plan: free
     region: oregon
+    schedule: "0 13 * * *"
     buildCommand: npm install
-    startCommand: node server.js
-    healthCheckPath: /
+    startCommand: |
+      curl -fsS -X POST "$APP_URL/api/cron/lifecycle-daily" \
+        -H "x-cron-token: $CRON_TOKEN" \
+        -H "Content-Type: application/json" \
+        --max-time 600
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: NODE_VERSION
         value: 22.11.0
-      - key: DATABASE_URL
+      # Your web service's public URL, e.g. https://diamondback-coding.onrender.com
+      - key: APP_URL
         sync: false
-      - key: JWT_SECRET
-        sync: false
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: BREVO_API_KEY
+      # Must match CRON_TOKEN on the web service above.
+      - key: CRON_TOKEN
         sync: false

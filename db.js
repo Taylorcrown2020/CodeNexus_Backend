@@ -282,6 +282,17 @@ const EXPECTED_TABLES = [
     'portal_usage_log', 'project_milestones', 'recurring_invoices', 'score_history',
     'scoring_rules', 'sms_auto_sequences', 'sms_templates', 'subscription_events',
     'support_tickets', 'tasks', 'ticket_responses',
+    // --- customer portal (migrations/001) -------------------------------
+    // These were missing, so verifySchema() reported "all tables present"
+    // while every customer-portal route 500'd on a missing relation.
+    'client_messages', 'sales_agreements', 'service_requests', 'sms_marketing_auto',
+    // --- billing + dunning (migrations/002) -----------------------------
+    'billing_schedules', 'agreement_items', 'agreement_templates',
+    'invoice_dunning', 'billing_notifications',
+    // --- lifecycle (migrations/003) -------------------------------------
+    'payments', 'refunds', 'payment_methods', 'maintenance_plans',
+    'plan_cancellations', 'agreement_signatures', 'lifecycle_events',
+    'admin_notifications',
 ];
 
 /**

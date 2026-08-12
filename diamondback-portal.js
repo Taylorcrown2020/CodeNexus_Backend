@@ -621,11 +621,21 @@ module.exports = function initPortal({
             await ensurePortalSchema();
             const r = await pool.query(`
                 SELECT l.id AS lead_id, l.name, l.email, l.phone,
+                       -- Lets the admin messenger filter Leads vs Customers.
+                       COALESCE(l.is_customer, FALSE) AS is_customer,
+                       CASE WHEN COALESCE(l.is_customer, FALSE) THEN 'customer' ELSE 'lead' END AS kind,
+                       l.status,
+                       (l.client_password IS NOT NULL) AS has_portal,
                        m.last_body, m.last_at, m.last_sender,
                        COALESCE(u.unread, 0) AS unread,
                        COALESCE(rq.req_count, 0) AS request_count
                   FROM leads l
-                  JOIN (
+                  -- LEFT JOIN, not JOIN: the inner join meant only people who
+                  -- already had a thread appeared, so you could never START a
+                  -- conversation with a new lead from the messenger. The WHERE
+                  -- below keeps the default list to real conversations, and
+                  -- ?include=all opens it up to anyone contactable.
+                  LEFT JOIN (
                         SELECT DISTINCT lead_id FROM client_messages
                         UNION
                         SELECT DISTINCT lead_id FROM service_requests WHERE lead_id IS NOT NULL
@@ -642,7 +652,11 @@ module.exports = function initPortal({
                   LEFT JOIN (
                         SELECT lead_id, COUNT(*)::int AS req_count FROM service_requests GROUP BY lead_id
                        ) rq ON rq.lead_id = l.id
-                 ORDER BY COALESCE(m.last_at, '1970-01-01') DESC, l.name ASC`);
+                 WHERE act.lead_id IS NOT NULL
+                    OR ($1::boolean AND (l.email IS NOT NULL OR l.phone IS NOT NULL))
+                 ORDER BY COALESCE(m.last_at, '1970-01-01') DESC, l.name ASC`,
+                [String((req.query || {}).include || '') === 'all']
+            );
             res.json({ success: true, conversations: r.rows });
         } catch (e) {
             console.error('[ADMIN] conversations error:', e.message);

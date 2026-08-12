@@ -175,6 +175,26 @@ module.exports = function initLifecycle({
         }
     }
 
+    /**
+     * Turn a database error into something actionable.
+     *
+     * Postgres 42P01 (undefined_table) means a migration hasn't run. A bare 500
+     * in the UI gives no clue about that — the browser just says "Request failed
+     * (500)" and you're left guessing between auth, network and schema. This
+     * names the cause instead.
+     */
+    function dbErrorMessage(e, what) {
+        if (e && e.code === '42P01') {
+            return `${what} needs a database migration that hasn't been applied yet. ` +
+                   'Restart the service (migrations now run at boot), or run: npm run db:migrate';
+        }
+        if (e && e.code === '42703') {
+            return `${what} needs a database column that hasn't been added yet. ` +
+                   'Restart the service to apply pending migrations.';
+        }
+        return `Could not load ${what.toLowerCase()}.`;
+    }
+
     // ======================================================================
     // notify() — the only send path in this module
     // ======================================================================
@@ -1896,8 +1916,8 @@ module.exports = function initLifecycle({
                 },
             });
         } catch (e) {
-            console.error('[ADMIN SUBSCRIPTIONS]', e.message);
-            res.status(500).json({ success: false, message: 'Could not load subscriptions.' });
+            console.error('[ADMIN SUBSCRIPTIONS]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'Subscriptions') });
         }
     });
 
@@ -1906,8 +1926,8 @@ module.exports = function initLifecycle({
         try {
             res.json({ success: true, ...(await pastDueReport()) });
         } catch (e) {
-            console.error('[ADMIN PAST DUE]', e.message);
-            res.status(500).json({ success: false, message: 'Could not load past-due invoices.' });
+            console.error('[ADMIN PAST DUE]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'Past-due invoices') });
         }
     });
 
@@ -2117,8 +2137,8 @@ module.exports = function initLifecycle({
                 },
             });
         } catch (e) {
-            console.error('[ADMIN PAYMENTS]', e.message);
-            res.status(500).json({ success: false, message: 'Could not load the payment log.' });
+            console.error('[ADMIN PAYMENTS]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'The payment log') });
         }
     });
 
@@ -2176,8 +2196,8 @@ module.exports = function initLifecycle({
                 },
             });
         } catch (e) {
-            console.error('[ADMIN PLANS]', e.message);
-            res.status(500).json({ success: false, message: 'Could not load maintenance plans.' });
+            console.error('[ADMIN PLANS]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'Maintenance plans') });
         }
     });
 
@@ -2258,7 +2278,8 @@ module.exports = function initLifecycle({
             );
             res.json({ success: true, notifications: r.rows, unreadCount: Number(unread.rows[0].n) });
         } catch (e) {
-            res.status(500).json({ success: false, message: 'Could not load notifications.' });
+            console.error('[ADMIN NOTIFICATIONS]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'Notifications') });
         }
     });
 

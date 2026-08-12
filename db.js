@@ -262,6 +262,110 @@ async function ensureSchema() {
 }
 
 /**
+ * Apply everything in migrations/ in filename order.
+ *
+ * WHY THIS IS HERE AND NOT JUST `npm run db:migrate`
+ * --------------------------------------------------
+ * The package script shells out to `psql`, which is NOT guaranteed to exist in
+ * Render's Node build image. When it's absent the build step fails quietly, the
+ * app deploys against a database that never got 002/003, and every route
+ * touching payments, maintenance_plans or admin_notifications returns a 500 —
+ * with nothing in the logs pointing at the real cause.
+ *
+ * This runs the same files through node-postgres instead, so it works anywhere
+ * Node works. It uses the same one-statement-at-a-time splitter as
+ * ensureSchema(), so a single failure can't roll back the rest, and every
+ * migration is IF NOT EXISTS guarded, so re-running on every boot is safe.
+ *
+ * Applied migrations are recorded in schema_migrations, so the common case
+ * (nothing new) costs one small query rather than re-running every file.
+ */
+async function applyMigrations() {
+    const dir = process.env.MIGRATIONS_PATH || path.join(__dirname, 'migrations');
+
+    if (!fs.existsSync(dir)) {
+        console.warn(`[DB] No migrations directory at ${dir} — skipping.`);
+        return { applied: [], skipped: [], failures: [] };
+    }
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            filename    VARCHAR(255) PRIMARY KEY,
+            applied_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            statements  INTEGER,
+            failures    INTEGER DEFAULT 0
+        )
+    `);
+
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+    const done = new Set(
+        (await pool.query('SELECT filename FROM schema_migrations')).rows.map((r) => r.filename)
+    );
+
+    const applied = [];
+    const skipped = [];
+    const failures = [];
+
+    for (const file of files) {
+        if (done.has(file)) { skipped.push(file); continue; }
+
+        const sql = fs.readFileSync(path.join(dir, file), 'utf8');
+        // Migrations wrap themselves in BEGIN/COMMIT. Sending those through the
+        // splitter alongside individually-issued statements would nest badly, so
+        // strip the outer transaction control and let each statement stand alone.
+        const stripped = sql.replace(/^\s*(BEGIN|COMMIT)\s*;\s*$/gim, '');
+        const statements = splitStatements(stripped);
+
+        console.log(`[DB] Migration ${file}: ${statements.length} statements`);
+        const client = await pool.connect();
+        let ok = 0;
+        const failed = [];
+        try {
+            for (const stmt of statements) {
+                try {
+                    await client.query(stmt);
+                    ok += 1;
+                } catch (err) {
+                    if (['42701', '42P07', '42710', '42P16'].includes(err.code)) {
+                        ok += 1;   // already present
+                        continue;
+                    }
+                    failed.push({ code: err.code, message: err.message,
+                                  statement: stmt.slice(0, 140).replace(/\s+/g, ' ') });
+                }
+            }
+        } finally {
+            client.release();
+        }
+
+        if (failed.length) {
+            console.warn(`[DB] Migration ${file}: ${ok} ok, ${failed.length} FAILED`);
+            for (const f of failed) {
+                console.warn(`  [${f.code}] ${f.message}`);
+                console.warn(`         ${f.statement}...`);
+            }
+            failures.push({ file, failed });
+        } else {
+            console.log(`[DB] Migration ${file}: ${ok} statements applied`);
+        }
+
+        // Recorded even with failures, so a genuinely broken statement doesn't
+        // re-run forever — the log above is the record of what needs attention.
+        await pool.query(
+            `INSERT INTO schema_migrations (filename, statements, failures)
+             VALUES ($1,$2,$3) ON CONFLICT (filename) DO NOTHING`,
+            [file, statements.length, failed.length]
+        );
+        applied.push(file);
+    }
+
+    if (applied.length) console.log(`[DB] Migrations applied: ${applied.join(', ')}`);
+    else console.log(`[DB] Migrations: all ${skipped.length} already applied`);
+
+    return { applied, skipped, failures };
+}
+
+/**
  * Tables server.js queries. If one is missing, the routes that touch it will
  * 500 at runtime — better to know at boot than from a customer.
  */
@@ -411,6 +515,7 @@ if (require.main === module) {
             console.log(`[DB] Connected to "${health.database}" in ${health.latencyMs}ms`);
 
             const { failures } = await ensureSchema();
+            await applyMigrations();
             const { missing } = await verifySchema();
 
             await closePool();
@@ -427,6 +532,7 @@ module.exports = {
     query,
     withTransaction,
     ensureSchema,
+    applyMigrations,
     verifySchema,
     healthCheck,
     closePool,

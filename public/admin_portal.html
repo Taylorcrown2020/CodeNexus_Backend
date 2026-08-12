@@ -3909,6 +3909,17 @@ body.graffiti-mode .sidebar::after {
                 <h1 class="page-title" id="pageTitle">Dashboard</h1>
             </div>
             <div class="topbar-actions">
+                <!-- Messages. The messenger already existed but had no way to
+                     open it — openMessenger() was defined and never called from
+                     any control. -->
+                <button class="btn btn-secondary" onclick="if(window.openMessenger)openMessenger();else showToast('Messenger is still loading.','error')" title="Messages &amp; SMS" style="position:relative">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22 6 12 13 2 6"/>
+                    </svg>
+                    Messages
+                    <span id="topMsgBadge" style="display:none;position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center">0</span>
+                </button>
                 <button class="btn btn-secondary" onclick="openExportModal()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -22301,10 +22312,11 @@ async function deleteSalesAgreement(id) {
         return t.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
-    async function loadMessengerData() {
+    async function loadMessengerData(includeAll) {
         const token = tok(); if (!token) return;
         try {
-            const res = await fetch(`${API_URL}/api/admin/conversations`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const url = `${API_URL}/api/admin/conversations` + ((includeAll ?? MSG.showAll) ? '?include=all' : '');
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
             MSG.convos = (data && data.conversations) || [];
             MSG.totalUnread = MSG.convos.reduce((s, c) => s + (Number(c.unread) || 0), 0);
@@ -22335,6 +22347,10 @@ async function deleteSalesAgreement(id) {
         if (tb) { tb.textContent = env > 99 ? '99+' : env; tb.style.display = env > 0 ? 'flex' : 'none'; }
         const nb = document.getElementById('notifBadge');
         if (nb) { nb.textContent = portal > 99 ? '99+' : portal; nb.style.display = portal > 0 ? 'flex' : 'none'; }
+        // Topbar Messages button. Same total as the floating trigger, so the two
+        // never disagree about how many unread you have.
+        const tmb = document.getElementById('topMsgBadge');
+        if (tmb) { tmb.textContent = env > 99 ? '99+' : env; tmb.style.display = env > 0 ? 'inline-block' : 'none'; }
     }
 
     function ensureOverlay() {
@@ -22373,19 +22389,68 @@ async function deleteSalesAgreement(id) {
     function closeMessenger() { const ov = document.getElementById('msgOverlay'); if (ov) ov.classList.remove('open'); }
     window.closeMessenger = closeMessenger;
 
+    /* Which audience the list is showing: all | customers | leads | unread.
+       MSG.showAll pulls in people with no thread yet, so a brand-new lead can
+       be messaged for the first time from here. */
+    MSG.filter = MSG.filter || 'all';
+    MSG.showAll = MSG.showAll || false;
+
+    window.__msgFilter = function (f) {
+        MSG.filter = f;
+        renderConvoList();
+    };
+    window.__msgToggleAll = async function () {
+        MSG.showAll = !MSG.showAll;
+        MSG.loaded = false;
+        renderConvoList();
+        await loadMessengerData(MSG.showAll);
+        renderConvoList();
+    };
+
+    function convoCounts() {
+        const all = MSG.convos.length;
+        const customers = MSG.convos.filter(c => c.is_customer === true || c.kind === 'customer').length;
+        return { all, customers, leads: all - customers,
+                 unread: MSG.convos.filter(c => Number(c.unread) > 0).length };
+    }
+
     function renderConvoList() {
         const list = document.getElementById('msgList'); if (!list) return;
         const q = (document.getElementById('msgSearch')?.value || '').toLowerCase().trim();
         let convos = [...MSG.convos];
+
+        // audience filter
+        if (MSG.filter === 'customers') convos = convos.filter(c => c.is_customer === true || c.kind === 'customer');
+        else if (MSG.filter === 'leads') convos = convos.filter(c => !(c.is_customer === true || c.kind === 'customer'));
+        else if (MSG.filter === 'unread') convos = convos.filter(c => Number(c.unread) > 0);
+
         if (q) convos = convos.filter(c => (`${c.name} ${c.email} ${c.last_body || ''}`).toLowerCase().includes(q));
-        if (!convos.length) { list.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--text-muted);font-size:13px;">${MSG.loaded ? 'No conversations yet.' : 'Loading…'}</div>`; return; }
-        list.innerHTML = convos.map(c => {
+
+        const n = convoCounts();
+        const chip = (key, label, count) =>
+            `<button onclick="__msgFilter('${key}')" style="padding:5px 11px;border-radius:14px;border:1px solid ${MSG.filter===key?'#10b981':'rgba(255,255,255,.14)'};background:${MSG.filter===key?'rgba(16,185,129,.16)':'transparent'};color:${MSG.filter===key?'#10b981':'#a0a0a0'};font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">${label}${count!=null?` ${count}`:''}</button>`;
+
+        const bar = `<div style="display:flex;gap:6px;padding:10px 12px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.06)">
+              ${chip('all','All',n.all)}${chip('customers','Customers',n.customers)}${chip('leads','Leads',n.leads)}${chip('unread','Unread',n.unread)}
+              <button onclick="__msgToggleAll()" title="Include people you haven't messaged yet" style="margin-left:auto;padding:5px 11px;border-radius:14px;border:1px dashed ${MSG.showAll?'#10b981':'rgba(255,255,255,.18)'};background:transparent;color:${MSG.showAll?'#10b981':'#8a8a8a'};font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">${MSG.showAll?'✓ Everyone':'+ Everyone'}</button>
+            </div>`;
+
+        if (!convos.length) {
+            const why = !MSG.loaded ? 'Loading…'
+              : MSG.filter === 'leads'   ? 'No lead conversations. Tap “+ Everyone” to message a lead who hasn\'t written yet.'
+              : MSG.filter === 'customers' ? 'No customer conversations yet.'
+              : MSG.filter === 'unread'  ? 'Nothing unread.'
+              : 'No conversations yet. Tap “+ Everyone” to start one.';
+            list.innerHTML = bar + `<div style="padding:36px 16px;text-align:center;color:var(--text-muted);font-size:13px;line-height:1.6;">${why}</div>`;
+            return;
+        }
+        list.innerHTML = bar + convos.map(c => {
             const unread = Number(c.unread) || 0;
             const preview = c.last_body ? (c.last_sender === 'admin' ? 'You: ' + c.last_body : c.last_body) : (c.request_count > 0 ? c.request_count + ' service request(s)' : 'No messages yet');
             return `<div class="msg-convo ${String(c.lead_id) === String(MSG.activeLead) ? 'active' : ''} ${unread ? 'unread' : ''}" onclick="__openThread(${c.lead_id})">
                 <div class="msg-avatar" style="background:${avatarColor(c.name)}">${esc(initials(c.name))}</div>
                 <div class="msg-convo-body">
-                    <div class="msg-convo-top"><span class="msg-convo-name">${esc(c.name || 'Unknown')}</span><span class="msg-convo-time">${esc(when(c.last_at))}</span></div>
+                    <div class="msg-convo-top"><span class="msg-convo-name">${esc(c.name || 'Unknown')}${(c.is_customer===true||c.kind==='customer')?'<span style="margin-left:6px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 5px;border-radius:3px;background:rgba(16,185,129,.16);color:#10b981;vertical-align:middle">CUSTOMER</span>':'<span style="margin-left:6px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 5px;border-radius:3px;background:rgba(96,165,250,.16);color:#60a5fa;vertical-align:middle">LEAD</span>'}</span><span class="msg-convo-time">${esc(when(c.last_at))}</span></div>
                     <div class="msg-convo-preview">${esc(preview).slice(0, 64)}</div>
                 </div>
                 ${unread ? `<span class="msg-unread-dot"></span>` : ''}

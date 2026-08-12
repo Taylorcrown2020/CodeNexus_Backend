@@ -514,6 +514,17 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
                         [invoice.lead_id]
                     );
                     console.log(`[WEBHOOK]  Lead converted to ACTIVE CUSTOMER: ${invoice.name}`);
+
+                    // Paying online makes them a customer, so give them the
+                    // portal account and credentials without waiting for anyone
+                    // to do it by hand. Once-guarded, and never allowed to throw
+                    // out of a webhook — Stripe would retry the whole event.
+                    try {
+                        await lifecycle.onCustomerCreated({ leadId: invoice.lead_id });
+                        console.log(`[WEBHOOK]  Customer portal account ready for ${invoice.email}`);
+                    } catch (e) {
+                        console.error('[WEBHOOK] Portal provisioning failed:', e.message);
+                    }
                 } else {
                     // Make sure customer is active
                     await pool.query(
@@ -921,7 +932,7 @@ ${ctaLabel && ctaUrl ? `
 // Pool + schema bootstrap live in db.js. ensureSchema() must run before
 // initializeDatabase() (see startServer below) because initializeDatabase's
 // first statements ALTER tables it assumes already exist.
-const { pool, ensureSchema, verifySchema } = require('./db');
+const { pool, ensureSchema, applyMigrations, verifySchema } = require('./db');
 
 // Test database connection
 pool.connect((err, client, release) => {
@@ -4175,6 +4186,7 @@ app.patch('/api/leads/:id/status', authenticateToken, async (req, res) => {
     try {
         const leadId = req.params.id;
         const { status, isCustomer, customerStatus, last_contacted } = req.body;
+        let portalResult = null;
 
         // If converting to customer
         if (isCustomer) {
@@ -4187,8 +4199,35 @@ app.patch('/api/leads/:id/status', authenticateToken, async (req, res) => {
                  WHERE id = $4`,
                 [status, true, customerStatus || 'onboarding', leadId]
             );
-            
+
             console.log(` Lead ${leadId} converted to customer`);
+
+            // ------------------------------------------------------------------
+            // Create their CUSTOMER PORTAL account automatically.
+            //
+            // This route used to set is_customer and stop, which meant a
+            // converted lead had no portal login until someone remembered to
+            // create one by hand from the Client Portal tab. onCustomerCreated
+            // provisions the account and emails the credentials, and is
+            // once-guarded so re-converting the same lead won't send a second
+            // credentials email or reset a password they've already changed.
+            //
+            // Failure here must NOT fail the conversion — the lead IS a customer
+            // now regardless, so the error is reported alongside the success and
+            // the account can be created manually.
+            // ------------------------------------------------------------------
+            try {
+                const provisioned = await lifecycle.onCustomerCreated({ leadId });
+                portalResult = {
+                    created: provisioned.created && !provisioned.alreadyExisted,
+                    alreadyExisted: !!provisioned.alreadyExisted,
+                    temporaryPassword: provisioned.temporaryPassword || null,
+                };
+                console.log(`[CONVERT] Customer portal account ready for lead ${leadId}`);
+            } catch (provisionErr) {
+                console.error(`[CONVERT] Portal provisioning failed for lead ${leadId}:`, provisionErr.message);
+                portalResult = { created: false, error: provisionErr.message };
+            }
         } 
         // If updating to 'contacted' status with last_contacted timestamp
         else if (status === 'contacted' && last_contacted) {
@@ -4211,9 +4250,23 @@ app.patch('/api/leads/:id/status', authenticateToken, async (req, res) => {
             );
         }
 
+        let message = 'Status updated successfully.';
+        if (isCustomer) {
+            if (portalResult && portalResult.created) {
+                message = 'Converted to customer. Their customer portal account was created and login details emailed to them.';
+            } else if (portalResult && portalResult.alreadyExisted) {
+                message = 'Converted to customer. They already had a customer portal account.';
+            } else if (portalResult && portalResult.error) {
+                message = 'Converted to customer, but the portal account could not be created: ' + portalResult.error;
+            } else {
+                message = 'Lead converted to customer successfully.';
+            }
+        }
+
         res.json({
             success: true,
-            message: isCustomer ? 'Lead converted to customer successfully.' : 'Status updated successfully.'
+            message,
+            portal: portalResult
         });
     } catch (error) {
         console.error('Update status error:', error);
@@ -6379,6 +6432,20 @@ app.patch('/api/invoices/:id/status', authenticateToken, async (req, res) => {
         }
 
         await client.query('COMMIT');
+
+        // Paying an invoice can convert a lead into a customer (above). If it
+        // did, they need a portal account too. Deliberately AFTER the COMMIT:
+        // provisioning sends email and does its own writes, and running that
+        // inside the transaction would hold the invoice lock for the duration of
+        // an SMTP call — and a mail failure would roll back the payment.
+        if (invoice && invoice.lead_id && !invoice.is_customer) {
+            try {
+                await lifecycle.onCustomerCreated({ leadId: invoice.lead_id });
+                console.log(`[INVOICE PAID] Customer portal account ready for lead ${invoice.lead_id}`);
+            } catch (e) {
+                console.error('[INVOICE PAID] Portal provisioning failed:', e.message);
+            }
+        }
 
         // Fetch updated invoice
         const updatedInvoice = await pool.query(
@@ -26323,6 +26390,11 @@ async function startServer() {
     try {
         // Create/repair every table before anything tries to ALTER them.
         await ensureSchema();
+        // Runs migrations/*.sql through node-postgres. Deliberately not left to
+        // `npm run db:migrate`, which needs psql — absent from some Render build
+        // images, in which case 002/003 silently never apply and every billing
+        // and notifications route 500s with no obvious cause.
+        await applyMigrations();
         await verifySchema();
 
         await initializeDatabase(pool);

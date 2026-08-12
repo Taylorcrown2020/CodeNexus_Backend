@@ -2397,6 +2397,30 @@
 @media (prefers-reduced-motion: reduce) {
     .db-portal-panel, .db-portal-trigger svg { transition: none; }
 }
+
+        /* ---------------------------------------------------------------
+           Carousels run continuously — never pause on hover.
+           The stock pattern for these marquees is
+               .logo-carousel:hover .logo-track { animation-play-state: paused }
+           which stops the scroll under the cursor. These rules force the
+           running state instead, and are !important so a re-added pause rule
+           (or one arriving later in the cascade) can't win. Covers hover,
+           focus-within and active, since a keyboard focus or a held click
+           inside the track pauses it the same way a hover does.
+           --------------------------------------------------------------- */
+        .logo-carousel:hover .logo-track,
+        .logo-carousel:focus-within .logo-track,
+        .logo-carousel:active .logo-track,
+        .logo-track:hover,
+        .logo-track:focus-within,
+        .tech-carousel:hover .tech-track,
+        .tech-carousel:focus-within .tech-track,
+        .tech-track:hover,
+        .tech-track:focus-within,
+        .marquee:hover .marquee-track,
+        .marquee-track:hover {
+            animation-play-state: running !important;
+        }
 </style>
 </head>
 <body itemscope itemtype="https://schema.org/WebPage">

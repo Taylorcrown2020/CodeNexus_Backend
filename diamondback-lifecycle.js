@@ -1330,12 +1330,75 @@ module.exports = function initLifecycle({
 
     /** Finalize cancellations whose notice period has expired. */
     async function completePlanCancellations() {
+        // ------------------------------------------------------------------
+        // CRM subscriptions first. Their notice has expired, so CRM access is
+        // revoked — but ONLY the CRM. portal_kind drops from 'both' back to
+        // 'customer' and crm_access to FALSE, which leaves their customer portal,
+        // invoices and receipts completely intact. Cancelling the CRM must never
+        // cost someone their customer account.
+        // ------------------------------------------------------------------
+        try {
+            const crmDue = await pool.query(
+                `SELECT pc.*, cs.package_name, cs.monthly_total, cs.stripe_subscription_id,
+                        l.name, l.email, l.phone
+                   FROM plan_cancellations pc
+                   JOIN crm_subscriptions cs ON cs.id = pc.subscription_id
+                   JOIN leads l ON l.id = pc.lead_id
+                  WHERE pc.status='pending' AND pc.subscription_id IS NOT NULL
+                    AND pc.effective_at <= NOW()`
+            );
+            for (const c of crmDue.rows) {
+                if (c.stripe_subscription_id && stripe) {
+                    await stripe.subscriptions.cancel(c.stripe_subscription_id)
+                        .catch((e) => console.warn('[CRM CANCEL COMPLETE] Stripe:', e.message));
+                }
+                await pool.query(
+                    `UPDATE crm_subscriptions SET status='cancelled', cancelled_at=NOW(), updated_at=NOW() WHERE id=$1`,
+                    [c.subscription_id]
+                );
+                await pool.query(
+                    `UPDATE leads
+                        SET crm_access = FALSE,
+                            portal_kind = CASE WHEN portal_kind = 'both' THEN 'customer' ELSE portal_kind END,
+                            updated_at = NOW()
+                      WHERE id = $1`,
+                    [c.lead_id]
+                );
+                await pool.query(
+                    `UPDATE plan_cancellations SET status='completed', completed_at=NOW(), cancelled_email_sent_at=NOW() WHERE id=$1`,
+                    [c.id]
+                );
+                await notify({
+                    lead: { id: c.lead_id, name: c.name, email: c.email, phone: c.phone },
+                    kind: 'cancellation_completed',
+                    subject: 'Your CodeNexus CRM subscription has ended',
+                    bodyHtml: `<p style="margin:0 0 12px">Your <strong style="color:#fff">${c.package_name || 'CodeNexus CRM'}</strong> subscription has ended and you won't be billed again.</p>
+                               <p style="margin:0 0 12px">Your customer portal is unchanged — your invoices, receipts, agreements and messages are all still there.</p>
+                               <p style="margin:0">If you'd like the CRM back later, just reply to this email.</p>`,
+                    smsText: 'Diamondback Coding: your CodeNexus CRM subscription has ended. Your customer portal and records are unaffected.',
+                    channels: ['email', 'portal'],
+                    cta: { url: PORTAL_URL, label: 'Open your portal' },
+                });
+                await adminNotify({
+                    kind: 'crm_cancelled',
+                    title: `${c.name}'s CRM subscription has ended`,
+                    body: `${money(c.monthly_total)}/mo · CRM access revoked, customer portal retained`,
+                    leadId: c.lead_id, entityType: 'crm_subscription', entityId: c.subscription_id,
+                    severity: 'info', onceKey: `crm_cancel_completed:${c.id}`,
+                });
+            }
+            if (crmDue.rows.length) console.log(`[LIFECYCLE] CRM cancellations completed: ${crmDue.rows.length}`);
+        } catch (e) {
+            console.error('[LIFECYCLE] CRM cancellation completion failed:', e.message);
+        }
+
         const due = await pool.query(
             `SELECT pc.*, mp.label, mp.amount, mp.stripe_subscription_id, l.name, l.email, l.phone
                FROM plan_cancellations pc
                JOIN maintenance_plans mp ON mp.id = pc.maintenance_plan_id
                JOIN leads l ON l.id = pc.lead_id
-              WHERE pc.status='pending' AND pc.effective_at <= NOW()`
+              WHERE pc.status='pending' AND pc.maintenance_plan_id IS NOT NULL
+                AND pc.effective_at <= NOW()`
         );
         let done = 0;
         for (const c of due.rows) {
@@ -1876,6 +1939,360 @@ module.exports = function initLifecycle({
         }
     });
 
+    // ======================================================================
+    // Sales agreements (SLAs) — admin CRUD
+    // ======================================================================
+    // The admin portal's Sales Agreements tab called /api/sales-agreements and
+    // /api/sales-agreement-clients, and NEITHER existed anywhere on the server.
+    // The list was always empty, saving silently failed, and the "Assign to
+    // client or lead" dropdown had nothing in it — which is why there was no way
+    // to attach a customer to an SLA.
+
+    /**
+     * People an agreement can be assigned to.
+     *
+     * Customers first (they're who you usually write an SLA for), then leads who
+     * haven't converted yet — you may well want an agreement drafted before the
+     * conversion. has_portal tells the UI whether they can actually receive and
+     * sign it in the portal.
+     */
+    app.get('/api/sales-agreement-clients', authenticateToken, async (req, res) => {
+        try {
+            const r = await pool.query(
+                `SELECT id, name, email, phone, company,
+                        COALESCE(is_customer, FALSE) AS is_customer,
+                        (client_password IS NOT NULL) AS has_portal,
+                        portal_kind
+                   FROM leads
+                  WHERE name IS NOT NULL OR email IS NOT NULL
+                  ORDER BY COALESCE(is_customer, FALSE) DESC, name ASC`
+            );
+            res.json({ success: true, clients: r.rows });
+        } catch (e) {
+            console.error('[SA CLIENTS]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'The client list') });
+        }
+    });
+
+    app.get('/api/sales-agreements', authenticateToken, async (req, res) => {
+        try {
+            const r = await pool.query(
+                `SELECT sa.*,
+                        l.name  AS lead_name,
+                        l.email AS lead_email,
+                        (l.client_password IS NOT NULL) AS lead_has_portal,
+                        COALESCE(l.is_customer, FALSE)  AS lead_is_customer,
+                        sig.signed_at AS signature_at,
+                        sig.signer_name,
+                        (SELECT COALESCE(SUM(amount),0) FROM agreement_items ai WHERE ai.agreement_id = sa.id) AS items_total,
+                        (SELECT COUNT(*)::int FROM agreement_items ai WHERE ai.agreement_id = sa.id) AS item_count
+                   FROM sales_agreements sa
+                   LEFT JOIN leads l ON l.id = sa.lead_id
+                   LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
+                  ORDER BY sa.created_at DESC`
+            );
+            res.json({ success: true, agreements: r.rows, salesAgreements: r.rows });
+        } catch (e) {
+            console.error('[SA LIST]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'Sales agreements') });
+        }
+    });
+
+    app.get('/api/sales-agreements/:id', authenticateToken, async (req, res) => {
+        try {
+            const a = (await pool.query(
+                `SELECT sa.*, l.name AS lead_name, l.email AS lead_email
+                   FROM sales_agreements sa LEFT JOIN leads l ON l.id = sa.lead_id
+                  WHERE sa.id = $1`, [req.params.id]
+            )).rows[0];
+            if (!a) return res.status(404).json({ success: false, message: 'Agreement not found.' });
+            const items = (await pool.query(
+                'SELECT * FROM agreement_items WHERE agreement_id=$1 ORDER BY sort_order, id',
+                [req.params.id]
+            )).rows;
+            const sig = (await pool.query(
+                'SELECT signer_name, signed_at, signature_svg FROM agreement_signatures WHERE agreement_id=$1',
+                [req.params.id]
+            )).rows[0] || null;
+            res.json({ success: true, agreement: a, items, signature: sig });
+        } catch (e) {
+            console.error('[SA GET]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'That agreement') });
+        }
+    });
+
+    /**
+     * Create an SLA. Accepts the exact field names the admin modal already
+     * sends (snake_case), plus optional `items` for line items and
+     * `est_completion_date`.
+     *
+     * `sendToPortal` (default true when a lead with a portal is assigned)
+     * publishes it immediately: the agreement appears in their customer portal
+     * and they get the ready-to-sign email + SMS. That's the automated hand-off
+     * — signing then triggers invoice, timeline and admin assignment.
+     */
+    app.post('/api/sales-agreements', authenticateToken, async (req, res) => {
+        const b = req.body || {};
+        try {
+            if (!b.service_type) {
+                return res.status(400).json({ success: false, message: 'Choose a service type.' });
+            }
+
+            const leadId = b.lead_id ? Number(b.lead_id) : null;
+            let lead = null;
+            if (leadId) {
+                lead = (await pool.query(
+                    'SELECT id, name, email, client_password, is_customer FROM leads WHERE id=$1', [leadId]
+                )).rows[0];
+                if (!lead) return res.status(404).json({ success: false, message: 'That client no longer exists.' });
+            }
+
+            // Agreement number: SA-00001, continuing from the highest existing.
+            const numRes = await pool.query(
+                `SELECT COALESCE(MAX(NULLIF(regexp_replace(agreement_number,'\\D','','g'),'')::bigint),0)+1 AS n
+                   FROM sales_agreements WHERE agreement_number LIKE 'SA-%'`
+            );
+            const agreementNumber = `SA-${String(numRes.rows[0].n).padStart(5, '0')}`;
+
+            const items = Array.isArray(b.items) ? b.items : [];
+            const itemsTotal = items.reduce(
+                (t, it) => t + (it.amount != null ? Number(it.amount)
+                                                  : (Number(it.quantity) || 1) * (Number(it.unit_price) || 0)), 0);
+            const price = itemsTotal > 0 ? itemsTotal : (Number(b.price) || 0);
+
+            const ins = await pool.query(
+                `INSERT INTO sales_agreements
+                    (agreement_number, lead_id, customer_name, customer_email, service_type,
+                     package_name, project, vehicle, price, deposit_pct, require_deposit,
+                     deposit, start_date, est_completion_date, status, terms, notes, intro,
+                     tax_rate, net_days, agreement_kind, created_at, updated_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'sla',NOW(),NOW())
+                 RETURNING *`,
+                [agreementNumber, leadId,
+                 b.customer_name || (lead && lead.name) || null,
+                 b.customer_email || (lead && lead.email) || null,
+                 b.service_type, b.package_name || null, b.project || b.vehicle || null,
+                 price,
+                 Number(b.deposit_pct) || 0,
+                 !!b.require_deposit,
+                 b.require_deposit ? +(price * (Number(b.deposit_pct) || 0) / 100).toFixed(2) : 0,
+                 b.start_date || null,
+                 b.est_completion_date || null,
+                 b.status || 'draft',
+                 b.terms || null, b.notes || null, b.intro || null,
+                 Number(b.tax_rate) || 0,
+                 Number(b.net_days) || 14]
+            );
+            const agreement = ins.rows[0];
+
+            for (const [i, it] of items.entries()) {
+                await pool.query(
+                    `INSERT INTO agreement_items
+                        (agreement_id, sort_order, description, detail, quantity, unit_price, amount, is_optional)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                    [agreement.id, i, (it.description || 'Item').slice(0, 500), it.detail || null,
+                     Number(it.quantity) || 1, Number(it.unit_price) || 0,
+                     it.amount != null ? Number(it.amount)
+                                       : (Number(it.quantity) || 1) * (Number(it.unit_price) || 0),
+                     !!it.is_optional]
+                ).catch((e) => console.warn('[SA] item insert:', e.message));
+            }
+
+            // Publish to the portal unless explicitly told not to. Only possible
+            // if they actually have a portal account to receive it in.
+            const wantSend = b.sendToPortal !== false && b.status !== 'draft';
+            let sent = false;
+            let sendError = null;
+            if (wantSend && lead && lead.client_password) {
+                try {
+                    await onAgreementSent({ agreementId: agreement.id });
+                    sent = true;
+                } catch (e) {
+                    sendError = e.message;
+                    console.error('[SA] send failed:', e.message);
+                }
+            }
+
+            res.json({
+                success: true,
+                agreement,
+                automation: { emailed: sent, invoice: false, invoiceCount: 0 },
+                sent,
+                sendError,
+                message: sent
+                    ? `${agreementNumber} created and sent to ${lead.name}'s portal to sign.`
+                    : (lead && !lead.client_password
+                        ? `${agreementNumber} created. ${lead.name} has no portal account yet — create one and then send it.`
+                        : `${agreementNumber} created as a draft.`),
+            });
+        } catch (e) {
+            console.error('[SA CREATE]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'Sales agreements') });
+        }
+    });
+
+    app.patch('/api/sales-agreements/:id', authenticateToken, async (req, res) => {
+        const b = req.body || {};
+        try {
+            const existing = (await pool.query(
+                'SELECT * FROM sales_agreements WHERE id=$1', [req.params.id]
+            )).rows[0];
+            if (!existing) return res.status(404).json({ success: false, message: 'Agreement not found.' });
+
+            // A signed agreement is a record of what was agreed. Editing its
+            // terms or price after signature would rewrite that, so only the
+            // status may move once it's signed.
+            // Same reasoning as delete: signed_at survives a status change, so
+            // check it rather than trusting the status string alone.
+            const isSigned = existing.status === 'signed' || !!existing.signed_at;
+            if (isSigned && Object.keys(b).some((k) => k !== 'status')) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'This agreement is signed and can no longer be edited. Create a new one for any changes.',
+                });
+            }
+
+            const allowed = ['lead_id','customer_name','customer_email','service_type','package_name',
+                             'project','vehicle','price','deposit','deposit_pct','require_deposit',
+                             'start_date','est_completion_date','status','terms','notes','intro',
+                             'tax_rate','net_days'];
+            const sets = [];
+            const vals = [];
+            for (const k of allowed) {
+                if (b[k] !== undefined) { vals.push(b[k] === '' ? null : b[k]); sets.push(`${k} = $${vals.length}`); }
+            }
+            if (!sets.length) return res.json({ success: true, agreement: existing, message: 'Nothing to change.' });
+
+            vals.push(req.params.id);
+            const upd = await pool.query(
+                `UPDATE sales_agreements SET ${sets.join(', ')}, updated_at = NOW()
+                  WHERE id = $${vals.length} RETURNING *`,
+                vals
+            );
+            res.json({ success: true, agreement: upd.rows[0], message: 'Agreement updated.' });
+        } catch (e) {
+            console.error('[SA UPDATE]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'That agreement') });
+        }
+    });
+
+    app.delete('/api/sales-agreements/:id', authenticateToken, async (req, res) => {
+        try {
+            // Guard on whether it was ACTUALLY SIGNED, not on the status
+            // string. Status moves on after signing ('completed', 'active', …),
+            // so a `status === 'signed'` check lets a signed agreement be
+            // deleted the moment its status advances — taking the signature
+            // record, and the evidence behind an invoice, with it.
+            const a = (await pool.query(
+                `SELECT sa.status, sa.agreement_number, sa.signed_at, sa.invoice_id,
+                        (sig.id IS NOT NULL) AS has_signature
+                   FROM sales_agreements sa
+                   LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
+                  WHERE sa.id = $1`, [req.params.id]
+            )).rows[0];
+            if (!a) return res.status(404).json({ success: false, message: 'Agreement not found.' });
+            if (a.has_signature || a.signed_at || a.status === 'signed') {
+                return res.status(409).json({
+                    success: false,
+                    message: 'A signed agreement can\'t be deleted — cancel it instead so the record survives.',
+                });
+            }
+            await pool.query('DELETE FROM sales_agreements WHERE id=$1', [req.params.id]);
+            res.json({ success: true, message: `${a.agreement_number || 'Agreement'} deleted.` });
+        } catch (e) {
+            console.error('[SA DELETE]', e.code, e.message);
+            res.status(500).json({ success: false, message: 'Could not delete that agreement.' });
+        }
+    });
+
+    /** Publish an existing agreement to the customer's portal. */
+    app.post('/api/sales-agreements/:id/send', authenticateToken, async (req, res) => {
+        try {
+            const a = (await pool.query(
+                `SELECT sa.*, l.name, l.client_password
+                   FROM sales_agreements sa LEFT JOIN leads l ON l.id = sa.lead_id
+                  WHERE sa.id=$1`, [req.params.id]
+            )).rows[0];
+            if (!a) return res.status(404).json({ success: false, message: 'Agreement not found.' });
+            if (!a.lead_id) {
+                return res.status(400).json({ success: false, message: 'Assign this agreement to a client first.' });
+            }
+            if (!a.client_password) {
+                return res.status(400).json({
+                    success: false,
+                    message: `${a.name || 'This client'} has no customer portal account yet. Create one from the Client Portal tab, then send.`,
+                });
+            }
+            const out = await onAgreementSent({ agreementId: a.id });
+            res.json({
+                success: true,
+                alreadySent: out.sent === false,
+                message: out.sent === false
+                    ? 'This agreement was already sent — they can still sign it in their portal.'
+                    : `Sent to ${a.name}'s portal. They've been emailed and texted that it's ready to sign.`,
+            });
+        } catch (e) {
+            console.error('[SA SEND]', e.code, e.message);
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
+    // ---- admin: schema diagnostics ---------------------------------------
+    // Answers "why is this tab 500ing?" without needing database access. Reports
+    // which tables the new features require, which are present, and whether the
+    // migrations were recorded as applied.
+    app.get('/api/admin/schema-check', authenticateToken, async (req, res) => {
+        const REQUIRED = {
+            'Notifications':     ['admin_notifications', 'lifecycle_events'],
+            'Maintenance plans': ['maintenance_plans', 'plan_cancellations', 'payment_methods'],
+            'Past due':          ['invoice_dunning', 'billing_notifications'],
+            'Payments/refunds':  ['payments', 'refunds'],
+            'Customer portal':   ['client_messages', 'sales_agreements', 'service_requests'],
+            'Agreements':        ['agreement_items', 'agreement_signatures', 'agreement_templates'],
+        };
+        try {
+            const present = new Set(
+                (await pool.query(
+                    `SELECT table_name FROM information_schema.tables WHERE table_schema='public'`
+                )).rows.map((r) => r.table_name)
+            );
+
+            const features = {};
+            const allMissing = [];
+            for (const [feature, tables] of Object.entries(REQUIRED)) {
+                const missing = tables.filter((t) => !present.has(t));
+                features[feature] = { ok: missing.length === 0, missing };
+                allMissing.push(...missing);
+            }
+
+            let migrations = [];
+            let migrationsTracked = present.has('schema_migrations');
+            if (migrationsTracked) {
+                migrations = (await pool.query(
+                    'SELECT filename, applied_at, statements, failures FROM schema_migrations ORDER BY filename'
+                )).rows;
+            }
+
+            res.json({
+                success: true,
+                ok: allMissing.length === 0,
+                features,
+                missingCount: allMissing.length,
+                missing: [...new Set(allMissing)],
+                migrationsTracked,
+                migrations,
+                advice: allMissing.length === 0
+                    ? 'Schema is complete. If a tab still fails, the error is not a missing table — check the service logs.'
+                    : (migrationsTracked
+                        ? 'Migrations ran but some tables are still missing. Check the service logs for [DB] Migration failure lines.'
+                        : 'Migrations have never been applied on this database. Restart the service — they now run automatically at boot.'),
+            });
+        } catch (e) {
+            console.error('[SCHEMA CHECK]', e.code, e.message);
+            res.status(500).json({ success: false, message: e.message, code: e.code });
+        }
+    });
+
     // ---- admin: subscriptions (CRM ONLY) ---------------------------------
     // The admin portal's badge refresher calls /api/admin/subscriptions, which
     // was never defined — the call sat inside a try/catch with an `if (r.ok)`
@@ -2009,6 +2426,360 @@ module.exports = function initLifecycle({
         } catch (e) {
             console.error('[PORTAL PLANS]', e.message);
             res.status(500).json({ success: false, message: 'Could not load your plans.' });
+        }
+    });
+
+    // ======================================================================
+    // Unified plans — maintenance plans AND the CRM subscription
+    // ======================================================================
+    // The Plans tab shows both, because from the customer's side they're the
+    // same kind of thing: a recurring charge they may want to re-card or cancel.
+    // Maintenance lives in maintenance_plans; the CRM subscription lives in
+    // crm_subscriptions and is billed by Stripe directly.
+
+    /** Everything recurring for one customer, in one shape the UI can render. */
+    async function listAllPlans(leadId) {
+        const maint = (await pool.query(
+            `SELECT mp.*, pc.effective_at AS cancels_at, pc.id AS cancellation_id,
+                    pm.brand, pm.last4, pm.type AS method_type, pm.bank_name, pm.id AS pm_id
+               FROM maintenance_plans mp
+               LEFT JOIN plan_cancellations pc
+                      ON pc.maintenance_plan_id = mp.id AND pc.status = 'pending'
+               LEFT JOIN payment_methods pm ON pm.id = mp.payment_method_id
+              WHERE mp.lead_id = $1 AND mp.status <> 'cancelled'
+              ORDER BY mp.created_at DESC`,
+            [leadId]
+        )).rows;
+
+        let crm = [];
+        try {
+            crm = (await pool.query(
+                `SELECT cs.*, pc.effective_at AS cancels_at
+                   FROM crm_subscriptions cs
+                   LEFT JOIN plan_cancellations pc
+                          ON pc.subscription_id = cs.id AND pc.status = 'pending'
+                  WHERE cs.lead_id = $1
+                    AND COALESCE(cs.status,'active') NOT IN ('cancelled','canceled','expired')
+                  ORDER BY cs.created_at DESC`,
+                [leadId]
+            )).rows;
+        } catch (e) {
+            console.warn('[PLANS] crm_subscriptions unavailable:', e.message);
+        }
+
+        const days = (d) => (d ? Math.max(0, Math.ceil((new Date(d) - Date.now()) / 86400000)) : null);
+
+        const plans = maint.map((p) => ({
+            kind: 'maintenance',
+            id: p.id,
+            label: p.label,
+            description: p.description,
+            amount: Number(p.amount),
+            billing_day: p.billing_day,
+            status: p.status,
+            next_charge_date: p.next_charge_date,
+            cancels_at: p.cancels_at,
+            days_until_cancellation: days(p.cancels_at),
+            payment_method: p.pm_id ? {
+                id: p.pm_id, type: p.method_type, brand: p.brand,
+                last4: p.last4, bank_name: p.bank_name,
+            } : null,
+            can_change_payment_method: true,
+            can_cancel: ['active', 'past_due', 'pending_payment_method', 'pending_signature'].includes(p.status),
+            signed_at: p.signed_at,
+            agreement_id: p.agreement_id,
+        })).concat(crm.map((c) => ({
+            kind: 'crm',
+            id: c.id,
+            label: c.package_name ? ('CodeNexus CRM \u2014 ' + c.package_name) : 'CodeNexus CRM',
+            description: c.user_count
+                ? `${c.user_count} user${Number(c.user_count) === 1 ? '' : 's'} at ${money(c.price_per_user)} each`
+                : null,
+            amount: Number(c.monthly_total || 0),
+            status: c.cancel_at_period_end ? 'pending_cancellation' : (c.status || 'active'),
+            next_charge_date: c.current_period_end,
+            cancels_at: c.cancels_at || (c.cancel_at_period_end ? c.current_period_end : null),
+            days_until_cancellation: days(c.cancels_at || (c.cancel_at_period_end ? c.current_period_end : null)),
+            payment_method: null,   // filled from Stripe below
+            can_change_payment_method: !!c.stripe_subscription_id,
+            can_cancel: true,
+            stripe_subscription_id: c.stripe_subscription_id,
+            user_count: c.user_count,
+        })));
+
+        // The CRM subscription's card lives on the Stripe subscription, not in
+        // payment_methods, so read it from Stripe for display. Best effort: a
+        // Stripe hiccup must not blank the whole Plans tab.
+        for (const p of plans) {
+            if (p.kind !== 'crm' || !p.stripe_subscription_id || !stripe) continue;
+            try {
+                const sub = await stripe.subscriptions.retrieve(p.stripe_subscription_id, {
+                    expand: ['default_payment_method'],
+                });
+                const pm = sub.default_payment_method;
+                if (pm && typeof pm === 'object') {
+                    p.payment_method = {
+                        stripe_pm_id: pm.id,
+                        type: pm.type,
+                        brand: pm.card ? pm.card.brand : (pm.us_bank_account ? 'bank' : null),
+                        last4: pm.card ? pm.card.last4 : (pm.us_bank_account ? pm.us_bank_account.last4 : null),
+                        bank_name: pm.us_bank_account ? pm.us_bank_account.bank_name : null,
+                    };
+                }
+            } catch (e) {
+                console.warn('[PLANS] Stripe sub ' + p.stripe_subscription_id + ':', e.message);
+            }
+        }
+
+        return plans;
+    }
+
+    app.get('/api/portal/plans', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const plans = await listAllPlans(leadId);
+            const methods = (await pool.query(
+                `SELECT id, type, brand, last4, exp_month, exp_year, bank_name, is_default, status, stripe_pm_id
+                   FROM payment_methods
+                  WHERE lead_id = $1 AND status = 'active'
+                  ORDER BY is_default DESC, id DESC`,
+                [leadId]
+            )).rows;
+            res.json({ success: true, plans, paymentMethods: methods, noticeDays: CANCELLATION_NOTICE_DAYS });
+        } catch (e) {
+            console.error('[PORTAL PLANS ALL]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'Your plans') });
+        }
+    });
+
+    /**
+     * Change the payment method on any plan — maintenance or CRM.
+     *
+     * Accepts either a saved method (paymentMethodId) or another plan to copy
+     * from (sameAsPlanKind + sameAsPlanId) — the "use the same card as my other
+     * plan" case. Copying resolves to the same underlying Stripe payment method
+     * so there's one card on file, not a duplicate that drifts out of sync.
+     */
+    app.post('/api/portal/plans/:kind/:id/payment-method', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const { kind, id } = req.params;
+            const { paymentMethodId, sameAsPlanKind, sameAsPlanId } = req.body || {};
+
+            let pm = null;
+            if (sameAsPlanKind && sameAsPlanId) {
+                const all = await listAllPlans(leadId);
+                const src = all.find((p) => p.kind === sameAsPlanKind && String(p.id) === String(sameAsPlanId));
+                if (!src || !src.payment_method) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "That plan doesn't have a payment method saved yet.",
+                    });
+                }
+                if (src.payment_method.id) {
+                    pm = (await pool.query(
+                        'SELECT * FROM payment_methods WHERE id=$1 AND lead_id=$2',
+                        [src.payment_method.id, leadId]
+                    )).rows[0];
+                }
+                if (!pm && src.payment_method.stripe_pm_id) {
+                    pm = (await pool.query(
+                        'SELECT * FROM payment_methods WHERE stripe_pm_id=$1 AND lead_id=$2',
+                        [src.payment_method.stripe_pm_id, leadId]
+                    )).rows[0] || {
+                        id: null, stripe_pm_id: src.payment_method.stripe_pm_id,
+                        type: src.payment_method.type, brand: src.payment_method.brand,
+                        last4: src.payment_method.last4, bank_name: src.payment_method.bank_name,
+                    };
+                }
+            } else if (paymentMethodId) {
+                pm = (await pool.query(
+                    `SELECT * FROM payment_methods WHERE id=$1 AND lead_id=$2 AND status='active'`,
+                    [paymentMethodId, leadId]
+                )).rows[0];
+            }
+
+            if (!pm) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Choose a saved payment method, or add a new one first.',
+                });
+            }
+
+            if (kind === 'maintenance') {
+                if (!pm.id) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'That card isn\u2019t saved to your account yet. Add it under Payments first.',
+                    });
+                }
+                const upd = await pool.query(
+                    `UPDATE maintenance_plans
+                        SET payment_method_id = $3,
+                            status = CASE WHEN status = 'pending_payment_method' AND signed_at IS NOT NULL
+                                          THEN 'active' ELSE status END,
+                            consecutive_failures = 0,
+                            updated_at = NOW()
+                      WHERE id = $1 AND lead_id = $2
+                      RETURNING *`,
+                    [id, leadId, pm.id]
+                );
+                if (!upd.rows.length) {
+                    return res.status(404).json({ success: false, message: 'Plan not found.' });
+                }
+            } else if (kind === 'crm') {
+                const sub = (await pool.query(
+                    'SELECT * FROM crm_subscriptions WHERE id=$1 AND lead_id=$2', [id, leadId]
+                )).rows[0];
+                if (!sub) return res.status(404).json({ success: false, message: 'Subscription not found.' });
+                if (!sub.stripe_subscription_id) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "This subscription isn't linked to Stripe yet \u2014 contact us and we'll update it for you.",
+                    });
+                }
+                if (!stripe) {
+                    return res.status(503).json({ success: false, message: 'Payments are temporarily unavailable.' });
+                }
+                // Stripe rejects a default payment method that isn't attached to
+                // the subscription's customer, so attach first.
+                const customerId = sub.stripe_customer_id || await ensureStripeCustomer(leadId);
+                try {
+                    await stripe.paymentMethods.attach(pm.stripe_pm_id, { customer: customerId });
+                } catch (e) {
+                    if (!/already been attached/i.test(e.message)) throw e;
+                }
+                await stripe.subscriptions.update(sub.stripe_subscription_id, {
+                    default_payment_method: pm.stripe_pm_id,
+                });
+                await pool.query(
+                    'UPDATE crm_subscriptions SET stripe_customer_id=$2, updated_at=NOW() WHERE id=$1',
+                    [sub.id, customerId]
+                );
+            } else {
+                return res.status(400).json({ success: false, message: 'Unknown plan type.' });
+            }
+
+            const label = pm.type === 'card'
+                ? `${pm.brand || 'card'} ending ${pm.last4}`
+                : `${pm.bank_name || 'bank account'} ending ${pm.last4}`;
+            res.json({ success: true, message: `Payment method updated to your ${label}.` });
+        } catch (e) {
+            console.error('[PORTAL PM CHANGE]', e.message);
+            res.status(500).json({ success: false, message: e.message || 'Could not update the payment method.' });
+        }
+    });
+
+    /**
+     * Cancel a CRM subscription, with the same 30-day notice as maintenance.
+     *
+     * Stripe gets cancel_at_period_end rather than an immediate cancel, so they
+     * keep the service they've already paid for. CRM access is revoked only when
+     * the cancellation actually completes.
+     */
+    app.post('/api/portal/plans/crm/:id/cancel', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const sub = (await pool.query(
+                'SELECT * FROM crm_subscriptions WHERE id=$1 AND lead_id=$2', [req.params.id, leadId]
+            )).rows[0];
+            if (!sub) return res.status(404).json({ success: false, message: 'Subscription not found.' });
+
+            const existing = (await pool.query(
+                `SELECT * FROM plan_cancellations WHERE subscription_id=$1 AND status='pending'`, [sub.id]
+            )).rows[0];
+            if (existing) {
+                return res.json({
+                    success: true, alreadyPending: true, effectiveAt: existing.effective_at,
+                    message: `This subscription is already scheduled to end on ${prettyDate(existing.effective_at)}.`,
+                });
+            }
+
+            // End at the LATER of the 30-day notice and the period already paid
+            // for — never cut short service that's been invoiced.
+            const notice = new Date(Date.now() + CANCELLATION_NOTICE_DAYS * 86400000);
+            const periodEnd = sub.current_period_end ? new Date(sub.current_period_end) : null;
+            const effective = periodEnd && periodEnd > notice ? periodEnd : notice;
+
+            if (sub.stripe_subscription_id && stripe) {
+                await stripe.subscriptions.update(sub.stripe_subscription_id, { cancel_at_period_end: true })
+                    .catch((e) => console.warn('[CRM CANCEL] Stripe:', e.message));
+            }
+
+            const ins = await pool.query(
+                `INSERT INTO plan_cancellations
+                    (subscription_id, lead_id, effective_at, notice_days, requested_by, reason, status, confirmation_sent_at)
+                 VALUES ($1,$2,$3,$4,'customer',$5,'pending',NOW()) RETURNING *`,
+                [sub.id, leadId, effective, CANCELLATION_NOTICE_DAYS, (req.body || {}).reason || null]
+            );
+            await pool.query(
+                'UPDATE crm_subscriptions SET cancel_at_period_end=TRUE, updated_at=NOW() WHERE id=$1', [sub.id]
+            );
+
+            const lead = (await pool.query('SELECT id,name,email,phone FROM leads WHERE id=$1', [leadId])).rows[0];
+            await notify({
+                lead, kind: 'cancellation_confirmed',
+                subject: 'Your CodeNexus CRM subscription is scheduled to end',
+                bodyHtml: `<p style="margin:0 0 12px">We've received your cancellation request for <strong style="color:#fff">${sub.package_name || 'CodeNexus CRM'}</strong>.</p>
+                    <p style="margin:0 0 12px">You keep full CRM access until <strong style="color:#10b981">${prettyDate(effective)}</strong>, and you won't be billed after that.</p>
+                    <p style="margin:0 0 12px">Your customer portal is unaffected \u2014 invoices, receipts and messages stay exactly where they are.</p>
+                    <p style="margin:0">Changed your mind? You can reinstate from your portal any time before that date.</p>`,
+                smsText: `Diamondback Coding: your CodeNexus CRM subscription ends ${prettyDate(effective)}. Your customer portal is unaffected. Reinstate anytime before then.`,
+                channels: ['email', 'sms', 'portal'],
+                cta: { url: PORTAL_URL, label: 'Manage your plans' },
+            });
+
+            await adminNotify({
+                kind: 'crm_cancellation_requested',
+                title: `${lead.name} is cancelling their CRM subscription`,
+                body: `${money(sub.monthly_total)}/mo \u00b7 ends ${prettyDate(effective)}`,
+                leadId, entityType: 'crm_subscription', entityId: sub.id,
+                severity: 'warning', onceKey: `crm_cancel_requested:${ins.rows[0].id}`,
+            });
+
+            res.json({
+                success: true, effectiveAt: effective,
+                message: `Cancellation confirmed. You keep CRM access until ${prettyDate(effective)}.`,
+            });
+        } catch (e) {
+            console.error('[CRM CANCEL]', e.message);
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
+    app.post('/api/portal/plans/crm/:id/reinstate', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const sub = (await pool.query(
+                'SELECT * FROM crm_subscriptions WHERE id=$1 AND lead_id=$2', [req.params.id, leadId]
+            )).rows[0];
+            if (!sub) return res.status(404).json({ success: false, message: 'Subscription not found.' });
+
+            if (sub.stripe_subscription_id && stripe) {
+                await stripe.subscriptions.update(sub.stripe_subscription_id, { cancel_at_period_end: false })
+                    .catch((e) => console.warn('[CRM REINSTATE] Stripe:', e.message));
+            }
+            await pool.query(
+                'UPDATE crm_subscriptions SET cancel_at_period_end=FALSE, updated_at=NOW() WHERE id=$1', [sub.id]
+            );
+            await pool.query(
+                `UPDATE plan_cancellations SET status='reinstated', reinstated_at=NOW()
+                  WHERE subscription_id=$1 AND status='pending'`, [sub.id]
+            );
+
+            const lead = (await pool.query('SELECT id,name,email,phone FROM leads WHERE id=$1', [leadId])).rows[0];
+            await notify({
+                lead, kind: 'cancellation_confirmed',
+                subject: 'Your CodeNexus CRM subscription is reinstated',
+                bodyHtml: '<p style="margin:0 0 12px">Good news \u2014 your CRM subscription continues as normal. Nothing changes.</p>',
+                smsText: 'Diamondback Coding: your CodeNexus CRM subscription is reinstated.',
+                channels: ['email', 'portal'],
+                cta: { url: PORTAL_URL, label: 'View your plans' },
+            });
+
+            res.json({ success: true, message: 'Your CRM subscription is reinstated.' });
+        } catch (e) {
+            res.status(500).json({ success: false, message: e.message });
         }
     });
 
@@ -2333,6 +3104,7 @@ module.exports = function initLifecycle({
         reinstatePlan,
         // jobs
         runDunning,
+        listAllPlans,
         pastDueReport,
         ensureStripeCustomer,
         savePaymentMethod,

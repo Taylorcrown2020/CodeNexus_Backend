@@ -1280,57 +1280,213 @@ async function removePM(id){
 async function viewPlans(){
   const main = document.getElementById('main');
   main.innerHTML = `<div class="page-title">Plans</div>
-    <div class="page-sub">Your recurring maintenance plans.</div>
+    <div class="page-sub">Your recurring plans and subscriptions.</div>
     <div class="card mt"><p class="muted sm">Loading…</p></div>`;
   try{
-    const d = await pget('/api/portal/maintenance-plans');
-    PLANS = d.plans || []; PLAN_NOTICE = d.noticeDays || 30;
+    // One endpoint returns maintenance plans AND the CRM subscription, so both
+    // appear here with the same controls.
+    const d = await pget('/api/portal/plans');
+    PLANS = d.plans || []; PMS = d.paymentMethods || []; PLAN_NOTICE = d.noticeDays || 30;
   }catch(e){
     main.innerHTML = `<div class="page-title">Plans</div>
-      <div class="card mt"><p class="muted sm">Couldn't load your plans. Please refresh.</p></div>`;
+      <div class="card mt"><p class="muted sm">Couldn't load your plans. ${esc(e.message||'')}</p>
+      <button class="btn mt" onclick="viewPlans()">Try again</button></div>`;
     return;
   }
   updatePlanBadge();
 
   if(!PLANS.length){
     main.innerHTML = `<div class="page-title">Plans</div>
-      <div class="page-sub">Your recurring maintenance plans.</div>
-      <div class="card mt"><p class="muted sm">You're not on a maintenance plan. If you'd like ongoing upkeep for your site, database or email setup, just send us a message.</p></div>`;
+      <div class="page-sub">Your recurring plans and subscriptions.</div>
+      <div class="card mt"><p class="muted sm">You don't have any recurring plans. If you'd like ongoing maintenance for your site, database or email setup — or a CodeNexus CRM subscription — send us a message and we'll set it up.</p></div>`;
     return;
   }
 
-  const cards = PLANS.map(p=>{
-    const cancelling = p.status === 'pending_cancellation';
-    const days = p.days_until_cancellation;
-    const needsSig = p.status === 'pending_signature';
-    const needsPm  = p.status === 'pending_payment_method';
-    const method = p.last4
-      ? `${esc(p.brand || p.bank_name || p.method_type || 'Card')} ····${esc(p.last4)}`
-      : 'No payment method yet';
-    return `<div class="card mt">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-        <div>
-          <h3>${esc(p.label)}</h3>
-          <div class="muted sm" style="margin-top:4px">${money(p.amount)} per month · bills on day ${esc(String(p.billing_day))} · ${method}</div>
-        </div>
-        <span class="pill ${p.status==='active'?'paid':(cancelling?'cancelled':'in-progress')}">${esc((p.status||'').replace(/_/g,' '))}</span>
-      </div>
-      ${p.description?`<p class="muted sm" style="margin:12px 0 0">${esc(p.description)}</p>`:''}
-      ${cancelling?`<div class="db-warn">Scheduled to cancel on <strong>${fmtDate(p.cancels_at)}</strong>${days!=null?` — ${days} day${days===1?'':'s'} from now`:''}. Your service continues until then, and you can reinstate any time before that date.</div>`:''}
-      ${needsSig?`<div class="db-info">Waiting on your signature. Open your Agreements tab to review and sign, then add a payment method to start.</div>`:''}
-      ${needsPm?`<div class="db-info">Signed — now add a payment method on the Payments tab and this plan will activate.</div>`:''}
-      ${p.next_charge_date && p.status==='active'?`<div class="list-item" style="padding:12px 0 0"><div class="muted sm">Next payment</div><div class="mono sm">${fmtDate(p.next_charge_date)}</div></div>`:''}
-      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-        ${cancelling
-          ? `<button class="btn btn-primary" onclick="reinstatePlan(${p.id})">Reinstate this plan</button>`
-          : (p.status==='active' || p.status==='past_due')
-            ? `<button class="btn" onclick="openCancel(${p.id})">Cancel plan</button>` : ''}
-      </div></div>`;
-  }).join('');
+  const cards = PLANS.map(p => planCard(p)).join('');
 
   main.innerHTML = `<div class="page-title">Plans</div>
-    <div class="page-sub">Your recurring maintenance plans. Cancel any time — cancellation takes effect ${PLAN_NOTICE} days after you ask.</div>
-    ${cards}`;
+    <div class="page-sub">Your recurring plans and subscriptions. You can change the payment method or cancel any of them here — cancellation takes effect ${PLAN_NOTICE} days after you ask.</div>
+    ${cards}
+    <div class="card mt">
+      <h3>Payment methods</h3>
+      <p class="muted sm" style="margin:6px 0 0">Add or remove cards and bank accounts on the Payments tab.</p>
+      <button class="btn mt" onclick="nav('payments')">Manage payment methods</button>
+    </div>`;
+}
+
+/* One card per plan. Maintenance and CRM render the same way on purpose — the
+   customer shouldn't have to learn two different interfaces for two recurring
+   charges. */
+function planCard(p){
+  const cancelling = p.status === 'pending_cancellation';
+  const days = p.days_until_cancellation;
+  const needsSig = p.status === 'pending_signature';
+  const needsPm = p.status === 'pending_payment_method';
+  const pm = p.payment_method;
+  const method = pm
+    ? `${esc(pm.brand || pm.bank_name || pm.type || 'Card')} ····${esc(pm.last4 || '')}`
+    : '<span style="color:#eab308">No payment method yet</span>';
+  const isCrm = p.kind === 'crm';
+
+  return `<div class="card mt">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <h3>${esc(p.label)}${isCrm?' <span style="font-size:10px;font-weight:800;letter-spacing:.5px;padding:2px 6px;border-radius:3px;background:rgba(96,165,250,.16);color:#60a5fa;vertical-align:middle">CRM</span>':''}</h3>
+        <div class="muted sm" style="margin-top:4px">
+          ${money(p.amount)} per month${p.billing_day?` · bills on day ${esc(String(p.billing_day))}`:''} · ${method}
+        </div>
+      </div>
+      <span class="pill ${p.status==='active'?'paid':(cancelling?'cancelled':'in-progress')}">${esc(String(p.status||'').replace(/_/g,' '))}</span>
+    </div>
+    ${p.description?`<p class="muted sm" style="margin:12px 0 0">${esc(p.description)}</p>`:''}
+
+    ${cancelling?`<div class="db-warn">
+        Scheduled to end on <strong>${fmtDate(p.cancels_at)}</strong>${days!=null?` — ${days} day${days===1?'':'s'} from now`:''}.
+        ${isCrm?'You keep full CRM access until then.':'Your service continues until then.'} You can reinstate any time before that date.
+      </div>`:''}
+    ${needsSig?`<div class="db-info">Waiting on your signature — check your Agreements tab, then add a payment method to start.</div>`:''}
+    ${needsPm?`<div class="db-info">Signed. Choose a payment method below and this plan will activate.</div>`:''}
+    ${p.next_charge_date && !cancelling && p.status==='active'?`<div class="list-item" style="padding:12px 0 0"><div class="muted sm">Next payment</div><div class="mono sm">${fmtDate(p.next_charge_date)}</div></div>`:''}
+
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      ${p.can_change_payment_method?`<button class="btn" onclick="openChangePm('${p.kind}',${p.id})">${pm?'Change payment method':'Add payment method'}</button>`:''}
+      ${cancelling
+        ? `<button class="btn btn-primary" onclick="reinstateAnyPlan('${p.kind}',${p.id})">Keep this plan</button>`
+        : (p.can_cancel?`<button class="btn" style="color:#fca5a5" onclick="openCancelAny('${p.kind}',${p.id})">Cancel${isCrm?' subscription':' plan'}</button>`:'')}
+    </div>
+  </div>`;
+}
+
+/* Change payment method. Offers saved methods, "same as another plan", and
+   adding a new one inline — no redirect anywhere. */
+function openChangePm(kind, id){
+  const plan = PLANS.find(p => p.kind===kind && String(p.id)===String(id)) || {};
+  const others = PLANS.filter(p => !(p.kind===kind && String(p.id)===String(id)) && p.payment_method);
+
+  const savedOpts = PMS.length
+    ? PMS.map(m => {
+        const cur = plan.payment_method && (
+          (plan.payment_method.id && plan.payment_method.id === m.id) ||
+          (plan.payment_method.stripe_pm_id && plan.payment_method.stripe_pm_id === m.stripe_pm_id));
+        const name = m.type === 'card'
+          ? `${esc(m.brand||'Card')} ····${esc(m.last4||'')}${m.exp_month?` · exp ${m.exp_month}/${String(m.exp_year||'').slice(-2)}`:''}`
+          : `${esc(m.bank_name||'Bank account')} ····${esc(m.last4||'')}`;
+        return `<label style="display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer">
+          <input type="radio" name="pmChoice" value="saved:${m.id}" ${cur?'checked':''} style="accent-color:#10b981;width:16px;height:16px">
+          <span style="flex:1">${name}${cur?' <span class="muted sm">(current)</span>':''}</span>
+        </label>`;
+      }).join('')
+    : `<p class="muted sm" style="margin:0 0 10px">You don't have any saved payment methods yet.</p>`;
+
+  const sameOpts = others.length
+    ? others.map(o => `<label style="display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer">
+          <input type="radio" name="pmChoice" value="same:${o.kind}:${o.id}" style="accent-color:#10b981;width:16px;height:16px">
+          <span style="flex:1">Use the same as <strong style="color:#fff">${esc(o.label)}</strong>
+            <span class="muted sm">— ${esc(o.payment_method.brand || o.payment_method.bank_name || 'card')} ····${esc(o.payment_method.last4||'')}</span></span>
+        </label>`).join('')
+    : '';
+
+  let m = document.getElementById('pmChangeModal');
+  if(m) m.remove();
+  m = document.createElement('div');
+  m.id = 'pmChangeModal'; m.className = 'db-modal';
+  m.innerHTML = `<div class="db-modal-box">
+      <h3 style="margin:0 0 4px">Payment method</h3>
+      <p class="muted sm" style="margin:0 0 14px">for ${esc(plan.label||'this plan')}</p>
+      ${savedOpts}
+      ${sameOpts ? `<div style="margin-top:14px"><div class="muted sm" style="text-transform:uppercase;letter-spacing:.6px;font-size:11px;margin-bottom:4px">Or reuse another plan's method</div>${sameOpts}</div>` : ''}
+      <div id="pmChangeErr" class="db-warn" style="display:none"></div>
+      <div style="display:flex;gap:10px;margin-top:18px;justify-content:space-between;flex-wrap:wrap">
+        <button class="btn" onclick="document.getElementById('pmChangeModal').remove();addPM('card')">+ Add a new card</button>
+        <div style="display:flex;gap:10px">
+          <button class="btn" onclick="document.getElementById('pmChangeModal').remove()">Cancel</button>
+          <button class="btn btn-primary" id="pmChangeGo">Save</button>
+        </div>
+      </div></div>`;
+  document.body.appendChild(m);
+
+  document.getElementById('pmChangeGo').onclick = async () => {
+    const sel = m.querySelector('input[name="pmChoice"]:checked');
+    const err = document.getElementById('pmChangeErr');
+    if(!sel){ err.style.display='block'; err.textContent='Choose a payment method, or add a new one.'; return; }
+    const btn = document.getElementById('pmChangeGo');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const parts = sel.value.split(':');
+    const body = parts[0]==='saved'
+      ? { paymentMethodId: Number(parts[1]) }
+      : { sameAsPlanKind: parts[1], sameAsPlanId: Number(parts[2]) };
+
+    const d = await ppost(`/api/portal/plans/${kind}/${id}/payment-method`, body);
+    if(!d.success){
+      err.style.display='block'; err.textContent = d.message || 'Could not update.';
+      btn.disabled = false; btn.textContent = 'Save';
+      return;
+    }
+    m.remove();
+    dbToast(d.message || 'Payment method updated.');
+    viewPlans();
+  };
+}
+
+/* Cancellation, for maintenance and CRM alike. Deliberately low-friction: one
+   button, one confirm, no retention maze — with the reinstate path spelled out
+   so cancelling never feels like a trap. */
+function openCancelAny(kind, id){
+  const plan = PLANS.find(p => p.kind===kind && String(p.id)===String(id)) || {};
+  const isCrm = kind === 'crm';
+
+  let m = document.getElementById('cancelAnyModal');
+  if(m) m.remove();
+  m = document.createElement('div');
+  m.id = 'cancelAnyModal'; m.className = 'db-modal';
+  m.innerHTML = `<div class="db-modal-box">
+      <h3 style="margin:0 0 4px">Cancel ${esc(plan.label||'this plan')}?</h3>
+      <p class="muted sm" style="margin:0 0 4px">${PLAN_NOTICE}-day notice period.</p>
+      <div class="db-info">
+        ${isCrm
+          ? `You keep full CRM access until the notice period ends, and you won't be billed after that. <strong>Your customer portal isn't affected</strong> — your invoices, receipts and messages all stay right here.`
+          : `Your service continues until the notice period ends, and you'll be billed as normal until then.`}
+        You can reinstate any time before it ends.
+      </div>
+      <div class="db-field">
+        <label>Anything we could have done better? (optional)</label>
+        <input id="cxAnyReason" placeholder="Helps us improve — not required">
+      </div>
+      <div id="cxAnyErr" class="db-warn" style="display:none"></div>
+      <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
+        <button class="btn" onclick="document.getElementById('cancelAnyModal').remove()">Keep it</button>
+        <button class="btn btn-primary" id="cxAnyGo">Confirm cancellation</button>
+      </div></div>`;
+  document.body.appendChild(m);
+
+  document.getElementById('cxAnyGo').onclick = async () => {
+    const btn = document.getElementById('cxAnyGo');
+    btn.disabled = true; btn.textContent = 'Cancelling…';
+    const reason = (document.getElementById('cxAnyReason')||{}).value || null;
+    const path = isCrm
+      ? `/api/portal/plans/crm/${id}/cancel`
+      : `/api/portal/maintenance-plans/${id}/cancel`;
+    const d = await ppost(path, { reason });
+    if(!d.success){
+      const err = document.getElementById('cxAnyErr');
+      err.style.display='block'; err.textContent = d.message || 'Could not cancel.';
+      btn.disabled = false; btn.textContent = 'Confirm cancellation';
+      return;
+    }
+    m.remove();
+    dbToast(d.message || 'Cancellation confirmed.');
+    viewPlans();
+  };
+}
+
+async function reinstateAnyPlan(kind, id){
+  const path = kind === 'crm'
+    ? `/api/portal/plans/crm/${id}/reinstate`
+    : `/api/portal/maintenance-plans/${id}/reinstate`;
+  const d = await ppost(path);
+  dbToast(d.message || (d.success?'Reinstated.':'Could not reinstate.'), !d.success);
+  viewPlans();
 }
 
 function updatePlanBadge(){

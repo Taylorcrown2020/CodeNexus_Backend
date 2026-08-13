@@ -4725,7 +4725,11 @@ async function renderSection(section) {
     // Update topbar actions based on section
     const topbarActions = document.querySelector('.topbar-actions');
     if (topbarActions) {
-        let actionButtons = `
+        // Messages FIRST, and built here rather than left in the static markup:
+        // this function replaces .topbar-actions wholesale on every section
+        // change, so a hard-coded button survives exactly until the first nav
+        // click. Rebuilding it here is what makes it permanent.
+        let actionButtons = (typeof dbmMsgButton === 'function' ? dbmMsgButton() : '') + `
             <button class="btn btn-secondary" onclick="openExportModal()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -4809,6 +4813,12 @@ async function renderSection(section) {
         }
         
         topbarActions.innerHTML = actionButtons;
+        // The rebuild above discards the old badge element, so repaint the
+        // unread count onto the fresh one.
+        // updateMsgBadges() lives inside the messenger IIFE and is NOT global —
+        // it's exposed as window.refreshMsgBadge. Calling the inner name here
+        // would silently do nothing and the badge would always read zero.
+        if (typeof window.refreshMsgBadge === 'function') { try { window.refreshMsgBadge(); } catch (e) {} }
     }
     
     console.log(' renderSection - about to switch to:', section);
@@ -5677,8 +5687,35 @@ function renderDashboard(content) {
     const totalRevenue = state.invoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
     const pendingRevenue = state.invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void').reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
 
+    // Unread customer-portal messages + texts, read from the messenger's own
+    // state so the number can't disagree with the topbar badge. Clicking opens
+    // the messenger straight to the Unread filter.
+    const _msg = window.__MSG || {};
+    const unreadPortal = Number(_msg.totalUnread || 0);
+    const unreadSms = Number(_msg.smsUnread || 0);
+    const unreadTotal = unreadPortal + unreadSms;
+
     content.innerHTML = `
         <div class="stats-grid">
+            <div class="stat-card" style="cursor:pointer" title="Open messages"
+                 onclick="if(window.__msgFilter){window.__msgFilter('unread');} if(window.openMessenger){openMessenger();}">
+                <div class="stat-header">
+                    <span class="stat-label">Unread Messages</span>
+                    <div class="stat-icon ${unreadTotal > 0 ? 'red' : 'blue'}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22 6 12 13 2 6"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-value" id="dashUnreadValue">${unreadTotal}</div>
+                <div class="stat-change ${unreadTotal > 0 ? 'negative' : 'positive'}">
+                    ${unreadTotal > 0
+                        ? `${unreadPortal} portal · ${unreadSms} SMS — click to read`
+                        : 'All caught up'}
+                </div>
+            </div>
+
             <div class="stat-card">
                 <div class="stat-header">
                     <span class="stat-label">Total Leads</span>
@@ -21802,6 +21839,11 @@ async function renderSalesAgreements(content) {
             <td>${start}</td>
             <td><select onchange="updateSalesAgreementStatus(${a.id}, this.value)" style="padding:6px;border-radius:6px;">${sel}</select></td>
             <td style="white-space:nowrap;">
+                ${a.signature_at
+                    ? `<span style="display:inline-block;padding:5px 9px;border-radius:5px;background:rgba(16,185,129,.15);color:#10b981;font-size:11px;font-weight:800;">SIGNED ${saEsc(String(a.signer_name || ''))}</span>`
+                    : (a.lead_id
+                        ? `<button class="btn btn-primary" style="padding:6px 10px;" onclick="sendSalesAgreement(${a.id})">${a.sent_at ? 'Resend' : 'Send to portal'}</button>`
+                        : `<span style="color:#eab308;font-size:11px;font-weight:700;">Assign a client to send</span>`)}
                 <button class="btn btn-secondary" style="padding:6px 10px;" onclick="openSalesAgreementModal(${a.id})">Edit</button>
                 <button class="btn btn-secondary" style="padding:6px 10px;color:#e25;" onclick="deleteSalesAgreement(${a.id})">Delete</button>
             </td>
@@ -22109,6 +22151,82 @@ function closeSalesAgreementPreview() {
     if (o) o.remove();
 }
 
+/* ---- SLA line items: fully customizable agreement contents ----
+   Each row is description / detail / qty / unit price. When any exist, the
+   agreement total is the sum of them and the flat Price field is ignored — the
+   backend applies the same rule, so what you build here is what gets stored.
+   Items also seed the customer's project timeline milestones on signing. */
+let SA_ITEMS = [];
+
+function saRenderItems() {
+    const wrap = document.getElementById('saItemsWrap');
+    if (!wrap) return;
+    if (!SA_ITEMS.length) {
+        wrap.innerHTML = `<p style="margin:0;color:var(--text-muted,#888);font-size:13px;line-height:1.55;">
+            No line items \u2014 the agreement will use the single Price above.
+            Add items to itemise it; each one also becomes a milestone on the customer's project timeline.</p>`;
+    } else {
+        wrap.innerHTML = SA_ITEMS.map((it, i) => `
+            <div style="display:grid;grid-template-columns:1fr 80px 110px 32px;gap:8px;align-items:start;margin-bottom:10px;">
+                <div>
+                    <input value="${saEsc(it.description || '')}" placeholder="Description"
+                           oninput="saItemChange(${i},'description',this.value)"
+                           style="width:100%;padding:8px 10px;border-radius:6px;font-size:13px;">
+                    <input value="${saEsc(it.detail || '')}" placeholder="Detail (optional)"
+                           oninput="saItemChange(${i},'detail',this.value)"
+                           style="width:100%;padding:6px 10px;border-radius:6px;font-size:12px;margin-top:5px;opacity:.85;">
+                </div>
+                <input type="number" min="1" step="1" value="${Number(it.quantity) || 1}" title="Quantity"
+                       oninput="saItemChange(${i},'quantity',this.value)"
+                       style="width:100%;padding:8px;border-radius:6px;font-size:13px;">
+                <input type="number" min="0" step="0.01" value="${Number(it.unit_price) || 0}" title="Unit price"
+                       oninput="saItemChange(${i},'unit_price',this.value)"
+                       style="width:100%;padding:8px;border-radius:6px;font-size:13px;">
+                <button type="button" title="Remove" onclick="saRemoveItem(${i})"
+                        style="padding:8px;border-radius:6px;border:none;background:rgba(239,68,68,.15);color:#ef4444;cursor:pointer;font-weight:800;">&times;</button>
+            </div>`).join('');
+    }
+    saSyncItemsTotal();
+}
+
+function saSyncItemsTotal() {
+    const el = document.getElementById('saItemsTotal');
+    if (!el) return;
+    if (!SA_ITEMS.length) { el.textContent = ''; return; }
+    const total = SA_ITEMS.reduce((t, it) => t + (Number(it.quantity) || 1) * (Number(it.unit_price) || 0), 0);
+    el.textContent = `Items total: ${saMoney(total)} \u2014 this overrides the Price field`;
+    // Keep the visible Price field honest, and the deposit maths with it.
+    const priceEl = document.getElementById('saPrice');
+    if (priceEl) { priceEl.value = total.toFixed(2); if (typeof saSyncDeposit === 'function') saSyncDeposit(); }
+}
+
+function saAddItem() { SA_ITEMS.push({ description: '', detail: '', quantity: 1, unit_price: 0 }); saRenderItems(); }
+function saRemoveItem(i) { SA_ITEMS.splice(i, 1); saRenderItems(); }
+function saItemChange(i, field, val) {
+    if (!SA_ITEMS[i]) return;
+    SA_ITEMS[i][field] = (field === 'quantity' || field === 'unit_price') ? Number(val) : val;
+    if (field === 'quantity' || field === 'unit_price') saSyncItemsTotal();
+}
+
+/* Load existing items when editing, so an agreement round-trips unchanged. */
+async function saLoadItems(agreementId) {
+    SA_ITEMS = [];
+    if (agreementId) {
+        try {
+            const token = getAuthToken();
+            const r = await fetch(`${API_URL}/api/sales-agreements/${agreementId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const d = await r.json();
+            if (d.success && Array.isArray(d.items)) {
+                SA_ITEMS = d.items.map(it => ({
+                    description: it.description || '', detail: it.detail || '',
+                    quantity: Number(it.quantity) || 1, unit_price: Number(it.unit_price) || 0
+                }));
+            }
+        } catch (e) { /* editing still works without them */ }
+    }
+    saRenderItems();
+}
+
 async function openSalesAgreementModal(id) {
     const token = getAuthToken();
     const editing = SA_CACHE.find(a => a.id === id) || null;
@@ -22189,6 +22307,16 @@ async function openSalesAgreementModal(id) {
                     <select id="saStatus" style="width:100%;padding:10px;border-radius:8px;">${statusOpts}</select>
                 </div>
                 <div>
+                    <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">
+                        Line items <span style="color:var(--text-muted,#888);font-weight:400;">(optional \u2014 add them and the total is calculated from these instead of the price above)</span>
+                    </label>
+                    <div id="saItemsWrap" style="border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px;background:rgba(0,0,0,.2);"></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:12px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-secondary" style="padding:7px 12px;" onclick="saAddItem()">+ Add line item</button>
+                        <div id="saItemsTotal" style="font-size:14px;font-weight:700;color:#10b981;"></div>
+                    </div>
+                </div>
+                <div>
                     <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Services performed <span style="color:var(--text-muted,#888);font-weight:400;">(preset — auto-fills from the package; edit only if you need to)</span></label>
                     <textarea id="saTerms" rows="9" placeholder="Pick a service & package and this fills in automatically…" style="width:100%;padding:10px;border-radius:8px;font-size:13px;line-height:1.5;">${saEsc(e.terms || '')}</textarea>
                 </div>
@@ -22209,6 +22337,7 @@ async function openSalesAgreementModal(id) {
     document.body.appendChild(overlay);
     saApplyPreset();
     saSyncDeposit();
+    saLoadItems(id);   // populates the line-item editor (empty for a new agreement)
 }
 function closeSalesAgreementModal() {
     const o = document.getElementById('saModalOverlay');
@@ -22229,7 +22358,10 @@ async function saveSalesAgreement() {
         start_date: document.getElementById('saStart').value || null,
         status: document.getElementById('saStatus').value,
         terms: document.getElementById('saTerms').value.trim(),
-        notes: document.getElementById('saNotes').value.trim()
+        notes: document.getElementById('saNotes').value.trim(),
+        // Only items that actually say something. The backend derives the total
+        // from these when present, matching what the editor showed.
+        items: SA_ITEMS.filter(it => (it.description || '').trim())
     };
     if (!body.service_type) { showToast('Please choose a service type.', 'error'); return; }
     const btn = document.getElementById('saSaveBtn');
@@ -22256,6 +22388,25 @@ async function saveSalesAgreement() {
     } catch (e) {
         showToast('Error saving agreement: ' + e.message, 'error');
         if (btn) { btn.disabled = false; btn.textContent = id ? 'Save Changes' : 'Create Agreement'; }
+    }
+}
+
+/* Publish an agreement to the assigned customer's portal: it appears under
+   their Agreements tab and they get the ready-to-sign email + SMS. Signing then
+   triggers the invoice, project timeline and admin assignment automatically. */
+async function sendSalesAgreement(id) {
+    const token = getAuthToken();
+    if (!confirm('Send this agreement to the customer\'s portal? They will be emailed and texted that it is ready to sign.')) return;
+    try {
+        const res = await fetch(`${API_URL}/api/sales-agreements/${id}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+        });
+        const d = await res.json();
+        showToast(d.message || (d.success ? 'Sent.' : 'Could not send.'), d.success ? 'success' : 'error');
+        if (d.success) renderSection('salesAgreements');
+    } catch (e) {
+        showToast('Error sending agreement: ' + e.message, 'error');
     }
 }
 
@@ -22351,6 +22502,20 @@ async function deleteSalesAgreement(id) {
         // never disagree about how many unread you have.
         const tmb = document.getElementById('topMsgBadge');
         if (tmb) { tmb.textContent = env > 99 ? '99+' : env; tmb.style.display = env > 0 ? 'inline-block' : 'none'; }
+        // Dashboard card. The dashboard renders before the first messenger fetch
+        // returns, so without this it would sit at 0 until you navigated away and
+        // back. Updated on every poll.
+        const dv = document.getElementById('dashUnreadValue');
+        if (dv) {
+            dv.textContent = env;
+            const note = dv.parentElement && dv.parentElement.querySelector('.stat-change');
+            if (note) {
+                note.textContent = env > 0
+                    ? `${portal} portal · ${MSG.smsUnread || 0} SMS — click to read`
+                    : 'All caught up';
+                note.className = 'stat-change ' + (env > 0 ? 'negative' : 'positive');
+            }
+        }
     }
 
     function ensureOverlay() {
@@ -22945,12 +23110,33 @@ function dbmToken(){
          sessionStorage.getItem('adminToken') || '';
 }
 async function dbmGet(path){
-  const r = await fetch(path, { headers:{ 'Authorization':'Bearer ' + dbmToken() }});
-  if(!r.ok) throw new Error('Request failed (' + r.status + ')');
-  return r.json();
+  // Use API_URL like the rest of the portal, so this still works if the page is
+  // ever served from a different origin than the API.
+  const r = await fetch((typeof API_URL !== 'undefined' ? API_URL : '') + path, {
+    headers:{ 'Authorization':'Bearer ' + dbmToken() }
+  });
+  if(r.ok) return r.json();
+
+  // Read the body before throwing. The previous version threw
+  // `Request failed (500)` immediately, which discarded the server's
+  // explanation — so a missing-migration error that the API describes
+  // precisely showed up in the UI as a bare status code with no cause.
+  let detail = '';
+  try {
+    const d = await r.json();
+    detail = d && (d.message || d.error) ? String(d.message || d.error) : '';
+  } catch(_) {
+    try { detail = (await r.text() || '').slice(0, 300); } catch(__) {}
+  }
+  if(r.status === 401 || r.status === 403){
+    detail = detail || 'Your session expired. Please sign in again.';
+  }
+  const err = new Error(detail || ('Request failed (' + r.status + ')'));
+  err.status = r.status;
+  throw err;
 }
 async function dbmSend(path, body, method){
-  const r = await fetch(path, {
+  const r = await fetch((typeof API_URL !== 'undefined' ? API_URL : '') + path, {
     method: method || 'POST',
     headers:{ 'Authorization':'Bearer ' + dbmToken(), 'Content-Type':'application/json' },
     body: body ? JSON.stringify(body) : undefined
@@ -22981,7 +23167,11 @@ async function renderMaintenance(content){
     const d = await dbmGet('/api/admin/maintenance-plans');
     DBM.plans = d.plans || []; DBM.planSummary = d.summary || {};
   }catch(e){
-    content.innerHTML = `<div class="dbm-alert">Couldn't load maintenance plans. ${dbmEsc(e.message)}</div>`;
+    content.innerHTML = `<div class="dbm-alert"><strong>Couldn't load maintenance plans.</strong><br>${dbmEsc(e.message)}</div>`
+      + `<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+           <button class="btn" onclick="renderSection(state.currentSection)">Try again</button>
+           <button class="btn" onclick="dbmSchemaCheck()">Run a database check</button>
+         </div>`;
     return;
   }
   const s = DBM.planSummary || {};
@@ -23037,17 +23227,34 @@ function dbmUpdateBadge(id, n){
 }
 
 async function dbmNewPlan(){
-  /* Customer list comes from whatever the portal already loaded, so this works
-     without another endpoint. Falls back to a manual lead id. */
+  /* Customer list.
+     The previous version read state.leads — which EXCLUDES customers
+     (loadLeads does `state.leads = leads.filter(l => !l.is_customer)` and puts
+     customers in state.customers). So the filter matched nothing every time and
+     this fell back to a bare "lead ID" box: effectively no way to assign anyone.
+     Now it uses state.customers, and fetches from the server if the portal
+     hasn't loaded that list yet, so the dropdown is never empty by accident. */
   let customers = [];
   try{
-    const src = (typeof state !== 'undefined' && state.leads) ? state.leads : [];
-    customers = src.filter(l => l.is_customer && l.client_password);
-    if(!customers.length) customers = src.filter(l => l.is_customer);
+    if (typeof state !== 'undefined' && Array.isArray(state.customers) && state.customers.length) {
+      customers = state.customers.slice();
+    }
   }catch(_){}
+  if(!customers.length){
+    try{
+      const d = await dbmGet('/api/sales-agreement-clients');
+      customers = (d.clients || []).filter(c => c.is_customer);
+    }catch(_){}
+  }
+  // Sort those who can actually be billed to the top, and say so, rather than
+  // letting you pick someone who then can't sign or pay.
+  customers.sort((a,b)=> (b.has_portal?1:0)-(a.has_portal?1:0) || String(a.name||'').localeCompare(String(b.name||'')));
 
   const options = customers.length
-    ? customers.map(c=>`<option value="${c.id}">${dbmEsc(c.name)} — ${dbmEsc(c.email)}</option>`).join('')
+    ? customers.map(c=>{
+        const portal = (c.has_portal !== undefined) ? c.has_portal : !!c.client_password;
+        return `<option value="${c.id}">${dbmEsc(c.name || ('Customer #'+c.id))}${c.email?' — '+dbmEsc(c.email):''}${portal?'':'  (no portal account yet)'}</option>`;
+      }).join('')
     : '';
 
   let m = document.getElementById('dbmPlanModal');
@@ -23060,8 +23267,7 @@ async function dbmNewPlan(){
     <div class="dbm-f">
       <label>Customer</label>
       ${options ? `<select id="mpLead">${options}</select>`
-                : `<input id="mpLead" placeholder="Customer lead ID" inputmode="numeric">
-                   <div style="color:#8a8a8a;font-size:12px;margin-top:5px">Open the Customers tab first to load the list.</div>`}
+                : `<div class="dbm-alert" style="margin:0">No customers found. Convert a lead to a customer first — the Customers tab lists everyone eligible.</div>`}
     </div>
     <div class="dbm-r">
       <div class="dbm-f">
@@ -23141,7 +23347,11 @@ async function renderPastDue(content){
     d = await dbmGet('/api/admin/past-due');
     DBM.pastDue = d;
   }catch(e){
-    content.innerHTML = `<div class="dbm-alert">Couldn't load past-due invoices. ${dbmEsc(e.message)}</div>`;
+    content.innerHTML = `<div class="dbm-alert"><strong>Couldn't load past-due invoices.</strong><br>${dbmEsc(e.message)}</div>`
+      + `<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+           <button class="btn" onclick="renderSection(state.currentSection)">Try again</button>
+           <button class="btn" onclick="dbmSchemaCheck()">Run a database check</button>
+         </div>`;
     return;
   }
   dbmUpdateBadge('pastDueBadge', d.count || 0);
@@ -23317,6 +23527,75 @@ function dbmRefund(paymentId, maxAmount, leadId, name){
   };
 }
 
+/* ---------------- TOPBAR MESSAGES BUTTON ---------------- */
+/* Returned as markup (not appended to the DOM) because renderSection() rebuilds
+   .topbar-actions from a string on every section change. Anything appended
+   directly is wiped on the next navigation — which is exactly why the button
+   appeared to vanish. */
+function dbmMsgButton(){
+  const n = (window.__MSG && ((window.__MSG.totalUnread || 0) + (window.__MSG.smsUnread || 0))) || 0;
+  return `
+    <button class="btn btn-secondary" id="topMsgBtn" title="Messages & SMS — customer portal threads and texts"
+            onclick="if(window.openMessenger){openMessenger();}else{showToast('Messenger is still loading, try again in a moment.','error');}"
+            style="position:relative">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+        <polyline points="22 6 12 13 2 6"/>
+      </svg>
+      Messages
+      <span id="topMsgBadge" style="display:${n>0?'inline-block':'none'};position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center">${n>99?'99+':n}</span>
+    </button>`;
+}
+window.dbmMsgButton = dbmMsgButton;
+
+/* ---------------- DIAGNOSTICS ---------------- */
+/* Shows exactly which tables the new tabs need and which are missing, so a 500
+   stops being a guessing game. Callable from any error panel. */
+async function dbmSchemaCheck(){
+  let m = document.getElementById('dbmSchemaModal');
+  if(m) m.remove();
+  m = document.createElement('div');
+  m.id = 'dbmSchemaModal'; m.className = 'dbm-modal';
+  m.innerHTML = `<div class="dbm-modal-box"><div class="dbm-empty">Checking the database…</div></div>`;
+  document.body.appendChild(m);
+
+  let d;
+  try{
+    d = await dbmGet('/api/admin/schema-check');
+  }catch(e){
+    m.querySelector('.dbm-modal-box').innerHTML =
+      `<h2 style="margin:0 0 10px;font-size:19px">Database check</h2>
+       <div class="dbm-alert">The check itself failed: ${dbmEsc(e.message)}<br><br>
+         If this says the session expired, sign out and back in. Otherwise the API isn't reachable from this page.</div>
+       <div style="text-align:right;margin-top:14px"><button class="btn" onclick="dbmClose('dbmSchemaModal')">Close</button></div>`;
+    return;
+  }
+
+  const rows = Object.entries(d.features || {}).map(([name, f]) => `
+    <tr>
+      <td>${dbmEsc(name)}</td>
+      <td><span class="dbm-pill ${f.ok?'active':'past_due'}">${f.ok?'ready':'missing tables'}</span></td>
+      <td style="font-family:monospace;font-size:12px;color:#8a8a8a">${f.missing.length?dbmEsc(f.missing.join(', ')):'—'}</td>
+    </tr>`).join('');
+
+  const migs = (d.migrations || []).length
+    ? `<table class="dbm-table" style="margin-top:8px"><thead><tr><th>Migration</th><th>Applied</th><th>Statements</th></tr></thead><tbody>` +
+      d.migrations.map(mm=>`<tr><td style="font-family:monospace;font-size:12px">${dbmEsc(mm.filename)}</td><td>${dbmDate(mm.applied_at)}</td><td>${mm.statements||0}${Number(mm.failures)>0?` <span style="color:#ef4444">(${mm.failures} failed)</span>`:''}</td></tr>`).join('') +
+      `</tbody></table>`
+    : `<div class="dbm-alert" style="margin-top:8px">No migrations have been recorded on this database.</div>`;
+
+  m.querySelector('.dbm-modal-box').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <h2 style="margin:0;font-size:19px">Database check</h2>
+      <button class="btn" onclick="dbmClose('dbmSchemaModal')">Close</button>
+    </div>
+    <div class="${d.ok?'dbm-note':'dbm-alert'}" style="margin-top:14px">${dbmEsc(d.advice||'')}</div>
+    <h3 style="margin:18px 0 6px;font-size:14px">Features</h3>
+    <table class="dbm-table"><thead><tr><th>Feature</th><th>Status</th><th>Missing</th></tr></thead><tbody>${rows}</tbody></table>
+    <h3 style="margin:18px 0 6px;font-size:14px">Migrations</h3>
+    ${migs}`;
+}
+
 /* ---------------- NOTIFICATIONS ---------------- */
 async function renderLifecycleNotifications(content){
   content.innerHTML = `<div class="dbm-empty">Loading notifications…</div>`;
@@ -23325,7 +23604,11 @@ async function renderLifecycleNotifications(content){
     d = await dbmGet('/api/admin/lifecycle-notifications');
     DBM.notifications = d.notifications || [];
   }catch(e){
-    content.innerHTML = `<div class="dbm-alert">Couldn't load notifications. ${dbmEsc(e.message)}</div>`;
+    content.innerHTML = `<div class="dbm-alert"><strong>Couldn't load notifications.</strong><br>${dbmEsc(e.message)}</div>`
+      + `<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+           <button class="btn" onclick="renderSection(state.currentSection)">Try again</button>
+           <button class="btn" onclick="dbmSchemaCheck()">Run a database check</button>
+         </div>`;
     return;
   }
   dbmUpdateBadge('lifecycleBadge', d.unreadCount || 0);

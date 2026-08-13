@@ -3615,6 +3615,183 @@ body.graffiti-mode .sidebar::after {
 .dbm-ladder i{width:11px;height:5px;border-radius:2px;background:#2a2a2a;display:block}
 .dbm-ladder i.on{background:#eab308}.dbm-ladder i.max{background:#ef4444}
 </style>
+
+<style id="db-messenger-css">
+/* ==========================================================================
+   MESSENGER STYLES
+   The messenger JS block was ported into this portal without its stylesheet —
+   none of these classes had a single rule, so opening Messages dumped the raw
+   panel markup down the page instead of showing a dialog. This is that missing
+   stylesheet, written against the portal's own variables (gold #D4A574 on
+   near-black) with body.light-mode overrides in the same per-component style
+   the rest of the file uses.
+   ========================================================================== */
+/* The JS shows this by adding .open and hides it by removing it (see
+   openMessenger / closeMessenger). So the base state MUST be hidden — a plain
+   `display:flex` here leaves the panel permanently painted over the page, which
+   is exactly what an unstyled/always-on overlay looked like. */
+.msg-overlay{
+    position:fixed; inset:0; z-index:9500;
+    background:rgba(0,0,0,.72); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:28px 20px;
+    opacity:0; visibility:hidden; pointer-events:none;
+    transition:opacity .18s ease, visibility .18s ease;
+}
+.msg-overlay.open{ opacity:1; visibility:visible; pointer-events:auto; }
+/* The back arrow only exists on mobile, where the list pane is hidden. */
+@media (min-width:821px){ .msg-back{ display:none; } }
+.msg-overlay[hidden]{ display:none; }
+.msg-window{
+    display:flex; width:100%; max-width:1040px; height:min(78vh,720px);
+    background:var(--bg-card,#141414);
+    border:1px solid var(--border-default,rgba(255,255,255,.1));
+    border-radius:14px; overflow:hidden;
+    box-shadow:0 24px 70px rgba(0,0,0,.55);
+}
+
+/* ---- left pane: conversation list ---- */
+.msg-list-pane{
+    width:326px; flex-shrink:0; display:flex; flex-direction:column;
+    border-right:1px solid var(--border-subtle,rgba(255,255,255,.06));
+    background:var(--bg-secondary,#121212); min-width:0;
+}
+.msg-list-head{ padding:16px 16px 12px; border-bottom:1px solid var(--border-subtle,rgba(255,255,255,.06)); }
+.msg-list-head h3{
+    margin:0 0 11px; font-size:15px; font-weight:700; color:var(--text-primary,#fff);
+    display:flex; align-items:center; gap:8px;
+}
+.msg-search{
+    width:100%; padding:9px 12px; font:inherit; font-size:13px;
+    background:var(--bg-void,#000); color:var(--text-primary,#fff);
+    border:1px solid var(--border-default,rgba(255,255,255,.1)); border-radius:8px;
+}
+.msg-search:focus{ outline:none; border-color:var(--accent-amber,#D4A574); }
+.msg-list{ flex:1; overflow-y:auto; min-height:0; }
+
+.msg-convo{
+    display:flex; gap:11px; align-items:flex-start; padding:12px 15px; cursor:pointer;
+    border-bottom:1px solid var(--border-subtle,rgba(255,255,255,.05)); transition:background .15s ease;
+}
+.msg-convo:hover{ background:var(--bg-hover,rgba(212,165,116,.08)); }
+.msg-convo.active{ background:var(--accent-amber-dim,rgba(212,165,116,.12)); }
+.msg-convo.unread .msg-convo-name{ color:var(--accent-amber,#D4A574); }
+.msg-avatar{
+    width:36px; height:36px; flex-shrink:0; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; color:#0a0a0a;
+}
+.msg-convo-body{ flex:1; min-width:0; }
+.msg-convo-top{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.msg-convo-name{
+    font-size:13.5px; font-weight:600; color:var(--text-primary,#fff);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.msg-convo-time{ font-size:11px; color:var(--text-muted,#808080); flex-shrink:0; }
+.msg-convo-preview{
+    font-size:12px; color:var(--text-muted,#808080); margin-top:3px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.msg-unread-dot{
+    width:8px; height:8px; border-radius:50%; background:var(--accent-amber,#D4A574);
+    flex-shrink:0; margin-top:13px;
+}
+
+/* ---- right pane: thread ---- */
+.msg-thread-pane{ flex:1; display:flex; flex-direction:column; min-width:0; background:var(--bg-card,#141414); }
+.msg-thread-head{
+    padding:14px 18px; border-bottom:1px solid var(--border-subtle,rgba(255,255,255,.06));
+    display:flex; align-items:center; gap:12px; flex-shrink:0;
+}
+.msg-thread-title{ font-size:15px; font-weight:700; color:var(--text-primary,#fff); }
+.msg-back, .msg-close{
+    background:none; border:none; cursor:pointer; padding:6px;
+    color:var(--text-muted,#808080); font-size:20px; line-height:1; border-radius:6px;
+}
+.msg-back:hover, .msg-close:hover{ color:var(--text-primary,#fff); background:var(--bg-hover,rgba(255,255,255,.06)); }
+.msg-close{ margin-left:auto; }
+.msg-body{ flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:3px; min-height:0; }
+
+.msg-bubble{
+    max-width:74%; padding:10px 14px; border-radius:14px; font-size:14px; line-height:1.5;
+    word-wrap:break-word; white-space:pre-wrap;
+}
+.msg-bubble.me{ align-self:flex-end; background:var(--accent-amber,#D4A574); color:#0a0a0a; border-bottom-right-radius:4px; }
+.msg-bubble.them{
+    align-self:flex-start; background:var(--bg-tertiary,#1a1a1a); color:var(--text-primary,#fff);
+    border:1px solid var(--border-subtle,rgba(255,255,255,.06)); border-bottom-left-radius:4px;
+}
+.msg-meta{ font-size:10.5px; color:var(--text-faint,#4d4d4d); margin:2px 4px 10px; }
+.msg-meta.me{ align-self:flex-end; }
+.msg-meta.them{ align-self:flex-start; }
+.msg-daydiv{
+    align-self:center; margin:12px 0 8px; font-size:10.5px; font-weight:700;
+    letter-spacing:.7px; text-transform:uppercase; color:var(--text-muted,#808080);
+}
+.msg-req-card{
+    align-self:flex-start; max-width:82%; margin:6px 0 10px; padding:12px 14px;
+    background:var(--bg-tertiary,#1a1a1a); border:1px solid var(--border-strong,rgba(212,165,116,.2));
+    border-radius:10px;
+}
+.msg-req-card .rh{
+    font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase;
+    color:var(--accent-amber,#D4A574); margin-bottom:7px;
+}
+.msg-req-card .row{ font-size:12.5px; color:var(--text-secondary,#b4b4b4); padding:3px 0; }
+
+.msg-composer{
+    display:flex; gap:10px; align-items:flex-end; padding:13px 16px; flex-shrink:0;
+    border-top:1px solid var(--border-subtle,rgba(255,255,255,.06)); background:var(--bg-secondary,#121212);
+}
+.msg-composer textarea{
+    flex:1; resize:none; min-height:42px; max-height:140px; padding:11px 13px; font:inherit; font-size:14px;
+    background:var(--bg-void,#000); color:var(--text-primary,#fff);
+    border:1px solid var(--border-default,rgba(255,255,255,.1)); border-radius:9px;
+}
+.msg-composer textarea:focus{ outline:none; border-color:var(--accent-amber,#D4A574); }
+.msg-send{
+    padding:11px 20px; border:none; border-radius:9px; cursor:pointer;
+    background:var(--accent-amber,#D4A574); color:#0a0a0a; font:inherit; font-size:14px; font-weight:700;
+}
+.msg-send:hover{ background:var(--brand-gold-light,#E5C4A0); }
+.msg-send:disabled{ opacity:.5; cursor:not-allowed; }
+
+.msg-empty{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:12px; color:var(--text-muted,#808080); font-size:13.5px; text-align:center; padding:40px 24px;
+}
+.msg-empty svg{ width:44px; height:44px; opacity:.35; }
+
+/* ---- mobile: one pane at a time ---- */
+@media (max-width:820px){
+    .msg-overlay{ padding:0; }
+    .msg-window{ max-width:none; height:100%; border-radius:0; border:none; }
+    .msg-list-pane{ width:100%; }
+    /* Class name must match the JS, which toggles .show-thread. */
+    .msg-window.show-thread .msg-list-pane{ display:none; }
+    .msg-window:not(.show-thread) .msg-thread-pane{ display:none; }
+    .msg-bubble{ max-width:86%; }
+}
+
+/* ---- light mode, matching the per-component pattern used elsewhere ---- */
+body.light-mode .msg-window{ background:#ffffff; border-color:rgba(0,0,0,.1); }
+body.light-mode .msg-list-pane{ background:#f8f9fa; border-right-color:rgba(0,0,0,.08); }
+body.light-mode .msg-list-head{ border-bottom-color:rgba(0,0,0,.08); }
+body.light-mode .msg-list-head h3,
+body.light-mode .msg-convo-name,
+body.light-mode .msg-thread-title{ color:#1a1a1a; }
+body.light-mode .msg-search,
+body.light-mode .msg-composer textarea{ background:#ffffff; color:#1a1a1a; border-color:rgba(0,0,0,.14); }
+body.light-mode .msg-convo{ border-bottom-color:rgba(0,0,0,.06); }
+body.light-mode .msg-convo:hover{ background:rgba(212,165,116,.1); }
+body.light-mode .msg-thread-pane{ background:#ffffff; }
+body.light-mode .msg-thread-head,
+body.light-mode .msg-composer{ background:#f8f9fa; border-color:rgba(0,0,0,.08); }
+body.light-mode .msg-bubble.them{ background:#f1f3f5; color:#1a1a1a; border-color:rgba(0,0,0,.06); }
+body.light-mode .msg-req-card{ background:#f8f9fa; }
+body.light-mode .msg-req-card .row{ color:#495057; }
+body.light-mode .msg-meta{ color:#adb5bd; }
+@media (prefers-reduced-motion:reduce){ .msg-convo{ transition:none; } }
+</style>
 </head>
 <body>
 <!-- Sidebar -->
@@ -22593,11 +22770,11 @@ async function deleteSalesAgreement(id) {
 
         const n = convoCounts();
         const chip = (key, label, count) =>
-            `<button onclick="__msgFilter('${key}')" style="padding:5px 11px;border-radius:14px;border:1px solid ${MSG.filter===key?'#10b981':'rgba(255,255,255,.14)'};background:${MSG.filter===key?'rgba(16,185,129,.16)':'transparent'};color:${MSG.filter===key?'#10b981':'#a0a0a0'};font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">${label}${count!=null?` ${count}`:''}</button>`;
+            `<button onclick="__msgFilter('${key}')" style="padding:5px 11px;border-radius:14px;border:1px solid ${MSG.filter===key?'var(--accent-amber,#D4A574)':'var(--border-default,rgba(255,255,255,.14))'};background:${MSG.filter===key?'var(--accent-amber-dim,rgba(212,165,116,.16))':'transparent'};color:${MSG.filter===key?'var(--accent-amber,#D4A574)':'var(--text-muted,#a0a0a0)'};font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">${label}${count!=null?` ${count}`:''}</button>`;
 
         const bar = `<div style="display:flex;gap:6px;padding:10px 12px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.06)">
               ${chip('all','All',n.all)}${chip('customers','Customers',n.customers)}${chip('leads','Leads',n.leads)}${chip('unread','Unread',n.unread)}
-              <button onclick="__msgToggleAll()" title="Include people you haven't messaged yet" style="margin-left:auto;padding:5px 11px;border-radius:14px;border:1px dashed ${MSG.showAll?'#10b981':'rgba(255,255,255,.18)'};background:transparent;color:${MSG.showAll?'#10b981':'#8a8a8a'};font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">${MSG.showAll?'✓ Everyone':'+ Everyone'}</button>
+              <button onclick="__msgToggleAll()" title="Include people you haven't messaged yet" style="margin-left:auto;padding:5px 11px;border-radius:14px;border:1px dashed ${MSG.showAll?'var(--accent-amber,#D4A574)':'var(--border-default,rgba(255,255,255,.18))'};background:transparent;color:${MSG.showAll?'var(--accent-amber,#D4A574)':'var(--text-muted,#8a8a8a)'};font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">${MSG.showAll?'✓ Everyone':'+ Everyone'}</button>
             </div>`;
 
         if (!convos.length) {
@@ -22615,7 +22792,7 @@ async function deleteSalesAgreement(id) {
             return `<div class="msg-convo ${String(c.lead_id) === String(MSG.activeLead) ? 'active' : ''} ${unread ? 'unread' : ''}" onclick="__openThread(${c.lead_id})">
                 <div class="msg-avatar" style="background:${avatarColor(c.name)}">${esc(initials(c.name))}</div>
                 <div class="msg-convo-body">
-                    <div class="msg-convo-top"><span class="msg-convo-name">${esc(c.name || 'Unknown')}${(c.is_customer===true||c.kind==='customer')?'<span style="margin-left:6px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 5px;border-radius:3px;background:rgba(16,185,129,.16);color:#10b981;vertical-align:middle">CUSTOMER</span>':'<span style="margin-left:6px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 5px;border-radius:3px;background:rgba(96,165,250,.16);color:#60a5fa;vertical-align:middle">LEAD</span>'}</span><span class="msg-convo-time">${esc(when(c.last_at))}</span></div>
+                    <div class="msg-convo-top"><span class="msg-convo-name">${esc(c.name || 'Unknown')}${(c.is_customer===true||c.kind==='customer')?'<span style="margin-left:6px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 5px;border-radius:3px;background:var(--accent-amber-dim,rgba(212,165,116,.16));color:var(--accent-amber,#D4A574);vertical-align:middle">CUSTOMER</span>':'<span style="margin-left:6px;font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 5px;border-radius:3px;background:rgba(96,165,250,.16);color:#60a5fa;vertical-align:middle">LEAD</span>'}</span><span class="msg-convo-time">${esc(when(c.last_at))}</span></div>
                     <div class="msg-convo-preview">${esc(preview).slice(0, 64)}</div>
                 </div>
                 ${unread ? `<span class="msg-unread-dot"></span>` : ''}

@@ -1166,6 +1166,57 @@ body.app-ready .mobile-topbar { display: none; } /* re-enabled per media query b
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
     </style>
+
+<style id="crm-recover-css">
+/* Recovery links + dialog. Deliberately reuses --bg-*, --text-*, --border,
+   --r-md and the .form-input/.btn-primary classes already defined above, so
+   this matches the CRM instead of introducing a second look. */
+.login-recover{
+  margin-top:18px; text-align:center; font-size:12.5px; color:var(--text-3);
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.login-recover a{ color:var(--text-1); font-weight:600; text-decoration:none; }
+/* This portal's accent is white — it's a monochrome theme, not the gold one. */
+.login-recover a:hover{ color:var(--accent, #ffffff); text-decoration:underline; }
+.login-recover span{ opacity:.4; }
+.login-switch{ margin-top:12px; text-align:center; font-size:12.5px; color:var(--text-3); }
+.login-switch a{ color:var(--text-1); font-weight:600; text-decoration:none; }
+.login-switch a:hover{ color:var(--accent, #ffffff); text-decoration:underline; }
+
+.crm-recover-overlay{
+  position:fixed; inset:0; z-index:9800; display:flex; align-items:center; justify-content:center;
+  padding:24px; background:rgba(0,0,0,.7); backdrop-filter:blur(6px);
+  opacity:0; visibility:hidden; transition:opacity .2s, visibility .2s;
+}
+.crm-recover-overlay.open{ opacity:1; visibility:visible; }
+.crm-recover-box{
+  position:relative; width:100%; max-width:400px;
+  background:var(--bg-1, #141414); border:1px solid var(--border, rgba(255,255,255,.1));
+  border-radius:var(--r-lg, 14px); padding:28px;
+  box-shadow:0 24px 64px rgba(0,0,0,.5);
+  transform:translateY(10px); transition:transform .2s;
+}
+.crm-recover-overlay.open .crm-recover-box{ transform:translateY(0); }
+.crm-recover-close{
+  position:absolute; top:14px; right:16px; background:none; border:none; cursor:pointer;
+  color:var(--text-3); font-size:24px; line-height:1; padding:4px 8px; border-radius:6px;
+}
+.crm-recover-close:hover{ color:var(--text-0); background:rgba(255,255,255,.06); }
+.crm-recover-title{ font-size:19px; font-weight:700; color:var(--text-0); margin:0 0 6px; letter-spacing:-.02em; }
+.crm-recover-sub{ font-size:13px; color:var(--text-2); line-height:1.55; margin:0 0 20px; }
+.crm-recover-note{
+  display:none; padding:11px 14px; border-radius:var(--r-md, 10px);
+  font-size:12.5px; line-height:1.55; margin-bottom:16px;
+}
+.crm-recover-note.ok{ background:rgba(16,185,129,.1); color:#6ee7b7; border:1px solid rgba(16,185,129,.22); }
+.crm-recover-note.bad{ background:rgba(239,68,68,.1); color:#fca5a5; border:1px solid rgba(239,68,68,.22); }
+.crm-recover-cancel{
+  width:100%; margin-top:10px; padding:11px; background:none; border:none; cursor:pointer;
+  color:var(--text-3); font-family:var(--font); font-size:13px; font-weight:600; border-radius:var(--r-md, 10px);
+}
+.crm-recover-cancel:hover{ color:var(--text-0); background:rgba(255,255,255,.05); }
+@media(prefers-reduced-motion:reduce){ .crm-recover-overlay,.crm-recover-box{ transition:none; } }
+</style>
 </head>
 <body>
 
@@ -1204,7 +1255,6 @@ body.app-ready .mobile-topbar { display: none; } /* re-enabled per media query b
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <span id="loginErrorText"></span>
         </div>
-                <p class="db-portal-switch" style="margin:18px 0 0;text-align:center;font-size:13px;color:rgba(255,255,255,.5)">Not a CRM subscriber? <a href="customer_portal.html" style="color:#10b981;text-decoration:none;font-weight:600">Go to the Customer Portal</a></p>
 
         <form id="loginForm">
             <div class="field">
@@ -1220,10 +1270,37 @@ body.app-ready .mobile-topbar { display: none; } /* re-enabled per media query b
             </button>
         </form>
 
+        <p class="login-recover">
+            <a href="#" onclick="crmRecover('password');return false;">Forgot password</a>
+            <span aria-hidden="true">&middot;</span>
+            <a href="#" onclick="crmRecover('username');return false;">Forgot your email</a>
+        </p>
+
+        <p class="login-switch">Not a CRM subscriber?
+            <a href="customer_portal.html">Go to your Customer Portal</a></p>
+
         <p style="margin-top:20px;font-size:12px;color:var(--text-3);text-align:center;">
             Need access? Contact your account manager or call (512) 980-0393
         </p>
     </div>
+</div>
+
+
+<!-- Account recovery. Uses the CRM's own .form-input / .btn-primary / colour
+     variables rather than inline styles, so it reads as part of this portal. -->
+<div class="crm-recover-overlay" id="crmRcOverlay" role="dialog" aria-modal="true" aria-labelledby="crmRcTitle">
+  <div class="crm-recover-box">
+    <button class="crm-recover-close" onclick="crmRecoverClose()" aria-label="Close">&times;</button>
+    <h2 class="crm-recover-title" id="crmRcTitle">Reset your password</h2>
+    <p class="crm-recover-sub" id="crmRcSub"></p>
+    <div class="crm-recover-note" id="crmRcMsg"></div>
+    <div class="form-group" style="margin-bottom:18px;">
+      <label class="form-label" for="crmRcEmail">Email</label>
+      <input class="form-input" id="crmRcEmail" type="email" autocomplete="email" placeholder="you@company.com">
+    </div>
+    <button class="btn-primary" id="crmRcGo">Send link</button>
+    <button class="crm-recover-cancel" onclick="crmRecoverClose()">Back to sign in</button>
+  </div>
 </div>
 
 <!-- ============================================================
@@ -12314,3 +12391,79 @@ const _origShowApp = typeof showApp === 'function' ? showApp : null;
 
 <!-- SheetJS for XLSX support -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script id="db-crm-recovery">
+/* Account recovery for the CRM.
+   Posts audience:'crm' so the emailed link returns to the CRM sign-in rather
+   than the customer portal. The server's reply is deliberately identical
+   whether or not the address exists — this form must not reveal who holds a
+   CRM account — so the UI says the same thing either way. */
+(function(){
+  var isPw = true;
+
+  function el(id){ return document.getElementById(id); }
+  function note(text, ok){
+    var n = el('crmRcMsg');
+    n.textContent = text;
+    n.className = 'crm-recover-note ' + (ok ? 'ok' : 'bad');
+    n.style.display = 'block';
+  }
+
+  window.crmRecover = function(mode){
+    isPw = mode !== 'username';
+    el('crmRcTitle').textContent = isPw ? 'Reset your password' : 'Find your sign-in email';
+    el('crmRcSub').textContent = isPw
+      ? 'Enter the email on your CRM account and we\u2019ll send you a link to set a new password.'
+      : 'Enter the email you think you used and we\u2019ll confirm your sign-in details there.';
+    var go = el('crmRcGo');
+    go.textContent = isPw ? 'Send reset link' : 'Send my details';
+    go.disabled = false;
+    el('crmRcMsg').style.display = 'none';
+
+    var input = el('crmRcEmail');
+    input.disabled = false;
+    var le = el('loginEmail');
+    if(le && le.value) input.value = le.value;
+
+    el('crmRcOverlay').classList.add('open');
+    setTimeout(function(){ input.focus(); }, 60);
+  };
+
+  window.crmRecoverClose = function(){ el('crmRcOverlay').classList.remove('open'); };
+
+  async function send(){
+    var input = el('crmRcEmail');
+    var go = el('crmRcGo');
+    var email = (input.value || '').trim();
+    if(!email || email.indexOf('@') === -1){ note('Enter the email address on your account.', false); return; }
+    go.disabled = true; go.textContent = 'Sending…';
+    try{
+      var base = (typeof API_URL !== 'undefined' && API_URL) ? API_URL : window.location.origin;
+      var r = await fetch(base + '/api/auth/' + (isPw ? 'forgot-password' : 'forgot-username'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, audience: 'crm' })
+      });
+      var d = await r.json();
+      note(d.message || 'If that email is on an account, it\u2019s on its way.', true);
+      go.textContent = 'Sent';
+      input.disabled = true;
+    }catch(e){
+      note('Could not send that just now. Please try again in a moment.', false);
+      go.disabled = false;
+      go.textContent = isPw ? 'Send reset link' : 'Send my details';
+    }
+  }
+
+  function wire(){
+    var go = el('crmRcGo');
+    if(go) go.onclick = send;
+    var input = el('crmRcEmail');
+    if(input) input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); send(); } });
+    var ov = el('crmRcOverlay');
+    if(ov) ov.addEventListener('click', function(e){ if(e.target === ov) window.crmRecoverClose(); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') window.crmRecoverClose(); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
+</script>

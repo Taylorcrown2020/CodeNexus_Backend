@@ -26310,6 +26310,10 @@ initPortal({
     authenticateToken, resolveLeadId,
     JWT_SECRET, jwt,
     PLATFORM_BREVO_KEY, PLATFORM_SENDER_EMAIL, PLATFORM_SENDER_NAME, sendViaBrevo,
+    // Late-bound on purpose: `lifecycle` is initialised further down this file,
+    // so a direct reference here would be undefined. The wrapper resolves when a
+    // service request is actually submitted, by which time it exists.
+    onServiceRequestCreated: (args) => lifecycle.onServiceRequestCreated(args),
 });
 
 const initDiamondbackSms = require('./diamondback-sms.js');

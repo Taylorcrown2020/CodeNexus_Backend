@@ -2,1624 +2,1325 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- DB-SEO:START -->
-<title>Customer Portal | Diamondback Coding</title>
-<meta name="description" content="Secure customer portal for Diamondback Coding clients.">
-<meta name="robots" content="noindex, nofollow">
-<link rel="canonical" href="https://diamondbackcoding.com/customer_portal.html">
-<!-- DB-SEO:END -->
-
-<script src="https://js.stripe.com/v3/"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f3f5">
+<title>Customer Portal — Diamondback Coding</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
 <style>
-/* ========================================================================
-   DIAMONDBACK CODING — CUSTOMER PORTAL
-   Tokens lifted verbatim from admin_portal.html so this file sits in the
-   same design system as the rest of the platform.
-   ======================================================================== */
+/* ============================================================================
+   Diamondback Coding — Customer Portal
+   Light, card-based, mobile-first. Soft grey canvas, white surfaces, generous
+   radii, near-black primary actions, green reserved for money and progress.
+   ============================================================================ */
 :root{
-  /* Brand */
-  --brand-gold:#D4A574;
-  --brand-gold-light:#E5C4A0;
-  --brand-gold-dark:#B88F5F;
-  --accent-amber:#D4A574;
-  --accent-rust:#A67C52;
-  --accent-dim:rgba(212,165,116,.12);
-  --accent-glow:rgba(212,165,116,.25);
+  --canvas:#f2f3f5;
+  --surface:#ffffff;
+  --surface-2:#f7f8f9;
+  --ink:#0d0f12;
+  --ink-2:#3f4650;
+  --muted:#7c848f;
+  --faint:#aab0b8;
+  --line:#e6e8ec;
+  --line-2:#eef0f3;
+  --green:#16a34a;
+  --green-soft:#e8f6ed;
+  --amber:#b45309;
+  --amber-soft:#fdf3e3;
+  --red:#dc2626;
+  --red-soft:#fdeceb;
+  --blue:#2563eb;
+  --blue-soft:#eaf0fe;
+  --r-sm:10px; --r:14px; --r-lg:20px; --r-xl:26px;
+  --shadow:0 1px 2px rgba(16,20,26,.04), 0 8px 24px rgba(16,20,26,.06);
+  --shadow-lg:0 2px 6px rgba(16,20,26,.06), 0 20px 48px rgba(16,20,26,.12);
+  --tab-h:76px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--canvas); color:var(--ink);
+  font-size:15px; line-height:1.5; letter-spacing:-.005em;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:inherit}
+.hidden{display:none !important}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
 
-  /* Surfaces */
-  --bg-void:#000000;
-  --bg-primary:#0a0a0a;
-  --bg-secondary:#121212;
-  --bg-tertiary:#1a1a1a;
-  --bg-elevated:#1e1e1e;
-  --bg-card:#141414;
-  --bg-hover:rgba(212,165,116,.08);
+/* ---------------------------------------------------------------- LOGIN */
+.login{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:
+    radial-gradient(1100px 520px at 12% -10%, #ffffff 0%, rgba(255,255,255,0) 62%),
+    radial-gradient(760px 440px at 108% 8%, #e9f5ee 0%, rgba(233,245,238,0) 60%),
+    var(--canvas);
+}
+.login-card{width:100%;max-width:404px}
+.login-brand{display:flex;align-items:center;gap:11px;margin-bottom:30px}
+.login-mark{width:42px;height:42px;border-radius:13px;background:var(--ink);display:grid;place-items:center;flex-shrink:0}
+.login-mark svg{width:21px;height:21px;stroke:#fff;fill:none;stroke-width:2}
+.login-brand b{font-size:16px;font-weight:800;letter-spacing:-.02em;display:block;line-height:1.2}
+.login-brand span{font-size:11px;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;font-weight:600}
+.login-h{font-size:29px;font-weight:800;letter-spacing:-.035em;line-height:1.12;margin-bottom:7px}
+.login-sub{color:var(--muted);font-size:14.5px;margin-bottom:26px}
+.panel{background:var(--surface);border-radius:var(--r-xl);padding:26px;box-shadow:var(--shadow)}
+.field{margin-bottom:15px}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:7px}
+.input{width:100%;padding:14px 15px;background:var(--surface-2);border:1.5px solid transparent;
+  border-radius:var(--r);font-size:15.5px;transition:border-color .15s,background .15s}
+.input::placeholder{color:var(--faint)}
+.input:focus{outline:none;background:var(--surface);border-color:var(--ink)}
+textarea.input{resize:vertical;min-height:88px;line-height:1.55}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;
+  border-radius:var(--r);font-size:15px;font-weight:700;transition:transform .12s,background .15s,opacity .15s}
+.btn:active{transform:scale(.985)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-primary:hover:not(:disabled){background:#232830}
+.btn-ghost{background:var(--surface-2);color:var(--ink)}
+.btn-ghost:hover:not(:disabled){background:#eceef1}
+.btn-danger{background:var(--red-soft);color:var(--red)}
+.btn-block{width:100%}
+.btn-sm{padding:9px 14px;font-size:13.5px;border-radius:var(--r-sm)}
+.alert{padding:13px 15px;border-radius:var(--r);font-size:13.5px;line-height:1.5;margin-bottom:15px}
+.alert-err{background:var(--red-soft);color:#991b1b}
+.alert-ok{background:var(--green-soft);color:#166534}
+.alert-info{background:var(--blue-soft);color:#1e40af}
+.alert-warn{background:var(--amber-soft);color:#92400e}
+.login-alt{text-align:center;margin-top:20px;font-size:13.5px;color:var(--muted)}
+.login-alt a{color:var(--ink);font-weight:700;text-decoration:none}
+.login-alt a:hover{text-decoration:underline}
 
-  /* Borders */
-  --border-subtle:rgba(255,255,255,.06);
-  --border-default:rgba(255,255,255,.1);
-  --border-strong:rgba(212,165,116,.2);
-  --border-accent:rgba(212,165,116,.4);
+/* ---------------------------------------------------------------- SHELL */
+.app{display:none;min-height:100dvh;padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom))}
+.app.on{display:block}
+.topbar{position:sticky;top:0;z-index:40;background:rgba(242,243,245,.86);backdrop-filter:blur(14px);
+  padding:18px 20px 12px;display:flex;align-items:center;gap:13px}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;
+  font-weight:800;font-size:15px;flex-shrink:0}
+.greet{flex:1;min-width:0}
+.greet small{display:block;font-size:12.5px;color:var(--muted);font-weight:500}
+.greet b{display:block;font-size:16.5px;font-weight:800;letter-spacing:-.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{width:42px;height:42px;border-radius:50%;background:var(--surface);display:grid;place-items:center;
+  position:relative;flex-shrink:0;box-shadow:var(--shadow)}
+.icon-btn svg{width:19px;height:19px;stroke:var(--ink);fill:none;stroke-width:1.9}
+.dot{position:absolute;top:8px;right:9px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;
+  background:var(--red);color:#fff;font-size:10.5px;font-weight:800;line-height:17px;text-align:center;
+  border:2px solid var(--canvas)}
+.main{padding:4px 20px 28px;max-width:760px;margin:0 auto}
+.view-h{font-size:25px;font-weight:800;letter-spacing:-.03em;margin:10px 0 3px}
+.view-sub{color:var(--muted);font-size:14px;margin-bottom:20px}
 
-  /* Text */
-  --text-primary:#ffffff;
-  --text-secondary:#b4b4b4;
-  --text-muted:#808080;
-  --text-faint:#4d4d4d;
+/* ------------------------------------------------------------ COMPONENTS */
+.card{background:var(--surface);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow);margin-bottom:14px}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.card-h h3{font-size:16px;font-weight:800;letter-spacing:-.02em}
+.link{font-size:13px;font-weight:700;color:var(--muted);text-decoration:none;cursor:pointer}
+.link:hover{color:var(--ink)}
 
-  /* Status */
-  --status-new:#60a5fa;
-  --status-pending:#f59e0b;
-  --status-sent:#3b82f6;
-  --status-paid:#10b981;
-  --status-overdue:#dc2626;
-  --status-draft:#9ca3af;
-  --status-closed:#6b7280;
-  --status-success:#10b981;
-  --status-danger:#ef4444;
+.balance{background:var(--surface);border-radius:var(--r-xl);padding:24px;box-shadow:var(--shadow);margin-bottom:14px}
+.balance small{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.balance .amt{font-size:38px;font-weight:800;letter-spacing:-.04em;line-height:1.05;margin:9px 0 4px}
+.balance .amt .cents{font-size:23px;color:var(--faint)}
+.balance .note{font-size:13px;color:var(--muted)}
 
-  /* Type */
-  --font-display:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --font-mono:'Space Mono','Courier New',monospace;
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.quick button{background:var(--surface);border-radius:var(--r-lg);padding:18px;text-align:left;
+  box-shadow:var(--shadow);transition:transform .12s}
+.quick button:active{transform:scale(.98)}
+.quick svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:1.8;margin-bottom:12px;display:block}
+.quick b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.015em}
+.quick span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.4}
 
-  /* Geometry */
-  --radius-sm:8px;
-  --radius-md:12px;
-  --radius-lg:16px;
-  --radius-xl:24px;
-  --shadow-sm:0 2px 8px rgba(0,0,0,.4);
-  --shadow-md:0 4px 16px rgba(0,0,0,.5);
-  --shadow-lg:0 8px 32px rgba(0,0,0,.6);
-  --shadow-glow:0 0 40px rgba(212,165,116,.15);
-  --sidebar-width:280px;
-  --transition-fast:150ms cubic-bezier(.4,0,.2,1);
+.row{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--line-2)}
+.row:last-child{border-bottom:none}
+.chip{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex-shrink:0;background:var(--surface-2)}
+.chip svg{width:18px;height:18px;stroke:var(--ink-2);fill:none;stroke-width:1.9}
+.chip.green{background:var(--green-soft)} .chip.green svg{stroke:var(--green)}
+.chip.red{background:var(--red-soft)} .chip.red svg{stroke:var(--red)}
+.chip.amber{background:var(--amber-soft)} .chip.amber svg{stroke:var(--amber)}
+.chip.blue{background:var(--blue-soft)} .chip.blue svg{stroke:var(--blue)}
+.row-body{flex:1;min-width:0}
+.row-body b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.015em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-body span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.row-end{text-align:right;flex-shrink:0}
+.row-end b{display:block;font-size:14.5px;font-weight:800;letter-spacing:-.02em}
+.row-end span{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+.pos{color:var(--green)} .neg{color:var(--red)}
+
+.tag{display:inline-block;padding:4px 9px;border-radius:7px;font-size:10.5px;font-weight:800;
+  letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.tag.green{background:var(--green-soft);color:var(--green)}
+.tag.red{background:var(--red-soft);color:var(--red)}
+.tag.amber{background:var(--amber-soft);color:var(--amber)}
+.tag.blue{background:var(--blue-soft);color:var(--blue)}
+.tag.grey{background:var(--surface-2);color:var(--muted)}
+
+.bar{height:8px;border-radius:5px;background:var(--line-2);overflow:hidden;margin:11px 0 7px}
+.bar i{display:block;height:100%;border-radius:5px;background:var(--green);transition:width .5s ease}
+.bar-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+
+.empty{text-align:center;padding:34px 18px;color:var(--muted);font-size:14px;line-height:1.6}
+.empty svg{width:38px;height:38px;stroke:var(--faint);fill:none;stroke-width:1.5;margin-bottom:12px}
+.skeleton{height:70px;border-radius:var(--r);background:linear-gradient(90deg,var(--surface-2) 25%,#eef0f3 50%,var(--surface-2) 75%);
+  background-size:200% 100%;animation:sk 1.4s infinite}
+@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* --------------------------------------------------------------- TIMELINE */
+.tl{position:relative;padding-left:26px}
+.tl::before{content:'';position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.tl-item{position:relative;padding-bottom:20px}
+.tl-item:last-child{padding-bottom:0}
+.tl-item::before{content:'';position:absolute;left:-25px;top:4px;width:16px;height:16px;border-radius:50%;
+  background:var(--surface);border:2.5px solid var(--line)}
+.tl-item.done::before{background:var(--green);border-color:var(--green)}
+.tl-item.now::before{background:var(--surface);border-color:var(--green);box-shadow:0 0 0 4px var(--green-soft)}
+.tl-item b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.015em}
+.tl-item p{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.55}
+.tl-item time{display:block;font-size:11.5px;color:var(--faint);margin-top:5px;font-weight:600}
+.sec-label{font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+
+/* --------------------------------------------------------------- MESSAGES */
+.thread{display:flex;flex-direction:column;gap:3px;max-height:52vh;overflow-y:auto;padding:4px 2px 8px}
+.bubble{max-width:82%;padding:11px 15px;border-radius:19px;font-size:14.5px;line-height:1.5;
+  word-wrap:break-word;white-space:pre-wrap}
+.bubble.them{align-self:flex-start;background:var(--surface-2);border-bottom-left-radius:6px}
+.bubble.me{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:6px}
+.bstamp{font-size:10.5px;color:var(--faint);margin:1px 6px 9px;font-weight:600}
+.bstamp.me{align-self:flex-end} .bstamp.them{align-self:flex-start}
+.composer{display:flex;gap:10px;align-items:flex-end;padding-top:14px;border-top:1px solid var(--line-2);margin-top:6px}
+.composer textarea{flex:1;resize:none;min-height:46px;max-height:130px;padding:13px 15px;background:var(--surface-2);
+  border:1.5px solid transparent;border-radius:var(--r);font-size:15px}
+.composer textarea:focus{outline:none;background:var(--surface);border-color:var(--ink)}
+
+/* ----------------------------------------------------------------- SHEET */
+.sheet{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(13,15,18,.42);backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:opacity .22s}
+.sheet.on{opacity:1;visibility:visible}
+.sheet-box{width:100%;max-width:520px;max-height:92dvh;overflow-y:auto;background:var(--surface);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;padding:10px 22px calc(26px + env(safe-area-inset-bottom));
+  transform:translateY(24px);transition:transform .22s;box-shadow:var(--shadow-lg)}
+.sheet.on .sheet-box{transform:translateY(0)}
+.grabber{width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 18px}
+.sheet-h{font-size:20px;font-weight:800;letter-spacing:-.03em;margin-bottom:5px}
+.sheet-sub{color:var(--muted);font-size:13.5px;margin-bottom:18px}
+.sheet-actions{display:flex;gap:10px;margin-top:20px}
+.sheet-actions .btn{flex:1}
+@media(min-width:640px){
+  .sheet{align-items:center}
+  .sheet-box{border-radius:var(--r-xl);padding:22px 26px 26px}
+  .grabber{display:none}
 }
 
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font-display);background:var(--bg-primary);color:var(--text-primary);-webkit-font-smoothing:antialiased}
-a{color:var(--brand-gold);text-decoration:none}
-a:hover{color:var(--brand-gold-light)}
-.hidden{display:none!important}
-:focus-visible{outline:2px solid var(--brand-gold);outline-offset:2px}
-
-
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;
-  border-radius:var(--radius-sm);padding:13px 22px;font-size:14px;font-weight:600;letter-spacing:.2px;
-  transition:var(--transition-fast);font-family:var(--font-display)}
-.btn-primary{background:var(--brand-gold);color:#1a1206}
-.btn-primary:hover{background:var(--brand-gold-light);transform:translateY(-1px);box-shadow:var(--shadow-glow)}
-.btn-secondary{background:transparent;color:var(--brand-gold);border:1px solid var(--border-accent)}
-.btn-secondary:hover{background:var(--accent-dim)}
-.btn-ghost{background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border-default)}
-.btn-ghost:hover{border-color:var(--border-accent);color:var(--brand-gold)}
-.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
-
-input,select,textarea{width:100%;background:var(--bg-tertiary);border:1px solid var(--border-default);
-  color:var(--text-primary);border-radius:var(--radius-sm);padding:12px 14px;font-size:14px;
-  font-family:var(--font-display);transition:var(--transition-fast)}
-/* NOTE: Crown's build had `input:focus,select,textarea:focus` — the bare
-   `select` left every dropdown permanently drawn in the focus color. Fixed. */
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand-gold);box-shadow:0 0 0 3px var(--accent-dim)}
-input::placeholder,textarea::placeholder{color:var(--text-faint)}
-label{display:block;font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted);margin-bottom:7px;
-  font-weight:700;letter-spacing:1px;text-transform:uppercase}
-.field{margin-bottom:16px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-
-.card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);
-  padding:24px;box-shadow:var(--shadow-sm)}
-.card h3{font-family:var(--font-mono);font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary)}
-
-.pill{display:inline-block;padding:4px 11px;border-radius:999px;font-family:var(--font-mono);font-size:10px;
-  font-weight:700;text-transform:uppercase;letter-spacing:.6px;background:var(--bg-tertiary);color:var(--text-muted)}
-.pill.paid,.pill.completed{background:rgba(16,185,129,.12);color:var(--status-paid)}
-.pill.unpaid,.pill.overdue{background:rgba(220,38,38,.12);color:var(--status-overdue)}
-.pill.sent{background:rgba(59,130,246,.12);color:var(--status-sent)}
-.pill.pending,.pill.new{background:rgba(245,158,11,.12);color:var(--status-pending)}
-.pill.draft{background:rgba(156,163,175,.12);color:var(--status-draft)}
-.pill.scheduled,.pill.in-progress,.pill.signed{background:var(--accent-dim);color:var(--brand-gold)}
-.pill.cancelled{background:rgba(107,114,128,.14);color:var(--status-closed);text-decoration:line-through}
-
-/* ---------------- LOGO (identical treatment to admin_portal.html) ---------- */
-.logo{display:flex;align-items:center;gap:14px}
-.logo-mark{width:44px;height:44px;background:linear-gradient(135deg,var(--accent-amber) 0%,var(--accent-rust) 100%);
-  border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;position:relative;
-  box-shadow:0 4px 20px rgba(212,165,116,.3);flex-shrink:0}
-.logo-mark::before{content:'';position:absolute;inset:-2px;
-  background:linear-gradient(135deg,var(--accent-amber),transparent);border-radius:var(--radius-md);
-  opacity:.5;z-index:-1}
-.logo-mark svg{width:24px;height:24px;color:var(--bg-void)}
-.logo-text{display:flex;flex-direction:column;gap:2px}
-.logo-title{font-weight:800;font-size:17px;letter-spacing:-.02em;
-  background:linear-gradient(135deg,var(--text-primary) 0%,var(--accent-amber) 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.logo-subtitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.15em;color:var(--text-muted)}
-/* compact variants */
-.logo.sm .logo-mark{width:34px;height:34px;border-radius:var(--radius-sm)}
-.logo.sm .logo-mark svg{width:19px;height:19px}
-.logo.sm .logo-title{font-size:14px}
-.logo.sm .logo-subtitle{font-size:9px}
-.logo.lg{flex-direction:column;align-items:flex-start;gap:16px}
-.logo.lg .logo-mark{width:52px;height:52px}
-.logo.lg .logo-mark svg{width:28px;height:28px}
-
-/* ---------------- LOGIN ---------------- */
-#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  background:radial-gradient(ellipse at 50% -10%,rgba(212,165,116,.10),transparent 55%),var(--bg-void)}
-#login .box{width:100%;max-width:430px}
-#login .card{padding:38px;border-color:var(--border-strong);box-shadow:var(--shadow-lg)}
-#login h2{font-family:var(--font-display);font-size:23px;font-weight:600;letter-spacing:-.3px;margin-bottom:4px}
-.db-badge{width:52px;height:52px;border-radius:var(--radius-md);background:var(--accent-dim);
-  border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;margin-bottom:20px}
-.login-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.28);color:#ff9d9d;padding:11px 14px;
-  border-radius:var(--radius-sm);font-size:13px;margin-bottom:14px}
-
-/* ---------------- SHELL ---------------- */
-#app{display:grid;grid-template-columns:var(--sidebar-width) 1fr;min-height:100vh}
-.sidebar{background:var(--bg-void);border-right:1px solid var(--border-subtle);padding:26px 18px;
-  display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
-.sidebar .nav-link{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius-sm);
-  color:var(--text-muted);cursor:pointer;font-size:14px;font-weight:500;transition:var(--transition-fast);
-  border:1px solid transparent}
-.nav-link:hover{background:var(--bg-hover);color:var(--text-primary)}
-.nav-link.active{background:var(--accent-dim);color:var(--brand-gold);border-color:var(--border-strong)}
-.nav-link svg{width:18px;height:18px;flex-shrink:0}
-.nav-badge{margin-left:auto;background:var(--brand-gold);color:#1a1206;font-family:var(--font-mono);
-  font-size:10px;font-weight:700;border-radius:999px;padding:2px 8px}
-.sidebar .spacer{flex:1}
-
-.main{padding:36px 40px;max-width:1120px}
-.page-title{font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:-.7px;margin-bottom:5px}
-.page-sub{color:var(--text-muted);font-size:14px;margin-bottom:28px}
-
-.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:30px}
-.stat{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);
-  padding:22px;transition:var(--transition-fast)}
-.stat.tappable{cursor:pointer}
-.stat.tappable:hover{border-color:var(--border-strong);transform:translateY(-2px)}
-.stat .label{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);text-transform:uppercase;
-  letter-spacing:1px;margin-bottom:10px}
-.stat .value{font-family:var(--font-display);font-size:29px;font-weight:600;letter-spacing:-.8px}
-.stat.lead{border-color:var(--border-strong);background:
-  linear-gradient(150deg,rgba(212,165,116,.09),rgba(212,165,116,.01)),var(--bg-card)}
-.stat.lead .value{color:var(--brand-gold)}
-
-.list-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 0;
-  border-bottom:1px solid var(--border-subtle)}
-.list-item:last-child{border-bottom:none}
-.muted{color:var(--text-muted)}.sm{font-size:13px}.mt{margin-top:18px}
-.mono{font-family:var(--font-mono)}
-
-.timeline{position:relative;padding-left:26px}
-.timeline::before{content:'';position:absolute;left:7px;top:4px;bottom:4px;width:2px;background:var(--border-default)}
-.tl-item{position:relative;padding-bottom:18px}
-.tl-dot{position:absolute;left:-26px;top:2px;width:16px;height:16px;border-radius:50%;
-  background:var(--bg-tertiary);border:2px solid var(--text-faint)}
-.tl-dot.done{background:var(--brand-gold);border-color:var(--brand-gold)}
-
-/* ---------------- MODAL ---------------- */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;
-  padding:20px;z-index:100}
-.modal{background:var(--bg-secondary);border:1px solid var(--border-strong);border-radius:var(--radius-lg);
-  width:100%;max-width:530px;max-height:92vh;overflow:auto;box-shadow:var(--shadow-lg)}
-.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;
-  border-bottom:1px solid var(--border-subtle)}
-.modal-head h3{font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-secondary)}
-.modal-body{padding:24px}
-.modal-body h4{font-family:var(--font-display);font-size:17px;font-weight:600;letter-spacing:-.2px}
-.x{cursor:pointer;color:var(--text-muted);font-size:22px;line-height:1;background:none;border:none;padding:0 4px}
-.x:hover{color:var(--text-primary)}
-.steps{display:flex;gap:8px;margin-bottom:22px}
-.step{flex:1;height:3px;border-radius:999px;background:var(--bg-elevated)}
-.step.active{background:var(--brand-gold)}
-.summary-line{display:flex;justify-content:space-between;padding:9px 0;font-size:14px}
-.summary-line span:last-child{font-family:var(--font-mono)}
-.summary-line.total{border-top:1px solid var(--border-default);margin-top:6px;padding-top:14px;font-size:17px;font-weight:600}
-#payment-element{margin-top:6px}
-.pay-msg{font-size:13px;margin-top:12px}
-
-/* ---------------- MESSAGES ---------------- */
-.msg-wrap{display:flex;flex-direction:column;height:calc(100vh - 210px);max-height:720px;min-height:420px;
-  background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden}
-.msg-head{padding:16px 22px;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;gap:12px}
-.msg-head .n{font-weight:600;font-size:15px}
-.msg-head .s{font-size:12px;color:var(--text-muted)}
-.msg-feed{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:3px;background:var(--bg-primary)}
-.msg-day{text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin:14px 0 8px;
-  font-weight:700;text-transform:uppercase;letter-spacing:1px}
-.bub{max-width:74%;padding:11px 15px;border-radius:16px;font-size:14px;line-height:1.5;word-wrap:break-word;margin-bottom:2px}
-.bub.them{align-self:flex-start;background:var(--bg-elevated);color:var(--text-primary);border-bottom-left-radius:5px}
-.bub.me{align-self:flex-end;background:var(--brand-gold);color:#1a1206;font-weight:500;border-bottom-right-radius:5px}
-.bub.mkt{align-self:stretch;max-width:100%;background:var(--accent-dim);border:1px solid var(--border-strong);
-  color:var(--text-primary);border-radius:var(--radius-md);padding:15px 17px}
-.bub.mkt .mk-tag{display:inline-block;font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:1px;
-  text-transform:uppercase;color:var(--brand-gold);margin-bottom:7px}
-.bub.mkt .mk-sub{font-weight:600;font-size:15px;margin-bottom:4px}
-.bub-meta{font-family:var(--font-mono);font-size:9.5px;color:var(--text-faint);margin:0 5px 10px}
-.bub-meta.me{align-self:flex-end}.bub-meta.them{align-self:flex-start}
-.msg-compose{border-top:1px solid var(--border-subtle);padding:12px 14px;display:flex;gap:10px;
-  align-items:flex-end;background:var(--bg-card)}
-.msg-compose textarea{flex:1;resize:none;min-height:44px;max-height:130px;border-radius:16px;padding:11px 15px}
-.msg-send{flex-shrink:0;width:44px;height:44px;border-radius:var(--radius-sm);border:none;cursor:pointer;
-  background:var(--brand-gold);color:#1a1206;display:flex;align-items:center;justify-content:center;
-  transition:var(--transition-fast)}
-.msg-send:hover{background:var(--brand-gold-light)}
-.msg-send:disabled{opacity:.45}
-.msg-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
-  color:var(--text-muted);text-align:center;padding:30px}
-.msg-empty svg{width:42px;height:42px;opacity:.3}
-.msg-empty .hint{font-size:13.5px;max-width:280px;line-height:1.5}
-
-/* ---------------- MOBILE ---------------- */
-.mobile-bar{display:none;position:fixed;top:0;left:0;right:0;background:var(--bg-void);
-  border-bottom:1px solid var(--border-subtle);align-items:center;gap:8px;
-  padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 14px;z-index:40}
-.hamb{background:var(--bg-tertiary);border:1px solid var(--border-subtle);color:var(--text-primary);cursor:pointer;
-  width:40px;height:40px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;
-  font-size:17px;position:relative}
-.scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:45}
-.scrim.show{display:block}
-@media(max-width:900px){
-  #app{grid-template-columns:1fr}
-  .sidebar{position:fixed;z-index:50;transform:translateX(-100%);transition:transform .25s;width:270px}
-  .sidebar.open{transform:none}
-  .main{padding:calc(env(safe-area-inset-top,0px) + 90px) 16px 44px;max-width:none}
-  .stat-grid{grid-template-columns:1fr 1fr;gap:12px}
-  .stat.lead{grid-column:1 / -1}
-  .row{grid-template-columns:1fr}
-  .mobile-bar{display:flex}
-  .mobile-bar .logo{min-width:0}
-  .mobile-bar .logo-text{min-width:0;overflow:hidden}
-  .mobile-bar .logo-title,.mobile-bar .logo-subtitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .page-title{font-size:24px}
-  .msg-wrap{height:calc(100vh - 195px)}
-  .list-item{flex-wrap:wrap}
-  input,select,textarea{font-size:16px}
-}
-@media(prefers-reduced-motion:reduce){
-  *{transition:none!important;animation:none!important}
-  .btn-primary:hover,.stat.tappable:hover{transform:none}
+/* --------------------------------------------------------------- TAB BAR */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;
+  padding:9px 14px calc(9px + env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.93);backdrop-filter:blur(16px);border-top:1px solid var(--line-2);
+  display:flex;justify-content:space-around;align-items:center;gap:2px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;
+  border-radius:var(--r);position:relative;color:var(--muted);transition:color .15s,background .15s;min-width:0}
+.tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9}
+.tab span{font-size:10.5px;font-weight:700;letter-spacing:-.01em}
+.tab.on{color:var(--ink);background:var(--surface-2)}
+.tab .dot{top:2px;right:calc(50% - 21px);border-color:#fff}
+@media(min-width:760px){
+  .tabs{max-width:760px;margin:0 auto;border-radius:var(--r-xl) var(--r-xl) 0 0;
+    border:1px solid var(--line-2);border-bottom:none;box-shadow:var(--shadow-lg)}
 }
 
-</style>
-
-<style id="db-portal-billing-css">
-/* Billing screens. Reuses the portal's existing tokens so nothing new is
-   introduced visually — only new layouts. */
-.db-modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;
-  justify-content:center;z-index:200;padding:20px;overflow-y:auto}
-.db-modal[hidden]{display:none}
-.db-modal-box{background:var(--bg-panel,#141414);border:1px solid var(--border-subtle,#2a2a2a);
-  border-radius:var(--radius-md,12px);max-width:560px;width:100%;padding:26px;max-height:90vh;overflow-y:auto}
-.db-sign-pad{background:var(--bg-void,#0a0a0a);border:1px dashed var(--border-subtle,#333);
-  border-radius:8px;padding:14px;margin:14px 0;min-height:96px;display:flex;align-items:center;justify-content:center}
-.db-sign-pad svg{max-width:100%;height:auto}
-.db-sign-pad .muted{font-size:12px}
-.db-terms{background:var(--bg-void,#0a0a0a);border:1px solid var(--border-subtle,#2a2a2a);
-  border-radius:8px;padding:14px;max-height:190px;overflow-y:auto;font-size:13px;line-height:1.6;
-  color:var(--text-muted,#a0a0a0);white-space:pre-wrap}
-.db-consent{display:flex;gap:10px;align-items:flex-start;margin:14px 0;font-size:13px;line-height:1.5}
-.db-consent input{margin-top:3px;flex-shrink:0;width:16px;height:16px;accent-color:var(--accent,#10b981)}
-.db-field{margin:12px 0}
-.db-field label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.6px;
-  color:var(--text-muted,#888);margin-bottom:6px}
-.db-field input,.db-field select{width:100%;padding:11px 13px;background:var(--bg-void,#0a0a0a);
-  border:1px solid var(--border-subtle,#2a2a2a);border-radius:8px;color:#fff;font:inherit;font-size:14px}
-.db-field input:focus,.db-field select:focus{outline:none;border-color:var(--accent,#10b981)}
-.db-row{display:flex;gap:12px}.db-row>*{flex:1}
-.db-warn{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;
-  padding:13px 15px;font-size:13px;line-height:1.55;color:#fca5a5;margin:14px 0}
-.db-info{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.25);border-radius:8px;
-  padding:13px 15px;font-size:13px;line-height:1.55;color:#6ee7b7;margin:14px 0}
-.db-pm{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;
-  border-bottom:1px solid var(--border-subtle,#222)}
-.db-pm:last-child{border-bottom:none}
-.db-pm-badge{font-size:10px;text-transform:uppercase;letter-spacing:.7px;padding:3px 8px;
-  border-radius:4px;background:rgba(16,185,129,.15);color:#10b981;font-weight:700}
-.db-pm-badge.pending{background:rgba(234,179,8,.15);color:#eab308}
-.db-refund{font-size:12px;color:#fca5a5;margin-top:3px}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* ------------------------------------------------------------- CARD ENTRY */
+#cardMount{background:var(--surface-2);border-radius:var(--r);padding:15px;margin-bottom:4px}
+.pay-summary{background:var(--surface-2);border-radius:var(--r);padding:15px 16px;margin-bottom:16px}
+.pay-summary .r{display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0;color:var(--ink-2)}
+.pay-summary .r.total{font-weight:800;font-size:16px;color:var(--ink);padding-top:10px;margin-top:6px;
+  border-top:1px solid var(--line)}
+.pm-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line-2);cursor:pointer}
+.pm-row:last-of-type{border-bottom:none}
+.pm-row input[type=radio]{width:19px;height:19px;accent-color:var(--ink);flex-shrink:0}
+.sign-pad{background:var(--surface-2);border-radius:var(--r);padding:16px;margin:14px 0;min-height:92px;
+  display:grid;place-items:center}
+.sign-pad svg{max-width:100%;height:auto}
+.terms{background:var(--surface-2);border-radius:var(--r);padding:15px;max-height:180px;overflow-y:auto;
+  font-size:13.5px;line-height:1.62;color:var(--ink-2);white-space:pre-wrap}
+.consent{display:flex;gap:11px;align-items:flex-start;margin:16px 0;font-size:13.5px;line-height:1.5;cursor:pointer}
+.consent input{margin-top:2px;width:19px;height:19px;accent-color:var(--green);flex-shrink:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab-h) + 18px + env(safe-area-inset-bottom));
+  z-index:200;background:var(--ink);color:#fff;padding:13px 20px;border-radius:var(--r);font-size:14px;
+  font-weight:600;max-width:calc(100vw - 40px);text-align:center;box-shadow:var(--shadow-lg);
+  opacity:0;visibility:hidden;transition:opacity .2s,transform .2s}
+.toast.on{opacity:1;visibility:visible;transform:translateX(-50%) translateY(-4px)}
+.toast.bad{background:var(--red)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 
-<!-- ===================== LOGIN ===================== -->
-<div id="login">
-  <div class="box">
-    <div class="card">
-      <div class="logo lg" style="margin-bottom:22px;">
-        <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-        <div class="logo-text">
-          <div class="logo-title">DIAMONDBACK</div>
-          <div class="logo-subtitle">Customer Portal</div>
-        </div>
+<!-- ============================== LOGIN ============================== -->
+<div class="login" id="login">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-mark">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 8l10 6 10-6-10-6z"/><path d="M2 16l10 6 10-6"/><path d="M2 12l10 6 10-6"/></svg>
       </div>
-      <p class="muted sm" style="margin:-6px 0 24px;">Sign in to view invoices, agreements, and messages.</p>
-      <div id="loginErr" class="login-err hidden"></div>
-                <p class="db-portal-switch" style="margin:18px 0 0;text-align:center;font-size:13px;color:rgba(255,255,255,.5)">Have a CRM subscription? <a href="client_portal.html" style="color:#10b981;text-decoration:none;font-weight:600">Go to the CodeNexus CRM</a></p>
-      <div class="field"><label>Email</label><input id="loginEmail" type="email" autocomplete="email" placeholder="you@company.com"></div>
-      <div class="field"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
-      <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Sign in</button>
-      <p class="muted sm" style="text-align:center;margin-top:16px;">Need access? <a href="contact.html">Contact us</a></p>
+      <div><b>Diamondback Coding</b><span>Customer Portal</span></div>
     </div>
+    <h1 class="login-h">Welcome back</h1>
+    <p class="login-sub">Sign in to see your invoices, agreements and project progress.</p>
+    <div class="panel">
+      <div id="loginErr" class="alert alert-err hidden"></div>
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input class="input" id="loginEmail" type="email" autocomplete="email" placeholder="you@company.com">
+      </div>
+      <div class="field">
+        <label for="loginPass">Password</label>
+        <input class="input" id="loginPass" type="password" autocomplete="current-password" placeholder="Your password">
+      </div>
+      <button class="btn btn-primary btn-block" id="loginBtn" style="margin-top:8px">Sign in</button>
+      <p class="login-alt" style="margin-top:16px">
+        <a href="#" onclick="openRecover('password');return false;">Forgot password</a>
+        &nbsp;·&nbsp;
+        <a href="#" onclick="openRecover('username');return false;">Forgot your email</a>
+      </p>
+      <p class="login-alt">Have a CRM subscription? <a href="client_portal.html">Go to CodeNexus CRM</a></p>
+    </div>
+    <p class="login-alt" style="margin-top:18px">
+      Trouble signing in? <a href="mailto:contact@diamondbackcoding.com">Email us</a>
+    </p>
   </div>
 </div>
 
-<!-- ===================== APP ===================== -->
-<div id="app" class="hidden">
-  <div class="mobile-bar">
-    <div class="logo sm">
-      <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-      <div class="logo-text">
-        <div class="logo-title">DIAMONDBACK</div>
-        <div class="logo-subtitle">Customer Portal</div>
-      </div>
-    </div>
-    <button class="hamb" style="margin-left:auto" onclick="nav('messages')" aria-label="Messages">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-      <span id="msgMobileBadge" class="hidden" style="position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--status-danger);color:#fff;font-family:var(--font-mono);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">0</span>
+<!-- =============================== APP =============================== -->
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="avatar" id="avatar">—</div>
+    <div class="greet"><small id="greetTime">Welcome back,</small><b id="greetName">—</b></div>
+    <button class="icon-btn" onclick="go('messages')" aria-label="Messages">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>
+      <span class="dot hidden" id="msgDot">0</span>
     </button>
-    <button class="hamb" onclick="toggleSidebar()" aria-label="Menu">☰</button>
-  </div>
-  <div class="scrim" id="scrim" onclick="toggleSidebar(false)"></div>
-
-  <aside class="sidebar">
-    <div class="logo" style="margin-bottom:28px;padding-left:4px;">
-      <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-      <div class="logo-text">
-        <div class="logo-title">DIAMONDBACK</div>
-        <div class="logo-subtitle">Customer Portal</div>
-      </div>
-    </div>
-    <div class="nav-link active" data-view="dashboard" onclick="nav('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
-    <div class="nav-link" data-view="invoices" onclick="nav('invoices')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Invoices<span class="nav-badge hidden" id="invBadge">0</span></div>
-    <div class="nav-link" data-view="projects" onclick="nav('projects')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Agreements</div>
-    <div class="nav-link" data-view="requests" onclick="nav('requests')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Service Requests</div>
-    <div class="nav-link" data-view="messages" onclick="nav('messages')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Messages<span class="nav-badge hidden" id="msgNavBadge">0</span></div>
-    <div class="nav-link" data-view="documents" onclick="nav('documents')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>Receipts &amp; Docs</div>
-    <div class="nav-link" data-view="payments" onclick="nav('payments')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payments</div>
-    <div class="nav-link" data-view="plans" onclick="nav('plans')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><polyline points="23 4 23 10 17 10"/></svg>Plans<span class="nav-badge hidden" id="planBadge">0</span></div>
-    <div class="spacer"></div>
-    <div class="nav-link" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</div>
-  </aside>
-
-  <main class="main" id="main"><!-- views injected here --></main>
+    <button class="icon-btn" onclick="signOut()" aria-label="Sign out">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </header>
+  <main class="main" id="main"></main>
 </div>
 
-<div id="payModalMount"></div>
+<nav class="tabs hidden" id="tabs">
+  <button class="tab on" data-t="home" onclick="go('home')">
+    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+  <button class="tab" data-t="billing" onclick="go('billing')">
+    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span>Billing</span></button>
+  <button class="tab" data-t="project" onclick="go('project')">
+    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg><span>Project</span></button>
+  <button class="tab" data-t="docs" onclick="go('docs')">
+    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Docs</span></button>
+  <button class="tab" data-t="messages" onclick="go('messages')">
+    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg><span>Messages</span>
+    <span class="dot hidden" id="tabDot">0</span></button>
+</nav>
+
+<div class="sheet" id="sheet"><div class="sheet-box" id="sheetBox"></div></div>
+<div class="toast" id="toast"></div>
 
 <script>
-/* ========================================================================
-   CONFIG
-   ======================================================================== */
-const API = (location.origin && location.origin.startsWith('http')) ? location.origin : '';
-const COMPANY = 'Diamondback Coding';
+/* ============================================================================
+   State + helpers
+   ============================================================================ */
+const API = window.location.origin;
+let TOKEN = localStorage.getItem('db_portal_token') || '';
+let ME = JSON.parse(localStorage.getItem('db_portal_me') || 'null');
+let VIEW = 'home';
+let DASH = null, TIMELINE = [], MSGS = [], PAYMENTS = null, PLANS = [], PMS = [], REQS = [];
+let UNREAD = 0, NOTICE_DAYS = 30, STRIPE = null, STRIPE_PK = '';
 
-// Shown if Stripe can't load, so the customer has a way to pay.
-// TODO: replace with Diamondback's real support number.
-const SUPPORT_PHONE = '';
-
-// Stripe *publishable* key (starts pk_live_ / pk_test_). Safe to expose.
-// Preferred: set STRIPE_PUBLISHABLE_KEY on the server — it's served from
-// /api/config/stripe and used automatically. This is only a fallback.
-const STRIPE_PK_FALLBACK = '';
-
-let TOKEN  = localStorage.getItem('db_portal_token') || '';
-let CLIENT = JSON.parse(localStorage.getItem('db_portal') || 'null');
-let DASH = null, REQUESTS = [], MESSAGES = [], STRIPE = null, STRIPE_PK = '';
-
-/* ---------------- HELPERS ---------------- */
-function authHeaders(){ return { 'Authorization':'Bearer '+TOKEN, 'Content-Type':'application/json' }; }
-function money(n){ return '$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function fmtDate(d){ return d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'; }
-function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function toggleSidebar(force){
-  const sb = document.querySelector('.sidebar'), sc = document.getElementById('scrim');
-  const open = (force===undefined) ? !sb.classList.contains('open') : force;
-  sb.classList.toggle('open', open); sc.classList.toggle('show', open);
-}
-
-/* ---------------- AUTH ---------------- */
-async function doLogin(){
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPass').value;
-  const errEl = document.getElementById('loginErr');
-  errEl.classList.add('hidden');
-  if(!email || !password){ errEl.textContent='Enter your email and password.'; errEl.classList.remove('hidden'); return; }
-  try{
-    const r = await fetch(API+'/api/portal/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
-    const d = await r.json();
-    if(!r.ok || !d.success){ errEl.textContent = d.message || 'That email and password don\u2019t match an account.'; errEl.classList.remove('hidden'); return; }
-    TOKEN = d.token; CLIENT = d.client;
-    localStorage.setItem('db_portal_token',TOKEN);
-    localStorage.setItem('db_portal',JSON.stringify(CLIENT));
-    startApp();
-  }catch(e){ errEl.textContent='Can\u2019t reach the server. Check your connection and try again.'; errEl.classList.remove('hidden'); }
-}
-function logout(){ localStorage.removeItem('db_portal_token'); localStorage.removeItem('db_portal'); location.reload(); }
-document.getElementById('loginPass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
-
-/* ---------------- BOOTSTRAP ---------------- */
-async function startApp(){
-  document.getElementById('login').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-
-  try{
-    const c = await (await fetch(API+'/api/config/stripe')).json();
-    STRIPE_PK = c.publishableKey || STRIPE_PK_FALLBACK || '';
-    if(STRIPE_PK && window.Stripe) STRIPE = Stripe(STRIPE_PK);
-  }catch(e){
-    if(STRIPE_PK_FALLBACK && window.Stripe){ STRIPE_PK = STRIPE_PK_FALLBACK; STRIPE = Stripe(STRIPE_PK); }
-  }
-
-  await loadDashboard();
-  await loadRequests();
-  await loadMessages();
-  refreshMsgBadge();
-
-  // Live thread: poll messages, and re-render only if the thread actually changed
-  // so we don't stomp a half-typed reply.
-  let lastSig = msgSig();
-  async function pollMessages(){
-    const link = document.querySelector('.nav-link[data-view="messages"]');
-    const onThread = !!(link && link.classList.contains('active'));
-    await loadMessages();
-    refreshMsgBadge();
-    if(onThread){
-      const sig = msgSig();
-      if(sig !== lastSig){
-        const ta = document.getElementById('msgInput');
-        const draft = ta ? ta.value : '';
-        viewMessages();
-        const ta2 = document.getElementById('msgInput');
-        if(ta2 && draft){ ta2.value = draft; ta2.style.height='auto'; ta2.style.height=Math.min(ta2.scrollHeight,130)+'px'; }
-      }
-    }
-    lastSig = msgSig();
-  }
-  setInterval(pollMessages, 7000);
-  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') pollMessages(); });
-  window.addEventListener('focus', refreshMsgBadge);
-
-  nav('dashboard');
-}
-function msgSig(){
-  if(!MESSAGES.length) return '0|';
-  const last = MESSAGES[MESSAGES.length-1];
-  return MESSAGES.length + '|' + (last.id || last.created_at || '');
-}
-
-const EMPTY_DASH = {invoices:[],projects:[],salesAgreements:[],tickets:[],activity:[]};
-async function loadDashboard(){
-  try{
-    const r = await fetch(API+'/api/portal/dashboard',{headers:authHeaders()});
-    if(r.status===401){ logout(); return; }
-    const d = await r.json();
-    DASH = d.dashboard || EMPTY_DASH;
-    const unpaid = (DASH.invoices||[]).filter(i=>i.status!=='paid').length;
-    const b=document.getElementById('invBadge');
-    if(unpaid>0){ b.textContent=unpaid; b.classList.remove('hidden'); } else b.classList.add('hidden');
-  }catch(e){ DASH = EMPTY_DASH; }
-}
-async function loadRequests(){
-  try{ const d = await (await fetch(API+'/api/portal/service-requests',{headers:authHeaders()})).json(); REQUESTS = d.requests||[]; }
-  catch(e){ REQUESTS=[]; }
-}
-
-/* ---------------- NAV ---------------- */
-function nav(view){
-  document.querySelectorAll('.nav-link').forEach(n=>n.classList.toggle('active', n.dataset.view===view));
-  toggleSidebar(false);
-  ({dashboard:viewDashboard,invoices:viewInvoices,projects:viewProjects,requests:viewRequests,
-    documents:viewDocuments,messages:viewMessages,
-    payments:viewPayments,plans:viewPlans}[view]||viewDashboard)();
-}
-
-/* ---------------- DASHBOARD ---------------- */
-function viewDashboard(){
-  const inv = DASH.invoices||[];
-  const outstanding = inv.filter(i=>i.status!=='paid').reduce((s,i)=>s+Number(i.total_amount||0),0);
-  const agreements = (DASH.salesAgreements||[]).filter(a=>(a.status||'')!=='cancelled').length;
-  const openReq = REQUESTS.filter(r=>r.status!=='completed'&&r.status!=='closed').length;
-  const recent = inv.slice(0,4).map(i=>`
-    <div class="list-item">
-      <div><div class="mono sm">${esc(i.invoice_number||('Invoice #'+i.id))}</div>
-        <div class="muted sm">${fmtDate(i.issue_date||i.created_at)}</div></div>
-      <div style="text-align:right"><div class="mono">${money(i.total_amount)}</div>
-        <span class="pill ${esc(i.status)}">${esc(i.status)}</span></div>
-    </div>`).join('') || '<p class="muted sm">Invoices will appear here once we send you one.</p>';
-
-  document.getElementById('main').innerHTML = `
-    <div class="page-title">Welcome back${CLIENT&&CLIENT.name?', '+esc(CLIENT.name.split(' ')[0]):''}</div>
-    <div class="page-sub">Your account at a glance.</div>
-    <div class="stat-grid">
-      <div class="stat lead"><div class="label">Outstanding balance</div><div class="value">${money(outstanding)}</div></div>
-      <div class="stat tappable" onclick="nav('projects')"><div class="label">Agreements</div><div class="value">${agreements}</div></div>
-      <div class="stat tappable" onclick="nav('requests')"><div class="label">Open requests</div><div class="value">${openReq}</div></div>
-    </div>
-    <div class="card"><h3 style="margin-bottom:10px;">Recent invoices</h3>${recent}
-      ${outstanding>0?`<div class="mt"><button class="btn btn-primary" onclick="nav('invoices')">Pay an invoice</button></div>`:''}
-    </div>`;
-}
-
-/* ---------------- INVOICES ---------------- */
-function viewInvoices(){
-  const inv = DASH.invoices||[];
-  const rows = inv.map(i=>`
-    <div class="list-item">
-      <div><div class="mono sm">${esc(i.invoice_number||('Invoice #'+i.id))}</div>
-        <div class="muted sm">${esc(i.short_description||'Development services')} · Due ${fmtDate(i.due_date)}</div></div>
-      <div style="display:flex;align-items:center;gap:16px;">
-        <div style="text-align:right"><div class="mono">${money(i.total_amount)}</div>
-          <span class="pill ${esc(i.status)}">${esc(i.status)}</span></div>
-        ${i.status!=='paid'
-          ? `<button class="btn btn-primary" onclick="openPay(${i.id})">Pay now</button>`
-          : `<button class="btn btn-ghost" onclick="viewReceipt(${i.id})">Receipt</button>`}
-      </div>
-    </div>`).join('') || '<p class="muted sm">No invoices yet.</p>';
-  document.getElementById('main').innerHTML = `
-    <div class="page-title">Invoices</div>
-    <div class="page-sub">Review and pay by card without leaving the portal.</div>
-    <div class="card">${rows}</div>`;
-}
-
-/* ---------------- AGREEMENTS ---------------- */
-function serviceLabel(t){
-  const m = {
-    web_development:'Web Development',
-    web_design:'Web Design',
-    crm_implementation:'CRM Implementation',
-    custom_software:'Custom Software',
-    integration:'Integrations & API Work',
-    maintenance:'Maintenance & Support',
-    hosting:'Hosting & Infrastructure',
-    seo:'SEO & Performance'
-  };
-  return m[t] || (t ? String(t).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Service');
-}
-function viewProjects(){
-  const list = DASH.salesAgreements||[];
-  const head = `<div class="page-title">Agreements</div>
-    <div class="page-sub">Your signed scopes of work with ${COMPANY}.</div>`;
-  if(!list.length){
-    document.getElementById('main').innerHTML = head +
-      `<div class="card"><p class="muted sm">No agreements yet. When we prepare a scope of work for you, it shows up here with its payment terms.</p></div>`;
-    return;
-  }
-  const invoices = DASH.invoices||[];
-  const cards = list.map(a=>{
-    const price = Number(a.price||0);
-    const reqDep = !!a.require_deposit && Number(a.deposit_pct||0)>0;
-    const pct = Number(a.deposit_pct||0);
-    const dep = reqDep ? (Number(a.deposit) || Math.round(price*pct)/100) : 0;
-    const bal = Math.round((price-dep)*100)/100;
-    const linked = invoices.filter(i=> i.id===a.invoice_id || i.id===a.balance_invoice_id);
-    const payRows = linked.map(i=>`
-      <div class="list-item" style="padding:9px 0;">
-        <div><div class="mono sm">${esc(i.invoice_number||('Invoice #'+i.id))}</div>
-          <div class="muted sm">${esc(i.short_description||'')}</div></div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div class="mono sm">${money(i.total_amount)}</div>
-          <span class="pill ${esc(i.status)}">${esc(i.status)}</span>
-          ${i.status!=='paid'?`<button class="btn btn-primary" onclick="openPay(${i.id})">Pay</button>`:''}
-        </div></div>`).join('');
-    const terms = reqDep
-      ? `Deposit ${pct}% (${money(dep)}) at signing · Balance ${money(bal)} on delivery`
-      : `Full amount ${money(price)} due on delivery`;
-    const st = a.status||'draft';
-    return `<div class="card mt">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-        <div><h3>${esc(serviceLabel(a.service_type))}${a.package_name?(' — '+esc(a.package_name)):''}</h3>
-          <div class="muted sm" style="margin-top:4px;">${esc(a.agreement_number||'')}${a.project?(' · '+esc(a.project)):(a.vehicle?(' · '+esc(a.vehicle)):'')} · ${fmtDate(a.created_at)}</div></div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-          <span class="pill ${st==='signed'?'paid':(st==='completed'?'paid':(st==='cancelled'?'cancelled':'in-progress'))}">${esc(st)}</span>
-          ${(st==='sent'||st==='draft')?`<button class="btn btn-primary" onclick="openSign(${a.id})">Review &amp; sign</button>`:''}
-          ${a.signed_at?`<div class="muted sm">Signed ${fmtDate(a.signed_at)}</div>`:''}
-        </div>
-      </div>
-      <div class="mt"><span class="muted sm">Total</span><div class="mono" style="font-size:19px;font-weight:800;">${money(price)}</div></div>
-      <div class="muted sm mt">${esc(terms)}</div>
-      ${payRows?`<div class="mt">${payRows}</div>`:''}
-      ${a.terms?`<details class="mt"><summary class="muted sm mono" style="cursor:pointer;">View scope of work</summary>
-        <div class="sm" style="white-space:pre-wrap;margin-top:10px;line-height:1.6;">${esc(a.terms)}</div></details>`:''}
-      <div class="mt"><button class="btn btn-secondary" onclick="downloadAgreement(${a.id},this)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download agreement</button></div>
-    </div>`;
-  }).join('');
-  document.getElementById('main').innerHTML = head + cards;
-}
-async function downloadAgreement(id, btn){
-  const orig = btn ? btn.innerHTML : '';
-  if(btn){ btn.disabled = true; btn.textContent = 'Preparing…'; }
-  try{
-    const r = await fetch(API+`/api/portal/sales-agreements/${id}/pdf`, { headers:{ 'Authorization':'Bearer '+TOKEN } });
-    if(!r.ok) throw new Error('download failed');
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `Agreement-${id}.pdf`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 4000);
-  }catch(e){
-    alert('That agreement couldn\u2019t be prepared. Try again, or message us from the Messages tab.');
-  }finally{
-    if(btn){ btn.disabled = false; btn.innerHTML = orig; }
-  }
-}
-async function loadMilestones(pid){
-  try{
-    const d = await (await fetch(API+'/api/portal/projects/'+pid+'/milestones',{headers:authHeaders()})).json();
-    const ms = d.milestones||d.data||[];
-    const el = document.getElementById('ml-'+pid); if(!el || !ms.length) return;
-    el.innerHTML = `<div class="timeline">${ms.map(m=>`<div class="tl-item">
-      <div class="tl-dot ${m.status==='completed'?'done':''}"></div>
-      <div style="font-size:14px;font-weight:500">${esc(m.title||m.name)}</div>
-      <div class="muted sm">${m.status==='completed'?('Completed '+fmtDate(m.completed_at||m.updated_at)):(m.due_date?('Due '+fmtDate(m.due_date)):(m.status||'pending'))}</div>
-    </div>`).join('')}</div>`;
-  }catch(e){}
-}
-
-/* ---------------- SERVICE REQUESTS ---------------- */
-function viewRequests(){
-  const rows = REQUESTS.map(r=>`
-    <div class="list-item">
-      <div><div class="sm">${esc(r.service_type)}</div>
-        <div class="muted sm">${esc(r.project||r.vehicle||'')}${r.preferred_date?(' · prefers '+fmtDate(r.preferred_date)):''}</div></div>
-      <span class="pill ${esc(r.status)}">${esc(r.status)}</span>
-    </div>`).join('') || '<p class="muted sm">Nothing requested yet.</p>';
-  document.getElementById('main').innerHTML = `
-    <div class="page-title">Service Requests</div>
-    <div class="page-sub">Ask for new work or a change to something we already built. We\u2019ll confirm scope and timing.</div>
-    <div class="card">
-      <div class="row">
-        <div class="field"><label>What do you need</label><select id="srType">
-          <option>New website or page</option>
-          <option>Website change or fix</option>
-          <option>CRM setup or configuration</option>
-          <option>Custom software / automation</option>
-          <option>Integration or API work</option>
-          <option>Maintenance &amp; support</option>
-          <option>Hosting or domain</option>
-          <option>Other</option>
-        </select></div>
-        <div class="field"><label>Project or site</label><input id="srProject" placeholder="example.com — checkout page"></div>
-      </div>
-      <div class="field"><label>Preferred start date</label><input id="srDate" type="date"></div>
-      <div class="field"><label>Details</label><textarea id="srDetails" rows="3" placeholder="What should it do, and is anything blocking you right now?"></textarea></div>
-      <button class="btn btn-primary" onclick="submitRequest()">Send request</button>
-    </div>
-    <div class="card mt"><h3 style="margin-bottom:8px;">Your requests</h3>${rows}</div>`;
-}
-async function submitRequest(){
-  const project = document.getElementById('srProject').value;
-  const body = {
-    service_type: document.getElementById('srType').value,
-    project: project,
-    // service_requests still has Crown's `vehicle` column. Sending both keeps
-    // this working before and after you rename that column to `project`.
-    vehicle: project,
-    preferred_date: document.getElementById('srDate').value||null,
-    details: document.getElementById('srDetails').value
-  };
-  try{
-    const r = await fetch(API+'/api/portal/service-requests',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});
-    const d = await r.json();
-    if(d.success){ await loadRequests(); nav('requests'); }
-    else alert(d.message||'That request didn\u2019t go through. Check the details and try again.');
-  }catch(e){ alert('Can\u2019t reach the server. Try again in a moment.'); }
-}
-
-/* ---------------- RECEIPTS & DOCS ---------------- */
-function viewDocuments(){
-  const paid = (DASH.invoices||[]).filter(i=>i.status==='paid');
-  const rows = paid.map(i=>`
-    <div class="list-item">
-      <div><div class="mono sm">Receipt — ${esc(i.invoice_number||('#'+i.id))}</div>
-        <div class="muted sm">Paid ${fmtDate(i.paid_at)}</div></div>
-      <button class="btn btn-ghost" onclick="viewReceipt(${i.id})">View</button>
-    </div>`).join('') || '<p class="muted sm">Receipts appear here after a payment clears.</p>';
-  document.getElementById('main').innerHTML = `
-    <div class="page-title">Receipts &amp; Documents</div>
-    <div class="page-sub">Payment receipts and signed paperwork.</div>
-    <div class="card">${rows}</div>`;
-}
-function viewReceipt(id){
-  const i = (DASH.invoices||[]).find(x=>x.id===id); if(!i) return;
-  const sub = Number(i.subtotal||0);
-  const tax = Number(i.tax_amount||0);
-  const tot = Number(i.total_amount||0);
-  const fee = Math.max(0, +(tot - sub - tax).toFixed(2));
-  let rate = Number(i.tax_rate||0); if(rate>0 && rate<1) rate = rate*100;
-  const taxLabel = rate>0 ? `Sales tax (${(+rate.toFixed(2))}%)` : 'Sales tax';
-  const w = window.open('','_blank');
-  w.document.write(`<title>Receipt ${esc(i.invoice_number||id)}</title>
-   <body style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:40px auto;color:#222;">
-   <h2 style="border-bottom:3px solid #D4A574;padding-bottom:10px;font-family:'Space Mono',monospace;letter-spacing:1px;">${esc(COMPANY)}</h2>
-   <h3>Payment receipt</h3>
-   <p><b>Invoice:</b> ${esc(i.invoice_number||('#'+i.id))}<br>
-   <b>Date paid:</b> ${fmtDate(i.paid_at)}<br>
-   <b>Description:</b> ${esc(i.short_description||'Development services')}</p>
-   <table style="width:100%;border-collapse:collapse;margin-top:14px;">
-     <tr><td style="padding:8px 0;">Subtotal</td><td style="text-align:right;">${money(sub)}</td></tr>
-     <tr><td style="padding:8px 0;">${taxLabel}</td><td style="text-align:right;">${money(tax)}</td></tr>
-     ${fee>0?`<tr><td style="padding:8px 0;">Card processing fee</td><td style="text-align:right;">${money(fee)}</td></tr>`:''}
-     <tr style="border-top:2px solid #222;font-weight:bold;"><td style="padding:10px 0;">Total paid</td><td style="text-align:right;">${money(tot)}</td></tr>
-   </table>
-   <p style="color:#888;margin-top:20px;font-size:13px;">Payment method: ${esc(i.payment_method||'Card')} · Ref: ${esc(i.payment_reference||'')}</p>
-   <p style="color:#888;font-size:13px;">Thank you for your business.</p>
-   <script>window.print()<\/script>
-</body>`);
-}
-
-/* ---------------- IN-PORTAL PAYMENT (Stripe Elements) ---------------- */
-let payState = { invoiceId:null, breakdown:null, clientSecret:null, elements:null, step:1 };
-
-async function openPay(invoiceId){
-  payState = { invoiceId, breakdown:null, clientSecret:null, elements:null, step:1 };
-  renderPayModal();
-  try{
-    const r = await fetch(API+`/api/portal/invoices/${invoiceId}/checkout`,{headers:authHeaders()});
-    const d = await r.json();
-    if(!d.success){ alert(d.message||'That invoice couldn\u2019t be loaded.'); closePay(); return; }
-    payState.breakdown = d.breakdown; payState.invoice = d.invoice;
-    renderPayModal();
-  }catch(e){ alert('That invoice couldn\u2019t be loaded.'); closePay(); }
-}
-function closePay(){ document.getElementById('payModalMount').innerHTML=''; }
-function payStepsBar(){ return `<div class="steps">${[1,2,3].map(s=>`<div class="step ${payState.step>=s?'active':''}"></div>`).join('')}</div>`; }
-
-function renderPayModal(){
-  const mount = document.getElementById('payModalMount');
-  const b = payState.breakdown;
-  let inner = '';
-  if(!b){
-    inner = `<div class="modal-body"><p class="muted mono sm">Loading invoice…</p></div>`;
-  } else if(payState.step===1){
-    inner = `<div class="modal-body">${payStepsBar()}
-      <h4 style="margin-bottom:14px;">Review</h4>
-      <div class="muted sm mono">${esc(payState.invoice.invoice_number||'')}</div>
-      <div class="muted sm">${esc(payState.invoice.short_description||'Development services')}</div>
-      <div class="mt">
-        <div class="summary-line"><span>Subtotal</span><span>${money(b.subtotal)}</span></div>
-        <div class="summary-line"><span>Sales tax${b.taxRate?` (${b.taxRate}%)`:''}</span><span>${money(b.tax)}</span></div>
-        ${b.discount?`<div class="summary-line"><span>Discount</span><span>-${money(b.discount)}</span></div>`:''}
-        <div class="summary-line"><span>Card processing fee</span><span>${money(b.processingFee)}</span></div>
-        <div class="summary-line total"><span>Total due</span><span>${money(b.total)}</span></div>
-      </div>
-      <button class="btn btn-primary mt" style="width:100%" onclick="payGoto(2)">Continue to billing</button></div>`;
-  } else if(payState.step===2){
-    const c = CLIENT||{};
-    inner = `<div class="modal-body">${payStepsBar()}
-      <h4 style="margin-bottom:14px;">Billing details</h4>
-      <div class="row">
-        <div class="field"><label>Full name</label><input id="bName" value="${esc(c.name||'')}"></div>
-        <div class="field"><label>Email</label><input id="bEmail" value="${esc(c.email||'')}"></div>
-      </div>
-      <div class="field"><label>Phone</label><input id="bPhone" value="${esc(c.phone||'')}"></div>
-      <div class="field"><label>Billing address</label><input id="bAddr" placeholder="Street address"></div>
-      <div class="row">
-        <div class="field"><label>City</label><input id="bCity"></div>
-        <div class="field"><label>ZIP</label><input id="bZip"></div>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:6px;">
-        <button class="btn btn-ghost" onclick="payGoto(1)">Back</button>
-        <button class="btn btn-primary" style="flex:1" onclick="payGoto(3)">Continue to payment</button></div></div>`;
-  } else if(payState.step===3){
-    inner = `<div class="modal-body">${payStepsBar()}
-      <h4 style="margin-bottom:6px;">Payment</h4>
-      <div class="summary-line total" style="border:none;margin:0;padding:6px 0 14px;"><span>Total</span><span>${money(b.total)}</span></div>
-      ${STRIPE ? `
-        <div id="payment-element" style="min-height:64px;"><div class="muted sm mono">Loading secure card form…</div></div>
-        <div id="payMsg" class="pay-msg"></div>
-        <div style="display:flex;gap:10px;margin-top:16px;">
-          <button class="btn btn-ghost" id="payBack" onclick="payGoto(2)">Back</button>
-          <button class="btn btn-primary" style="flex:1" id="payBtn" onclick="confirmPay()">Pay ${money(b.total)}</button></div>
-        <p class="muted sm" style="margin-top:10px;text-align:center;">Secured by Stripe. Card details go straight to Stripe and are never stored on our servers.</p>
-      ` : `
-        <div class="pay-msg" style="color:var(--status-pending)">Card payment isn\u2019t available right now.${SUPPORT_PHONE?` Call us at ${esc(SUPPORT_PHONE)} and we\u2019ll take payment over the phone.`:` Message us from the Messages tab and we\u2019ll send a payment link.`}</div>
-        <div style="margin-top:14px;"><button class="btn btn-ghost" onclick="payGoto(2)">Back</button></div>
-      `}</div>`;
-  } else if(payState.step==='done'){
-    inner = `<div class="modal-body" style="text-align:center;padding:40px 24px;">
-      <div style="width:60px;height:60px;border-radius:50%;background:rgba(16,185,129,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#D4A574" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg></div>
-      <h3 class="mono">Payment received</h3>
-      <p class="muted mt">${money(b.total)} paid. Your receipt is in Receipts &amp; Docs.</p>
-      <button class="btn btn-primary mt" onclick="afterPaid()">Done</button></div>`;
-  }
-  mount.innerHTML = `<div class="overlay" onclick="if(event.target===this)closePay()"><div class="modal" role="dialog" aria-modal="true" aria-label="Pay invoice">
-    <div class="modal-head"><h3>Pay invoice</h3><button class="x" onclick="closePay()" aria-label="Close">&times;</button></div>${inner}</div></div>`;
-
-  if(payState.step===3 && STRIPE && !payState.mounted){ mountStripe(); }
-}
-
-async function payGoto(step){
-  if(step===3){
-    payState.billing = {
-      name:    (document.getElementById('bName')||{}).value  || (CLIENT&&CLIENT.name)  || '',
-      email:   (document.getElementById('bEmail')||{}).value || (CLIENT&&CLIENT.email) || '',
-      phone:   (document.getElementById('bPhone')||{}).value || '',
-      address: (document.getElementById('bAddr')||{}).value  || '',
-      city:    (document.getElementById('bCity')||{}).value  || '',
-      zip:     (document.getElementById('bZip')||{}).value   || ''
-    };
-    try{
-      const r = await fetch(API+`/api/portal/invoices/${payState.invoiceId}/payment-intent`,{method:'POST',headers:authHeaders(),body:'{}'});
-      const d = await r.json();
-      if(!d.success){ alert(d.message||'Payment couldn\u2019t be started.'); return; }
-      payState.clientSecret = d.clientSecret;
-      payState.breakdown = d.breakdown||payState.breakdown;
-      payState.mounted = false;
-      // Re-init Stripe from the key returned here in case the config load raced.
-      const pk = d.publishableKey || STRIPE_PK_FALLBACK;
-      if(!STRIPE && pk && window.Stripe){ STRIPE_PK = pk; STRIPE = Stripe(STRIPE_PK); }
-    }catch(e){ alert('Payment couldn\u2019t be started.'); return; }
-  }
-  payState.step = step; renderPayModal();
-}
-
-function mountStripe(){
-  if(!STRIPE || !payState.clientSecret) return;
-  const bil = payState.billing || {};
-  payState.elements = STRIPE.elements({
-    clientSecret: payState.clientSecret,
-    appearance:{ theme:'night', variables:{
-      colorPrimary:'#D4A574', colorBackground:'#1a1a1a', colorText:'#ffffff',
-      colorDanger:'#ef4444', borderRadius:'10px', fontFamily:'Outfit, system-ui, sans-serif'
-    }}
-  });
-  const pe = payState.elements.create('payment', {
-    layout: 'tabs',
-    defaultValues: { billingDetails: {
-      name: bil.name||'', email: bil.email||'', phone: bil.phone||'',
-      address: { line1: bil.address||'', city: bil.city||'', postal_code: bil.zip||'', country: 'US' }
-    }}
-  });
-  const el = document.getElementById('payment-element'); if(el) el.innerHTML='';
-  pe.mount('#payment-element'); payState.mounted = true;
-  pe.on('ready', ()=>{ payState.mounted = true; });
-}
-
-async function confirmPay(){
-  const msg = document.getElementById('payMsg'); const btn = document.getElementById('payBtn');
-  if(!STRIPE || !payState.elements){ if(msg) msg.textContent='Payments aren\u2019t available right now.'; return; }
-  btn.disabled=true; btn.textContent='Processing…'; if(msg){ msg.style.color=''; msg.textContent=''; }
-  // redirect:'if_required' keeps the customer in the modal — only 3-D Secure
-  // and similar methods bounce out. Never Stripe Checkout.
-  const { error, paymentIntent } = await STRIPE.confirmPayment({
-    elements: payState.elements,
-    confirmParams: { return_url: window.location.href },
-    redirect: 'if_required'
-  });
-  if(error){
-    if(msg){ msg.style.color='var(--status-danger)'; msg.textContent = error.message || 'The card was declined. Check the details and try again.'; }
-    btn.disabled=false; btn.textContent='Pay '+money(payState.breakdown.total); return;
-  }
-  if(paymentIntent && (paymentIntent.status==='succeeded' || paymentIntent.status==='processing')){
-    // Mark paid on our side immediately (server verifies against Stripe) so the
-    // client portal and admin portal both update without waiting on the webhook.
-    try{
-      await fetch(API+`/api/portal/invoices/${payState.invoiceId}/confirm-paid`,{
-        method:'POST', headers:authHeaders(), body: JSON.stringify({ payment_intent_id: paymentIntent.id })
-      });
-    }catch(_){}
-    payState.step='done'; renderPayModal();
-  } else {
-    if(msg) msg.textContent='The payment didn\u2019t complete. Try again.';
-    btn.disabled=false; btn.textContent='Pay '+money(payState.breakdown.total);
-  }
-}
-async function afterPaid(){ closePay(); await loadDashboard(); nav('invoices'); }
-
-/* ---------------- MESSAGES ---------------- */
-function msgTime(d){
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => '$' + Number(n || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+const fmtShort = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+function relTime(d){
   if(!d) return '';
-  const t=new Date(d), now=new Date(); if(isNaN(t)) return '';
-  if(t.toDateString()===now.toDateString()) return t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
-  const days=Math.round((now-t)/86400000);
-  if(days===1) return 'Yesterday';
-  if(days<7) return t.toLocaleDateString([], {weekday:'short'});
-  return t.toLocaleDateString([], {month:'short',day:'numeric'});
+  const s = (Date.now() - new Date(d)) / 1000;
+  if(s < 60) return 'Just now';
+  if(s < 3600) return Math.floor(s/60) + 'm ago';
+  if(s < 86400) return Math.floor(s/3600) + 'h ago';
+  if(s < 604800) return Math.floor(s/86400) + 'd ago';
+  return fmtShort(d);
 }
-async function loadMessages(){
-  try{ const d = await (await fetch(API+'/api/portal/messages',{headers:authHeaders()})).json(); MESSAGES = d.messages||[]; }
-  catch(e){ MESSAGES=[]; }
+const initials = n => String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+
+function toast(msg, bad){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.toggle('bad', !!bad); t.classList.add('on');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('on'), 4200);
 }
-async function refreshMsgBadge(){
-  try{
-    const d = await (await fetch(API+'/api/portal/messages/unread-count',{headers:authHeaders()})).json();
-    const n = d.count||0;
-    ['msgNavBadge','msgMobileBadge'].forEach(id=>{
-      const b=document.getElementById(id); if(!b) return;
-      b.textContent=n; if(n>0) b.classList.remove('hidden'); else b.classList.add('hidden');
-    });
-  }catch(e){}
+const headers = () => ({'Authorization':'Bearer '+TOKEN, 'Content-Type':'application/json'});
+
+async function api(path, opts = {}){
+  const r = await fetch(API + path, {headers: headers(), ...opts});
+  if(r.status === 401 || r.status === 403){ signOut(); throw new Error('Session expired. Please sign in again.'); }
+  let d = null; try{ d = await r.json(); }catch(_){}
+  if(!r.ok) throw new Error((d && (d.message || d.error)) || ('Request failed (' + r.status + ')'));
+  return d || {};
 }
-function viewMessages(){
-  // The thread header represents US, not the customer. Crown's build showed the
-  // customer's initials beside the shop name here, which read as their own avatar.
-  let feed;
-  if(!MESSAGES.length){
-    feed = `<div class="msg-empty">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-      <div class="hint">Start the thread — ask a question and we\u2019ll reply here.</div></div>`;
-  } else {
-    let lastDay='';
-    feed = MESSAGES.map(m=>{
-      const day = m.created_at ? new Date(m.created_at).toLocaleDateString([], {month:'long',day:'numeric'}) : '';
-      let dayDiv=''; if(day && day!==lastDay){ dayDiv=`<div class="msg-day">${esc(day)}</div>`; lastDay=day; }
-      const txt = esc(m.body).replace(/\n/g,'<br>');
-      if(m.kind==='marketing'){
-        return `${dayDiv}<div class="bub mkt"><span class="mk-tag">Offer from ${esc(COMPANY)}</span>${m.subject?`<div class="mk-sub">${esc(m.subject)}</div>`:''}<div>${txt}</div></div><div class="bub-meta them">${esc(msgTime(m.created_at))}</div>`;
-      }
-      const side = m.sender==='admin' ? 'them' : 'me';
-      const who  = m.sender==='admin' ? COMPANY : 'You';
-      return `${dayDiv}<div class="bub ${side}">${txt}</div><div class="bub-meta ${side}">${esc(who)} · ${esc(msgTime(m.created_at))}</div>`;
-    }).join('');
-  }
-  document.getElementById('main').innerHTML = `
-    <div class="page-title">Messages</div>
-    <div class="page-sub">Talk directly to the team. Replies land in this thread.</div>
-    <div class="msg-wrap">
-      <div class="msg-head">
-        <div class="logo-mark" style="width:40px;height:40px;border-radius:var(--radius-sm);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-        <div><div class="n">${esc(COMPANY)}</div><div class="s">Typically replies within a day</div></div>
-      </div>
-      <div class="msg-feed" id="msgFeed">${feed}</div>
-      <div class="msg-compose">
-        <textarea id="msgInput" placeholder="Write a message…" rows="1" aria-label="Message"
-          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,130)+'px'"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendClientMessage();}"></textarea>
-        <button class="msg-send" id="msgSendBtn" onclick="sendClientMessage()" aria-label="Send message">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        </button>
-      </div>
-    </div>`;
-  const feedEl=document.getElementById('msgFeed'); if(feedEl) feedEl.scrollTop=feedEl.scrollHeight;
-  refreshMsgBadge();
+const post = (path, body, method) =>
+  api(path, {method: method || 'POST', body: body ? JSON.stringify(body) : undefined});
+
+function sheet(html){
+  document.getElementById('sheetBox').innerHTML = '<div class="grabber"></div>' + html;
+  document.getElementById('sheet').classList.add('on');
 }
-async function sendClientMessage(){
-  const inp=document.getElementById('msgInput'); const txt=(inp?.value||'').trim(); if(!txt) return;
-  const btn=document.getElementById('msgSendBtn'); if(btn) btn.disabled=true;
-  try{
-    const r = await fetch(API+'/api/portal/messages',{method:'POST',headers:authHeaders(),body:JSON.stringify({body:txt})});
-    const d = await r.json();
-    if(r.ok && d.success){
-      MESSAGES.push(d.message);
-      const feed=document.getElementById('msgFeed');
-      if(feed){
-        if(feed.querySelector('.msg-empty')) feed.innerHTML='';
-        feed.insertAdjacentHTML('beforeend',
-          `<div class="bub me">${esc(txt).replace(/\n/g,'<br>')}</div><div class="bub-meta me">You · just now</div>`);
-        feed.scrollTop=feed.scrollHeight;
-      }
-      if(inp){ inp.value=''; inp.style.height='auto'; }
-    } else { alert(d.message||'That message didn\u2019t send. Try again.'); }
-  }catch(e){ alert('Can\u2019t reach the server. Try again in a moment.'); }
-  finally{ if(btn) btn.disabled=false; }
-}
+function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
+document.getElementById('sheet').addEventListener('click', e => { if(e.target.id === 'sheet') closeSheet(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeSheet(); });
 
-/* ---------------- INIT ---------------- */
-if(TOKEN && CLIENT){ startApp(); }
-</script>
+/* ============================================================================
+   Account recovery
+   ============================================================================ */
+/* The response is deliberately the same whether or not the address is on an
+   account — this form must not reveal who has one. */
+function openRecover(mode){
+  const isPw = mode !== 'username';
+  sheet('<h2 class="sheet-h">' + (isPw ? 'Reset your password' : 'Find your sign-in email') + '</h2>' +
+    '<p class="sheet-sub">' + (isPw
+      ? 'Enter the email on your account and we&rsquo;ll send you a link to set a new password.'
+      : 'Enter the email you think you used and we&rsquo;ll confirm your sign-in details there.') + '</p>' +
+    '<div class="field"><label for="rcEmail">Email</label>' +
+      '<input class="input" id="rcEmail" type="email" autocomplete="email" placeholder="you@company.com"></div>' +
+    '<div id="rcMsg" class="alert alert-ok hidden"></div>' +
+    '<div id="rcErr" class="alert alert-err hidden"></div>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
+      '<button class="btn btn-primary" id="rcGo">Send ' + (isPw ? 'reset link' : 'details') + '</button></div>');
 
-<script id="db-portal-billing">
-/* =====================================================================
-   Billing screens — payments, plans, signing, payment methods.
-   Talks only to /api/portal/*, which requires a 'portal' token.
-   ===================================================================== */
-let PAYMENTS = [], PAY_TOTALS = null, PLANS = [], PLAN_NOTICE = 30, PMS = [];
+  const input = document.getElementById('rcEmail');
+  const prefill = document.getElementById('loginEmail');
+  if(prefill && prefill.value) input.value = prefill.value;
+  input.focus();
 
-async function pget(path){
-  const r = await fetch(API + path, { headers:{ 'Authorization':'Bearer ' + TOKEN }});
-  if(!r.ok) throw new Error('Request failed (' + r.status + ')');
-  return r.json();
-}
-async function ppost(path, body, method){
-  const r = await fetch(API + path, {
-    method: method || 'POST',
-    headers:{ 'Authorization':'Bearer ' + TOKEN, 'Content-Type':'application/json' },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  let d = {}; try { d = await r.json(); } catch(_) {}
-  if(!r.ok && d.message === undefined) d.message = 'Request failed (' + r.status + ')';
-  return d;
-}
-function dbToast(msg, bad){
-  let t = document.getElementById('dbToast');
-  if(!t){
-    t = document.createElement('div'); t.id = 'dbToast';
-    t.style.cssText = 'position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:300;'+
-      'padding:14px 22px;border-radius:8px;font-size:14px;font-weight:600;max-width:90vw;text-align:center';
-    document.body.appendChild(t);
-  }
-  t.style.background = bad ? '#7f1d1d' : '#065f46';
-  t.style.color = '#fff';
-  t.textContent = msg;
-  t.style.display = 'block';
-  clearTimeout(t._h);
-  t._h = setTimeout(()=>{ t.style.display='none'; }, 5200);
-}
-
-/* ---------------- PAYMENTS ---------------- */
-async function viewPayments(){
-  const main = document.getElementById('main');
-  main.innerHTML = `<div class="page-title">Payments</div>
-    <div class="page-sub">Every payment on your account, with receipts.</div>
-    <div class="card mt"><p class="muted sm">Loading…</p></div>`;
-  try{
-    const d = await pget('/api/portal/payments');
-    PAYMENTS = d.payments || []; PAY_TOTALS = d.totals || null;
-  }catch(e){
-    main.innerHTML = `<div class="page-title">Payments</div>
-      <div class="card mt"><p class="muted sm">Couldn't load your payments. Please refresh.</p></div>`;
-    return;
-  }
-
-  const t = PAY_TOTALS || { paid:0, refunded:0, net:0 };
-  const stats = `<div class="stats mt">
-      <div class="stat"><div class="label">Total paid</div><div class="value">${money(t.paid)}</div></div>
-      ${Number(t.refunded)>0?`<div class="stat"><div class="label">Refunded</div><div class="value">${money(t.refunded)}</div></div>`:''}
-      <div class="stat"><div class="label">Net</div><div class="value">${money(t.net)}</div></div>
-      <div class="stat"><div class="label">Payments</div><div class="value">${PAYMENTS.length}</div></div>
-    </div>`;
-
-  const rows = PAYMENTS.length ? PAYMENTS.map(p=>{
-    const refunds = Array.isArray(p.refunds) ? p.refunds : [];
-    const refunded = Number(p.refunded_amount||0);
-    const label = p.kind === 'maintenance' ? (p.description || 'Maintenance')
-                : (p.invoice_number ? ('Invoice ' + p.invoice_number) : (p.description || 'Payment'));
-    const method = p.method_last4
-      ? `${esc(p.method_brand || p.method || 'Card')} ····${esc(p.method_last4)}`
-      : esc(p.method || '—');
-    return `<div class="list-item">
-      <div>
-        <div class="mono sm">${esc(label)}</div>
-        <div class="muted sm">${fmtDate(p.paid_at)} · ${method} · receipt ${esc(p.receipt_number||'—')}</div>
-        ${refunds.map(r=>`<div class="db-refund">Refunded ${money(r.amount)} on ${fmtDate(r.created_at)}${r.reason?(' — '+esc(r.reason)):''}</div>`).join('')}
-      </div>
-      <div style="text-align:right">
-        <div class="mono">${money(p.amount)}</div>
-        <span class="pill ${p.status==='succeeded'?'paid':(p.status==='failed'?'cancelled':'in-progress')}">${esc((p.status||'').replace(/_/g,' '))}</span>
-        ${refunded>0?`<div class="muted sm" style="margin-top:3px">net ${money(Number(p.amount)-refunded)}</div>`:''}
-      </div></div>`;
-  }).join('') : `<p class="muted sm">No payments yet. When you pay an invoice or a plan renews, it shows up here with a receipt.</p>`;
-
-  main.innerHTML = `<div class="page-title">Payments</div>
-    <div class="page-sub">Every payment on your account, with receipts.</div>
-    ${stats}
-    <div class="card mt"><h3>History</h3>${rows}</div>
-    <div class="card mt" id="pmCard"><h3>Payment methods</h3><p class="muted sm">Loading…</p></div>`;
-  renderPaymentMethods();
-}
-
-/* ---------------- PAYMENT METHODS ---------------- */
-async function renderPaymentMethods(){
-  const card = document.getElementById('pmCard');
-  if(!card) return;
-  try{
-    const d = await pget('/api/portal/payment-methods');
-    PMS = d.paymentMethods || [];
-  }catch(e){
-    card.innerHTML = `<h3>Payment methods</h3><p class="muted sm">Couldn't load your payment methods.</p>`;
-    return;
-  }
-  const list = PMS.length ? PMS.map(m=>{
-    const name = m.type === 'card'
-      ? `${esc(m.brand||'Card')} ····${esc(m.last4||'')}${m.exp_month?` · exp ${m.exp_month}/${String(m.exp_year||'').slice(-2)}`:''}`
-      : `${esc(m.bank_name||'Bank account')} ····${esc(m.last4||'')}`;
-    const pending = m.status === 'pending_verification';
-    return `<div class="db-pm">
-      <div>
-        <div class="mono sm">${name}</div>
-        <div class="muted sm">${m.type==='card'?'Card':'Bank account (ACH)'}${m.is_default?' · default':''}</div>
-        ${pending?`<div class="muted sm" style="color:#eab308;margin-top:3px">Awaiting verification — enter the two deposit amounts to finish.</div>`:''}
-      </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span class="db-pm-badge ${pending?'pending':''}">${pending?'pending':'active'}</span>
-        ${pending?`<button class="btn" onclick="openVerify()">Verify</button>`:''}
-        <button class="btn" onclick="removePM(${m.id})">Remove</button>
-      </div></div>`;
-  }).join('') : `<p class="muted sm">No payment method saved. Add one to pay invoices faster, or to enroll in a maintenance plan.</p>`;
-
-  card.innerHTML = `<h3>Payment methods</h3>${list}
-    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="addPM('card')">Add a card</button>
-      <button class="btn" onclick="addPM('us_bank_account')">Add a bank account</button>
-    </div>`;
-}
-
-/* Stripe.js is loaded on demand — no third-party script on the login page. */
-function loadStripeJs(){
-  return new Promise((resolve, reject)=>{
-    if(window.Stripe) return resolve(window.Stripe);
-    const s = document.createElement('script');
-    s.src = 'https://js.stripe.com/v3/';
-    s.onload = ()=> window.Stripe ? resolve(window.Stripe) : reject(new Error('Stripe.js failed to load'));
-    s.onerror = ()=> reject(new Error('Stripe.js failed to load'));
-    document.head.appendChild(s);
-  });
-}
-
-async function addPM(type){
-  try{
-    dbToast('Opening secure form…');
-    const intent = await ppost('/api/portal/payment-methods/setup-intent', { type });
-    if(!intent.success) return dbToast(intent.message || 'Could not start.', true);
-    if(!intent.publishableKey) return dbToast('Card payments are not configured yet. Please contact us.', true);
-
-    const Stripe = await loadStripeJs();
-    const stripe = Stripe(intent.publishableKey);
-
-    /* Card and bank take different Stripe.js paths. Card uses an Elements
-       form; bank uses collectBankAccountForSetup, which opens Stripe's own
-       bank-login flow and handles microdeposit fallback. */
-    if(type === 'us_bank_account'){
-      const { setupIntent, error } = await stripe.collectBankAccountForSetup({
-        clientSecret: intent.clientSecret,
-        params: { payment_method_type: 'us_bank_account',
-                  payment_method_data: { billing_details: { name: (CLIENT&&CLIENT.name)||'Customer',
-                                                            email: (CLIENT&&CLIENT.email)||'' } } },
-        expand: ['payment_method']
+  const submit = async () => {
+    const err = document.getElementById('rcErr');
+    const msg = document.getElementById('rcMsg');
+    const btn = document.getElementById('rcGo');
+    err.classList.add('hidden');
+    const email = input.value.trim();
+    if(!email || email.indexOf('@') === -1){
+      err.textContent = 'Enter the email address on your account.'; err.classList.remove('hidden'); return;
+    }
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try{
+      const r = await fetch(API + '/api/auth/' + (isPw ? 'forgot-password' : 'forgot-username'), {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({email, audience:'customer'})
       });
-      if(error) return dbToast(error.message, true);
-      if(setupIntent.status === 'requires_confirmation'){
-        const c = await stripe.confirmUsBankAccountSetup(intent.clientSecret);
-        if(c.error) return dbToast(c.error.message, true);
-      }
-      const done = await ppost('/api/portal/payment-methods/confirm', { setupIntentId: intent.setupIntentId });
-      sessionStorage.setItem('db_setup_intent', intent.setupIntentId);
-      dbToast(done.message || 'Bank account added.', !done.success);
-      renderPaymentMethods();
-      return;
+      const d = await r.json();
+      msg.textContent = d.message || 'If that email is on an account, it\u2019s on its way.';
+      msg.classList.remove('hidden');
+      btn.textContent = 'Sent';
+      input.disabled = true;
+    }catch(e){
+      err.textContent = 'Could not send that just now. Please try again in a moment.';
+      err.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Send ' + (isPw ? 'reset link' : 'details');
     }
-
-    openCardModal(stripe, intent);
-  }catch(e){
-    dbToast(e.message || 'Something went wrong.', true);
-  }
-}
-
-function openCardModal(stripe, intent){
-  let m = document.getElementById('cardModal');
-  if(m) m.remove();
-  m = document.createElement('div');
-  m.id = 'cardModal'; m.className = 'db-modal';
-  m.innerHTML = `<div class="db-modal-box">
-      <h3 style="margin:0 0 4px">Add a card</h3>
-      <p class="muted sm" style="margin:0 0 16px">Your card details go straight to Stripe. We never see or store them.</p>
-      <div id="cardElement" style="background:#0a0a0a;border:1px solid #2a2a2a;border-radius:8px;padding:14px"></div>
-      <div id="cardErr" class="db-warn" style="display:none"></div>
-      <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
-        <button class="btn" onclick="document.getElementById('cardModal').remove()">Cancel</button>
-        <button class="btn btn-primary" id="cardSave">Save card</button>
-      </div></div>`;
-  document.body.appendChild(m);
-
-  const elements = stripe.elements({ clientSecret: intent.clientSecret,
-    appearance:{ theme:'night', variables:{ colorPrimary:'#10b981', colorBackground:'#0a0a0a' } } });
-  const pe = elements.create('payment', { layout:'tabs' });
-  pe.mount('#cardElement');
-
-  document.getElementById('cardSave').onclick = async ()=>{
-    const btn = document.getElementById('cardSave');
-    btn.disabled = true; btn.textContent = 'Saving…';
-    const { error } = await stripe.confirmSetup({ elements, redirect:'if_required' });
-    if(error){
-      const e = document.getElementById('cardErr');
-      e.style.display = 'block'; e.textContent = error.message;
-      btn.disabled = false; btn.textContent = 'Save card';
-      return;
-    }
-    const done = await ppost('/api/portal/payment-methods/confirm', { setupIntentId: intent.setupIntentId });
-    m.remove();
-    dbToast(done.message || 'Card saved.', !done.success);
-    renderPaymentMethods();
   };
+  document.getElementById('rcGo').onclick = submit;
+  input.addEventListener('keydown', e => { if(e.key === 'Enter') submit(); });
 }
 
-function openVerify(){
-  const id = sessionStorage.getItem('db_setup_intent') || '';
-  let m = document.getElementById('verifyModal');
-  if(m) m.remove();
-  m = document.createElement('div');
-  m.id = 'verifyModal'; m.className = 'db-modal';
-  m.innerHTML = `<div class="db-modal-box">
-      <h3 style="margin:0 0 4px">Verify your bank account</h3>
-      <p class="muted sm" style="margin:0 0 8px">We sent two small deposits to your account. Enter the amounts in cents, or the 6-digit code from your statement.</p>
-      ${id?'':`<div class="db-field"><label>Setup reference</label><input id="vSetup" placeholder="seti_..."></div>`}
-      <div class="db-row">
-        <div class="db-field"><label>First amount (cents)</label><input id="vA1" inputmode="numeric" placeholder="32"></div>
-        <div class="db-field"><label>Second amount (cents)</label><input id="vA2" inputmode="numeric" placeholder="45"></div>
-      </div>
-      <p class="muted sm" style="margin:6px 0 0">Or, if your statement shows a code:</p>
-      <div class="db-field"><label>Descriptor code</label><input id="vCode" placeholder="SM11AA"></div>
-      <div id="vErr" class="db-warn" style="display:none"></div>
-      <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
-        <button class="btn" onclick="document.getElementById('verifyModal').remove()">Cancel</button>
-        <button class="btn btn-primary" id="vGo">Verify</button>
-      </div></div>`;
-  document.body.appendChild(m);
-
-  document.getElementById('vGo').onclick = async ()=>{
-    const setupIntentId = id || (document.getElementById('vSetup')||{}).value;
-    const a1 = (document.getElementById('vA1')||{}).value;
-    const a2 = (document.getElementById('vA2')||{}).value;
-    const code = (document.getElementById('vCode')||{}).value;
-    const body = { setupIntentId };
-    if(code && code.trim()) body.descriptorCode = code.trim();
-    else if(a1 && a2) body.amounts = [Number(a1), Number(a2)];
-    else {
-      const e = document.getElementById('vErr');
-      e.style.display='block'; e.textContent='Enter both amounts, or the descriptor code.';
-      return;
-    }
-    const btn = document.getElementById('vGo');
-    btn.disabled = true; btn.textContent = 'Verifying…';
-    const d = await ppost('/api/portal/payment-methods/verify-microdeposits', body);
-    if(d.success){ m.remove(); dbToast(d.message||'Verified.'); renderPaymentMethods(); return; }
-    const e = document.getElementById('vErr');
-    e.style.display='block'; e.textContent = d.message || 'Verification failed.';
-    btn.disabled = false; btn.textContent = 'Verify';
-  };
-}
-
-async function removePM(id){
-  if(!confirm('Remove this payment method?')) return;
-  const d = await ppost('/api/portal/payment-methods/' + id, null, 'DELETE');
-  dbToast(d.message || (d.success?'Removed.':'Could not remove it.'), !d.success);
-  renderPaymentMethods();
-}
-
-/* ---------------- PLANS ---------------- */
-async function viewPlans(){
-  const main = document.getElementById('main');
-  main.innerHTML = `<div class="page-title">Plans</div>
-    <div class="page-sub">Your recurring plans and subscriptions.</div>
-    <div class="card mt"><p class="muted sm">Loading…</p></div>`;
+/* ============================================================================
+   Auth
+   ============================================================================ */
+async function doLogin(){
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginErr');
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  err.classList.add('hidden');
+  if(!email || !pass){ err.textContent = 'Enter your email and password.'; err.classList.remove('hidden'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
   try{
-    // One endpoint returns maintenance plans AND the CRM subscription, so both
-    // appear here with the same controls.
-    const d = await pget('/api/portal/plans');
-    PLANS = d.plans || []; PMS = d.paymentMethods || []; PLAN_NOTICE = d.noticeDays || 30;
+    const r = await fetch(API + '/api/portal/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})
+    });
+    const d = await r.json();
+    if(!r.ok || !d.success) throw new Error(d.message || 'Those details did not match an account.');
+    TOKEN = d.token; ME = d.client || d.lead || {email};
+    localStorage.setItem('db_portal_token', TOKEN);
+    localStorage.setItem('db_portal_me', JSON.stringify(ME));
+    boot();
   }catch(e){
-    main.innerHTML = `<div class="page-title">Plans</div>
-      <div class="card mt"><p class="muted sm">Couldn't load your plans. ${esc(e.message||'')}</p>
-      <button class="btn mt" onclick="viewPlans()">Try again</button></div>`;
-    return;
+    err.textContent = e.message; err.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Sign in';
   }
-  updatePlanBadge();
+}
+document.getElementById('loginBtn').onclick = doLogin;
+['loginEmail','loginPass'].forEach(id =>
+  document.getElementById(id).addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); }));
 
-  if(!PLANS.length){
-    main.innerHTML = `<div class="page-title">Plans</div>
-      <div class="page-sub">Your recurring plans and subscriptions.</div>
-      <div class="card mt"><p class="muted sm">You don't have any recurring plans. If you'd like ongoing maintenance for your site, database or email setup — or a CodeNexus CRM subscription — send us a message and we'll set it up.</p></div>`;
-    return;
-  }
-
-  const cards = PLANS.map(p => planCard(p)).join('');
-
-  main.innerHTML = `<div class="page-title">Plans</div>
-    <div class="page-sub">Your recurring plans and subscriptions. You can change the payment method or cancel any of them here — cancellation takes effect ${PLAN_NOTICE} days after you ask.</div>
-    ${cards}
-    <div class="card mt">
-      <h3>Payment methods</h3>
-      <p class="muted sm" style="margin:6px 0 0">Add or remove cards and bank accounts on the Payments tab.</p>
-      <button class="btn mt" onclick="nav('payments')">Manage payment methods</button>
-    </div>`;
+function signOut(){
+  TOKEN = ''; ME = null;
+  clearInterval(window._unreadPoll);
+  localStorage.removeItem('db_portal_token'); localStorage.removeItem('db_portal_me');
+  document.getElementById('app').classList.remove('on');
+  document.getElementById('tabs').classList.add('hidden');
+  document.getElementById('login').style.display = 'flex';
+  const b = document.getElementById('loginBtn');
+  b.disabled = false; b.textContent = 'Sign in';
 }
 
-/* One card per plan. Maintenance and CRM render the same way on purpose — the
-   customer shouldn't have to learn two different interfaces for two recurring
-   charges. */
+async function boot(){
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').classList.add('on');
+  document.getElementById('tabs').classList.remove('hidden');
+  const name = (ME && ME.name) || 'there';
+  document.getElementById('greetName').textContent = name;
+  document.getElementById('avatar').textContent = initials(name);
+  const h = new Date().getHours();
+  document.getElementById('greetTime').textContent =
+    h < 12 ? 'Good morning,' : h < 18 ? 'Good afternoon,' : 'Good evening,';
+  go('home');
+  refreshUnread();
+  // Poll so a message sent from the admin side appears without a reload.
+  clearInterval(window._unreadPoll);
+  window._unreadPoll = setInterval(refreshUnread, 45000);
+}
+
+/* ============================================================================
+   Unread badge — topbar and tab bar kept in step
+   ============================================================================ */
+async function refreshUnread(){
+  try{
+    const d = await api('/api/portal/messages/unread-count');
+    setUnread(Number(d.count ?? d.unread ?? d.unreadCount ?? 0));
+  }catch(_){}
+}
+function setUnread(n){
+  UNREAD = n;
+  for(const id of ['msgDot','tabDot']){
+    const el = document.getElementById(id);
+    if(!el) continue;
+    el.textContent = n > 99 ? '99+' : n;
+    el.classList.toggle('hidden', n === 0);
+  }
+}
+
+/* ============================================================================
+   Navigation
+   ============================================================================ */
+function go(view){
+  VIEW = view;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.t === view));
+  window.scrollTo(0, 0);
+  ({home:vHome, billing:vBilling, project:vProject, docs:vDocs, messages:vMessages}[view] || vHome)();
+}
+const loading = (title, sub) =>
+  '<h1 class="view-h">' + title + '</h1><p class="view-sub">' + sub + '</p>' +
+  '<div class="card"><div class="skeleton"></div></div><div class="card"><div class="skeleton"></div></div>';
+const M = () => document.getElementById('main');
+
+async function loadDash(){ DASH = (await api('/api/portal/dashboard')).dashboard || {}; return DASH; }
+
+function fail(title, msg, retryName){
+  M().innerHTML = '<h1 class="view-h">' + title + '</h1>' +
+    '<div class="card"><div class="alert alert-err">' + esc(msg) + '</div>' +
+    '<button class="btn btn-ghost btn-block" onclick="' + retryName + '()">Try again</button></div>';
+}
+
+/* ============================================================================
+   HOME
+   ============================================================================ */
+async function vHome(){
+  M().innerHTML = loading('Home', 'Your account at a glance.');
+  try{ await loadDash(); }
+  catch(e){ return fail('Home', e.message, 'vHome'); }
+
+  const invoices = DASH.invoices || [];
+  const open = invoices.filter(i => !['paid','void','cancelled','refunded','draft'].includes(i.status));
+  const owed = open.reduce((t,i) => t + Number(i.total_amount || 0), 0);
+  const agreements = (DASH.salesAgreements || []).filter(a => (a.status||'') !== 'cancelled');
+  const toSign = agreements.filter(a => !isSigned(a) && ['sent','draft'].includes(a.status || ''));
+  const parts = money(owed).split('.');
+
+  M().innerHTML =
+    '<div class="balance">' +
+      '<small>Outstanding balance</small>' +
+      '<div class="amt">' + parts[0] + '<span class="cents">.' + parts[1] + '</span></div>' +
+      '<div class="note">' + (open.length
+        ? open.length + ' open invoice' + (open.length === 1 ? '' : 's')
+        : 'You&rsquo;re all paid up &mdash; nothing outstanding.') + '</div>' +
+      (open.length ? '<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="go(\'billing\')">Pay an invoice</button>' : '') +
+    '</div>' +
+
+    (toSign.length ?
+      '<div class="card" style="border:1.5px solid var(--green)">' +
+        '<div class="card-h"><h3>Ready to sign</h3><span class="tag green">' + toSign.length + '</span></div>' +
+        toSign.map(a =>
+          '<div class="row">' +
+            '<div class="chip green"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg></div>' +
+            '<div class="row-body"><b>' + esc(a.package_name || a.agreement_number || 'Agreement') + '</b>' +
+              '<span>' + money(a.price) + (a.est_completion_date ? ' &middot; est. ' + fmtShort(a.est_completion_date) : '') + '</span></div>' +
+            '<button class="btn btn-primary btn-sm" onclick="openSign(' + a.id + ')">Review</button>' +
+          '</div>').join('') +
+      '</div>' : '') +
+
+    '<div class="quick">' +
+      '<button onclick="go(\'project\')">' +
+        '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>' +
+        '<b>Project</b><span>Track your progress</span></button>' +
+      '<button onclick="openRequest()">' +
+        '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' +
+        '<b>New request</b><span>Ask us for something</span></button>' +
+      '<button onclick="go(\'billing\')">' +
+        '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/></svg>' +
+        '<b>Billing</b><span>Invoices and plans</span></button>' +
+      '<button onclick="go(\'messages\')">' +
+        '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>' +
+        '<b>Messages</b><span>' + (UNREAD ? UNREAD + ' unread' : 'Talk to us') + '</span></button>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="card-h"><h3>Recent invoices</h3><span class="link" onclick="go(\'billing\')">See all</span></div>' +
+      (invoices.length ? invoices.slice(0,4).map(invRow).join('')
+        : '<p class="empty" style="padding:18px 0">No invoices yet.</p>') +
+    '</div>';
+}
+
+const isSigned = a => !!(a && (a.signed_at || a.status === 'signed'));
+
+function invRow(i){
+  const paid = i.status === 'paid';
+  const overdue = !paid && i.due_date && new Date(i.due_date) < new Date()
+    && !['void','cancelled','refunded','draft'].includes(i.status);
+  return '<div class="row">' +
+    '<div class="chip ' + (paid ? 'green' : (overdue ? 'red' : '')) + '">' +
+      '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">' +
+      (paid ? '<polyline points="20 6 9 17 4 12"/>'
+            : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>') +
+      '</svg></div>' +
+    '<div class="row-body"><b>' + esc(i.invoice_number || 'Invoice') + '</b>' +
+      '<span>' + (paid ? 'Paid ' + fmtShort(i.paid_at)
+        : (i.due_date ? (overdue ? 'Overdue ' : 'Due ') + fmtShort(i.due_date) : 'No due date')) + '</span></div>' +
+    '<div class="row-end"><b>' + money(i.total_amount) + '</b>' +
+      (paid ? '<span class="pos">Paid</span>'
+            : '<button class="btn btn-primary btn-sm" style="margin-top:5px" onclick="openPay(' + i.id + ')">Pay</button>') +
+    '</div></div>';
+}
+
+/* ============================================================================
+   BILLING
+   ============================================================================ */
+async function vBilling(){
+  M().innerHTML = loading('Billing', 'Invoices, plans and payment methods.');
+  try{
+    const [d, pay, plans] = await Promise.all([
+      api('/api/portal/dashboard'),
+      api('/api/portal/payments').catch(() => ({payments:[], totals:{paid:0,refunded:0,net:0}})),
+      api('/api/portal/plans').catch(() => ({plans:[], paymentMethods:[], noticeDays:30}))
+    ]);
+    DASH = d.dashboard || {};
+    PAYMENTS = pay; PLANS = plans.plans || []; PMS = plans.paymentMethods || [];
+    NOTICE_DAYS = plans.noticeDays || 30;
+  }catch(e){ return fail('Billing', e.message, 'vBilling'); }
+
+  const invoices = DASH.invoices || [];
+  const open = invoices.filter(i => !['paid','void','cancelled','refunded','draft'].includes(i.status));
+  const t = (PAYMENTS && PAYMENTS.totals) || {paid:0, refunded:0, net:0};
+
+  M().innerHTML = '<h1 class="view-h">Billing</h1><p class="view-sub">Invoices, plans and payment methods.</p>' +
+
+    '<div class="card">' +
+      '<div class="card-h"><h3>Invoices</h3>' +
+        (open.length ? '<span class="tag amber">' + open.length + ' open</span>' : '<span class="tag green">All paid</span>') + '</div>' +
+      (invoices.length ? invoices.map(invRow).join('') : '<p class="empty" style="padding:18px 0">No invoices yet.</p>') +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="card-h"><h3>Plans</h3></div>' +
+      (PLANS.length ? PLANS.map(planCard).join('')
+        : '<p class="empty" style="padding:18px 0">You&rsquo;re not on a recurring plan. Ask us about ongoing maintenance any time.</p>') +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="card-h"><h3>Payment methods</h3></div>' +
+      pmList() +
+      '<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">' +
+        '<button class="btn btn-ghost btn-sm" onclick="addMethod(\'card\')">Add a card</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="addMethod(\'us_bank_account\')">Add a bank account</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="card-h"><h3>Payment history</h3></div>' +
+      '<div class="pay-summary">' +
+        '<div class="r"><span>Total paid</span><b>' + money(t.paid) + '</b></div>' +
+        (Number(t.refunded) > 0 ? '<div class="r"><span>Refunded</span><b class="neg">&minus;' + money(t.refunded) + '</b></div>' : '') +
+        '<div class="r total"><span>Net</span><span>' + money(t.net) + '</span></div>' +
+      '</div>' +
+      (((PAYMENTS && PAYMENTS.payments) || []).length ? PAYMENTS.payments.map(payRow).join('')
+        : '<p class="empty" style="padding:18px 0">No payments yet. Receipts appear here automatically.</p>') +
+    '</div>';
+}
+
+function payRow(p){
+  const refunds = Array.isArray(p.refunds) ? p.refunds : [];
+  const label = p.invoice_number ? 'Invoice ' + p.invoice_number : (p.description || 'Payment');
+  const method = p.method_last4 ? esc(p.method_brand || p.method || 'Card') + ' ····' + esc(p.method_last4) : esc(p.method || '');
+  return '<div class="row">' +
+    '<div class="chip green"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>' +
+    '<div class="row-body"><b>' + esc(label) + '</b>' +
+      '<span>' + fmtShort(p.paid_at) + ' &middot; ' + method + '</span>' +
+      refunds.map(r => '<span class="neg">Refunded ' + money(r.amount) + ' &middot; ' + fmtShort(r.created_at) + '</span>').join('') +
+    '</div>' +
+    '<div class="row-end"><b>' + money(p.amount) + '</b><span>' + esc(String(p.receipt_number || '').slice(0,14)) + '</span></div>' +
+  '</div>';
+}
+
+function pmList(){
+  if(!PMS.length) return '<p class="empty" style="padding:14px 0">No payment method saved yet.</p>';
+  return PMS.map(m => {
+    const name = m.type === 'card'
+      ? esc(m.brand || 'Card') + ' ····' + esc(m.last4 || '')
+      : esc(m.bank_name || 'Bank account') + ' ····' + esc(m.last4 || '');
+    const pending = m.status === 'pending_verification';
+    return '<div class="row">' +
+      '<div class="chip"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2.5"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>' +
+      '<div class="row-body"><b>' + name + '</b><span>' +
+        (m.type === 'card' ? (m.exp_month ? 'Expires ' + m.exp_month + '/' + String(m.exp_year || '').slice(-2) : 'Card') : 'Bank account') +
+        (m.is_default ? ' &middot; Default' : '') + '</span></div>' +
+      '<div class="row-end">' +
+        (pending ? '<button class="btn btn-ghost btn-sm" onclick="verifyBank()">Verify</button>'
+                 : '<button class="btn btn-ghost btn-sm" onclick="removeMethod(' + m.id + ')">Remove</button>') +
+      '</div></div>';
+  }).join('');
+}
+
 function planCard(p){
   const cancelling = p.status === 'pending_cancellation';
-  const days = p.days_until_cancellation;
   const needsSig = p.status === 'pending_signature';
   const needsPm = p.status === 'pending_payment_method';
   const pm = p.payment_method;
-  const method = pm
-    ? `${esc(pm.brand || pm.bank_name || pm.type || 'Card')} ····${esc(pm.last4 || '')}`
-    : '<span style="color:#eab308">No payment method yet</span>';
-  const isCrm = p.kind === 'crm';
-
-  return `<div class="card mt">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
-      <div>
-        <h3>${esc(p.label)}${isCrm?' <span style="font-size:10px;font-weight:800;letter-spacing:.5px;padding:2px 6px;border-radius:3px;background:rgba(96,165,250,.16);color:#60a5fa;vertical-align:middle">CRM</span>':''}</h3>
-        <div class="muted sm" style="margin-top:4px">
-          ${money(p.amount)} per month${p.billing_day?` · bills on day ${esc(String(p.billing_day))}`:''} · ${method}
-        </div>
-      </div>
-      <span class="pill ${p.status==='active'?'paid':(cancelling?'cancelled':'in-progress')}">${esc(String(p.status||'').replace(/_/g,' '))}</span>
-    </div>
-    ${p.description?`<p class="muted sm" style="margin:12px 0 0">${esc(p.description)}</p>`:''}
-
-    ${cancelling?`<div class="db-warn">
-        Scheduled to end on <strong>${fmtDate(p.cancels_at)}</strong>${days!=null?` — ${days} day${days===1?'':'s'} from now`:''}.
-        ${isCrm?'You keep full CRM access until then.':'Your service continues until then.'} You can reinstate any time before that date.
-      </div>`:''}
-    ${needsSig?`<div class="db-info">Waiting on your signature — check your Agreements tab, then add a payment method to start.</div>`:''}
-    ${needsPm?`<div class="db-info">Signed. Choose a payment method below and this plan will activate.</div>`:''}
-    ${p.next_charge_date && !cancelling && p.status==='active'?`<div class="list-item" style="padding:12px 0 0"><div class="muted sm">Next payment</div><div class="mono sm">${fmtDate(p.next_charge_date)}</div></div>`:''}
-
-    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-      ${p.can_change_payment_method?`<button class="btn" onclick="openChangePm('${p.kind}',${p.id})">${pm?'Change payment method':'Add payment method'}</button>`:''}
-      ${cancelling
-        ? `<button class="btn btn-primary" onclick="reinstateAnyPlan('${p.kind}',${p.id})">Keep this plan</button>`
-        : (p.can_cancel?`<button class="btn" style="color:#fca5a5" onclick="openCancelAny('${p.kind}',${p.id})">Cancel${isCrm?' subscription':' plan'}</button>`:'')}
-    </div>
-  </div>`;
+  const method = pm ? esc(pm.brand || pm.bank_name || 'Card') + ' ····' + esc(pm.last4 || '') : 'No payment method';
+  const tone = p.status === 'active' ? 'green' : (cancelling ? 'red' : 'amber');
+  return '<div style="padding:15px 0;border-bottom:1px solid var(--line-2)">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
+      '<div style="min-width:0">' +
+        '<b style="font-size:15px;font-weight:800;letter-spacing:-.02em;display:block">' + esc(p.label) + '</b>' +
+        '<span style="font-size:13px;color:var(--muted)">' + money(p.amount) + '/mo &middot; ' + method + '</span>' +
+      '</div><span class="tag ' + tone + '">' + esc(String(p.status || '').replace(/_/g,' ')) + '</span>' +
+    '</div>' +
+    (cancelling ? '<div class="alert alert-warn" style="margin:12px 0 0">Ends ' + fmtDate(p.cancels_at) +
+      (p.days_until_cancellation != null ? ' &mdash; ' + p.days_until_cancellation + ' day' + (p.days_until_cancellation === 1 ? '' : 's') + ' away' : '') +
+      '. ' + (p.kind === 'crm' ? 'You keep CRM access until then.' : 'Service continues until then.') + '</div>' : '') +
+    (needsSig ? '<div class="alert alert-info" style="margin:12px 0 0">Needs your signature before it can start. Nothing is charged until you sign.</div>' : '') +
+    (needsPm ? '<div class="alert alert-info" style="margin:12px 0 0">Signed &mdash; add a payment method to start the plan.</div>' : '') +
+    (p.next_charge_date && p.status === 'active'
+      ? '<div style="font-size:13px;color:var(--muted);margin-top:10px">Next payment ' + fmtDate(p.next_charge_date) + '</div>' : '') +
+    '<div style="display:flex;gap:9px;margin-top:13px;flex-wrap:wrap">' +
+      (needsSig && p.agreement_id ? '<button class="btn btn-primary btn-sm" onclick="openSign(' + p.agreement_id + ')">Review &amp; sign</button>' : '') +
+      (p.can_change_payment_method && !needsSig
+        ? '<button class="btn btn-ghost btn-sm" onclick="changePm(\'' + p.kind + '\',' + p.id + ')">' + (pm ? 'Change method' : 'Add method') + '</button>' : '') +
+      (cancelling ? '<button class="btn btn-primary btn-sm" onclick="reinstate(\'' + p.kind + '\',' + p.id + ')">Keep this plan</button>'
+        : (p.can_cancel ? '<button class="btn btn-danger btn-sm" onclick="cancelPlan(\'' + p.kind + '\',' + p.id + ')">Cancel</button>' : '')) +
+    '</div></div>';
 }
 
-/* Change payment method. Offers saved methods, "same as another plan", and
-   adding a new one inline — no redirect anywhere. */
-function openChangePm(kind, id){
-  const plan = PLANS.find(p => p.kind===kind && String(p.id)===String(id)) || {};
-  const others = PLANS.filter(p => !(p.kind===kind && String(p.id)===String(id)) && p.payment_method);
+/* ============================================================================
+   PROJECT TIMELINE
+   ============================================================================ */
+async function vProject(){
+  M().innerHTML = loading('Project', 'Where things stand.');
+  try{ TIMELINE = (await api('/api/portal/timeline')).projects || []; }
+  catch(e){ return fail('Project', e.message, 'vProject'); }
 
-  const savedOpts = PMS.length
-    ? PMS.map(m => {
-        const cur = plan.payment_method && (
-          (plan.payment_method.id && plan.payment_method.id === m.id) ||
-          (plan.payment_method.stripe_pm_id && plan.payment_method.stripe_pm_id === m.stripe_pm_id));
-        const name = m.type === 'card'
-          ? `${esc(m.brand||'Card')} ····${esc(m.last4||'')}${m.exp_month?` · exp ${m.exp_month}/${String(m.exp_year||'').slice(-2)}`:''}`
-          : `${esc(m.bank_name||'Bank account')} ····${esc(m.last4||'')}`;
-        return `<label style="display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer">
-          <input type="radio" name="pmChoice" value="saved:${m.id}" ${cur?'checked':''} style="accent-color:#10b981;width:16px;height:16px">
-          <span style="flex:1">${name}${cur?' <span class="muted sm">(current)</span>':''}</span>
-        </label>`;
-      }).join('')
-    : `<p class="muted sm" style="margin:0 0 10px">You don't have any saved payment methods yet.</p>`;
+  if(!TIMELINE.length){
+    M().innerHTML = '<h1 class="view-h">Project</h1><p class="view-sub">Where things stand.</p>' +
+      '<div class="card"><div class="empty">' +
+      '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>' +
+      '<div>No project yet.<br>Once you sign an agreement, your timeline appears here and updates as we go.</div>' +
+      '</div></div>';
+    return;
+  }
 
-  const sameOpts = others.length
-    ? others.map(o => `<label style="display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer">
-          <input type="radio" name="pmChoice" value="same:${o.kind}:${o.id}" style="accent-color:#10b981;width:16px;height:16px">
-          <span style="flex:1">Use the same as <strong style="color:#fff">${esc(o.label)}</strong>
-            <span class="muted sm">— ${esc(o.payment_method.brand || o.payment_method.bank_name || 'card')} ····${esc(o.payment_method.last4||'')}</span></span>
-        </label>`).join('')
-    : '';
+  M().innerHTML = '<h1 class="view-h">Project</h1><p class="view-sub">Where things stand.</p>' +
+    TIMELINE.map(p => {
+      const done = p.status === 'completed';
+      const pct = Number(p.progress_pct || 0);
+      const ms = p.milestones || [];
+      const ups = p.updates || [];
+      return '<div class="card">' +
+        '<div class="card-h"><h3>' + esc(p.project_name || 'Project') + '</h3>' +
+          '<span class="tag ' + (done ? 'green' : 'blue') + '">' +
+          (done ? 'Complete' : esc(String(p.status || 'in progress').replace(/_/g,' '))) + '</span></div>' +
+        '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="bar-meta"><span>' + pct + '% complete</span>' +
+          '<span>' + (p.milestones_done || 0) + ' of ' + ms.length + ' milestones</span></div>' +
+        (p.est_completion_date && !done
+          ? '<div style="font-size:13px;color:var(--muted);margin-top:10px">Estimated completion ' + fmtDate(p.est_completion_date) + '</div>' : '') +
 
-  let m = document.getElementById('pmChangeModal');
-  if(m) m.remove();
-  m = document.createElement('div');
-  m.id = 'pmChangeModal'; m.className = 'db-modal';
-  m.innerHTML = `<div class="db-modal-box">
-      <h3 style="margin:0 0 4px">Payment method</h3>
-      <p class="muted sm" style="margin:0 0 14px">for ${esc(plan.label||'this plan')}</p>
-      ${savedOpts}
-      ${sameOpts ? `<div style="margin-top:14px"><div class="muted sm" style="text-transform:uppercase;letter-spacing:.6px;font-size:11px;margin-bottom:4px">Or reuse another plan's method</div>${sameOpts}</div>` : ''}
-      <div id="pmChangeErr" class="db-warn" style="display:none"></div>
-      <div style="display:flex;gap:10px;margin-top:18px;justify-content:space-between;flex-wrap:wrap">
-        <button class="btn" onclick="document.getElementById('pmChangeModal').remove();addPM('card')">+ Add a new card</button>
-        <div style="display:flex;gap:10px">
-          <button class="btn" onclick="document.getElementById('pmChangeModal').remove()">Cancel</button>
-          <button class="btn btn-primary" id="pmChangeGo">Save</button>
-        </div>
-      </div></div>`;
-  document.body.appendChild(m);
+        (ms.length ? '<div style="margin-top:20px"><div class="sec-label">Milestones</div><div class="tl">' +
+          ms.map((m,i) => {
+            const isDone = m.status === 'completed';
+            const isNow = !isDone && ms.slice(0,i).every(x => x.status === 'completed');
+            return '<div class="tl-item ' + (isDone ? 'done' : (isNow ? 'now' : '')) + '">' +
+              '<b>' + esc(m.title) + '</b>' +
+              (m.description ? '<p>' + esc(m.description) + '</p>' : '') +
+              (isDone && m.completed_at ? '<time>Completed ' + fmtDate(m.completed_at) + '</time>'
+                : (isNow ? '<time>In progress</time>' : '')) +
+            '</div>';
+          }).join('') + '</div></div>' : '') +
 
-  document.getElementById('pmChangeGo').onclick = async () => {
-    const sel = m.querySelector('input[name="pmChoice"]:checked');
-    const err = document.getElementById('pmChangeErr');
-    if(!sel){ err.style.display='block'; err.textContent='Choose a payment method, or add a new one.'; return; }
-    const btn = document.getElementById('pmChangeGo');
-    btn.disabled = true; btn.textContent = 'Saving…';
+        (ups.length ? '<div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--line-2)">' +
+          '<div class="sec-label">Latest updates</div><div class="tl">' +
+          ups.map(u => '<div class="tl-item done"><b>' + esc(u.title) + '</b>' +
+            (u.body ? '<p>' + esc(u.body) + '</p>' : '') +
+            '<time>' + relTime(u.created_at) + (u.progress != null ? ' &middot; ' + u.progress + '% complete' : '') + '</time></div>').join('') +
+          '</div></div>' : '') +
+      '</div>';
+    }).join('');
+}
 
-    const parts = sel.value.split(':');
-    const body = parts[0]==='saved'
-      ? { paymentMethodId: Number(parts[1]) }
-      : { sameAsPlanKind: parts[1], sameAsPlanId: Number(parts[2]) };
+/* ============================================================================
+   DOCS — signed agreements land here automatically
+   ============================================================================ */
+async function vDocs(){
+  M().innerHTML = loading('Receipts &amp; Docs', 'Agreements, receipts and requests.');
+  try{
+    const [d, pay, rq] = await Promise.all([
+      api('/api/portal/dashboard'),
+      api('/api/portal/payments').catch(() => ({payments:[]})),
+      api('/api/portal/service-requests').catch(() => ({requests:[]}))
+    ]);
+    DASH = d.dashboard || {}; PAYMENTS = pay; REQS = rq.requests || [];
+  }catch(e){ return fail('Receipts &amp; Docs', e.message, 'vDocs'); }
 
-    const d = await ppost(`/api/portal/plans/${kind}/${id}/payment-method`, body);
-    if(!d.success){
-      err.style.display='block'; err.textContent = d.message || 'Could not update.';
-      btn.disabled = false; btn.textContent = 'Save';
-      return;
+  const all = (DASH.salesAgreements || []).filter(a => (a.status || '') !== 'cancelled');
+  const signed = all.filter(isSigned);
+  const pending = all.filter(a => !isSigned(a));
+  const receipts = ((PAYMENTS && PAYMENTS.payments) || []).filter(p => p.status !== 'failed');
+
+  M().innerHTML = '<h1 class="view-h">Receipts &amp; Docs</h1>' +
+    '<p class="view-sub">Everything signed, paid or requested.</p>' +
+
+    (pending.length ? '<div class="card" style="border:1.5px solid var(--green)">' +
+      '<div class="card-h"><h3>Awaiting your signature</h3><span class="tag green">' + pending.length + '</span></div>' +
+      pending.map(agRow).join('') + '</div>' : '') +
+
+    '<div class="card">' +
+      '<div class="card-h"><h3>Signed agreements</h3>' +
+        (signed.length ? '<span class="tag grey">' + signed.length + '</span>' : '') + '</div>' +
+      (signed.length ? signed.map(agRow).join('')
+        : '<p class="empty" style="padding:18px 0">Nothing signed yet. Signed agreements are filed here automatically.</p>') +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="card-h"><h3>Receipts</h3></div>' +
+      (receipts.length ? receipts.map(payRow).join('') : '<p class="empty" style="padding:18px 0">No receipts yet.</p>') +
+    '</div>' +
+
+    '<div class="card">' +
+      '<div class="card-h"><h3>Service requests</h3>' +
+        '<button class="btn btn-ghost btn-sm" onclick="openRequest()">New request</button></div>' +
+      (REQS.length ? REQS.map(r =>
+        '<div class="row">' +
+          '<div class="chip blue"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>' +
+          '<div class="row-body"><b>' + esc(r.service_type || 'Request') + '</b>' +
+            '<span>' + fmtShort(r.created_at) + (r.project ? ' &middot; ' + esc(r.project) : '') + '</span></div>' +
+          '<span class="tag ' + (r.status === 'completed' ? 'green' : (r.status === 'new' ? 'amber' : 'blue')) + '">' +
+            esc(r.status || 'new') + '</span>' +
+        '</div>').join('')
+        : '<p class="empty" style="padding:18px 0">No requests yet.</p>') +
+    '</div>';
+}
+
+function agRow(a){
+  const s = isSigned(a);
+  return '<div class="row">' +
+    '<div class="chip ' + (s ? 'green' : 'amber') + '">' +
+      '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">' +
+      (s ? '<polyline points="20 6 9 17 4 12"/>'
+         : '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>') +
+      '</svg></div>' +
+    '<div class="row-body"><b>' + esc(a.package_name || a.agreement_number || 'Agreement') + '</b>' +
+      '<span>' + money(a.price) +
+        (s ? ' &middot; Signed ' + fmtShort(a.signed_at)
+           : (a.est_completion_date ? ' &middot; est. ' + fmtShort(a.est_completion_date) : '')) + '</span></div>' +
+    '<div class="row-end" style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' +
+      (s ? '<span class="tag green">Signed &amp; complete</span>' +
+           '<button class="btn btn-ghost btn-sm" onclick="downloadAgreement(' + a.id + ',this)">Download</button>'
+         : '<button class="btn btn-primary btn-sm" onclick="openSign(' + a.id + ')">Review &amp; sign</button>') +
+    '</div></div>';
+}
+
+async function downloadAgreement(id, btn){
+  const label = btn ? btn.textContent : 'Download';
+  if(btn){ btn.disabled = true; btn.textContent = 'Preparing…'; }
+  try{
+    const r = await fetch(API + '/api/portal/sales-agreements/' + id + '/pdf', {
+      headers: {'Authorization':'Bearer ' + TOKEN}
+    });
+    if(!r.ok){
+      let msg = 'Could not prepare that PDF (' + r.status + ')';
+      try{ const d = await r.json(); if(d && d.message) msg = d.message; }catch(_){}
+      throw new Error(msg);
     }
-    m.remove();
-    dbToast(d.message || 'Payment method updated.');
-    viewPlans();
-  };
+    const blob = await r.blob();
+    if(!blob.size) throw new Error('The PDF came back empty. Please contact us.');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'Agreement-' + id + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast('Agreement downloaded.');
+  }catch(e){ toast(e.message, true); }
+  finally{ if(btn){ btn.disabled = false; btn.textContent = label; } }
 }
 
-/* Cancellation, for maintenance and CRM alike. Deliberately low-friction: one
-   button, one confirm, no retention maze — with the reinstate path spelled out
-   so cancelling never feels like a trap. */
-function openCancelAny(kind, id){
-  const plan = PLANS.find(p => p.kind===kind && String(p.id)===String(id)) || {};
-  const isCrm = kind === 'crm';
+/* ============================================================================
+   MESSAGES
+   ============================================================================ */
+async function vMessages(){
+  M().innerHTML = loading('Messages', 'Talk to us directly.');
+  try{ MSGS = (await api('/api/portal/messages')).messages || []; }
+  catch(e){ return fail('Messages', e.message, 'vMessages'); }
 
-  let m = document.getElementById('cancelAnyModal');
-  if(m) m.remove();
-  m = document.createElement('div');
-  m.id = 'cancelAnyModal'; m.className = 'db-modal';
-  m.innerHTML = `<div class="db-modal-box">
-      <h3 style="margin:0 0 4px">Cancel ${esc(plan.label||'this plan')}?</h3>
-      <p class="muted sm" style="margin:0 0 4px">${PLAN_NOTICE}-day notice period.</p>
-      <div class="db-info">
-        ${isCrm
-          ? `You keep full CRM access until the notice period ends, and you won't be billed after that. <strong>Your customer portal isn't affected</strong> — your invoices, receipts and messages all stay right here.`
-          : `Your service continues until the notice period ends, and you'll be billed as normal until then.`}
-        You can reinstate any time before it ends.
-      </div>
-      <div class="db-field">
-        <label>Anything we could have done better? (optional)</label>
-        <input id="cxAnyReason" placeholder="Helps us improve — not required">
-      </div>
-      <div id="cxAnyErr" class="db-warn" style="display:none"></div>
-      <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
-        <button class="btn" onclick="document.getElementById('cancelAnyModal').remove()">Keep it</button>
-        <button class="btn btn-primary" id="cxAnyGo">Confirm cancellation</button>
-      </div></div>`;
-  document.body.appendChild(m);
+  // Opening the thread clears the badge — the server marks them read on fetch.
+  setUnread(0);
 
-  document.getElementById('cxAnyGo').onclick = async () => {
-    const btn = document.getElementById('cxAnyGo');
-    btn.disabled = true; btn.textContent = 'Cancelling…';
-    const reason = (document.getElementById('cxAnyReason')||{}).value || null;
-    const path = isCrm
-      ? `/api/portal/plans/crm/${id}/cancel`
-      : `/api/portal/maintenance-plans/${id}/cancel`;
-    const d = await ppost(path, { reason });
-    if(!d.success){
-      const err = document.getElementById('cxAnyErr');
-      err.style.display='block'; err.textContent = d.message || 'Could not cancel.';
-      btn.disabled = false; btn.textContent = 'Confirm cancellation';
-      return;
+  M().innerHTML = '<h1 class="view-h">Messages</h1><p class="view-sub">Talk to us directly. We reply by email too.</p>' +
+    '<div class="card">' +
+      '<div class="thread" id="thread">' +
+        (MSGS.length ? MSGS.map(m => {
+          const mine = m.sender === 'client';
+          return '<div class="bubble ' + (mine ? 'me' : 'them') + '">' + esc(m.body || '') + '</div>' +
+            '<div class="bstamp ' + (mine ? 'me' : 'them') + '">' + (mine ? 'You' : 'Diamondback') +
+            ' &middot; ' + relTime(m.created_at) + '</div>';
+        }).join('') : '<div class="empty">' +
+          '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>' +
+          '<div>No messages yet. Say hello &mdash; we&rsquo;re quick to reply.</div></div>') +
+      '</div>' +
+      '<div class="composer">' +
+        '<textarea id="msgBox" rows="1" placeholder="Write a message…"></textarea>' +
+        '<button class="btn btn-primary" id="msgSend" onclick="sendMsg()">Send</button>' +
+      '</div>' +
+    '</div>';
+
+  const box = document.getElementById('msgBox');
+  box.addEventListener('input', () => { box.style.height = 'auto'; box.style.height = Math.min(box.scrollHeight,130) + 'px'; });
+  box.addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMsg(); } });
+  const th = document.getElementById('thread'); th.scrollTop = th.scrollHeight;
+}
+
+async function sendMsg(){
+  const box = document.getElementById('msgBox');
+  const btn = document.getElementById('msgSend');
+  const body = box.value.trim();
+  if(!body) return;
+  btn.disabled = true;
+  try{
+    await post('/api/portal/messages', {body});
+    box.value = ''; box.style.height = 'auto';
+    await vMessages();
+  }catch(e){ toast(e.message, true); btn.disabled = false; }
+}
+
+/* ============================================================================
+   SERVICE REQUEST
+   ============================================================================ */
+function openRequest(){
+  sheet('<h2 class="sheet-h">New service request</h2>' +
+    '<p class="sheet-sub">Tell us what you need and we&rsquo;ll come back to you.</p>' +
+    '<div class="field"><label for="rqType">What do you need?</label>' +
+      '<input class="input" id="rqType" placeholder="e.g. Add a careers page"></div>' +
+    '<div class="field"><label for="rqProject">Site or project (optional)</label>' +
+      '<input class="input" id="rqProject" placeholder="example.com"></div>' +
+    '<div class="field"><label for="rqDate">Preferred date (optional)</label>' +
+      '<input class="input" id="rqDate" type="date"></div>' +
+    '<div class="field"><label for="rqDetails">Details</label>' +
+      '<textarea class="input" id="rqDetails" rows="4" placeholder="Anything that helps us scope it"></textarea></div>' +
+    '<div id="rqErr" class="alert alert-err hidden"></div>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
+      '<button class="btn btn-primary" id="rqGo">Send request</button></div>');
+
+  document.getElementById('rqGo').onclick = async () => {
+    const err = document.getElementById('rqErr');
+    const service_type = document.getElementById('rqType').value.trim();
+    if(!service_type){ err.textContent = 'Tell us what you need.'; err.classList.remove('hidden'); return; }
+    const btn = document.getElementById('rqGo');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try{
+      await post('/api/portal/service-requests', {
+        service_type,
+        project: document.getElementById('rqProject').value.trim() || null,
+        preferred_date: document.getElementById('rqDate').value || null,
+        details: document.getElementById('rqDetails').value.trim() || null
+      });
+      closeSheet();
+      toast('Request sent — check your email for confirmation.');
+      refreshUnread();
+      if(VIEW === 'docs') vDocs();
+    }catch(e){
+      err.textContent = e.message; err.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Send request';
     }
-    m.remove();
-    dbToast(d.message || 'Cancellation confirmed.');
-    viewPlans();
   };
 }
 
-async function reinstateAnyPlan(kind, id){
-  const path = kind === 'crm'
-    ? `/api/portal/plans/crm/${id}/reinstate`
-    : `/api/portal/maintenance-plans/${id}/reinstate`;
-  const d = await ppost(path);
-  dbToast(d.message || (d.success?'Reinstated.':'Could not reinstate.'), !d.success);
-  viewPlans();
+/* ============================================================================
+   SIGNING — the preview mirrors the server's generator exactly
+   ============================================================================ */
+function signatureSVG(name){
+  const clean = String(name || '').trim().slice(0,48);
+  if(!clean) return '';
+  let seed = 0;
+  for(let i = 0; i < clean.length; i++) seed = (seed * 31 + clean.charCodeAt(i)) % 100000;
+  const rand = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const W = 420, H = 110, base = 74, pts = [], segs = 26;
+  for(let i = 0; i <= segs; i++){
+    const t = i / segs, x = 24 + t * (W - 60);
+    const y = base + 12 + Math.sin(t * Math.PI * 3 + rand() * 0.4) * 5 + Math.sin(t * Math.PI * 7) * 1.6;
+    pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+  }
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" aria-label="Signature preview">' +
+    '<text x="28" y="' + base + '" font-family="Segoe Script, Brush Script MT, Lucida Handwriting, cursive" font-size="40" fill="#0d0f12">' + esc(clean) + '</text>' +
+    '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#0d0f12" stroke-width="1.6" stroke-linecap="round" opacity=".75"/></svg>';
 }
 
-function updatePlanBadge(){
-  const b = document.getElementById('planBadge');
-  if(!b) return;
-  const n = PLANS.filter(p=>['pending_signature','pending_payment_method','pending_cancellation','past_due'].includes(p.status)).length;
-  b.textContent = n;
-  b.classList.toggle('hidden', n === 0);
-}
+async function openSign(agreementId){
+  let a = ((DASH && DASH.salesAgreements) || []).find(x => x.id === agreementId);
+  if(!a){
+    try{ await loadDash(); a = (DASH.salesAgreements || []).find(x => x.id === agreementId); }catch(_){}
+  }
+  if(!a) return toast('Could not load that agreement. Please refresh.', true);
+  const isPlan = a.agreement_kind === 'maintenance';
 
-function openCancel(planId){
-  const plan = PLANS.find(p=>p.id===planId) || {};
-  let m = document.getElementById('cancelModal');
-  if(m) m.remove();
-  m = document.createElement('div');
-  m.id = 'cancelModal'; m.className = 'db-modal';
-  m.innerHTML = `<div class="db-modal-box">
-      <h3 style="margin:0 0 4px">Cancel ${esc(plan.label||'this plan')}?</h3>
-      <p class="muted sm" style="margin:0 0 4px">This plan has a ${PLAN_NOTICE}-day notice period.</p>
-      <div class="db-info">You'll keep full service until the end of the notice period, and you'll be billed as normal until then. You can reinstate any time before it ends.</div>
-      <div class="db-field">
-        <label>Anything we could have done better? (optional)</label>
-        <input id="cxReason" placeholder="Helps us improve — not required">
-      </div>
-      <div id="cxErr" class="db-warn" style="display:none"></div>
-      <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
-        <button class="btn" onclick="document.getElementById('cancelModal').remove()">Keep my plan</button>
-        <button class="btn btn-primary" id="cxGo">Confirm cancellation</button>
-      </div></div>`;
-  document.body.appendChild(m);
-
-  document.getElementById('cxGo').onclick = async ()=>{
-    const btn = document.getElementById('cxGo');
-    btn.disabled = true; btn.textContent = 'Cancelling…';
-    const d = await ppost(`/api/portal/maintenance-plans/${planId}/cancel`,
-                          { reason: (document.getElementById('cxReason')||{}).value || null });
-    if(d.success){ m.remove(); dbToast(d.message || 'Cancellation confirmed.'); viewPlans(); return; }
-    const e = document.getElementById('cxErr');
-    e.style.display='block'; e.textContent = d.message || 'Could not cancel.';
-    btn.disabled = false; btn.textContent = 'Confirm cancellation';
-  };
-}
-
-async function reinstatePlan(planId){
-  const d = await ppost(`/api/portal/maintenance-plans/${planId}/reinstate`);
-  dbToast(d.message || (d.success?'Reinstated.':'Could not reinstate.'), !d.success);
-  viewPlans();
-}
-
-/* ---------------- SIGNING ---------------- */
-function openSign(agreementId){
-  const a = (DASH.salesAgreements||[]).find(x=>x.id===agreementId);
-  if(!a) return dbToast('Agreement not found.', true);
-  const price = Number(a.price||0);
-
-  let m = document.getElementById('signModal');
-  if(m) m.remove();
-  m = document.createElement('div');
-  m.id = 'signModal'; m.className = 'db-modal';
-  m.innerHTML = `<div class="db-modal-box">
-      <h3 style="margin:0 0 4px">${esc(a.package_name || 'Service agreement')}</h3>
-      <p class="muted sm" style="margin:0 0 14px">${esc(a.agreement_number||'')} · ${money(price)}${a.est_completion_date?` · estimated completion ${fmtDate(a.est_completion_date)}`:''}</p>
-      ${a.intro?`<p class="muted sm" style="margin:0 0 12px">${esc(a.intro)}</p>`:''}
-      <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:#888;margin-bottom:6px">Terms</label>
-      <div class="db-terms">${esc(a.terms || 'No additional terms were attached to this agreement.')}</div>
-
-      <div class="db-field" style="margin-top:18px">
-        <label>Type your full legal name to sign</label>
-        <input id="sgName" placeholder="Your full name" autocomplete="name">
-      </div>
-      <div class="db-sign-pad" id="sgPad"><span class="muted">Your signature appears here as you type</span></div>
-
-      <label class="db-consent">
-        <input type="checkbox" id="sgAgree">
-        <span>I have read and agree to the terms above, and I consent to signing this agreement electronically. I understand this is legally binding.</span>
-      </label>
-
-      <div class="db-info" style="margin-top:0">On signing, we'll create your project timeline and an invoice due at the estimated completion date. Nothing is charged today.</div>
-      <div id="sgErr" class="db-warn" style="display:none"></div>
-      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
-        <button class="btn" onclick="document.getElementById('signModal').remove()">Cancel</button>
-        <button class="btn btn-primary" id="sgGo">Sign agreement</button>
-      </div></div>`;
-  document.body.appendChild(m);
+  sheet('<h2 class="sheet-h">' + esc(a.package_name || 'Agreement') + '</h2>' +
+    '<p class="sheet-sub">' + esc(a.agreement_number || '') + ' &middot; ' + money(a.price) +
+      (a.est_completion_date && !isPlan ? ' &middot; est. completion ' + fmtDate(a.est_completion_date) : '') + '</p>' +
+    (a.intro ? '<p style="font-size:14px;color:var(--ink-2);margin-bottom:14px;line-height:1.6">' + esc(a.intro) + '</p>' : '') +
+    '<label style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:7px">Terms</label>' +
+    '<div class="terms">' + esc(a.terms || 'No additional terms were attached to this agreement.') + '</div>' +
+    '<div class="field" style="margin-top:18px"><label for="sgName">Type your full legal name to sign</label>' +
+      '<input class="input" id="sgName" placeholder="Your full name" autocomplete="name"></div>' +
+    '<div class="sign-pad" id="sgPad"><span style="color:var(--faint);font-size:13px">Your signature appears as you type</span></div>' +
+    '<label class="consent"><input type="checkbox" id="sgAgree">' +
+      '<span>I have read and agree to these terms, and I consent to signing electronically. I understand this is legally binding.</span></label>' +
+    '<div class="alert alert-info">' + (isPlan
+      ? 'On signing, the plan starts once a payment method is on file. Nothing is charged today, and you can cancel any time with ' + NOTICE_DAYS + ' days&rsquo; notice.'
+      : 'On signing we&rsquo;ll set up your project timeline and an invoice due at the estimated completion date. Nothing is charged today.') + '</div>' +
+    '<div id="sgErr" class="alert alert-err hidden"></div>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
+      '<button class="btn btn-primary" id="sgGo">Sign agreement</button></div>');
 
   const nameEl = document.getElementById('sgName');
   const pad = document.getElementById('sgPad');
-  /* Mirrors the server's generator so the preview matches the signature that
-     actually gets stored. Same name in, same mark out. */
-  function preview(name){
-    const clean = (name||'').trim().slice(0,48);
-    if(!clean){ pad.innerHTML = '<span class="muted">Your signature appears here as you type</span>'; return; }
-    let seed = 0;
-    for(let i=0;i<clean.length;i++) seed = (seed*31 + clean.charCodeAt(i)) % 100000;
-    const rand = ()=>{ seed = (seed*1103515245 + 12345) % 2147483648; return seed/2147483648; };
-    const W=420,H=110,base=74, pts=[], segs=26;
-    for(let i=0;i<=segs;i++){
-      const t=i/segs, x=24+t*(W-60);
-      const y=base+12+Math.sin(t*Math.PI*3+rand()*0.4)*5+Math.sin(t*Math.PI*7)*1.6;
-      pts.push(x.toFixed(1)+','+y.toFixed(1));
-    }
-    pad.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
-      <text x="28" y="${base}" font-family="'Segoe Script','Brush Script MT','Lucida Handwriting',cursive" font-size="40" fill="#fff">${esc(clean)}</text>
-      <polyline points="${pts.join(' ')}" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.75"/></svg>`;
-  }
-  nameEl.addEventListener('input', ()=>preview(nameEl.value));
+  nameEl.addEventListener('input', () => {
+    pad.innerHTML = signatureSVG(nameEl.value) ||
+      '<span style="color:var(--faint);font-size:13px">Your signature appears as you type</span>';
+  });
   nameEl.focus();
 
-  document.getElementById('sgGo').onclick = async ()=>{
+  document.getElementById('sgGo').onclick = async () => {
     const err = document.getElementById('sgErr');
     const name = nameEl.value.trim();
-    const agree = document.getElementById('sgAgree').checked;
-    if(name.length < 2){
-      err.style.display='block'; err.textContent='Type your full name to sign.'; return;
-    }
-    if(!agree){
-      err.style.display='block'; err.textContent='Please check the box to agree to the terms.'; return;
+    if(name.length < 2){ err.textContent = 'Type your full name to sign.'; err.classList.remove('hidden'); return; }
+    if(!document.getElementById('sgAgree').checked){
+      err.textContent = 'Please tick the box to agree to the terms.'; err.classList.remove('hidden'); return;
     }
     const btn = document.getElementById('sgGo');
     btn.disabled = true; btn.textContent = 'Signing…';
-    const d = await ppost(`/api/portal/sales-agreements/${agreementId}/sign`, { typedName: name, agree: true });
-    if(!d.success){
-      err.style.display='block'; err.textContent = d.message || 'Could not sign.';
+    try{
+      const d = await post('/api/portal/sales-agreements/' + agreementId + '/sign', {typedName:name, agree:true});
+      closeSheet();
+      // Reload state BEFORE re-rendering, so the agreement already reads
+      // "Signed & complete" and has moved into Docs — no refresh needed.
+      await loadDash().catch(() => {});
+      refreshUnread();
+      toast(d.invoice
+        ? 'Signed. Invoice ' + d.invoice.number + ' is in your portal, due ' + fmtDate(d.invoice.dueDate) + '.'
+        : (d.message || 'Signed.'));
+      go(d.kind === 'maintenance' ? 'billing' : 'docs');
+    }catch(e){
+      err.textContent = e.message; err.classList.remove('hidden');
       btn.disabled = false; btn.textContent = 'Sign agreement';
-      return;
     }
-    m.remove();
-    const inv = d.invoice;
-    dbToast(inv ? `Signed. Invoice ${inv.number} is in your portal, due ${fmtDate(inv.dueDate)}.` : 'Signed.');
-    if(typeof loadAll === 'function'){ await loadAll(); }
-    nav('projects');
   };
 }
+
+/* ============================================================================
+   PAYMENTS — everything inline, no redirect to Stripe
+   ============================================================================ */
+async function stripeJs(){
+  if(STRIPE) return STRIPE;
+  if(!window.Stripe) throw new Error('Payment library failed to load. Check your connection and try again.');
+  if(!STRIPE_PK){
+    const c = await fetch(API + '/api/config/stripe').then(r => r.json()).catch(() => ({}));
+    STRIPE_PK = c.publishableKey || c.publishable_key || c.key || '';
+  }
+  if(!STRIPE_PK) throw new Error('Card payments are not configured yet. Please contact us.');
+  STRIPE = window.Stripe(STRIPE_PK);
+  return STRIPE;
+}
+
+const ELEMENT_LOOK = {
+  theme: 'flat',
+  variables: {
+    colorPrimary: '#0d0f12', colorBackground: '#f7f8f9', colorText: '#0d0f12',
+    colorDanger: '#dc2626', fontFamily: 'Plus Jakarta Sans, sans-serif',
+    borderRadius: '14px', spacingUnit: '4px'
+  }
+};
+
+async function openPay(invoiceId){
+  const inv = ((DASH && DASH.invoices) || []).find(i => i.id === invoiceId);
+  const total = inv ? money(inv.total_amount) : '';
+  sheet('<h2 class="sheet-h">Pay ' + esc(inv ? inv.invoice_number : 'invoice') + '</h2>' +
+    '<p class="sheet-sub">Card and billing details are entered here. Your details go straight to Stripe &mdash; we never see or store them.</p>' +
+    (inv ? '<div class="pay-summary">' +
+      '<div class="r"><span>Subtotal</span><span>' + money(inv.subtotal != null ? inv.subtotal : inv.total_amount) + '</span></div>' +
+      (Number(inv.tax_amount) > 0 ? '<div class="r"><span>Tax</span><span>' + money(inv.tax_amount) + '</span></div>' : '') +
+      '<div class="r total"><span>Total due</span><span>' + total + '</span></div></div>' : '') +
+    '<div id="cardMount"><p style="color:var(--muted);font-size:13.5px;text-align:center;padding:16px 0">Loading secure form…</p></div>' +
+    '<div id="payErr" class="alert alert-err hidden" style="margin-top:14px"></div>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
+      '<button class="btn btn-primary" id="payGo" disabled>Pay ' + total + '</button></div>');
+
+  try{
+    const stripe = await stripeJs();
+    const d = await post('/api/portal/invoices/' + invoiceId + '/payment-intent', {});
+    if(!d.clientSecret) throw new Error(d.message || 'Could not start the payment.');
+
+    /* PaymentElement collects card AND full billing address in this sheet.
+       redirect:'if_required' means the customer only leaves if their bank forces
+       a 3-D Secure step — which no integration can skip. */
+    const elements = stripe.elements({clientSecret: d.clientSecret, appearance: ELEMENT_LOOK});
+    const pe = elements.create('payment', {layout:'tabs', fields:{billingDetails:'auto'}});
+    pe.mount('#cardMount');
+    pe.on('ready', () => { const b = document.getElementById('payGo'); if(b) b.disabled = false; });
+
+    document.getElementById('payGo').onclick = async () => {
+      const btn = document.getElementById('payGo');
+      const err = document.getElementById('payErr');
+      err.classList.add('hidden');
+      btn.disabled = true; btn.textContent = 'Processing…';
+      const res = await stripe.confirmPayment({elements, redirect:'if_required'});
+      if(res.error){
+        err.textContent = res.error.message; err.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Pay ' + total;
+        return;
+      }
+      try{
+        await post('/api/portal/invoices/' + invoiceId + '/confirm-paid',
+          {paymentIntentId: res.paymentIntent && res.paymentIntent.id});
+      }catch(_){}
+      closeSheet();
+      await loadDash().catch(() => {});
+      toast('Payment received — your receipt is in Receipts & Docs.');
+      go('billing');
+    };
+  }catch(e){
+    const err = document.getElementById('payErr');
+    if(err){ err.textContent = e.message; err.classList.remove('hidden'); }
+    const mount = document.getElementById('cardMount');
+    if(mount) mount.innerHTML = '';
+  }
+}
+
+async function addMethod(type){
+  sheet('<h2 class="sheet-h">' + (type === 'card' ? 'Add a card' : 'Add a bank account') + '</h2>' +
+    '<p class="sheet-sub">' + (type === 'card'
+      ? 'Saved securely with Stripe for invoices and plan payments.'
+      : 'We&rsquo;ll verify it with two small deposits, usually within 1&ndash;2 business days.') + '</p>' +
+    '<div id="cardMount"><p style="color:var(--muted);font-size:13.5px;text-align:center;padding:16px 0">Loading secure form…</p></div>' +
+    '<div id="pmErr" class="alert alert-err hidden" style="margin-top:14px"></div>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
+      '<button class="btn btn-primary" id="pmGo" disabled>Save</button></div>');
+  try{
+    const stripe = await stripeJs();
+    const intent = await post('/api/portal/payment-methods/setup-intent', {type});
+    if(!intent.clientSecret) throw new Error(intent.message || 'Could not start.');
+    sessionStorage.setItem('db_setup_intent', intent.setupIntentId);
+
+    const elements = stripe.elements({clientSecret: intent.clientSecret, appearance: ELEMENT_LOOK});
+    const pe = elements.create('payment', {layout:'tabs', fields:{billingDetails:'auto'}});
+    pe.mount('#cardMount');
+    pe.on('ready', () => { const b = document.getElementById('pmGo'); if(b) b.disabled = false; });
+
+    document.getElementById('pmGo').onclick = async () => {
+      const btn = document.getElementById('pmGo');
+      const err = document.getElementById('pmErr');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const res = await stripe.confirmSetup({elements, redirect:'if_required'});
+      if(res.error){
+        err.textContent = res.error.message; err.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Save';
+        return;
+      }
+      const done = await post('/api/portal/payment-methods/confirm', {setupIntentId: intent.setupIntentId});
+      closeSheet();
+      toast(done.message || 'Payment method saved.');
+      vBilling();
+    };
+  }catch(e){
+    const err = document.getElementById('pmErr');
+    if(err){ err.textContent = e.message; err.classList.remove('hidden'); }
+  }
+}
+
+function verifyBank(){
+  const id = sessionStorage.getItem('db_setup_intent') || '';
+  sheet('<h2 class="sheet-h">Verify your bank account</h2>' +
+    '<p class="sheet-sub">Enter the two deposit amounts in cents, or the 6-digit code on your statement.</p>' +
+    (id ? '' : '<div class="field"><label for="vSetup">Setup reference</label><input class="input" id="vSetup" placeholder="seti_…"></div>') +
+    '<div style="display:flex;gap:12px">' +
+      '<div class="field" style="flex:1"><label for="vA1">First amount</label><input class="input" id="vA1" inputmode="numeric" placeholder="32"></div>' +
+      '<div class="field" style="flex:1"><label for="vA2">Second amount</label><input class="input" id="vA2" inputmode="numeric" placeholder="45"></div></div>' +
+    '<div class="field"><label for="vCode">Or the statement code</label><input class="input" id="vCode" placeholder="SM11AA"></div>' +
+    '<div id="vErr" class="alert alert-err hidden"></div>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
+      '<button class="btn btn-primary" id="vGo">Verify</button></div>');
+
+  document.getElementById('vGo').onclick = async () => {
+    const err = document.getElementById('vErr');
+    const setupIntentId = id || (document.getElementById('vSetup') || {}).value;
+    const a1 = (document.getElementById('vA1') || {}).value, a2 = (document.getElementById('vA2') || {}).value;
+    const code = (document.getElementById('vCode') || {}).value;
+    const body = {setupIntentId};
+    if(code && code.trim()) body.descriptorCode = code.trim();
+    else if(a1 && a2) body.amounts = [Number(a1), Number(a2)];
+    else { err.textContent = 'Enter both amounts, or the statement code.'; err.classList.remove('hidden'); return; }
+    const btn = document.getElementById('vGo');
+    btn.disabled = true; btn.textContent = 'Verifying…';
+    try{
+      const d = await post('/api/portal/payment-methods/verify-microdeposits', body);
+      if(!d.success) throw new Error(d.message || 'Those amounts did not match.');
+      closeSheet(); toast(d.message || 'Verified.'); vBilling();
+    }catch(e){
+      err.textContent = e.message; err.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Verify';
+    }
+  };
+}
+
+async function removeMethod(id){
+  if(!confirm('Remove this payment method?')) return;
+  try{
+    const d = await post('/api/portal/payment-methods/' + id, null, 'DELETE');
+    toast(d.message || 'Removed.');
+  }catch(e){ toast(e.message, true); }
+  vBilling();
+}
+
+/* ---- plan payment method + cancellation ---- */
+function changePm(kind, id){
+  const plan = PLANS.find(p => p.kind === kind && String(p.id) === String(id)) || {};
+  const others = PLANS.filter(p => !(p.kind === kind && String(p.id) === String(id)) && p.payment_method);
+
+  const saved = PMS.length ? PMS.map(m => {
+    const cur = plan.payment_method && (
+      (plan.payment_method.id && plan.payment_method.id === m.id) ||
+      (plan.payment_method.stripe_pm_id && plan.payment_method.stripe_pm_id === m.stripe_pm_id));
+    const name = m.type === 'card' ? esc(m.brand || 'Card') + ' ····' + esc(m.last4 || '')
+                                   : esc(m.bank_name || 'Bank') + ' ····' + esc(m.last4 || '');
+    return '<label class="pm-row"><input type="radio" name="pmc" value="saved:' + m.id + '" ' + (cur ? 'checked' : '') + '>' +
+      '<span style="flex:1">' + name + (cur ? ' <span style="color:var(--muted);font-size:12.5px">(current)</span>' : '') + '</span></label>';
+  }).join('') : '<p style="color:var(--muted);font-size:13.5px;margin-bottom:10px">No saved payment methods yet.</p>';
+
+  const same = others.length
+    ? '<div class="sec-label" style="margin:18px 0 6px">Or reuse another plan&rsquo;s method</div>' +
+      others.map(o => '<label class="pm-row"><input type="radio" name="pmc" value="same:' + o.kind + ':' + o.id + '">' +
+        '<span style="flex:1">Same as <b>' + esc(o.label) + '</b> <span style="color:var(--muted);font-size:12.5px">&mdash; ' +
+        esc(o.payment_method.brand || o.payment_method.bank_name || 'card') + ' ····' + esc(o.payment_method.last4 || '') +
+        '</span></span></label>').join('')
+    : '';
+
+  sheet('<h2 class="sheet-h">Payment method</h2>' +
+    '<p class="sheet-sub">for ' + esc(plan.label || 'this plan') + '</p>' +
+    saved + same +
+    '<div id="pmcErr" class="alert alert-err hidden" style="margin-top:14px"></div>' +
+    '<button class="btn btn-ghost btn-block" style="margin-top:16px" onclick="closeSheet();addMethod(\'card\')">+ Add a new card</button>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
+      '<button class="btn btn-primary" id="pmcGo">Save</button></div>');
+
+  document.getElementById('pmcGo').onclick = async () => {
+    const sel = document.querySelector('input[name="pmc"]:checked');
+    const err = document.getElementById('pmcErr');
+    if(!sel){ err.textContent = 'Choose a payment method, or add a new one.'; err.classList.remove('hidden'); return; }
+    const btn = document.getElementById('pmcGo');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const parts = sel.value.split(':');
+    const body = parts[0] === 'saved'
+      ? {paymentMethodId: Number(parts[1])}
+      : {sameAsPlanKind: parts[1], sameAsPlanId: Number(parts[2])};
+    try{
+      const d = await post('/api/portal/plans/' + kind + '/' + id + '/payment-method', body);
+      closeSheet(); toast(d.message || 'Payment method updated.'); vBilling();
+    }catch(e){
+      err.textContent = e.message; err.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Save';
+    }
+  };
+}
+
+function cancelPlan(kind, id){
+  const plan = PLANS.find(p => p.kind === kind && String(p.id) === String(id)) || {};
+  const isCrm = kind === 'crm';
+  sheet('<h2 class="sheet-h">Cancel ' + esc(plan.label || 'this plan') + '?</h2>' +
+    '<p class="sheet-sub">' + NOTICE_DAYS + '-day notice period.</p>' +
+    '<div class="alert alert-info">' + (isCrm
+      ? 'You keep full CRM access until the notice period ends, and you won&rsquo;t be billed after that. <b>Your customer portal isn&rsquo;t affected</b> &mdash; invoices, receipts and messages all stay right here.'
+      : 'Your service continues until the notice period ends, and you&rsquo;ll be billed as normal until then.') +
+      ' You can reinstate any time before it ends.</div>' +
+    '<div class="field"><label for="cxReason">Anything we could have done better? (optional)</label>' +
+      '<input class="input" id="cxReason" placeholder="Helps us improve — not required"></div>' +
+    '<div id="cxErr" class="alert alert-err hidden"></div>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" onclick="closeSheet()">Keep it</button>' +
+      '<button class="btn btn-danger" id="cxGo">Confirm cancellation</button></div>');
+
+  document.getElementById('cxGo').onclick = async () => {
+    const btn = document.getElementById('cxGo');
+    btn.disabled = true; btn.textContent = 'Cancelling…';
+    const reason = (document.getElementById('cxReason') || {}).value || null;
+    const path = isCrm ? '/api/portal/plans/crm/' + id + '/cancel'
+                       : '/api/portal/maintenance-plans/' + id + '/cancel';
+    try{
+      const d = await post(path, {reason});
+      closeSheet(); toast(d.message || 'Cancellation confirmed.'); vBilling();
+    }catch(e){
+      const err = document.getElementById('cxErr');
+      err.textContent = e.message; err.classList.remove('hidden');
+      btn.disabled = false; btn.textContent = 'Confirm cancellation';
+    }
+  };
+}
+
+async function reinstate(kind, id){
+  const path = kind === 'crm' ? '/api/portal/plans/crm/' + id + '/reinstate'
+                              : '/api/portal/maintenance-plans/' + id + '/reinstate';
+  try{ const d = await post(path); toast(d.message || 'Reinstated.'); }
+  catch(e){ toast(e.message, true); }
+  vBilling();
+}
+
+/* ============================================================================
+   Start
+   ============================================================================ */
+if(TOKEN && ME) boot(); else document.getElementById('login').style.display = 'flex';
 </script>
 </body>
 </html>

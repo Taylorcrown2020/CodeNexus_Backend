@@ -397,6 +397,10 @@ const EXPECTED_TABLES = [
     'payments', 'refunds', 'payment_methods', 'maintenance_plans',
     'plan_cancellations', 'agreement_signatures', 'lifecycle_events',
     'admin_notifications',
+    // --- project updates (migrations/004) --------------------------------
+    'project_updates',
+    // --- auth recovery (migrations/005) ----------------------------------
+    'auth_tokens',
 ];
 
 /**

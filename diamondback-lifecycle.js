@@ -100,6 +100,11 @@ module.exports = function initLifecycle({
         'refund_issued',
         'crm_subscription_active',
         'dunning_reminder',
+        'project_update',
+        'service_request_received',
+        'password_reset',
+        'password_changed',
+        'username_recovery',
     ];
 
     // ======================================================================
@@ -107,6 +112,11 @@ module.exports = function initLifecycle({
     // ======================================================================
 
     const money = (n) => `$${Number(n || 0).toFixed(2)}`;
+    /** Human label for a saved payment method, for use in email copy. */
+    const esc0 = (pm) => (!pm ? 'saved payment method'
+        : pm.type === 'card'
+            ? `${pm.brand || 'card'} ending ${pm.last4}`
+            : `${pm.bank_name || 'bank account'} ending ${pm.last4}`);
     const dateOnly = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 
     function prettyDate(d) {
@@ -121,6 +131,29 @@ module.exports = function initLifecycle({
      * of shorter months. Billing day 31 in February bills on the 28th/29th
      * rather than silently skipping the month.
      */
+    /**
+     * Next billing date for an ANNUAL plan (domain renewals).
+     * Same clamping rule as monthly: a 29–31 day in a short month lands on the
+     * last day of that month rather than skipping the year.
+     */
+    function nextAnnualDate(month, day, from = new Date()) {
+        const m = Math.max(1, Math.min(12, Number(month) || 1));
+        const y = from.getUTCFullYear();
+        const make = (year) => {
+            const last = new Date(Date.UTC(year, m, 0)).getUTCDate();
+            return new Date(Date.UTC(year, m - 1, Math.min(Number(day) || 1, last)));
+        };
+        const thisYear = make(y);
+        return thisYear > from ? thisYear : make(y + 1);
+    }
+
+    /** Next charge date for any plan, monthly or annual. */
+    function nextChargeFor(plan, from = new Date()) {
+        return plan && plan.interval_unit === 'year'
+            ? nextAnnualDate(plan.billing_month || 1, plan.billing_day || 1, from)
+            : nextBillingDate(plan ? (plan.billing_day || 1) : 1, from);
+    }
+
     function nextBillingDate(day, from = new Date()) {
         const d = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1));
         const target = new Date(d);
@@ -762,6 +795,95 @@ module.exports = function initLifecycle({
             [agreementId, name]
         );
 
+        // ------------------------------------------------------------------
+        // MAINTENANCE AGREEMENTS STOP HERE.
+        //
+        // A maintenance agreement is not a project SLA, and running the rest of
+        // this function against one was wrong three ways: the plan's own
+        // signed_at was never written (so the portal kept asking for a signature
+        // even after signing, forever), a project timeline was created for work
+        // that doesn't exist, and an invoice was raised for a plan that is
+        // explicitly autopay — the customer would be billed twice, once by the
+        // invoice and once by the monthly charge.
+        //
+        // Signing a maintenance agreement means one thing: the plan is signed.
+        // It then activates if a payment method is already on file, or waits for
+        // one.
+        // ------------------------------------------------------------------
+        if (a.agreement_kind === 'maintenance') {
+            const plan = (await pool.query(
+                `SELECT * FROM maintenance_plans WHERE agreement_id = $1 OR (lead_id = $2 AND agreement_id IS NULL)
+                  ORDER BY (agreement_id = $1) DESC, id DESC LIMIT 1`,
+                [agreementId, a.lead_id]
+            )).rows[0];
+
+            if (!plan) {
+                console.warn(`[LIFECYCLE] maintenance agreement ${agreementId} signed but no plan found`);
+                return { signed: true, kind: 'maintenance', plan: null, signatureSvg: svg };
+            }
+
+            // Any active saved method is enough to start billing.
+            const pm = plan.payment_method_id
+                ? (await pool.query(
+                    `SELECT * FROM payment_methods WHERE id=$1 AND status='active'`, [plan.payment_method_id]
+                  )).rows[0]
+                : (await pool.query(
+                    `SELECT * FROM payment_methods WHERE lead_id=$1 AND status='active'
+                      ORDER BY is_default DESC, id DESC LIMIT 1`, [a.lead_id]
+                  )).rows[0];
+
+            const nextCharge = plan.next_charge_date || dateOnly(nextBillingDate(plan.billing_day || 1));
+
+            const updated = (await pool.query(
+                `UPDATE maintenance_plans
+                    SET signed_at = COALESCE(signed_at, NOW()),
+                        payment_method_id = COALESCE(payment_method_id, $3),
+                        status = CASE WHEN $3::int IS NOT NULL THEN 'active' ELSE 'pending_payment_method' END,
+                        activated_at = CASE WHEN $3::int IS NOT NULL THEN COALESCE(activated_at, NOW()) ELSE activated_at END,
+                        next_charge_date = $4,
+                        updated_at = NOW()
+                  WHERE id = $1 AND lead_id = $2
+                  RETURNING *`,
+                [plan.id, a.lead_id, pm ? pm.id : null, nextCharge]
+            )).rows[0];
+
+            const ready = updated.status === 'active';
+            await notify({
+                lead, kind: 'maintenance_agreement',
+                subject: ready
+                    ? `${plan.label} is active`
+                    : `${plan.label} — one more step`,
+                bodyHtml: ready
+                    ? `<p style="margin:0 0 12px">Thanks for signing. Your <strong style="color:#fff">${plan.label}</strong> plan is active.</p>
+                       <p style="margin:0 0 12px">We'll charge ${money(plan.amount)} to your ${esc0(pm)} each month, starting ${prettyDate(nextCharge)}. You'll get a receipt by email and SMS every time.</p>
+                       <p style="margin:0">You can change the payment method or cancel any time from your portal — cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after you ask.</p>`
+                    : `<p style="margin:0 0 12px">Thanks for signing your <strong style="color:#fff">${plan.label}</strong> agreement.</p>
+                       <p style="margin:0 0 12px">To start the plan, add a payment method in your portal under Plans. Once it's saved we'll bill ${money(plan.amount)} monthly, beginning ${prettyDate(nextCharge)}.</p>
+                       <p style="margin:0">Nothing is charged until you add one.</p>`,
+                smsText: ready
+                    ? `Diamondback Coding: your ${plan.label} plan is active. First payment ${prettyDate(nextCharge)}.`
+                    : `Diamondback Coding: ${plan.label} agreement signed. Add a payment method in your portal to start the plan.`,
+                channels: ['email', 'sms', 'portal'],
+                cta: { url: PORTAL_URL, label: ready ? 'View your plan' : 'Add a payment method' },
+            });
+
+            await adminNotify({
+                kind: 'maintenance_signed',
+                title: `${lead.name} signed ${plan.label}`,
+                body: ready
+                    ? `${money(plan.amount)}/mo · active · first charge ${prettyDate(nextCharge)}`
+                    : `${money(plan.amount)}/mo · waiting on a payment method`,
+                leadId: a.lead_id, entityType: 'maintenance_plan', entityId: plan.id,
+                severity: ready ? 'success' : 'warning',
+                onceKey: `maintenance_signed:${plan.id}`,
+            });
+
+            return {
+                signed: true, kind: 'maintenance', plan: updated,
+                active: ready, signatureSvg: svg,
+            };
+        }
+
         // ---- assign an admin ------------------------------------------------
         // Least-loaded active admin, so assignment doesn't pile onto one person.
         let assignedAdmin = null;
@@ -1029,6 +1151,58 @@ module.exports = function initLifecycle({
     // ======================================================================
 
     /**
+     * The payment method to charge for a customer.
+     *
+     * Account-level by design: leads.default_payment_method_id is the single
+     * method used for invoices, maintenance, domain renewals and the CRM alike.
+     * `override` exists only so pre-existing per-plan rows keep working.
+     */
+    async function resolvePaymentMethod(leadId, override) {
+        if (override) {
+            const r = await pool.query(
+                `SELECT * FROM payment_methods WHERE id=$1 AND status='active'`, [override]);
+            if (r.rows[0]) return r.rows[0];
+        }
+        const acct = await pool.query(
+            `SELECT pm.* FROM leads l
+               JOIN payment_methods pm ON pm.id = l.default_payment_method_id
+              WHERE l.id = $1 AND pm.status = 'active'`, [leadId]);
+        if (acct.rows[0]) return acct.rows[0];
+        const any = await pool.query(
+            `SELECT * FROM payment_methods WHERE lead_id=$1 AND status='active'
+              ORDER BY is_default DESC, id DESC LIMIT 1`, [leadId]);
+        return any.rows[0] || null;
+    }
+
+    /**
+     * Make a method the account default, and point everything at it.
+     *
+     * Called whenever a method is added or chosen. Because it also clears the
+     * per-plan overrides, a customer can never end up with one plan quietly
+     * billing an old card.
+     */
+    async function setAccountPaymentMethod(leadId, paymentMethodId) {
+        await pool.query('UPDATE payment_methods SET is_default = FALSE WHERE lead_id = $1', [leadId]);
+        await pool.query('UPDATE payment_methods SET is_default = TRUE WHERE id = $1 AND lead_id = $2',
+                         [paymentMethodId, leadId]);
+        await pool.query('UPDATE leads SET default_payment_method_id = $2, updated_at = NOW() WHERE id = $1',
+                         [leadId, paymentMethodId]);
+        await pool.query(
+            `UPDATE maintenance_plans
+                SET payment_method_id = NULL,
+                    status = CASE WHEN status = 'pending_payment_method' AND signed_at IS NOT NULL
+                                  THEN 'active' ELSE status END,
+                    activated_at = CASE WHEN status = 'pending_payment_method' AND signed_at IS NOT NULL
+                                        THEN COALESCE(activated_at, NOW()) ELSE activated_at END,
+                    consecutive_failures = 0,
+                    updated_at = NOW()
+              WHERE lead_id = $1 AND status <> 'cancelled'`,
+            [leadId]
+        );
+        return paymentMethodId;
+    }
+
+    /**
      * Charge one due maintenance plan. Autopay, so by default no invoice is
      * created — the customer gets a receipt, not a bill to act on. Set
      * generate_invoice on the plan to produce a document anyway.
@@ -1037,11 +1211,11 @@ module.exports = function initLifecycle({
         const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [plan.lead_id])).rows[0];
         if (!lead) return { ok: false, error: 'lead missing' };
 
-        const pm = plan.payment_method_id
-            ? (await pool.query('SELECT * FROM payment_methods WHERE id=$1', [plan.payment_method_id])).rows[0]
-            : (await pool.query(
-                `SELECT * FROM payment_methods WHERE lead_id=$1 AND status='active'
-                  ORDER BY is_default DESC, id DESC LIMIT 1`, [plan.lead_id])).rows[0];
+        // One payment method per ACCOUNT, not per plan. Resolution order:
+        // an explicit per-plan override (legacy rows only), then the account
+        // default, then any active method. Adding one card therefore covers
+        // every plan the customer has.
+        const pm = await resolvePaymentMethod(plan.lead_id, plan.payment_method_id);
 
         if (!pm) {
             await pool.query(
@@ -1126,7 +1300,7 @@ module.exports = function initLifecycle({
             stripeChargeId: intent.latest_charge || null,
         });
 
-        const next = nextBillingDate(plan.billing_day, new Date());
+        const next = nextChargeFor(plan, new Date());
         await pool.query(
             `UPDATE maintenance_plans
                 SET last_charge_date=CURRENT_DATE, next_charge_date=$2,
@@ -1714,19 +1888,9 @@ module.exports = function initLifecycle({
              makeDefault]
         );
 
-        // A plan that was waiting on a payment method can now run.
-        await pool.query(
-            `UPDATE maintenance_plans
-                SET payment_method_id = COALESCE(payment_method_id, $2),
-                    status = CASE
-                        WHEN status = 'pending_payment_method' AND signed_at IS NOT NULL THEN 'active'
-                        ELSE status END,
-                    activated_at = COALESCE(activated_at,
-                        CASE WHEN status = 'pending_payment_method' AND signed_at IS NOT NULL THEN NOW() END),
-                    updated_at = NOW()
-              WHERE lead_id = $1 AND status IN ('pending_payment_method','active','pending_cancellation')`,
-            [leadId, r.rows[0].id]
-        );
+        // One method per account: adding one makes it the default for
+        // everything and releases any plan that was waiting for a card.
+        if (makeDefault) await setAccountPaymentMethod(leadId, r.rows[0].id);
 
         return r.rows[0];
     }
@@ -1912,19 +2076,31 @@ module.exports = function initLifecycle({
             )).rows[0];
             if (!pm) return res.status(404).json({ success: false, message: 'Payment method not found.' });
 
-            // Refuse to strand an active autopay plan without a way to charge it.
+            // An account with anything recurring must ALWAYS have a method on
+            // file. Removing the last one is refused outright — the customer
+            // adds the replacement first, so there is never a window where a
+            // renewal has nothing to charge.
             const relying = await pool.query(
                 `SELECT COUNT(*)::int AS n FROM maintenance_plans
-                  WHERE lead_id=$1 AND status IN ('active','pending_cancellation')`, [leadId]
+                  WHERE lead_id=$1 AND status IN ('active','pending_cancellation','past_due')`, [leadId]
             );
+            let crmCount = { rows: [{ n: 0 }] };
+            try {
+                crmCount = await pool.query(
+                    `SELECT COUNT(*)::int AS n FROM crm_subscriptions
+                      WHERE lead_id=$1 AND COALESCE(status,'active') NOT IN ('cancelled','canceled','expired')`,
+                    [leadId]);
+            } catch (_) {}
             const others = await pool.query(
                 `SELECT COUNT(*)::int AS n FROM payment_methods
                   WHERE lead_id=$1 AND id<>$2 AND status='active'`, [leadId, pm.id]
             );
-            if (relying.rows[0].n > 0 && others.rows[0].n === 0) {
+            const recurring = relying.rows[0].n + crmCount.rows[0].n;
+            if (recurring > 0 && others.rows[0].n === 0) {
                 return res.status(409).json({
                     success: false,
-                    message: 'This is the only payment method on an active plan. Add another one first, or cancel the plan.',
+                    code: 'LAST_METHOD',
+                    message: 'This is the only payment method on your account, and you have a recurring plan. Add a new one first — we\'ll switch everything over, then you can remove this.',
                 });
             }
 
@@ -1933,6 +2109,13 @@ module.exports = function initLifecycle({
                     console.warn('[PORTAL PM DETACH]', e.message));
             }
             await pool.query("UPDATE payment_methods SET status='removed', is_default=FALSE WHERE id=$1", [pm.id]);
+            // Hand the account default to whatever is left, so nothing is
+            // pointing at a removed method.
+            const next = (await pool.query(
+                `SELECT id FROM payment_methods WHERE lead_id=$1 AND status='active'
+                  ORDER BY is_default DESC, id DESC LIMIT 1`, [leadId])).rows[0];
+            if (next) await setAccountPaymentMethod(leadId, next.id);
+            else await pool.query('UPDATE leads SET default_payment_method_id = NULL WHERE id = $1', [leadId]);
             res.json({ success: true, message: 'Payment method removed.' });
         } catch (e) {
             res.status(500).json({ success: false, message: 'Could not remove that payment method.' });
@@ -2237,6 +2420,524 @@ module.exports = function initLifecycle({
         }
     });
 
+    // ======================================================================
+    // Project timeline updates + service request notifications
+    // ======================================================================
+
+    /**
+     * Post an update to a customer's project.
+     *
+     * One call does everything the spec asks for: writes the update, emails the
+     * customer, drops a message in their portal, and sends the "you have a
+     * message" email. Milestone completion runs through onMilestoneCompleted
+     * instead, which has its own once-guard.
+     */
+    async function postProjectUpdate({ projectId, title, body, status, percent, adminId, notify: doNotify = true }) {
+        const proj = (await pool.query(
+            `SELECT cp.*, l.name, l.email, l.phone
+               FROM client_projects cp JOIN leads l ON l.id = cp.lead_id
+              WHERE cp.id = $1`, [projectId]
+        )).rows[0];
+        if (!proj) throw new Error('Project not found');
+
+        const sets = ['updated_at = NOW()'];
+        const vals = [projectId];
+        if (status) { vals.push(status); sets.push(`status = $${vals.length}`); }
+        if (percent != null) { vals.push(Math.max(0, Math.min(100, Number(percent)))); sets.push(`progress = $${vals.length}`); }
+        if (status === 'completed') sets.push('completed_at = COALESCE(completed_at, NOW())');
+        await pool.query(`UPDATE client_projects SET ${sets.join(', ')} WHERE id = $1`, vals)
+            .catch((e) => console.warn('[PROJECT UPDATE] status/progress:', e.message));
+
+        const upd = (await pool.query(
+            `INSERT INTO project_updates (project_id, lead_id, title, body, status, progress, created_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+            [projectId, proj.lead_id, (title || 'Project update').slice(0, 200), body || null,
+             status || null, percent != null ? Number(percent) : null, adminId || null]
+        )).rows[0];
+
+        if (doNotify) {
+            const lead = { id: proj.lead_id, name: proj.name, email: proj.email, phone: proj.phone };
+            // The portal message and the update email are one notify() call; the
+            // separate "you have messages" ping is what the spec asks for on top.
+            await notify({
+                lead, kind: 'project_update',
+                subject: `Update on ${proj.project_name}: ${title || 'progress'}`,
+                bodyHtml: `<p style="margin:0 0 12px">There's a new update on your project <strong style="color:#fff">${proj.project_name}</strong>.</p>
+                    <div style="background:#0f0f0f;border-radius:8px;padding:14px 16px;margin:0 0 14px">
+                      <div style="color:#fff;font-weight:700;font-size:15px;margin-bottom:6px">${title || 'Progress update'}</div>
+                      ${body ? `<div style="color:#b4b4b4;font-size:14px;line-height:1.6">${body}</div>` : ''}
+                      ${percent != null ? `<div style="margin-top:10px;color:#10b981;font-size:13px;font-weight:700">${Number(percent)}% complete</div>` : ''}
+                    </div>
+                    <p style="margin:0">The full timeline is in your portal.</p>`,
+                smsText: `Diamondback Coding: update on ${proj.project_name} — ${title || 'progress update'}. Details in your portal.`,
+                channels: ['email', 'sms', 'portal'],
+                cta: { url: PORTAL_URL, label: 'View your timeline' },
+            });
+            await sendPortalMessagePing(lead);
+            await pool.query('UPDATE project_updates SET notified_at = NOW() WHERE id = $1', [upd.id])
+                .catch(() => {});
+        }
+
+        return { update: upd, project: proj };
+    }
+
+    /**
+     * The short "you have a message waiting" email.
+     *
+     * Deliberately content-free: the substance lives in the portal, this only
+     * says to go look. Sent as its own kind so it can be muted independently of
+     * the update itself.
+     */
+    async function sendPortalMessagePing(lead) {
+        if (!lead || !lead.email) return;
+        try {
+            await notify({
+                lead, kind: 'portal_message_waiting',
+                subject: 'You have a new message in your portal',
+                bodyHtml: `<p style="margin:0 0 12px">There's a new message waiting for you in your customer portal.</p>
+                           <p style="margin:0">Sign in to read it and reply.</p>`,
+                channels: ['email'],
+                cta: { url: PORTAL_URL, label: 'Open your portal' },
+            });
+        } catch (e) {
+            console.warn('[PING] portal message email failed:', e.message);
+        }
+    }
+
+    // ---- admin: projects needing updates ---------------------------------
+    // Every signed customer project, newest activity first. This is the feed the
+    // admin Project Timeline tab renders.
+    app.get('/api/admin/projects', authenticateToken, async (req, res) => {
+        try {
+            const r = await pool.query(
+                `SELECT cp.*, l.name AS customer_name, l.email AS customer_email,
+                        sa.agreement_number,
+                        (SELECT COUNT(*)::int FROM project_milestones pm WHERE pm.project_id = cp.id) AS total_milestones,
+                        (SELECT COUNT(*)::int FROM project_milestones pm WHERE pm.project_id = cp.id AND pm.status='completed') AS done_milestones,
+                        (SELECT MAX(created_at) FROM project_updates pu WHERE pu.project_id = cp.id) AS last_update_at,
+                        (SELECT COUNT(*)::int FROM project_updates pu WHERE pu.project_id = cp.id) AS update_count
+                   FROM client_projects cp
+                   JOIN leads l ON l.id = cp.lead_id
+                   LEFT JOIN sales_agreements sa ON sa.id = cp.agreement_id
+                  ORDER BY CASE WHEN cp.status = 'completed' THEN 1 ELSE 0 END,
+                           COALESCE((SELECT MAX(created_at) FROM project_updates pu WHERE pu.project_id = cp.id),
+                                    cp.created_at) DESC`
+            );
+            res.json({ success: true, projects: r.rows });
+        } catch (e) {
+            console.error('[ADMIN PROJECTS]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'Projects') });
+        }
+    });
+
+    app.get('/api/admin/projects/:id', authenticateToken, async (req, res) => {
+        try {
+            const proj = (await pool.query(
+                `SELECT cp.*, l.name AS customer_name, l.email AS customer_email
+                   FROM client_projects cp JOIN leads l ON l.id = cp.lead_id WHERE cp.id=$1`,
+                [req.params.id]
+            )).rows[0];
+            if (!proj) return res.status(404).json({ success: false, message: 'Project not found.' });
+            const milestones = (await pool.query(
+                'SELECT * FROM project_milestones WHERE project_id=$1 ORDER BY order_index, id', [req.params.id]
+            )).rows;
+            const updates = (await pool.query(
+                'SELECT * FROM project_updates WHERE project_id=$1 ORDER BY created_at DESC', [req.params.id]
+            )).rows;
+            res.json({ success: true, project: proj, milestones, updates });
+        } catch (e) {
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'That project') });
+        }
+    });
+
+    app.post('/api/admin/projects/:id/update', authenticateToken, async (req, res) => {
+        try {
+            const { title, body, status, percent, notify: doNotify } = req.body || {};
+            if (!title && !body && !status && percent == null) {
+                return res.status(400).json({ success: false, message: 'Write an update, or change the status or progress.' });
+            }
+            const out = await postProjectUpdate({
+                projectId: req.params.id, title, body, status, percent,
+                adminId: req.user && req.user.id,
+                notify: doNotify !== false,
+            });
+            res.json({
+                success: true, update: out.update,
+                message: doNotify === false
+                    ? 'Update saved (customer not notified).'
+                    : `Update posted. ${out.project.name} has been emailed and messaged.`,
+            });
+        } catch (e) {
+            console.error('[PROJECT UPDATE]', e.message);
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
+    app.post('/api/admin/milestones/:id/complete', authenticateToken, async (req, res) => {
+        try {
+            const out = await onMilestoneCompleted({ milestoneId: req.params.id });
+            res.json({
+                success: true, ...out,
+                message: out.notified
+                    ? `Milestone marked complete — the customer has been notified (${out.done}/${out.total}).`
+                    : 'That milestone was already completed.',
+            });
+        } catch (e) {
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
+    // ---- customer portal: my project timeline ----------------------------
+    app.get('/api/portal/timeline', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const projects = (await pool.query(
+                `SELECT cp.*, sa.agreement_number
+                   FROM client_projects cp
+                   LEFT JOIN sales_agreements sa ON sa.id = cp.agreement_id
+                  WHERE cp.lead_id = $1
+                  ORDER BY CASE WHEN cp.status='completed' THEN 1 ELSE 0 END, cp.created_at DESC`,
+                [leadId]
+            )).rows;
+
+            for (const p of projects) {
+                p.milestones = (await pool.query(
+                    'SELECT id, title, description, status, order_index, completed_at FROM project_milestones WHERE project_id=$1 ORDER BY order_index, id',
+                    [p.id]
+                )).rows;
+                p.updates = (await pool.query(
+                    'SELECT id, title, body, status, progress, created_at FROM project_updates WHERE project_id=$1 ORDER BY created_at DESC LIMIT 30',
+                    [p.id]
+                )).rows;
+                const done = p.milestones.filter((m) => m.status === 'completed').length;
+                p.progress_pct = p.progress != null ? Number(p.progress)
+                    : (p.milestones.length ? Math.round((done / p.milestones.length) * 100) : 0);
+                p.milestones_done = done;
+            }
+            res.json({ success: true, projects });
+        } catch (e) {
+            console.error('[PORTAL TIMELINE]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'Your project timeline') });
+        }
+    });
+
+    // ---- service requests: notify everyone who needs to know -------------
+    /**
+     * Called after a customer submits a service request. Confirmation email to
+     * the customer, a message in their portal, the "you have messages" ping, and
+     * an SMS to Diamondback so a request can't sit unseen.
+     */
+    async function onServiceRequestCreated({ requestId }) {
+        const rq = (await pool.query(
+            `SELECT sr.*, l.name, l.email, l.phone
+               FROM service_requests sr JOIN leads l ON l.id = sr.lead_id
+              WHERE sr.id = $1`, [requestId]
+        )).rows[0];
+        if (!rq) throw new Error('Service request not found');
+
+        if (!(await claimStage(rq.lead_id, 'service_request', `service_request:${requestId}`,
+                               { entityType: 'service_request', entityId: requestId }))) {
+            return { notified: false };
+        }
+
+        const lead = { id: rq.lead_id, name: rq.name, email: rq.email, phone: rq.phone };
+        const what = rq.service_type || 'Service request';
+        const proj = rq.project || rq.vehicle || null;
+
+        await notify({
+            lead, kind: 'service_request_received',
+            subject: `We've got your request: ${what}`,
+            bodyHtml: `<p style="margin:0 0 12px">Thanks — we've received your service request and it's in the queue.</p>
+                <table cellpadding="0" cellspacing="0" style="margin:0 0 14px;width:100%;background:#0f0f0f;border-radius:8px">
+                  <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Request</td><td style="padding:10px 16px;color:#fff;font-size:14px">${what}</td></tr>
+                  ${proj ? `<tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Project</td><td style="padding:10px 16px;color:#fff;font-size:14px">${proj}</td></tr>` : ''}
+                  ${rq.preferred_date ? `<tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Preferred date</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(rq.preferred_date)}</td></tr>` : ''}
+                </table>
+                ${rq.details ? `<p style="margin:0 0 12px;color:#b4b4b4">"${rq.details}"</p>` : ''}
+                <p style="margin:0">We'll be in touch shortly. You can follow it in your portal.</p>`,
+            smsText: `Diamondback Coding: we've received your ${what} request. We'll be in touch shortly.`,
+            channels: ['email', 'sms', 'portal'],
+            cta: { url: PORTAL_URL, label: 'View your request' },
+        });
+        await sendPortalMessagePing(lead);
+
+        // SMS to the business. Uses ALERT_SMS_TO, falling back to the notify
+        // number, so a request can't sit unnoticed.
+        const alertTo = process.env.ALERT_SMS_TO || process.env.NOTIFY_PHONE;
+        if (alertTo) {
+            try {
+                const key = typeof getBrevoKey === 'function' ? await getBrevoKey() : PLATFORM_BREVO_KEY;
+                if (key) {
+                    await sendSmsViaBrevo(key, PLATFORM_SENDER_NAME.slice(0, 11), alertTo,
+                        `New service request from ${rq.name}: ${what}${proj ? ` (${proj})` : ''}. Check the admin portal.`);
+                }
+            } catch (e) {
+                console.warn('[SERVICE REQUEST] business SMS failed:', e.message);
+            }
+        } else {
+            console.warn('[SERVICE REQUEST] ALERT_SMS_TO not set — no SMS sent to Diamondback.');
+        }
+
+        await adminNotify({
+            kind: 'service_request',
+            title: `New service request from ${rq.name}`,
+            body: `${what}${proj ? ` · ${proj}` : ''}${rq.preferred_date ? ` · preferred ${prettyDate(rq.preferred_date)}` : ''}`,
+            leadId: rq.lead_id, entityType: 'service_request', entityId: requestId,
+            severity: 'info', onceKey: `service_request:${requestId}`,
+        });
+
+        return { notified: true };
+    }
+
+    // ======================================================================
+    // Account recovery — forgot password / forgot username
+    // ======================================================================
+    // Serves BOTH audiences: 'customer' (customer_portal.html) and 'crm'
+    // (client_portal.html). Same table, same rules, different landing page.
+
+    const crypto = require('crypto');
+    const RESET_TTL_MIN = Number(process.env.RESET_TTL_MINUTES || 60);
+    const SITE_URL = process.env.SITE_URL || 'https://diamondbackcoding.com';
+
+    const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
+
+    function resetLink(audience, token) {
+        const page = audience === 'crm' ? 'reset_password.html' : 'reset_password.html';
+        return `${SITE_URL}/${page}?token=${token}&for=${audience}`;
+    }
+
+    /**
+     * Issue a recovery token.
+     *
+     * Always resolves the same way to the caller whether or not the address
+     * exists — otherwise this route becomes a way to enumerate which of your
+     * customers have accounts.
+     */
+    async function issueRecovery({ email, audience = 'customer', purpose = 'password_reset', ip, userAgent }) {
+        const addr = String(email || '').trim().toLowerCase();
+        if (!addr) return { ok: true };
+
+        // Throttle: 5 requests per address per hour. Stops the route being used
+        // to spam someone's inbox.
+        const recent = await pool.query(
+            `SELECT COUNT(*)::int AS n FROM auth_tokens
+              WHERE email = $1 AND created_at > NOW() - INTERVAL '1 hour'`, [addr]
+        );
+        if (recent.rows[0].n >= 5) {
+            console.warn(`[RECOVERY] throttled ${addr}`);
+            return { ok: true, throttled: true };
+        }
+
+        const lead = (await pool.query(
+            `SELECT id, name, email, client_password, portal_kind, crm_access
+               FROM leads WHERE LOWER(email) = $1 LIMIT 1`, [addr]
+        )).rows[0];
+
+        // No account, or no portal password set: log and return quietly.
+        if (!lead || !lead.client_password) {
+            console.log(`[RECOVERY] no ${audience} account for ${addr}`);
+            return { ok: true };
+        }
+
+        // Wrong door: an address with no CRM entitlement asking for a CRM reset
+        // gets pointed at the portal it does have, rather than silence.
+        const hasCrm = lead.crm_access === true || ['crm', 'both'].includes(String(lead.portal_kind || ''));
+        if (audience === 'crm' && !hasCrm) {
+            await notify({
+                lead, kind: 'password_reset',
+                subject: 'About your CodeNexus CRM sign-in',
+                bodyHtml: `<p style="margin:0 0 12px">Someone asked to reset a CodeNexus CRM password for this address.</p>
+                    <p style="margin:0 0 12px">Your account is a <strong style="color:#fff">customer portal</strong> account, not a CRM subscription — so there's no CRM password to reset.</p>
+                    <p style="margin:0">You can reset your customer portal password from the link below.</p>`,
+                channels: ['email'],
+                cta: { url: `${SITE_URL}/customer_portal.html`, label: 'Go to your customer portal' },
+            });
+            return { ok: true };
+        }
+
+        if (purpose === 'username_recovery') {
+            // The username IS the email here, so "forgot username" is really
+            // "remind me which address I signed up with". Sending it to that
+            // same address is the only safe answer.
+            await notify({
+                lead, kind: 'username_recovery',
+                subject: 'Your Diamondback Coding sign-in details',
+                bodyHtml: `<p style="margin:0 0 14px">You asked which email you use to sign in. It's this one:</p>
+                    <div style="background:#0f0f0f;border-radius:8px;padding:14px 16px;margin:0 0 14px">
+                      <div style="color:#10b981;font-size:16px;font-weight:700;font-family:monospace">${lead.email}</div>
+                    </div>
+                    <p style="margin:0 0 12px">Sign in with that address and your password.</p>
+                    <p style="margin:0">Forgotten the password too? Use the "Forgot password" link on the sign-in page.</p>`,
+                channels: ['email'],
+                cta: { url: audience === 'crm' ? `${SITE_URL}/client_portal.html` : `${SITE_URL}/customer_portal.html`,
+                       label: 'Go to sign in' },
+            });
+            await pool.query(
+                `INSERT INTO auth_tokens (lead_id, audience, purpose, token_hash, email, expires_at, requested_ip, user_agent)
+                 VALUES ($1,$2,'username_recovery',$3,$4,NOW(),$5,$6)`,
+                [lead.id, audience, hashToken('username:' + Date.now() + Math.random()), addr,
+                 (ip || '').slice(0, 64), (userAgent || '').slice(0, 400)]
+            ).catch(() => {});
+            return { ok: true };
+        }
+
+        // Invalidate any outstanding reset for this account, so an old link in
+        // an old email can't still be used after a new one is requested.
+        await pool.query(
+            `UPDATE auth_tokens SET used_at = NOW()
+              WHERE lead_id = $1 AND purpose = 'password_reset' AND used_at IS NULL`,
+            [lead.id]
+        );
+
+        const token = crypto.randomBytes(32).toString('hex');
+        await pool.query(
+            `INSERT INTO auth_tokens (lead_id, audience, purpose, token_hash, email, expires_at, requested_ip, user_agent)
+             VALUES ($1,$2,'password_reset',$3,$4, NOW() + ($5 || ' minutes')::interval, $6,$7)`,
+            [lead.id, audience, hashToken(token), addr, String(RESET_TTL_MIN),
+             (ip || '').slice(0, 64), (userAgent || '').slice(0, 400)]
+        );
+
+        const link = resetLink(audience, token);
+        await notify({
+            lead, kind: 'password_reset',
+            subject: 'Reset your Diamondback Coding password',
+            bodyHtml: `<p style="margin:0 0 12px">Use the button below to choose a new password. The link works once and expires in ${RESET_TTL_MIN} minutes.</p>
+                <p style="margin:0 0 12px">If you didn't ask for this, you can ignore this email — your password hasn't changed.</p>
+                <p style="margin:0;color:#6b6b6b;font-size:12px;word-break:break-all">Or paste this into your browser:<br>${link}</p>`,
+            channels: ['email'],
+            cta: { url: link, label: 'Choose a new password' },
+        });
+
+        return { ok: true, sent: true };
+    }
+
+    /** Validate a token without spending it, so the page can render or refuse. */
+    async function checkRecoveryToken(token) {
+        if (!token) return { valid: false, reason: 'missing' };
+        const r = await pool.query(
+            `SELECT t.*, l.email AS lead_email, l.name
+               FROM auth_tokens t LEFT JOIN leads l ON l.id = t.lead_id
+              WHERE t.token_hash = $1 AND t.purpose = 'password_reset'`,
+            [hashToken(token)]
+        );
+        const row = r.rows[0];
+        if (!row) return { valid: false, reason: 'unknown' };
+        if (row.used_at) return { valid: false, reason: 'used' };
+        if (new Date(row.expires_at) <= new Date()) return { valid: false, reason: 'expired' };
+        return { valid: true, row };
+    }
+
+    app.post('/api/auth/forgot-password', async (req, res) => {
+        try {
+            const { email, audience } = req.body || {};
+            await issueRecovery({
+                email,
+                audience: audience === 'crm' ? 'crm' : 'customer',
+                purpose: 'password_reset',
+                ip: req.headers['x-forwarded-for'] || req.ip,
+                userAgent: req.headers['user-agent'],
+            });
+        } catch (e) {
+            console.error('[FORGOT PASSWORD]', e.message);
+        }
+        // Deliberately identical whatever happened above — see issueRecovery.
+        res.json({
+            success: true,
+            message: 'If that email is on an account, a reset link is on its way. Check your inbox and spam folder.',
+        });
+    });
+
+    app.post('/api/auth/forgot-username', async (req, res) => {
+        try {
+            const { email, audience } = req.body || {};
+            await issueRecovery({
+                email,
+                audience: audience === 'crm' ? 'crm' : 'customer',
+                purpose: 'username_recovery',
+                ip: req.headers['x-forwarded-for'] || req.ip,
+                userAgent: req.headers['user-agent'],
+            });
+        } catch (e) {
+            console.error('[FORGOT USERNAME]', e.message);
+        }
+        res.json({
+            success: true,
+            message: 'If that email is on an account, we\'ve sent your sign-in details to it.',
+        });
+    });
+
+    app.get('/api/auth/reset-token', async (req, res) => {
+        try {
+            const out = await checkRecoveryToken((req.query || {}).token);
+            if (!out.valid) {
+                const why = {
+                    missing: 'No reset link was supplied.',
+                    unknown: 'That reset link isn\'t valid. Request a new one.',
+                    used: 'That link has already been used. Request a new one.',
+                    expired: 'That link has expired. Request a new one.',
+                }[out.reason] || 'That reset link isn\'t valid.';
+                return res.status(400).json({ success: false, reason: out.reason, message: why });
+            }
+            // Enough to personalise the page, nothing more.
+            res.json({
+                success: true,
+                audience: out.row.audience,
+                email: out.row.lead_email,
+                name: out.row.name,
+            });
+        } catch (e) {
+            res.status(500).json({ success: false, message: 'Could not check that link.' });
+        }
+    });
+
+    app.post('/api/auth/reset-password', async (req, res) => {
+        try {
+            const { token, password } = req.body || {};
+            if (!password || String(password).length < 8) {
+                return res.status(400).json({ success: false, message: 'Choose a password of at least 8 characters.' });
+            }
+            const out = await checkRecoveryToken(token);
+            if (!out.valid) {
+                return res.status(400).json({
+                    success: false,
+                    message: out.reason === 'expired' ? 'That link has expired. Request a new one.'
+                           : out.reason === 'used' ? 'That link has already been used. Request a new one.'
+                           : 'That reset link isn\'t valid. Request a new one.',
+                });
+            }
+
+            const hash = await bcrypt.hash(String(password), 10);
+            await pool.query('UPDATE leads SET client_password = $2, updated_at = NOW() WHERE id = $1',
+                             [out.row.lead_id, hash]);
+            // Spend the token, and any sibling still outstanding.
+            await pool.query(
+                `UPDATE auth_tokens SET used_at = NOW()
+                  WHERE lead_id = $1 AND purpose = 'password_reset' AND used_at IS NULL`,
+                [out.row.lead_id]
+            );
+
+            const lead = (await pool.query('SELECT id,name,email,phone FROM leads WHERE id=$1',
+                                           [out.row.lead_id])).rows[0];
+            // Tell them it changed. If it wasn't them, this is how they find out.
+            await notify({
+                lead, kind: 'password_changed',
+                subject: 'Your password was changed',
+                bodyHtml: `<p style="margin:0 0 12px">Your Diamondback Coding password was just changed.</p>
+                           <p style="margin:0">If that wasn't you, reply to this email straight away and we'll secure the account.</p>`,
+                channels: ['email'],
+            }).catch(() => {});
+
+            res.json({
+                success: true,
+                audience: out.row.audience,
+                message: 'Password updated. You can sign in now.',
+            });
+        } catch (e) {
+            console.error('[RESET PASSWORD]', e.message);
+            res.status(500).json({ success: false, message: 'Could not reset the password. Please try again.' });
+        }
+    });
+
     // ---- admin: schema diagnostics ---------------------------------------
     // Answers "why is this tab 500ing?" without needing database access. Reports
     // which tables the new features require, which are present, and whether the
@@ -2439,13 +3140,19 @@ module.exports = function initLifecycle({
 
     /** Everything recurring for one customer, in one shape the UI can render. */
     async function listAllPlans(leadId) {
+        // The method shown is the ACCOUNT default, with a per-plan override only
+        // for legacy rows. Joining solely on mp.payment_method_id would show
+        // "No payment method" on every plan now that overrides are cleared.
         const maint = (await pool.query(
             `SELECT mp.*, pc.effective_at AS cancels_at, pc.id AS cancellation_id,
                     pm.brand, pm.last4, pm.type AS method_type, pm.bank_name, pm.id AS pm_id
                FROM maintenance_plans mp
                LEFT JOIN plan_cancellations pc
                       ON pc.maintenance_plan_id = mp.id AND pc.status = 'pending'
-               LEFT JOIN payment_methods pm ON pm.id = mp.payment_method_id
+               LEFT JOIN leads l ON l.id = mp.lead_id
+               LEFT JOIN payment_methods pm
+                      ON pm.id = COALESCE(mp.payment_method_id, l.default_payment_method_id)
+                     AND pm.status = 'active'
               WHERE mp.lead_id = $1 AND mp.status <> 'cancelled'
               ORDER BY mp.created_at DESC`,
             [leadId]
@@ -2531,6 +3238,23 @@ module.exports = function initLifecycle({
             }
         }
 
+        // Fall back to the account method for any plan Stripe didn't report one
+        // for, so the UI never claims a plan has no method when the account does.
+        if (plans.some((p) => !p.payment_method)) {
+            const acct = await resolvePaymentMethod(leadId, null);
+            if (acct) {
+                for (const p of plans) {
+                    if (!p.payment_method) {
+                        p.payment_method = {
+                            id: acct.id, type: acct.type, brand: acct.brand,
+                            last4: acct.last4, bank_name: acct.bank_name,
+                            stripe_pm_id: acct.stripe_pm_id,
+                        };
+                    }
+                }
+            }
+        }
+
         return plans;
     }
 
@@ -2613,20 +3337,16 @@ module.exports = function initLifecycle({
                         message: 'That card isn\u2019t saved to your account yet. Add it under Payments first.',
                     });
                 }
-                const upd = await pool.query(
-                    `UPDATE maintenance_plans
-                        SET payment_method_id = $3,
-                            status = CASE WHEN status = 'pending_payment_method' AND signed_at IS NOT NULL
-                                          THEN 'active' ELSE status END,
-                            consecutive_failures = 0,
-                            updated_at = NOW()
-                      WHERE id = $1 AND lead_id = $2
-                      RETURNING *`,
-                    [id, leadId, pm.id]
-                );
-                if (!upd.rows.length) {
+                const owns = await pool.query(
+                    'SELECT id FROM maintenance_plans WHERE id=$1 AND lead_id=$2', [id, leadId]);
+                if (!owns.rows.length) {
                     return res.status(404).json({ success: false, message: 'Plan not found.' });
                 }
+                // Sets the ACCOUNT default and clears every per-plan override,
+                // so one card covers all plans. Choosing a method on one plan
+                // deliberately moves them all — that's the single-method model,
+                // not a bug.
+                await setAccountPaymentMethod(leadId, pm.id);
             } else if (kind === 'crm') {
                 const sub = (await pool.query(
                     'SELECT * FROM crm_subscriptions WHERE id=$1 AND lead_id=$2', [id, leadId]
@@ -2656,6 +3376,9 @@ module.exports = function initLifecycle({
                     'UPDATE crm_subscriptions SET stripe_customer_id=$2, updated_at=NOW() WHERE id=$1',
                     [sub.id, customerId]
                 );
+                // Keep the account default in step, so the CRM and every
+                // maintenance plan bill the same card.
+                if (pm.id) await setAccountPaymentMethod(leadId, pm.id);
             } else {
                 return res.status(400).json({ success: false, message: 'Unknown plan type.' });
             }
@@ -2663,7 +3386,10 @@ module.exports = function initLifecycle({
             const label = pm.type === 'card'
                 ? `${pm.brand || 'card'} ending ${pm.last4}`
                 : `${pm.bank_name || 'bank account'} ending ${pm.last4}`;
-            res.json({ success: true, message: `Payment method updated to your ${label}.` });
+            res.json({
+                success: true,
+                message: `Payment method updated to your ${label}. It's now used for everything on your account.`,
+            });
         } catch (e) {
             console.error('[PORTAL PM CHANGE]', e.message);
             res.status(500).json({ success: false, message: e.message || 'Could not update the payment method.' });
@@ -2848,9 +3574,19 @@ module.exports = function initLifecycle({
                 userAgent: req.headers['user-agent'],
             });
 
+            // Tell the UI which kind this was, so it can route the customer to
+            // the right place and word the confirmation correctly. A maintenance
+            // agreement produces no project and no invoice.
+            const isMaintenance = out.kind === 'maintenance';
             res.json({
                 success: true,
-                message: 'Signed. Your project timeline and invoice are in your portal.',
+                kind: isMaintenance ? 'maintenance' : 'sla',
+                planActive: isMaintenance ? !!out.active : undefined,
+                message: isMaintenance
+                    ? (out.active
+                        ? 'Signed — your plan is active. You can see it under Plans.'
+                        : 'Signed. Add a payment method under Plans to start the plan; nothing is charged until you do.')
+                    : 'Signed. Your project timeline and invoice are in your portal.',
                 invoice: out.invoice ? {
                     number: out.invoice.invoice_number,
                     total: out.invoice.total_amount,
@@ -2977,10 +3713,31 @@ module.exports = function initLifecycle({
             const {
                 leadId, planType, label, description, amount,
                 billingDay = 1, generateInvoice = false, sendAgreement = true,
+                // Annual plans (domain renewals): interval 'year' plus the month
+                // it renews in. Monthly plans ignore billingMonth entirely.
+                interval, billingMonth, itemReference, renewalDate,
             } = req.body || {};
 
             if (!leadId || !planType || !amount) {
                 return res.status(400).json({ success: false, message: 'Customer, plan type and amount are required.' });
+            }
+
+            // A domain renewal is annual unless told otherwise — nobody renews a
+            // domain monthly, and defaulting the other way would bill 12x.
+            const unit = (interval === 'year' || planType === 'domain_renewal') ? 'year' : 'month';
+            let day = Number(billingDay) || 1;
+            let month = billingMonth != null ? Number(billingMonth) : null;
+            // `renewalDate` is the friendlier way to say it: give the date the
+            // domain renews and we derive the month and day.
+            if (unit === 'year' && renewalDate) {
+                const d = new Date(renewalDate);
+                if (!isNaN(d)) { month = d.getUTCMonth() + 1; day = d.getUTCDate(); }
+            }
+            if (unit === 'year' && !month) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'For an annual plan, give the renewal date (or the month it renews).',
+                });
             }
 
             const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [leadId])).rows[0];
@@ -2990,17 +3747,35 @@ module.exports = function initLifecycle({
                 monthly_maintenance: 'Monthly Maintenance',
                 brevo_maintenance: 'Brevo Maintenance',
                 database_maintenance: 'Database Maintenance',
+                domain_renewal: itemReference ? `Domain Renewal — ${itemReference}` : 'Domain Renewal',
+                hosting: 'Hosting',
             };
+
+            // If an explicit future renewal date was given, that IS the first
+            // charge. Deriving it from month/day instead would pick the NEXT
+            // occurrence — so a domain renewing 4 Sep 2027, set up in Aug 2026,
+            // would be charged on 4 Sep 2026: a full year early.
+            let firstCharge;
+            if (unit === 'year') {
+                const explicit = renewalDate ? new Date(renewalDate) : null;
+                firstCharge = (explicit && !isNaN(explicit) && explicit > new Date())
+                    ? explicit
+                    : nextAnnualDate(month, day);
+            } else {
+                firstCharge = nextBillingDate(day);
+            }
 
             const ins = await pool.query(
                 `INSERT INTO maintenance_plans
                     (lead_id, plan_type, label, description, amount, billing_day,
-                     generate_invoice, status, next_charge_date)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,'pending_signature',$8)
+                     generate_invoice, status, next_charge_date,
+                     interval_unit, billing_month, item_reference)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,'pending_signature',$8,$9,$10,$11)
                  RETURNING *`,
                 [leadId, planType, label || defaultLabels[planType] || 'Maintenance Plan',
-                 description || null, amount, billingDay, generateInvoice,
-                 dateOnly(nextBillingDate(billingDay))]
+                 description || null, amount, day, generateInvoice,
+                 dateOnly(firstCharge), unit, unit === 'year' ? month : null,
+                 itemReference || null]
             );
             const plan = ins.rows[0];
 
@@ -3015,8 +3790,10 @@ module.exports = function initLifecycle({
                      VALUES ($1,$2,$3,$4,$5,$6,$7,'sent','maintenance',$8,$9,NOW(),NOW())
                      RETURNING *`,
                     [num, leadId, lead.name, lead.email, planType, plan.label, amount,
-                     `Recurring ${plan.label.toLowerCase()} at ${money(amount)} per month, billed automatically on day ${billingDay}.`,
-                     `This plan renews monthly at ${money(amount)}. Payment is charged automatically to your saved payment method. ` +
+                     unit === 'year'
+                        ? `${plan.label} at ${money(amount)} per year, charged automatically each ${prettyDate(firstCharge).replace(/,.*$/, '')}.`
+                        : `Recurring ${plan.label.toLowerCase()} at ${money(amount)} per month, billed automatically on day ${day}.`,
+                     `This plan renews ${unit === 'year' ? 'annually' : 'monthly'} at ${money(amount)}. Payment is charged automatically to the payment method saved on your account. ` +
                      `You may cancel at any time from your customer portal; cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after the request, ` +
                      `and service continues until that date.`]
                 );
@@ -3105,6 +3882,15 @@ module.exports = function initLifecycle({
         // jobs
         runDunning,
         listAllPlans,
+        resolvePaymentMethod,
+        setAccountPaymentMethod,
+        nextAnnualDate,
+        nextChargeFor,
+        postProjectUpdate,
+        issueRecovery,
+        checkRecoveryToken,
+        onServiceRequestCreated,
+        sendPortalMessagePing,
         pastDueReport,
         ensureStripeCustomer,
         savePaymentMethod,

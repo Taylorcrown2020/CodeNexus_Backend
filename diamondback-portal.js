@@ -37,6 +37,10 @@ module.exports = function initPortal({
     PLATFORM_SENDER_EMAIL,
     PLATFORM_SENDER_NAME,
     sendViaBrevo,               // from server.js
+    // Late-bound from the lifecycle module. server.js initialises this module
+    // BEFORE the lifecycle one, so it's passed as a wrapper that resolves at
+    // call time rather than a direct reference that would still be undefined.
+    onServiceRequestCreated,
     SCHEDULING_URL = process.env.SCHEDULING_URL || 'https://diamondbackcoding.com/schedule.html',
 }) {
 
@@ -429,13 +433,24 @@ module.exports = function initPortal({
             const r = await pool.query(
                 `INSERT INTO service_requests (lead_id, service_type, vehicle, preferred_date, details, status)
                  VALUES ($1, $2, $3, $4, $5, 'new') RETURNING *`,
-                [clientId, service_type, vehicle || null, preferred_date || null, details || null]);
-            // Auto-confirmation email (defensive: never blocks the request)
-            try {
-                const who = (await pool.query('SELECT name, email FROM leads WHERE id=$1', [clientId])).rows[0];
-                if (who && global.__diamondbackMail) global.__diamondbackMail.serviceRequestReceived(who.name, who.email, service_type);
-            } catch (_) {}
-            res.json({ success: true, request: r.rows[0] });
+                [clientId, service_type, req.body.project || vehicle || null, preferred_date || null, details || null]);
+            const created = r.rows[0];
+
+            // Confirmation email + portal message + "you have messages" ping to
+            // the customer, and an SMS to Diamondback so a request can't sit
+            // unseen. Fire-and-forget: the request is already saved, so a mail
+            // or SMS outage must not turn a successful submission into an error.
+            //
+            // (This replaces a global.__diamondbackMail hook that was never
+            // defined anywhere, so no confirmation was ever actually sent.)
+            if (typeof onServiceRequestCreated === 'function') {
+                onServiceRequestCreated({ requestId: created.id })
+                    .catch((e) => console.error('[SERVICE REQUEST] notify failed:', e.message));
+            } else {
+                console.warn('[SERVICE REQUEST] no notifier wired — customer was not confirmed.');
+            }
+
+            res.json({ success: true, request: created });
         } catch (e) {
             console.error('[CLIENT] service-request create error:', e.message);
             res.status(500).json({ success: false, message: 'Could not submit request.' });
@@ -968,11 +983,52 @@ module.exports = function initPortal({
         }
     });
     // ---- portal dashboard, agreement PDF ------------------------------------
+    // ------------------------------------------------------------------
+    // These three were CALLED but never defined anywhere — not in this file,
+    // not in server.js, not passed into initPortal. Every "Download Agreement"
+    // therefore threw a ReferenceError and returned a 500. Defining them here,
+    // next to their only caller.
+    // ------------------------------------------------------------------
+    const PDFDocument = require('pdfkit');
+
+    /** Collect a PDFKit document into a Buffer. */
+    function diamondbackPdfToBuffer(doc) {
+        return new Promise((resolve, reject) => {
+            const chunks = [];
+            doc.on('data', (c) => chunks.push(c));
+            doc.on('end', () => resolve(Buffer.concat(chunks)));
+            doc.on('error', reject);
+            doc.end();
+        });
+    }
+
+    function diamondbackMoney(n) {
+        return '$' + Number(n || 0).toLocaleString('en-US',
+            { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function diamondbackServiceLabel(key) {
+        const map = {
+            web_development: 'Web Development',
+            web_design: 'Web Design',
+            crm_implementation: 'CRM Implementation',
+            seo: 'SEO & Digital Marketing',
+            maintenance: 'Maintenance',
+            monthly_maintenance: 'Monthly Maintenance',
+            brevo_maintenance: 'Brevo Maintenance',
+            database_maintenance: 'Database Maintenance',
+            hosting: 'Hosting',
+            consulting: 'Consulting',
+        };
+        if (!key) return '—';
+        return map[key] || String(key).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
     async function agreementPDFBuffer(a) {
         const doc = new PDFDocument({ margin: 50, size: 'LETTER', info: { Title: 'Sales Agreement ' + (a.agreement_number || ''), Author: 'Diamondback Coding' } });
         doc.rect(0, 0, doc.page.width, 90).fill('#0a0a0a');
-        doc.fillColor('#c9a14a').fontSize(20).font('Helvetica-Bold').text('CROWN CERAMIC COATING', 50, 30);
-        doc.fillColor('#f4f1ea').fontSize(9).font('Helvetica').text('Web Development • CRM Implementation • Detailing — Rockwall & Dallas, TX', 50, 56);
+        doc.fillColor('#D4A574').fontSize(20).font('Helvetica-Bold').text('DIAMONDBACK CODING', 50, 30);
+        doc.fillColor('#f4f1ea').fontSize(9).font('Helvetica').text('Web Development \u2022 CRM Implementation \u2022 Digital Marketing \u2014 Dallas\u2013Fort Worth, TX', 50, 56);
         doc.fillColor('#000000'); doc.y = 120;
         doc.fontSize(22).font('Helvetica-Bold').text('Sales Agreement', { align: 'center' });
         doc.moveDown(0.2);
@@ -988,7 +1044,7 @@ module.exports = function initPortal({
             ['Email', a.customer_email || '—'],
             ['Service', diamondbackServiceLabel(a.service_type)],
             ['Package', a.package_name || '—'],
-            ['Vehicle', a.vehicle || '—'],
+            ['Project', a.project || a.vehicle || '\u2014'],
             ['Start date', a.start_date ? new Date(a.start_date).toLocaleDateString('en-US') : 'To be scheduled'],
             ['Total price', diamondbackMoney(_total)]
         ];

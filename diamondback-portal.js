@@ -325,7 +325,28 @@ module.exports = function initPortal({
 
     // Public: expose Stripe publishable key so the portal can mount Stripe Elements.
     app.get('/api/config/stripe', (req, res) => {
-        res.json({ success: true, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '' });
+        // STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY are DIFFERENT variables.
+        // The admin portal never loads Stripe.js — it only charges server-side
+        // with the secret key — so Stripe can look "set up" everywhere while the
+        // publishable key, which the browser needs to render a card field, is
+        // missing. Reporting both states separately makes that obvious instead
+        // of the customer portal just saying "not configured".
+        const pk = process.env.STRIPE_PUBLISHABLE_KEY || '';
+        const hasSecret = !!process.env.STRIPE_SECRET_KEY;
+        if (!pk) {
+            console.warn('[STRIPE] STRIPE_PUBLISHABLE_KEY is not set — the customer portal cannot show a card form.' +
+                (hasSecret ? ' STRIPE_SECRET_KEY IS set, so server-side charges still work.' : ''));
+        }
+        res.json({
+            success: true,
+            publishableKey: pk,
+            configured: !!pk,
+            secretConfigured: hasSecret,
+            message: pk ? null
+                : (hasSecret
+                    ? 'Card payments are not available yet: STRIPE_PUBLISHABLE_KEY is not set on the server. Your secret key is set, so this is the one that is missing — add it in Render and restart.'
+                    : 'Stripe is not configured on the server. Set STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY in Render, then restart.'),
+        });
     });
 
     // Client: get the checkout breakdown for an invoice (subtotal, tax, fee, total).
@@ -1139,8 +1160,21 @@ module.exports = function initPortal({
             // Sales agreements for this customer (shown in the portal's "Sales Agreements" view).
             let salesAgreements = [];
             try {
+                // Join the signature in, so the customer portal uses the SAME
+                // definition of "signed" as the admin portal. Reading only
+                // sales_agreements.status meant a row whose status update
+                // didn't land showed "signed" to staff and "Review & sign" to
+                // the customer — the same agreement, two answers.
                 const saRes = await pool.query(
-                    'SELECT * FROM sales_agreements WHERE lead_id = $1 ORDER BY created_at DESC',
+                    `SELECT sa.*,
+                            COALESCE(sa.signed_at, sig.signed_at) AS signed_at,
+                            CASE WHEN sig.id IS NOT NULL AND sa.status IN ('sent','draft')
+                                 THEN 'signed' ELSE sa.status END AS status,
+                            sig.signer_name
+                       FROM sales_agreements sa
+                       LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
+                      WHERE sa.lead_id = $1
+                      ORDER BY sa.created_at DESC`,
                     [clientId]
                 );
                 salesAgreements = saRes.rows;

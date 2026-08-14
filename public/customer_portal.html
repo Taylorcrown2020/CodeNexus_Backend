@@ -1066,8 +1066,12 @@ async function stripeJs(){
   if(!STRIPE_PK){
     const c = await fetch(API + '/api/config/stripe').then(r => r.json()).catch(() => ({}));
     STRIPE_PK = c.publishableKey || c.publishable_key || c.key || '';
+    // Surface the server's own explanation. "Not configured" on its own sent
+    // people hunting for a Stripe problem that didn't exist — the secret key is
+    // usually fine and it's the publishable one that's missing.
+    if(!STRIPE_PK && c.message) throw new Error(c.message);
   }
-  if(!STRIPE_PK) throw new Error('Card payments are not configured yet. Please contact us.');
+  if(!STRIPE_PK) throw new Error('Card payments are not available yet — the server is missing its Stripe publishable key. Please contact us.');
   STRIPE = window.Stripe(STRIPE_PK);
   return STRIPE;
 }

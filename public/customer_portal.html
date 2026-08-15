@@ -748,7 +748,17 @@ const isSigned = a => !!(a && (a.signed_at || a.status === 'signed'));
 const isOpen = i => !['paid','void','cancelled','refunded','draft'].includes(i.status);
 /* Maintenance, renewals and deposits are owed on issue. A project balance is
    'on_completion' and only becomes due when the work finishes. */
-const isDueNow = i => (i.obligation || 'due_now') !== 'on_completion';
+/* Counts toward "due now" only if it is genuinely payable. The server sends
+   payable; when it's absent (older backend) fall back to the obligation. */
+const isDueNow = i => (i.payable !== undefined
+  ? i.payable === true
+  : (i.obligation || 'due_now') !== 'on_completion');
+
+/* Why an invoice can't be paid yet, if it can't. */
+const holdText = i =>
+  i.hold_reason === 'awaiting_signature' ? 'Waiting on your signature'
+  : i.hold_reason === 'due_on_completion' ? 'Due on completion'
+  : (i.obligation === 'on_completion' ? 'Due on completion' : 'Not due yet');
 
 function invRow(i){
   const paid = i.status === 'paid';
@@ -763,13 +773,15 @@ function invRow(i){
     '<div class="row-body"><b>' + esc(i.invoice_number || 'Invoice') +
       (i.is_deposit ? ' <span class="tag amber">Deposit</span>' : '') + '</b>' +
       '<span>' + (paid ? 'Paid ' + fmtShort(i.paid_at)
-        : (!isDueNow(i) ? 'Due on completion' + (i.due_date ? ' · est. ' + fmtShort(i.due_date) : '')
+        : (!isDueNow(i) ? holdText(i) + (i.due_date && i.hold_reason !== 'awaiting_signature' ? ' · est. ' + fmtShort(i.due_date) : '')
         : (i.due_date ? (overdue ? 'Overdue ' : 'Due ') + fmtShort(i.due_date) : 'Due now'))) + '</span></div>' +
     '<div class="row-end"><b>' + money(i.total_amount) + '</b>' +
       (paid ? '<span class="pos">Paid</span>'
             : (isDueNow(i)
+                // Pay is only offered when the server says it's payable.
                 ? '<button class="btn btn-primary btn-sm" style="margin-top:5px" onclick="openPay(' + i.id + ')">Pay</button>'
-                : '<span class="tag grey">Not due yet</span>')) +
+                : '<span class="tag ' + (i.hold_reason === 'awaiting_signature' ? 'amber' : 'grey') + '">' +
+                  (i.hold_reason === 'awaiting_signature' ? 'Sign first' : 'Not due yet') + '</span>')) +
     '</div></div>';
 }
 
@@ -1312,6 +1324,14 @@ const ELEMENT_LOOK = {
 
 /* opts lets a caller reuse this for a settlement payment: its own title and a
    callback to run once the charge clears (e.g. finish cancelling). */
+function payBlockedMessage(id){
+  const inv = ((DASH && DASH.invoices) || []).find(x => Number(x.id) === Number(id));
+  if(inv && inv.payable === false && inv.hold_reason === 'awaiting_signature'){
+    return 'This needs to be signed before it can be paid. Sign it under Docs and the payment unlocks straight away.';
+  }
+  return null;
+}
+
 async function openPay(invoiceId, opts){
   opts = opts || {};
   let inv = ((DASH && DASH.invoices) || []).find(i => i.id === invoiceId);
@@ -1321,6 +1341,21 @@ async function openPay(invoiceId, opts){
     try{ await loadDash(); inv = (DASH.invoices || []).find(i => i.id === invoiceId); }catch(_){}
   }
   const total = inv ? money(inv.total_amount) : '';
+
+  // Refuse to open a payment sheet for something that isn't payable yet. A
+  // settlement invoice (opts.force) is raised deliberately mid-cancellation and
+  // is always payable, so it bypasses this.
+  if(!opts.force){
+    const blocked = payBlockedMessage(invoiceId);
+    if(blocked){
+      sheet('<h2 class="sheet-h">Signature needed first</h2>' +
+        '<p class="sheet-sub">' + esc(blocked) + '</p>' +
+        '<div class="sheet-actions">' +
+          '<button class="btn btn-ghost" onclick="closeSheet()">Close</button>' +
+          '<button class="btn btn-primary" onclick="closeSheet();go(\'docs\')">Go to Docs</button></div>');
+      return;
+    }
+  }
   sheet('<h2 class="sheet-h">' + esc(opts.title || ('Pay ' + (inv ? inv.invoice_number : 'invoice'))) + '</h2>' +
     '<p class="sheet-sub">' + esc(opts.subtitle ||
       'Card and billing details are entered here. Your details go straight to Stripe — we never see or store them.') + '</p>' +

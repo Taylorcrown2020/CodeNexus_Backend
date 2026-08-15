@@ -1710,6 +1710,103 @@ module.exports = function initLifecycle({
     // Schedulers
     // ======================================================================
 
+    /**
+     * Chase plans that were never signed, and expire the ones that stay unsigned.
+     *
+     * An unsigned plan cannot be billed (runMaintenanceCharges requires
+     * signed_at), so without this it would sit there forever: no signature, no
+     * payment, no cancellation, and no visibility. That is the "free
+     * maintenance" gap — closed by making an unsigned plan a thing that chases
+     * itself and then dies, rather than a thing that quietly persists.
+     *
+     * Days 3, 7 and 14: reminders. Day `UNSIGNED_EXPIRY_DAYS`: expired, with the
+     * admin told so service can be stopped.
+     */
+    const UNSIGNED_REMINDER_DAYS = [3, 7, 14];
+    const UNSIGNED_EXPIRY_DAYS = 21;
+
+    async function chaseUnsignedPlans() {
+        const out = { reminded: 0, expired: 0 };
+
+        const pending = (await pool.query(
+            `SELECT mp.*, l.name, l.email, l.phone,
+                    (CURRENT_DATE - mp.created_at::date) AS age_days,
+                    sa.agreement_number
+               FROM maintenance_plans mp
+               JOIN leads l ON l.id = mp.lead_id
+               LEFT JOIN sales_agreements sa ON sa.id = mp.agreement_id
+              WHERE mp.signed_at IS NULL
+                AND mp.status IN ('pending_signature','pending_payment_method')`
+        )).rows;
+
+        for (const plan of pending) {
+            const age = Number(plan.age_days || 0);
+            const lead = { id: plan.lead_id, name: plan.name, email: plan.email, phone: plan.phone };
+
+            if (age >= UNSIGNED_EXPIRY_DAYS) {
+                await pool.query(
+                    `UPDATE maintenance_plans
+                        SET status='cancelled', cancelled_at=COALESCE(cancelled_at, NOW()), updated_at=NOW()
+                      WHERE id=$1`, [plan.id]
+                ).catch(async () => {
+                    await pool.query(
+                        `UPDATE maintenance_plans SET status='cancelled', updated_at=NOW() WHERE id=$1`,
+                        [plan.id]).catch(() => {});
+                });
+                // Any invoice raised for a plan that never started is void.
+                await pool.query(
+                    `UPDATE invoices SET status='void', updated_at=NOW()
+                      WHERE maintenance_plan_id=$1
+                        AND status NOT IN ('paid','void','cancelled','refunded')`,
+                    [plan.id]
+                ).catch(() => {});
+
+                await notify({
+                    lead, kind: 'maintenance_expired',
+                    subject: `${plan.label} — not started`,
+                    bodyHtml: `<p style="margin:0 0 12px">Your <strong style="color:#0d0f12">${plan.label}</strong> agreement wasn't signed, so the plan hasn't started and nothing has been charged.</p>
+                               <p style="margin:0">If you'd still like it, just let us know and we'll send a fresh agreement.</p>`,
+                    channels: ['email', 'portal'],
+                }).catch(() => {});
+
+                await adminNotify({
+                    kind: 'maintenance_expired',
+                    title: `STOP SERVICE: ${plan.name} never signed ${plan.label}`,
+                    body: `Unsigned for ${age} days — plan expired and its invoices voided. If service was switched on for them, turn it off.`,
+                    leadId: plan.lead_id, entityType: 'maintenance_plan', entityId: plan.id,
+                    severity: 'warning', onceKey: `plan_expired:${plan.id}`,
+                });
+                out.expired += 1;
+                continue;
+            }
+
+            if (!UNSIGNED_REMINDER_DAYS.includes(age)) continue;
+
+            const left = UNSIGNED_EXPIRY_DAYS - age;
+            await notify({
+                lead, kind: 'maintenance_unsigned_reminder',
+                subject: `Reminder: ${plan.label} is waiting for your signature`,
+                bodyHtml: `<p style="margin:0 0 12px">Your <strong style="color:#0d0f12">${plan.label}</strong> agreement is still waiting to be signed, so the plan hasn't started.</p>
+                           <p style="margin:0 0 12px">Nothing has been charged and nothing will be until you sign.</p>
+                           <p style="margin:0">If we don't hear from you within ${left} day${left === 1 ? '' : 's'} we'll close it off, and you can always ask for a new one.</p>`,
+                smsText: `Diamondback Coding: ${plan.label} is still waiting for your signature. Nothing is charged until you sign.`,
+                channels: ['email', 'sms', 'portal'],
+                cta: { url: PORTAL_URL, label: 'Review & sign' },
+            }).catch(() => {});
+
+            await adminNotify({
+                kind: 'maintenance_unsigned',
+                title: `${plan.name} hasn't signed ${plan.label}`,
+                body: `Unsigned for ${age} days. Expires in ${left}. Nothing billable until signed — check whether service is already switched on.`,
+                leadId: plan.lead_id, entityType: 'maintenance_plan', entityId: plan.id,
+                severity: 'warning', onceKey: `plan_unsigned:${plan.id}:${age}`,
+            });
+            out.reminded += 1;
+        }
+
+        return out;
+    }
+
     /** Charge every maintenance plan due today. */
     async function runMaintenanceCharges() {
         // signed_at is required, in both directions: an unsigned plan is never
@@ -1903,6 +2000,10 @@ module.exports = function initLifecycle({
         try { out.charges = await runMaintenanceCharges(); } catch (e) { out.chargesError = e.message; }
         try { out.reminders = await runCancellationReminders(); } catch (e) { out.remindersError = e.message; }
         try { out.cancellations = await completePlanCancellations(); } catch (e) { out.cancellationsError = e.message; }
+        // Chase (and eventually expire) plans that were never signed. An
+        // unsigned plan can't be billed, so without this it would sit there
+        // indefinitely — service switched on, nothing owed, nobody told.
+        try { out.unsigned = await chaseUnsignedPlans(); } catch (e) { out.unsignedError = e.message; }
         // Dunning last: a maintenance charge earlier in this same run may have
         // just settled an invoice, and there's no sense dunning something that
         // was paid ninety seconds ago.
@@ -2755,13 +2856,33 @@ module.exports = function initLifecycle({
             // so a `status === 'signed'` check lets a signed agreement be
             // deleted the moment its status advances — taking the signature
             // record, and the evidence behind an invoice, with it.
+            // Which of the columns we'd like to read actually exist? On a
+            // database where sales_agreements pre-dates migration 001 several
+            // are missing, and naming one in a SELECT makes the whole statement
+            // fail — which is exactly why deleting an SLA used to 500 every
+            // time, with nothing wrong in the logic below.
+            const cols = new Set((await pool.query(
+                `SELECT column_name FROM information_schema.columns
+                  WHERE table_name = 'sales_agreements'`
+            )).rows.map((r) => r.column_name));
+
+            const pick = (c, fallback) => (cols.has(c) ? `sa.${c}` : `${fallback} AS ${c}`);
             const a = (await pool.query(
-                `SELECT sa.status, sa.agreement_number, sa.signed_at, sa.invoice_id,
+                `SELECT ${pick('status', 'NULL::text')},
+                        ${pick('agreement_number', 'NULL::text')},
+                        ${pick('signed_at', 'NULL::timestamp')},
+                        ${pick('invoice_id', 'NULL::int')},
                         (sig.id IS NOT NULL) AS has_signature
                    FROM sales_agreements sa
                    LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
                   WHERE sa.id = $1`, [req.params.id]
             )).rows[0];
+
+            if (!cols.has('signed_at')) {
+                console.warn('[SA DELETE] sales_agreements.signed_at is MISSING from this database — ' +
+                             'run migrations/010_missing_columns_and_signing_repair.sql. ' +
+                             'Proceeding with the delete anyway.');
+            }
             if (!a) return res.status(404).json({ success: false, message: 'Agreement not found.' });
             // It's your data, so a signed agreement CAN be deleted — but only
             // when you say so explicitly. The default still refuses, because

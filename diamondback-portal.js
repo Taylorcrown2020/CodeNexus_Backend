@@ -285,6 +285,96 @@ module.exports = function initPortal({
         );
         if (upd.rows.length === 0) return null;
         const inv = upd.rows[0];
+
+        // ------------------------------------------------------------------
+        // A paid invoice is the trigger for real-world work. Two cases:
+        //
+        //   maintenance — the first payment STARTS the plan. The plan becomes
+        //     active and the next charge is set one full interval from the day
+        //     they actually paid, which is the day service begins.
+        //
+        //   project — when a project agreement is fully paid, that is the
+        //     "clear to deploy" signal.
+        //
+        // Both raise an admin notification, because both need someone to
+        // actually do something.
+        // ------------------------------------------------------------------
+        try {
+            if (inv.maintenance_plan_id) {
+                const plan = (await pool.query(
+                    'SELECT * FROM maintenance_plans WHERE id=$1', [inv.maintenance_plan_id])).rows[0];
+
+                if (plan && plan.signed_at) {
+                    const firstStart = !plan.activated_at;
+                    // Next charge = one interval from the day they paid.
+                    const paidOn = new Date();
+                    const next = new Date(paidOn);
+                    if (plan.interval_unit === 'year') next.setFullYear(next.getFullYear() + 1);
+                    else next.setMonth(next.getMonth() + 1);
+
+                    await pool.query(
+                        `UPDATE maintenance_plans
+                            SET status = CASE WHEN status IN ('cancelled') THEN status ELSE 'active' END,
+                                activated_at = COALESCE(activated_at, NOW()),
+                                billing_start_date = COALESCE(billing_start_date, CURRENT_DATE),
+                                last_charge_date = CURRENT_DATE,
+                                next_charge_date = $2,
+                                consecutive_failures = 0,
+                                updated_at = NOW()
+                          WHERE id = $1`,
+                        [plan.id, next.toISOString().slice(0, 10)]
+                    );
+
+                    await pool.query(
+                        `INSERT INTO admin_notifications
+                            (kind, title, body, lead_id, entity_type, entity_id, severity, once_key)
+                         VALUES ($1,$2,$3,$4,'maintenance_plan',$5,$6,$7)
+                         ON CONFLICT (once_key) DO NOTHING`,
+                        [firstStart ? 'maintenance_started' : 'maintenance_paid',
+                         firstStart
+                            ? `START SERVICE: ${plan.label} is paid and active`
+                            : `${plan.label} — payment received`,
+                         `${Number(inv.total_amount || 0).toFixed(2)} paid${firstStart
+                            ? '. This is the first payment — service starts now.' : '.'} Next charge ${next.toISOString().slice(0, 10)}.`,
+                         inv.lead_id, plan.id,
+                         firstStart ? 'success' : 'info',
+                         `plan_paid:${plan.id}:${inv.id}`]
+                    ).catch(() => {});
+                }
+            }
+
+            if (inv.agreement_id) {
+                // Anything still outstanding on this agreement?
+                const rest = (await pool.query(
+                    `SELECT COUNT(*)::int AS n FROM invoices
+                      WHERE agreement_id = $1
+                        AND status NOT IN ('paid','void','cancelled','refunded','draft')`,
+                    [inv.agreement_id])).rows[0];
+                const ag = (await pool.query(
+                    'SELECT agreement_number, package_name, project_id FROM sales_agreements WHERE id=$1',
+                    [inv.agreement_id])).rows[0];
+
+                await pool.query(
+                    `INSERT INTO admin_notifications
+                        (kind, title, body, lead_id, entity_type, entity_id, severity, once_key)
+                     VALUES ($1,$2,$3,$4,'agreement',$5,$6,$7)
+                     ON CONFLICT (once_key) DO NOTHING`,
+                    [rest.n === 0 ? 'project_paid_in_full' : 'project_payment',
+                     rest.n === 0
+                        ? `PAID IN FULL — clear to deploy: ${(ag && (ag.package_name || ag.agreement_number)) || 'project'}`
+                        : `Payment received on ${(ag && ag.agreement_number) || 'an agreement'}`,
+                     rest.n === 0
+                        ? `${Number(inv.total_amount || 0).toFixed(2)} paid, nothing outstanding. Ready to deploy / hand over.`
+                        : `${Number(inv.total_amount || 0).toFixed(2)} paid · ${rest.n} invoice(s) still open.`,
+                     inv.lead_id, inv.agreement_id,
+                     rest.n === 0 ? 'success' : 'info',
+                     `agreement_paid:${inv.agreement_id}:${inv.id}`]
+                ).catch(() => {});
+            }
+        } catch (e) {
+            console.warn('[MARK PAID] post-payment hooks:', e.message);
+        }
+
         if (inv.lead_id) {
             await pool.query(
                 `UPDATE leads
@@ -441,6 +531,32 @@ module.exports = function initPortal({
     });
 
     // Client: create (or reuse) a PaymentIntent for an invoice. Returns client_secret.
+    /**
+     * Is this invoice actually payable? Nothing may be paid against a document
+     * that hasn't been signed — checked server-side, because the dashboard flag
+     * is only a display hint and a crafted request would bypass it.
+     */
+    async function invoicePayableError(invoiceId) {
+        const r = await pool.query(
+            `SELECT i.id, i.agreement_id, i.maintenance_plan_id,
+                    (i.agreement_id IS NULL OR EXISTS (
+                        SELECT 1 FROM sales_agreements sa
+                         WHERE sa.id = i.agreement_id
+                           AND (sa.signed_at IS NOT NULL OR sa.status = 'signed'))) AS agreement_ok,
+                    (i.maintenance_plan_id IS NULL OR EXISTS (
+                        SELECT 1 FROM maintenance_plans mp
+                         WHERE mp.id = i.maintenance_plan_id
+                           AND mp.signed_at IS NOT NULL)) AS plan_ok
+               FROM invoices i WHERE i.id = $1`, [invoiceId]
+        ).catch(() => null);
+        const row = r && r.rows[0];
+        if (!row) return null;                     // let the caller 404 normally
+        if (!row.agreement_ok || !row.plan_ok) {
+            return 'This needs to be signed before it can be paid. Open it under Docs, sign it, and the payment will unlock.';
+        }
+        return null;
+    }
+
     app.post('/api/portal/invoices/:id/payment-intent', authenticatePortal, async (req, res) => {
         try {
             const clientId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
@@ -496,6 +612,10 @@ module.exports = function initPortal({
     app.post('/api/portal/invoices/:id/confirm-paid', authenticatePortal, async (req, res) => {
         try {
             const clientId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
+            {
+                const blocked = await invoicePayableError(req.params.id);
+                if (blocked) return res.status(409).json({ success: false, message: blocked });
+            }
             const r = await pool.query('SELECT * FROM invoices WHERE id = $1 AND lead_id = $2', [req.params.id, clientId]);
             if (r.rows.length === 0) return res.status(404).json({ success: false, message: 'Invoice not found.' });
             const invoice = r.rows[0];
@@ -928,7 +1048,48 @@ module.exports = function initPortal({
                     detail: (x.content || '').slice(0, 80), time: x.sent_at
                 }));
             } catch (e) {}
+            // Lifecycle notifications — SLA signed, maintenance signed and
+            // started, paid in full, charge failed. adminNotify() has been
+            // writing these all along; nothing ever read them, so they never
+            // reached the bell.
+            try {
+                const r = await pool.query(`
+                    SELECT an.id, an.kind, an.title, an.body, an.severity,
+                           an.is_read, an.created_at, an.entity_type, an.entity_id,
+                           l.name AS lead_name
+                      FROM admin_notifications an
+                      LEFT JOIN leads l ON l.id = an.lead_id
+                     WHERE an.created_at > NOW() - INTERVAL '30 days'
+                     ORDER BY an.created_at DESC LIMIT 40`);
+                r.rows.forEach(x => out.push({
+                    id: x.id,
+                    type: 'lifecycle',
+                    icon: x.severity === 'success' ? 'payment'
+                        : x.severity === 'error' || x.severity === 'warning' ? 'request' : 'lead',
+                    // Signed agreements and paid projects are things you act on,
+                    // so send the bell to the section where you'd act.
+                    section: x.entity_type === 'maintenance_plan' ? 'maintenance'
+                           : x.entity_type === 'agreement' ? 'salesAgreements'
+                           : 'invoices',
+                    title: x.title,
+                    detail: [x.lead_name, x.body].filter(Boolean).join(' · '),
+                    severity: x.severity,
+                    unread: x.is_read === false,
+                    time: x.created_at
+                }));
+            } catch (e) {
+                console.warn('[ADMIN] lifecycle notifications unavailable:', e.message);
+            }
+
             out.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+
+            // THE RESPONSE. Its absence meant every poll hung until the browser
+            // timed out and retried, forever.
+            res.json({
+                success: true,
+                notifications: out,
+                unreadCount: out.filter(x => x.unread).length,
+            });
         } catch (e) {
             console.error('[ADMIN] notifications error:', e.message);
             res.json({ success: true, notifications: [] });
@@ -1184,9 +1345,52 @@ module.exports = function initPortal({
 
             console.log('[DASHBOARD] Loading dashboard for client:', clientId);
 
-            // Get invoices
+            // Get invoices.
+            //
+            // `payable` is computed here rather than in the UI so there is ONE
+            // definition of it. An invoice is payable only when the document
+            // behind it is signed:
+            //   * tied to an agreement  -> that agreement must be signed
+            //   * tied to a maintenance plan -> that plan must be signed
+            //   * tied to neither (an ad-hoc invoice) -> payable, nothing to sign
+            //
+            // Unpayable invoices are still returned so the customer can see
+            // what's coming, but flagged so the UI shows "Awaiting signature"
+            // instead of a Pay button, and excluded from the due-now count.
             const invoicesResult = await pool.query(
-                'SELECT * FROM invoices WHERE lead_id = $1 ORDER BY created_at DESC',
+                `SELECT i.*,
+                        CASE
+                          WHEN i.status IN ('paid','void','cancelled','refunded','draft') THEN FALSE
+                          WHEN i.agreement_id IS NOT NULL AND NOT EXISTS (
+                                SELECT 1 FROM sales_agreements sa
+                                 WHERE sa.id = i.agreement_id
+                                   AND (sa.signed_at IS NOT NULL OR sa.status = 'signed')
+                          ) THEN FALSE
+                          WHEN i.maintenance_plan_id IS NOT NULL AND NOT EXISTS (
+                                SELECT 1 FROM maintenance_plans mp
+                                 WHERE mp.id = i.maintenance_plan_id
+                                   AND mp.signed_at IS NOT NULL
+                          ) THEN FALSE
+                          WHEN COALESCE(i.obligation,'due_now') <> 'due_now' THEN FALSE
+                          ELSE TRUE
+                        END AS payable,
+                        CASE
+                          WHEN i.agreement_id IS NOT NULL AND NOT EXISTS (
+                                SELECT 1 FROM sales_agreements sa
+                                 WHERE sa.id = i.agreement_id
+                                   AND (sa.signed_at IS NOT NULL OR sa.status = 'signed')
+                          ) THEN 'awaiting_signature'
+                          WHEN i.maintenance_plan_id IS NOT NULL AND NOT EXISTS (
+                                SELECT 1 FROM maintenance_plans mp
+                                 WHERE mp.id = i.maintenance_plan_id
+                                   AND mp.signed_at IS NOT NULL
+                          ) THEN 'awaiting_signature'
+                          WHEN COALESCE(i.obligation,'due_now') = 'on_completion' THEN 'due_on_completion'
+                          ELSE NULL
+                        END AS hold_reason
+                   FROM invoices i
+                  WHERE i.lead_id = $1
+                  ORDER BY i.created_at DESC`,
                 [clientId]
             );
 

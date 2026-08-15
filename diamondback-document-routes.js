@@ -1,0 +1,506 @@
+// ============================================================================
+// diamondback-document-routes.js — Diamondback Coding
+//
+// Serves everything built by diamondback-documents.js, and owns the
+// outstanding-balance rule the home screen uses.
+//
+// ROUTES
+//   GET  /api/portal/sales-agreements/:id/document   full agreement, as HTML
+//   GET  /api/portal/sales-agreements/:id/pdf        agreement PDF        (override)
+//   GET  /api/admin/sales-agreements/:id/document    same, staff-side
+//   GET  /api/admin/sales-agreements/:id/pdf         same, staff-side
+//   GET  /api/portal/payments/:id/receipt            receipt PDF
+//   GET  /api/portal/invoices/:id/receipt            receipt for a paid invoice
+//   GET  /api/admin/payments/:id/receipt             receipt PDF, staff-side
+//   GET  /api/portal/outstanding                     the home-screen figure
+//
+// MOUNT ORDER MATTERS. Express serves the FIRST matching route, so this module
+// must be initialised BEFORE diamondback-portal.js for the /pdf override to
+// take effect. See the note in server.js at the mount site.
+// ============================================================================
+
+const docs = require('./diamondback-documents.js');
+
+const {
+    COMPANY, buildAgreementDocument, renderAgreementHTML, renderAgreementText,
+    hashAgreement, agreementPDF, receiptPDF, money, prettyDate,
+} = docs;
+
+module.exports = function initDocumentRoutes({
+    app,
+    pool,
+    authenticateToken,      // admin/staff
+    authenticatePortal,     // customer portal
+    resolveLeadId,
+    CANCELLATION_NOTICE_DAYS = Number(process.env.CANCELLATION_NOTICE_DAYS || 30),
+}) {
+
+    // ------------------------------------------------------------------
+    // Schema tolerance
+    // ------------------------------------------------------------------
+    // This database has repeatedly turned out to be missing columns that a
+    // migration was supposed to add (see 010 for the signed_at saga). Rather
+    // than 500 when a column is absent, every query here is written against
+    // columns that are checked first.
+    let _cols = null;
+    async function columnsOf(table) {
+        if (!_cols) _cols = {};
+        if (_cols[table]) return _cols[table];
+        try {
+            const r = await pool.query(
+                'SELECT column_name FROM information_schema.columns WHERE table_name = $1', [table]);
+            _cols[table] = new Set(r.rows.map((x) => x.column_name));
+        } catch {
+            _cols[table] = new Set();
+        }
+        return _cols[table];
+    }
+
+    async function safeRows(sql, params, label) {
+        try {
+            return (await pool.query(sql, params)).rows;
+        } catch (e) {
+            // A missing optional table is normal on an older database; say so
+            // quietly and carry on with an empty list rather than failing the
+            // whole document.
+            console.warn(`[DOCUMENTS] ${label} unavailable:`, e.message);
+            return [];
+        }
+    }
+
+    /**
+     * Load everything a document needs, in one place, so the HTML view, the PDF
+     * and the signature snapshot are all built from identical inputs.
+     */
+    async function loadAgreementContext(agreementId) {
+        const ag = (await pool.query('SELECT * FROM sales_agreements WHERE id = $1', [agreementId])).rows[0];
+        if (!ag) return null;
+
+        const items = await safeRows(
+            'SELECT * FROM agreement_items WHERE agreement_id = $1 ORDER BY sort_order, id',
+            [agreementId], 'agreement_items');
+
+        const milestones = await safeRows(
+            'SELECT * FROM agreement_milestones WHERE agreement_id = $1 ORDER BY sort_order, id',
+            [agreementId], 'agreement_milestones');
+
+        const plan = (await safeRows(
+            'SELECT * FROM maintenance_plans WHERE agreement_id = $1 ORDER BY id DESC LIMIT 1',
+            [agreementId], 'maintenance_plans'))[0] || null;
+
+        // agreement_signatures is the authority on whether this is signed —
+        // sales_agreements.status has been wrong often enough that it can't be
+        // trusted alone.
+        const sig = (await safeRows(
+            'SELECT * FROM agreement_signatures WHERE agreement_id = $1 ORDER BY id DESC LIMIT 1',
+            [agreementId], 'agreement_signatures'))[0] || null;
+
+        if (sig) {
+            ag.signed_at = ag.signed_at || sig.signed_at;
+            ag.signature_name = ag.signature_name || sig.signer_name;
+            if (ag.status !== 'signed') ag.status = 'signed';
+        }
+
+        return { agreement: ag, items, milestones, plan, signature: sig,
+                 noticeDays: CANCELLATION_NOTICE_DAYS };
+    }
+
+    function buildFrom(ctx) {
+        return buildAgreementDocument({
+            agreement: ctx.agreement,
+            items: ctx.items,
+            milestones: ctx.milestones,
+            plan: ctx.plan,
+            noticeDays: ctx.noticeDays,
+        });
+    }
+
+    async function assertOwned(req, agreement) {
+        const leadId = await resolveLeadId(req.user.id, req.user.email);
+        return agreement && String(agreement.lead_id) === String(leadId);
+    }
+
+    // ======================================================================
+    // 1. THE FULL AGREEMENT, FOR THE SIGNING SCREEN
+    // ======================================================================
+    /**
+     * Returns the ENTIRE document as ready-to-insert HTML, plus the metadata
+     * the signing UI needs (autopay consent text, document hash, whether it is
+     * already signed).
+     *
+     * The hash is returned so the front end can send it back with the
+     * signature: that proves the customer signed THIS text and not a version
+     * edited between the page loading and the button being pressed.
+     */
+    app.get('/api/portal/sales-agreements/:id/document', authenticatePortal, async (req, res) => {
+        try {
+            const ctx = await loadAgreementContext(req.params.id);
+            if (!ctx || !(await assertOwned(req, ctx.agreement))) {
+                return res.status(404).json({ success: false, message: 'Agreement not found.' });
+            }
+            const document = buildFrom(ctx);
+            res.json({
+                success: true,
+                html: renderAgreementHTML(document),
+                meta: document.meta,
+                autopay: document.meta.autopay,
+                autopayConsentText: document.autopayConsentText,
+                documentHash: hashAgreement(document),
+                pdfUrl: `/api/portal/sales-agreements/${ctx.agreement.id}/pdf`,
+            });
+        } catch (e) {
+            console.error('[DOCUMENT VIEW]', e.message);
+            res.status(500).json({ success: false, message: 'Could not load the agreement.' });
+        }
+    });
+
+    // Staff-side equivalent, so you can read exactly what the customer sees.
+    app.get('/api/admin/sales-agreements/:id/document', authenticateToken, async (req, res) => {
+        try {
+            const ctx = await loadAgreementContext(req.params.id);
+            if (!ctx) return res.status(404).json({ success: false, message: 'Agreement not found.' });
+            const document = buildFrom(ctx);
+            res.json({
+                success: true,
+                html: renderAgreementHTML(document),
+                text: renderAgreementText(document),
+                meta: document.meta,
+                documentHash: hashAgreement(document),
+                // The stored snapshot from signing, when there is one. If the
+                // hashes differ, the agreement was edited after signing — which
+                // is exactly the thing you'd want to know about.
+                signedHash: ctx.signature ? ctx.signature.document_hash : null,
+                snapshotMatches: ctx.signature && ctx.signature.document_hash
+                    ? ctx.signature.document_hash === hashAgreement(document)
+                    : null,
+                pdfUrl: `/api/admin/sales-agreements/${ctx.agreement.id}/pdf`,
+            });
+        } catch (e) {
+            console.error('[ADMIN DOCUMENT VIEW]', e.message);
+            res.status(500).json({ success: false, message: 'Could not load the agreement.' });
+        }
+    });
+
+    // ======================================================================
+    // 2. AGREEMENT PDF
+    // ======================================================================
+    // Overrides the older generator in diamondback-portal.js, which produced a
+    // one-page summary with no legal terms on it at all — a document you could
+    // not have enforced.
+    async function sendAgreementPDF(res, ctx, disposition = 'attachment') {
+        const document = buildFrom(ctx);
+        const pdf = await agreementPDF(document);
+        const name = `Agreement-${(ctx.agreement.agreement_number || ctx.agreement.id)}.pdf`
+            .replace(/[^\w.\-]/g, '_');
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Length', pdf.length);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${name}"`);
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.send(pdf);
+    }
+
+    app.get('/api/portal/sales-agreements/:id/pdf', authenticatePortal, async (req, res) => {
+        try {
+            const ctx = await loadAgreementContext(req.params.id);
+            if (!ctx || !(await assertOwned(req, ctx.agreement))) {
+                return res.status(404).json({ success: false, message: 'Agreement not found.' });
+            }
+            // ?inline=1 opens in the browser's viewer instead of downloading —
+            // what the "View" control uses, versus "Download".
+            await sendAgreementPDF(res, ctx, req.query.inline ? 'inline' : 'attachment');
+        } catch (e) {
+            console.error('[AGREEMENT PDF]', e.message);
+            res.status(500).json({ success: false, message: 'Could not generate the agreement PDF.' });
+        }
+    });
+
+    app.get('/api/admin/sales-agreements/:id/pdf', authenticateToken, async (req, res) => {
+        try {
+            const ctx = await loadAgreementContext(req.params.id);
+            if (!ctx) return res.status(404).json({ success: false, message: 'Agreement not found.' });
+            await sendAgreementPDF(res, ctx, req.query.inline ? 'inline' : 'attachment');
+        } catch (e) {
+            console.error('[ADMIN AGREEMENT PDF]', e.message);
+            res.status(500).json({ success: false, message: 'Could not generate the agreement PDF.' });
+        }
+    });
+
+    // ======================================================================
+    // 3. RECEIPTS
+    // ======================================================================
+    /** Everything a receipt needs, from a payments row outward. */
+    async function loadReceiptContext(paymentId) {
+        const p = (await pool.query('SELECT * FROM payments WHERE id = $1', [paymentId])).rows[0];
+        if (!p) return null;
+
+        const lead = p.lead_id
+            ? (await safeRows('SELECT * FROM leads WHERE id = $1', [p.lead_id], 'leads'))[0] || {}
+            : {};
+        const invoice = p.invoice_id
+            ? (await safeRows('SELECT * FROM invoices WHERE id = $1', [p.invoice_id], 'invoices'))[0] || null
+            : null;
+        const plan = p.maintenance_plan_id
+            ? (await safeRows('SELECT * FROM maintenance_plans WHERE id = $1',
+                              [p.maintenance_plan_id], 'maintenance_plans'))[0] || null
+            : null;
+        const refunds = await safeRows(
+            'SELECT * FROM refunds WHERE payment_id = $1 ORDER BY created_at', [paymentId], 'refunds');
+
+        return { payment: p, lead, invoice, plan, refunds };
+    }
+
+    async function sendReceipt(res, ctx, disposition = 'attachment') {
+        const pdf = await receiptPDF(ctx);
+        const no = ctx.payment.receipt_number || `RCPT-${String(ctx.payment.id).padStart(6, '0')}`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Length', pdf.length);
+        res.setHeader('Content-Disposition',
+            `${disposition}; filename="Receipt-${no.replace(/[^\w.\-]/g, '_')}.pdf"`);
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.send(pdf);
+    }
+
+    app.get('/api/portal/payments/:id/receipt', authenticatePortal, async (req, res) => {
+        try {
+            const ctx = await loadReceiptContext(req.params.id);
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            if (!ctx || String(ctx.payment.lead_id) !== String(leadId)) {
+                return res.status(404).json({ success: false, message: 'Receipt not found.' });
+            }
+            // A failed charge has no receipt to give. Saying so plainly beats
+            // handing over a PDF that says a payment was received when it wasn't.
+            if (ctx.payment.status === 'failed') {
+                return res.status(409).json({
+                    success: false,
+                    message: 'That payment did not go through, so there is no receipt for it.',
+                });
+            }
+            await sendReceipt(res, ctx, req.query.inline ? 'inline' : 'attachment');
+        } catch (e) {
+            console.error('[RECEIPT PDF]', e.message);
+            res.status(500).json({ success: false, message: 'Could not generate the receipt.' });
+        }
+    });
+
+    /**
+     * Receipt by INVOICE, because that's how a customer thinks about it — they
+     * remember the invoice they paid, not the internal payment id.
+     */
+    app.get('/api/portal/invoices/:id/receipt', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const pay = (await pool.query(
+                `SELECT id FROM payments
+                  WHERE invoice_id = $1 AND lead_id = $2 AND status <> 'failed'
+                  ORDER BY paid_at DESC LIMIT 1`,
+                [req.params.id, leadId])).rows[0];
+            if (!pay) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No payment has been recorded against that invoice yet.',
+                });
+            }
+            const ctx = await loadReceiptContext(pay.id);
+            await sendReceipt(res, ctx, req.query.inline ? 'inline' : 'attachment');
+        } catch (e) {
+            console.error('[INVOICE RECEIPT PDF]', e.message);
+            res.status(500).json({ success: false, message: 'Could not generate the receipt.' });
+        }
+    });
+
+    app.get('/api/admin/payments/:id/receipt', authenticateToken, async (req, res) => {
+        try {
+            const ctx = await loadReceiptContext(req.params.id);
+            if (!ctx) return res.status(404).json({ success: false, message: 'Receipt not found.' });
+            await sendReceipt(res, ctx, req.query.inline ? 'inline' : 'attachment');
+        } catch (e) {
+            console.error('[ADMIN RECEIPT PDF]', e.message);
+            res.status(500).json({ success: false, message: 'Could not generate the receipt.' });
+        }
+    });
+
+    // ======================================================================
+    // 4. OUTSTANDING — what the home screen shows
+    // ======================================================================
+    /**
+     * THE RULE, stated once so nothing has to re-derive it:
+     *
+     *   MONTHLY recurring plans are OUTSTANDING as soon as their current period
+     *   opens, whether or not the charge date has passed. A monthly plan is a
+     *   commitment for the month you are in; showing it only once it is late is
+     *   how a customer gets surprised by a charge.
+     *
+     *   ANNUAL plans are NOT outstanding. They sit in Billing as "upcoming" and
+     *   are charged on their renewal date. Twelve months of a domain renewal
+     *   parked on the home screen is noise, not information.
+     *
+     *   INVOICES follow the existing rule from migration 007: due_now counts,
+     *   on_completion does not, and nothing counts against an unsigned document.
+     *
+     * Both figures are returned. The home screen shows `dueNow`; the billing
+     * screen shows `dueNow` plus `upcomingAnnual`.
+     */
+    async function outstandingFor(leadId) {
+        const planCols = await columnsOf('maintenance_plans');
+        const invCols  = await columnsOf('invoices');
+
+        const hasPeriod = planCols.has('current_period_start') && planCols.has('current_period_paid_at');
+        const hasInterval = planCols.has('interval_unit');
+        const hasSignedAt = planCols.has('signed_at');
+
+        // ---- recurring plans ----------------------------------------------
+        // Nothing is outstanding against an unsigned plan. That rule is already
+        // enforced elsewhere for invoices; it applies here too.
+        const signedClause = hasSignedAt ? 'mp.signed_at IS NOT NULL' : 'TRUE';
+        const intervalCol  = hasInterval ? "COALESCE(mp.interval_unit,'month')" : "'month'";
+        const periodClause = hasPeriod
+            ? 'mp.current_period_paid_at IS NULL'
+            // Fallback for a database where 011 hasn't run: treat the period as
+            // unpaid if no successful payment landed on/after the charge date.
+            : `NOT EXISTS (SELECT 1 FROM payments pay
+                            WHERE pay.maintenance_plan_id = mp.id
+                              AND pay.status = 'succeeded'
+                              AND pay.paid_at::date >= COALESCE(mp.next_charge_date, CURRENT_DATE))`;
+        const periodStart = hasPeriod
+            ? 'COALESCE(mp.current_period_start, mp.billing_start_date, mp.next_charge_date)'
+            : 'COALESCE(mp.billing_start_date, mp.next_charge_date)';
+
+        const plans = await safeRows(
+            `SELECT mp.id, mp.label, mp.plan_type, mp.amount, mp.status,
+                    mp.next_charge_date, ${intervalCol} AS interval_unit,
+                    ${periodStart} AS period_start,
+                    (${periodClause}) AS period_unpaid
+               FROM maintenance_plans mp
+              WHERE mp.lead_id = $1
+                AND mp.status IN ('active','past_due','pending_cancellation')
+                AND ${signedClause}
+              ORDER BY mp.next_charge_date NULLS LAST, mp.id`,
+            [leadId], 'maintenance_plans');
+
+        const monthlyDue = [];
+        const annualUpcoming = [];
+
+        plans.forEach((p) => {
+            const amount = Number(p.amount || 0);
+            const entry = {
+                kind: 'plan',
+                planId: p.id,
+                label: p.label,
+                planType: p.plan_type,
+                interval: p.interval_unit,
+                amount,
+                periodStart: p.period_start,
+                dueDate: p.next_charge_date,
+                dueDateLabel: prettyDate(p.next_charge_date),
+                autopay: true,
+                status: p.status,
+            };
+            if (p.interval_unit === 'year') {
+                // Annual: informational only. Never counted in dueNow.
+                annualUpcoming.push({ ...entry, outstanding: false });
+            } else if (p.period_unpaid) {
+                monthlyDue.push({
+                    ...entry,
+                    outstanding: true,
+                    // Distinguishes "this month isn't paid yet" from "this is
+                    // late", so the UI can word it without alarming anyone.
+                    overdue: !!(p.next_charge_date && new Date(p.next_charge_date) < new Date()),
+                });
+            }
+        });
+
+        // ---- invoices -------------------------------------------------------
+        const obligation = invCols.has('obligation') ? "COALESCE(i.obligation,'due_now')" : "'due_now'";
+        const invoices = await safeRows(
+            `SELECT i.id, i.invoice_number, i.total_amount, i.due_date, i.status,
+                    ${obligation} AS obligation
+               FROM invoices i
+              WHERE i.lead_id = $1
+                AND i.status NOT IN ('paid','void','cancelled','refunded','draft')
+                AND ${obligation} = 'due_now'
+                AND (i.agreement_id IS NULL OR EXISTS (
+                      SELECT 1 FROM sales_agreements sa
+                       WHERE sa.id = i.agreement_id
+                         AND (sa.signed_at IS NOT NULL OR sa.status = 'signed')))
+              ORDER BY i.due_date NULLS LAST, i.id`,
+            [leadId], 'invoices');
+
+        const invoiceDue = invoices.map((i) => ({
+            kind: 'invoice',
+            invoiceId: i.id,
+            label: `Invoice ${i.invoice_number}`,
+            number: i.invoice_number,
+            amount: Number(i.total_amount || 0),
+            dueDate: i.due_date,
+            dueDateLabel: prettyDate(i.due_date),
+            outstanding: true,
+            overdue: !!(i.due_date && new Date(i.due_date) < new Date()),
+            autopay: false,
+        }));
+
+        const dueNow = [...monthlyDue, ...invoiceDue];
+        const total = dueNow.reduce((s, x) => s + x.amount, 0);
+
+        return {
+            // What the home screen shows.
+            dueNow,
+            total: Math.round(total * 100) / 100,
+            totalLabel: money(total),
+            count: dueNow.length,
+            overdueCount: dueNow.filter((x) => x.overdue).length,
+            // Billing screen only. Never added into `total`.
+            upcomingAnnual: annualUpcoming,
+            upcomingAnnualTotal: Math.round(
+                annualUpcoming.reduce((s, x) => s + x.amount, 0) * 100) / 100,
+            // Stated in the payload so the UI copy and this rule can't diverge.
+            rule: 'Monthly plans count as outstanding for the current period even before the '
+                + 'charge date. Annual plans are shown under Billing and charged on their renewal date.',
+        };
+    }
+
+    app.get('/api/portal/outstanding', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            res.json({ success: true, outstanding: await outstandingFor(leadId) });
+        } catch (e) {
+            console.error('[OUTSTANDING]', e.message);
+            res.status(500).json({ success: false, message: 'Could not load your balance.' });
+        }
+    });
+
+    // Staff-side: the same figure for any customer, so the admin portal and the
+    // customer portal can never quote different numbers at each other.
+    app.get('/api/admin/customers/:leadId/outstanding', authenticateToken, async (req, res) => {
+        try {
+            res.json({ success: true, outstanding: await outstandingFor(req.params.leadId) });
+        } catch (e) {
+            console.error('[ADMIN OUTSTANDING]', e.message);
+            res.status(500).json({ success: false, message: 'Could not load the balance.' });
+        }
+    });
+
+    // Exposed so the lifecycle module can settle a period after a successful
+    // charge without duplicating the rule.
+    async function markPeriodPaid(planId, paidAt = new Date()) {
+        const cols = await columnsOf('maintenance_plans');
+        if (!cols.has('current_period_paid_at')) return;
+        await pool.query(
+            'UPDATE maintenance_plans SET current_period_paid_at = $2, updated_at = NOW() WHERE id = $1',
+            [planId, paidAt]).catch((e) => console.warn('[DOCUMENTS] markPeriodPaid:', e.message));
+    }
+
+    /** Open the next period after a charge — this is what makes next month show up. */
+    async function openNextPeriod(planId, periodStart) {
+        const cols = await columnsOf('maintenance_plans');
+        if (!cols.has('current_period_start')) return;
+        await pool.query(
+            `UPDATE maintenance_plans
+                SET current_period_start = $2, current_period_paid_at = NULL, updated_at = NOW()
+              WHERE id = $1`,
+            [planId, periodStart]).catch((e) => console.warn('[DOCUMENTS] openNextPeriod:', e.message));
+    }
+
+    console.log(`[DOCUMENTS] Document + receipt routes mounted. Business address: ${COMPANY.addressOneLine}`);
+
+    return { outstandingFor, markPeriodPaid, openNextPeriod, loadAgreementContext, buildFrom };
+};

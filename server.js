@@ -26320,6 +26320,26 @@ async function getBrevoKey() {
     return process.env.BREVO_API_KEY || process.env.PLATFORM_BREVO_KEY || null;
 }
 
+// ---------------------------------------------------------------------------
+// Documents — agreements, receipts, and the outstanding-balance rule.
+//
+// MOUNTED BEFORE diamondback-portal.js ON PURPOSE. Express serves the FIRST
+// route that matches, and both modules register
+// GET /api/portal/sales-agreements/:id/pdf. The portal's version produces a
+// one-page summary with no legal terms on it; this one produces the full
+// signed document. Mounting this first is what makes the good one win.
+//
+// authenticatePortalForLifecycle is declared further down this file (function
+// declarations hoist, so calling it here is safe).
+// ---------------------------------------------------------------------------
+const initDocumentRoutes = require('./diamondback-document-routes.js');
+const documentRoutes = initDocumentRoutes({
+    app, pool,
+    authenticateToken,
+    authenticatePortal: authenticatePortalForLifecycle,
+    resolveLeadId,
+});
+
 const initPortal = require('./diamondback-portal.js');
 initPortal({
     app, pool, stripe, transporter,

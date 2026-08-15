@@ -21,17 +21,26 @@
   --surface-2:#f7f8f9;
   --ink:#0d0f12;
   --ink-2:#3f4650;
-  --muted:#7c848f;
-  --faint:#aab0b8;
+  /* Contrast-checked against --surface (#ffffff):
+       --muted 5.99:1, --faint 4.90:1. The previous values (#7c848f 3.79:1,
+       #aab0b8 2.18:1) were both under the 4.5:1 floor for body text, which
+       is why secondary lines and the balance cents read as washed out. */
+  --muted:#5c646f;
+  --faint:#6b727c;
   --line:#e6e8ec;
   --line-2:#eef0f3;
   --green:#16a34a;
+  /* Text-only variant. #16a34a on --green-soft is 2.96:1; this is 4.50:1.
+     --green itself is kept for borders, chips and accent-color, which are
+     not text and are not held to the same floor. */
+  --green-ink:#15803d;
   --green-soft:#e8f6ed;
   --amber:#b45309;
   --amber-soft:#fdf3e3;
   --red:#dc2626;
   --red-soft:#fdeceb;
   --blue:#2563eb;
+  --blue-ink:#1d4ed8;
   --blue-soft:#eaf0fe;
   --r-sm:10px; --r:14px; --r-lg:20px; --r-xl:26px;
   --shadow:0 1px 2px rgba(16,20,26,.04), 0 8px 24px rgba(16,20,26,.06);
@@ -156,14 +165,14 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
 .row-end{text-align:right;flex-shrink:0}
 .row-end b{display:block;font-size:14.5px;font-weight:800;letter-spacing:-.02em}
 .row-end span{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
-.pos{color:var(--green)} .neg{color:var(--red)}
+.pos{color:var(--green-ink)} .neg{color:var(--red)}
 
 .tag{display:inline-block;padding:4px 9px;border-radius:7px;font-size:10.5px;font-weight:800;
   letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
-.tag.green{background:var(--green-soft);color:var(--green)}
+.tag.green{background:var(--green-soft);color:var(--green-ink)}
 .tag.red{background:var(--red-soft);color:var(--red)}
 .tag.amber{background:var(--amber-soft);color:var(--amber)}
-.tag.blue{background:var(--blue-soft);color:var(--blue)}
+.tag.blue{background:var(--blue-soft);color:var(--blue-ink)}
 .tag.grey{background:var(--surface-2);color:var(--muted)}
 
 .bar{height:8px;border-radius:5px;background:var(--line-2);overflow:hidden;margin:11px 0 7px}
@@ -255,6 +264,29 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
 .sign-pad svg{max-width:100%;height:auto}
 .terms{background:var(--surface-2);border-radius:var(--r);padding:15px;max-height:180px;overflow-y:auto;
   font-size:13.5px;line-height:1.62;color:var(--ink-2);white-space:pre-wrap}
+
+/* ------------------------------------------------------- AGREEMENT READER */
+/* The agreement is shown IN FULL. There is deliberately no max-height and no
+   collapse anywhere in here: the previous .terms box capped the document at
+   180px and showed only the admin-typed paragraph, so the customer was signing
+   a window onto a fragment. The sheet itself scrolls; the document does not
+   scroll inside it. */
+.doc-scroll{margin:0 -22px;padding:0 22px;overflow:visible}
+.doc-scroll .dbdoc{max-width:none}
+.doc-scroll section,.doc-scroll p,.doc-scroll li{max-height:none!important;overflow:visible!important}
+.doc-end{height:1px}
+/* The scroll gate. Replaced by the sign controls once the document has been
+   read to the end — which is also what gets stored as viewed_in_full. */
+.doc-gate{display:flex;align-items:center;gap:12px;margin-top:18px;padding:14px;
+  background:var(--surface-2);border-radius:var(--r)}
+.doc-gate p{flex:1;font-size:13px;color:var(--ink-2);line-height:1.5;margin:0}
+.doc-loading{padding:40px 0;text-align:center;color:var(--muted);font-size:14px}
+/* Autopay consent sits in a bordered block so it reads as its own act, not as
+   fine print attached to the terms checkbox. */
+.autopay-consent{border:1.5px solid var(--ink);border-radius:var(--r);padding:14px;margin:16px 0 0}
+.autopay-consent .lbl{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink);margin-bottom:9px}
+.autopay-consent .consent{margin:0}
 .consent{display:flex;gap:11px;align-items:flex-start;margin:16px 0;font-size:13.5px;line-height:1.5;cursor:pointer}
 .consent input{margin-top:2px;width:19px;height:19px;accent-color:var(--green);flex-shrink:0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab-h) + 18px + env(safe-area-inset-bottom));
@@ -696,26 +728,62 @@ async function vHome(){
 
   const invoices = DASH.invoices || [];
   const open = invoices.filter(isOpen);
-  // Only money owed NOW counts toward the balance. A project balance sits at
-  // 'on_completion' until the work is finished, so showing it here would tell
-  // the customer they owe thousands for something not yet delivered.
-  const dueNow = open.filter(isDueNow);
-  const owed = dueNow.reduce((t,i) => t + Number(i.total_amount || 0), 0);
   const laterTotal = open.filter(i => !isDueNow(i)).reduce((t,i) => t + Number(i.total_amount || 0), 0);
   const agreements = (DASH.salesAgreements || []).filter(a => (a.status||'') !== 'cancelled');
   const toSign = agreements.filter(a => !isSigned(a) && ['sent','draft'].includes(a.status || ''));
+
+  /* THE BALANCE COMES FROM THE SERVER, not from the invoice list.
+     Computing it here from invoices alone missed every monthly plan: an autopay
+     plan generates no invoice, so an unpaid month showed as nothing owed.
+     /api/portal/outstanding applies one rule, shared with the admin portal, so
+     the two can never quote different numbers at each other:
+       * a MONTHLY plan is outstanding for its current period as soon as that
+         period opens, whether or not the charge date has passed;
+       * an ANNUAL plan is not — it lives under Billing and bills on its
+         renewal date;
+       * invoices follow the existing due_now / on_completion rule.
+     If the endpoint is unavailable, fall back to the old invoice-only figure
+     rather than showing the customer a blank balance. */
+  let OUT = null;
+  try{ OUT = (await api('/api/portal/outstanding')).outstanding; }catch(_){}
+
+  const dueNow = open.filter(isDueNow);
+  const owed = OUT ? Number(OUT.total || 0)
+                   : dueNow.reduce((t,i) => t + Number(i.total_amount || 0), 0);
+  const dueCount = OUT ? Number(OUT.count || 0) : dueNow.length;
+  const planDue = OUT ? (OUT.dueNow || []).filter(x => x.kind === 'plan') : [];
   const parts = money(owed).split('.');
 
   M().innerHTML =
     '<div class="balance">' +
       '<small>Outstanding balance</small>' +
       '<div class="amt">' + parts[0] + '<span class="cents">.' + parts[1] + '</span></div>' +
-      '<div class="note">' + (dueNow.length
-        ? dueNow.length + ' payment' + (dueNow.length === 1 ? '' : 's') + ' due now'
+      '<div class="note">' + (dueCount
+        ? dueCount + ' payment' + (dueCount === 1 ? '' : 's') + ' due now'
         : 'You&rsquo;re all paid up &mdash; nothing due right now.') +
         (laterTotal > 0 ? ' &middot; ' + money(laterTotal) + ' due on completion' : '') + '</div>' +
-      (dueNow.length ? '<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="go(\'billing\')">Pay now</button>' : '') +
+      (dueCount ? '<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="go(\'billing\')">Pay now</button>' : '') +
     '</div>' +
+
+    /* Monthly plans owed for the current period. Shown separately from
+       invoices because there is no invoice to pay — they are charged
+       automatically — so the customer needs to see what the money is for
+       without being handed a Pay button that does nothing. */
+    (planDue.length ?
+      '<div class="card">' +
+        '<div class="card-h"><h3>This month&rsquo;s plans</h3>' +
+          '<span class="tag ' + (planDue.some(p => p.overdue) ? 'amber' : 'grey') + '">' +
+          money(planDue.reduce((t,p) => t + Number(p.amount || 0), 0)) + '</span></div>' +
+        planDue.map(p =>
+          '<div class="row">' +
+            '<div class="chip green"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></div>' +
+            '<div class="row-body"><b>' + esc(p.label || 'Plan') + '</b>' +
+              '<span>' + (p.overdue ? 'Payment overdue' : 'Charges automatically') +
+                (p.dueDateLabel ? ' &middot; ' + esc(p.dueDateLabel) : '') + '</span></div>' +
+            '<div class="row-end"><b>' + money(p.amount) + '</b>' +
+              '<span>' + (p.overdue ? 'Past due' : 'Autopay') + '</span></div>' +
+          '</div>').join('') +
+      '</div>' : '') +
 
     (toSign.length ?
       '<div class="card" style="border:1.5px solid var(--green)">' +
@@ -808,6 +876,12 @@ async function vBilling(){
     NOTICE_DAYS = plans.noticeDays || 30;
   }catch(e){ return fail('Billing', e.message, 'vBilling'); }
 
+  /* Annual renewals, from the same endpoint the home screen uses — so what is
+     excluded from the balance there is exactly what is listed here. */
+  let ANNUAL = [];
+  try{ ANNUAL = ((await api('/api/portal/outstanding')).outstanding || {}).upcomingAnnual || []; }
+  catch(_){}
+
   const invoices = DASH.invoices || [];
   const open = invoices.filter(isOpen);
   const dueNow = open.filter(isDueNow);
@@ -821,6 +895,25 @@ async function vBilling(){
                        : '<span class="tag green">Nothing due</span>') + '</div>' +
       (invoices.length ? invoices.map(invRow).join('') : '<p class="empty" style="padding:18px 0">No invoices yet.</p>') +
     '</div>' +
+
+    /* Annual renewals. Deliberately NOT on the home screen and never counted
+       in the outstanding balance: a domain renewal eleven months out is not
+       money owed today, and parking it on the home screen is noise. It is
+       charged automatically on its renewal date. */
+    (ANNUAL.length ?
+      '<div class="card">' +
+        '<div class="card-h"><h3>Upcoming annual renewals</h3>' +
+          '<span class="tag grey">' + money(ANNUAL.reduce((t,p) => t + Number(p.amount || 0), 0)) + '</span></div>' +
+        ANNUAL.map(p =>
+          '<div class="row">' +
+            '<div class="chip blue"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.5"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg></div>' +
+            '<div class="row-body"><b>' + esc(p.label || 'Annual plan') + '</b>' +
+              '<span>Renews ' + esc(p.dueDateLabel || 'annually') + ' &middot; charged automatically</span></div>' +
+            '<div class="row-end"><b>' + money(p.amount) + '</b><span>Not due yet</span></div>' +
+          '</div>').join('') +
+        '<p style="font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.55">' +
+          'Annual renewals are charged on their renewal date and are not counted in your outstanding balance.</p>' +
+      '</div>' : '') +
 
     '<div class="card">' +
       '<div class="card-h"><h3>Plans</h3></div>' +
@@ -859,7 +952,11 @@ function payRow(p){
       '<span>' + fmtShort(p.paid_at) + ' &middot; ' + method + '</span>' +
       refunds.map(r => '<span class="neg">Refunded ' + money(r.amount) + ' &middot; ' + fmtShort(r.created_at) + '</span>').join('') +
     '</div>' +
-    '<div class="row-end"><b>' + money(p.amount) + '</b><span>' + esc(String(p.receipt_number || '').slice(0,14)) + '</span></div>' +
+    '<div class="row-end" style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' +
+      '<b>' + money(p.amount) + '</b>' +
+      '<span>' + esc(String(p.receipt_number || '').slice(0,14)) + '</span>' +
+      '<button class="btn btn-ghost btn-sm" onclick="downloadReceipt(' + p.id + ',this)">Receipt</button>' +
+    '</div>' +
   '</div>';
 }
 
@@ -1041,13 +1138,15 @@ function agRow(a){
     '</div></div>';
 }
 
-async function downloadAgreement(id, btn){
+/* One authenticated download path for every PDF the portal offers.
+   A bare <a href> cannot carry the bearer token: the request arrives
+   unauthenticated, returns 401, and the browser saves the error JSON with a
+   .pdf extension. That is what "Download Agreement is broken" was. */
+async function downloadDoc(path, fallbackName, okMessage, btn){
   const label = btn ? btn.textContent : 'Download';
   if(btn){ btn.disabled = true; btn.textContent = 'Preparing…'; }
   try{
-    const r = await fetch(API + '/api/portal/sales-agreements/' + id + '/pdf', {
-      headers: {'Authorization':'Bearer ' + TOKEN}
-    });
+    const r = await fetch(API + path, {headers: {'Authorization':'Bearer ' + TOKEN}});
     if(!r.ok){
       let msg = 'Could not prepare that PDF (' + r.status + ')';
       try{ const d = await r.json(); if(d && d.message) msg = d.message; }catch(_){}
@@ -1055,14 +1154,40 @@ async function downloadAgreement(id, btn){
     }
     const blob = await r.blob();
     if(!blob.size) throw new Error('The PDF came back empty. Please contact us.');
+    /* Prefer the filename the server set, so a receipt keeps its receipt
+       number rather than an internal row id. */
+    let name = fallbackName;
+    const cd = r.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^";]+)"?/);
+    if(m) name = m[1];
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'Agreement-' + id + '.pdf';
+    a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
+    /* Revoked late: Safari cancels the download if the URL dies too soon. */
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    toast('Agreement downloaded.');
+    toast(okMessage);
   }catch(e){ toast(e.message, true); }
   finally{ if(btn){ btn.disabled = false; btn.textContent = label; } }
+}
+
+function downloadAgreement(id, btn){
+  return downloadDoc('/api/portal/sales-agreements/' + id + '/pdf',
+                     'Agreement-' + id + '.pdf', 'Agreement downloaded.', btn);
+}
+
+/* Receipts, by payment. Every cleared payment has one. */
+function downloadReceipt(paymentId, btn){
+  return downloadDoc('/api/portal/payments/' + paymentId + '/receipt',
+                     'Receipt-' + paymentId + '.pdf', 'Receipt downloaded.', btn);
+}
+
+/* Receipts by invoice, for a customer who remembers the invoice rather than
+   the payment. Returns 404 if nothing has been paid against it yet, which the
+   toast surfaces as-is rather than producing a receipt for an unpaid bill. */
+function downloadReceiptForInvoice(invoiceId, btn){
+  return downloadDoc('/api/portal/invoices/' + invoiceId + '/receipt',
+                     'Receipt-invoice-' + invoiceId + '.pdf', 'Receipt downloaded.', btn);
 }
 
 /* ============================================================================
@@ -1240,65 +1365,167 @@ function signatureSVG(name){
 }
 
 async function openSign(agreementId){
-  let a = ((DASH && DASH.salesAgreements) || []).find(x => x.id === agreementId);
-  if(!a){
-    try{ await loadDash(); a = (DASH.salesAgreements || []).find(x => x.id === agreementId); }catch(_){}
+  /* THE ENTIRE AGREEMENT IS RENDERED HERE.
+     Previously this sheet showed sales_agreements.terms — one paragraph an
+     admin typed — inside a 180px scroll box, and called that the agreement.
+     Everything actually binding (payment, autopay, liability, IP, termination,
+     governing law) was never on screen at all.
+     Now the server renders the whole document from diamondback-documents.js,
+     the same module that produces the PDF and the signature snapshot, so what
+     is signed, what is downloaded and what is stored as proof are necessarily
+     the same text. */
+  sheet('<h2 class="sheet-h">Agreement</h2>' +
+        '<p class="sheet-sub">Loading the full document&hellip;</p>' +
+        '<div class="doc-loading">One moment.</div>');
+
+  let doc;
+  try{
+    doc = await api('/api/portal/sales-agreements/' + agreementId + '/document');
+  }catch(e){
+    return sheet('<h2 class="sheet-h">Agreement</h2>' +
+      '<div class="alert alert-err">' + esc(e.message) + '</div>' +
+      '<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeSheet()">Close</button></div>');
   }
-  if(!a) return toast('Could not load that agreement. Please refresh.', true);
-  const isPlan = a.agreement_kind === 'maintenance';
 
-  sheet('<h2 class="sheet-h">' + esc(a.package_name || 'Agreement') + '</h2>' +
-    '<p class="sheet-sub">' + esc(a.agreement_number || '') + ' &middot; ' + money(a.price) +
-      (a.est_completion_date && !isPlan ? ' &middot; est. completion ' + fmtDate(a.est_completion_date) : '') + '</p>' +
-    (a.intro ? '<p style="font-size:14px;color:var(--ink-2);margin-bottom:14px;line-height:1.6">' + esc(a.intro) + '</p>' : '') +
-    '<label style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:7px">Terms</label>' +
-    '<div class="terms">' + esc(a.terms || 'No additional terms were attached to this agreement.') + '</div>' +
-    '<div class="field" style="margin-top:18px"><label for="sgName">Type your full legal name to sign</label>' +
-      '<input class="input" id="sgName" placeholder="Your full name" autocomplete="name"></div>' +
-    '<div class="sign-pad" id="sgPad"><span style="color:var(--faint);font-size:13px">Your signature appears as you type</span></div>' +
-    '<label class="consent"><input type="checkbox" id="sgAgree">' +
-      '<span>I have read and agree to these terms, and I consent to signing electronically. I understand this is legally binding.</span></label>' +
-    '<div class="alert alert-info">' + (isPlan
-      ? 'On signing, the plan starts once a payment method is on file. Nothing is charged today, and you can cancel any time with ' + NOTICE_DAYS + ' days&rsquo; notice.'
-      : 'On signing we&rsquo;ll set up your project timeline and an invoice due at the estimated completion date. Nothing is charged today.') + '</div>' +
-    '<div id="sgErr" class="alert alert-err hidden"></div>' +
-    '<div class="sheet-actions">' +
-      '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
-      '<button class="btn btn-primary" id="sgGo">Sign agreement</button></div>');
+  const m = doc.meta || {};
+  const autopay = !!doc.autopay;
 
-  const nameEl = document.getElementById('sgName');
-  const pad = document.getElementById('sgPad');
-  nameEl.addEventListener('input', () => {
-    pad.innerHTML = signatureSVG(nameEl.value) ||
-      '<span style="color:var(--faint);font-size:13px">Your signature appears as you type</span>';
-  });
-  nameEl.focus();
+  if(m.signed){
+    return sheet('<h2 class="sheet-h">' + esc(m.title || 'Agreement') + '</h2>' +
+      '<p class="sheet-sub">' + esc(m.number || '') + ' &middot; Signed</p>' +
+      '<div class="alert alert-ok">This agreement is signed. Your copy is in Receipts &amp; Docs.</div>' +
+      '<div class="doc-scroll">' + doc.html + '</div>' +
+      '<div class="sheet-actions">' +
+        '<button class="btn btn-ghost" onclick="closeSheet()">Close</button>' +
+        '<button class="btn btn-primary" onclick="downloadAgreement(' + agreementId + ',this)">Download</button>' +
+      '</div>');
+  }
 
-  document.getElementById('sgGo').onclick = async () => {
-    const err = document.getElementById('sgErr');
-    const name = nameEl.value.trim();
-    if(name.length < 2){ err.textContent = 'Type your full name to sign.'; err.classList.remove('hidden'); return; }
-    if(!document.getElementById('sgAgree').checked){
-      err.textContent = 'Please tick the box to agree to the terms.'; err.classList.remove('hidden'); return;
-    }
-    const btn = document.getElementById('sgGo');
-    btn.disabled = true; btn.textContent = 'Signing…';
-    try{
-      const d = await post('/api/portal/sales-agreements/' + agreementId + '/sign', {typedName:name, agree:true});
-      closeSheet();
-      // Reload state BEFORE re-rendering, so the agreement already reads
-      // "Signed & complete" and has moved into Docs — no refresh needed.
-      await loadDash().catch(() => {});
-      refreshUnread();
-      toast(d.invoice
-        ? 'Signed. Invoice ' + d.invoice.number + ' is in your portal, due ' + fmtDate(d.invoice.dueDate) + '.'
-        : (d.message || 'Signed.'));
-      go(d.kind === 'maintenance' ? 'billing' : 'docs');
-    }catch(e){
-      err.textContent = e.message; err.classList.remove('hidden');
-      btn.disabled = false; btn.textContent = 'Sign agreement';
-    }
+  sheet('<h2 class="sheet-h">' + esc(m.title || 'Agreement') + '</h2>' +
+    '<p class="sheet-sub">' + esc(m.number || '') +
+      (autopay ? ' &middot; ' + esc(m.autopayScheduleSentence || 'Automatic payment') : '') + '</p>' +
+
+    '<div class="doc-scroll" id="sgDoc">' + doc.html + '<div class="doc-end" id="sgEnd"></div></div>' +
+
+    /* The gate. Signing stays locked until the document has been read to the
+       end — fair to the customer, and it is the evidence that the whole thing
+       was displayed. */
+    '<div class="doc-gate" id="sgGate">' +
+      '<p>Read to the end of the agreement to sign it.</p>' +
+      '<button class="btn btn-ghost btn-sm" id="sgJump">Jump to end</button>' +
+    '</div>' +
+
+    '<div id="sgControls" class="hidden">' +
+      (autopay
+        ? '<div class="autopay-consent">' +
+            '<div class="lbl">Automatic payment authorization</div>' +
+            '<label class="consent"><input type="checkbox" id="sgAutopay">' +
+              '<span>' + esc(doc.autopayConsentText || '') + '</span></label>' +
+          '</div>'
+        : '') +
+      '<div class="field" style="margin-top:18px"><label for="sgName">Type your full legal name to sign</label>' +
+        '<input class="input" id="sgName" placeholder="Your full name" autocomplete="name"></div>' +
+      '<div class="sign-pad" id="sgPad"><span style="color:var(--faint);font-size:13px">Your signature appears as you type</span></div>' +
+      '<label class="consent"><input type="checkbox" id="sgAgree">' +
+        '<span>I have read this agreement in full and agree to its terms, and I consent to signing ' +
+        'electronically. I understand this is legally binding.</span></label>' +
+      '<div id="sgErr" class="alert alert-err hidden"></div>' +
+      '<div class="sheet-actions">' +
+        '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
+        '<button class="btn btn-primary" id="sgGo">Sign agreement</button></div>' +
+    '</div>');
+
+  const box = document.querySelector('.sheet-box');
+  const gate = document.getElementById('sgGate');
+  const controls = document.getElementById('sgControls');
+  const endMark = document.getElementById('sgEnd');
+
+  document.getElementById('sgJump').onclick = () => {
+    endMark.scrollIntoView({behavior:'smooth', block:'end'});
   };
+
+  let reachedEnd = false;
+  function checkRead(){
+    if(reachedEnd) return;
+    /* 28px of slack: sub-pixel rounding means scrollTop rarely reaches the
+       exact bottom, and a gate that cannot be satisfied is worse than no gate.
+       A document shorter than the sheet counts as already read. */
+    const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 28;
+    const fits  = box.scrollHeight <= box.clientHeight + 4;
+    if(!atEnd && !fits) return;
+    reachedEnd = true;
+    gate.classList.add('hidden');
+    controls.classList.remove('hidden');
+    wireControls();
+  }
+  box.addEventListener('scroll', checkRead, {passive:true});
+  window.addEventListener('resize', checkRead);
+  setTimeout(checkRead, 60);
+
+  function wireControls(){
+    const nameEl = document.getElementById('sgName');
+    const pad = document.getElementById('sgPad');
+    const cbAgree = document.getElementById('sgAgree');
+    const cbAuto = document.getElementById('sgAutopay');
+    const btn = document.getElementById('sgGo');
+    const err = document.getElementById('sgErr');
+
+    nameEl.addEventListener('input', () => {
+      pad.innerHTML = signatureSVG(nameEl.value) ||
+        '<span style="color:var(--faint);font-size:13px">Your signature appears as you type</span>';
+    });
+    nameEl.focus();
+
+    btn.onclick = async () => {
+      const name = nameEl.value.trim();
+      if(name.length < 2){
+        err.textContent = 'Type your full name to sign.'; err.classList.remove('hidden'); return;
+      }
+      if(!cbAgree.checked){
+        err.textContent = 'Please tick the box to agree to the terms.'; err.classList.remove('hidden'); return;
+      }
+      /* Separate from the terms box on purpose. One tick standing for both the
+         agreement and the recurring-payment authorization is treated by card
+         networks as no authorization at all. */
+      if(autopay && cbAuto && !cbAuto.checked){
+        err.textContent = 'Please authorize automatic payment to continue.';
+        err.classList.remove('hidden'); return;
+      }
+      err.classList.add('hidden');
+      btn.disabled = true; btn.textContent = 'Signing…';
+      try{
+        const d = await post('/api/portal/sales-agreements/' + agreementId + '/sign', {
+          typedName: name,
+          agree: true,
+          autopayConsent: autopay ? true : undefined,
+          viewedInFull: true,
+          /* Proves the signature applies to the text that was on screen, not a
+             version edited while the sheet sat open. */
+          documentHash: doc.documentHash
+        });
+        closeSheet();
+        /* Reload state BEFORE re-rendering, so the agreement already reads
+           "Signed & complete" and has moved into Docs — no refresh needed. */
+        await loadDash().catch(() => {});
+        refreshUnread();
+        toast(d.invoice
+          ? 'Signed. Invoice ' + d.invoice.number + ' is in your portal, due ' + fmtDate(d.invoice.dueDate) + '.'
+          : (d.message || 'Signed.'));
+        go(d.kind === 'maintenance' ? 'billing' : 'docs');
+      }catch(e){
+        /* Already signed is a success from the customer's side. Showing it as a
+           red error is how someone ends up signing twice. */
+        if(/already signed/i.test(e.message || '')){
+          closeSheet();
+          await loadDash().catch(() => {});
+          toast('This agreement is already signed — your copy is in Docs.');
+          return go('docs');
+        }
+        err.textContent = e.message; err.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Sign agreement';
+      }
+    };
+  }
 }
 
 /* ============================================================================

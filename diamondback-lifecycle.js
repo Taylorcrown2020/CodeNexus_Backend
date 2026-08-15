@@ -120,6 +120,14 @@ module.exports = function initLifecycle({
             ? `${pm.brand || 'card'} ending ${pm.last4}`
             : `${pm.bank_name || 'bank account'} ending ${pm.last4}`);
     const dateOnly = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
+    /** 1st / 2nd / 3rd — autopay copy says "the 12th", never "day 12". */
+    const ordinalDay = (n) => {
+        const v = Number(n);
+        if (!v || v < 1 || v > 31) return 'same day';
+        const s = ['th', 'st', 'nd', 'rd'];
+        const m = v % 100;
+        return v + (s[(m - 20) % 10] || s[m] || s[0]);
+    };
 
     // ======================================================================
     // Domain renewal pricing — the ONE place fee + tax are computed.
@@ -330,7 +338,7 @@ module.exports = function initLifecycle({
     <!-- footer -->
     <tr><td style="padding:22px 8px 0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;
                    font-size:12px;line-height:1.7;color:#7c848f;">
-      Diamondback Coding &middot; Dallas&ndash;Fort Worth, TX<br>
+      Diamondback Coding &middot; 3600 N Capital of Texas Hwy, Building B, Suite 350, Austin, TX 78746<br>
       <a href="mailto:contact@diamondbackcoding.com" style="color:#0d0f12;text-decoration:none;font-weight:600;">contact@diamondbackcoding.com</a>
     </td></tr>
 
@@ -756,8 +764,8 @@ module.exports = function initLifecycle({
                 subject: 'Your Diamondback Coding customer portal is ready',
                 bodyHtml: `<p style="margin:0 0 16px">Your customer portal account is set up. You can now see your agreements, invoices, project timeline and messages in one place, and pay online.</p>
                     <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#f7f8f9;border-radius:8px;padding:16px;width:100%">
-                      <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Email</td><td style="padding:10px 16px;color:#fff;font-size:14px">${lead.email}</td></tr>
-                      <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Temporary password</td><td style="padding:10px 16px;color:#16a34a;font-size:15px;font-family:monospace">${password}</td></tr>
+                      <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Email</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${lead.email}</td></tr>
+                      <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Temporary password</td><td style="padding:10px 16px;color:#15803d;font-size:15px;font-family:monospace">${password}</td></tr>
                     </table>
                     <p style="margin:0">Please change this password after your first sign-in.</p>`,
                 smsText: `Diamondback Coding: your customer portal is ready. Sign in at ${PORTAL_URL}`,
@@ -814,7 +822,7 @@ module.exports = function initLifecycle({
                 lead, kind: 'crm_subscription_active',
                 subject: 'Your CodeNexus CRM access is active',
                 bodyHtml: `<p style="margin:0 0 12px">Your CodeNexus CRM subscription is active. You can sign in with the same email and password you already use for your customer portal.</p>
-                           <p style="margin:0 0 12px">Your CRM workspace ID is <strong style="color:#16a34a;font-family:monospace">${portalId}</strong>.</p>
+                           <p style="margin:0 0 12px">Your CRM workspace ID is <strong style="color:#15803d;font-family:monospace">${portalId}</strong>.</p>
                            <p style="margin:0">Your customer portal stays exactly where it is — this is in addition to it, not instead of it.</p>`,
                 smsText: `Diamondback Coding: your CodeNexus CRM access is now active.`,
                 channels: ['email', 'portal'],
@@ -847,9 +855,9 @@ module.exports = function initLifecycle({
             subject: 'Your service agreement is ready to sign',
             bodyHtml: `<p style="margin:0 0 12px">Your service agreement${a.agreement_number ? ` (${a.agreement_number})` : ''} is in your customer portal and ready for signature.</p>
                 <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#f7f8f9;border-radius:8px">
-                  ${a.package_name ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Service</td><td style="padding:10px 16px;color:#fff;font-size:14px">${a.package_name}</td></tr>` : ''}
-                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Total</td><td style="padding:10px 16px;color:#16a34a;font-size:16px;font-weight:700">${money(total)}</td></tr>
-                  ${a.est_completion_date ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Estimated completion</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(a.est_completion_date)}</td></tr>` : ''}
+                  ${a.package_name ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Service</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${a.package_name}</td></tr>` : ''}
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Total</td><td style="padding:10px 16px;color:#15803d;font-size:16px;font-weight:700">${money(total)}</td></tr>
+                  ${a.est_completion_date ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Estimated completion</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${prettyDate(a.est_completion_date)}</td></tr>` : ''}
                 </table>
                 <p style="margin:0">Sign in to review the full terms and sign.</p>`,
             smsText: `Diamondback Coding: your service agreement is ready to sign in your portal. You also have a new message there.`,
@@ -877,7 +885,8 @@ module.exports = function initLifecycle({
      * the notifications for each — all once-guarded together so a
      * double-click cannot produce two invoices.
      */
-    async function onAgreementSigned({ agreementId, signerName, ip, userAgent }) {
+    async function onAgreementSigned({ agreementId, signerName, ip, userAgent,
+                                      viewedInFull = false }) {
         const a = (await pool.query('SELECT * FROM sales_agreements WHERE id=$1', [agreementId])).rows[0];
         if (!a) throw new Error('Agreement not found');
 
@@ -926,16 +935,94 @@ module.exports = function initLifecycle({
         const name = signerName || a.customer_name || (lead && lead.name) || 'Customer';
         const svg = generateSignatureSVG(name);
 
-        await pool.query(
-            `INSERT INTO agreement_signatures
-                (agreement_id, lead_id, signer_name, signer_email, typed_name, signature_svg,
-                 ip_address, user_agent, consent_text)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-             ON CONFLICT (agreement_id) DO NOTHING`,
-            [agreementId, a.lead_id, name, (lead && lead.email) || a.customer_email, name, svg,
-             (ip || '').slice(0, 64), (userAgent || '').slice(0, 500),
-             'By typing my name I agree to the terms of this agreement and consent to sign electronically.']
-        );
+        // ------------------------------------------------------------------
+        // Capture the document exactly as rendered, and hash it.
+        //
+        // This is the evidence that matters in a dispute: not "they clicked a
+        // box" but "here is the text they were shown, here is its hash, and
+        // here is the hash stored the moment they signed". Built from the same
+        // module that renders the on-screen view and the PDF, so all three are
+        // necessarily identical.
+        //
+        // Best-effort throughout. A failure here must never block a signature
+        // the customer has already given.
+        // ------------------------------------------------------------------
+        let docSnapshot = null;
+        let docHash = null;
+        let autopayConsentText = null;
+        const isAutopayAgreement = !!a.autopay
+            || ['maintenance', 'subscription'].includes(a.agreement_kind);
+
+        try {
+            const documents = require('./diamondback-documents.js');
+            const items = await pool.query(
+                'SELECT * FROM agreement_items WHERE agreement_id=$1 ORDER BY sort_order, id',
+                [agreementId]).then((r) => r.rows).catch(() => []);
+            const stones = await pool.query(
+                'SELECT * FROM agreement_milestones WHERE agreement_id=$1 ORDER BY sort_order, id',
+                [agreementId]).then((r) => r.rows).catch(() => []);
+            const linkedPlan = await pool.query(
+                'SELECT * FROM maintenance_plans WHERE agreement_id=$1 ORDER BY id DESC LIMIT 1',
+                [agreementId]).then((r) => r.rows[0] || null).catch(() => null);
+
+            const built = documents.buildAgreementDocument({
+                agreement: a,
+                items,
+                milestones: stones,
+                plan: linkedPlan,
+                noticeDays: CANCELLATION_NOTICE_DAYS,
+            });
+            docSnapshot = documents.renderAgreementText(built);
+            docHash = documents.hashAgreement(built);
+            autopayConsentText = built.autopayConsentText;
+        } catch (docErr) {
+            console.warn('[LIFECYCLE] document snapshot unavailable:', docErr.message);
+        }
+
+        // The columns land only if migration 011 has run. Detected rather than
+        // assumed, because this database has a history of migrations that were
+        // recorded as applied without their statements succeeding (see 010).
+        let hasProofColumns = false;
+        try {
+            hasProofColumns = (await pool.query(
+                `SELECT 1 FROM information_schema.columns
+                  WHERE table_name='agreement_signatures' AND column_name='document_hash'`
+            )).rows.length > 0;
+        } catch { /* treat as absent */ }
+
+        const baseConsent = isAutopayAgreement
+            ? 'By typing my name I agree to the terms of this agreement, including the automatic '
+              + 'payment authorization it contains, and consent to sign electronically.'
+            : 'By typing my name I agree to the terms of this agreement and consent to sign electronically.';
+
+        if (hasProofColumns) {
+            await pool.query(
+                `INSERT INTO agreement_signatures
+                    (agreement_id, lead_id, signer_name, signer_email, typed_name, signature_svg,
+                     ip_address, user_agent, consent_text,
+                     document_hash, document_snapshot, viewed_in_full,
+                     autopay_consent, autopay_consent_text)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                 ON CONFLICT (agreement_id) DO NOTHING`,
+                [agreementId, a.lead_id, name, (lead && lead.email) || a.customer_email, name, svg,
+                 (ip || '').slice(0, 64), (userAgent || '').slice(0, 500), baseConsent,
+                 docHash, docSnapshot, !!viewedInFull,
+                 isAutopayAgreement, autopayConsentText]
+            );
+        } else {
+            // Pre-011 shape. Signing still works; the proof is just not stored.
+            console.warn('[LIFECYCLE] agreement_signatures lacks proof columns — '
+                       + 'run migrations/011_autopay_receipts_and_outstanding.sql');
+            await pool.query(
+                `INSERT INTO agreement_signatures
+                    (agreement_id, lead_id, signer_name, signer_email, typed_name, signature_svg,
+                     ip_address, user_agent, consent_text)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                 ON CONFLICT (agreement_id) DO NOTHING`,
+                [agreementId, a.lead_id, name, (lead && lead.email) || a.customer_email, name, svg,
+                 (ip || '').slice(0, 64), (userAgent || '').slice(0, 500), baseConsent]
+            );
+        }
 
         await pool.query(
             `UPDATE sales_agreements
@@ -1206,8 +1293,8 @@ module.exports = function initLifecycle({
             bodyHtml: `<p style="margin:0 0 12px">Thank you for signing${a.agreement_number ? ` agreement ${a.agreement_number}` : ''}. A signed copy is in your portal.</p>
                 ${assignedAdmin ? `<p style="margin:0 0 12px"><strong style="color:#0d0f12">${assignedAdmin.username || 'Your project lead'}</strong> is assigned to your project and will reach out soon.</p>` : ''}
                 <p style="margin:0 0 12px">Your project timeline is now in your portal, and it updates as we hit each milestone.</p>
-                ${depositInvoice ? `<p style="margin:0 0 12px">A deposit of <strong style="color:#16a34a">${money(depositInvoice.total_amount)}</strong> (invoice ${depositInvoice.invoice_number}) is due now — work begins once it's paid. You can pay it in your portal.</p>` : ''}
-                <p style="margin:0">${depositInvoice ? 'The remaining balance of' : "We've also created invoice"} <strong style="color:#0d0f12">${depositInvoice ? money(invoice.total_amount) : invoice.invoice_number}</strong>${depositInvoice ? ` is invoice ${invoice.invoice_number} and` : ` for ${money(invoice.total_amount)}. It`} isn't due until <strong style="color:#16a34a">${prettyDate(dueDate)}</strong>${a.est_completion_date ? ' — the estimated completion date. If we finish sooner, that date may move up and we\'ll tell you first.' : '.'}</p>`,
+                ${depositInvoice ? `<p style="margin:0 0 12px">A deposit of <strong style="color:#15803d">${money(depositInvoice.total_amount)}</strong> (invoice ${depositInvoice.invoice_number}) is due now — work begins once it's paid. You can pay it in your portal.</p>` : ''}
+                <p style="margin:0">${depositInvoice ? 'The remaining balance of' : "We've also created invoice"} <strong style="color:#0d0f12">${depositInvoice ? money(invoice.total_amount) : invoice.invoice_number}</strong>${depositInvoice ? ` is invoice ${invoice.invoice_number} and` : ` for ${money(invoice.total_amount)}. It`} isn't due until <strong style="color:#15803d">${prettyDate(dueDate)}</strong>${a.est_completion_date ? ' — the estimated completion date. If we finish sooner, that date may move up and we\'ll tell you first.' : '.'}</p>`,
             smsText: `Diamondback Coding: your agreement is signed. Invoice ${invoice.invoice_number} (${money(invoice.total_amount)}) is in your portal, due ${prettyDate(dueDate)}.`,
             channels: ['email', 'sms', 'portal'],
             invoiceId: invoice.id,
@@ -1319,7 +1406,7 @@ module.exports = function initLifecycle({
             leadId: p.lead_id, kind: 'project_completed',
             subject: `${p.project_name} is complete`,
             bodyHtml: `<p style="margin:0 0 12px">Your project <strong style="color:#0d0f12">${p.project_name}</strong> is complete. Every milestone is marked done in your portal.</p>
-                ${invoice && !paid ? `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${invoice.invoice_number}</strong> for ${money(invoice.total_amount)} is now due <strong style="color:#16a34a">${prettyDate(invoice.due_date)}</strong>. You can pay it in your portal.</p>` : ''}
+                ${invoice && !paid ? `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${invoice.invoice_number}</strong> for ${money(invoice.total_amount)} is now due <strong style="color:#15803d">${prettyDate(invoice.due_date)}</strong>. You can pay it in your portal.</p>` : ''}
                 <p style="margin:0">Thank you for your business — reply to this email if anything needs a second look.</p>`,
             smsText: `Diamondback Coding: ${p.project_name} is complete.${invoice && !paid ? ` Invoice ${invoice.invoice_number} (${money(invoice.total_amount)}) is due ${prettyDate(invoice.due_date)} — pay in your portal.` : ''}`,
             channels: ['email', 'sms', 'portal'],
@@ -1332,7 +1419,7 @@ module.exports = function initLifecycle({
             await notify({
                 leadId: p.lead_id, kind: 'invoice_due',
                 subject: `Invoice ${invoice.invoice_number} is due ${prettyDate(invoice.due_date)}`,
-                bodyHtml: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${invoice.invoice_number}</strong> for <strong style="color:#16a34a">${money(invoice.total_amount)}</strong> is due on ${prettyDate(invoice.due_date)}.</p>
+                bodyHtml: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${invoice.invoice_number}</strong> for <strong style="color:#15803d">${money(invoice.total_amount)}</strong> is due on ${prettyDate(invoice.due_date)}.</p>
                            <p style="margin:0">You can pay by card or bank transfer in your portal.</p>`,
                 smsText: null,
                 channels: ['email'],
@@ -1370,10 +1457,10 @@ module.exports = function initLifecycle({
             subject: invoice ? `Payment received — ${invoice.invoice_number}` : 'Payment received',
             bodyHtml: `<p style="margin:0 0 16px">We've received your payment. Thank you.</p>
                 <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#f7f8f9;border-radius:8px">
-                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Amount</td><td style="padding:10px 16px;color:#16a34a;font-size:17px;font-weight:700">${money(p.amount)}</td></tr>
-                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Receipt</td><td style="padding:10px 16px;color:#fff;font-family:monospace;font-size:13px">${p.receipt_number}</td></tr>
-                  ${invoice ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Invoice</td><td style="padding:10px 16px;color:#fff;font-size:14px">${invoice.invoice_number}</td></tr>` : ''}
-                  ${p.method_last4 ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Method</td><td style="padding:10px 16px;color:#fff;font-size:14px">${p.method_brand || p.method} ending ${p.method_last4}</td></tr>` : ''}
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Amount</td><td style="padding:10px 16px;color:#15803d;font-size:17px;font-weight:700">${money(p.amount)}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Receipt</td><td style="padding:10px 16px;color:#0d0f12;font-family:monospace;font-size:13px">${p.receipt_number}</td></tr>
+                  ${invoice ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Invoice</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${invoice.invoice_number}</td></tr>` : ''}
+                  ${p.method_last4 ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Method</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${p.method_brand || p.method} ending ${p.method_last4}</td></tr>` : ''}
                 </table>
                 <p style="margin:0">${owing === 0 ? 'You have no outstanding invoices.' : `You have ${owing} invoice${owing === 1 ? '' : 's'} still open — you can see them in your portal.`}</p>`,
             smsText: `Diamondback Coding: payment of ${money(p.amount)} received. Receipt ${p.receipt_number} is in your portal.${owing === 0 ? ' No outstanding invoices.' : ''}`,
@@ -1628,11 +1715,11 @@ module.exports = function initLifecycle({
             subject: `${plan.label} — payment received (${money(chargeAmount)})`,
             bodyHtml: `<p style="margin:0 0 16px">Your ${plan.label} payment has been processed. Here's your receipt.</p>
                 <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#f7f8f9;border-radius:8px">
-                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Amount</td><td style="padding:10px 16px;color:#16a34a;font-size:17px;font-weight:700">${money(chargeAmount)}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Amount</td><td style="padding:10px 16px;color:#15803d;font-size:17px;font-weight:700">${money(chargeAmount)}</td></tr>
                   ${breakdownRows}
-                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Receipt</td><td style="padding:10px 16px;color:#fff;font-family:monospace;font-size:13px">${payment.receipt_number}</td></tr>
-                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Method</td><td style="padding:10px 16px;color:#fff;font-size:14px">${pm.brand || pm.bank_name || pm.type} ending ${pm.last4 || '----'}</td></tr>
-                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Next payment</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(next)}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Receipt</td><td style="padding:10px 16px;color:#0d0f12;font-family:monospace;font-size:13px">${payment.receipt_number}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Method</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${pm.brand || pm.bank_name || pm.type} ending ${pm.last4 || '----'}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Next payment</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${prettyDate(next)}</td></tr>
                 </table>
                 <p style="margin:0">Your full payment history is in your portal. You can cancel anytime there — cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after you request it.</p>`,
             smsText: `Diamondback Coding: ${plan.label} payment of ${money(chargeAmount)} processed. Receipt ${payment.receipt_number}. Next payment ${prettyDate(next)}.`,
@@ -1706,7 +1793,7 @@ module.exports = function initLifecycle({
             lead, kind: 'cancellation_confirmed',
             subject: `Cancellation confirmed — ${plan.label}`,
             bodyHtml: `<p style="margin:0 0 12px">We've received your cancellation request for <strong style="color:#0d0f12">${plan.label}</strong>.</p>
-                <p style="margin:0 0 12px">Your plan has a ${CANCELLATION_NOTICE_DAYS}-day notice period, so it stays active until <strong style="color:#16a34a">${prettyDate(effective)}</strong>. You'll keep full service until then.</p>
+                <p style="margin:0 0 12px">Your plan has a ${CANCELLATION_NOTICE_DAYS}-day notice period, so it stays active until <strong style="color:#15803d">${prettyDate(effective)}</strong>. You'll keep full service until then.</p>
                 <p style="margin:0">Changed your mind? You can reinstate the plan from your portal any time before that date.</p>`,
             smsText: `Diamondback Coding: cancellation confirmed for ${plan.label}. Service continues until ${prettyDate(effective)}. You can reinstate in your portal before then.`,
             channels: ['email', 'sms', 'portal'],
@@ -1922,7 +2009,7 @@ module.exports = function initLifecycle({
                 lead: { id: c.lead_id, name: c.name, email: c.email, phone: c.phone },
                 kind: 'cancellation_reminder',
                 subject: `${daysLeft} day${daysLeft === 1 ? '' : 's'} left to reinstate ${c.label}`,
-                bodyHtml: `<p style="margin:0 0 12px"><strong style="color:#0d0f12">${c.label}</strong> is scheduled to cancel on <strong style="color:#16a34a">${prettyDate(c.effective_at)}</strong> — that's ${daysLeft} day${daysLeft === 1 ? '' : 's'} away.</p>
+                bodyHtml: `<p style="margin:0 0 12px"><strong style="color:#0d0f12">${c.label}</strong> is scheduled to cancel on <strong style="color:#15803d">${prettyDate(c.effective_at)}</strong> — that's ${daysLeft} day${daysLeft === 1 ? '' : 's'} away.</p>
                            <p style="margin:0 0 12px">If you'd like to keep it, you can reinstate from your portal and nothing changes.</p>
                            <p style="margin:0">If not, no action is needed and it'll end on that date.</p>`,
                 smsText: `Diamondback Coding: ${c.label} cancels in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Reinstate anytime in your portal.`,
@@ -2097,7 +2184,7 @@ module.exports = function initLifecycle({
         if (tone === 'gentle') {
             return {
                 subject: `Invoice ${num} is past due`,
-                html: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${num}</strong> for <strong style="color:#16a34a">${amt}</strong> was due on ${prettyDate(invoice.due_date)} and is now ${daysOverdue} day${daysOverdue === 1 ? '' : 's'} past due.</p>
+                html: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${num}</strong> for <strong style="color:#15803d">${amt}</strong> was due on ${prettyDate(invoice.due_date)} and is now ${daysOverdue} day${daysOverdue === 1 ? '' : 's'} past due.</p>
                        <p style="margin:0 0 12px">If you've already sent payment, thank you — you can ignore this.</p>
                        <p style="margin:0">Otherwise you can pay by card or bank transfer in your portal.</p>`,
                 sms: `Diamondback Coding: invoice ${num} (${amt}) is ${daysOverdue} day${daysOverdue === 1 ? '' : 's'} past due. Pay in your portal: ${PORTAL_URL}`,
@@ -2106,7 +2193,7 @@ module.exports = function initLifecycle({
         if (tone === 'firm') {
             return {
                 subject: `Payment needed — invoice ${num}, ${daysOverdue} days past due`,
-                html: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${num}</strong> for <strong style="color:#16a34a">${amt}</strong> is now ${daysOverdue} days past due.</p>
+                html: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${num}</strong> for <strong style="color:#15803d">${amt}</strong> is now ${daysOverdue} days past due.</p>
                        <p style="margin:0 0 12px">Please arrange payment, or reply to this email so we can sort out anything that's in the way — if the timing is a problem, we'd rather hear it than keep sending reminders.</p>
                        <p style="margin:0">You can pay in your portal at any time.</p>`,
                 sms: `Diamondback Coding: invoice ${num} (${amt}) is ${daysOverdue} days past due. Please pay or reply so we can help: ${PORTAL_URL}`,
@@ -2114,7 +2201,7 @@ module.exports = function initLifecycle({
         }
         return {
             subject: `Final reminder — invoice ${num} is ${daysOverdue} days past due`,
-            html: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${num}</strong> for <strong style="color:#16a34a">${amt}</strong> is ${daysOverdue} days past due.</p>
+            html: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${num}</strong> for <strong style="color:#15803d">${amt}</strong> is ${daysOverdue} days past due.</p>
                    <p style="margin:0 0 12px">This is the last of our automatic reminders. After today, your account is flagged for manual review and we may pause work in progress.</p>
                    <p style="margin:0">If there's a problem with this invoice, please reply today and we'll work it out.</p>`,
             sms: `Diamondback Coding: FINAL reminder — invoice ${num} (${amt}) is ${daysOverdue} days past due. Please pay or reply today: ${PORTAL_URL}`,
@@ -3084,7 +3171,7 @@ module.exports = function initLifecycle({
                     <div style="background:#f7f8f9;border-radius:8px;padding:14px 16px;margin:0 0 14px">
                       <div style="color:#0d0f12;font-weight:700;font-size:15px;margin-bottom:6px">${title || 'Progress update'}</div>
                       ${body ? `<div style="color:#3f4650;font-size:14px;line-height:1.6">${body}</div>` : ''}
-                      ${percent != null ? `<div style="margin-top:10px;color:#16a34a;font-size:13px;font-weight:700">${Number(percent)}% complete</div>` : ''}
+                      ${percent != null ? `<div style="margin-top:10px;color:#15803d;font-size:13px;font-weight:700">${Number(percent)}% complete</div>` : ''}
                     </div>
                     <p style="margin:0">The full timeline is in your portal.</p>`,
                 smsText: `Diamondback Coding: update on ${proj.project_name} — ${title || 'progress update'}. Details in your portal.`,
@@ -3267,9 +3354,9 @@ module.exports = function initLifecycle({
             subject: `We've got your request: ${what}`,
             bodyHtml: `<p style="margin:0 0 12px">Thanks — we've received your service request and it's in the queue.</p>
                 <table cellpadding="0" cellspacing="0" style="margin:0 0 14px;width:100%;background:#f7f8f9;border-radius:8px">
-                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Request</td><td style="padding:10px 16px;color:#fff;font-size:14px">${what}</td></tr>
-                  ${proj ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Project</td><td style="padding:10px 16px;color:#fff;font-size:14px">${proj}</td></tr>` : ''}
-                  ${rq.preferred_date ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Preferred date</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(rq.preferred_date)}</td></tr>` : ''}
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Request</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${what}</td></tr>
+                  ${proj ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Project</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${proj}</td></tr>` : ''}
+                  ${rq.preferred_date ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Preferred date</td><td style="padding:10px 16px;color:#0d0f12;font-size:14px">${prettyDate(rq.preferred_date)}</td></tr>` : ''}
                 </table>
                 ${rq.details ? `<p style="margin:0 0 12px;color:#3f4650">"${rq.details}"</p>` : ''}
                 <p style="margin:0">We'll be in touch shortly. You can follow it in your portal.</p>`,
@@ -3382,7 +3469,7 @@ module.exports = function initLifecycle({
                 subject: 'Your Diamondback Coding sign-in details',
                 bodyHtml: `<p style="margin:0 0 14px">You asked which email you use to sign in. It's this one:</p>
                     <div style="background:#f7f8f9;border-radius:8px;padding:14px 16px;margin:0 0 14px">
-                      <div style="color:#16a34a;font-size:16px;font-weight:700;font-family:monospace">${lead.email}</div>
+                      <div style="color:#15803d;font-size:16px;font-weight:700;font-family:monospace">${lead.email}</div>
                     </div>
                     <p style="margin:0 0 12px">Sign in with that address and your password.</p>
                     <p style="margin:0">Forgotten the password too? Use the "Forgot password" link on the sign-in page.</p>`,
@@ -4681,6 +4768,39 @@ module.exports = function initLifecycle({
         return plans;
     }
 
+    /**
+     * Close the period a successful charge just paid for, and open the next.
+     *
+     * This is the write half of the outstanding rule in
+     * diamondback-document-routes.js: that module decides a monthly plan is
+     * outstanding when current_period_paid_at IS NULL, and this is what sets
+     * it. Called after every successful recurring charge.
+     *
+     * Guarded on the columns existing so a database where 011 hasn't run yet
+     * keeps charging normally rather than throwing on every renewal.
+     */
+    async function settlePlanPeriod(planId, nextPeriodStart, paidAt = new Date()) {
+        try {
+            const has = await pool.query(
+                `SELECT 1 FROM information_schema.columns
+                  WHERE table_name='maintenance_plans' AND column_name='current_period_paid_at'`);
+            if (!has.rows.length) return;
+            await pool.query(
+                `UPDATE maintenance_plans
+                    SET current_period_paid_at = $2, updated_at = NOW()
+                  WHERE id = $1`, [planId, paidAt]);
+            if (nextPeriodStart) {
+                await pool.query(
+                    `UPDATE maintenance_plans
+                        SET current_period_start = $2, current_period_paid_at = NULL, updated_at = NOW()
+                      WHERE id = $1`, [planId, nextPeriodStart]);
+            }
+        } catch (e) {
+            // Never let bookkeeping fail a charge that already succeeded.
+            console.warn('[LIFECYCLE] settlePlanPeriod:', e.message);
+        }
+    }
+
     app.get('/api/portal/plans', authenticatePortal, async (req, res) => {
         try {
             const leadId = await resolveLeadId(req.user.id, req.user.email);
@@ -4899,7 +5019,7 @@ module.exports = function initLifecycle({
                 lead, kind: 'cancellation_confirmed',
                 subject: 'Your CodeNexus CRM subscription is scheduled to end',
                 bodyHtml: `<p style="margin:0 0 12px">We've received your cancellation request for <strong style="color:#0d0f12">${sub.package_name || 'CodeNexus CRM'}</strong>.</p>
-                    <p style="margin:0 0 12px">You keep full CRM access until <strong style="color:#16a34a">${prettyDate(effective)}</strong>, and you won't be billed after that.</p>
+                    <p style="margin:0 0 12px">You keep full CRM access until <strong style="color:#15803d">${prettyDate(effective)}</strong>, and you won't be billed after that.</p>
                     <p style="margin:0 0 12px">Your customer portal is unaffected \u2014 invoices, receipts and messages stay exactly where they are.</p>
                     <p style="margin:0">Changed your mind? You can reinstate from your portal any time before that date.</p>`,
                 smsText: `Diamondback Coding: your CodeNexus CRM subscription ends ${prettyDate(effective)}. Your customer portal is unaffected. Reinstate anytime before then.`,
@@ -5026,7 +5146,11 @@ module.exports = function initLifecycle({
     app.post('/api/portal/sales-agreements/:id/sign', authenticatePortal, async (req, res) => {
         try {
             const leadId = await resolveLeadId(req.user.id, req.user.email);
-            const { typedName, agree } = req.body || {};
+            // autopayConsent is a SEPARATE checkbox from `agree` on any
+            // recurring agreement. Bundling them would mean one tick standing
+            // for two different consents, which is exactly the arrangement a
+            // card network treats as no consent at all.
+            const { typedName, agree, autopayConsent, viewedInFull, documentHash } = req.body || {};
             if (!agree) {
                 return res.status(400).json({ success: false, message: 'Please check the box to agree to the terms.' });
             }
@@ -5035,7 +5159,9 @@ module.exports = function initLifecycle({
             }
 
             const own = await pool.query(
-                'SELECT id, lead_id, status FROM sales_agreements WHERE id=$1', [req.params.id]
+                `SELECT id, lead_id, status, agreement_kind,
+                        COALESCE(autopay, FALSE) AS autopay
+                   FROM sales_agreements WHERE id=$1`, [req.params.id]
             );
             const a = own.rows[0];
             if (!a || String(a.lead_id) !== String(leadId)) {
@@ -5045,6 +5171,19 @@ module.exports = function initLifecycle({
                 return res.status(409).json({ success: false, message: 'This agreement is already signed.' });
             }
 
+            // A recurring agreement cannot be signed without explicit autopay
+            // consent. Refusing here rather than inferring it is the difference
+            // between an authorization you can produce and one you can't.
+            const needsAutopayConsent = !!a.autopay
+                || ['maintenance', 'subscription'].includes(a.agreement_kind);
+            if (needsAutopayConsent && !autopayConsent) {
+                return res.status(400).json({
+                    success: false,
+                    needsAutopayConsent: true,
+                    message: 'Please tick the box authorizing automatic payment before signing.',
+                });
+            }
+
             let out;
             try {
                 out = await onAgreementSigned({
@@ -5052,6 +5191,7 @@ module.exports = function initLifecycle({
                     signerName: String(typedName).trim(),
                     ip: req.headers['x-forwarded-for'] || req.ip,
                     userAgent: req.headers['user-agent'],
+                    viewedInFull: !!viewedInFull,
                 });
             } catch (signErr) {
                 // The signature may already be recorded even though a later step
@@ -5380,19 +5520,46 @@ module.exports = function initLifecycle({
                 const breakdown = pricing
                     ? ` (domain ${money(pricing.base)} + $${pricing.fee.toFixed(2)} mandatory domain maintenance fee + ${(pricing.taxRate * 100).toFixed(2)}% tax ${money(pricing.tax)})`
                     : '';
+                // autopay_* are written here, at creation, so the SIGNED
+                // document carries its own record of what was authorized. A
+                // later edit to maintenance_plans then cannot silently restate
+                // what the customer agreed to — which is the whole point of
+                // storing it on the agreement rather than reading the plan.
                 const ag = await pool.query(
                     `INSERT INTO sales_agreements
                         (agreement_number, lead_id, customer_name, customer_email, service_type,
-                         package_name, price, status, agreement_kind, intro, terms, created_at, updated_at)
-                     VALUES ($1,$2,$3,$4,$5,$6,$7,'sent','maintenance',$8,$9,NOW(),NOW())
+                         package_name, price, status, agreement_kind, intro, terms,
+                         autopay, autopay_interval, autopay_amount, autopay_day,
+                         billing_start_date, created_at, updated_at)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,'sent','maintenance',$8,$9,
+                             TRUE,$10,$7,$11,$12,NOW(),NOW())
                      RETURNING *`,
                     [num, leadId, lead.name, lead.email, planType, plan.label, totalToSign,
                      unit === 'year'
                         ? `${plan.label} at ${money(totalToSign)} per year${breakdown}, charged automatically each ${prettyDate(firstCharge).replace(/,.*$/, '')}.`
                         : `Recurring ${plan.label.toLowerCase()} at ${money(totalToSign)} per month, billed automatically on day ${day}.`,
-                     `This plan renews ${unit === 'year' ? 'annually' : 'monthly'} at ${money(totalToSign)}${breakdown}. Payment is charged automatically to the payment method saved on your account. ` +
-                     `You may cancel at any time from your customer portal; cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after the request, ` +
-                     `and service continues until that date.`]
+                     // The customer-facing authorization. Worded as consent
+                     // being GRANTED by signing, not as a description of what
+                     // happens to them — that distinction is what a bank looks
+                     // for when a recurring charge is disputed. The full
+                     // clause set is rendered by diamondback-documents.js;
+                     // this is the plan-specific part that varies per plan.
+                     `AUTOMATIC PAYMENT AUTHORIZATION. By signing this agreement you enroll in automatic payment ` +
+                     `and authorize ${'Diamondback Coding'} to charge ${money(totalToSign)}${breakdown} to the payment method saved on ` +
+                     `your account ${unit === 'year'
+                            ? `once each year, beginning ${prettyDate(firstCharge)}`
+                            : `on the ${ordinalDay(day)} of each month, beginning ${prettyDate(firstCharge)}`}, ` +
+                     `without further authorization or notice from you. This authorization covers card and, where you provide ` +
+                     `bank details, ACH debits, and continues for each billing period until you cancel it.\n\n` +
+                     `You are responsible for keeping a valid payment method on file. A declined charge may be retried and any ` +
+                     `unpaid amount is subject to late charges.\n\n` +
+                     `TO STOP AUTOMATIC PAYMENTS: cancel the plan from your customer portal at any time, or email ` +
+                     `contact@diamondbackcoding.com. Cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after we receive ` +
+                     `your request; charges falling due within that notice period remain payable and service continues until ` +
+                     `the cancellation date.\n\n` +
+                     `If the amount or schedule ever changes we will tell you in writing at least ten (10) days beforehand, and ` +
+                     `a change in price requires a new signed agreement from you.`,
+                     unit, day, dateOnly(firstCharge)]
                 );
                 agreement = ag.rows[0];
                 await pool.query('UPDATE maintenance_plans SET agreement_id=$2 WHERE id=$1', [plan.id, agreement.id]);

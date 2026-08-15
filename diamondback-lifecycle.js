@@ -76,6 +76,13 @@ module.exports = function initLifecycle({
     getBrevoKey,
     PORTAL_URL = process.env.PORTAL_URL || 'https://diamondbackcoding.com/customer_portal.html',
     CANCELLATION_NOTICE_DAYS = Number(process.env.CANCELLATION_NOTICE_DAYS || 30),
+    // Sales tax (TX default 8.25%, same rate the portal already quotes on
+    // one-off invoice payments — see diamondback-portal.js) and the mandatory
+    // per-renewal domain maintenance fee. Both are applied ONLY to
+    // domain_renewal plans via domainRenewalPricing() below; every other plan
+    // type is untouched.
+    SALES_TAX_RATE = Number(process.env.SALES_TAX_RATE || 8.25),
+    DOMAIN_MAINTENANCE_FEE = Number(process.env.DOMAIN_MAINTENANCE_FEE || 14.99),
 }) {
 
     // Every message type this module can send. Adding one here is what keeps
@@ -120,6 +127,24 @@ module.exports = function initLifecycle({
             ? `${pm.brand || 'card'} ending ${pm.last4}`
             : `${pm.bank_name || 'bank account'} ending ${pm.last4}`);
     const dateOnly = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
+
+    /**
+     * Domain renewals carry a mandatory annual domain-maintenance fee on top
+     * of the renewal price itself, plus sales tax on the combined total.
+     * Every other plan type passes through unchanged (fee 0, tax 0, total ==
+     * baseAmount) — this is the ONE place that math happens, so the price
+     * shown at signing, the invoice raised, and the card actually charged can
+     * never drift apart from each other.
+     */
+    function domainRenewalPricing(planType, baseAmount) {
+        const isDomainRenewal = planType === 'domain_renewal';
+        const domainFee = isDomainRenewal ? DOMAIN_MAINTENANCE_FEE : 0;
+        const subtotal = +(Number(baseAmount || 0) + domainFee).toFixed(2);
+        const taxRate = isDomainRenewal ? SALES_TAX_RATE : 0;
+        const taxAmount = +(subtotal * (taxRate / 100)).toFixed(2);
+        const total = +(subtotal + taxAmount).toFixed(2);
+        return { isDomainRenewal, domainFee, subtotal, taxRate, taxAmount, total };
+    }
 
     function prettyDate(d) {
         if (!d) return 'TBD';
@@ -974,6 +999,18 @@ module.exports = function initLifecycle({
                     .catch((e) => { console.warn('[LIFECYCLE] first charge:', e.message); return null; });
             }
 
+            // Same total the card actually gets charged (chargeMaintenancePlan
+            // uses the identical helper) — domain fee + tax included for
+            // domain_renewal plans, unchanged for everything else — and the
+            // wording matches the plan's real interval instead of assuming
+            // monthly.
+            const pricing = domainRenewalPricing(plan.plan_type, plan.amount);
+            const intervalAdverb = plan.interval_unit === 'year' ? 'annually' : 'monthly';
+            const intervalAbbr = plan.interval_unit === 'year' ? '/yr' : '/mo';
+            const feeNote = pricing.isDomainRenewal
+                ? ` This includes our ${money(pricing.domainFee)} domain maintenance fee and ${pricing.taxRate}% sales tax.`
+                : '';
+
             await notify({
                 lead, kind: 'maintenance_agreement',
                 subject: ready
@@ -981,10 +1018,10 @@ module.exports = function initLifecycle({
                     : `${plan.label} — one more step`,
                 bodyHtml: ready
                     ? `<p style="margin:0 0 12px">Thanks for signing. Your <strong style="color:#0d0f12">${plan.label}</strong> plan is active.</p>
-                       <p style="margin:0 0 12px">We'll charge ${money(plan.amount)} to your ${esc0(pm)} each month, starting ${prettyDate(nextCharge)}. You'll get a receipt by email and SMS every time.</p>
+                       <p style="margin:0 0 12px">We'll charge ${money(pricing.total)} to your ${esc0(pm)} ${intervalAdverb}, starting ${prettyDate(nextCharge)}.${feeNote} You'll get a receipt by email and SMS every time.</p>
                        <p style="margin:0">You can change the payment method or cancel any time from your portal — cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after you ask.</p>`
                     : `<p style="margin:0 0 12px">Thanks for signing your <strong style="color:#0d0f12">${plan.label}</strong> agreement.</p>
-                       <p style="margin:0 0 12px">To start the plan, add a payment method in your portal under Plans. Once it's saved we'll bill ${money(plan.amount)} monthly, beginning ${prettyDate(nextCharge)}.</p>
+                       <p style="margin:0 0 12px">To start the plan, add a payment method in your portal under Plans. Once it's saved we'll bill ${money(pricing.total)} ${intervalAdverb}, beginning ${prettyDate(nextCharge)}.${feeNote}</p>
                        <p style="margin:0">Nothing is charged until you add one.</p>`,
                 smsText: ready
                     ? `Diamondback Coding: your ${plan.label} plan is active. First payment ${prettyDate(nextCharge)}.`
@@ -997,8 +1034,8 @@ module.exports = function initLifecycle({
                 kind: 'maintenance_signed',
                 title: `${lead.name} signed ${plan.label}`,
                 body: ready
-                    ? `${money(plan.amount)}/mo · active · first charge ${prettyDate(nextCharge)}`
-                    : `${money(plan.amount)}/mo · waiting on a payment method`,
+                    ? `${money(pricing.total)}${intervalAbbr} · active · first charge ${prettyDate(nextCharge)}`
+                    : `${money(pricing.total)}${intervalAbbr} · waiting on a payment method`,
                 leadId: a.lead_id, entityType: 'maintenance_plan', entityId: plan.id,
                 severity: ready ? 'success' : 'warning',
                 onceKey: `maintenance_signed:${plan.id}`,
@@ -1444,6 +1481,15 @@ module.exports = function initLifecycle({
         // every plan the customer has.
         const pm = await resolvePaymentMethod(plan.lead_id, plan.payment_method_id);
 
+        // Domain renewals bill the renewal price + the mandatory domain
+        // maintenance fee + sales tax on top; every other plan type charges
+        // exactly plan.amount, unchanged. Computed up front so every branch
+        // below — including the no-method and failure paths — quotes the
+        // same total that will actually be charged.
+        const pricing = domainRenewalPricing(plan.plan_type, plan.amount);
+        const chargeTotal = pricing.total;
+        const intervalAdverb = plan.interval_unit === 'year' ? 'annually' : 'monthly';
+
         if (!pm) {
             // LOOPHOLE FIX: without this the plan just stopped billing and the
             // customer kept the service for nothing, forever, silently. The due
@@ -1479,10 +1525,17 @@ module.exports = function initLifecycle({
             return { ok: false, error: 'no payment method' };
         }
 
+        // Domain renewals bill the renewal price + the mandatory domain
+        // maintenance fee + sales tax on top; every other plan type charges
+        // exactly plan.amount, unchanged.
+        const pricing = domainRenewalPricing(plan.plan_type, plan.amount);
+        const chargeTotal = pricing.total;
+        const intervalAdverb = plan.interval_unit === 'year' ? 'annually' : 'monthly';
+
         let intent = null;
         try {
             intent = await stripe.paymentIntents.create({
-                amount: Math.round(Number(plan.amount) * 100),
+                amount: Math.round(chargeTotal * 100),
                 currency: 'usd',
                 customer: pm.stripe_customer_id || lead.stripe_customer_id,
                 payment_method: pm.stripe_pm_id,
@@ -1516,16 +1569,16 @@ module.exports = function initLifecycle({
             await notify({
                 lead, kind: 'maintenance_charge_failed',
                 subject: `We couldn't process your ${plan.label} payment`,
-                bodyHtml: `<p style="margin:0 0 12px">We tried to charge ${money(plan.amount)} for <strong style="color:#0d0f12">${plan.label}</strong> and it didn't go through.</p>
+                bodyHtml: `<p style="margin:0 0 12px">We tried to charge ${money(chargeTotal)} for <strong style="color:#0d0f12">${plan.label}</strong> and it didn't go through.</p>
                            <p style="margin:0 0 12px">${e.message}</p>
                            <p style="margin:0">Please update your payment method in your portal — we'll retry automatically.</p>`,
-                smsText: `Diamondback Coding: your ${plan.label} payment of ${money(plan.amount)} didn't go through. Please update your payment method in your portal.`,
+                smsText: `Diamondback Coding: your ${plan.label} payment of ${money(chargeTotal)} didn't go through. Please update your payment method in your portal.`,
                 channels: ['email', 'sms', 'portal'],
             });
             await adminNotify({
                 kind: 'maintenance_charge_failed',
                 title: `Charge failed: ${lead.name} — ${plan.label}`,
-                body: `${money(plan.amount)} · attempt ${failures} · ${e.message}`,
+                body: `${money(chargeTotal)} · attempt ${failures} · ${e.message}`,
                 leadId: plan.lead_id, entityType: 'maintenance_plan', entityId: plan.id,
                 severity: failures >= 3 ? 'error' : 'warning',
                 onceKey: `charge_failed:${plan.id}:${dateOnly(new Date())}`,
@@ -1536,9 +1589,13 @@ module.exports = function initLifecycle({
         let invoice = null;
         if (plan.generate_invoice) {
             invoice = await createInvoice({
-                leadId: plan.lead_id, amount: plan.amount,
+                leadId: plan.lead_id, amount: pricing.subtotal, taxRate: pricing.taxRate,
                 description: plan.label, dueDate: dateOnly(new Date()),
                 maintenancePlanId: plan.id, autoGenerated: true,
+                items: pricing.isDomainRenewal ? [
+                    { description: plan.label, unit_price: plan.amount, amount: plan.amount },
+                    { description: 'Domain maintenance (mandatory)', unit_price: pricing.domainFee, amount: pricing.domainFee },
+                ] : [],
             }).catch((e) => { console.warn('[LIFECYCLE] maintenance invoice:', e.message); return null; });
         }
 
@@ -1546,7 +1603,7 @@ module.exports = function initLifecycle({
             leadId: plan.lead_id,
             invoiceId: invoice ? invoice.id : null,
             maintenancePlanId: plan.id,
-            amount: plan.amount,
+            amount: chargeTotal,
             kind: 'maintenance',
             method: pm.type, methodLast4: pm.last4, methodBrand: pm.brand || pm.bank_name,
             description: plan.label,
@@ -1568,16 +1625,20 @@ module.exports = function initLifecycle({
 
         await notify({
             lead, kind: 'maintenance_charged',
-            subject: `${plan.label} — payment received (${money(plan.amount)})`,
+            subject: `${plan.label} — payment received (${money(chargeTotal)})`,
             bodyHtml: `<p style="margin:0 0 16px">Your ${plan.label} payment has been processed. Here's your receipt.</p>
                 <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#f7f8f9;border-radius:8px">
-                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Amount</td><td style="padding:10px 16px;color:#16a34a;font-size:17px;font-weight:700">${money(plan.amount)}</td></tr>
+                  ${pricing.isDomainRenewal ? `
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Domain renewal</td><td style="padding:10px 16px;color:#fff;font-size:14px">${money(plan.amount)}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Domain maintenance</td><td style="padding:10px 16px;color:#fff;font-size:14px">${money(pricing.domainFee)}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Sales tax (${pricing.taxRate}%)</td><td style="padding:10px 16px;color:#fff;font-size:14px">${money(pricing.taxAmount)}</td></tr>` : ''}
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Amount</td><td style="padding:10px 16px;color:#16a34a;font-size:17px;font-weight:700">${money(chargeTotal)}</td></tr>
                   <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Receipt</td><td style="padding:10px 16px;color:#fff;font-family:monospace;font-size:13px">${payment.receipt_number}</td></tr>
                   <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Method</td><td style="padding:10px 16px;color:#fff;font-size:14px">${pm.brand || pm.bank_name || pm.type} ending ${pm.last4 || '----'}</td></tr>
                   <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Next payment</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(next)}</td></tr>
                 </table>
                 <p style="margin:0">Your full payment history is in your portal. You can cancel anytime there — cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after you request it.</p>`,
-            smsText: `Diamondback Coding: ${plan.label} payment of ${money(plan.amount)} processed. Receipt ${payment.receipt_number}. Next payment ${prettyDate(next)}.`,
+            smsText: `Diamondback Coding: ${plan.label} payment of ${money(chargeTotal)} processed. Receipt ${payment.receipt_number}. Next payment ${prettyDate(next)}.`,
             channels: ['email', 'sms', 'portal'],
             invoiceId: invoice ? invoice.id : null,
             cta: { url: PORTAL_URL, label: 'View payment history' },
@@ -4531,29 +4592,40 @@ module.exports = function initLifecycle({
 
         const days = (d) => (d ? Math.max(0, Math.ceil((new Date(d) - Date.now()) / 86400000)) : null);
 
-        const plans = maint.map((p) => ({
-            kind: 'maintenance',
-            id: p.id,
-            label: p.label,
-            description: p.description,
-            amount: Number(p.amount),
-            billing_day: p.billing_day,
-            interval_unit: p.interval_unit || 'month',
-            billing_start_date: p.billing_start_date,
-            item_reference: p.item_reference,
-            status: p.status,
-            next_charge_date: p.next_charge_date,
-            cancels_at: p.cancels_at,
-            days_until_cancellation: days(p.cancels_at),
-            payment_method: p.pm_id ? {
-                id: p.pm_id, type: p.method_type, brand: p.brand,
-                last4: p.last4, bank_name: p.bank_name,
-            } : null,
-            can_change_payment_method: true,
-            can_cancel: ['active', 'past_due', 'pending_payment_method', 'pending_signature'].includes(p.status),
-            signed_at: p.signed_at,
-            agreement_id: p.agreement_id,
-        })).concat(crm.map((c) => ({
+        const plans = maint.map((p) => {
+            const pricing = domainRenewalPricing(p.plan_type, p.amount);
+            return {
+                kind: 'maintenance',
+                id: p.id,
+                label: p.label,
+                description: p.description,
+                plan_type: p.plan_type,
+                amount: Number(p.amount),
+                // What's actually charged each period — base amount unchanged
+                // for every plan except domain_renewal, which adds the
+                // mandatory domain maintenance fee and sales tax on top.
+                charge_total: pricing.total,
+                domain_fee: pricing.domainFee,
+                tax_rate: pricing.taxRate,
+                tax_amount: pricing.taxAmount,
+                billing_day: p.billing_day,
+                interval_unit: p.interval_unit || 'month',
+                billing_start_date: p.billing_start_date,
+                item_reference: p.item_reference,
+                status: p.status,
+                next_charge_date: p.next_charge_date,
+                cancels_at: p.cancels_at,
+                days_until_cancellation: days(p.cancels_at),
+                payment_method: p.pm_id ? {
+                    id: p.pm_id, type: p.method_type, brand: p.brand,
+                    last4: p.last4, bank_name: p.bank_name,
+                } : null,
+                can_change_payment_method: true,
+                can_cancel: ['active', 'past_due', 'pending_payment_method', 'pending_signature'].includes(p.status),
+                signed_at: p.signed_at,
+                agreement_id: p.agreement_id,
+            };
+        }).concat(crm.map((c) => ({
             kind: 'crm',
             id: c.id,
             label: c.package_name ? ('CodeNexus CRM \u2014 ' + c.package_name) : 'CodeNexus CRM',
@@ -5153,12 +5225,21 @@ module.exports = function initLifecycle({
                                    WHEN 'active' THEN 2 ELSE 3 END,
                     mp.next_charge_date NULLS LAST`
             );
-            const plans = r.rows.map((p) => ({
-                ...p,
-                days_until_cancellation: p.cancels_at
-                    ? Math.max(0, Math.ceil((new Date(p.cancels_at) - Date.now()) / 86400000))
-                    : null,
-            }));
+            const plans = r.rows.map((p) => {
+                const pricing = domainRenewalPricing(p.plan_type, p.amount);
+                return {
+                    ...p,
+                    // The total actually charged — domain fee + tax included
+                    // for domain_renewal, identical to `amount` otherwise.
+                    charge_total: pricing.total,
+                    domain_fee: pricing.domainFee,
+                    tax_rate: pricing.taxRate,
+                    tax_amount: pricing.taxAmount,
+                    days_until_cancellation: p.cancels_at
+                        ? Math.max(0, Math.ceil((new Date(p.cancels_at) - Date.now()) / 86400000))
+                        : null,
+                };
+            });
             const mrr = plans
                 .filter((p) => ['active', 'pending_cancellation'].includes(p.status))
                 .reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -5281,6 +5362,10 @@ module.exports = function initLifecycle({
             //     early, which is the opposite of what this is meant to fix.
             // Everything else (the normal monthly plan, created to start now)
             // bills its first period straight away.
+            // Anchored to the SAME `today` used above to decide startsInFuture,
+            // rather than Postgres's CURRENT_DATE — those two can disagree
+            // whenever the database session timezone isn't UTC, which is what
+            // silently shifted the stored first-charge date by a day.
             const today = dateOnly(new Date());
             const startsInFuture =
                 (startExplicit && !isNaN(startExplicit) && dateOnly(startExplicit) > today)
@@ -5288,12 +5373,21 @@ module.exports = function initLifecycle({
             if (!startsInFuture) {
                 await pool.query(
                     `UPDATE maintenance_plans
-                        SET next_charge_date = CURRENT_DATE, billing_start_date = CURRENT_DATE
-                      WHERE id = $1`, [plan.id]
+                        SET next_charge_date = $2, billing_start_date = $2
+                      WHERE id = $1`, [plan.id, today]
                 );
-                plan.next_charge_date = dateOnly(new Date());
-                plan.billing_start_date = dateOnly(new Date());
+                plan.next_charge_date = today;
+                plan.billing_start_date = today;
             }
+
+            // The price the customer actually signs for and gets charged —
+            // domain fee + tax included for domain_renewal plans, unchanged
+            // for everything else. Using anything less here is what let the
+            // signed price and the real charge drift apart.
+            const pricing = domainRenewalPricing(planType, amount);
+            const feeLine = pricing.isDomainRenewal
+                ? ` This includes a ${money(pricing.domainFee)} domain maintenance fee and ${pricing.taxRate}% sales tax (${money(pricing.taxAmount)}).`
+                : '';
 
             // The plan agreement they sign before autopay can start.
             let agreement = null;
@@ -5305,11 +5399,11 @@ module.exports = function initLifecycle({
                          package_name, price, status, agreement_kind, intro, terms, created_at, updated_at)
                      VALUES ($1,$2,$3,$4,$5,$6,$7,'sent','maintenance',$8,$9,NOW(),NOW())
                      RETURNING *`,
-                    [num, leadId, lead.name, lead.email, planType, plan.label, amount,
+                    [num, leadId, lead.name, lead.email, planType, plan.label, pricing.total,
                      unit === 'year'
-                        ? `${plan.label} at ${money(amount)} per year, charged automatically each ${prettyDate(firstCharge).replace(/,.*$/, '')}.`
-                        : `Recurring ${plan.label.toLowerCase()} at ${money(amount)} per month, billed automatically on day ${day}.`,
-                     `This plan renews ${unit === 'year' ? 'annually' : 'monthly'} at ${money(amount)}. Payment is charged automatically to the payment method saved on your account. ` +
+                        ? `${plan.label} at ${money(pricing.total)} per year, charged automatically each ${prettyDate(firstCharge).replace(/,.*$/, '')}.`
+                        : `Recurring ${plan.label.toLowerCase()} at ${money(pricing.total)} per month, billed automatically on day ${day}.`,
+                     `This plan renews ${unit === 'year' ? 'annually' : 'monthly'} at ${money(pricing.total)}.${feeLine} Payment is charged automatically to the payment method saved on your account. ` +
                      `You may cancel at any time from your customer portal; cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after the request, ` +
                      `and service continues until that date.`]
                 );

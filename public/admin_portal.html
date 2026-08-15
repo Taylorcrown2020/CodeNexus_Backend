@@ -23495,7 +23495,10 @@ function dbmEsc(s){
 function dbmMoney(n){ return '$' + Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function dbmDate(d){
   if(!d) return '—';
-  return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  // timeZone:'UTC' is required: these are DATE columns (midnight UTC, no
+  // time-of-day), and formatting them in the browser's local zone rolls the
+  // date back a day for anyone west of Greenwich — the "shows yesterday" bug.
+  return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
 }
 function dbmClose(id){ const e=document.getElementById(id); if(e) e.remove(); }
 
@@ -23530,7 +23533,7 @@ async function renderMaintenance(content){
         <div style="color:#8a8a8a;font-size:12px">${dbmEsc(String(p.plan_type||'').replace(/_/g,' '))}</div>
         ${cancelNote}
       </td>
-      <td><strong style="color:#10b981">${dbmMoney(p.amount)}</strong><div style="color:#8a8a8a;font-size:12px">day ${dbmEsc(String(p.billing_day))}</div></td>
+      <td><strong style="color:#10b981">${dbmMoney(p.charge_total != null ? p.charge_total : p.amount)}</strong><div style="color:#8a8a8a;font-size:12px">${p.plan_type === 'domain_renewal' ? 'incl. fee + tax' : 'day ' + dbmEsc(String(p.billing_day))}</div></td>
       <td><span class="dbm-pill ${dbmEsc(p.status)}">${dbmEsc(String(p.status||'').replace(/_/g,' '))}</span></td>
       <td>${p.status==='active'?dbmDate(p.next_charge_date):'—'}</td>
       <td>${method}</td>
@@ -23580,7 +23583,10 @@ async function dbmEditPlan(id){
         ${dbmEsc(p.customer_name || '')} · ${dbmEsc(p.label || '')}
       </p>
       ${signed ? `<div style="font-size:12.5px;color:#eab308;background:rgba(234,179,8,.09);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:10px 12px;margin-bottom:16px;">
-        This plan is signed at ${dbmMoney(p.amount)}. Changing the <strong>price</strong> asks the customer to sign again, and billing pauses until they do. Everything else saves straight away.
+        This plan is signed at ${dbmMoney(p.charge_total != null ? p.charge_total : p.amount)}${p.plan_type === 'domain_renewal' ? ' (incl. domain maintenance fee + tax)' : ''}. Changing the <strong>price</strong> asks the customer to sign again, and billing pauses until they do. Everything else saves straight away.
+      </div>` : ''}
+      ${p.plan_type === 'domain_renewal' ? `<div style="font-size:12.5px;color:#8a8a8a;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px;margin-bottom:16px;">
+        The price below is the domain renewal cost only. The mandatory ${dbmMoney(p.domain_fee != null ? p.domain_fee : 14.99)} domain maintenance fee and ${p.tax_rate != null ? p.tax_rate : 8.25}% sales tax are added automatically, for a total of ${dbmMoney(p.charge_total != null ? p.charge_total : p.amount)}.
       </div>` : ''}
       <div style="display:grid;gap:14px;">
         <div>
@@ -23674,6 +23680,14 @@ function dbmPlanTypeChanged(){
     : "The first day they're charged. Every charge after it falls on this same day.";
   const amt = document.getElementById('mpAmount');
   if(amt) amt.placeholder = annual ? '22.00 per year' : '299.00 per month';
+  const amtLabel = document.getElementById('mpAmountLabel');
+  if(amtLabel) amtLabel.textContent = annual ? 'Domain renewal price per year (USD)' : 'Amount per month (USD)';
+  const feeNote = document.getElementById('mpFeeNote');
+  if(feeNote) feeNote.style.display = annual ? '' : 'none';
+  const invLabel = document.getElementById('mpInvoiceLabel');
+  if(invLabel) invLabel.textContent = annual
+    ? 'Also generate an invoice each year. Off by default — autopay sends a receipt instead, so there\u2019s no invoice to chase.'
+    : 'Also generate an invoice each month. Off by default — autopay sends a receipt instead, so there\u2019s no invoice to chase.';
 }
 
 async function dbmNewPlan(){
@@ -23731,7 +23745,7 @@ async function dbmNewPlan(){
         </select>
       </div>
       <div class="dbm-f">
-        <label>Amount per month (USD)</label>
+        <label id="mpAmountLabel">Amount per month (USD)</label>
         <input id="mpAmount" inputmode="decimal" placeholder="299.00">
       </div>
     </div>
@@ -23752,13 +23766,16 @@ async function dbmNewPlan(){
       <label>Domain being renewed</label>
       <input id="mpItem" placeholder="example.com">
     </div>
+    <div id="mpFeeNote" style="display:none;color:#8a8a8a;font-size:12px;margin:-6px 0 4px">
+      The mandatory $14.99 domain maintenance fee and 8.25% sales tax are added automatically — the customer signs for and is charged the combined total, not the price entered above.
+    </div>
     <div class="dbm-f">
       <label>What's included (optional)</label>
       <textarea id="mpDesc" rows="3" placeholder="Monthly updates, backups, uptime monitoring and up to 2 hours of changes."></textarea>
     </div>
     <label style="display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#b4b4b4;margin:6px 0 0">
       <input type="checkbox" id="mpInvoice" style="margin-top:3px;accent-color:#10b981">
-      <span>Also generate an invoice each month. Off by default — autopay sends a receipt instead, so there's no invoice to chase.</span>
+      <span id="mpInvoiceLabel">Also generate an invoice each month. Off by default — autopay sends a receipt instead, so there's no invoice to chase.</span>
     </label>
     <div id="mpErr" class="dbm-alert" style="display:none"></div>
     <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">

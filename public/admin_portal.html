@@ -24216,6 +24216,30 @@ async function dbmCompleteMilestone(milestoneId, projectId){
 /* ---------------- DIAGNOSTICS ---------------- */
 /* Shows exactly which tables the new tabs need and which are missing, so a 500
    stops being a guessing game. Callable from any error panel. */
+/* Repair the sales_agreements table.
+
+   This database's sales_agreements pre-dates migration 001, so it is missing
+   signed_at and 16 other columns. Signing writes to those columns, so it fails
+   until they exist — and no amount of read-side defensiveness fixes a write.
+
+   Same work as migrations/010, available as a button because getting the
+   migration file onto the server isn't always straightforward. Idempotent. */
+async function dbmRepairSchema(){
+  const box = document.getElementById('dbmRepairBox');
+  if(box) box.innerHTML = '<div class="dbm-empty">Repairing…</div>';
+  const d = await dbmSend('/api/admin/schema/repair', {}, 'POST');
+  if(box){
+    const r = (d && d.report) || {};
+    box.innerHTML = d && d.success
+      ? `<div class="dbm-alert" style="border-color:rgba(16,185,129,.4);color:#10b981">
+           <strong>Repair complete.</strong><br>${dbmEsc(d.message || '')}
+           ${(r.added && r.added.length) ? '<br><br>Try signing an agreement now — it should work.' : ''}
+         </div>`
+      : `<div class="dbm-alert"><strong>Repair failed.</strong><br>${dbmEsc((d && d.message) || 'Unknown error')}</div>`;
+  }
+  dbmNote((d && d.message) || 'Repair finished.', d && d.success ? 'success' : 'error');
+}
+
 async function dbmSchemaCheck(){
   let m = document.getElementById('dbmSchemaModal');
   if(m) m.remove();
@@ -24224,12 +24248,32 @@ async function dbmSchemaCheck(){
   m.innerHTML = `<div class="dbm-modal-box"><div class="dbm-empty">Checking the database…</div></div>`;
   document.body.appendChild(m);
 
+  // Missing-column check first — it's the one that breaks signing and deletion.
+  let repairPanel = '';
+  try{
+    const rs = await dbmGet('/api/admin/schema/repair-status');
+    repairPanel = rs.healthy
+      ? `<div style="margin-bottom:16px;font-size:13px;color:#10b981">
+           ✓ sales_agreements has every required column.
+         </div>`
+      : `<div class="dbm-alert" style="margin-bottom:16px">
+           <strong>${rs.missing.length} column(s) missing from sales_agreements.</strong><br>
+           <span style="font-size:12.5px">${dbmEsc(rs.missing.join(', '))}</span><br><br>
+           <span style="font-size:12.5px">Signing an agreement and deleting an SLA both write to these,
+           so both fail until they exist. This adds them and repairs any agreement
+           already stuck. Safe to run more than once.</span><br>
+           <button class="btn btn-primary" style="margin-top:12px" onclick="dbmRepairSchema()">Repair now</button>
+         </div>
+         <div id="dbmRepairBox"></div>`;
+  }catch(e){ /* older backend without the endpoint */ }
+
   let d;
   try{
     d = await dbmGet('/api/admin/schema-check');
   }catch(e){
     m.querySelector('.dbm-modal-box').innerHTML =
       `<h2 style="margin:0 0 10px;font-size:19px">Database check</h2>
+       ${repairPanel}
        <div class="dbm-alert">The check itself failed: ${dbmEsc(e.message)}<br><br>
          If this says the session expired, sign out and back in. Otherwise the API isn't reachable from this page.</div>
        <div style="text-align:right;margin-top:14px"><button class="btn" onclick="dbmClose('dbmSchemaModal')">Close</button></div>`;
@@ -24255,6 +24299,7 @@ async function dbmSchemaCheck(){
       <button class="btn" onclick="dbmClose('dbmSchemaModal')">Close</button>
     </div>
     <div class="${d.ok?'dbm-note':'dbm-alert'}" style="margin-top:14px">${dbmEsc(d.advice||'')}</div>
+    ${repairPanel}
     <h3 style="margin:18px 0 6px;font-size:14px">Features</h3>
     <table class="dbm-table"><thead><tr><th>Feature</th><th>Status</th><th>Missing</th></tr></thead><tbody>${rows}</tbody></table>
     <h3 style="margin:18px 0 6px;font-size:14px">Migrations</h3>

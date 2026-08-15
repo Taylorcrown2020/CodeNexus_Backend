@@ -5448,6 +5448,162 @@ module.exports = function initLifecycle({
         }
     });
 
+    // ======================================================================
+    // Schema repair — run the column fix from the admin portal
+    // ======================================================================
+    //
+    // The repair normally arrives as migrations/010. That needs the file to be
+    // in the repo's migrations folder, or psql access to the Render database —
+    // and while neither is true, signing cannot work, because it writes to
+    // columns that don't exist.
+    //
+    // So the repair also lives here, as a button. It is the SAME work as
+    // migration 010 sections 1-4: add the missing columns, reconcile agreements
+    // against their signatures, release stuck signing claims. Idempotent, and
+    // safe to run when nothing is wrong (it reports 0 changes).
+    //
+    // It does NOT do section 6 (parking unsigned-document invoices as draft) —
+    // that one rewrites money records, so it stays in the migration where it can
+    // be read and reviewed before running.
+
+    const REPAIR_COLUMNS = [
+        ['agreement_number', 'VARCHAR(40)'],
+        ['lead_id',          'INTEGER'],
+        ['customer_name',    'VARCHAR(255)'],
+        ['customer_email',   'VARCHAR(255)'],
+        ['service_type',     'VARCHAR(60)'],
+        ['package_name',     'VARCHAR(160)'],
+        ['vehicle',          'VARCHAR(200)'],
+        ['price',            'NUMERIC(10,2) DEFAULT 0'],
+        ['deposit',          'NUMERIC(10,2) DEFAULT 0'],
+        ['start_date',       'DATE'],
+        ['status',           "VARCHAR(40) DEFAULT 'draft'"],
+        ['terms',            'TEXT'],
+        ['notes',            'TEXT'],
+        ['signed_at',        'TIMESTAMP'],
+        ['signature_name',   'VARCHAR(255)'],
+        ['created_at',       'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'],
+        ['updated_at',       'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'],
+    ];
+
+    async function repairSchema() {
+        const report = { added: [], reconciled: 0, claimsReleased: 0, plansRepaired: 0, errors: [] };
+
+        const have = new Set((await pool.query(
+            `SELECT column_name FROM information_schema.columns
+              WHERE table_name = 'sales_agreements'`
+        )).rows.map((r) => r.column_name));
+
+        for (const [col, ddl] of REPAIR_COLUMNS) {
+            if (have.has(col)) continue;
+            try {
+                // Identifiers are from the fixed list above, never user input.
+                await pool.query(`ALTER TABLE sales_agreements ADD COLUMN ${col} ${ddl}`);
+                report.added.push(col);
+                console.log(`[REPAIR] ADDED sales_agreements.${col}`);
+            } catch (e) {
+                report.errors.push(`${col}: ${e.message}`);
+            }
+        }
+
+        // Reconcile agreements against their signatures (migration 006's work).
+        try {
+            const r = await pool.query(
+                `UPDATE sales_agreements sa
+                    SET status = CASE WHEN sa.status IN ('sent','draft') OR sa.status IS NULL
+                                      THEN 'signed' ELSE sa.status END,
+                        signed_at = COALESCE(sa.signed_at, sig.signed_at),
+                        signature_name = COALESCE(sa.signature_name, sig.signer_name),
+                        updated_at = NOW()
+                   FROM agreement_signatures sig
+                  WHERE sig.agreement_id = sa.id
+                    AND (sa.signed_at IS NULL OR sa.status IN ('sent','draft') OR sa.status IS NULL)`
+            );
+            report.reconciled = r.rowCount;
+        } catch (e) { report.errors.push(`reconcile: ${e.message}`); }
+
+        try {
+            const r = await pool.query(
+                `UPDATE maintenance_plans mp
+                    SET signed_at = COALESCE(mp.signed_at, sig.signed_at), updated_at = NOW()
+                   FROM sales_agreements sa
+                   JOIN agreement_signatures sig ON sig.agreement_id = sa.id
+                  WHERE mp.agreement_id = sa.id AND mp.signed_at IS NULL`
+            );
+            report.plansRepaired = r.rowCount;
+        } catch (e) { report.errors.push(`plans: ${e.message}`); }
+
+        // Release signing claims latched by attempts that died on the missing
+        // column — these are what make an agreement permanently unsignable.
+        try {
+            const r = await pool.query(
+                `DELETE FROM lifecycle_events le
+                  WHERE le.stage = 'sla_signed'
+                    AND EXISTS (
+                         SELECT 1 FROM sales_agreements sa
+                          WHERE le.once_key = 'sla_signed:agreement:' || sa.id::text
+                            AND sa.signed_at IS NULL
+                            AND NOT EXISTS (SELECT 1 FROM agreement_signatures sig
+                                             WHERE sig.agreement_id = sa.id))`
+            );
+            report.claimsReleased = r.rowCount;
+        } catch (e) { report.errors.push(`claims: ${e.message}`); }
+
+        // Guard columns for the billing loophole fixes.
+        for (const [tbl, col, ddl] of [
+            ['maintenance_plans', 'suspended_at', 'TIMESTAMP'],
+            ['maintenance_plans', 'consecutive_failures', 'INTEGER DEFAULT 0'],
+        ]) {
+            try {
+                await pool.query(`ALTER TABLE ${tbl} ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
+            } catch (e) { /* already there */ }
+        }
+
+        return report;
+    }
+
+    /** What's missing right now? Read-only. */
+    app.get('/api/admin/schema/repair-status', authenticateToken, async (req, res) => {
+        try {
+            const have = new Set((await pool.query(
+                `SELECT column_name FROM information_schema.columns
+                  WHERE table_name = 'sales_agreements'`
+            )).rows.map((r) => r.column_name));
+            const missing = REPAIR_COLUMNS.map(([c]) => c).filter((c) => !have.has(c));
+            res.json({
+                success: true,
+                healthy: missing.length === 0,
+                missing,
+                message: missing.length === 0
+                    ? 'sales_agreements has every required column.'
+                    : `${missing.length} column(s) missing from sales_agreements — signing and SLA deletion will fail until this is repaired.`,
+            });
+        } catch (e) {
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
+    /** Apply the repair. Idempotent. */
+    app.post('/api/admin/schema/repair', authenticateToken, async (req, res) => {
+        try {
+            const report = await repairSchema();
+            const ok = report.errors.length === 0;
+            res.json({
+                success: ok,
+                report,
+                message: ok
+                    ? (report.added.length
+                        ? `Repaired. Added ${report.added.length} column(s): ${report.added.join(', ')}. ` +
+                          `${report.reconciled} agreement(s) reconciled, ${report.claimsReleased} stuck signing claim(s) released.`
+                        : 'Nothing needed repairing — the schema is already correct.')
+                    : `Repaired with ${report.errors.length} problem(s): ${report.errors.join('; ')}`,
+            });
+        } catch (e) {
+            console.error('[REPAIR]', e.message);
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
     // ---- admin: notifications bell ---------------------------------------
     app.get('/api/admin/lifecycle-notifications', authenticateToken, async (req, res) => {
         try {

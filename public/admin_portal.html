@@ -22057,8 +22057,8 @@ async function renderSalesAgreements(content) {
             <td>${start}</td>
             <td><select onchange="updateSalesAgreementStatus(${a.id}, this.value)" style="padding:6px;border-radius:6px;">${sel}</select></td>
             <td style="white-space:nowrap;">
-                ${a.signature_at
-                    ? `<span style="display:inline-block;padding:5px 9px;border-radius:5px;background:rgba(16,185,129,.15);color:#10b981;font-size:11px;font-weight:800;">SIGNED ${saEsc(String(a.signer_name || ''))}</span>`
+                ${(a.signature_at || a.signed_at || a.status === 'signed')
+                    ? `<span style="display:inline-block;padding:5px 9px;border-radius:5px;background:rgba(16,185,129,.15);color:#10b981;font-size:11px;font-weight:800;">SIGNED ${saEsc(String(a.signer_name || a.signature_name || ''))}</span>`
                     : (a.lead_id
                         ? `<button class="btn btn-primary" style="padding:6px 10px;" onclick="sendSalesAgreement(${a.id})">${a.sent_at ? 'Resend' : 'Send to portal'}</button>`
                         : `<span style="color:#eab308;font-size:11px;font-weight:700;">Assign a client to send</span>`)}
@@ -22751,7 +22751,14 @@ async function deleteSalesAgreement(id) {
         }
 
         if (!r.ok || !d.success) {
-            showToast(d.message || `Could not delete agreement (${r.status}).`, 'error');
+            // Log the whole response: "it just doesn't delete" is impossible to
+            // diagnose from a toast, and this is the line that tells you whether
+            // it was auth (401/403), a missing row (404), a foreign key (500) or
+            // a refusal (409).
+            console.error('[SA DELETE] failed', { status: r.status, body: d });
+            showToast(
+                d.message || `Could not delete agreement — the server returned ${r.status}. Check the browser console and the server log for [SA DELETE].`,
+                'error');
             return;
         }
         showToast(d.message || 'Sales agreement deleted.', 'success');
@@ -23529,6 +23536,7 @@ async function renderMaintenance(content){
       <td>${method}</td>
       <td>${dbmMoney(p.collected)}<div style="color:#8a8a8a;font-size:12px">${p.charges_completed||0} charge${Number(p.charges_completed)===1?'':'s'}</div></td>
       <td style="white-space:nowrap">
+        <button class="btn btn-sm" onclick="dbmEditPlan(${p.id})">Edit</button>
         <button class="btn btn-sm" onclick="dbPaymentLog(${p.lead_id}, '${dbmEsc(String(p.customer_name||'').replace(/'/g,''))}')">Payments</button>
       </td></tr>`;
   }).join('') : '';
@@ -23549,6 +23557,100 @@ async function renderMaintenance(content){
         <tbody>${rows}</tbody></table></div>`
       : `<div class="dbm-empty">No maintenance plans yet.<br>Set one up and the customer gets an agreement to sign, then autopay starts once they add a payment method.</div>`}
   `;
+}
+
+/* Edit a plan. THIS IS THE ONLY PLACE A MAINTENANCE PLAN OR ITS AGREEMENT IS
+   EDITABLE — the Sales Agreements tab sends you here on purpose, because
+   editing the document there left the plan holding the old price. */
+async function dbmEditPlan(id){
+  const p = (DBM.plans || []).find(x => Number(x.id) === Number(id));
+  if(!p) return dbmNote('That plan is no longer on screen. Refresh and try again.', 'error');
+
+  const annual = p.interval_unit === 'year';
+  const signed = !!p.signed_at;
+  const old = document.getElementById('dbmEditOverlay'); if(old) old.remove();
+
+  const ov = document.createElement('div');
+  ov.id = 'dbmEditOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;';
+  ov.innerHTML = `
+    <div style="background:var(--bg-card,#141414);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:26px;max-width:520px;width:100%;">
+      <h2 style="margin:0 0 4px;font-size:19px;">Edit plan</h2>
+      <p style="margin:0 0 18px;font-size:13px;color:var(--text-muted,#9a9a9a);">
+        ${dbmEsc(p.customer_name || '')} · ${dbmEsc(p.label || '')}
+      </p>
+      ${signed ? `<div style="font-size:12.5px;color:#eab308;background:rgba(234,179,8,.09);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:10px 12px;margin-bottom:16px;">
+        This plan is signed at ${dbmMoney(p.amount)}. Changing the <strong>price</strong> asks the customer to sign again, and billing pauses until they do. Everything else saves straight away.
+      </div>` : ''}
+      <div style="display:grid;gap:14px;">
+        <div>
+          <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Plan name</label>
+          <input id="epLabel" value="${dbmEsc(p.label || '')}" style="width:100%;padding:10px;border-radius:8px;">
+        </div>
+        <div>
+          <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Description</label>
+          <textarea id="epDesc" rows="2" style="width:100%;padding:10px;border-radius:8px;">${dbmEsc(p.description || '')}</textarea>
+        </div>
+        <div>
+          <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">
+            Amount per ${annual ? 'year' : 'month'}
+          </label>
+          <input id="epAmount" type="number" step="0.01" min="0" value="${dbmEsc(String(p.amount ?? ''))}" style="width:100%;padding:10px;border-radius:8px;">
+        </div>
+        ${annual ? `<div>
+          <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">What's being renewed</label>
+          <input id="epRef" value="${dbmEsc(p.item_reference || '')}" placeholder="e.g. example.com" style="width:100%;padding:10px;border-radius:8px;">
+        </div>` : `<div>
+          <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Billing day of the month</label>
+          <input id="epDay" type="number" min="1" max="28" value="${dbmEsc(String(p.billing_day || 1))}" style="width:100%;padding:10px;border-radius:8px;">
+          <p style="margin:6px 0 0;font-size:12px;color:var(--text-muted,#888);">Applies from the next charge onward. Capped at 28 so every month has the date.</p>
+        </div>`}
+        <div>
+          <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Next charge date</label>
+          <input id="epNext" type="date" value="${p.next_charge_date ? String(p.next_charge_date).slice(0,10) : ''}" style="width:100%;padding:10px;border-radius:8px;">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:22px;">
+        <button class="btn btn-secondary" onclick="document.getElementById('dbmEditOverlay').remove()">Cancel</button>
+        <button class="btn btn-primary" id="epSave">Save changes</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+
+  document.getElementById('epSave').onclick = async () => {
+    const btn = document.getElementById('epSave');
+    const body = {
+      label: document.getElementById('epLabel').value.trim(),
+      description: document.getElementById('epDesc').value.trim(),
+      amount: document.getElementById('epAmount').value,
+      next_charge_date: document.getElementById('epNext').value || undefined
+    };
+    const dayEl = document.getElementById('epDay'); if(dayEl) body.billing_day = dayEl.value;
+    const refEl = document.getElementById('epRef'); if(refEl) body.item_reference = refEl.value.trim();
+
+    if(!body.label) return dbmNote('Give the plan a name.', 'error');
+    if(body.amount === '' || Number(body.amount) < 0) return dbmNote('Enter an amount of 0 or more.', 'error');
+
+    btn.disabled = true; btn.textContent = 'Saving\u2026';
+    let d = await dbmSend('/api/admin/maintenance-plans/' + id, body, 'PATCH');
+
+    // A price change on a signed plan needs the customer's signature again.
+    if(d && d.needsResign){
+      btn.disabled = false; btn.textContent = 'Save changes';
+      if(!confirm(d.message + '\n\nGo ahead?')) return;
+      btn.disabled = true; btn.textContent = 'Saving\u2026';
+      body.confirmResign = true;
+      d = await dbmSend('/api/admin/maintenance-plans/' + id, body, 'PATCH');
+    }
+
+    if(!d || !d.success){
+      btn.disabled = false; btn.textContent = 'Save changes';
+      return dbmNote((d && d.message) || 'Could not save the plan.', 'error');
+    }
+    ov.remove();
+    dbmNote(d.message || 'Plan updated.', 'success');
+    renderMaintenance(document.getElementById('contentArea'));
+  };
 }
 
 function dbmUpdateBadge(id, n){

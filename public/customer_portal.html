@@ -110,9 +110,12 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
 .icon-btn{width:42px;height:42px;border-radius:50%;background:var(--surface);display:grid;place-items:center;
   position:relative;flex-shrink:0;box-shadow:var(--shadow)}
 .icon-btn svg{width:19px;height:19px;stroke:var(--ink);fill:none;stroke-width:1.9}
-.dot{position:absolute;top:8px;right:9px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;
-  background:var(--red);color:#fff;font-size:10.5px;font-weight:800;line-height:17px;text-align:center;
-  border:2px solid var(--canvas)}
+.dot{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 5px;
+  border-radius:999px;background:var(--red);color:#fff;font-size:10.5px;font-weight:800;
+  line-height:1;display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--canvas);box-sizing:border-box;
+  font-variant-numeric:tabular-nums;letter-spacing:0;pointer-events:none;
+  box-shadow:0 1px 3px rgba(0,0,0,.22)}
 .main{padding:4px 20px 28px;max-width:760px;margin:0 auto}
 .view-h{font-size:25px;font-weight:800;letter-spacing:-.03em;margin:10px 0 3px}
 .view-sub{color:var(--muted);font-size:14px;margin-bottom:20px}
@@ -229,7 +232,10 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
 .tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9}
 .tab span{font-size:10.5px;font-weight:700;letter-spacing:-.01em}
 .tab.on{color:var(--ink);background:var(--surface-2)}
-.tab .dot{top:2px;right:calc(50% - 21px);border-color:#fff}
+/* Anchored to the icon itself rather than a hand-tuned offset from the tab's
+   centre, which shifted whenever the label width changed. */
+.tab{position:relative}
+.tab .dot{top:2px;left:50%;right:auto;transform:translateX(4px);border-color:#fff}
 @media(min-width:760px){
   .tabs{max-width:760px;margin:0 auto;border-radius:var(--r-xl) var(--r-xl) 0 0;
     border:1px solid var(--line-2);border-bottom:none;box-shadow:var(--shadow-lg)}
@@ -585,13 +591,70 @@ async function refreshUnread(){
   }catch(_){}
 }
 function setUnread(n){
-  UNREAD = n;
+  // Guard the value first: a failed fetch used to hand this NaN, which rendered
+  // as a literal "NaN" in the badge.
+  const c = Math.max(0, Math.floor(Number(n) || 0));
+  UNREAD = c;
   for(const id of ['msgDot','tabDot']){
     const el = document.getElementById(id);
     if(!el) continue;
-    el.textContent = n > 99 ? '99+' : n;
-    el.classList.toggle('hidden', n === 0);
+    // Hide BEFORE writing the text, so a zero never paints for a frame.
+    el.classList.toggle('hidden', c === 0);
+    el.textContent = c > 99 ? '99+' : String(c);
+    el.setAttribute('aria-label', c === 1 ? '1 unread message' : c + ' unread messages');
   }
+}
+
+/* ============================================================================
+   Change password — in-portal, while signed in.
+
+   The username is the email address, so it's changed on the profile sheet
+   above; this covers the password. The current password is required, so a
+   session left open on someone else's device can't be used to take the account.
+   ============================================================================ */
+async function openPassword(){
+  sheet('<h2 class="sheet-h">Change your password</h2>' +
+    '<p class="sheet-sub">Your username is your email address \u2014 change that on the details screen.</p>' +
+    '<div class="field"><label for="pwCur">Current password</label>' +
+      '<input class="input" id="pwCur" type="password" autocomplete="current-password"></div>' +
+    '<div class="field"><label for="pwNew">New password</label>' +
+      '<input class="input" id="pwNew" type="password" autocomplete="new-password">' +
+      '<p style="font-size:12.5px;color:var(--muted);margin-top:6px">At least 8 characters.</p></div>' +
+    '<div class="field"><label for="pwNew2">Confirm new password</label>' +
+      '<input class="input" id="pwNew2" type="password" autocomplete="new-password"></div>' +
+    '<div id="pwErr" class="alert alert-err hidden"></div>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" onclick="openProfile()">Back</button>' +
+      '<button class="btn btn-primary" id="pwGo">Update password</button></div>');
+
+  const fail = (m) => {
+    const e = document.getElementById('pwErr');
+    e.textContent = m; e.classList.remove('hidden');
+  };
+
+  document.getElementById('pwGo').onclick = async () => {
+    document.getElementById('pwErr').classList.add('hidden');
+    const cur = document.getElementById('pwCur').value;
+    const nw  = document.getElementById('pwNew').value;
+    const nw2 = document.getElementById('pwNew2').value;
+
+    if(!cur) return fail('Enter your current password.');
+    if(nw.length < 8) return fail('Your new password needs to be at least 8 characters.');
+    if(nw !== nw2) return fail('Those two new passwords don\'t match.');
+    if(nw === cur) return fail('That\'s the password you already have \u2014 pick a different one.');
+
+    const btn = document.getElementById('pwGo');
+    btn.disabled = true; btn.textContent = 'Updating\u2026';
+    try{
+      await post('/api/portal/change-password', { currentPassword: cur, newPassword: nw });
+      sheet('<h2 class="sheet-h">Password updated</h2>' +
+        '<p class="sheet-sub">You\'ll stay signed in here. We\'ve emailed you to confirm the change.</p>' +
+        '<div class="sheet-actions"><button class="btn btn-primary" onclick="closeSheet()">Done</button></div>');
+    }catch(e){
+      btn.disabled = false; btn.textContent = 'Update password';
+      fail(e.message || 'Could not change your password.');
+    }
+  };
 }
 
 /* ============================================================================
@@ -1061,6 +1124,8 @@ async function openProfile(){
     '<div class="sheet-actions">' +
       '<button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>' +
       '<button class="btn btn-primary" id="pfGo">Save changes</button></div>' +
+    '<hr style="border:0;border-top:1px solid var(--line-2);margin:22px 0 18px">' +
+    '<button class="btn btn-ghost btn-block" onclick="openPassword()">Change your password</button>' +
     '<button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="closeSheet();signOut();">Sign out</button>');
 
   document.getElementById('pfGo').onclick = async () => {

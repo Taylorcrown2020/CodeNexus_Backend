@@ -242,6 +242,14 @@ module.exports = function initLifecycle({
      * Everything this module sends goes through here, so changing it changes
      * every email at once.
      */
+    // Absolute URL — email clients can't resolve a relative path. Override with
+    // LOGO_URL if the asset ever moves.
+    // SITE_URL is declared further down this same scope; referencing it here
+    // would be a temporal-dead-zone error if shell() were ever called during
+    // init, so LOGO_URL stands on its own.
+    const LOGO_URL = process.env.LOGO_URL
+        || `${process.env.SITE_URL || 'https://diamondbackcoding.com'}/images/diamondback-logo-email.png`;
+
     function shell(title, bodyHtml, cta) {
         return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -253,10 +261,13 @@ module.exports = function initLifecycle({
 <tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
 
-    <!-- wordmark -->
+    <!-- logo -->
     <tr><td style="padding:0 4px 18px;">
-      <span style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;
-                   letter-spacing:.14em;text-transform:uppercase;color:#0d0f12;">Diamondback Coding</span>
+      <a href="${process.env.SITE_URL || 'https://diamondbackcoding.com'}" style="text-decoration:none;">
+        <img src="${LOGO_URL}" alt="Diamondback Coding" width="188" height="38"
+             style="display:block;border:0;outline:none;text-decoration:none;
+                    width:188px;max-width:188px;height:auto;">
+      </a>
     </td></tr>
 
     <!-- card -->
@@ -829,10 +840,46 @@ module.exports = function initLifecycle({
         const a = (await pool.query('SELECT * FROM sales_agreements WHERE id=$1', [agreementId])).rows[0];
         if (!a) throw new Error('Agreement not found');
 
-        if (!(await claimStage(a.lead_id, 'sla_signed', `sla_signed:agreement:${agreementId}`,
-                               { entityType: 'agreement', entityId: agreementId }))) {
-            return { signed: false, alreadySigned: true };
+        // The ONLY authoritative "already signed" test is the signature row.
+        // The previous guard was claimStage(), which writes its lifecycle_events
+        // row BEFORE any work happens: if anything downstream threw, the claim
+        // survived, every retry returned early, and the agreement sat unsigned
+        // forever while the customer was told it had gone through. The claim is
+        // still taken (it keeps the audit trail and stops duplicate email), but
+        // it no longer decides whether the agreement is signed, and it is
+        // RELEASED if the signature does not actually land.
+        const already = (await pool.query(
+            `SELECT sa.signed_at, sa.status, (sig.id IS NOT NULL) AS has_sig
+               FROM sales_agreements sa
+               LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
+              WHERE sa.id = $1`, [agreementId]
+        )).rows[0];
+
+        if (already && (already.has_sig || already.signed_at)) {
+            // Genuinely signed already. Reconcile the row in case a previous
+            // run died between the signature and the status update, then report
+            // the true kind so the caller words its response correctly.
+            await pool.query(
+                `UPDATE sales_agreements
+                    SET status = CASE WHEN status IN ('sent','draft') THEN 'signed' ELSE status END,
+                        signed_at = COALESCE(signed_at, NOW()), updated_at = NOW()
+                  WHERE id = $1`, [agreementId]
+            ).catch(() => {});
+            return {
+                signed: true, alreadySigned: true,
+                kind: a.agreement_kind || 'sla',
+            };
         }
+
+        // Not signed. Clear any stale claim from a previous failed attempt so
+        // the audit insert below can be taken cleanly.
+        await pool.query(
+            `DELETE FROM lifecycle_events WHERE once_key = $1`,
+            [`sla_signed:agreement:${agreementId}`]
+        ).catch(() => {});
+
+        await claimStage(a.lead_id, 'sla_signed', `sla_signed:agreement:${agreementId}`,
+                         { entityType: 'agreement', entityId: agreementId });
 
         const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [a.lead_id])).rows[0];
         const name = signerName || a.customer_name || (lead && lead.name) || 'Customer';
@@ -916,6 +963,17 @@ module.exports = function initLifecycle({
             )).rows[0];
 
             const ready = updated.status === 'active';
+
+            // Bill the first period NOW rather than waiting for tonight's cron.
+            // This is the point at which the plan is genuinely chargeable: the
+            // document is signed and a method is on file.
+            let firstCharge = null;
+            if (ready && updated.next_charge_date
+                && dateOnly(updated.next_charge_date) <= dateOnly(new Date())) {
+                firstCharge = await chargeMaintenancePlan(updated)
+                    .catch((e) => { console.warn('[LIFECYCLE] first charge:', e.message); return null; });
+            }
+
             await notify({
                 lead, kind: 'maintenance_agreement',
                 subject: ready
@@ -1258,8 +1316,10 @@ module.exports = function initLifecycle({
 
         const outstanding = await pool.query(
             `SELECT COUNT(*) AS n, COALESCE(SUM(total_amount),0) AS amt
-               FROM invoices
-              WHERE lead_id=$1 AND status NOT IN ('paid','void','cancelled','refunded','draft')`,
+               FROM invoices i
+              WHERE i.lead_id=$1 AND i.${OPEN_STATUSES}
+                AND COALESCE(i.obligation,'due_now') = 'due_now'
+                ${signedGate('i')}`,
             [p.lead_id]
         );
         const owing = Number(outstanding.rows[0].n);
@@ -1349,6 +1409,31 @@ module.exports = function initLifecycle({
      * created — the customer gets a receipt, not a bill to act on. Set
      * generate_invoice on the plan to produce a document anyway.
      */
+    /**
+     * An invoice is only a real obligation when the document behind it has been
+     * SIGNED. An unsigned SLA or an unsigned maintenance plan must never show a
+     * balance, chase the customer, or block a cancellation.
+     *
+     * Invoices tied to nothing (ad-hoc admin invoices) are unaffected — there is
+     * no document to sign, so they stand on their own.
+     *
+     * `a` is the alias the caller uses for the invoices table.
+     */
+    function signedGate(a = 'i') {
+        return `
+            AND (${a}.agreement_id IS NULL OR EXISTS (
+                    SELECT 1 FROM sales_agreements sa_g
+                     WHERE sa_g.id = ${a}.agreement_id
+                       AND (sa_g.signed_at IS NOT NULL OR sa_g.status = 'signed')))
+            AND (${a}.maintenance_plan_id IS NULL OR EXISTS (
+                    SELECT 1 FROM maintenance_plans mp_g
+                     WHERE mp_g.id = ${a}.maintenance_plan_id
+                       AND mp_g.signed_at IS NOT NULL))`;
+    }
+
+    /** Invoices that are genuinely outstanding for a customer right now. */
+    const OPEN_STATUSES = `status NOT IN ('paid','void','cancelled','refunded','draft')`;
+
     async function chargeMaintenancePlan(plan) {
         const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [plan.lead_id])).rows[0];
         if (!lead) return { ok: false, error: 'lead missing' };
@@ -1360,10 +1445,30 @@ module.exports = function initLifecycle({
         const pm = await resolvePaymentMethod(plan.lead_id, plan.payment_method_id);
 
         if (!pm) {
+            // LOOPHOLE FIX: without this the plan just stopped billing and the
+            // customer kept the service for nothing, forever, silently. The due
+            // date is NOT advanced — the period stays owed — and the misses are
+            // counted so the plan suspends rather than drifting on unpaid.
+            const missed = Number(plan.consecutive_failures || 0) + 1;
             await pool.query(
-                `UPDATE maintenance_plans SET status='pending_payment_method', updated_at=NOW() WHERE id=$1`,
-                [plan.id]
+                `UPDATE maintenance_plans
+                    SET status = CASE WHEN $2 >= 3 THEN 'suspended' ELSE 'pending_payment_method' END,
+                        consecutive_failures = $2,
+                        suspended_at = CASE WHEN $2 >= 3 THEN COALESCE(suspended_at, NOW()) ELSE suspended_at END,
+                        updated_at = NOW()
+                  WHERE id=$1`,
+                [plan.id, missed]
             );
+            await notify({
+                lead, kind: 'maintenance_no_method',
+                subject: `Action needed — ${plan.label} has no payment method`,
+                bodyHtml: `<p style="margin:0 0 12px">We couldn't bill your <strong style="color:#0d0f12">${plan.label}</strong> plan because there's no payment method on file.</p>
+                           <p style="margin:0 0 12px">This period (${money(plan.amount)}) is still owed. Add a method in your portal and we'll settle it straight away.</p>
+                           <p style="margin:0">${missed >= 3 ? 'The plan is now suspended until a method is added.' : 'The plan pauses if we cannot bill it after three attempts.'}</p>`,
+                smsText: `Diamondback Coding: ${plan.label} couldn't be billed — no payment method on file. Add one in your portal.`,
+                channels: ['email', 'sms', 'portal'],
+                cta: { url: PORTAL_URL, label: 'Add a payment method' },
+            }).catch((e) => console.warn('[LIFECYCLE] no-method notify:', e.message));
             await adminNotify({
                 kind: 'maintenance_no_method',
                 title: `${lead.name}: no payment method for ${plan.label}`,
@@ -1394,10 +1499,17 @@ module.exports = function initLifecycle({
             });
         } catch (e) {
             const failures = Number(plan.consecutive_failures || 0) + 1;
+            // LOOPHOLE FIX: 'past_due' alone left the plan running and being
+            // retried indefinitely — unlimited free service after a card was
+            // cancelled. Past due at 3, suspended at 6, and the unpaid period is
+            // never written off: next_charge_date stays where it is.
             await pool.query(
                 `UPDATE maintenance_plans
                     SET consecutive_failures=$2,
-                        status = CASE WHEN $2 >= 3 THEN 'past_due' ELSE status END,
+                        status = CASE WHEN $2 >= 6 THEN 'suspended'
+                                      WHEN $2 >= 3 THEN 'past_due'
+                                      ELSE status END,
+                        suspended_at = CASE WHEN $2 >= 6 THEN COALESCE(suspended_at, NOW()) ELSE suspended_at END,
                         updated_at=NOW()
                   WHERE id=$1`, [plan.id, failures]
             );
@@ -1600,9 +1712,14 @@ module.exports = function initLifecycle({
 
     /** Charge every maintenance plan due today. */
     async function runMaintenanceCharges() {
+        // signed_at is required, in both directions: an unsigned plan is never
+        // charged (no taking money against an unsigned document), and a signed
+        // plan whose period is due is never skipped (which is what let people
+        // sit on an active plan that quietly never billed).
         const due = await pool.query(
             `SELECT * FROM maintenance_plans
               WHERE status IN ('active','pending_cancellation')
+                AND signed_at IS NOT NULL
                 AND next_charge_date IS NOT NULL
                 AND next_charge_date <= CURRENT_DATE
               ORDER BY id`
@@ -1864,12 +1981,15 @@ module.exports = function initLifecycle({
                     (CURRENT_DATE - i.due_date) AS days_overdue
                FROM invoices i
                JOIN leads l ON l.id = i.lead_id
-              WHERE i.status NOT IN ('paid','void','cancelled','refunded','draft')
+              WHERE i.${OPEN_STATUSES}
                 AND i.due_date IS NOT NULL
                 AND i.due_date < CURRENT_DATE
                 -- An estimated due date is a placeholder tied to project
                 -- completion, not a real obligation. Never dun on one.
                 AND COALESCE(i.due_date_estimated, FALSE) = FALSE
+                AND COALESCE(i.obligation,'due_now') = 'due_now'
+                -- Never chase money against an unsigned document.
+                ${signedGate('i')}
               ORDER BY i.due_date`
         );
 
@@ -1980,10 +2100,12 @@ module.exports = function initLifecycle({
                     l.id AS lead_id, l.name, l.email, l.phone
                FROM invoices i
                JOIN leads l ON l.id = i.lead_id
-              WHERE i.status NOT IN ('paid','void','cancelled','refunded','draft')
+              WHERE i.${OPEN_STATUSES}
                 AND i.due_date IS NOT NULL
                 AND i.due_date < CURRENT_DATE
                 AND COALESCE(i.due_date_estimated, FALSE) = FALSE
+                AND COALESCE(i.obligation,'due_now') = 'due_now'
+                ${signedGate('i')}
               ORDER BY i.due_date`
         )).rows;
 
@@ -2568,10 +2690,58 @@ module.exports = function initLifecycle({
             vals.push(req.params.id);
             const upd = await pool.query(
                 `UPDATE sales_agreements SET ${sets.join(', ')}, updated_at = NOW()
-                  WHERE id = $${vals.length} RETURNING *`,
+                  WHERE id = ${vals.length} RETURNING *`,
                 vals
             );
-            res.json({ success: true, agreement: upd.rows[0], message: 'Agreement updated.' });
+
+            // Milestones and line items were accepted from the editor and then
+            // thrown away here — the UI sends both on every save, so editing an
+            // agreement to add milestones did nothing and reported success.
+            // Replace-in-full matches what the editor shows: it is the whole
+            // list, not a delta.
+            if (Array.isArray(b.milestones)) {
+                await pool.query('DELETE FROM agreement_milestones WHERE agreement_id=$1', [req.params.id])
+                    .catch((e) => console.warn('[SA UPDATE] clear milestones:', e.message));
+                for (const [i, m] of b.milestones.entries()) {
+                    if (!m || !String(m.title || '').trim()) continue;
+                    await pool.query(
+                        `INSERT INTO agreement_milestones (agreement_id, sort_order, title, description, due_date)
+                         VALUES ($1,$2,$3,$4,$5)`,
+                        [req.params.id, i, String(m.title).slice(0, 300),
+                         m.description || null, m.due_date || null]
+                    ).catch((e) => console.warn('[SA UPDATE] milestone insert:', e.message));
+                }
+            }
+
+            if (Array.isArray(b.items)) {
+                await pool.query('DELETE FROM agreement_items WHERE agreement_id=$1', [req.params.id])
+                    .catch((e) => console.warn('[SA UPDATE] clear items:', e.message));
+                let itemsTotal = 0;
+                for (const [i, it] of b.items.entries()) {
+                    if (!it || !String(it.description || '').trim()) continue;
+                    const amount = it.amount != null
+                        ? Number(it.amount)
+                        : (Number(it.quantity) || 1) * (Number(it.unit_price) || 0);
+                    itemsTotal += amount;
+                    await pool.query(
+                        `INSERT INTO agreement_items
+                            (agreement_id, sort_order, description, detail, quantity, unit_price, amount, is_optional)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                        [req.params.id, i, String(it.description).slice(0, 500), it.detail || null,
+                         Number(it.quantity) || 1, Number(it.unit_price) || 0, amount, !!it.is_optional]
+                    ).catch((e) => console.warn('[SA UPDATE] item insert:', e.message));
+                }
+                // Keep the headline price in step with the items, exactly as
+                // create does — otherwise the document and its total disagree.
+                if (b.items.length && b.price === undefined) {
+                    await pool.query('UPDATE sales_agreements SET price=$2 WHERE id=$1',
+                                     [req.params.id, itemsTotal.toFixed(2)]);
+                }
+            }
+
+            const fresh = (await pool.query(
+                'SELECT * FROM sales_agreements WHERE id=$1', [req.params.id])).rows[0];
+            res.json({ success: true, agreement: fresh || upd.rows[0], message: 'Agreement updated.' });
         } catch (e) {
             console.error('[SA UPDATE]', e.code, e.message);
             res.status(500).json({ success: false, message: dbErrorMessage(e, 'That agreement') });
@@ -2622,8 +2792,29 @@ module.exports = function initLifecycle({
             // would make the agreement look signed if the id were ever reused.
             await pool.query('DELETE FROM agreement_signatures WHERE agreement_id = $1', [req.params.id])
                 .catch(() => {});
+            await pool.query('DELETE FROM agreement_milestones WHERE agreement_id = $1', [req.params.id])
+                .catch(() => {});
+            // plan_cancellations.reinstatement_agreement_id has no FK, so it is
+            // never cascaded and would dangle.
+            await pool.query('UPDATE plan_cancellations SET reinstatement_agreement_id = NULL WHERE reinstatement_agreement_id = $1', [req.params.id])
+                .catch(() => {});
+            // The once-guard rows. Left behind, they make a future agreement
+            // that reuses this id silently unsignable.
+            await pool.query(
+                `DELETE FROM lifecycle_events
+                  WHERE once_key IN ($1, $2) OR (entity_type='agreement' AND entity_id=$3)`,
+                [`sla_signed:agreement:${req.params.id}`, `sla_sent:agreement:${req.params.id}`,
+                 Number(req.params.id)]
+            ).catch(() => {});
 
-            await pool.query('DELETE FROM sales_agreements WHERE id=$1', [req.params.id]);
+            const del = await pool.query('DELETE FROM sales_agreements WHERE id=$1', [req.params.id]);
+            if (!del.rowCount) {
+                // Nothing was removed — report that rather than claiming success.
+                return res.status(409).json({
+                    success: false,
+                    message: 'That agreement could not be removed. Reload the page and try again — if it persists, something still references it.',
+                });
+            }
             res.json({ success: true, message: `${a.agreement_number || 'Agreement'} deleted.` });
         } catch (e) {
             console.error('[SA DELETE]', e.code, e.message);
@@ -3074,6 +3265,87 @@ module.exports = function initLifecycle({
         if (new Date(row.expires_at) <= new Date()) return { valid: false, reason: 'expired' };
         return { valid: true, row };
     }
+
+    /**
+     * Change the password from inside the portal, while signed in.
+     *
+     * Requires the CURRENT password: a signed-in session on a shared or stolen
+     * device must not be enough to lock the real owner out of their account.
+     * The username is the email address, so that half is handled by
+     * PATCH /api/portal/profile.
+     */
+    app.post('/api/portal/change-password', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const { currentPassword, newPassword } = req.body || {};
+
+            if (!currentPassword || !newPassword) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Enter your current password and the new one you\'d like.',
+                });
+            }
+            if (String(newPassword).length < 8) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Your new password needs to be at least 8 characters.',
+                });
+            }
+
+            const lead = (await pool.query(
+                'SELECT id, name, email, phone, client_password FROM leads WHERE id=$1', [leadId]
+            )).rows[0];
+            if (!lead || !lead.client_password) {
+                return res.status(404).json({ success: false, message: 'Account not found.' });
+            }
+
+            const ok = await bcrypt.compare(String(currentPassword), lead.client_password);
+            if (!ok) {
+                // 400, deliberately NOT 401/403: the portal's fetch helper treats
+                // those as an expired session and signs the customer straight
+                // out. Mistyping your own password must not log you out.
+                return res.status(400).json({
+                    success: false,
+                    message: 'That current password doesn\'t match. Try again, or use "Forgot password" from the sign-in screen.',
+                });
+            }
+            if (await bcrypt.compare(String(newPassword), lead.client_password)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'That\'s the password you already have — pick a different one.',
+                });
+            }
+
+            await pool.query(
+                'UPDATE leads SET client_password=$2, updated_at=NOW() WHERE id=$1',
+                [leadId, await bcrypt.hash(String(newPassword), 10)]
+            );
+
+            // Any outstanding reset links are now stale — spend them, so an old
+            // emailed link can't undo a change the customer just made.
+            await pool.query(
+                `UPDATE auth_tokens SET used_at = NOW()
+                  WHERE lead_id = $1 AND purpose = 'password_reset' AND used_at IS NULL`,
+                [leadId]
+            ).catch(() => {});
+
+            // Tell them out-of-band. If this wasn't them, the email is how they
+            // find out.
+            await notify({
+                lead, kind: 'password_changed',
+                subject: 'Your password was changed',
+                bodyHtml: `<p style="margin:0 0 12px">Your Diamondback Coding portal password was just changed.</p>
+                           <p style="margin:0">If that was you, nothing else is needed. If it wasn't, reply to this email straight away and we'll lock the account.</p>`,
+                channels: ['email'],
+                cta: { url: PORTAL_URL, label: 'Open your portal' },
+            }).catch((e) => console.warn('[CHANGE PASSWORD] notify:', e.message));
+
+            res.json({ success: true, message: 'Password updated.' });
+        } catch (e) {
+            console.error('[CHANGE PASSWORD]', e.message);
+            res.status(500).json({ success: false, message: 'Could not change your password. Please try again.' });
+        }
+    });
 
     app.post('/api/auth/forgot-password', async (req, res) => {
         try {
@@ -3692,6 +3964,30 @@ module.exports = function initLifecycle({
     /** Signing a reinstatement document restarts the plan it belongs to. */
     async function applyReinstatement(agreement) {
         const leadId = agreement.lead_id;
+        // LOOPHOLE FIX: reinstating cleared the cancellation regardless of what
+        // was still owed on it, so cancel -> reinstate -> cancel was a free ride
+        // through every notice period. Anything unpaid on the plan is carried
+        // forward as still due; the plan comes back only as far as its payment
+        // state allows.
+        if (agreement.maintenance_plan_id) {
+            const owed = (await pool.query(
+                `SELECT COALESCE(SUM(total_amount),0) AS amt
+                   FROM invoices
+                  WHERE maintenance_plan_id = $1
+                    AND status NOT IN ('paid','void','cancelled','refunded','draft')`,
+                [agreement.maintenance_plan_id]
+            )).rows[0];
+            if (Number(owed.amt) > 0) {
+                await adminNotify({
+                    kind: 'reinstated_with_balance',
+                    title: 'Plan reinstated with an unpaid balance',
+                    body: `${money(owed.amt)} still outstanding on plan #${agreement.maintenance_plan_id}.`,
+                    leadId, entityType: 'maintenance_plan', entityId: agreement.maintenance_plan_id,
+                    severity: 'warning',
+                    onceKey: `reinstate_balance:${agreement.id}`,
+                });
+            }
+        }
         if (agreement.maintenance_plan_id) {
             await pool.query(
                 `UPDATE plan_cancellations SET status='reinstated', reinstated_at=NOW(),
@@ -3700,8 +3996,15 @@ module.exports = function initLifecycle({
                 [agreement.maintenance_plan_id, agreement.id]
             );
             await pool.query(
-                `UPDATE maintenance_plans SET status='active', updated_at=NOW()
-                  WHERE id=$1 AND status='pending_cancellation'`,
+                `UPDATE maintenance_plans mp
+                    SET status = CASE
+                            WHEN COALESCE(mp.payment_method_id, l.default_payment_method_id) IS NOT NULL
+                                 THEN 'active' ELSE 'pending_payment_method' END,
+                        consecutive_failures = 0,
+                        updated_at = NOW()
+                   FROM leads l
+                  WHERE mp.id=$1 AND l.id = mp.lead_id
+                    AND mp.status IN ('pending_cancellation','cancelled','suspended')`,
                 [agreement.maintenance_plan_id]
             );
         } else if (agreement.subscription_id) {
@@ -4596,6 +4899,21 @@ module.exports = function initLifecycle({
                 throw signErr;
             }
 
+            // An agreement that was already signed (typically by an earlier
+            // attempt that failed AFTER the signature) is a success, not a new
+            // signing. Say so plainly and let the UI refresh — the old code fell
+            // through to the SLA branch and claimed a timeline and invoice that
+            // were never created.
+            if (out.alreadySigned) {
+                return res.json({
+                    success: true,
+                    alreadySigned: true,
+                    kind: out.kind || 'sla',
+                    message: 'This agreement is already signed — your copy is in Docs.',
+                    invoice: null, assignedAdmin: null,
+                });
+            }
+
             // Tell the UI which kind this was, so it can route the customer to
             // the right place and word the confirmation correctly. A maintenance
             // agreement produces no project and no invoice.
@@ -4656,8 +4974,10 @@ module.exports = function initLifecycle({
             );
             const open = await pool.query(
                 `SELECT COUNT(*) AS n, COALESCE(SUM(total_amount),0) AS amt
-                   FROM invoices
-                  WHERE lead_id=$1 AND status NOT IN ('paid','void','cancelled','refunded','draft')`,
+                   FROM invoices i
+                  WHERE i.lead_id=$1 AND i.${OPEN_STATUSES}
+                    AND COALESCE(i.obligation,'due_now') = 'due_now'
+                    ${signedGate('i')}`,
                 [leadId]
             );
             res.json({
@@ -4824,6 +5144,36 @@ module.exports = function initLifecycle({
             );
             const plan = ins.rows[0];
 
+            // FIRST PERIOD IS BILLED IMMEDIATELY. next_charge_date is set to the
+            // start date (today unless one was given), so the plan is due the
+            // moment it becomes chargeable. It only actually charges once the
+            // agreement is signed AND a method is on file — money is never taken
+            // against an unsigned document — after which the next date moves one
+            // full interval on from the day billing really started.
+            //
+            // A FUTURE date is respected as given, from either source:
+            //   * an explicit billing start date — "starts on the 1st" must not
+            //     bill today;
+            //   * an annual renewal date — a domain renewing next September is
+            //     charged next September, not the day it's set up. Billing an
+            //     annual plan "immediately" would take a full year's fee a year
+            //     early, which is the opposite of what this is meant to fix.
+            // Everything else (the normal monthly plan, created to start now)
+            // bills its first period straight away.
+            const today = dateOnly(new Date());
+            const startsInFuture =
+                (startExplicit && !isNaN(startExplicit) && dateOnly(startExplicit) > today)
+                || (dateOnly(firstCharge) && dateOnly(firstCharge) > today && unit === 'year');
+            if (!startsInFuture) {
+                await pool.query(
+                    `UPDATE maintenance_plans
+                        SET next_charge_date = CURRENT_DATE, billing_start_date = CURRENT_DATE
+                      WHERE id = $1`, [plan.id]
+                );
+                plan.next_charge_date = dateOnly(new Date());
+                plan.billing_start_date = dateOnly(new Date());
+            }
+
             // The plan agreement they sign before autopay can start.
             let agreement = null;
             if (sendAgreement) {
@@ -4857,6 +5207,123 @@ module.exports = function initLifecycle({
         } catch (e) {
             console.error('[ADMIN CREATE PLAN]', e.message);
             res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
+    /**
+     * Edit a maintenance plan. THE ONLY PLACE A PLAN OR ITS AGREEMENT CAN BE
+     * EDITED — the Sales Agreements tab refuses maintenance agreements
+     * (see PATCH /api/sales-agreements/:id), because editing the document there
+     * left the plan holding the old price and schedule.
+     *
+     * The plan and its agreement are written together here, so they cannot
+     * disagree.
+     *
+     * Changing the PRICE of a signed plan is a new commitment, not an edit: the
+     * customer agreed to a figure. It therefore needs a fresh signature, and the
+     * caller must say so explicitly with confirmResign.
+     */
+    app.patch('/api/admin/maintenance-plans/:id', authenticateToken, async (req, res) => {
+        try {
+            const b = req.body || {};
+            const plan = (await pool.query(
+                'SELECT * FROM maintenance_plans WHERE id=$1', [req.params.id])).rows[0];
+            if (!plan) return res.status(404).json({ success: false, message: 'Plan not found.' });
+
+            const priceChanged = b.amount != null && b.amount !== ''
+                && Number(b.amount) !== Number(plan.amount);
+            if (Number(b.amount) < 0) {
+                return res.status(400).json({ success: false, message: 'Amount cannot be negative.' });
+            }
+
+            const isSigned = !!plan.signed_at;
+            if (priceChanged && isSigned && !b.confirmResign) {
+                return res.status(409).json({
+                    success: false,
+                    code: 'PRICE_NEEDS_RESIGN',
+                    needsResign: true,
+                    message: `${plan.label} is signed at ${money(plan.amount)}. Changing the price replaces what they agreed to, so they'll be asked to sign again and billing pauses until they do. Confirm to go ahead.`,
+                });
+            }
+
+            const sets = ['updated_at = NOW()'];
+            const vals = [req.params.id];
+            const put = (col, val) => { vals.push(val); sets.push(`${col} = ${vals.length}`); };
+
+            if (b.label !== undefined && String(b.label).trim()) put('label', String(b.label).trim().slice(0, 200));
+            if (b.description !== undefined) put('description', String(b.description || '').trim() || null);
+            if (b.amount !== undefined && b.amount !== '') put('amount', Number(b.amount));
+            if (b.item_reference !== undefined) put('item_reference', String(b.item_reference || '').trim() || null);
+
+            // Moving the billing day moves the NEXT charge, never a past one.
+            if (b.billing_day !== undefined && b.billing_day !== '') {
+                const day = Math.min(28, Math.max(1, Number(b.billing_day) || 1));
+                put('billing_day', day);
+            }
+            if (b.next_charge_date !== undefined && b.next_charge_date) {
+                put('next_charge_date', dateOnly(b.next_charge_date));
+            }
+
+            // A price change on a signed plan sends it back for signature, and
+            // billing stops until it's signed again — runMaintenanceCharges
+            // requires signed_at.
+            if (priceChanged && isSigned) {
+                put('signed_at', null);
+                put('status', 'pending_signature');
+            }
+
+            const upd = (await pool.query(
+                `UPDATE maintenance_plans SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, vals
+            )).rows[0];
+
+            // Keep the document in step with the plan. This is the whole reason
+            // edits are confined to this tab.
+            if (plan.agreement_id) {
+                const unit = upd.interval_unit === 'year' ? 'year' : 'month';
+                await pool.query(
+                    `UPDATE sales_agreements
+                        SET package_name = $2, price = $3,
+                            status = CASE WHEN $4::bool THEN 'sent' ELSE status END,
+                            signed_at = CASE WHEN $4::bool THEN NULL ELSE signed_at END,
+                            intro = $5, updated_at = NOW()
+                      WHERE id = $1`,
+                    [plan.agreement_id, upd.label, upd.amount, !!(priceChanged && isSigned),
+                     `${upd.label} at ${money(upd.amount)} per ${unit}, charged automatically.`]
+                );
+                if (priceChanged && isSigned) {
+                    // The old signature is no longer evidence of THIS price.
+                    await pool.query('DELETE FROM agreement_signatures WHERE agreement_id=$1',
+                                     [plan.agreement_id]).catch(() => {});
+                    await pool.query('DELETE FROM lifecycle_events WHERE once_key = $1',
+                                     [`sla_signed:agreement:${plan.agreement_id}`]).catch(() => {});
+                }
+            }
+
+            if (priceChanged && isSigned) {
+                const lead = (await pool.query(
+                    'SELECT id,name,email,phone FROM leads WHERE id=$1', [plan.lead_id])).rows[0];
+                await notify({
+                    lead, kind: 'maintenance_agreement',
+                    subject: `${upd.label} — updated, please review and sign`,
+                    bodyHtml: `<p style="margin:0 0 12px">We've updated your <strong style="color:#0d0f12">${upd.label}</strong> plan to ${money(upd.amount)} per ${upd.interval_unit === 'year' ? 'year' : 'month'}.</p>
+                               <p style="margin:0 0 12px">Because the price has changed, the updated agreement is waiting for your signature in your portal.</p>
+                               <p style="margin:0">Billing is paused until you sign, and nothing is charged in the meantime.</p>`,
+                    smsText: `Diamondback Coding: your ${upd.label} plan was updated to ${money(upd.amount)}. Please sign the updated agreement in your portal.`,
+                    channels: ['email', 'sms', 'portal'],
+                    cta: { url: PORTAL_URL, label: 'Review & sign' },
+                }).catch((e) => console.warn('[PLAN EDIT] notify:', e.message));
+            }
+
+            res.json({
+                success: true, plan: upd,
+                resignRequired: !!(priceChanged && isSigned),
+                message: (priceChanged && isSigned)
+                    ? `${upd.label} updated. The customer has been asked to sign the new price; billing is paused until they do.`
+                    : `${upd.label} updated.`,
+            });
+        } catch (e) {
+            console.error('[PLAN EDIT]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'That plan') });
         }
     });
 

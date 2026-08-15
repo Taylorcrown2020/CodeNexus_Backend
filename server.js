@@ -5556,6 +5556,22 @@ app.post('/api/leads', async (req, res) => {
             console.log(`[CONTACT FORM] Track result:`, trackResult);
         }
 
+        // Confirmation email to the person who filled the form. This never
+        // existed — a lead submitted the contact form and heard nothing back
+        // until the follow-up queue got to them.
+        //
+        // Fire-and-forget: the lead is already saved, so a mail outage must not
+        // turn a successful submission into an error on their screen. Sent via
+        // the lifecycle notifier, so it is transactional and cannot feed the
+        // hot/cold scoring that the follow-up queue owns.
+        if (!isAuthenticated) {
+            lifecycle.onContactFormSubmitted({
+                leadId: result.rows[0].id,
+                projectType: project_type || service || null,
+                messageText: message || details || null,
+            }).catch((e) => console.error('[CONTACT FORM] confirmation email failed:', e.message));
+        }
+
         res.json({
             success: true,
             message: isAuthenticated ? 'Lead created successfully.' : 'Thank you for contacting us! We\'ll get back to you within 24 hours.',
@@ -26314,6 +26330,10 @@ initPortal({
     // so a direct reference here would be undefined. The wrapper resolves when a
     // service request is actually submitted, by which time it exists.
     onServiceRequestCreated: (args) => lifecycle.onServiceRequestCreated(args),
+    issueLoginCode: (args) => lifecycle.issueLoginCode(args),
+    verifyLoginCode: (args) => lifecycle.verifyLoginCode(args),
+    issueTrustToken: (args) => lifecycle.issueTrustToken(args),
+    isDeviceTrusted: (a, b) => lifecycle.isDeviceTrusted(a, b),
 });
 
 const initDiamondbackSms = require('./diamondback-sms.js');

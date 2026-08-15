@@ -105,6 +105,8 @@ module.exports = function initLifecycle({
         'password_reset',
         'password_changed',
         'username_recovery',
+        'contact_confirmation',
+        'login_code',
     ];
 
     // ======================================================================
@@ -232,21 +234,74 @@ module.exports = function initLifecycle({
     // notify() — the only send path in this module
     // ======================================================================
 
+    /**
+     * The email shell. Light theme: white card on a soft grey canvas, near-black
+     * type, one black call-to-action. Table-based and inline-styled because
+     * Outlook ignores most of everything else.
+     *
+     * Everything this module sends goes through here, so changing it changes
+     * every email at once.
+     */
     function shell(title, bodyHtml, cta) {
-        return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:32px 16px">
+        return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only">
+<title>${title}</title></head>
+<body style="margin:0;padding:0;background:#f2f3f5;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${String(title).slice(0, 110)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f2f3f5;padding:32px 16px;">
 <tr><td align="center">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#141414;border-radius:12px;overflow:hidden">
-  <tr><td style="padding:28px 32px 8px">
-    <div style="font-size:12px;letter-spacing:1.5px;color:#10b981;text-transform:uppercase">Diamondback Coding</div>
-    <h1 style="margin:12px 0 0;font-size:22px;line-height:1.3;color:#fff;font-weight:700">${title}</h1>
-  </td></tr>
-  <tr><td style="padding:8px 32px 24px;color:#b4b4b4;font-size:15px;line-height:1.65">${bodyHtml}</td></tr>
-  ${cta ? `<tr><td style="padding:0 32px 32px"><a href="${cta.url}" style="display:inline-block;background:#10b981;color:#0a0a0a;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px">${cta.label}</a></td></tr>` : ''}
-  <tr><td style="padding:20px 32px;background:#0f0f0f;color:#6b6b6b;font-size:12px;line-height:1.6">
-    Diamondback Coding &middot; <a href="mailto:contact@diamondbackcoding.com" style="color:#10b981;text-decoration:none">contact@diamondbackcoding.com</a>
-  </td></tr>
-</table></td></tr></table></body></html>`;
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+
+    <!-- wordmark -->
+    <tr><td style="padding:0 4px 18px;">
+      <span style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;
+                   letter-spacing:.14em;text-transform:uppercase;color:#0d0f12;">Diamondback Coding</span>
+    </td></tr>
+
+    <!-- card -->
+    <tr><td style="background:#ffffff;border-radius:20px;padding:34px 34px 30px;">
+      <h1 style="margin:0 0 18px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:23px;
+                 line-height:1.28;font-weight:700;color:#0d0f12;letter-spacing:-.02em;">${title}</h1>
+      <div style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;color:#3f4650;">
+        ${bodyHtml}
+      </div>
+      ${cta ? `
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 0;">
+        <tr><td style="background:#0d0f12;border-radius:12px;">
+          <a href="${cta.url}" style="display:inline-block;padding:14px 28px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;
+             font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;">${cta.label}</a>
+        </td></tr>
+      </table>` : ''}
+    </td></tr>
+
+    <!-- footer -->
+    <tr><td style="padding:22px 8px 0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;
+                   font-size:12px;line-height:1.7;color:#7c848f;">
+      Diamondback Coding &middot; Dallas&ndash;Fort Worth, TX<br>
+      <a href="mailto:contact@diamondbackcoding.com" style="color:#0d0f12;text-decoration:none;font-weight:600;">contact@diamondbackcoding.com</a>
+    </td></tr>
+
+  </table>
+</td></tr></table>
+</body></html>`;
+    }
+
+    /**
+     * A light key/value block for the body. Replaces the ad-hoc dark tables that
+     * were inlined all over this file, so the palette lives in one place.
+     */
+    function rows(pairs) {
+        return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                 style="margin:0 0 16px;background:#f7f8f9;border-radius:12px;">` +
+            pairs.filter(Boolean).map(([k, v], i, arr) => `
+            <tr>
+              <td style="padding:11px 16px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:#7c848f;
+                         ${i < arr.length - 1 ? 'border-bottom:1px solid #eef0f3;' : ''}">${k}</td>
+              <td align="right" style="padding:11px 16px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;
+                         font-weight:600;color:#0d0f12;
+                         ${i < arr.length - 1 ? 'border-bottom:1px solid #eef0f3;' : ''}">${v}</td>
+            </tr>`).join('') + `</table>`;
     }
 
     /**
@@ -438,6 +493,10 @@ module.exports = function initLifecycle({
         leadId, amount, taxRate = 0, description, dueDate, estimated = false,
         agreementId = null, projectId = null, scheduleId = null,
         maintenancePlanId = null, autoGenerated = false, items = [],
+        // 'due_now'       — maintenance, renewals, deposits: owed on issue.
+        // 'on_completion' — a project balance: not outstanding until the work
+        //                   is done, so it must not inflate the balance now.
+        obligation = 'due_now', isDeposit = false,
     }) {
         const subtotal = Number(amount || 0);
         const taxAmount = +(subtotal * (Number(taxRate) || 0) / 100).toFixed(2);
@@ -451,12 +510,14 @@ module.exports = function initLifecycle({
                 `INSERT INTO invoices
                     (invoice_number, lead_id, issue_date, due_date, subtotal, tax_rate, tax_amount,
                      total_amount, status, short_description, notes, agreement_id, project_id,
-                     billing_schedule_id, maintenance_plan_id, auto_generated, due_date_estimated, created_at)
-                 VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,'sent',$8,$9,$10,$11,$12,$13,$14,$15,NOW())
+                     billing_schedule_id, maintenance_plan_id, auto_generated, due_date_estimated, created_at,
+                     obligation, is_deposit)
+                 VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,$6,$7,'sent',$8,$9,$10,$11,$12,$13,$14,$15,NOW(),$16,$17)
                  RETURNING *`,
                 [number, leadId, dueDate, subtotal, taxRate, taxAmount, total,
                  (description || '').slice(0, 255), null, agreementId, projectId,
-                 scheduleId, maintenancePlanId, autoGenerated, estimated]
+                 scheduleId, maintenancePlanId, autoGenerated, estimated,
+                 obligation, isDeposit]
             );
             const invoice = ins.rows[0];
 
@@ -586,7 +647,7 @@ module.exports = function initLifecycle({
             await notify({
                 lead, kind: 'refund_issued',
                 subject: `Refund issued — ${money(amt)}`,
-                bodyHtml: `<p style="margin:0 0 12px">We've issued a refund of <strong style="color:#fff">${money(amt)}</strong> to your original payment method.</p>
+                bodyHtml: `<p style="margin:0 0 12px">We've issued a refund of <strong style="color:#0d0f12">${money(amt)}</strong> to your original payment method.</p>
                            ${reason ? `<p style="margin:0 0 12px">Reason: ${reason}</p>` : ''}
                            <p style="margin:0">Card refunds usually appear within 5–10 business days. Bank refunds can take a little longer.</p>`,
                 smsText: `Diamondback Coding: a refund of ${money(amt)} has been issued to your original payment method.`,
@@ -642,9 +703,9 @@ module.exports = function initLifecycle({
                 lead, kind: 'portal_credentials',
                 subject: 'Your Diamondback Coding customer portal is ready',
                 bodyHtml: `<p style="margin:0 0 16px">Your customer portal account is set up. You can now see your agreements, invoices, project timeline and messages in one place, and pay online.</p>
-                    <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#0f0f0f;border-radius:8px;padding:16px;width:100%">
-                      <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Email</td><td style="padding:10px 16px;color:#fff;font-size:14px">${lead.email}</td></tr>
-                      <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Temporary password</td><td style="padding:10px 16px;color:#10b981;font-size:15px;font-family:monospace">${password}</td></tr>
+                    <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#f7f8f9;border-radius:8px;padding:16px;width:100%">
+                      <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Email</td><td style="padding:10px 16px;color:#fff;font-size:14px">${lead.email}</td></tr>
+                      <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Temporary password</td><td style="padding:10px 16px;color:#16a34a;font-size:15px;font-family:monospace">${password}</td></tr>
                     </table>
                     <p style="margin:0">Please change this password after your first sign-in.</p>`,
                 smsText: `Diamondback Coding: your customer portal is ready. Sign in at ${PORTAL_URL}`,
@@ -701,7 +762,7 @@ module.exports = function initLifecycle({
                 lead, kind: 'crm_subscription_active',
                 subject: 'Your CodeNexus CRM access is active',
                 bodyHtml: `<p style="margin:0 0 12px">Your CodeNexus CRM subscription is active. You can sign in with the same email and password you already use for your customer portal.</p>
-                           <p style="margin:0 0 12px">Your CRM workspace ID is <strong style="color:#10b981;font-family:monospace">${portalId}</strong>.</p>
+                           <p style="margin:0 0 12px">Your CRM workspace ID is <strong style="color:#16a34a;font-family:monospace">${portalId}</strong>.</p>
                            <p style="margin:0">Your customer portal stays exactly where it is — this is in addition to it, not instead of it.</p>`,
                 smsText: `Diamondback Coding: your CodeNexus CRM access is now active.`,
                 channels: ['email', 'portal'],
@@ -733,10 +794,10 @@ module.exports = function initLifecycle({
             leadId: a.lead_id, kind: 'sla_ready_to_sign',
             subject: 'Your service agreement is ready to sign',
             bodyHtml: `<p style="margin:0 0 12px">Your service agreement${a.agreement_number ? ` (${a.agreement_number})` : ''} is in your customer portal and ready for signature.</p>
-                <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#0f0f0f;border-radius:8px">
-                  ${a.package_name ? `<tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Service</td><td style="padding:10px 16px;color:#fff;font-size:14px">${a.package_name}</td></tr>` : ''}
-                  <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Total</td><td style="padding:10px 16px;color:#10b981;font-size:16px;font-weight:700">${money(total)}</td></tr>
-                  ${a.est_completion_date ? `<tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Estimated completion</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(a.est_completion_date)}</td></tr>` : ''}
+                <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#f7f8f9;border-radius:8px">
+                  ${a.package_name ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Service</td><td style="padding:10px 16px;color:#fff;font-size:14px">${a.package_name}</td></tr>` : ''}
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Total</td><td style="padding:10px 16px;color:#16a34a;font-size:16px;font-weight:700">${money(total)}</td></tr>
+                  ${a.est_completion_date ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Estimated completion</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(a.est_completion_date)}</td></tr>` : ''}
                 </table>
                 <p style="margin:0">Sign in to review the full terms and sign.</p>`,
             smsText: `Diamondback Coding: your service agreement is ready to sign in your portal. You also have a new message there.`,
@@ -854,10 +915,10 @@ module.exports = function initLifecycle({
                     ? `${plan.label} is active`
                     : `${plan.label} — one more step`,
                 bodyHtml: ready
-                    ? `<p style="margin:0 0 12px">Thanks for signing. Your <strong style="color:#fff">${plan.label}</strong> plan is active.</p>
+                    ? `<p style="margin:0 0 12px">Thanks for signing. Your <strong style="color:#0d0f12">${plan.label}</strong> plan is active.</p>
                        <p style="margin:0 0 12px">We'll charge ${money(plan.amount)} to your ${esc0(pm)} each month, starting ${prettyDate(nextCharge)}. You'll get a receipt by email and SMS every time.</p>
                        <p style="margin:0">You can change the payment method or cancel any time from your portal — cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after you ask.</p>`
-                    : `<p style="margin:0 0 12px">Thanks for signing your <strong style="color:#fff">${plan.label}</strong> agreement.</p>
+                    : `<p style="margin:0 0 12px">Thanks for signing your <strong style="color:#0d0f12">${plan.label}</strong> agreement.</p>
                        <p style="margin:0 0 12px">To start the plan, add a payment method in your portal under Plans. Once it's saved we'll bill ${money(plan.amount)} monthly, beginning ${prettyDate(nextCharge)}.</p>
                        <p style="margin:0">Nothing is charged until you add one.</p>`,
                 smsText: ready
@@ -946,15 +1007,47 @@ module.exports = function initLifecycle({
         const dueDate = a.est_completion_date
             || dateOnly(new Date(Date.now() + (Number(a.net_days) || 14) * 86400000));
 
+        // A project balance is due at completion, not today — so it is NOT
+        // outstanding yet. If the agreement requires a deposit, that deposit is
+        // billed separately and IS outstanding, because the project doesn't
+        // start until it's paid.
+        const depositPct = Number(a.deposit_pct) || 0;
+        const wantsDeposit = !!a.require_deposit && depositPct > 0;
+        const depositAmount = wantsDeposit
+            ? (Number(a.deposit) || +(total * depositPct / 100).toFixed(2))
+            : 0;
+        const balance = +(total - depositAmount).toFixed(2);
+
+        let depositInvoice = null;
+        if (wantsDeposit && depositAmount > 0) {
+            depositInvoice = await createInvoice({
+                leadId: a.lead_id,
+                amount: depositAmount,
+                taxRate: 0,
+                description: `Deposit (${depositPct}%) — ${a.package_name || 'Project'}${a.agreement_number ? ` · ${a.agreement_number}` : ''}`,
+                dueDate: dateOnly(new Date()),      // due on signing
+                estimated: false,
+                agreementId,
+                projectId: project.id,
+                obligation: 'due_now',
+                isDeposit: true,
+            });
+            await pool.query(
+                'UPDATE sales_agreements SET deposit_invoice_id=$2 WHERE id=$1',
+                [agreementId, depositInvoice.id]
+            );
+        }
+
         const invoice = await createInvoice({
             leadId: a.lead_id,
-            amount: total,
+            amount: balance,
             taxRate: a.tax_rate || 0,
-            description: `${a.package_name || 'Project'}${a.agreement_number ? ` — ${a.agreement_number}` : ''}`,
+            description: `${a.package_name || 'Project'}${a.agreement_number ? ` — ${a.agreement_number}` : ''}${wantsDeposit ? ' (balance)' : ''}`,
             dueDate,
             estimated: !!a.est_completion_date,
             agreementId,
             projectId: project.id,
+            obligation: 'on_completion',
             items: items.map((it) => ({
                 description: it.description, quantity: it.quantity,
                 unit_price: it.unit_price, amount: it.amount,
@@ -972,9 +1065,10 @@ module.exports = function initLifecycle({
             lead, kind: 'sla_signed',
             subject: 'Your agreement is signed — here\'s what happens next',
             bodyHtml: `<p style="margin:0 0 12px">Thank you for signing${a.agreement_number ? ` agreement ${a.agreement_number}` : ''}. A signed copy is in your portal.</p>
-                ${assignedAdmin ? `<p style="margin:0 0 12px"><strong style="color:#fff">${assignedAdmin.username || 'Your project lead'}</strong> is assigned to your project and will reach out soon.</p>` : ''}
+                ${assignedAdmin ? `<p style="margin:0 0 12px"><strong style="color:#0d0f12">${assignedAdmin.username || 'Your project lead'}</strong> is assigned to your project and will reach out soon.</p>` : ''}
                 <p style="margin:0 0 12px">Your project timeline is now in your portal, and it updates as we hit each milestone.</p>
-                <p style="margin:0">We've also created invoice <strong style="color:#fff">${invoice.invoice_number}</strong> for ${money(invoice.total_amount)}. It isn't due until <strong style="color:#10b981">${prettyDate(dueDate)}</strong>${a.est_completion_date ? ' — the estimated completion date. If we finish sooner, that date may move up and we\'ll tell you first.' : '.'}</p>`,
+                ${depositInvoice ? `<p style="margin:0 0 12px">A deposit of <strong style="color:#16a34a">${money(depositInvoice.total_amount)}</strong> (invoice ${depositInvoice.invoice_number}) is due now — work begins once it's paid. You can pay it in your portal.</p>` : ''}
+                <p style="margin:0">${depositInvoice ? 'The remaining balance of' : "We've also created invoice"} <strong style="color:#0d0f12">${depositInvoice ? money(invoice.total_amount) : invoice.invoice_number}</strong>${depositInvoice ? ` is invoice ${invoice.invoice_number} and` : ` for ${money(invoice.total_amount)}. It`} isn't due until <strong style="color:#16a34a">${prettyDate(dueDate)}</strong>${a.est_completion_date ? ' — the estimated completion date. If we finish sooner, that date may move up and we\'ll tell you first.' : '.'}</p>`,
             smsText: `Diamondback Coding: your agreement is signed. Invoice ${invoice.invoice_number} (${money(invoice.total_amount)}) is in your portal, due ${prettyDate(dueDate)}.`,
             channels: ['email', 'sms', 'portal'],
             invoiceId: invoice.id,
@@ -989,7 +1083,7 @@ module.exports = function initLifecycle({
             severity: 'success', onceKey: `sla_signed_admin:${agreementId}`,
         });
 
-        return { signed: true, invoice, project, assignedAdmin, signatureSvg: svg };
+        return { signed: true, invoice, depositInvoice, project, assignedAdmin, signatureSvg: svg };
     }
 
     /** A milestone is completed — tell the customer once. */
@@ -1021,7 +1115,7 @@ module.exports = function initLifecycle({
         await notify({
             leadId: m.lead_id, kind: 'milestone_completed',
             subject: `Milestone complete: ${m.title}`,
-            bodyHtml: `<p style="margin:0 0 12px">We've completed <strong style="color:#fff">${m.title}</strong> on ${m.project_name}.</p>
+            bodyHtml: `<p style="margin:0 0 12px">We've completed <strong style="color:#0d0f12">${m.title}</strong> on ${m.project_name}.</p>
                        <p style="margin:0 0 12px">That's ${done} of ${total} milestones done.</p>
                        <p style="margin:0">Your timeline in the portal has the latest detail.</p>`,
             smsText: `Diamondback Coding: milestone complete — ${m.title} (${done}/${total}).`,
@@ -1064,6 +1158,10 @@ module.exports = function initLifecycle({
                 `UPDATE invoices
                     SET due_date = LEAST($2::date, COALESCE(due_date, $2::date)),
                         due_date_estimated = FALSE,
+                        -- The work is done, so the balance is now genuinely
+                        -- owed. Until this moment it was 'on_completion' and
+                        -- deliberately excluded from the outstanding total.
+                        obligation = 'due_now',
                         updated_at = NOW()
                   WHERE id=$1 AND status NOT IN ('paid','refunded','void','cancelled')
                   RETURNING *`,
@@ -1077,8 +1175,8 @@ module.exports = function initLifecycle({
         await notify({
             leadId: p.lead_id, kind: 'project_completed',
             subject: `${p.project_name} is complete`,
-            bodyHtml: `<p style="margin:0 0 12px">Your project <strong style="color:#fff">${p.project_name}</strong> is complete. Every milestone is marked done in your portal.</p>
-                ${invoice && !paid ? `<p style="margin:0 0 12px">Invoice <strong style="color:#fff">${invoice.invoice_number}</strong> for ${money(invoice.total_amount)} is now due <strong style="color:#10b981">${prettyDate(invoice.due_date)}</strong>. You can pay it in your portal.</p>` : ''}
+            bodyHtml: `<p style="margin:0 0 12px">Your project <strong style="color:#0d0f12">${p.project_name}</strong> is complete. Every milestone is marked done in your portal.</p>
+                ${invoice && !paid ? `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${invoice.invoice_number}</strong> for ${money(invoice.total_amount)} is now due <strong style="color:#16a34a">${prettyDate(invoice.due_date)}</strong>. You can pay it in your portal.</p>` : ''}
                 <p style="margin:0">Thank you for your business — reply to this email if anything needs a second look.</p>`,
             smsText: `Diamondback Coding: ${p.project_name} is complete.${invoice && !paid ? ` Invoice ${invoice.invoice_number} (${money(invoice.total_amount)}) is due ${prettyDate(invoice.due_date)} — pay in your portal.` : ''}`,
             channels: ['email', 'sms', 'portal'],
@@ -1091,7 +1189,7 @@ module.exports = function initLifecycle({
             await notify({
                 leadId: p.lead_id, kind: 'invoice_due',
                 subject: `Invoice ${invoice.invoice_number} is due ${prettyDate(invoice.due_date)}`,
-                bodyHtml: `<p style="margin:0 0 12px">Invoice <strong style="color:#fff">${invoice.invoice_number}</strong> for <strong style="color:#10b981">${money(invoice.total_amount)}</strong> is due on ${prettyDate(invoice.due_date)}.</p>
+                bodyHtml: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${invoice.invoice_number}</strong> for <strong style="color:#16a34a">${money(invoice.total_amount)}</strong> is due on ${prettyDate(invoice.due_date)}.</p>
                            <p style="margin:0">You can pay by card or bank transfer in your portal.</p>`,
                 smsText: null,
                 channels: ['email'],
@@ -1126,11 +1224,11 @@ module.exports = function initLifecycle({
             lead, kind: 'invoice_paid',
             subject: invoice ? `Payment received — ${invoice.invoice_number}` : 'Payment received',
             bodyHtml: `<p style="margin:0 0 16px">We've received your payment. Thank you.</p>
-                <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#0f0f0f;border-radius:8px">
-                  <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Amount</td><td style="padding:10px 16px;color:#10b981;font-size:17px;font-weight:700">${money(p.amount)}</td></tr>
-                  <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Receipt</td><td style="padding:10px 16px;color:#fff;font-family:monospace;font-size:13px">${p.receipt_number}</td></tr>
-                  ${invoice ? `<tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Invoice</td><td style="padding:10px 16px;color:#fff;font-size:14px">${invoice.invoice_number}</td></tr>` : ''}
-                  ${p.method_last4 ? `<tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Method</td><td style="padding:10px 16px;color:#fff;font-size:14px">${p.method_brand || p.method} ending ${p.method_last4}</td></tr>` : ''}
+                <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#f7f8f9;border-radius:8px">
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Amount</td><td style="padding:10px 16px;color:#16a34a;font-size:17px;font-weight:700">${money(p.amount)}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Receipt</td><td style="padding:10px 16px;color:#fff;font-family:monospace;font-size:13px">${p.receipt_number}</td></tr>
+                  ${invoice ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Invoice</td><td style="padding:10px 16px;color:#fff;font-size:14px">${invoice.invoice_number}</td></tr>` : ''}
+                  ${p.method_last4 ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Method</td><td style="padding:10px 16px;color:#fff;font-size:14px">${p.method_brand || p.method} ending ${p.method_last4}</td></tr>` : ''}
                 </table>
                 <p style="margin:0">${owing === 0 ? 'You have no outstanding invoices.' : `You have ${owing} invoice${owing === 1 ? '' : 's'} still open — you can see them in your portal.`}</p>`,
             smsText: `Diamondback Coding: payment of ${money(p.amount)} received. Receipt ${p.receipt_number} is in your portal.${owing === 0 ? ' No outstanding invoices.' : ''}`,
@@ -1262,7 +1360,7 @@ module.exports = function initLifecycle({
             await notify({
                 lead, kind: 'maintenance_charge_failed',
                 subject: `We couldn't process your ${plan.label} payment`,
-                bodyHtml: `<p style="margin:0 0 12px">We tried to charge ${money(plan.amount)} for <strong style="color:#fff">${plan.label}</strong> and it didn't go through.</p>
+                bodyHtml: `<p style="margin:0 0 12px">We tried to charge ${money(plan.amount)} for <strong style="color:#0d0f12">${plan.label}</strong> and it didn't go through.</p>
                            <p style="margin:0 0 12px">${e.message}</p>
                            <p style="margin:0">Please update your payment method in your portal — we'll retry automatically.</p>`,
                 smsText: `Diamondback Coding: your ${plan.label} payment of ${money(plan.amount)} didn't go through. Please update your payment method in your portal.`,
@@ -1316,11 +1414,11 @@ module.exports = function initLifecycle({
             lead, kind: 'maintenance_charged',
             subject: `${plan.label} — payment received (${money(plan.amount)})`,
             bodyHtml: `<p style="margin:0 0 16px">Your ${plan.label} payment has been processed. Here's your receipt.</p>
-                <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#0f0f0f;border-radius:8px">
-                  <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Amount</td><td style="padding:10px 16px;color:#10b981;font-size:17px;font-weight:700">${money(plan.amount)}</td></tr>
-                  <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Receipt</td><td style="padding:10px 16px;color:#fff;font-family:monospace;font-size:13px">${payment.receipt_number}</td></tr>
-                  <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Method</td><td style="padding:10px 16px;color:#fff;font-size:14px">${pm.brand || pm.bank_name || pm.type} ending ${pm.last4 || '----'}</td></tr>
-                  <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Next payment</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(next)}</td></tr>
+                <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;width:100%;background:#f7f8f9;border-radius:8px">
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Amount</td><td style="padding:10px 16px;color:#16a34a;font-size:17px;font-weight:700">${money(plan.amount)}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Receipt</td><td style="padding:10px 16px;color:#fff;font-family:monospace;font-size:13px">${payment.receipt_number}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Method</td><td style="padding:10px 16px;color:#fff;font-size:14px">${pm.brand || pm.bank_name || pm.type} ending ${pm.last4 || '----'}</td></tr>
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Next payment</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(next)}</td></tr>
                 </table>
                 <p style="margin:0">Your full payment history is in your portal. You can cancel anytime there — cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after you request it.</p>`,
             smsText: `Diamondback Coding: ${plan.label} payment of ${money(plan.amount)} processed. Receipt ${payment.receipt_number}. Next payment ${prettyDate(next)}.`,
@@ -1369,8 +1467,8 @@ module.exports = function initLifecycle({
         await notify({
             lead, kind: 'cancellation_confirmed',
             subject: `Cancellation confirmed — ${plan.label}`,
-            bodyHtml: `<p style="margin:0 0 12px">We've received your cancellation request for <strong style="color:#fff">${plan.label}</strong>.</p>
-                <p style="margin:0 0 12px">Your plan has a ${CANCELLATION_NOTICE_DAYS}-day notice period, so it stays active until <strong style="color:#10b981">${prettyDate(effective)}</strong>. You'll keep full service until then.</p>
+            bodyHtml: `<p style="margin:0 0 12px">We've received your cancellation request for <strong style="color:#0d0f12">${plan.label}</strong>.</p>
+                <p style="margin:0 0 12px">Your plan has a ${CANCELLATION_NOTICE_DAYS}-day notice period, so it stays active until <strong style="color:#16a34a">${prettyDate(effective)}</strong>. You'll keep full service until then.</p>
                 <p style="margin:0">Changed your mind? You can reinstate the plan from your portal any time before that date.</p>`,
             smsText: `Diamondback Coding: cancellation confirmed for ${plan.label}. Service continues until ${prettyDate(effective)}. You can reinstate in your portal before then.`,
             channels: ['email', 'sms', 'portal'],
@@ -1411,7 +1509,7 @@ module.exports = function initLifecycle({
         await notify({
             lead, kind: 'cancellation_confirmed',
             subject: `${plan.label} is reinstated`,
-            bodyHtml: `<p style="margin:0 0 12px">Good news — <strong style="color:#fff">${plan.label}</strong> is reinstated and will continue as normal.</p>
+            bodyHtml: `<p style="margin:0 0 12px">Good news — <strong style="color:#0d0f12">${plan.label}</strong> is reinstated and will continue as normal.</p>
                        <p style="margin:0">Your next payment is ${prettyDate(plan.next_charge_date)}.</p>`,
             smsText: `Diamondback Coding: ${plan.label} is reinstated. Next payment ${prettyDate(plan.next_charge_date)}.`,
             channels: ['email', 'portal'],
@@ -1484,7 +1582,7 @@ module.exports = function initLifecycle({
                 lead: { id: c.lead_id, name: c.name, email: c.email, phone: c.phone },
                 kind: 'cancellation_reminder',
                 subject: `${daysLeft} day${daysLeft === 1 ? '' : 's'} left to reinstate ${c.label}`,
-                bodyHtml: `<p style="margin:0 0 12px"><strong style="color:#fff">${c.label}</strong> is scheduled to cancel on <strong style="color:#10b981">${prettyDate(c.effective_at)}</strong> — that's ${daysLeft} day${daysLeft === 1 ? '' : 's'} away.</p>
+                bodyHtml: `<p style="margin:0 0 12px"><strong style="color:#0d0f12">${c.label}</strong> is scheduled to cancel on <strong style="color:#16a34a">${prettyDate(c.effective_at)}</strong> — that's ${daysLeft} day${daysLeft === 1 ? '' : 's'} away.</p>
                            <p style="margin:0 0 12px">If you'd like to keep it, you can reinstate from your portal and nothing changes.</p>
                            <p style="margin:0">If not, no action is needed and it'll end on that date.</p>`,
                 smsText: `Diamondback Coding: ${c.label} cancels in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Reinstate anytime in your portal.`,
@@ -1546,7 +1644,7 @@ module.exports = function initLifecycle({
                     lead: { id: c.lead_id, name: c.name, email: c.email, phone: c.phone },
                     kind: 'cancellation_completed',
                     subject: 'Your CodeNexus CRM subscription has ended',
-                    bodyHtml: `<p style="margin:0 0 12px">Your <strong style="color:#fff">${c.package_name || 'CodeNexus CRM'}</strong> subscription has ended and you won't be billed again.</p>
+                    bodyHtml: `<p style="margin:0 0 12px">Your <strong style="color:#0d0f12">${c.package_name || 'CodeNexus CRM'}</strong> subscription has ended and you won't be billed again.</p>
                                <p style="margin:0 0 12px">Your customer portal is unchanged — your invoices, receipts, agreements and messages are all still there.</p>
                                <p style="margin:0">If you'd like the CRM back later, just reply to this email.</p>`,
                     smsText: 'Diamondback Coding: your CodeNexus CRM subscription has ended. Your customer portal and records are unaffected.',
@@ -1593,7 +1691,7 @@ module.exports = function initLifecycle({
                 lead: { id: c.lead_id, name: c.name, email: c.email, phone: c.phone },
                 kind: 'cancellation_completed',
                 subject: `${c.label} has been cancelled`,
-                bodyHtml: `<p style="margin:0 0 12px"><strong style="color:#fff">${c.label}</strong> is now cancelled. You won't be billed again.</p>
+                bodyHtml: `<p style="margin:0 0 12px"><strong style="color:#0d0f12">${c.label}</strong> is now cancelled. You won't be billed again.</p>
                            <p style="margin:0 0 12px">Your portal account stays open, and your invoices, receipts and payment history remain available there.</p>
                            <p style="margin:0">If you'd like to restart this service later, just reply to this email.</p>`,
                 smsText: `Diamondback Coding: ${c.label} is now cancelled. No further billing. Your portal and receipts stay available.`,
@@ -1655,7 +1753,7 @@ module.exports = function initLifecycle({
         if (tone === 'gentle') {
             return {
                 subject: `Invoice ${num} is past due`,
-                html: `<p style="margin:0 0 12px">Invoice <strong style="color:#fff">${num}</strong> for <strong style="color:#10b981">${amt}</strong> was due on ${prettyDate(invoice.due_date)} and is now ${daysOverdue} day${daysOverdue === 1 ? '' : 's'} past due.</p>
+                html: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${num}</strong> for <strong style="color:#16a34a">${amt}</strong> was due on ${prettyDate(invoice.due_date)} and is now ${daysOverdue} day${daysOverdue === 1 ? '' : 's'} past due.</p>
                        <p style="margin:0 0 12px">If you've already sent payment, thank you — you can ignore this.</p>
                        <p style="margin:0">Otherwise you can pay by card or bank transfer in your portal.</p>`,
                 sms: `Diamondback Coding: invoice ${num} (${amt}) is ${daysOverdue} day${daysOverdue === 1 ? '' : 's'} past due. Pay in your portal: ${PORTAL_URL}`,
@@ -1664,7 +1762,7 @@ module.exports = function initLifecycle({
         if (tone === 'firm') {
             return {
                 subject: `Payment needed — invoice ${num}, ${daysOverdue} days past due`,
-                html: `<p style="margin:0 0 12px">Invoice <strong style="color:#fff">${num}</strong> for <strong style="color:#10b981">${amt}</strong> is now ${daysOverdue} days past due.</p>
+                html: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${num}</strong> for <strong style="color:#16a34a">${amt}</strong> is now ${daysOverdue} days past due.</p>
                        <p style="margin:0 0 12px">Please arrange payment, or reply to this email so we can sort out anything that's in the way — if the timing is a problem, we'd rather hear it than keep sending reminders.</p>
                        <p style="margin:0">You can pay in your portal at any time.</p>`,
                 sms: `Diamondback Coding: invoice ${num} (${amt}) is ${daysOverdue} days past due. Please pay or reply so we can help: ${PORTAL_URL}`,
@@ -1672,7 +1770,7 @@ module.exports = function initLifecycle({
         }
         return {
             subject: `Final reminder — invoice ${num} is ${daysOverdue} days past due`,
-            html: `<p style="margin:0 0 12px">Invoice <strong style="color:#fff">${num}</strong> for <strong style="color:#10b981">${amt}</strong> is ${daysOverdue} days past due.</p>
+            html: `<p style="margin:0 0 12px">Invoice <strong style="color:#0d0f12">${num}</strong> for <strong style="color:#16a34a">${amt}</strong> is ${daysOverdue} days past due.</p>
                    <p style="margin:0 0 12px">This is the last of our automatic reminders. After today, your account is flagged for manual review and we may pause work in progress.</p>
                    <p style="margin:0">If there's a problem with this invoice, please reply today and we'll work it out.</p>`,
             sms: `Diamondback Coding: FINAL reminder — invoice ${num} (${amt}) is ${daysOverdue} days past due. Please pay or reply today: ${PORTAL_URL}`,
@@ -2221,6 +2319,20 @@ module.exports = function initLifecycle({
                 return res.status(400).json({ success: false, message: 'Choose a service type.' });
             }
 
+            // Maintenance and domain plans are created in the Maintenance tab,
+            // which builds the plan AND its agreement together. Creating a bare
+            // agreement here would produce a document with no plan behind it —
+            // nothing to bill, nothing to cancel.
+            const MAINTENANCE_TYPES = ['monthly_maintenance', 'brevo_maintenance',
+                                       'database_maintenance', 'domain_renewal', 'hosting'];
+            if (b.agreement_kind === 'maintenance' || MAINTENANCE_TYPES.includes(b.service_type)) {
+                return res.status(400).json({
+                    success: false,
+                    code: 'USE_MAINTENANCE_TAB',
+                    message: 'Recurring plans are set up in the Maintenance tab — that creates the plan and its agreement together. Agreements made here would have no plan behind them.',
+                });
+            }
+
             const leadId = b.lead_id ? Number(b.lead_id) : null;
             let lead = null;
             if (leadId) {
@@ -2241,7 +2353,10 @@ module.exports = function initLifecycle({
             const itemsTotal = items.reduce(
                 (t, it) => t + (it.amount != null ? Number(it.amount)
                                                   : (Number(it.quantity) || 1) * (Number(it.unit_price) || 0)), 0);
-            const price = itemsTotal > 0 ? itemsTotal : (Number(b.price) || 0);
+            // Zero is a legitimate price — a goodwill fix, a bundled item, a
+            // free first month. `itemsTotal > 0` would have quietly fallen back
+            // to the flat price whenever the items summed to nothing.
+            const price = items.length ? itemsTotal : (Number(b.price) || 0);
 
             const ins = await pool.query(
                 `INSERT INTO sales_agreements
@@ -2322,6 +2437,18 @@ module.exports = function initLifecycle({
             )).rows[0];
             if (!existing) return res.status(404).json({ success: false, message: 'Agreement not found.' });
 
+            // A maintenance agreement is generated FROM a plan and must only be
+            // changed there. Editing it here rewrote the document while the plan
+            // kept the old price and schedule, so the two disagreed and neither
+            // the customer portal nor the Maintenance tab reflected the change.
+            if (existing.agreement_kind === 'maintenance') {
+                return res.status(409).json({
+                    success: false,
+                    code: 'MAINTENANCE_AGREEMENT',
+                    message: 'This agreement belongs to a maintenance plan. Edit it from the Maintenance tab — changing it here would leave the plan and the document out of step.',
+                });
+            }
+
             // A signed agreement is a record of what was agreed. Editing its
             // terms or price after signature would rewrite that, so only the
             // status may move once it's signed.
@@ -2380,11 +2507,29 @@ module.exports = function initLifecycle({
                     message: 'A signed agreement can\'t be deleted — cancel it instead so the record survives.',
                 });
             }
+            // Detach the things that merely REFERENCE this agreement first.
+            // invoices.agreement_id and client_projects.agreement_id have no
+            // ON DELETE rule, so Postgres refuses the delete with a foreign-key
+            // error and the agreement appears undeletable forever.
+            await pool.query('UPDATE invoices SET agreement_id = NULL WHERE agreement_id = $1', [req.params.id])
+                .catch((e) => console.warn('[SA DELETE] detach invoices:', e.message));
+            await pool.query('UPDATE client_projects SET agreement_id = NULL WHERE agreement_id = $1', [req.params.id])
+                .catch((e) => console.warn('[SA DELETE] detach projects:', e.message));
+            await pool.query('UPDATE maintenance_plans SET agreement_id = NULL WHERE agreement_id = $1', [req.params.id])
+                .catch((e) => console.warn('[SA DELETE] detach plans:', e.message));
+            await pool.query('DELETE FROM agreement_items WHERE agreement_id = $1', [req.params.id])
+                .catch(() => {});
+
             await pool.query('DELETE FROM sales_agreements WHERE id=$1', [req.params.id]);
             res.json({ success: true, message: `${a.agreement_number || 'Agreement'} deleted.` });
         } catch (e) {
             console.error('[SA DELETE]', e.code, e.message);
-            res.status(500).json({ success: false, message: 'Could not delete that agreement.' });
+            res.status(500).json({
+                success: false,
+                message: e.code === '23503'
+                    ? 'Something still references this agreement, so it can\'t be deleted. Cancel it instead — the record is kept either way.'
+                    : 'Could not delete that agreement: ' + e.message,
+            });
         }
     });
 
@@ -2462,11 +2607,11 @@ module.exports = function initLifecycle({
             await notify({
                 lead, kind: 'project_update',
                 subject: `Update on ${proj.project_name}: ${title || 'progress'}`,
-                bodyHtml: `<p style="margin:0 0 12px">There's a new update on your project <strong style="color:#fff">${proj.project_name}</strong>.</p>
-                    <div style="background:#0f0f0f;border-radius:8px;padding:14px 16px;margin:0 0 14px">
-                      <div style="color:#fff;font-weight:700;font-size:15px;margin-bottom:6px">${title || 'Progress update'}</div>
-                      ${body ? `<div style="color:#b4b4b4;font-size:14px;line-height:1.6">${body}</div>` : ''}
-                      ${percent != null ? `<div style="margin-top:10px;color:#10b981;font-size:13px;font-weight:700">${Number(percent)}% complete</div>` : ''}
+                bodyHtml: `<p style="margin:0 0 12px">There's a new update on your project <strong style="color:#0d0f12">${proj.project_name}</strong>.</p>
+                    <div style="background:#f7f8f9;border-radius:8px;padding:14px 16px;margin:0 0 14px">
+                      <div style="color:#0d0f12;font-weight:700;font-size:15px;margin-bottom:6px">${title || 'Progress update'}</div>
+                      ${body ? `<div style="color:#3f4650;font-size:14px;line-height:1.6">${body}</div>` : ''}
+                      ${percent != null ? `<div style="margin-top:10px;color:#16a34a;font-size:13px;font-weight:700">${Number(percent)}% complete</div>` : ''}
                     </div>
                     <p style="margin:0">The full timeline is in your portal.</p>`,
                 smsText: `Diamondback Coding: update on ${proj.project_name} — ${title || 'progress update'}. Details in your portal.`,
@@ -2648,12 +2793,12 @@ module.exports = function initLifecycle({
             lead, kind: 'service_request_received',
             subject: `We've got your request: ${what}`,
             bodyHtml: `<p style="margin:0 0 12px">Thanks — we've received your service request and it's in the queue.</p>
-                <table cellpadding="0" cellspacing="0" style="margin:0 0 14px;width:100%;background:#0f0f0f;border-radius:8px">
-                  <tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Request</td><td style="padding:10px 16px;color:#fff;font-size:14px">${what}</td></tr>
-                  ${proj ? `<tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Project</td><td style="padding:10px 16px;color:#fff;font-size:14px">${proj}</td></tr>` : ''}
-                  ${rq.preferred_date ? `<tr><td style="padding:10px 16px;color:#6b6b6b;font-size:13px">Preferred date</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(rq.preferred_date)}</td></tr>` : ''}
+                <table cellpadding="0" cellspacing="0" style="margin:0 0 14px;width:100%;background:#f7f8f9;border-radius:8px">
+                  <tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Request</td><td style="padding:10px 16px;color:#fff;font-size:14px">${what}</td></tr>
+                  ${proj ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Project</td><td style="padding:10px 16px;color:#fff;font-size:14px">${proj}</td></tr>` : ''}
+                  ${rq.preferred_date ? `<tr><td style="padding:10px 16px;color:#7c848f;font-size:13px">Preferred date</td><td style="padding:10px 16px;color:#fff;font-size:14px">${prettyDate(rq.preferred_date)}</td></tr>` : ''}
                 </table>
-                ${rq.details ? `<p style="margin:0 0 12px;color:#b4b4b4">"${rq.details}"</p>` : ''}
+                ${rq.details ? `<p style="margin:0 0 12px;color:#3f4650">"${rq.details}"</p>` : ''}
                 <p style="margin:0">We'll be in touch shortly. You can follow it in your portal.</p>`,
             smsText: `Diamondback Coding: we've received your ${what} request. We'll be in touch shortly.`,
             channels: ['email', 'sms', 'portal'],
@@ -2747,7 +2892,7 @@ module.exports = function initLifecycle({
                 lead, kind: 'password_reset',
                 subject: 'About your CodeNexus CRM sign-in',
                 bodyHtml: `<p style="margin:0 0 12px">Someone asked to reset a CodeNexus CRM password for this address.</p>
-                    <p style="margin:0 0 12px">Your account is a <strong style="color:#fff">customer portal</strong> account, not a CRM subscription — so there's no CRM password to reset.</p>
+                    <p style="margin:0 0 12px">Your account is a <strong style="color:#0d0f12">customer portal</strong> account, not a CRM subscription — so there's no CRM password to reset.</p>
                     <p style="margin:0">You can reset your customer portal password from the link below.</p>`,
                 channels: ['email'],
                 cta: { url: `${SITE_URL}/customer_portal.html`, label: 'Go to your customer portal' },
@@ -2763,8 +2908,8 @@ module.exports = function initLifecycle({
                 lead, kind: 'username_recovery',
                 subject: 'Your Diamondback Coding sign-in details',
                 bodyHtml: `<p style="margin:0 0 14px">You asked which email you use to sign in. It's this one:</p>
-                    <div style="background:#0f0f0f;border-radius:8px;padding:14px 16px;margin:0 0 14px">
-                      <div style="color:#10b981;font-size:16px;font-weight:700;font-family:monospace">${lead.email}</div>
+                    <div style="background:#f7f8f9;border-radius:8px;padding:14px 16px;margin:0 0 14px">
+                      <div style="color:#16a34a;font-size:16px;font-weight:700;font-family:monospace">${lead.email}</div>
                     </div>
                     <p style="margin:0 0 12px">Sign in with that address and your password.</p>
                     <p style="margin:0">Forgotten the password too? Use the "Forgot password" link on the sign-in page.</p>`,
@@ -2803,7 +2948,7 @@ module.exports = function initLifecycle({
             subject: 'Reset your Diamondback Coding password',
             bodyHtml: `<p style="margin:0 0 12px">Use the button below to choose a new password. The link works once and expires in ${RESET_TTL_MIN} minutes.</p>
                 <p style="margin:0 0 12px">If you didn't ask for this, you can ignore this email — your password hasn't changed.</p>
-                <p style="margin:0;color:#6b6b6b;font-size:12px;word-break:break-all">Or paste this into your browser:<br>${link}</p>`,
+                <p style="margin:0;color:#7c848f;font-size:12px;word-break:break-all">Or paste this into your browser:<br>${link}</p>`,
             channels: ['email'],
             cta: { url: link, label: 'Choose a new password' },
         });
@@ -2935,6 +3080,326 @@ module.exports = function initLifecycle({
         } catch (e) {
             console.error('[RESET PASSWORD]', e.message);
             res.status(500).json({ success: false, message: 'Could not reset the password. Please try again.' });
+        }
+    });
+
+    // ======================================================================
+    // Contact form confirmation
+    // ======================================================================
+    /**
+     * Confirms a contact-form submission to the person who sent it.
+     *
+     * Transactional, so it goes through notify() and cannot feed the hot/cold
+     * scoring the follow-up queue owns — the queue still treats them as a new
+     * hot lead exactly as before.
+     */
+    async function onContactFormSubmitted({ leadId, projectType, messageText }) {
+        const lead = (await pool.query(
+            'SELECT id, name, email, phone, company FROM leads WHERE id=$1', [leadId]
+        )).rows[0];
+        if (!lead || !lead.email) return { sent: false };
+
+        if (!(await claimStage(leadId, 'contact_form', `contact_form:${leadId}`,
+                               { entityType: 'lead', entityId: leadId }))) {
+            return { sent: false, alreadySent: true };
+        }
+
+        const first = String(lead.name || '').trim().split(/\s+/)[0] || 'there';
+        await notify({
+            lead, kind: 'contact_confirmation',
+            subject: 'We got your message',
+            bodyHtml: `<p style="margin:0 0 14px">Thanks ${first} — your message reached us and we'll come back to you within one business day.</p>
+                ${rows([
+                    projectType ? ['What you asked about', String(projectType).replace(/_/g, ' ')] : null,
+                    lead.company ? ['Company', lead.company] : null,
+                    ['Sent to', 'contact@diamondbackcoding.com'],
+                ])}
+                ${messageText ? `<p style="margin:0 0 14px;padding:14px 16px;background:#f7f8f9;border-radius:12px;font-style:italic;">"${String(messageText).slice(0, 400)}"</p>` : ''}
+                <p style="margin:0">If it's urgent, just reply to this email — it comes straight to us.</p>`,
+            smsText: null,
+            channels: ['email'],
+        });
+
+        await adminNotify({
+            kind: 'contact_form',
+            title: `New enquiry from ${lead.name || lead.email}`,
+            body: `${projectType ? String(projectType).replace(/_/g, ' ') : 'General enquiry'}${lead.company ? ` · ${lead.company}` : ''}`,
+            leadId, entityType: 'lead', entityId: leadId,
+            severity: 'info', onceKey: `contact_form_admin:${leadId}`,
+        });
+
+        return { sent: true };
+    }
+
+    // ======================================================================
+    // Customer profile — the customer edits their own details
+    // ======================================================================
+    app.get('/api/portal/profile', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const r = await pool.query(
+                `SELECT id, name, email, phone, company, address, city, state, zip
+                   FROM leads WHERE id = $1`, [leadId]
+            );
+            if (!r.rows.length) return res.status(404).json({ success: false, message: 'Account not found.' });
+            res.json({ success: true, profile: r.rows[0] });
+        } catch (e) {
+            // address/city/state/zip may not exist on older schemas — fall back.
+            try {
+                const leadId = await resolveLeadId(req.user.id, req.user.email);
+                const r = await pool.query(
+                    'SELECT id, name, email, phone, company FROM leads WHERE id = $1', [leadId]);
+                return res.json({ success: true, profile: r.rows[0] });
+            } catch (e2) {
+                console.error('[PORTAL PROFILE]', e2.message);
+                res.status(500).json({ success: false, message: 'Could not load your details.' });
+            }
+        }
+    });
+
+    app.patch('/api/portal/profile', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const b = req.body || {};
+
+            const name = String(b.name || '').trim();
+            if (!name || name.length < 2) {
+                return res.status(400).json({ success: false, message: 'Enter the name you\'d like us to use.' });
+            }
+
+            // Changing the sign-in email changes how they log in, so it has to be
+            // unique across accounts or two people end up fighting over one login.
+            let email = b.email != null ? String(b.email).trim().toLowerCase() : null;
+            if (email) {
+                if (email.indexOf('@') === -1) {
+                    return res.status(400).json({ success: false, message: 'That email address doesn\'t look right.' });
+                }
+                const clash = await pool.query(
+                    'SELECT id FROM leads WHERE LOWER(email) = $1 AND id <> $2 LIMIT 1', [email, leadId]);
+                if (clash.rows.length) {
+                    return res.status(409).json({
+                        success: false,
+                        message: 'That email is already used by another account. Contact us and we\'ll sort it out.',
+                    });
+                }
+            }
+
+            const sets = ['updated_at = NOW()'];
+            const vals = [leadId];
+            const put = (col, val) => { vals.push(val); sets.push(`${col} = $${vals.length}`); };
+            put('name', name);
+            if (email) put('email', email);
+            if (b.phone !== undefined) put('phone', String(b.phone || '').trim() || null);
+            if (b.company !== undefined) put('company', String(b.company || '').trim() || null);
+
+            for (const col of ['address', 'city', 'state', 'zip']) {
+                if (b[col] === undefined) continue;
+                try {
+                    await pool.query(`UPDATE leads SET ${col} = $2 WHERE id = $1`,
+                                     [leadId, String(b[col] || '').trim() || null]);
+                } catch (_) { /* column not on this schema; skip it */ }
+            }
+
+            const upd = await pool.query(
+                `UPDATE leads SET ${sets.join(', ')} WHERE id = $1
+                 RETURNING id, name, email, phone, company`, vals
+            );
+
+            // Visible to staff immediately — this is the same row the admin
+            // portal reads, so there is nothing to sync.
+            await adminNotify({
+                kind: 'profile_updated',
+                title: `${upd.rows[0].name} updated their details`,
+                body: `${upd.rows[0].email}${upd.rows[0].phone ? ` · ${upd.rows[0].phone}` : ''}`,
+                leadId, entityType: 'lead', entityId: leadId, severity: 'info',
+            });
+
+            res.json({
+                success: true, profile: upd.rows[0],
+                emailChanged: !!(email && email !== String(req.user.email || '').toLowerCase()),
+                message: 'Your details are updated.',
+            });
+        } catch (e) {
+            console.error('[PORTAL PROFILE SAVE]', e.code, e.message);
+            res.status(500).json({ success: false, message: 'Could not save your details.' });
+        }
+    });
+
+    // ======================================================================
+    // Sign-in verification codes
+    // ======================================================================
+    const CODE_TTL_MIN = Number(process.env.LOGIN_CODE_TTL_MINUTES || 10);
+    const TRUST_DAYS = Number(process.env.LOGIN_TRUST_DAYS || 60);
+
+    /**
+     * Issue a 6-digit sign-in code.
+     *
+     * Called after the password checks out. The code is stored hashed with the
+     * same auth_tokens table the reset flow uses.
+     */
+    async function issueLoginCode({ leadId, email, audience = 'customer', ip, userAgent }) {
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        await pool.query(
+            `UPDATE auth_tokens SET used_at = NOW()
+              WHERE lead_id = $1 AND purpose = 'login_code' AND used_at IS NULL`, [leadId]);
+        await pool.query(
+            `INSERT INTO auth_tokens (lead_id, audience, purpose, token_hash, email, expires_at, requested_ip, user_agent)
+             VALUES ($1,$2,'login_code',$3,$4, NOW() + ($5 || ' minutes')::interval, $6,$7)`,
+            [leadId, audience, hashToken(`${leadId}:${code}`), email, String(CODE_TTL_MIN),
+             (ip || '').slice(0, 64), (userAgent || '').slice(0, 400)]
+        );
+
+        const lead = (await pool.query('SELECT id,name,email,phone FROM leads WHERE id=$1', [leadId])).rows[0];
+        await notify({
+            lead, kind: 'login_code',
+            subject: `${code} is your sign-in code`,
+            bodyHtml: `<p style="margin:0 0 18px">Enter this code to finish signing in. It expires in ${CODE_TTL_MIN} minutes.</p>
+                <div style="margin:0 0 18px;padding:20px;background:#f7f8f9;border-radius:12px;text-align:center;">
+                  <div style="font-family:'Courier New',monospace;font-size:34px;font-weight:700;
+                              letter-spacing:.18em;color:#0d0f12;">${code}</div>
+                </div>
+                <p style="margin:0">If you didn't try to sign in, ignore this email and consider changing your password.</p>`,
+            channels: ['email'],
+        });
+        return { sent: true };
+    }
+
+    /** Verify a code and, if asked, issue a trust token that skips it next time. */
+    async function verifyLoginCode({ leadId, code }) {
+        const r = await pool.query(
+            `SELECT * FROM auth_tokens
+              WHERE lead_id = $1 AND purpose = 'login_code' AND token_hash = $2`,
+            [leadId, hashToken(`${leadId}:${String(code || '').trim()}`)]
+        );
+        const row = r.rows[0];
+        if (!row) return { ok: false, message: 'That code isn\'t right. Check the email and try again.' };
+        if (row.used_at) return { ok: false, message: 'That code has already been used. Request a new one.' };
+        if (new Date(row.expires_at) <= new Date()) {
+            return { ok: false, message: 'That code has expired. Request a new one.' };
+        }
+        await pool.query('UPDATE auth_tokens SET used_at = NOW() WHERE id = $1', [row.id]);
+        return { ok: true };
+    }
+
+    async function issueTrustToken({ leadId, audience, ip, userAgent }) {
+        const token = crypto.randomBytes(32).toString('hex');
+        await pool.query(
+            `INSERT INTO auth_tokens (lead_id, audience, purpose, token_hash, expires_at, requested_ip, user_agent)
+             VALUES ($1,$2,'device_trust',$3, NOW() + ($4 || ' days')::interval, $5,$6)`,
+            [leadId, audience, hashToken(token), String(TRUST_DAYS),
+             (ip || '').slice(0, 64), (userAgent || '').slice(0, 400)]
+        );
+        return { token, days: TRUST_DAYS };
+    }
+
+    /** Is this device still trusted? Returns false for anything expired or spent. */
+    async function isDeviceTrusted(leadId, token) {
+        if (!token) return false;
+        const r = await pool.query(
+            `SELECT id FROM auth_tokens
+              WHERE lead_id = $1 AND purpose = 'device_trust' AND token_hash = $2
+                AND used_at IS NULL AND expires_at > NOW()`,
+            [leadId, hashToken(token)]
+        );
+        return r.rows.length > 0;
+    }
+
+    app.post('/api/auth/login-code/send', async (req, res) => {
+        try {
+            const { leadId, email, audience } = req.body || {};
+            if (!leadId) return res.status(400).json({ success: false, message: 'Missing account.' });
+            await issueLoginCode({
+                leadId, email, audience: audience === 'crm' ? 'crm' : 'customer',
+                ip: req.headers['x-forwarded-for'] || req.ip,
+                userAgent: req.headers['user-agent'],
+            });
+            res.json({ success: true, message: 'We\'ve emailed you a new code.', expiresInMinutes: CODE_TTL_MIN });
+        } catch (e) {
+            console.error('[LOGIN CODE]', e.message);
+            res.status(500).json({ success: false, message: 'Could not send a code just now.' });
+        }
+    });
+
+    // ---- admin: why can't this customer see their documents? -------------
+    // Answers the "admin shows it, the portal doesn't" question directly, by
+    // reporting exactly what is attached to the customer's lead id and what is
+    // attached to nobody.
+    app.get('/api/admin/customers/:leadId/diagnose', authenticateToken, async (req, res) => {
+        try {
+            const leadId = req.params.leadId;
+            const lead = (await pool.query(
+                `SELECT id, name, email, is_customer, portal_kind, crm_access,
+                        (client_password IS NOT NULL) AS has_portal
+                   FROM leads WHERE id = $1`, [leadId]
+            )).rows[0];
+            if (!lead) return res.status(404).json({ success: false, message: 'Customer not found.' });
+
+            // Duplicate rows on the same email are the usual reason a document
+            // "disappears": it hangs off one row, the portal signs in as another.
+            const dupes = (await pool.query(
+                `SELECT id, name, (client_password IS NOT NULL) AS has_portal, is_customer, created_at
+                   FROM leads WHERE LOWER(email) = LOWER($1) ORDER BY id`, [lead.email]
+            )).rows;
+
+            const agreements = (await pool.query(
+                `SELECT sa.id, sa.agreement_number, sa.status, sa.agreement_kind, sa.lead_id,
+                        sa.signed_at, (sig.id IS NOT NULL) AS has_signature
+                   FROM sales_agreements sa
+                   LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
+                  WHERE sa.lead_id = $1 ORDER BY sa.created_at DESC`, [leadId]
+            )).rows;
+
+            const orphans = (await pool.query(
+                `SELECT id, agreement_number, customer_email, status, created_at
+                   FROM sales_agreements
+                  WHERE lead_id IS NULL
+                     OR (customer_email IS NOT NULL AND LOWER(customer_email) = LOWER($1) AND lead_id <> $2)
+                  ORDER BY created_at DESC`, [lead.email, leadId]
+            )).rows;
+
+            const plans = (await pool.query(
+                `SELECT id, label, plan_type, status, signed_at, agreement_id,
+                        billing_start_date, next_charge_date, interval_unit
+                   FROM maintenance_plans WHERE lead_id = $1 ORDER BY created_at DESC`, [leadId]
+            )).rows;
+
+            const invoices = (await pool.query(
+                `SELECT id, invoice_number, status, total_amount, due_date, obligation, is_deposit
+                   FROM invoices WHERE lead_id = $1 ORDER BY created_at DESC`, [leadId]
+            )).rows;
+
+            const problems = [];
+            if (!lead.has_portal) problems.push('This customer has no portal password — they cannot sign in at all.');
+            if (dupes.length > 1) {
+                problems.push(`There are ${dupes.length} lead rows with this email (ids ${dupes.map((d) => d.id).join(', ')}). ` +
+                    'The portal signs in as one of them, so anything attached to another row is invisible to the customer.');
+            }
+            if (orphans.length) {
+                problems.push(`${orphans.length} agreement(s) for this email are attached to no customer, or to a different one — ` +
+                    'those will never appear in this customer\'s portal.');
+            }
+            for (const a of agreements) {
+                if (a.has_signature && !a.signed_at) {
+                    problems.push(`Agreement ${a.agreement_number} has a signature but its row was never marked signed — run migration 006.`);
+                }
+            }
+            for (const p of plans) {
+                if (p.signed_at && p.status === 'pending_signature') {
+                    problems.push(`Plan "${p.label}" is signed but still reads pending_signature — run migration 006.`);
+                }
+            }
+
+            res.json({
+                success: true, lead, duplicateLeads: dupes,
+                agreements, orphanAgreements: orphans, plans, invoices,
+                problems,
+                summary: problems.length
+                    ? `${problems.length} issue(s) found.`
+                    : 'Nothing wrong found — the customer portal should show exactly what is listed here.',
+            });
+        } catch (e) {
+            console.error('[DIAGNOSE]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'The diagnosis') });
         }
     });
 
@@ -3183,6 +3648,9 @@ module.exports = function initLifecycle({
             description: p.description,
             amount: Number(p.amount),
             billing_day: p.billing_day,
+            interval_unit: p.interval_unit || 'month',
+            billing_start_date: p.billing_start_date,
+            item_reference: p.item_reference,
             status: p.status,
             next_charge_date: p.next_charge_date,
             cancels_at: p.cancels_at,
@@ -3446,8 +3914,8 @@ module.exports = function initLifecycle({
             await notify({
                 lead, kind: 'cancellation_confirmed',
                 subject: 'Your CodeNexus CRM subscription is scheduled to end',
-                bodyHtml: `<p style="margin:0 0 12px">We've received your cancellation request for <strong style="color:#fff">${sub.package_name || 'CodeNexus CRM'}</strong>.</p>
-                    <p style="margin:0 0 12px">You keep full CRM access until <strong style="color:#10b981">${prettyDate(effective)}</strong>, and you won't be billed after that.</p>
+                bodyHtml: `<p style="margin:0 0 12px">We've received your cancellation request for <strong style="color:#0d0f12">${sub.package_name || 'CodeNexus CRM'}</strong>.</p>
+                    <p style="margin:0 0 12px">You keep full CRM access until <strong style="color:#16a34a">${prettyDate(effective)}</strong>, and you won't be billed after that.</p>
                     <p style="margin:0 0 12px">Your customer portal is unaffected \u2014 invoices, receipts and messages stay exactly where they are.</p>
                     <p style="margin:0">Changed your mind? You can reinstate from your portal any time before that date.</p>`,
                 smsText: `Diamondback Coding: your CodeNexus CRM subscription ends ${prettyDate(effective)}. Your customer portal is unaffected. Reinstate anytime before then.`,
@@ -3716,10 +4184,18 @@ module.exports = function initLifecycle({
                 // Annual plans (domain renewals): interval 'year' plus the month
                 // it renews in. Monthly plans ignore billingMonth entirely.
                 interval, billingMonth, itemReference, renewalDate,
+                // The day billing actually begins. Everything after it recurs on
+                // the same day of the month (or the same date each year).
+                billingStartDate,
             } = req.body || {};
 
-            if (!leadId || !planType || !amount) {
+            // amount may legitimately be 0 (a free period, a bundled service),
+            // so test for "missing", not "falsy".
+            if (!leadId || !planType || amount == null || amount === '') {
                 return res.status(400).json({ success: false, message: 'Customer, plan type and amount are required.' });
+            }
+            if (Number(amount) < 0) {
+                return res.status(400).json({ success: false, message: 'Amount cannot be negative.' });
             }
 
             // A domain renewal is annual unless told otherwise — nobody renews a
@@ -3733,7 +4209,7 @@ module.exports = function initLifecycle({
                 const d = new Date(renewalDate);
                 if (!isNaN(d)) { month = d.getUTCMonth() + 1; day = d.getUTCDate(); }
             }
-            if (unit === 'year' && !month) {
+            if (unit === 'year' && !month && !billingStartDate) {
                 return res.status(400).json({
                     success: false,
                     message: 'For an annual plan, give the renewal date (or the month it renews).',
@@ -3755,8 +4231,16 @@ module.exports = function initLifecycle({
             // charge. Deriving it from month/day instead would pick the NEXT
             // occurrence — so a domain renewing 4 Sep 2027, set up in Aug 2026,
             // would be charged on 4 Sep 2026: a full year early.
+            // An explicit start date wins over everything: it IS the first
+            // charge, and it sets the recurring day. Without this, "starts on
+            // the 3rd" quietly became "starts on the next 1st".
             let firstCharge;
-            if (unit === 'year') {
+            const startExplicit = billingStartDate ? new Date(billingStartDate) : null;
+            if (startExplicit && !isNaN(startExplicit)) {
+                firstCharge = startExplicit;
+                day = startExplicit.getUTCDate();
+                if (unit === 'year') month = startExplicit.getUTCMonth() + 1;
+            } else if (unit === 'year') {
                 const explicit = renewalDate ? new Date(renewalDate) : null;
                 firstCharge = (explicit && !isNaN(explicit) && explicit > new Date())
                     ? explicit
@@ -3769,8 +4253,8 @@ module.exports = function initLifecycle({
                 `INSERT INTO maintenance_plans
                     (lead_id, plan_type, label, description, amount, billing_day,
                      generate_invoice, status, next_charge_date,
-                     interval_unit, billing_month, item_reference)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,'pending_signature',$8,$9,$10,$11)
+                     interval_unit, billing_month, item_reference, billing_start_date)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,'pending_signature',$8,$9,$10,$11,$8)
                  RETURNING *`,
                 [leadId, planType, label || defaultLabels[planType] || 'Maintenance Plan',
                  description || null, amount, day, generateInvoice,
@@ -3888,6 +4372,11 @@ module.exports = function initLifecycle({
         nextChargeFor,
         postProjectUpdate,
         issueRecovery,
+        onContactFormSubmitted,
+        issueLoginCode,
+        verifyLoginCode,
+        issueTrustToken,
+        isDeviceTrusted,
         checkRecoveryToken,
         onServiceRequestCreated,
         sendPortalMessagePing,

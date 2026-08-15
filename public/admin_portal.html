@@ -791,8 +791,46 @@ body {
     background: var(--bg-primary);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    /* overflow:hidden CLIPPED any table wider than the card, with no way to
+       reach the cut-off columns — the Sales Agreements table (8 columns) lost
+       its Status and Actions entirely. `auto` still clips to the rounded
+       corners; it just scrolls instead of hiding. */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
 }
+/* A visible, unobtrusive scrollbar — an invisible one looks identical to the
+   clipping this replaces. */
+.table-container::-webkit-scrollbar { height: 9px; }
+.table-container::-webkit-scrollbar-track { background: transparent; }
+.table-container::-webkit-scrollbar-thumb {
+    background: var(--border-strong, rgba(255,255,255,.18));
+    border-radius: 5px;
+}
+.table-container::-webkit-scrollbar-thumb:hover { background: var(--accent-amber, #D4A574); }
+
+/* Wide tables get a floor width so columns stay readable and the container
+   scrolls, rather than every column squashing until nothing can be read. */
+/* Headers never wrap. With table-layout:auto a wide table squashes its columns
+   to fit rather than overflowing, so "Client / Lead" becomes three stacked
+   words and nothing triggers the scrollbar. Keeping headers on one line gives
+   every table a natural minimum width, so the container above scrolls instead —
+   which is what makes the fix apply to all 15 tables, not just the two below. */
+.data-table th { white-space: nowrap; }
+
+.data-table--wide { min-width: 940px; }
+.data-table--wide td, .data-table--wide th { white-space: nowrap; }
+.data-table--wide td .stack { white-space: normal; }
+/* The actions column must never be the one that gets squeezed. */
+.data-table--wide td:last-child, .data-table--wide th:last-child {
+    position: sticky; right: 0;
+    background: var(--bg-primary);
+    box-shadow: -8px 0 12px -8px rgba(0,0,0,.55);
+}
+/* The sticky cell sits above the row, so it needs the hover colour applied
+   directly — otherwise the Actions column stays dark while the rest of the row
+   lights up, and looks detached from it. */
+.data-table--wide tbody tr:hover td:last-child { background: var(--bg-hover); }
 
 .data-table {
     width: 100%;
@@ -5075,8 +5113,10 @@ async function renderSection(section) {
             break;
             
         case 'projects':
-            console.log(' Rendering projects section');
-            renderProjects(content);
+            // Rebuilt as an update tool: every signed customer project, with a
+            // post-an-update action that reaches the customer. The old
+            // renderProjects() is left in place but no longer routed to.
+            renderProjectUpdates(content);
             break;
             
 case 'support':
@@ -21855,7 +21895,7 @@ async function renderServiceRequests(content) {
         <div class="card">
             <div class="card-header"><h2 class="card-title">Service Requests (${requests.length})</h2></div>
             <div class="table-container">
-                <table class="data-table">
+                <table class="data-table data-table--wide">
                     <thead><tr><th>Received</th><th>Customer</th><th>Service</th><th>Project</th><th>Preferred</th><th>Details</th><th>Status</th><th>Reply</th></tr></thead>
                     <tbody>${rows || `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">No service requests yet.</td></tr>`}</tbody>
                 </table>
@@ -22021,7 +22061,9 @@ async function renderSalesAgreements(content) {
                     : (a.lead_id
                         ? `<button class="btn btn-primary" style="padding:6px 10px;" onclick="sendSalesAgreement(${a.id})">${a.sent_at ? 'Resend' : 'Send to portal'}</button>`
                         : `<span style="color:#eab308;font-size:11px;font-weight:700;">Assign a client to send</span>`)}
-                <button class="btn btn-secondary" style="padding:6px 10px;" onclick="openSalesAgreementModal(${a.id})">Edit</button>
+                ${a.agreement_kind === 'maintenance'
+                    ? `<button class="btn btn-secondary" style="padding:6px 10px;" onclick="showSection('maintenance')" title="Maintenance agreements are edited on the Maintenance tab, so the plan and the document stay in step">Edit in Maintenance</button>`
+                    : `<button class="btn btn-secondary" style="padding:6px 10px;" onclick="openSalesAgreementModal(${a.id})">Edit</button>`}
                 <button class="btn btn-secondary" style="padding:6px 10px;color:#e25;" onclick="deleteSalesAgreement(${a.id})">Delete</button>
             </td>
         </tr>`;
@@ -22032,7 +22074,7 @@ async function renderSalesAgreements(content) {
                 <button class="btn btn-primary" onclick="openSalesAgreementModal()">New Sales Agreement</button>
             </div>
             <div class="table-container">
-                <table class="data-table">
+                <table class="data-table data-table--wide">
                     <thead><tr><th>Agreement</th><th>Client / Lead</th><th>Service</th><th>Project</th><th>Price</th><th>Start</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody>${rows || `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">No sales agreements yet. Click “New Sales Agreement” to create one.</td></tr>`}</tbody>
                 </table>
@@ -22600,10 +22642,22 @@ async function deleteSalesAgreement(id) {
     if (!confirm('Delete this sales agreement? This cannot be undone.')) return;
     const token = getAuthToken();
     try {
-        await fetch(`${API_URL}/api/sales-agreements/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-        showToast('Sales agreement deleted.', 'success');
+        // The old version ignored the response entirely and always said
+        // "deleted" — so a refusal (a signed agreement, or one an invoice still
+        // points at) looked like success and the row just stayed put.
+        const r = await fetch(`${API_URL}/api/sales-agreements/${id}`, {
+            method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        let d = {}; try { d = await r.json(); } catch (_) {}
+        if (!r.ok || !d.success) {
+            showToast(d.message || `Could not delete agreement (${r.status}).`, 'error');
+            return;
+        }
+        showToast(d.message || 'Sales agreement deleted.', 'success');
         renderSection('salesAgreements');
-    } catch (e) { showToast('Could not delete agreement.', 'error'); }
+    } catch (e) {
+        showToast('Could not delete agreement: ' + e.message, 'error');
+    }
 }
 </script>
 
@@ -23403,6 +23457,22 @@ function dbmUpdateBadge(id, n){
   b.style.display = n > 0 ? '' : 'none';
 }
 
+/* Domain renewals are annual and need the domain recorded; everything else is
+   monthly. Swapping the wording here avoids a form that says "monthly" while
+   creating a yearly charge. */
+function dbmPlanTypeChanged(){
+  const t = (document.getElementById('mpType')||{}).value;
+  const annual = t === 'domain_renewal';
+  const wrap = document.getElementById('mpDomainWrap');
+  if(wrap) wrap.style.display = annual ? '' : 'none';
+  const hint = document.getElementById('mpStartHint');
+  if(hint) hint.textContent = annual
+    ? 'The renewal date. They are charged then, and on the same date every year.'
+    : "The first day they're charged. Every charge after it falls on this same day.";
+  const amt = document.getElementById('mpAmount');
+  if(amt) amt.placeholder = annual ? '22.00 per year' : '299.00 per month';
+}
+
 async function dbmNewPlan(){
   /* Customer list.
      The previous version read state.leads — which EXCLUDES customers
@@ -23449,10 +23519,12 @@ async function dbmNewPlan(){
     <div class="dbm-r">
       <div class="dbm-f">
         <label>Plan type</label>
-        <select id="mpType">
+        <select id="mpType" onchange="dbmPlanTypeChanged()">
           <option value="monthly_maintenance">Monthly maintenance</option>
           <option value="brevo_maintenance">Brevo maintenance</option>
           <option value="database_maintenance">Database maintenance</option>
+          <option value="hosting">Hosting</option>
+          <option value="domain_renewal">Domain renewal (annual)</option>
         </select>
       </div>
       <div class="dbm-f">
@@ -23462,14 +23534,20 @@ async function dbmNewPlan(){
     </div>
     <div class="dbm-r">
       <div class="dbm-f">
-        <label>Bills on day of month</label>
-        <input id="mpDay" inputmode="numeric" value="1">
-        <div style="color:#8a8a8a;font-size:12px;margin-top:5px">29–31 bill on the last day of shorter months.</div>
+        <label>Billing starts on</label>
+        <input id="mpStart" type="date">
+        <div style="color:#8a8a8a;font-size:12px;margin-top:5px" id="mpStartHint">
+          The first day they're charged. Every charge after it falls on this same day.
+        </div>
       </div>
       <div class="dbm-f">
         <label>Label shown to the customer</label>
         <input id="mpLabel" placeholder="Monthly Maintenance">
       </div>
+    </div>
+    <div class="dbm-f" id="mpDomainWrap" style="display:none">
+      <label>Domain being renewed</label>
+      <input id="mpItem" placeholder="example.com">
     </div>
     <div class="dbm-f">
       <label>What's included (optional)</label>
@@ -23486,22 +23564,42 @@ async function dbmNewPlan(){
     </div></div>`;
   document.body.appendChild(m);
 
+  // Default to today, so the common case ("start now") is one click.
+  const startEl = document.getElementById('mpStart');
+  if(startEl && !startEl.value) startEl.value = new Date().toISOString().slice(0,10);
+  dbmPlanTypeChanged();
+
   document.getElementById('mpGo').onclick = async ()=>{
     const err = document.getElementById('mpErr');
     const leadId = (document.getElementById('mpLead')||{}).value;
     const amount = parseFloat((document.getElementById('mpAmount')||{}).value);
-    const day = parseInt((document.getElementById('mpDay')||{}).value, 10);
+    const start = (document.getElementById('mpStart')||{}).value;
+    const planType = document.getElementById('mpType').value;
+    const isAnnual = planType === 'domain_renewal';
     if(!leadId){ err.style.display='block'; err.textContent='Choose a customer.'; return; }
-    if(!amount || amount <= 0){ err.style.display='block'; err.textContent='Enter a monthly amount greater than zero.'; return; }
-    if(!day || day < 1 || day > 31){ err.style.display='block'; err.textContent='Billing day must be between 1 and 31.'; return; }
+    // 0.00 is allowed — a free period or a bundled service still needs a plan
+    // so it appears, gets signed and can later be priced.
+    if(isNaN(amount) || amount < 0){
+      err.style.display='block';
+      err.textContent = 'Enter an amount of 0.00 or more.';
+      return;
+    }
+    if(!start){
+      err.style.display='block';
+      err.textContent = 'Choose the date billing starts. That is the first charge, and the day it recurs on.';
+      return;
+    }
 
     const btn = document.getElementById('mpGo');
     btn.disabled = true; btn.textContent = 'Creating…';
     const d = await dbmSend('/api/admin/maintenance-plans', {
-      leadId, planType: document.getElementById('mpType').value,
+      leadId, planType,
       label: (document.getElementById('mpLabel')||{}).value || null,
       description: (document.getElementById('mpDesc')||{}).value || null,
-      amount, billingDay: day,
+      amount,
+      billingStartDate: start,
+      interval: isAnnual ? 'year' : 'month',
+      itemReference: (document.getElementById('mpItem')||{}).value || null,
       generateInvoice: document.getElementById('mpInvoice').checked,
       sendAgreement: true
     });
@@ -23724,6 +23822,193 @@ function dbmMsgButton(){
     </button>`;
 }
 window.dbmMsgButton = dbmMsgButton;
+
+/* ---------------- PROJECT UPDATES ----------------
+   The admin-side project timeline. Not a planner — an update tool. Every
+   signed customer project, newest activity first, with one action that
+   matters: post an update, which emails and messages the customer and lands on
+   their portal timeline immediately. */
+async function renderProjectUpdates(content){
+  content.innerHTML = `<div class="dbm-empty">Loading projects…</div>`;
+  let d;
+  try{
+    d = await dbmGet('/api/admin/projects');
+  }catch(e){
+    content.innerHTML = `<div class="dbm-alert"><strong>Couldn't load projects.</strong><br>${dbmEsc(e.message)}</div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" onclick="renderProjectUpdates(document.getElementById('contentArea'))">Try again</button>
+        <button class="btn" onclick="dbmSchemaCheck()">Run a database check</button></div>`;
+    return;
+  }
+  const projects = d.projects || [];
+  const active = projects.filter(p => p.status !== 'completed');
+  const stale = active.filter(p => {
+    const last = p.last_update_at || p.created_at;
+    return last && (Date.now() - new Date(last)) > 7 * 86400000;
+  });
+
+  const rows = projects.length ? projects.map(p => {
+    const done = p.status === 'completed';
+    const total = Number(p.total_milestones) || 0;
+    const closed = Number(p.done_milestones) || 0;
+    const pct = p.progress != null ? Number(p.progress)
+              : (total ? Math.round((closed / total) * 100) : 0);
+    const last = p.last_update_at;
+    const quiet = !done && last && (Date.now() - new Date(last)) > 7 * 86400000;
+    return `<tr>
+      <td>
+        <div style="font-weight:700;color:#fff">${dbmEsc(p.project_name || 'Project')}</div>
+        <div style="color:#8a8a8a;font-size:12px">${dbmEsc(p.customer_name || '')}${p.agreement_number ? ' · ' + dbmEsc(p.agreement_number) : ''}</div>
+      </td>
+      <td><span class="dbm-pill ${done ? 'active' : 'pending'}">${dbmEsc(String(p.status || '').replace(/_/g,' '))}</span></td>
+      <td style="min-width:130px">
+        <div style="height:6px;border-radius:4px;background:#2a2a2a;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${done ? '#10b981' : 'var(--accent-amber,#D4A574)'}"></div>
+        </div>
+        <div style="color:#8a8a8a;font-size:11px;margin-top:4px">${pct}% · ${closed}/${total} milestones</div>
+      </td>
+      <td>
+        ${last ? dbmDate(last) : '<span style="color:#eab308">never</span>'}
+        <div style="color:#8a8a8a;font-size:11px">${p.update_count || 0} update${Number(p.update_count) === 1 ? '' : 's'}</div>
+        ${quiet ? '<div style="color:#eab308;font-size:11px;margin-top:3px">No update in over a week</div>' : ''}
+      </td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-primary btn-sm" onclick="dbmPostUpdate(${p.id})">Post update</button>
+        <button class="btn btn-sm" onclick="dbmOpenProject(${p.id})">Open</button>
+      </td></tr>`;
+  }).join('') : '';
+
+  content.innerHTML = `
+    <div class="dbm-grid">
+      <div class="dbm-stat"><div class="l">Active projects</div><div class="v">${active.length}</div></div>
+      <div class="dbm-stat good"><div class="l">Completed</div><div class="v">${projects.length - active.length}</div></div>
+      <div class="dbm-stat ${stale.length ? 'warn' : ''}"><div class="l">Not updated in 7 days</div><div class="v">${stale.length}</div></div>
+    </div>
+    <div class="dbm-note">Posting an update emails the customer, messages them in their portal, and appears on their project timeline straight away.</div>
+    ${rows ? `<div style="overflow-x:auto"><table class="dbm-table">
+        <thead><tr><th>Project</th><th>Status</th><th>Progress</th><th>Last update</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`
+      : `<div class="dbm-empty">No projects yet.<br>A project timeline is created automatically when a customer signs a project agreement.</div>`}`;
+}
+
+/* Post an update. Status and progress are optional — most updates are just a
+   sentence telling the customer where things are. */
+function dbmPostUpdate(projectId){
+  let m = document.getElementById('dbmUpdModal');
+  if(m) m.remove();
+  m = document.createElement('div');
+  m.id = 'dbmUpdModal'; m.className = 'dbm-modal';
+  m.innerHTML = `<div class="dbm-modal-box">
+    <h2 style="margin:0 0 4px;font-size:19px">Post a project update</h2>
+    <p style="color:#8a8a8a;font-size:13px;margin:0 0 4px">The customer is emailed and messaged, and it appears on their timeline.</p>
+    <div class="dbm-f"><label>Headline</label>
+      <input id="puTitle" placeholder="e.g. Homepage design approved"></div>
+    <div class="dbm-f"><label>Detail (optional)</label>
+      <textarea id="puBody" rows="4" placeholder="What's done, what's next, anything you need from them."></textarea></div>
+    <div class="dbm-r">
+      <div class="dbm-f"><label>Status (optional)</label>
+        <select id="puStatus">
+          <option value="">Leave unchanged</option>
+          <option value="in_progress">In progress</option>
+          <option value="on_hold">On hold</option>
+          <option value="completed">Completed</option>
+        </select></div>
+      <div class="dbm-f"><label>Progress % (optional)</label>
+        <input id="puPct" inputmode="numeric" placeholder="e.g. 40"></div>
+    </div>
+    <label style="display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#b4b4b4;margin:6px 0 0">
+      <input type="checkbox" id="puNotify" checked style="margin-top:3px;accent-color:#10b981">
+      <span>Notify the customer. Untick for an internal note — it still shows on their timeline, but nothing is sent.</span>
+    </label>
+    <div id="puErr" class="dbm-alert" style="display:none"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+      <button class="btn" onclick="dbmClose('dbmUpdModal')">Cancel</button>
+      <button class="btn btn-primary" id="puGo">Post update</button>
+    </div></div>`;
+  document.body.appendChild(m);
+  setTimeout(() => { const t = document.getElementById('puTitle'); if(t) t.focus(); }, 60);
+
+  document.getElementById('puGo').onclick = async () => {
+    const err = document.getElementById('puErr');
+    const title = (document.getElementById('puTitle')||{}).value.trim();
+    const body = (document.getElementById('puBody')||{}).value.trim();
+    const status = (document.getElementById('puStatus')||{}).value || null;
+    const pctRaw = (document.getElementById('puPct')||{}).value;
+    if(!title && !body && !status && !pctRaw){
+      err.style.display='block'; err.textContent='Write an update, or change the status or progress.'; return;
+    }
+    const btn = document.getElementById('puGo');
+    btn.disabled = true; btn.textContent = 'Posting…';
+    const d = await dbmSend('/api/admin/projects/' + projectId + '/update', {
+      title: title || 'Progress update', body: body || null, status,
+      percent: pctRaw === '' ? null : Number(pctRaw),
+      notify: document.getElementById('puNotify').checked
+    });
+    if(!d.success){
+      err.style.display='block'; err.textContent = d.message || 'Could not post that update.';
+      btn.disabled = false; btn.textContent = 'Post update';
+      return;
+    }
+    dbmClose('dbmUpdModal');
+    dbmNote(d.message || 'Update posted.');
+    renderProjectUpdates(document.getElementById('contentArea'));
+  };
+}
+
+/* The project's full history: milestones you can close, and every update sent. */
+async function dbmOpenProject(projectId){
+  let m = document.getElementById('dbmProjModal');
+  if(m) m.remove();
+  m = document.createElement('div');
+  m.id = 'dbmProjModal'; m.className = 'dbm-modal';
+  m.innerHTML = `<div class="dbm-modal-box"><div class="dbm-empty">Loading…</div></div>`;
+  document.body.appendChild(m);
+
+  let d;
+  try{ d = await dbmGet('/api/admin/projects/' + projectId); }
+  catch(e){
+    m.querySelector('.dbm-modal-box').innerHTML =
+      `<div class="dbm-alert">${dbmEsc(e.message)}</div>
+       <div style="text-align:right;margin-top:14px"><button class="btn" onclick="dbmClose('dbmProjModal')">Close</button></div>`;
+    return;
+  }
+  const p = d.project || {};
+  const ms = d.milestones || [];
+  const ups = d.updates || [];
+
+  m.querySelector('.dbm-modal-box').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div><h2 style="margin:0;font-size:19px">${dbmEsc(p.project_name || 'Project')}</h2>
+        <p style="color:#8a8a8a;font-size:13px;margin:4px 0 0">${dbmEsc(p.customer_name || '')}</p></div>
+      <button class="btn" onclick="dbmClose('dbmProjModal')">Close</button>
+    </div>
+    <div style="display:flex;gap:10px;margin:18px 0">
+      <button class="btn btn-primary" onclick="dbmClose('dbmProjModal');dbmPostUpdate(${projectId})">Post update</button>
+    </div>
+    <h3 style="margin:18px 0 8px;font-size:14px">Milestones</h3>
+    ${ms.length ? ms.map(x => `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <div><div style="color:#fff;font-size:14px">${dbmEsc(x.title)}</div>
+          ${x.completed_at ? `<div style="color:#8a8a8a;font-size:11px">Completed ${dbmDate(x.completed_at)}</div>` : ''}</div>
+        ${x.status === 'completed'
+          ? '<span class="dbm-pill active">done</span>'
+          : `<button class="btn btn-sm" onclick="dbmCompleteMilestone(${x.id},${projectId})">Mark complete</button>`}
+      </div>`).join('') : '<p style="color:#8a8a8a;font-size:13px">No milestones on this project.</p>'}
+    <h3 style="margin:22px 0 8px;font-size:14px">Update history</h3>
+    ${ups.length ? ups.map(u => `
+      <div style="padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <div style="color:#fff;font-size:14px;font-weight:600">${dbmEsc(u.title)}</div>
+        ${u.body ? `<div style="color:#a0a0a0;font-size:13px;margin-top:3px;line-height:1.5">${dbmEsc(u.body)}</div>` : ''}
+        <div style="color:#6b6b6b;font-size:11px;margin-top:5px">${dbmDate(u.created_at)}${u.progress != null ? ' · ' + u.progress + '%' : ''}${u.notified_at ? ' · customer notified' : ' · internal'}</div>
+      </div>`).join('') : '<p style="color:#8a8a8a;font-size:13px">No updates posted yet.</p>'}`;
+}
+
+async function dbmCompleteMilestone(milestoneId, projectId){
+  const d = await dbmSend('/api/admin/milestones/' + milestoneId + '/complete');
+  dbmNote(d.message || (d.success ? 'Milestone completed.' : 'Could not update that milestone.'), d.success ? 'success' : 'error');
+  dbmClose('dbmProjModal');
+  dbmOpenProject(projectId);
+}
 
 /* ---------------- DIAGNOSTICS ---------------- */
 /* Shows exactly which tables the new tabs need and which are missing, so a 500

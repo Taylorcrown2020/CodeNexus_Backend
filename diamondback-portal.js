@@ -41,6 +41,8 @@ module.exports = function initPortal({
     // BEFORE the lifecycle one, so it's passed as a wrapper that resolves at
     // call time rather than a direct reference that would still be undefined.
     onServiceRequestCreated,
+    // Sign-in codes, late-bound from the lifecycle module the same way.
+    issueLoginCode, verifyLoginCode, issueTrustToken, isDeviceTrusted,
     SCHEDULING_URL = process.env.SCHEDULING_URL || 'https://diamondbackcoding.com/schedule.html',
 }) {
 
@@ -124,6 +126,31 @@ module.exports = function initPortal({
                 return res.status(401).json({ success: false, message: 'That email and password do not match an account.' });
             }
 
+            // ------------------------------------------------------------------
+            // Password is correct. Unless this device is already trusted, stop
+            // here and email a 6-digit code — no session token is issued until
+            // the code is verified, so a stolen password alone is not enough.
+            // ------------------------------------------------------------------
+            const trusted = typeof isDeviceTrusted === 'function'
+                ? await isDeviceTrusted(row.id, (req.body || {}).deviceToken).catch(() => false)
+                : true;
+
+            if (!trusted && typeof issueLoginCode === 'function') {
+                await issueLoginCode({
+                    leadId: row.id, email: row.email, audience: 'customer',
+                    ip: req.headers['x-forwarded-for'] || req.ip,
+                    userAgent: req.headers['user-agent'],
+                }).catch((e) => console.error('[PORTAL LOGIN] code send failed:', e.message));
+
+                return res.json({
+                    success: true,
+                    codeRequired: true,
+                    leadId: row.id,
+                    email: row.email,
+                    message: 'We\'ve emailed you a 6-digit code. Enter it to finish signing in.',
+                });
+            }
+
             const token = jwt.sign(
                 { id: row.id, email: row.email, type: 'portal' },
                 JWT_SECRET,
@@ -140,6 +167,55 @@ module.exports = function initPortal({
         } catch (e) {
             console.error('[PORTAL LOGIN] error:', e.message);
             res.status(500).json({ success: false, message: 'Could not sign you in. Try again.' });
+        }
+    });
+
+    /**
+     * Second step of sign-in: verify the emailed code, then issue the session.
+     * `remember` returns a device token that skips the code on this device until
+     * it expires.
+     */
+    app.post('/api/portal/login/verify', async (req, res) => {
+        try {
+            const { leadId, code, remember } = req.body || {};
+            if (!leadId || !code) {
+                return res.status(400).json({ success: false, message: 'Enter the code we emailed you.' });
+            }
+            if (typeof verifyLoginCode !== 'function') {
+                return res.status(500).json({ success: false, message: 'Sign-in codes are not available.' });
+            }
+            const out = await verifyLoginCode({ leadId, code });
+            if (!out.ok) return res.status(400).json({ success: false, message: out.message });
+
+            const row = (await pool.query(
+                `SELECT id, name, email, phone FROM leads WHERE id = $1`, [leadId]
+            )).rows[0];
+            if (!row) return res.status(404).json({ success: false, message: 'Account not found.' });
+
+            const token = jwt.sign(
+                { id: row.id, email: row.email, type: 'portal' },
+                JWT_SECRET, { expiresIn: '30d' }
+            );
+            await pool.query('UPDATE leads SET portal_last_login = NOW() WHERE id = $1', [row.id]).catch(() => {});
+
+            let device = null;
+            if (remember && typeof issueTrustToken === 'function') {
+                device = await issueTrustToken({
+                    leadId: row.id, audience: 'customer',
+                    ip: req.headers['x-forwarded-for'] || req.ip,
+                    userAgent: req.headers['user-agent'],
+                }).catch(() => null);
+            }
+
+            res.json({
+                success: true, token,
+                client: { id: row.id, name: row.name, email: row.email, phone: row.phone },
+                deviceToken: device ? device.token : null,
+                trustedForDays: device ? device.days : null,
+            });
+        } catch (e) {
+            console.error('[PORTAL LOGIN VERIFY]', e.message);
+            res.status(500).json({ success: false, message: 'Could not verify that code.' });
         }
     });
 
@@ -1159,6 +1235,10 @@ module.exports = function initPortal({
 
             // Sales agreements for this customer (shown in the portal's "Sales Agreements" view).
             let salesAgreements = [];
+            // Surfaced in the response so the portal can say "we couldn't load
+            // your agreements" instead of "you have none" — those are very
+            // different messages to show a customer.
+            let saError = null;
             try {
                 // Join the signature in, so the customer portal uses the SAME
                 // definition of "signed" as the admin portal. Reading only
@@ -1179,7 +1259,22 @@ module.exports = function initPortal({
                 );
                 salesAgreements = saRes.rows;
             } catch (e) {
-                console.log('[WARNING] sales_agreements table not available:', e.message);
+                // The JOIN needs agreement_signatures (migration 003). If that
+                // table is absent the join throws, and the old catch swallowed
+                // it and returned an EMPTY list — so every agreement silently
+                // vanished from the customer's portal. Fall back to the plain
+                // query rather than showing the customer nothing.
+                console.warn('[PORTAL] agreement signature join failed, falling back:', e.message);
+                try {
+                    const plain = await pool.query(
+                        'SELECT * FROM sales_agreements WHERE lead_id = $1 ORDER BY created_at DESC',
+                        [clientId]
+                    );
+                    salesAgreements = plain.rows;
+                } catch (e2) {
+                    console.error('[PORTAL] sales_agreements unreadable:', e2.message);
+                    saError = e2.message;
+                }
             }
 
             res.json({
@@ -1188,6 +1283,7 @@ module.exports = function initPortal({
                     invoices: invoicesResult.rows,
                     projects,
                     salesAgreements,
+                    salesAgreementsError: saError,
                     tickets,
                     activity
                 }

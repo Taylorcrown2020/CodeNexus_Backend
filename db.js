@@ -406,6 +406,94 @@ const EXPECTED_TABLES = [
 ];
 
 /**
+ * Columns that MUST exist, beyond the table itself.
+ *
+ * Table-level checks are not enough. CREATE TABLE IF NOT EXISTS does nothing
+ * when an older version of the table is already there, so a table can be
+ * "present" while missing most of its columns — which is exactly what happened
+ * to sales_agreements: it existed, verifySchema passed, and every signing and
+ * delete route 500'd on `column sa.signed_at does not exist`.
+ *
+ * Only columns whose absence breaks a route are listed. Keep this in step with
+ * the migrations.
+ */
+const EXPECTED_COLUMNS = {
+    sales_agreements: [
+        'agreement_number', 'lead_id', 'customer_name', 'customer_email',
+        'service_type', 'package_name', 'price', 'status', 'terms', 'notes',
+        'signed_at', 'signature_name', 'created_at', 'updated_at',
+        'agreement_kind', 'invoice_id', 'project_id', 'est_completion_date',
+    ],
+    maintenance_plans: [
+        'lead_id', 'plan_type', 'label', 'amount', 'billing_day', 'status',
+        'next_charge_date', 'signed_at', 'agreement_id', 'interval_unit',
+        'billing_start_date', 'consecutive_failures',
+    ],
+    invoices: [
+        'invoice_number', 'lead_id', 'total_amount', 'status', 'due_date',
+        'agreement_id', 'maintenance_plan_id', 'obligation', 'due_date_estimated',
+    ],
+    agreement_signatures: ['agreement_id', 'lead_id', 'signer_name', 'signed_at'],
+    client_messages: ['lead_id', 'sender', 'body', 'read_by_admin', 'read_by_client'],
+    leads: ['portal_kind', 'client_password', 'default_payment_method_id'],
+};
+
+/**
+ * Check the columns above actually exist. Returns a list of 'table.column'.
+ */
+async function verifyColumns() {
+    const tables = Object.keys(EXPECTED_COLUMNS);
+    const { rows } = await pool.query(
+        `SELECT table_name, column_name FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = ANY($1::text[])`,
+        [tables]
+    );
+    const have = new Set(rows.map((r) => `${r.table_name}.${r.column_name}`));
+    const present = new Set(rows.map((r) => r.table_name));
+
+    const missing = [];
+    for (const [table, cols] of Object.entries(EXPECTED_COLUMNS)) {
+        if (!present.has(table)) continue;   // absent table is verifySchema's job
+        for (const c of cols) {
+            if (!have.has(`${table}.${c}`)) missing.push(`${table}.${c}`);
+        }
+    }
+
+    if (missing.length === 0) {
+        console.log('[DB] Columns verified: every required column present');
+    } else {
+        console.error(`[DB] Schema INCOMPLETE — ${missing.length} required column(s) MISSING:`);
+        console.error('     ' + missing.join(', '));
+        console.error('     This happens when a table pre-dates the migration that defines it:');
+        console.error('     CREATE TABLE IF NOT EXISTS silently skips, so new columns never land.');
+        console.error('     Run migrations/010_missing_columns_and_signing_repair.sql.');
+    }
+    return { missing };
+}
+
+/**
+ * Report migrations recorded as applied that had failing statements.
+ *
+ * applyMigrations() records a migration even when statements fail, so it will
+ * never re-run — the failure is then invisible after the boot that produced it.
+ * Surface it on every boot instead.
+ */
+async function reportFailedMigrations() {
+    try {
+        const { rows } = await pool.query(
+            'SELECT filename, failures FROM schema_migrations WHERE failures > 0 ORDER BY filename'
+        );
+        if (!rows.length) return { failed: [] };
+        console.error(`[DB] ${rows.length} migration(s) applied WITH FAILURES — they will not re-run:`);
+        for (const r of rows) console.error(`     ${r.filename}: ${r.failures} failed statement(s)`);
+        console.error('     Fix the cause, then: DELETE FROM schema_migrations WHERE filename = \'...\';');
+        return { failed: rows };
+    } catch (e) {
+        return { failed: [] };
+    }
+}
+
+/**
  * Verify every expected table exists. Logs and returns the missing ones; does
  * not throw, so a partial schema still lets you boot and inspect.
  */
@@ -424,7 +512,11 @@ async function verifySchema() {
         console.error('     Routes touching these will fail. Check the failures logged above.');
     }
 
-    return { present: present.size, missing };
+    // Tables can be present but hollow — check the columns too.
+    const cols = await verifyColumns();
+    await reportFailedMigrations();
+
+    return { present: present.size, missing, missingColumns: cols.missing };
 }
 
 // ---------------------------------------------------------------------------
@@ -534,6 +626,8 @@ if (require.main === module) {
 }
 
 module.exports = {
+    verifyColumns,
+    reportFailedMigrations,
     pool,
     query,
     withTransaction,

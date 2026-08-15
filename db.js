@@ -401,6 +401,8 @@ const EXPECTED_TABLES = [
     'project_updates',
     // --- auth recovery (migrations/005) ----------------------------------
     'auth_tokens',
+    // --- agreement milestones (migrations/008) ---------------------------
+    'agreement_milestones',
 ];
 
 /**

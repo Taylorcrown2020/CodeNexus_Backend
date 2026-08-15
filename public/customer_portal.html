@@ -1245,11 +1245,20 @@ const ELEMENT_LOOK = {
   }
 };
 
-async function openPay(invoiceId){
-  const inv = ((DASH && DASH.invoices) || []).find(i => i.id === invoiceId);
+/* opts lets a caller reuse this for a settlement payment: its own title and a
+   callback to run once the charge clears (e.g. finish cancelling). */
+async function openPay(invoiceId, opts){
+  opts = opts || {};
+  let inv = ((DASH && DASH.invoices) || []).find(i => i.id === invoiceId);
+  // A settlement invoice is raised mid-flow, so it isn't in the cached
+  // dashboard yet — reload before giving up on showing the amount.
+  if(!inv){
+    try{ await loadDash(); inv = (DASH.invoices || []).find(i => i.id === invoiceId); }catch(_){}
+  }
   const total = inv ? money(inv.total_amount) : '';
-  sheet('<h2 class="sheet-h">Pay ' + esc(inv ? inv.invoice_number : 'invoice') + '</h2>' +
-    '<p class="sheet-sub">Card and billing details are entered here. Your details go straight to Stripe &mdash; we never see or store them.</p>' +
+  sheet('<h2 class="sheet-h">' + esc(opts.title || ('Pay ' + (inv ? inv.invoice_number : 'invoice'))) + '</h2>' +
+    '<p class="sheet-sub">' + esc(opts.subtitle ||
+      'Card and billing details are entered here. Your details go straight to Stripe — we never see or store them.') + '</p>' +
     (inv ? '<div class="pay-summary">' +
       '<div class="r"><span>Subtotal</span><span>' + money(inv.subtotal != null ? inv.subtotal : inv.total_amount) + '</span></div>' +
       (Number(inv.tax_amount) > 0 ? '<div class="r"><span>Tax</span><span>' + money(inv.tax_amount) + '</span></div>' : '') +
@@ -1290,6 +1299,11 @@ async function openPay(invoiceId){
       }catch(_){}
       closeSheet();
       await loadDash().catch(() => {});
+      if(typeof opts.onPaid === 'function'){
+        // e.g. the cancellation that this payment unblocks.
+        await opts.onPaid();
+        return;
+      }
       toast('Payment received — your receipt is in Receipts & Docs.');
       go('billing');
     };
@@ -1440,44 +1454,104 @@ function changePm(kind, id){
   };
 }
 
-function cancelPlan(kind, id){
+async function cancelPlan(kind, id){
   const plan = PLANS.find(p => p.kind === kind && String(p.id) === String(id)) || {};
   const isCrm = kind === 'crm';
+
+  // Ask what's owed BEFORE showing the confirm, so the amount is never a
+  // surprise at the moment they press the button.
   sheet('<h2 class="sheet-h">Cancel ' + esc(plan.label || 'this plan') + '?</h2>' +
-    '<p class="sheet-sub">' + NOTICE_DAYS + '-day notice period.</p>' +
-    '<div class="alert alert-info">' + (isCrm
-      ? 'You keep full CRM access until the notice period ends, and you won&rsquo;t be billed after that. <b>Your customer portal isn&rsquo;t affected</b> &mdash; invoices, receipts and messages all stay right here.'
-      : 'Your service continues until the notice period ends, and you&rsquo;ll be billed as normal until then.') +
-      ' You can reinstate any time before it ends.</div>' +
+        '<p class="sheet-sub">Checking your account…</p>');
+  let quote = null;
+  try{ quote = await api('/api/portal/plans/' + kind + '/' + id + '/cancellation-quote'); }
+  catch(e){ quote = null; }
+
+  const owed = quote && quote.mustSettle ? Number(quote.total) : 0;
+  const endsOn = quote && quote.effectiveAt ? fmtDate(quote.effectiveAt) : null;
+  const breakdown = owed && quote.lines && quote.lines.length
+    ? '<div class="pay-summary">' +
+        quote.lines.map(l => '<div class="r"><span>' + esc(l.label) + '</span><span>' + money(l.amount) + '</span></div>').join('') +
+        '<div class="r total"><span>Payable now</span><span>' + money(owed) + '</span></div></div>'
+    : '';
+
+  sheet('<h2 class="sheet-h">Cancel ' + esc(plan.label || 'this plan') + '?</h2>' +
+    '<p class="sheet-sub">' + NOTICE_DAYS + '-day notice period' + (endsOn ? ' &middot; ends ' + endsOn : '') + '.</p>' +
+    (owed
+      ? '<div class="alert alert-warn">Your ' + NOTICE_DAYS + '-day notice period is still payable, so ' +
+        money(owed) + ' needs settling before this can be cancelled. You can pay it here and we\'ll cancel straight after.</div>' + breakdown
+      : '<div class="alert alert-info">' + (isCrm
+          ? 'You keep full CRM access until the notice period ends. <b>Your customer portal isn\'t affected</b> — invoices, receipts and messages stay right here.'
+          : 'Your service continues until the notice period ends.') +
+        ' Reinstating later needs a short document signed.</div>') +
     '<div class="field"><label for="cxReason">Anything we could have done better? (optional)</label>' +
       '<input class="input" id="cxReason" placeholder="Helps us improve — not required"></div>' +
     '<div id="cxErr" class="alert alert-err hidden"></div>' +
     '<div class="sheet-actions">' +
       '<button class="btn btn-ghost" onclick="closeSheet()">Keep it</button>' +
-      '<button class="btn btn-danger" id="cxGo">Confirm cancellation</button></div>');
+      '<button class="btn ' + (owed ? 'btn-primary' : 'btn-danger') + '" id="cxGo">' +
+        (owed ? 'Pay ' + money(owed) + ' and cancel' : 'Confirm cancellation') + '</button></div>');
+  _cancelSheetBody(kind, id, isCrm);
+}
 
+/* The confirm handler, shared by both the "nothing owed" and "pay first"
+   paths — the only difference is whether a payment sheet opens in between. */
+function _cancelSheetBody(kind, id, isCrm){
   document.getElementById('cxGo').onclick = async () => {
     const btn = document.getElementById('cxGo');
-    btn.disabled = true; btn.textContent = 'Cancelling…';
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Working…';
     const reason = (document.getElementById('cxReason') || {}).value || null;
     const path = isCrm ? '/api/portal/plans/crm/' + id + '/cancel'
                        : '/api/portal/maintenance-plans/' + id + '/cancel';
-    try{
-      const d = await post(path, {reason});
-      closeSheet(); toast(d.message || 'Cancellation confirmed.'); vBilling();
-    }catch(e){
-      const err = document.getElementById('cxErr');
-      err.textContent = e.message; err.classList.remove('hidden');
-      btn.disabled = false; btn.textContent = 'Confirm cancellation';
+
+    // First attempt. A 402 comes back with a settlement invoice attached: pay
+    // it inline, then repeat the cancel quoting that invoice.
+    let r = await fetch(API + path, {
+      method:'POST', headers: headers(), body: JSON.stringify({reason})
+    });
+    let d = {}; try{ d = await r.json(); }catch(_){}
+
+    if(r.status === 402 && d.settlement){
+      closeSheet();
+      openPay(d.settlement.invoiceId, {
+        title: 'Settle to cancel',
+        subtitle: 'Paying this settles your notice period, then the plan is cancelled.',
+        onPaid: async () => {
+          try{
+            const done = await post(path, {reason, settlementInvoiceId: d.settlement.invoiceId});
+            toast(done.message || 'Paid and cancelled.');
+          }catch(e2){ toast(e2.message, true); }
+          vBilling();
+        }
+      });
+      return;
     }
+
+    if(!r.ok || !d.success){
+      const err = document.getElementById('cxErr');
+      if(err){ err.textContent = d.message || 'Could not cancel.'; err.classList.remove('hidden'); }
+      btn.disabled = false; btn.textContent = label;
+      return;
+    }
+    closeSheet(); toast(d.message || 'Cancellation confirmed.'); vBilling();
   };
 }
 
 async function reinstate(kind, id){
   const path = kind === 'crm' ? '/api/portal/plans/crm/' + id + '/reinstate'
                               : '/api/portal/maintenance-plans/' + id + '/reinstate';
-  try{ const d = await post(path); toast(d.message || 'Reinstated.'); }
-  catch(e){ toast(e.message, true); }
+  try{
+    const d = await post(path);
+    // Reinstating is a fresh commitment, so it produces a document to sign
+    // rather than restarting the plan on a button press.
+    if(d.requiresSignature && d.agreementId){
+      toast(d.message || 'Sign the reinstatement document to restart your plan.');
+      await loadDash().catch(()=>{});
+      openSign(d.agreementId);
+      return;
+    }
+    toast(d.message || 'Reinstated.');
+  }catch(e){ toast(e.message, true); }
   vBilling();
 }
 

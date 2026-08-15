@@ -4997,13 +4997,17 @@ async function renderSection(section) {
                 </button>
             `;
         } else if (section === 'projects') {
+            // No "Create Project Timeline" button. A timeline is not something
+            // you make by hand — it is produced when a customer signs a project
+            // agreement, from the milestones entered on that agreement. Offering
+            // a manual one produced orphan timelines attached to no agreement.
             actionButtons += `
-                <button class="btn btn-primary" onclick="openProjectTimelineModal()">
+                <button class="btn btn-secondary" onclick="showSection('salesAgreements')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
                     </svg>
-                    Create Project Timeline
+                    New agreement
                 </button>
             `;
         } else if (section === 'recruitment') {
@@ -6820,11 +6824,8 @@ async function openClientProjects(clientId) {
                         </div>
                     `).join('')}
                 </div>
-                ${data.projects.length > 0 ? `
-                    <button class="btn btn-primary" style="margin-top: 16px;" onclick="closeModal(); createProjectForClient(${clientId})">
-                        + Add New Project
-                    </button>
-                ` : ''}
+                <!-- Projects come from signed agreements, so there is nothing
+                     to add by hand here. -->
             `);
         }
     } catch (error) {
@@ -22370,6 +22371,80 @@ function closeSalesAgreementPreview() {
     if (o) o.remove();
 }
 
+/* ---- Project milestones ----
+   The customer's project timeline IS this list. There is no separate "create
+   timeline" step: signing the agreement turns these rows into the milestones
+   the customer sees and the admin ticks off. Left empty, the line items are
+   used instead, so an itemised agreement still produces a usable timeline. */
+let SA_MILESTONES = [];
+
+function saRenderMilestones() {
+    const wrap = document.getElementById('saMsWrap');
+    if (!wrap) return;
+    if (!SA_MILESTONES.length) {
+        wrap.innerHTML = `<p style="margin:0;color:var(--text-muted,#888);font-size:13px;line-height:1.55;">
+            No milestones yet. Add them here, or press <strong>Use line items</strong> to turn the
+            items above into a timeline. If you leave this empty the line items are used automatically.</p>`;
+        return;
+    }
+    wrap.innerHTML = SA_MILESTONES.map((m, i) => `
+        <div style="display:grid;grid-template-columns:24px 1fr 130px 32px;gap:8px;align-items:start;margin-bottom:10px;">
+            <div style="padding-top:9px;color:var(--text-muted,#888);font-size:12px;font-weight:700;">${i + 1}</div>
+            <div>
+                <input value="${saEsc(m.title || '')}" placeholder="Milestone name"
+                       oninput="saMsChange(${i},'title',this.value)"
+                       style="width:100%;padding:8px 10px;border-radius:6px;font-size:13px;">
+                <input value="${saEsc(m.description || '')}" placeholder="What this covers (optional)"
+                       oninput="saMsChange(${i},'description',this.value)"
+                       style="width:100%;padding:6px 10px;border-radius:6px;font-size:12px;margin-top:5px;opacity:.85;">
+            </div>
+            <input type="date" value="${saEsc(m.due_date || '')}" title="Target date (optional)"
+                   oninput="saMsChange(${i},'due_date',this.value)"
+                   style="width:100%;padding:8px;border-radius:6px;font-size:12px;">
+            <button type="button" title="Remove" onclick="saRemoveMilestone(${i})"
+                    style="padding:8px;border-radius:6px;border:none;background:rgba(239,68,68,.15);color:#ef4444;cursor:pointer;font-weight:800;">&times;</button>
+        </div>`).join('');
+}
+
+function saAddMilestone() { SA_MILESTONES.push({ title: '', description: '', due_date: '' }); saRenderMilestones(); }
+function saRemoveMilestone(i) { SA_MILESTONES.splice(i, 1); saRenderMilestones(); }
+function saMsChange(i, field, val) { if (SA_MILESTONES[i]) SA_MILESTONES[i][field] = val; }
+
+/* Most agreements are already broken down as line items, so this saves typing
+   the same breakdown twice. Additive — it won't wipe milestones you've edited. */
+function saMilestonesFromItems() {
+    const named = SA_ITEMS.filter(it => (it.description || '').trim());
+    if (!named.length) { showToast('Add some line items first.', 'error'); return; }
+    const have = new Set(SA_MILESTONES.map(m => (m.title || '').trim().toLowerCase()));
+    let added = 0;
+    named.forEach(it => {
+        const t = it.description.trim();
+        if (have.has(t.toLowerCase())) return;
+        SA_MILESTONES.push({ title: t, description: it.detail || '', due_date: '' });
+        added++;
+    });
+    saRenderMilestones();
+    showToast(added ? `${added} milestone${added === 1 ? '' : 's'} added.` : 'Those are already in the list.', 'success');
+}
+
+async function saLoadMilestones(agreementId) {
+    SA_MILESTONES = [];
+    if (agreementId) {
+        try {
+            const token = getAuthToken();
+            const r = await fetch(`${API_URL}/api/sales-agreements/${agreementId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const d = await r.json();
+            if (d.success && Array.isArray(d.milestones)) {
+                SA_MILESTONES = d.milestones.map(m => ({
+                    title: m.title || '', description: m.description || '',
+                    due_date: m.due_date ? String(m.due_date).slice(0, 10) : ''
+                }));
+            }
+        } catch (e) { /* editing still works without them */ }
+    }
+    saRenderMilestones();
+}
+
 /* ---- SLA line items: fully customizable agreement contents ----
    Each row is description / detail / qty / unit price. When any exist, the
    agreement total is the sum of them and the flat Price field is ignored — the
@@ -22536,6 +22611,17 @@ async function openSalesAgreementModal(id) {
                     </div>
                 </div>
                 <div>
+                    <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">
+                        Project milestones
+                        <span style="color:var(--text-muted,#888);font-weight:400;">— these become the customer's project timeline when they sign</span>
+                    </label>
+                    <div id="saMsWrap" style="border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px;background:rgba(0,0,0,.2);"></div>
+                    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-secondary" style="padding:7px 12px;" onclick="saAddMilestone()">+ Add milestone</button>
+                        <button type="button" class="btn btn-secondary" style="padding:7px 12px;" onclick="saMilestonesFromItems()">Use line items</button>
+                    </div>
+                </div>
+                <div>
                     <label style="display:block;font-size:13px;margin-bottom:6px;color:var(--text-muted,#aaa);">Services performed <span style="color:var(--text-muted,#888);font-weight:400;">(preset — auto-fills from the package; edit only if you need to)</span></label>
                     <textarea id="saTerms" rows="9" placeholder="Pick a service & package and this fills in automatically…" style="width:100%;padding:10px;border-radius:8px;font-size:13px;line-height:1.5;">${saEsc(e.terms || '')}</textarea>
                 </div>
@@ -22556,7 +22642,8 @@ async function openSalesAgreementModal(id) {
     document.body.appendChild(overlay);
     saApplyPreset();
     saSyncDeposit();
-    saLoadItems(id);   // populates the line-item editor (empty for a new agreement)
+    saLoadItems(id);        // line-item editor (empty for a new agreement)
+    saLoadMilestones(id);   // milestone editor — becomes the project timeline
 }
 function closeSalesAgreementModal() {
     const o = document.getElementById('saModalOverlay');
@@ -22580,7 +22667,9 @@ async function saveSalesAgreement() {
         notes: document.getElementById('saNotes').value.trim(),
         // Only items that actually say something. The backend derives the total
         // from these when present, matching what the editor showed.
-        items: SA_ITEMS.filter(it => (it.description || '').trim())
+        items: SA_ITEMS.filter(it => (it.description || '').trim()),
+        // Signing turns these into the customer's project timeline.
+        milestones: SA_MILESTONES.filter(m => (m.title || '').trim())
     };
     if (!body.service_type) { showToast('Please choose a service type.', 'error'); return; }
     const btn = document.getElementById('saSaveBtn');
@@ -22645,10 +22734,22 @@ async function deleteSalesAgreement(id) {
         // The old version ignored the response entirely and always said
         // "deleted" — so a refusal (a signed agreement, or one an invoice still
         // points at) looked like success and the row just stayed put.
-        const r = await fetch(`${API_URL}/api/sales-agreements/${id}`, {
+        let r = await fetch(`${API_URL}/api/sales-agreements/${id}`, {
             method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
         });
         let d = {}; try { d = await r.json(); } catch (_) {}
+
+        // A signed agreement is refused once, on purpose — deleting it destroys
+        // the signature and the timeline. Ask a second, blunter question rather
+        // than making it undeletable.
+        if (!r.ok && d.canForce) {
+            if (!confirm(d.message + '\n\nDelete it permanently?')) return;
+            r = await fetch(`${API_URL}/api/sales-agreements/${id}?force=true`, {
+                method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+            });
+            d = {}; try { d = await r.json(); } catch (_) {}
+        }
+
         if (!r.ok || !d.success) {
             showToast(d.message || `Could not delete agreement (${r.status}).`, 'error');
             return;

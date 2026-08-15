@@ -871,6 +871,13 @@ module.exports = function initLifecycle({
         // It then activates if a payment method is already on file, or waits for
         // one.
         // ------------------------------------------------------------------
+        // A reinstatement document does one thing: restart the plan it belongs
+        // to. No project, no invoice, no admin assignment.
+        if (a.agreement_kind === 'reinstatement') {
+            await applyReinstatement(a);
+            return { signed: true, kind: 'reinstatement', signatureSvg: svg };
+        }
+
         if (a.agreement_kind === 'maintenance') {
             const plan = (await pool.query(
                 `SELECT * FROM maintenance_plans WHERE agreement_id = $1 OR (lead_id = $2 AND agreement_id IS NULL)
@@ -945,6 +952,16 @@ module.exports = function initLifecycle({
             };
         }
 
+        // ----------------------------------------------------------------------
+        // From here on the signature is ALREADY COMMITTED. Everything below —
+        // admin assignment, project, milestones, invoices, email — is follow-up
+        // work. If any of it throws, the customer must NOT see "signing failed"
+        // for something that succeeded: they retry, hit the once-guard, and are
+        // told it's already signed while the screen still says Review & sign.
+        // So the rest runs inside its own try and reports partial failure.
+        // ----------------------------------------------------------------------
+        const followUpErrors = [];
+
         // ---- assign an admin ------------------------------------------------
         // Least-loaded active admin, so assignment doesn't pile onto one person.
         let assignedAdmin = null;
@@ -987,17 +1004,40 @@ module.exports = function initLifecycle({
         );
         const project = projRes.rows[0];
 
-        // Seed milestones from the agreement's line items, so the customer sees
-        // a timeline that matches what they just signed.
         const items = (await pool.query(
             'SELECT * FROM agreement_items WHERE agreement_id=$1 ORDER BY sort_order, id', [agreementId]
         )).rows;
-        for (const [i, it] of items.entries()) {
+
+        // The timeline comes from the milestones written on the agreement. If
+        // none were given, fall back to the line items so an itemised agreement
+        // still produces a usable timeline rather than an empty one.
+        let seed = [];
+        try {
+            seed = (await pool.query(
+                'SELECT title, description, due_date FROM agreement_milestones WHERE agreement_id=$1 ORDER BY sort_order, id',
+                [agreementId]
+            )).rows;
+        } catch (e) {
+            console.warn('[LIFECYCLE] agreement_milestones unavailable:', e.message);
+        }
+        if (!seed.length) {
+            seed = items.map((it) => ({
+                title: it.description, description: it.detail || null, due_date: null,
+            }));
+        }
+        for (const [i, m] of seed.entries()) {
             await pool.query(
-                `INSERT INTO project_milestones (project_id, title, description, order_index, status)
-                 VALUES ($1,$2,$3,$4,'pending')`,
-                [project.id, it.description.slice(0, 500), it.detail || null, i]
-            ).catch((e) => console.warn('[LIFECYCLE] milestone seed:', e.message));
+                `INSERT INTO project_milestones (project_id, title, description, order_index, status, due_date)
+                 VALUES ($1,$2,$3,$4,'pending',$5)`,
+                [project.id, String(m.title).slice(0, 500), m.description || null, i, m.due_date || null]
+            ).catch(async (e) => {
+                // due_date only exists after migration 008.
+                await pool.query(
+                    `INSERT INTO project_milestones (project_id, title, description, order_index, status)
+                     VALUES ($1,$2,$3,$4,'pending')`,
+                    [project.id, String(m.title).slice(0, 500), m.description || null, i]
+                ).catch((e2) => console.warn('[LIFECYCLE] milestone seed:', e2.message));
+            });
         }
 
         await pool.query('UPDATE sales_agreements SET project_id=$2 WHERE id=$1', [agreementId, project.id]);
@@ -1083,7 +1123,11 @@ module.exports = function initLifecycle({
             severity: 'success', onceKey: `sla_signed_admin:${agreementId}`,
         });
 
-        return { signed: true, invoice, depositInvoice, project, assignedAdmin, signatureSvg: svg };
+        return {
+            signed: true, invoice, depositInvoice, project, assignedAdmin,
+            signatureSvg: svg,
+            followUpErrors,
+        };
     }
 
     /** A milestone is completed — tell the customer once. */
@@ -1435,12 +1479,33 @@ module.exports = function initLifecycle({
      * Customer requests cancellation. 30-day notice: billing continues until
      * effective_at, they can reinstate until then, and the admin portal is told.
      */
-    async function requestPlanCancellation({ planId, leadId, reason, requestedBy = 'customer' }) {
+    async function requestPlanCancellation({ planId, leadId, reason, requestedBy = 'customer', settlementInvoiceId = null }) {
         const plan = (await pool.query(
             'SELECT * FROM maintenance_plans WHERE id=$1 AND lead_id=$2', [planId, leadId]
         )).rows[0];
         if (!plan) throw new Error('Plan not found');
         if (plan.status === 'cancelled') throw new Error('This plan is already cancelled');
+
+        // Nothing cancels while money is owed. The notice period is served, not
+        // waived, so the periods inside it are payable — and a missed charge
+        // can't be walked away from by cancelling.
+        const quote = await cancellationSettlement({ kind: 'maintenance', id: planId, leadId });
+        if (quote.mustSettle && requestedBy === 'customer') {
+            let settled = false;
+            if (settlementInvoiceId) {
+                const inv = (await pool.query(
+                    `SELECT status FROM invoices WHERE id=$1 AND lead_id=$2`, [settlementInvoiceId, leadId]
+                )).rows[0];
+                settled = !!inv && inv.status === 'paid';
+            }
+            if (!settled) {
+                const err = new Error(
+                    `${money(quote.total)} is outstanding on this plan, including the ${CANCELLATION_NOTICE_DAYS}-day notice period. It has to be paid before the plan can be cancelled.`);
+                err.code = 'SETTLEMENT_REQUIRED';
+                err.quote = quote;
+                throw err;
+            }
+        }
 
         const existing = await pool.query(
             `SELECT * FROM plan_cancellations WHERE maintenance_plan_id=$1 AND status='pending'`, [planId]
@@ -1452,10 +1517,13 @@ module.exports = function initLifecycle({
         const effective = new Date(Date.now() + CANCELLATION_NOTICE_DAYS * 86400000);
         const ins = await pool.query(
             `INSERT INTO plan_cancellations
-                (maintenance_plan_id, lead_id, effective_at, notice_days, requested_by, reason, status, confirmation_sent_at)
-             VALUES ($1,$2,$3,$4,$5,$6,'pending',NOW())
+                (maintenance_plan_id, lead_id, effective_at, notice_days, requested_by, reason, status,
+                 confirmation_sent_at, settlement_amount, settlement_invoice_id, settled_at)
+             VALUES ($1,$2,$3,$4,$5,$6,'pending',NOW(),$7,$8,$9)
              RETURNING *`,
-            [planId, leadId, effective, CANCELLATION_NOTICE_DAYS, requestedBy, reason || null]
+            [planId, leadId, effective, CANCELLATION_NOTICE_DAYS, requestedBy, reason || null,
+             quote.total, settlementInvoiceId,
+             quote.mustSettle ? new Date() : null]
         );
         const cancellation = ins.rows[0];
 
@@ -2295,7 +2363,18 @@ module.exports = function initLifecycle({
                 'SELECT signer_name, signed_at, signature_svg FROM agreement_signatures WHERE agreement_id=$1',
                 [req.params.id]
             )).rows[0] || null;
-            res.json({ success: true, agreement: a, items, signature: sig });
+            // Absent before migration 008, so a missing table must not 500 the
+            // whole agreement.
+            let milestones = [];
+            try {
+                milestones = (await pool.query(
+                    'SELECT * FROM agreement_milestones WHERE agreement_id=$1 ORDER BY sort_order, id',
+                    [req.params.id]
+                )).rows;
+            } catch (e) {
+                console.warn('[SA GET] agreement_milestones unavailable:', e.message);
+            }
+            res.json({ success: true, agreement: a, items, milestones, signature: sig });
         } catch (e) {
             console.error('[SA GET]', e.code, e.message);
             res.status(500).json({ success: false, message: dbErrorMessage(e, 'That agreement') });
@@ -2382,6 +2461,19 @@ module.exports = function initLifecycle({
                  Number(b.net_days) || 14]
             );
             const agreement = ins.rows[0];
+
+            // Milestones defined up front. Signing turns these into the
+            // customer's project timeline — there is no separate step.
+            const milestones = Array.isArray(b.milestones) ? b.milestones : [];
+            for (const [i, m] of milestones.entries()) {
+                if (!m || !String(m.title || '').trim()) continue;
+                await pool.query(
+                    `INSERT INTO agreement_milestones (agreement_id, sort_order, title, description, due_date)
+                     VALUES ($1,$2,$3,$4,$5)`,
+                    [agreement.id, i, String(m.title).slice(0, 300),
+                     m.description || null, m.due_date || null]
+                ).catch((e) => console.warn('[SA] milestone insert:', e.message));
+            }
 
             for (const [i, it] of items.entries()) {
                 await pool.query(
@@ -2501,10 +2593,17 @@ module.exports = function initLifecycle({
                   WHERE sa.id = $1`, [req.params.id]
             )).rows[0];
             if (!a) return res.status(404).json({ success: false, message: 'Agreement not found.' });
-            if (a.has_signature || a.signed_at || a.status === 'signed') {
+            // It's your data, so a signed agreement CAN be deleted — but only
+            // when you say so explicitly. The default still refuses, because
+            // deleting one destroys the signature, the project timeline and the
+            // evidence behind its invoices.
+            const force = String((req.query || {}).force || (req.body || {}).force || '') === 'true';
+            if ((a.has_signature || a.signed_at || a.status === 'signed') && !force) {
                 return res.status(409).json({
                     success: false,
-                    message: 'A signed agreement can\'t be deleted — cancel it instead so the record survives.',
+                    code: 'SIGNED_AGREEMENT',
+                    canForce: true,
+                    message: 'This agreement is signed. Deleting it also removes the signature, its project timeline and the link to its invoices. Confirm again to delete it anyway, or cancel it instead to keep the record.',
                 });
             }
             // Detach the things that merely REFERENCE this agreement first.
@@ -2518,6 +2617,10 @@ module.exports = function initLifecycle({
             await pool.query('UPDATE maintenance_plans SET agreement_id = NULL WHERE agreement_id = $1', [req.params.id])
                 .catch((e) => console.warn('[SA DELETE] detach plans:', e.message));
             await pool.query('DELETE FROM agreement_items WHERE agreement_id = $1', [req.params.id])
+                .catch(() => {});
+            // A forced delete takes the signature with it — leaving it behind
+            // would make the agreement look signed if the id were ever reused.
+            await pool.query('DELETE FROM agreement_signatures WHERE agreement_id = $1', [req.params.id])
                 .catch(() => {});
 
             await pool.query('DELETE FROM sales_agreements WHERE id=$1', [req.params.id]);
@@ -3320,6 +3423,369 @@ module.exports = function initLifecycle({
         }
     });
 
+    // ======================================================================
+    // Cancellation settlement
+    // ======================================================================
+    /**
+     * What must be settled before a plan can be cancelled.
+     *
+     * Two parts, both owed because the notice period is served, not waived:
+     *   - anything already unpaid on the plan (a failed charge, an open invoice)
+     *   - the charges that fall due inside the 30-day notice window
+     *
+     * Returns the figure and a plain-language breakdown, so the customer is told
+     * what they're paying for rather than just a total.
+     */
+    async function cancellationSettlement({ kind, id, leadId }) {
+        const lines = [];
+        let effective;
+
+        if (kind === 'maintenance') {
+            const plan = (await pool.query(
+                'SELECT * FROM maintenance_plans WHERE id=$1 AND lead_id=$2', [id, leadId]
+            )).rows[0];
+            if (!plan) throw new Error('Plan not found');
+
+            effective = new Date(Date.now() + CANCELLATION_NOTICE_DAYS * 86400000);
+
+            // Unpaid invoices already raised against this plan.
+            const openInv = (await pool.query(
+                `SELECT id, invoice_number, total_amount, due_date
+                   FROM invoices
+                  WHERE lead_id = $1 AND maintenance_plan_id = $2
+                    AND status NOT IN ('paid','void','cancelled','refunded','draft')`,
+                [leadId, plan.id]
+            )).rows;
+            for (const i of openInv) {
+                lines.push({
+                    kind: 'unpaid_invoice', invoiceId: i.id,
+                    label: `Unpaid invoice ${i.invoice_number}`,
+                    amount: Number(i.total_amount),
+                });
+            }
+
+            // A charge that has already failed leaves the period unpaid even
+            // though no invoice exists for it — autopay plans don't raise one.
+            if (plan.status === 'past_due' || Number(plan.consecutive_failures) > 0) {
+                lines.push({
+                    kind: 'missed_charge',
+                    label: `Missed ${plan.label} payment`,
+                    amount: Number(plan.amount),
+                });
+            }
+
+            // Every scheduled charge landing inside the notice window. The
+            // service runs until the effective date, so those periods are owed.
+            let cursor = plan.next_charge_date ? new Date(plan.next_charge_date) : null;
+            let guard = 0;
+            while (cursor && cursor <= effective && guard < 24) {
+                lines.push({
+                    kind: 'notice_period',
+                    label: `${plan.label} — ${prettyDate(cursor)}`,
+                    amount: Number(plan.amount),
+                    date: dateOnly(cursor),
+                });
+                cursor = nextChargeFor(plan, cursor);
+                guard += 1;
+            }
+        } else if (kind === 'crm') {
+            const sub = (await pool.query(
+                'SELECT * FROM crm_subscriptions WHERE id=$1 AND lead_id=$2', [id, leadId]
+            )).rows[0];
+            if (!sub) throw new Error('Subscription not found');
+
+            // A CRM subscription ends at the later of the notice and the period
+            // already paid for, so nothing extra is owed for the notice window
+            // when the paid period already covers it.
+            const notice = new Date(Date.now() + CANCELLATION_NOTICE_DAYS * 86400000);
+            const periodEnd = sub.current_period_end ? new Date(sub.current_period_end) : null;
+            effective = periodEnd && periodEnd > notice ? periodEnd : notice;
+
+            // invoices.subscription_id arrives with migration 009. Guarded so a
+            // database that hasn't run it yet still cancels rather than 500s.
+            let openInv = [];
+            try {
+                openInv = (await pool.query(
+                    `SELECT id, invoice_number, total_amount
+                       FROM invoices
+                      WHERE lead_id = $1 AND subscription_id = $2
+                        AND status NOT IN ('paid','void','cancelled','refunded','draft')`,
+                    [leadId, sub.id]
+                )).rows;
+            } catch (e) {
+                console.warn('[SETTLEMENT] invoices.subscription_id unavailable:', e.message);
+            }
+            for (const i of openInv) {
+                lines.push({
+                    kind: 'unpaid_invoice', invoiceId: i.id,
+                    label: `Unpaid invoice ${i.invoice_number}`,
+                    amount: Number(i.total_amount),
+                });
+            }
+
+            if (String(sub.status) === 'past_due') {
+                lines.push({
+                    kind: 'missed_charge',
+                    label: 'Missed CodeNexus CRM payment',
+                    amount: Number(sub.monthly_total || 0),
+                });
+            }
+
+            // Billing periods that start inside the notice window.
+            if (periodEnd && periodEnd < notice) {
+                let cursor = new Date(periodEnd);
+                let guard = 0;
+                while (cursor < notice && guard < 12) {
+                    lines.push({
+                        kind: 'notice_period',
+                        label: `CodeNexus CRM — ${prettyDate(cursor)}`,
+                        amount: Number(sub.monthly_total || 0),
+                        date: dateOnly(cursor),
+                    });
+                    cursor = new Date(cursor.getTime());
+                    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+                    guard += 1;
+                }
+            }
+        } else {
+            throw new Error('Unknown plan type');
+        }
+
+        const total = +lines.reduce((t, l) => t + Number(l.amount || 0), 0).toFixed(2);
+        return { total, lines, effectiveAt: effective, mustSettle: total > 0.009 };
+    }
+
+    /** What the customer owes to cancel, before they commit to anything. */
+    app.get('/api/portal/plans/:kind/:id/cancellation-quote', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const q = await cancellationSettlement({ kind: req.params.kind, id: req.params.id, leadId });
+            res.json({
+                success: true,
+                total: q.total,
+                lines: q.lines,
+                mustSettle: q.mustSettle,
+                effectiveAt: q.effectiveAt,
+                noticeDays: CANCELLATION_NOTICE_DAYS,
+                message: q.mustSettle
+                    ? `Cancelling settles the ${CANCELLATION_NOTICE_DAYS}-day notice period. ${money(q.total)} is payable now.`
+                    : `Nothing is outstanding. Your plan will end on ${prettyDate(q.effectiveAt)}.`,
+            });
+        } catch (e) {
+            console.error('[CANCEL QUOTE]', e.message);
+            res.status(400).json({ success: false, message: e.message });
+        }
+    });
+
+    /**
+     * Raise the settlement invoice so it can be paid inline in the portal, with
+     * the same card flow as any other invoice. Cancellation isn't recorded until
+     * that invoice is paid.
+     */
+    async function raiseSettlementInvoice({ leadId, kind, id, quote, label }) {
+        const inv = await createInvoice({
+            leadId,
+            amount: quote.total,
+            description: `Cancellation settlement — ${label}`,
+            dueDate: dateOnly(new Date()),
+            maintenancePlanId: kind === 'maintenance' ? Number(id) : null,
+            obligation: 'due_now',
+            items: quote.lines.map((l) => ({
+                description: l.label, quantity: 1, unit_price: l.amount, amount: l.amount,
+            })),
+        });
+        return inv;
+    }
+
+    /**
+     * Build the reinstatement agreement a customer must sign to restart a plan.
+     *
+     * Reinstating is a fresh commitment to the same recurring charge, so it gets
+     * a real signed document rather than a button — and because it's a normal
+     * sales_agreements row it lands in Docs, is downloadable, and shows on the
+     * customer's account in the admin portal like everything else.
+     */
+    async function createReinstatementAgreement({ leadId, kind, id }) {
+        const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [leadId])).rows[0];
+        if (!lead) throw new Error('Customer not found');
+
+        let label, amount, planId = null, subId = null, cadence = 'monthly';
+        if (kind === 'maintenance') {
+            const plan = (await pool.query(
+                'SELECT * FROM maintenance_plans WHERE id=$1 AND lead_id=$2', [id, leadId]
+            )).rows[0];
+            if (!plan) throw new Error('Plan not found');
+            label = plan.label; amount = Number(plan.amount); planId = plan.id;
+            cadence = plan.interval_unit === 'year' ? 'annually' : 'monthly';
+        } else {
+            const sub = (await pool.query(
+                'SELECT * FROM crm_subscriptions WHERE id=$1 AND lead_id=$2', [id, leadId]
+            )).rows[0];
+            if (!sub) throw new Error('Subscription not found');
+            label = sub.package_name ? `CodeNexus CRM — ${sub.package_name}` : 'CodeNexus CRM';
+            amount = Number(sub.monthly_total || 0); subId = sub.id;
+        }
+
+        // One live reinstatement document per plan — a second click shouldn't
+        // produce a second thing to sign.
+        const existing = (await pool.query(
+            `SELECT * FROM sales_agreements
+              WHERE lead_id=$1 AND agreement_kind='reinstatement'
+                AND ($2::int IS NULL OR maintenance_plan_id = $2)
+                AND ($3::int IS NULL OR subscription_id = $3)
+                AND status <> 'signed'
+              ORDER BY created_at DESC LIMIT 1`,
+            [leadId, planId, subId]
+        )).rows[0];
+        if (existing) return { agreement: existing, reused: true };
+
+        const numRes = await pool.query(
+            `SELECT COALESCE(MAX(NULLIF(regexp_replace(agreement_number,'\\D','','g'),'')::bigint),0)+1 AS n
+               FROM sales_agreements WHERE agreement_number LIKE 'RI-%'`
+        );
+        const number = `RI-${String(numRes.rows[0].n).padStart(5, '0')}`;
+
+        const ins = await pool.query(
+            `INSERT INTO sales_agreements
+                (agreement_number, lead_id, customer_name, customer_email, service_type,
+                 package_name, price, status, agreement_kind, intro, terms,
+                 maintenance_plan_id, subscription_id, created_at, updated_at)
+             VALUES ($1,$2,$3,$4,'reinstatement',$5,$6,'sent','reinstatement',$7,$8,$9,$10,NOW(),NOW())
+             RETURNING *`,
+            [number, leadId, lead.name, lead.email, `Reinstatement — ${label}`, amount,
+             `Reinstating ${label} at ${money(amount)} ${cadence}, cancelling the cancellation currently in progress.`,
+             `By signing you reinstate ${label} at ${money(amount)} ${cadence}. The cancellation currently scheduled is withdrawn and billing continues as before, charged automatically to the payment method on your account. ` +
+             `You may cancel again at any time with ${CANCELLATION_NOTICE_DAYS} days' notice, subject to settling anything outstanding at that point.`,
+             planId, subId]
+        );
+
+        await onAgreementSent({ agreementId: ins.rows[0].id })
+            .catch((e) => console.warn('[REINSTATE] send failed:', e.message));
+
+        return { agreement: ins.rows[0], reused: false };
+    }
+
+    /**
+     * Reinstatement, step one: hand back the document to sign.
+     * The plan is NOT restarted here — signing that document is what does it.
+     */
+    app.post('/api/portal/plans/:kind/:id/reinstate-request', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const out = await createReinstatementAgreement({
+                leadId, kind: req.params.kind === 'crm' ? 'crm' : 'maintenance', id: req.params.id,
+            });
+            res.json({
+                success: true,
+                agreementId: out.agreement.id,
+                agreementNumber: out.agreement.agreement_number,
+                message: out.reused
+                    ? 'Your reinstatement document is already waiting in Docs — sign it to restart the plan.'
+                    : 'Sign the reinstatement document to restart your plan. It\'s in your Docs section too.',
+            });
+        } catch (e) {
+            console.error('[REINSTATE REQUEST]', e.message);
+            res.status(400).json({ success: false, message: e.message });
+        }
+    });
+
+    /** Signing a reinstatement document restarts the plan it belongs to. */
+    async function applyReinstatement(agreement) {
+        const leadId = agreement.lead_id;
+        if (agreement.maintenance_plan_id) {
+            await pool.query(
+                `UPDATE plan_cancellations SET status='reinstated', reinstated_at=NOW(),
+                        reinstatement_agreement_id=$2
+                  WHERE maintenance_plan_id=$1 AND status='pending'`,
+                [agreement.maintenance_plan_id, agreement.id]
+            );
+            await pool.query(
+                `UPDATE maintenance_plans SET status='active', updated_at=NOW()
+                  WHERE id=$1 AND status='pending_cancellation'`,
+                [agreement.maintenance_plan_id]
+            );
+        } else if (agreement.subscription_id) {
+            const sub = (await pool.query(
+                'SELECT * FROM crm_subscriptions WHERE id=$1', [agreement.subscription_id]
+            )).rows[0];
+            if (sub && sub.stripe_subscription_id && stripe) {
+                await stripe.subscriptions.update(sub.stripe_subscription_id, { cancel_at_period_end: false })
+                    .catch((e) => console.warn('[REINSTATE] stripe:', e.message));
+            }
+            await pool.query(
+                'UPDATE crm_subscriptions SET cancel_at_period_end=FALSE, updated_at=NOW() WHERE id=$1',
+                [agreement.subscription_id]
+            );
+            await pool.query(
+                `UPDATE plan_cancellations SET status='reinstated', reinstated_at=NOW(),
+                        reinstatement_agreement_id=$2
+                  WHERE subscription_id=$1 AND status='pending'`,
+                [agreement.subscription_id, agreement.id]
+            );
+        }
+
+        const lead = (await pool.query('SELECT id,name,email,phone FROM leads WHERE id=$1', [leadId])).rows[0];
+        await notify({
+            lead, kind: 'cancellation_confirmed',
+            subject: `${agreement.package_name || 'Your plan'} is reinstated`,
+            bodyHtml: `<p style="margin:0 0 12px">Thanks for signing. <strong style="color:#0d0f12">${agreement.package_name || 'Your plan'}</strong> is reinstated and the cancellation has been withdrawn.</p>
+                       <p style="margin:0">Billing continues as before. A copy of the signed document is in your Docs.</p>`,
+            smsText: `Diamondback Coding: your plan is reinstated and the cancellation is withdrawn.`,
+            channels: ['email', 'portal'],
+            cta: { url: PORTAL_URL, label: 'View your plans' },
+        });
+
+        await adminNotify({
+            kind: 'plan_reinstated',
+            title: `${lead.name} reinstated ${agreement.package_name || 'a plan'}`,
+            body: `Signed ${agreement.agreement_number} — cancellation withdrawn`,
+            leadId, entityType: 'agreement', entityId: agreement.id,
+            severity: 'success', onceKey: `reinstated_signed:${agreement.id}`,
+        });
+
+        return { reinstated: true };
+    }
+
+    // ---- admin: every document on a customer's account -------------------
+    app.get('/api/admin/customers/:leadId/documents', authenticateToken, async (req, res) => {
+        try {
+            const r = await pool.query(
+                `SELECT sa.id, sa.agreement_number, sa.agreement_kind, sa.package_name,
+                        sa.service_type, sa.price, sa.status, sa.signed_at, sa.created_at,
+                        sa.maintenance_plan_id, sa.subscription_id, sa.invoice_id,
+                        sig.signer_name,
+                        mp.label AS plan_label, mp.status AS plan_status,
+                        cs.package_name AS subscription_name
+                   FROM sales_agreements sa
+                   LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
+                   LEFT JOIN maintenance_plans mp ON mp.id = sa.maintenance_plan_id
+                   LEFT JOIN crm_subscriptions cs ON cs.id = sa.subscription_id
+                  WHERE sa.lead_id = $1
+                  ORDER BY sa.created_at DESC`,
+                [req.params.leadId]
+            );
+            const docs = r.rows.map((d) => ({
+                ...d,
+                is_signed: !!(d.signed_at || d.status === 'signed' || d.signer_name),
+                attached_to: d.plan_label
+                    ? `Plan: ${d.plan_label}`
+                    : (d.subscription_name ? `Subscription: ${d.subscription_name}`
+                    : (d.agreement_kind === 'sla' ? 'Project' : 'Account')),
+            }));
+            res.json({
+                success: true, documents: docs,
+                counts: {
+                    total: docs.length,
+                    signed: docs.filter((d) => d.is_signed).length,
+                    awaiting: docs.filter((d) => !d.is_signed && d.status !== 'cancelled').length,
+                },
+            });
+        } catch (e) {
+            console.error('[CUSTOMER DOCS]', e.code, e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'This customer\'s documents') });
+        }
+    });
+
     // ---- admin: why can't this customer see their documents? -------------
     // Answers the "admin shows it, the portal doesn't" question directly, by
     // reporting exactly what is attached to the customer's lead id and what is
@@ -3889,6 +4355,35 @@ module.exports = function initLifecycle({
                 });
             }
 
+            // Same rule as maintenance: nothing outstanding can be walked away
+            // from by cancelling.
+            const quote = await cancellationSettlement({ kind: 'crm', id: sub.id, leadId });
+            if (quote.mustSettle) {
+                const paidId = (req.body || {}).settlementInvoiceId;
+                let settled = false;
+                if (paidId) {
+                    const chk = (await pool.query(
+                        'SELECT status FROM invoices WHERE id=$1 AND lead_id=$2', [paidId, leadId])).rows[0];
+                    settled = !!chk && chk.status === 'paid';
+                }
+                if (!settled) {
+                    const sInv = await raiseSettlementInvoice({
+                        leadId, kind: 'crm', id: sub.id, quote,
+                        label: sub.package_name ? `CodeNexus CRM (${sub.package_name})` : 'CodeNexus CRM',
+                    });
+                    return res.status(402).json({
+                        success: false,
+                        code: 'SETTLEMENT_REQUIRED',
+                        message: `${money(quote.total)} is outstanding on this subscription. It has to be paid before it can be cancelled.`,
+                        settlement: {
+                            invoiceId: sInv.id, invoiceNumber: sInv.invoice_number,
+                            total: Number(sInv.total_amount), lines: quote.lines,
+                            effectiveAt: quote.effectiveAt,
+                        },
+                    });
+                }
+            }
+
             // End at the LATER of the 30-day notice and the period already paid
             // for — never cut short service that's been invoiced.
             const notice = new Date(Date.now() + CANCELLATION_NOTICE_DAYS * 86400000);
@@ -3949,30 +4444,16 @@ module.exports = function initLifecycle({
             )).rows[0];
             if (!sub) return res.status(404).json({ success: false, message: 'Subscription not found.' });
 
-            if (sub.stripe_subscription_id && stripe) {
-                await stripe.subscriptions.update(sub.stripe_subscription_id, { cancel_at_period_end: false })
-                    .catch((e) => console.warn('[CRM REINSTATE] Stripe:', e.message));
-            }
-            await pool.query(
-                'UPDATE crm_subscriptions SET cancel_at_period_end=FALSE, updated_at=NOW() WHERE id=$1', [sub.id]
-            );
-            await pool.query(
-                `UPDATE plan_cancellations SET status='reinstated', reinstated_at=NOW()
-                  WHERE subscription_id=$1 AND status='pending'`, [sub.id]
-            );
-
-            const lead = (await pool.query('SELECT id,name,email,phone FROM leads WHERE id=$1', [leadId])).rows[0];
-            await notify({
-                lead, kind: 'cancellation_confirmed',
-                subject: 'Your CodeNexus CRM subscription is reinstated',
-                bodyHtml: '<p style="margin:0 0 12px">Good news \u2014 your CRM subscription continues as normal. Nothing changes.</p>',
-                smsText: 'Diamondback Coding: your CodeNexus CRM subscription is reinstated.',
-                channels: ['email', 'portal'],
-                cta: { url: PORTAL_URL, label: 'View your plans' },
+            // Same as maintenance: signed document first, restart on signature.
+            const doc = await createReinstatementAgreement({ leadId, kind: 'crm', id: sub.id });
+            return res.json({
+                success: true,
+                requiresSignature: true,
+                agreementId: doc.agreement.id,
+                agreementNumber: doc.agreement.agreement_number,
+                message: 'Almost there — sign the reinstatement document to restart your subscription. It\'s in your Docs.',
             });
-
-            res.json({ success: true, message: 'Your CRM subscription is reinstated.' });
-        } catch (e) {
+                    } catch (e) {
             res.status(500).json({ success: false, message: e.message });
         }
     });
@@ -3982,7 +4463,9 @@ module.exports = function initLifecycle({
         try {
             const leadId = await resolveLeadId(req.user.id, req.user.email);
             const out = await requestPlanCancellation({
-                planId: req.params.id, leadId, reason: (req.body || {}).reason,
+                planId: req.params.id, leadId,
+                reason: (req.body || {}).reason,
+                settlementInvoiceId: (req.body || {}).settlementInvoiceId || null,
             });
             if (out.alreadyPending) {
                 return res.json({
@@ -3997,6 +4480,35 @@ module.exports = function initLifecycle({
                 effectiveAt: out.effectiveAt, noticeDays: CANCELLATION_NOTICE_DAYS,
             });
         } catch (e) {
+            // Money owed isn't something the customer can act on from an error
+            // message — so raise the invoice and hand it back, letting them pay
+            // inline and finish cancelling in one go.
+            if (e.code === 'SETTLEMENT_REQUIRED') {
+                try {
+                    const leadId = await resolveLeadId(req.user.id, req.user.email);
+                    const plan = (await pool.query(
+                        'SELECT label FROM maintenance_plans WHERE id=$1', [req.params.id])).rows[0];
+                    const inv = await raiseSettlementInvoice({
+                        leadId, kind: 'maintenance', id: req.params.id,
+                        quote: e.quote, label: (plan && plan.label) || 'plan',
+                    });
+                    return res.status(402).json({
+                        success: false,
+                        code: 'SETTLEMENT_REQUIRED',
+                        message: e.message,
+                        settlement: {
+                            invoiceId: inv.id,
+                            invoiceNumber: inv.invoice_number,
+                            total: Number(inv.total_amount),
+                            lines: e.quote.lines,
+                            effectiveAt: e.quote.effectiveAt,
+                        },
+                    });
+                } catch (e2) {
+                    console.error('[PORTAL CANCEL] settlement invoice failed:', e2.message);
+                    return res.status(400).json({ success: false, message: e.message });
+                }
+            }
             console.error('[PORTAL CANCEL]', e.message);
             res.status(400).json({ success: false, message: e.message });
         }
@@ -4005,8 +4517,17 @@ module.exports = function initLifecycle({
     app.post('/api/portal/maintenance-plans/:id/reinstate', authenticatePortal, async (req, res) => {
         try {
             const leadId = await resolveLeadId(req.user.id, req.user.email);
-            await reinstatePlan({ planId: req.params.id, leadId });
-            res.json({ success: true, message: 'Your plan is reinstated.' });
+            // Reinstating is a fresh commitment to a recurring charge, so it
+            // needs a signature. This issues the document; signing it is what
+            // actually restarts the plan (see applyReinstatement).
+            const out = await createReinstatementAgreement({ leadId, kind: 'maintenance', id: req.params.id });
+            res.json({
+                success: true,
+                requiresSignature: true,
+                agreementId: out.agreement.id,
+                agreementNumber: out.agreement.agreement_number,
+                message: 'Almost there — sign the reinstatement document to restart your plan. It\'s in your Docs.',
+            });
         } catch (e) {
             res.status(400).json({ success: false, message: e.message });
         }
@@ -4035,16 +4556,56 @@ module.exports = function initLifecycle({
                 return res.status(409).json({ success: false, message: 'This agreement is already signed.' });
             }
 
-            const out = await onAgreementSigned({
-                agreementId: a.id,
-                signerName: String(typedName).trim(),
-                ip: req.headers['x-forwarded-for'] || req.ip,
-                userAgent: req.headers['user-agent'],
-            });
+            let out;
+            try {
+                out = await onAgreementSigned({
+                    agreementId: a.id,
+                    signerName: String(typedName).trim(),
+                    ip: req.headers['x-forwarded-for'] || req.ip,
+                    userAgent: req.headers['user-agent'],
+                });
+            } catch (signErr) {
+                // The signature may already be recorded even though a later step
+                // threw. Check before reporting failure — telling the customer
+                // "signing failed" for something that DID sign is exactly how
+                // they end up staring at "Review & sign" on a signed agreement.
+                console.error('[PORTAL SIGN] follow-up failed:', signErr.message);
+                const nowSigned = (await pool.query(
+                    `SELECT sa.signed_at, (sig.id IS NOT NULL) AS has_sig
+                       FROM sales_agreements sa
+                       LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
+                      WHERE sa.id = $1`, [a.id]
+                )).rows[0];
+
+                if (nowSigned && (nowSigned.signed_at || nowSigned.has_sig)) {
+                    // Make sure the row itself reads signed, whatever failed after.
+                    await pool.query(
+                        `UPDATE sales_agreements
+                            SET status = 'signed', signed_at = COALESCE(signed_at, NOW()), updated_at = NOW()
+                          WHERE id = $1`, [a.id]
+                    ).catch(() => {});
+                    return res.json({
+                        success: true,
+                        partial: true,
+                        kind: 'sla',
+                        message: 'Signed. A couple of follow-up steps are still finishing — we\'ve been notified and nothing else is needed from you.',
+                        invoice: null,
+                        assignedAdmin: null,
+                    });
+                }
+                throw signErr;
+            }
 
             // Tell the UI which kind this was, so it can route the customer to
             // the right place and word the confirmation correctly. A maintenance
             // agreement produces no project and no invoice.
+            if (out.kind === 'reinstatement') {
+                return res.json({
+                    success: true, kind: 'reinstatement',
+                    message: 'Signed — your plan is reinstated and the cancellation is withdrawn.',
+                    invoice: null, assignedAdmin: null,
+                });
+            }
             const isMaintenance = out.kind === 'maintenance';
             res.json({
                 success: true,
@@ -4366,6 +4927,9 @@ module.exports = function initLifecycle({
         // jobs
         runDunning,
         listAllPlans,
+        cancellationSettlement,
+        createReinstatementAgreement,
+        applyReinstatement,
         resolvePaymentMethod,
         setAccountPaymentMethod,
         nextAnnualDate,

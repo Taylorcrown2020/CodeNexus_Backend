@@ -537,18 +537,18 @@ module.exports = function initPortal({
      * is only a display hint and a crafted request would bypass it.
      */
     async function invoicePayableError(invoiceId) {
+        const agSigned = await agreementSignedSql('sa');
+        const planSigned = await planSignedSql('mp');
         const r = await pool.query(
             `SELECT i.id, i.agreement_id, i.maintenance_plan_id,
                     (i.agreement_id IS NULL OR EXISTS (
                         SELECT 1 FROM sales_agreements sa
-                         WHERE sa.id = i.agreement_id
-                           AND (sa.signed_at IS NOT NULL OR sa.status = 'signed'))) AS agreement_ok,
+                         WHERE sa.id = i.agreement_id AND ${agSigned})) AS agreement_ok,
                     (i.maintenance_plan_id IS NULL OR EXISTS (
                         SELECT 1 FROM maintenance_plans mp
-                         WHERE mp.id = i.maintenance_plan_id
-                           AND mp.signed_at IS NOT NULL)) AS plan_ok
+                         WHERE mp.id = i.maintenance_plan_id AND ${planSigned})) AS plan_ok
                FROM invoices i WHERE i.id = $1`, [invoiceId]
-        ).catch(() => null);
+        ).catch((e) => { console.warn('[PAYABLE CHECK]', e.message); return null; });
         const row = r && r.rows[0];
         if (!row) return null;                     // let the caller 404 normally
         if (!row.agreement_ok || !row.plan_ok) {
@@ -1339,6 +1339,49 @@ module.exports = function initPortal({
         return diamondbackPdfToBuffer(doc);
     }
 
+    // Cache of which columns exist. Cleared by _resetSchemaCache() after a
+    // migration runs, so a repaired database is picked up without a restart.
+    let _colCache = null;
+
+    async function columnsOf(table) {
+        if (!_colCache) _colCache = {};
+        if (_colCache[table]) return _colCache[table];
+        try {
+            const r = await pool.query(
+                `SELECT column_name FROM information_schema.columns WHERE table_name = $1`,
+                [table]
+            );
+            _colCache[table] = new Set(r.rows.map((x) => x.column_name));
+        } catch (e) {
+            _colCache[table] = new Set();
+        }
+        return _colCache[table];
+    }
+    function _resetSchemaCache() { _colCache = null; }
+
+    /**
+     * SQL that is TRUE when the agreement aliased `a` is signed.
+     *
+     * agreement_signatures is the authority and always exists. signed_at and
+     * status are ORed in only if this database actually has them.
+     */
+    async function agreementSignedSql(a = 'sa') {
+        const cols = await columnsOf('sales_agreements');
+        const parts = [`EXISTS (SELECT 1 FROM agreement_signatures sg WHERE sg.agreement_id = ${a}.id)`];
+        if (cols.has('signed_at')) parts.push(`${a}.signed_at IS NOT NULL`);
+        if (cols.has('status'))    parts.push(`${a}.status = 'signed'`);
+        return `(${parts.join(' OR ')})`;
+    }
+
+    /** Same for a maintenance plan aliased `p`. */
+    async function planSignedSql(p = 'mp') {
+        const cols = await columnsOf('maintenance_plans');
+        if (cols.has('signed_at')) return `${p}.signed_at IS NOT NULL`;
+        // No signed_at on plans: fall back to the plan's agreement signature.
+        return `EXISTS (SELECT 1 FROM agreement_signatures sg2
+                         WHERE sg2.agreement_id = ${p}.agreement_id)`;
+    }
+
     app.get('/api/portal/dashboard', authenticatePortal, async (req, res) => {
         try {
             const clientId = await resolveLeadId(req.user.id, req.user.email) || req.user.id;
@@ -1357,42 +1400,53 @@ module.exports = function initPortal({
             // Unpayable invoices are still returned so the customer can see
             // what's coming, but flagged so the UI shows "Awaiting signature"
             // instead of a Pay button, and excluded from the due-now count.
-            const invoicesResult = await pool.query(
-                `SELECT i.*,
-                        CASE
-                          WHEN i.status IN ('paid','void','cancelled','refunded','draft') THEN FALSE
-                          WHEN i.agreement_id IS NOT NULL AND NOT EXISTS (
-                                SELECT 1 FROM sales_agreements sa
-                                 WHERE sa.id = i.agreement_id
-                                   AND (sa.signed_at IS NOT NULL OR sa.status = 'signed')
-                          ) THEN FALSE
-                          WHEN i.maintenance_plan_id IS NOT NULL AND NOT EXISTS (
-                                SELECT 1 FROM maintenance_plans mp
-                                 WHERE mp.id = i.maintenance_plan_id
-                                   AND mp.signed_at IS NOT NULL
-                          ) THEN FALSE
-                          WHEN COALESCE(i.obligation,'due_now') <> 'due_now' THEN FALSE
-                          ELSE TRUE
-                        END AS payable,
-                        CASE
-                          WHEN i.agreement_id IS NOT NULL AND NOT EXISTS (
-                                SELECT 1 FROM sales_agreements sa
-                                 WHERE sa.id = i.agreement_id
-                                   AND (sa.signed_at IS NOT NULL OR sa.status = 'signed')
-                          ) THEN 'awaiting_signature'
-                          WHEN i.maintenance_plan_id IS NOT NULL AND NOT EXISTS (
-                                SELECT 1 FROM maintenance_plans mp
-                                 WHERE mp.id = i.maintenance_plan_id
-                                   AND mp.signed_at IS NOT NULL
-                          ) THEN 'awaiting_signature'
-                          WHEN COALESCE(i.obligation,'due_now') = 'on_completion' THEN 'due_on_completion'
-                          ELSE NULL
-                        END AS hold_reason
-                   FROM invoices i
-                  WHERE i.lead_id = $1
-                  ORDER BY i.created_at DESC`,
-                [clientId]
-            );
+            const agSigned   = await agreementSignedSql('sa');
+            const planSigned = await planSignedSql('mp');
+            const invCols    = await columnsOf('invoices');
+            // obligation only exists after migration 007.
+            const obligation = invCols.has('obligation')
+                ? `COALESCE(i.obligation,'due_now')` : `'due_now'`;
+
+            const unsignedAgreement =
+                `i.agreement_id IS NOT NULL AND NOT EXISTS (
+                    SELECT 1 FROM sales_agreements sa WHERE sa.id = i.agreement_id AND ${agSigned})`;
+            const unsignedPlan =
+                `i.maintenance_plan_id IS NOT NULL AND NOT EXISTS (
+                    SELECT 1 FROM maintenance_plans mp WHERE mp.id = i.maintenance_plan_id AND ${planSigned})`;
+
+            let invoicesResult;
+            try {
+                invoicesResult = await pool.query(
+                    `SELECT i.*,
+                            CASE
+                              WHEN i.status IN ('paid','void','cancelled','refunded','draft') THEN FALSE
+                              WHEN ${unsignedAgreement} THEN FALSE
+                              WHEN ${unsignedPlan} THEN FALSE
+                              WHEN ${obligation} <> 'due_now' THEN FALSE
+                              ELSE TRUE
+                            END AS payable,
+                            CASE
+                              WHEN ${unsignedAgreement} THEN 'awaiting_signature'
+                              WHEN ${unsignedPlan} THEN 'awaiting_signature'
+                              WHEN ${obligation} = 'on_completion' THEN 'due_on_completion'
+                              ELSE NULL
+                            END AS hold_reason
+                       FROM invoices i
+                      WHERE i.lead_id = $1
+                      ORDER BY i.created_at DESC`,
+                    [clientId]
+                );
+            } catch (e) {
+                // Never let the payable flag take the whole dashboard down. The
+                // customer seeing their invoices matters more than the gate —
+                // and the gate is enforced server-side on payment anyway.
+                console.warn('[DASHBOARD] payable flag unavailable, falling back:', e.message);
+                _resetSchemaCache();
+                invoicesResult = await pool.query(
+                    'SELECT * FROM invoices WHERE lead_id = $1 ORDER BY created_at DESC',
+                    [clientId]
+                );
+            }
 
             // Get projects
             let projects = [];

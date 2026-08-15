@@ -352,8 +352,15 @@ const DEVICE = localStorage.getItem('db_device_token') || '';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = n => '$' + Number(n || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-const fmtShort = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+// timeZone:'UTC' is required here. Date-only fields (next_charge_date,
+// due_date, etc.) come back as e.g. "2026-08-15" with no time component, which
+// the JS Date constructor parses as UTC midnight. Without pinning the
+// formatter to UTC too, toLocaleDateString() renders that instant in the
+// browser's LOCAL zone — for anyone west of Greenwich (Houston included) that
+// rolls the date back one day. Timestamps with a real time-of-day are
+// unaffected: they still show their correct UTC calendar date.
+const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}) : '—';
+const fmtShort = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}) : '—';
 function relTime(d){
   if(!d) return '';
   const s = (Date.now() - new Date(d)) / 1000;
@@ -886,7 +893,7 @@ function planCard(p){
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
       '<div style="min-width:0">' +
         '<b style="font-size:15px;font-weight:800;letter-spacing:-.02em;display:block">' + esc(p.label) + '</b>' +
-        '<span style="font-size:13px;color:var(--muted)">' + money(p.amount) + '/mo &middot; ' + method + '</span>' +
+        '<span style="font-size:13px;color:var(--muted)">' + money(p.charge_total != null ? p.charge_total : p.amount) + (p.interval_unit === 'year' ? '/yr' : '/mo') + ' &middot; ' + method + '</span>' +
       '</div><span class="tag ' + tone + '">' + esc(String(p.status || '').replace(/_/g,' ')) + '</span>' +
     '</div>' +
     (cancelling ? '<div class="alert alert-warn" style="margin:12px 0 0">Ends ' + fmtDate(p.cancels_at) +

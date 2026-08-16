@@ -904,8 +904,12 @@ function invRow(i){
       (paid ? '<polyline points="20 6 9 17 4 12"/>'
             : '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>') +
       '</svg></div>' +
-    '<div class="row-body"><b>' + esc(i.invoice_number || 'Invoice') +
+    /* Lead with what the invoice is FOR. "Monthly Maintenance Cancellation"
+       tells the customer something; "INV-699016" does not. The number stays,
+       underneath, because that is what they quote back to us. */
+    '<div class="row-body"><b>' + esc(i.short_description || i.invoice_number || 'Invoice') +
       (i.is_deposit ? ' <span class="tag amber">Deposit</span>' : '') + '</b>' +
+      (i.short_description ? '<span>' + esc(i.invoice_number || '') + '</span>' : '') +
       '<span>' + (paid ? 'Paid ' + fmtShort(i.paid_at)
         : (!isDueNow(i) ? holdText(i) + (i.due_date && i.hold_reason !== 'awaiting_signature' ? ' · est. ' + fmtShort(i.due_date) : '')
         : (i.due_date ? (overdue ? 'Overdue ' : 'Due ') + fmtShort(i.due_date) : 'Due now'))) + '</span></div>' +

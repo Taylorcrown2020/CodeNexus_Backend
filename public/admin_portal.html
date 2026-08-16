@@ -7566,7 +7566,7 @@ Ready to get started?
 Best regards,
 DIAMONDBACK CODING
 5000 Plaza on the Lake, Suite 100 PMB 2017 Austin, TX 78746
-(512) 980-0393 | contact@diamondbackcoding.com`
+(940) 217-8680 | contact@diamondbackcoding.com`
     },
     
     valentinesSale: {
@@ -7870,7 +7870,7 @@ Stop managing three different vendors. We handle your full digital stack — bui
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Schedule a call: https://diamondbackcoding.com/contact.html
-Or call us directly: (512) 980-0393
+Or call us directly: (940) 217-8680
 
 Best regards,
 {{senderName}}
@@ -15995,7 +15995,7 @@ function generateTimelineHTML(timeline) {
                         5000 Plaza on the Lake, Suite 100 PMB 2017<br>
                         Austin, TX 78746<br>
                         contact@diamondbackcoding.com<br>
-                        (512) 980-0393
+                        (940) 217-8680
                     </div>
                     <div style="margin-top: 16px; padding: 12px; background: var(--bg-hover); border-radius: var(--radius-sm);">
                         <div style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Company Signature</div>
@@ -16426,7 +16426,7 @@ function exportTimelineAsPDF() {
                                 '5000 Plaza on the Lake, Suite 100 PMB 2017<br>' +
                                 'Austin, TX 78746<br>' +
                                 'contact@diamondbackcoding.com<br>' +
-                                '(512) 980-0393' +
+                                '(940) 217-8680' +
                             '</div>' +
                             '<div style="background: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e0e0e0;">' +
                                 '<div style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 8px;">Authorized Signature</div>' +
@@ -16552,7 +16552,7 @@ function exportTimelineAsPDF() {
                     // FOOTER
                     '<div style="text-align: center; padding-top: 30px; border-top: 2px solid #e0e0e0;">' +
                         '<div style="font-size: 12px; color: #666; margin-bottom: 6px;">Questions about this SLA?</div>' +
-                        '<div style="font-size: 11px; color: #999; margin-bottom: 12px;">Contact us at contact@diamondbackcoding.com or (512) 980-0393</div>' +
+                        '<div style="font-size: 11px; color: #999; margin-bottom: 12px;">Contact us at contact@diamondbackcoding.com or (940) 217-8680</div>' +
                         '<div style="font-size: 10px; color: #bbb;">Document ID: ' + documentId + ' • Generated: ' + companySignatureDate + '</div>' +
                     '</div>' +
                 '</div>' +
@@ -23514,6 +23514,337 @@ function dbmDate(d){
 }
 function dbmClose(id){ const e=document.getElementById(id); if(e) e.remove(); }
 
+
+/* ===================================================================== */
+/* CUSTOMER ACCOUNT — everything about one customer, on one screen.      */
+/*                                                                       */
+/* CAUGHT UP means nothing is LATE. A monthly plan that is unpaid but    */
+/* not yet due is normal and must not read as the customer being behind; */
+/* that distinction is the whole point of the banner at the top.         */
+/* ===================================================================== */
+let DBACC = null;
+
+async function dbAccount(leadId, tab){
+  let m = document.getElementById('dbAccModal');
+  if(m) m.remove();
+  m = document.createElement('div');
+  m.id='dbAccModal'; m.className='dbm-modal';
+  m.innerHTML = `<div class="dbm-modal-box" style="max-width:1080px"><div class="dbm-empty">Loading account…</div></div>`;
+  document.body.appendChild(m);
+
+  try{
+    DBACC = await dbmGet('/api/admin/accounts/' + leadId);
+  }catch(e){
+    m.querySelector('.dbm-modal-box').innerHTML =
+      `<div class="dbm-alert">Couldn't load that account. ${dbmEsc(e.message)}</div>
+       <div style="text-align:right;margin-top:14px"><button class="btn" onclick="dbmClose('dbAccModal')">Close</button></div>`;
+    return;
+  }
+  DBACC.tab = tab || DBACC.tab || 'overview';
+  dbAccRender();
+}
+
+function dbAccTab(t){ DBACC.tab = t; dbAccRender(); }
+
+function dbAccRender(){
+  const d = DBACC, L = d.lead, st = d.standing, T = d.totals;
+  const box = document.querySelector('#dbAccModal .dbm-modal-box');
+  if(!box) return;
+
+  const tabs = ['overview','plans','payments','invoices','documents','methods']
+    .map(t => `<button class="btn btn-sm ${d.tab===t?'btn-primary':''}" onclick="dbAccTab('${t}')">
+       ${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join(' ');
+
+  /* The headline. Green only when genuinely nothing is late. */
+  const banner = st.caughtUp
+    ? `<div style="background:#0f2e1d;border:1px solid #10b981;border-radius:10px;padding:12px 16px;margin-bottom:14px">
+         <strong style="color:#10b981">Caught up</strong>
+         <span style="color:#cfe9db;font-size:13px"> — no late payments.
+         ${T.outstanding>0 ? `${dbmMoney(T.outstanding)} is owed but not yet due, which is normal.` : ''}</span>
+       </div>`
+    : `<div style="background:#2e0f0f;border:1px solid #ef4444;border-radius:10px;padding:12px 16px;margin-bottom:14px">
+         <strong style="color:#ef4444">Behind — ${st.lateCount} late item${st.lateCount===1?'':'s'}</strong>
+         <span style="color:#f3cfcf;font-size:13px"> — ${dbmMoney(st.lateTotal)} late${st.worstDaysLate?`, oldest ${st.worstDaysLate} days`:''}.</span>
+         ${st.lateItems.map(i=>`<div style="color:#f3cfcf;font-size:12px;margin-top:4px">
+            ${dbmEsc(i.label)} — ${dbmMoney(i.amount)}, due ${dbmDate(i.dueDate)} (${i.daysLate} days late)</div>`).join('')}
+       </div>`;
+
+  const feeBlock = st.lateFeeTotal > 0
+    ? `<div style="background:#2a2109;border:1px solid #eab308;border-radius:10px;padding:12px 16px;margin-bottom:14px">
+         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+           <strong style="color:#eab308">Late fees outstanding: ${dbmMoney(st.lateFeeTotal)}</strong>
+           <button class="btn btn-sm" onclick="dbAccWaiveAll()">Drop all late fees</button>
+         </div>
+         ${st.lateFees.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;
+             gap:10px;margin-top:8px;color:#e8dcae;font-size:13px">
+             <span>${dbmEsc(f.notes||'Late fee')} — ${dbmMoney(f.amount)}
+               <span style="color:#8a8a8a">(${(Number(f.rate)*100).toFixed(2).replace(/\.?0+$/,'')}% of ${dbmMoney(f.base_amount)}, due ${dbmDate(f.due_date)})</span></span>
+             <button class="btn btn-sm" onclick="dbAccWaive(${f.id})">Drop</button>
+           </div>`).join('')}
+       </div>`
+    : '';
+
+  let body = '';
+
+  /* ---------------------------------------------------------- OVERVIEW */
+  if(d.tab==='overview'){
+    body = `
+      <div class="dbm-grid">
+        <div class="dbm-stat good"><div class="l">Collected</div><div class="v">${dbmMoney(T.collected)}</div></div>
+        <div class="dbm-stat ${st.caughtUp?'':'bad'}"><div class="l">Outstanding</div><div class="v">${dbmMoney(T.outstanding)}</div></div>
+        <div class="dbm-stat ${st.lateTotal?'bad':''}"><div class="l">Late</div><div class="v">${dbmMoney(st.lateTotal)}</div></div>
+        <div class="dbm-stat"><div class="l">On completion</div><div class="v">${dbmMoney(T.onCompletion)}</div></div>
+      </div>
+      <div style="color:#8a8a8a;font-size:12px;margin:-6px 0 16px">
+        Outstanding includes money owed but not yet due. Only the "Late" figure means they are behind.
+      </div>
+
+      <h3 style="font-size:14px;margin:0 0 8px">Portal access</h3>
+      <div style="background:#141414;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#ccc">
+        <div>Sign-in: <strong style="color:#fff">${L.has_portal_login?'set up':'not set up yet'}</strong>
+          &middot; access: <strong style="color:#fff">${dbmEsc(L.portal_kind||'crm')}</strong>
+          ${L.portal_last_login?` &middot; last seen ${dbmDate(L.portal_last_login)}`:''}</div>
+        <div style="margin-top:6px;color:#8a8a8a">
+          Welcome email ${L.portal_welcome_sent_at?`last sent ${dbmDate(L.portal_welcome_sent_at)} (${L.portal_welcome_count}x)`:'never sent'}</div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" onclick="dbAccWelcome()">Send welcome email</button>
+          <button class="btn btn-sm" onclick="dbAccExempt(${L.late_fees_exempt?'false':'true'})">
+            ${L.late_fees_exempt?'Re-enable late fees':'Exempt from late fees'}</button>
+        </div>
+        ${L.late_fees_exempt?`<div style="margin-top:8px;color:#eab308;font-size:12px">This customer is exempt from late fees.</div>`:''}
+      </div>
+
+      ${d.unsignedAgreements.length ? `
+        <h3 style="font-size:14px;margin:0 0 8px">Waiting on a signature</h3>
+        ${d.unsignedAgreements.map(a=>`<div style="background:#141414;border-radius:8px;padding:10px 14px;margin-bottom:8px;
+            display:flex;justify-content:space-between;gap:10px;font-size:13px">
+            <span style="color:#fff">${dbmEsc(a.agreement_number||'')} — ${dbmEsc(a.package_name||a.service_type||'')}</span>
+            <span style="color:#eab308">${dbmMoney(a.price)} &middot; unsigned</span>
+          </div>`).join('')}` : ''}
+
+      ${d.projects.length ? `
+        <h3 style="font-size:14px;margin:16px 0 8px">Projects</h3>
+        ${d.projects.map(pr=>`<div style="background:#141414;border-radius:8px;padding:10px 14px;margin-bottom:8px;
+            display:flex;justify-content:space-between;gap:10px;font-size:13px">
+            <span style="color:#fff">${dbmEsc(pr.name||'Project')}</span>
+            <span style="color:#8a8a8a">${dbmEsc(pr.status||'')}${pr.progress!=null?` &middot; ${pr.progress}%`:''}</span>
+          </div>`).join('')}` : ''}
+    `;
+  }
+
+  /* ------------------------------------------------------------- PLANS */
+  if(d.tab==='plans'){
+    const planRow = p => `
+      <tr>
+        <td><div style="color:#fff;font-weight:600">${dbmEsc(p.label||'')}</div>
+            <div style="color:#8a8a8a;font-size:12px">${dbmEsc(String(p.plan_type||'').replace(/_/g,' '))}</div></td>
+        <td><strong style="color:#10b981">${dbmMoney(p.charge_total!=null?p.charge_total:p.amount)}</strong>
+            <div style="color:#8a8a8a;font-size:12px">${p.is_annual?'per year':'per month'}</div></td>
+        <td><span class="dbm-pill ${dbmEsc(p.status)}">${dbmEsc(String(p.stage&&p.stage.label||p.status||'').replace(/_/g,' '))}</span></td>
+        <td>${p.next_charge_date?dbmDate(p.next_charge_date):'—'}
+            ${p.past_due?`<div style="color:#ef4444;font-size:12px">${p.days_late} days late</div>`
+              :p.period_paid?`<div style="color:#10b981;font-size:12px">this period paid</div>`
+              :`<div style="color:#8a8a8a;font-size:12px">not due yet</div>`}</td>
+        <td>${p.last4?`${dbmEsc(p.brand||p.method_type||'card')} ····${dbmEsc(p.last4)}`:'<span style="color:#ef4444">none</span>'}</td>
+        <td>${dbmMoney(p.collected)}<div style="color:#8a8a8a;font-size:12px">${p.charges||0} charge${Number(p.charges)===1?'':'s'}</div></td>
+        <td><button class="btn btn-sm" onclick="dbmClose('dbAccModal');dbmEditPlan(${p.id})">Edit</button></td>
+      </tr>`;
+    const tbl = (rows,title,note) => rows.length ? `
+      <h3 style="font-size:14px;margin:0 0 4px">${title}</h3>
+      <div style="color:#8a8a8a;font-size:12px;margin-bottom:8px">${note}</div>
+      <div style="overflow-x:auto;margin-bottom:20px"><table class="dbm-table">
+        <thead><tr><th>Plan</th><th>Amount</th><th>Stage</th><th>Next charge</th><th>Method</th><th>Collected</th><th></th></tr></thead>
+        <tbody>${rows.map(planRow).join('')}</tbody></table></div>` : '';
+    body = tbl(d.plans.monthly,'Monthly plans','Count toward the outstanding balance from the day each period opens.')
+         + tbl(d.plans.annual,'Annual plans','Shown under Billing only — they never count toward the customer\'s outstanding balance.')
+         + (d.plans.all.length?'':'<div class="dbm-empty">No plans on this account.</div>');
+  }
+
+  /* ---------------------------------------------------------- PAYMENTS */
+  if(d.tab==='payments'){
+    body = d.payments.length ? `
+      <div style="overflow-x:auto"><table class="dbm-table">
+        <thead><tr><th>Date</th><th>What for</th><th>Amount</th><th>Breakdown</th><th>Method</th><th>Receipt</th><th></th></tr></thead>
+        <tbody>${d.payments.map(p=>`<tr>
+          <td>${dbmDate(p.paid_at)}</td>
+          <td><div style="color:#fff">${dbmEsc(p.description||'Payment')}</div>
+              ${p.invoice_number?`<div style="color:#8a8a8a;font-size:12px">${dbmEsc(p.invoice_number)}</div>`:''}</td>
+          <td><strong style="color:${p.status==='succeeded'?'#10b981':'#ef4444'}">${dbmMoney(p.amount)}</strong>
+              ${Number(p.refunded_amount)>0?`<div style="color:#eab308;font-size:12px">-${dbmMoney(p.refunded_amount)} refunded</div>`:''}</td>
+          <td style="color:#8a8a8a;font-size:12px">
+            ${Number(p.tax_amount)>0?`tax ${dbmMoney(p.tax_amount)}<br>`:''}
+            ${Number(p.processing_fee)>0?`fee ${dbmMoney(p.processing_fee)}`:''}
+            ${Number(p.tax_amount)>0||Number(p.processing_fee)>0?'':'—'}</td>
+          <td>${p.method_last4?`${dbmEsc(p.method_brand||p.method||'card')} ····${dbmEsc(p.method_last4)}`:dbmEsc(p.method||'—')}</td>
+          <td style="font-family:monospace;font-size:12px">${dbmEsc(p.receipt_number||'—')}</td>
+          <td><button class="btn btn-sm" onclick="dbAccReceipt(${p.id})">Receipt</button></td>
+        </tr>`).join('')}</tbody></table></div>`
+      : '<div class="dbm-empty">No payments recorded yet.</div>';
+  }
+
+  /* ---------------------------------------------------------- INVOICES */
+  if(d.tab==='invoices'){
+    body = d.invoices.length ? `
+      <div style="overflow-x:auto"><table class="dbm-table">
+        <thead><tr><th>Invoice</th><th>What for</th><th>Amount</th><th>Status</th><th>Due</th></tr></thead>
+        <tbody>${d.invoices.map(i=>{
+          const open = !['paid','void','cancelled','refunded','draft'].includes(i.status);
+          const late = open && i.due_date && new Date(i.due_date) < new Date();
+          return `<tr>
+            <td style="font-family:monospace;font-size:12px">${dbmEsc(i.invoice_number||'')}</td>
+            <td>${dbmEsc(i.short_description||'—')}</td>
+            <td>${dbmMoney(i.total_amount)}
+                ${Number(i.late_fee_amount)>0?`<div style="color:#eab308;font-size:12px">incl. ${dbmMoney(i.late_fee_amount)} late fee</div>`:''}</td>
+            <td><span class="dbm-pill ${dbmEsc(i.status)}">${dbmEsc(i.status)}</span>
+                ${i.obligation==='on_completion'?'<div style="color:#8a8a8a;font-size:12px">on completion</div>':''}</td>
+            <td>${i.due_date?dbmDate(i.due_date):'—'}
+                ${late?'<div style="color:#ef4444;font-size:12px">late</div>':''}</td>
+          </tr>`;}).join('')}</tbody></table></div>`
+      : '<div class="dbm-empty">No invoices on this account.</div>';
+  }
+
+  /* --------------------------------------------------------- DOCUMENTS */
+  if(d.tab==='documents'){
+    body = d.agreements.length ? `
+      <div style="overflow-x:auto"><table class="dbm-table">
+        <thead><tr><th>Document</th><th>Kind</th><th>Amount</th><th>Signed</th><th></th></tr></thead>
+        <tbody>${d.agreements.map(a=>`<tr>
+          <td style="font-family:monospace;font-size:12px">${dbmEsc(a.agreement_number||'')}</td>
+          <td>${dbmEsc(a.package_name||a.service_type||a.agreement_kind||'')}</td>
+          <td>${dbmMoney(a.price)}</td>
+          <td>${a.signed_at?`<span style="color:#10b981">${dbmDate(a.signed_at)}</span>
+                <div style="color:#8a8a8a;font-size:12px">${dbmEsc(a.signature_name||'')}</div>`
+               :'<span style="color:#eab308">unsigned</span>'}</td>
+          <td><button class="btn btn-sm" onclick="dbAccDoc(${a.id})">Open PDF</button></td>
+        </tr>`).join('')}</tbody></table></div>`
+      : '<div class="dbm-empty">No agreements on this account.</div>';
+  }
+
+  /* ----------------------------------------------------------- METHODS */
+  if(d.tab==='methods'){
+    body = `
+      <div style="color:#8a8a8a;font-size:12px;margin-bottom:12px">
+        You can switch which saved method a customer is billed on. You cannot type in a card
+        number — the customer adds that from their portal, which is what keeps card data off
+        this server.
+      </div>
+      ${d.paymentMethods.length ? d.paymentMethods.map(pm=>`
+        <div style="background:#141414;border-radius:10px;padding:12px 14px;margin-bottom:10px;
+             display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="color:#fff">${pm.type==='card'
+              ? `${dbmEsc(pm.brand||'Card')} ····${dbmEsc(pm.last4)}`
+              : `${dbmEsc(pm.bank_name||'Bank account')} ····${dbmEsc(pm.last4)}`}</div>
+            <div style="color:#8a8a8a;font-size:12px">
+              ${pm.type==='card'?`expires ${pm.exp_month}/${pm.exp_year} &middot; ${dbmEsc(pm.funding||'unknown')}`:'bank account'}
+              ${pm.funding==='credit'?' &middot; 3% fee applies':''}
+              ${pm.type!=='card'||pm.funding==='debit'?' &middot; no processing fee':''}</div>
+          </div>
+          ${String(d.lead.default_payment_method_id)===String(pm.id)
+            ? '<span class="dbm-pill active">billing this one</span>'
+            : `<button class="btn btn-sm" onclick="dbAccSetMethod(${pm.id})">Bill this one</button>`}
+        </div>`).join('')
+        : '<div class="dbm-empty">No payment method saved. The customer adds one from their portal.</div>'}`;
+  }
+
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px">
+      <div>
+        <h2 style="margin:0;font-size:19px">${dbmEsc(L.name||'Customer')}</h2>
+        <div style="color:#8a8a8a;font-size:13px">${dbmEsc(L.email||'')}${L.company?` &middot; ${dbmEsc(L.company)}`:''}</div>
+      </div>
+      <button class="btn" onclick="dbmClose('dbAccModal')">Close</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 16px">${tabs}</div>
+    ${banner}
+    ${feeBlock}
+    ${body}
+  `;
+}
+
+/* ---- actions -------------------------------------------------------- */
+async function dbAccReload(msg){
+  if(msg) dbmNote(msg);
+  const id = DBACC.lead.id, tab = DBACC.tab;
+  await dbAccount(id, tab);
+  if(typeof renderSection==='function' && state && state.currentSection==='maintenance'){
+    renderSection('maintenance');
+  }
+}
+
+async function dbAccWaive(feeId){
+  const reason = prompt('Why are you dropping this fee? (recorded on the account)','Goodwill');
+  if(reason===null) return;
+  try{
+    const r = await dbmSend('/api/admin/late-fees/' + feeId + '/waive', { reason });
+    if(r.success === false) throw new Error(r.message);
+    await dbAccReload(r.message);
+  }catch(e){ alert(e.message); }
+}
+
+async function dbAccWaiveAll(){
+  if(!confirm('Drop every outstanding late fee on this account?')) return;
+  const reason = prompt('Reason (recorded on the account)','Goodwill');
+  if(reason===null) return;
+  try{
+    const r = await dbmSend('/api/admin/accounts/' + DBACC.lead.id + '/waive-fees', { reason });
+    if(r.success === false) throw new Error(r.message);
+    await dbAccReload(r.message);
+  }catch(e){ alert(e.message); }
+}
+
+async function dbAccExempt(exempt){
+  try{
+    const r = await dbmSend('/api/admin/accounts/' + DBACC.lead.id + '/late-exempt', { exempt });
+    if(r.success === false) throw new Error(r.message);
+    await dbAccReload(r.message);
+  }catch(e){ alert(e.message); }
+}
+
+async function dbAccWelcome(){
+  if(!confirm('Send the customer portal welcome email to ' + DBACC.lead.email + '?')) return;
+  try{
+    const r = await dbmSend('/api/admin/accounts/' + DBACC.lead.id + '/welcome', {});
+    if(r.success === false) throw new Error(r.message);
+    await dbAccReload(r.message);
+  }catch(e){ alert(e.message); }
+}
+
+async function dbAccSetMethod(pmId){
+  try{
+    const r = await dbmSend('/api/admin/accounts/' + DBACC.lead.id + '/default-method',
+      { paymentMethodId: pmId });
+    if(r.success === false) throw new Error(r.message);
+    await dbAccReload(r.message);
+  }catch(e){ alert(e.message); }
+}
+
+/* Authenticated downloads. A plain link cannot send the bearer token, which is
+   why these have to fetch and hand the browser a blob. */
+async function dbAccFetchPdf(path, fallbackName){
+  try{
+    const r = await fetch((typeof API_URL !== 'undefined' ? API_URL : '') + path,
+      { headers: { 'Authorization': 'Bearer ' + dbmToken() } });
+    if(!r.ok){ let msg='Could not generate that PDF.';
+      try{ const j=await r.json(); if(j.message) msg=j.message; }catch(_){}
+      throw new Error(msg); }
+    const blob = await r.blob();
+    let name = fallbackName;
+    const cd = r.headers.get('Content-Disposition')||'';
+    const mm = cd.match(/filename="?([^";]+)"?/); if(mm) name = mm[1];
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }catch(e){ alert(e.message); }
+}
+function dbAccReceipt(paymentId){
+  return dbAccFetchPdf('/api/admin/payments/'+paymentId+'/receipt','Receipt-'+paymentId+'.pdf');
+}
+function dbAccDoc(agreementId){
+  return dbAccFetchPdf('/api/admin/sales-agreements/'+agreementId+'/pdf','Agreement-'+agreementId+'.pdf');
+}
+
 /* ---------------- MAINTENANCE ---------------- */
 async function renderMaintenance(content){
   content.innerHTML = `<div class="dbm-empty">Loading maintenance plans…</div>`;
@@ -23546,13 +23877,21 @@ async function renderMaintenance(content){
         ${cancelNote}
       </td>
       <td><strong style="color:#10b981">${dbmMoney(p.charge_total != null ? p.charge_total : p.amount)}${p.interval_unit==='year'?'/yr':'/mo'}</strong><div style="color:#8a8a8a;font-size:12px">${p.interval_unit==='year' ? 'annual' : 'day ' + dbmEsc(String(p.billing_day))}${p.fee_breakdown ? ` &middot; incl. $${Number(p.fee_breakdown.fee).toFixed(2)} fee + tax` : ''}</div></td>
-      <td><span class="dbm-pill ${dbmEsc(p.status)}">${dbmEsc(String(p.status||'').replace(/_/g,' '))}</span></td>
-      <td>${p.status==='active'?dbmDate(p.next_charge_date):'—'}</td>
+      <td>
+        <span class="dbm-pill ${dbmEsc(p.status)}">${dbmEsc(String(p.status||'').replace(/_/g,' '))}</span>
+        ${p.stage ? `<div style="color:${p.past_due?'#ef4444':'#8a8a8a'};font-size:12px;margin-top:3px">${dbmEsc(p.stage)}</div>` : ''}
+      </td>
+      <td>
+        ${p.next_charge_date ? dbmDate(p.next_charge_date) : '—'}
+        ${p.past_due ? `<div style="color:#ef4444;font-size:12px">${p.days_late} day${p.days_late===1?'':'s'} late</div>`
+          : p.period_paid ? `<div style="color:#10b981;font-size:12px">paid</div>`
+          : p.next_charge_date ? `<div style="color:#8a8a8a;font-size:12px">not due yet</div>` : ''}
+      </td>
       <td>${method}</td>
       <td>${dbmMoney(p.collected)}<div style="color:#8a8a8a;font-size:12px">${p.charges_completed||0} charge${Number(p.charges_completed)===1?'':'s'}</div></td>
       <td style="white-space:nowrap">
+        <button class="btn btn-sm btn-primary" onclick="dbAccount(${p.lead_id})">Account</button>
         <button class="btn btn-sm" onclick="dbmEditPlan(${p.id})">Edit</button>
-        <button class="btn btn-sm" onclick="dbPaymentLog(${p.lead_id}, '${dbmEsc(String(p.customer_name||'').replace(/'/g,''))}')">Payments</button>
       </td></tr>`;
   }).join('') : '';
 
@@ -23568,7 +23907,7 @@ async function renderMaintenance(content){
       <button class="btn btn-primary" onclick="dbmNewPlan()">Set up a plan</button>
     </div>
     ${rows ? `<div style="overflow-x:auto"><table class="dbm-table">
-        <thead><tr><th>Customer</th><th>Plan</th><th>Amount</th><th>Status</th><th>Next charge</th><th>Method</th><th>Collected</th><th></th></tr></thead>
+        <thead><tr><th>Customer</th><th>Plan</th><th>Amount</th><th>Status &amp; stage</th><th>Next charge</th><th>Method</th><th>Collected</th><th></th></tr></thead>
         <tbody>${rows}</tbody></table></div>`
       : `<div class="dbm-empty">No maintenance plans yet.<br>Set one up and the customer gets an agreement to sign, then autopay starts once they add a payment method.</div>`}
   `;

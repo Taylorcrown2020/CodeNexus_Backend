@@ -322,7 +322,11 @@ module.exports = function initPortal({
                 const fee = Number(inv.processing_fee || 0);
                 const base = Number(inv.subtotal != null ? inv.subtotal : (total - tax - fee));
                 const kind = inv.maintenance_plan_id ? 'maintenance' : 'invoice';
-                const desc = `Invoice ${inv.invoice_number}`;
+                // Prefer the invoice's own title — "Monthly Maintenance
+                // Cancellation" tells the customer what they paid for, where
+                // "Invoice INV-699016" tells them nothing.
+                const desc = (inv.short_description && String(inv.short_description).trim())
+                    || `Invoice ${inv.invoice_number}`;
 
                 const cols = await pool.query(
                     `SELECT column_name FROM information_schema.columns WHERE table_name='payments'`);

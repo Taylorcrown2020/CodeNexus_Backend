@@ -255,11 +255,13 @@ module.exports = function initDocumentRoutes({
 
     async function sendReceipt(res, ctx, disposition = 'attachment') {
         const pdf = await receiptPDF(ctx);
-        const no = ctx.payment.receipt_number || `RCPT-${String(ctx.payment.id).padStart(6, '0')}`;
+        // Named for what it is — "Receipt-Monthly-Maintenance-Cancellation-
+        // RCPT-INV000016.pdf" — so the saved file is identifiable in a
+        // downloads folder without opening it.
+        const filename = docs.receiptFilename(ctx.payment, ctx.plan, ctx.invoice);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Length', pdf.length);
-        res.setHeader('Content-Disposition',
-            `${disposition}; filename="Receipt-${no.replace(/[^\w.\-]/g, '_')}.pdf"`);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
         res.setHeader('Cache-Control', 'private, no-store');
         res.send(pdf);
     }
@@ -509,8 +511,44 @@ module.exports = function initDocumentRoutes({
             autopay: false,
         }));
 
-        const dueNow = [...monthlyDue, ...invoiceDue];
+        // ---- late fees ------------------------------------------------------
+        // A fee only exists once something was genuinely LATE, so it is always
+        // due now. It shows on the customer's dashboard as its own line rather
+        // than being folded into the plan amount, so they can see exactly what
+        // the extra money is and why.
+        const feeRows = await safeRows(
+            `SELECT lf.id, lf.amount, lf.rate, lf.base_amount, lf.due_date, lf.notes,
+                    i.invoice_number, mp.label AS plan_label
+               FROM late_fees lf
+               LEFT JOIN invoices i ON i.id = lf.invoice_id
+               LEFT JOIN maintenance_plans mp ON mp.id = lf.maintenance_plan_id
+              WHERE lf.lead_id = $1 AND lf.status = 'outstanding'
+              ORDER BY lf.due_date, lf.id`,
+            [leadId], 'late_fees');
+
+        const lateFeeItems = feeRows.map((f) => ({
+            kind: 'late_fee',
+            feeId: f.id,
+            label: f.plan_label ? `Late fee — ${f.plan_label}`
+                 : f.invoice_number ? `Late fee — invoice ${f.invoice_number}`
+                 : 'Late fee',
+            amount: Number(f.amount || 0),
+            rate: Number(f.rate || 0),
+            baseAmount: Number(f.base_amount || 0),
+            dueDate: f.due_date,
+            dueDateLabel: prettyDate(f.due_date),
+            outstanding: true,
+            overdue: true,          // by definition
+            autopay: false,
+            note: `${(Number(f.rate || 0) * 100).toFixed(2).replace(/\.?0+$/, '')}% of `
+                + `${money(f.base_amount)}, applied because the payment due `
+                + `${prettyDate(f.due_date) || 'earlier'} was not received on time.`,
+        }));
+
+        const dueNow = [...monthlyDue, ...invoiceDue, ...lateFeeItems];
         const total = dueNow.reduce((s, x) => s + x.amount, 0);
+        const lateFeeTotal = Math.round(
+            lateFeeItems.reduce((s, x) => s + x.amount, 0) * 100) / 100;
 
         return {
             // What the home screen shows.
@@ -519,12 +557,18 @@ module.exports = function initDocumentRoutes({
             totalLabel: money(total),
             count: dueNow.length,
             overdueCount: dueNow.filter((x) => x.overdue).length,
+            lateFees: lateFeeItems,
+            lateFeeTotal,
+            // The customer-facing version of "caught up": nothing LATE. Money
+            // owed but not yet due does not count against them.
+            anythingLate: dueNow.some((x) => x.overdue),
             // Billing screen only. Never added into `total`.
             upcomingAnnual: annualUpcoming,
             upcomingAnnualTotal: Math.round(
                 annualUpcoming.reduce((s, x) => s + x.amount, 0) * 100) / 100,
             // Stated in the payload so the UI copy and this rule can't diverge.
-            rule: 'Monthly plans count as outstanding for the current period even before the '
+            rule: 'Late fees are 1.5% of an amount that was not paid by its due date. '
+                + 'Monthly plans count as outstanding for the current period even before the '
                 + 'charge date. Annual plans are shown under Billing and charged on their renewal '
                 + 'date. A plan with a cancellation in progress stops counting from its '
                 + 'cancellation date, because nothing is charged on or after it.',

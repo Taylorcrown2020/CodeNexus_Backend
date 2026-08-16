@@ -4272,10 +4272,15 @@ module.exports = function initLifecycle({
      * that invoice is paid.
      */
     async function raiseSettlementInvoice({ leadId, kind, id, quote, label }) {
+        // "<Plan> Cancellation", so the invoice, the receipt, the PDF title and
+        // the download filename all say what this money was actually for.
+        // "Cancellation settlement — Monthly Maintenance" read as jargon and
+        // sorted under C; this reads as the thing it is.
+        const settlementTitle = `${label} Cancellation`;
         const inv = await createInvoice({
             leadId,
             amount: quote.total,
-            description: `Cancellation settlement — ${label}`,
+            description: settlementTitle,
             dueDate: dateOnly(new Date()),
             maintenancePlanId: kind === 'maintenance' ? Number(id) : null,
             obligation: 'due_now',
@@ -4745,7 +4750,7 @@ module.exports = function initLifecycle({
             const gaps = await pool.query(
                 `SELECT i.id, i.invoice_number, i.total_amount, i.subtotal, i.tax_amount,
                         i.paid_at, i.payment_method, i.payment_reference,
-                        i.maintenance_plan_id, i.lead_id, i.created_at
+                        i.short_description, i.maintenance_plan_id, i.lead_id, i.created_at
                    FROM invoices i
                    LEFT JOIN payments byinv ON byinv.invoice_id = i.id
                    LEFT JOIN payments bypi  ON i.payment_reference IS NOT NULL
@@ -4803,6 +4808,13 @@ module.exports = function initLifecycle({
                 const method = /bank|ach/i.test(inv.payment_method || '') ? 'us_bank_account' : 'card';
                 const kind = inv.maintenance_plan_id ? 'maintenance' : 'invoice';
 
+                // What the customer sees in Receipts. The invoice's own
+                // short_description ("Monthly Maintenance Cancellation") is far
+                // more use than "Invoice INV-699016", so prefer it and keep the
+                // number as the fallback.
+                const desc = (inv.short_description && inv.short_description.trim())
+                    || `Invoice ${inv.invoice_number}`;
+
                 const sql = extended
                     ? `INSERT INTO payments
                         (lead_id, invoice_id, maintenance_plan_id, amount, method, kind, description,
@@ -4815,10 +4827,10 @@ module.exports = function initLifecycle({
                        VALUES ($1,$2,$3,$4,$5,$6,$7,'succeeded',$8,$9,$10)`;
                 const args = extended
                     ? [inv.lead_id, inv.id, inv.maintenance_plan_id || null, total, method, kind,
-                       `Invoice ${inv.invoice_number}`, inv.payment_reference || null, receiptNo,
+                       desc, inv.payment_reference || null, receiptNo,
                        base, tax, fee, paidAt]
                     : [inv.lead_id, inv.id, inv.maintenance_plan_id || null, total, method, kind,
-                       `Invoice ${inv.invoice_number}`, inv.payment_reference || null, receiptNo,
+                       desc, inv.payment_reference || null, receiptNo,
                        paidAt];
 
                 await pool.query(sql, args);
@@ -5625,6 +5637,18 @@ module.exports = function initLifecycle({
     });
 
     // ---- admin: maintenance plans ----------------------------------------
+    // ----------------------------------------------------------------------
+    // Late fees + the admin account screen.
+    //
+    // Mounted here rather than in server.js because both need notify(), which
+    // is defined in this module's closure. Passing it out is cleaner than
+    // exporting it globally.
+    // ----------------------------------------------------------------------
+    const lateFees = require('./diamondback-late-fees.js')({ pool });
+    require('./diamondback-admin-accounts.js')({
+        app, pool, authenticateToken, lateFees, notify, PORTAL_URL,
+    });
+
     app.get('/api/admin/maintenance-plans', authenticateToken, async (req, res) => {
         try {
             const r = await pool.query(
@@ -5645,6 +5669,23 @@ module.exports = function initLifecycle({
             );
             const plans = r.rows.map((p) => ({
                 ...p,
+                // Where the plan is in its life. status alone does not answer
+                // "what stage are they on" — 'active but never charged' and
+                // 'active and paid up' are the same status, different stages.
+                stage: (() => {
+                    if (p.status === 'cancelled') return 'Cancelled';
+                    if (p.cancels_at) return 'Cancelling';
+                    if (!p.signed_at) return 'Awaiting signature';
+                    if (!p.last4) return 'No payment method';
+                    if (!p.current_period_paid_at
+                        && lateFees.isPastDue(p.next_charge_date)) return 'Past due';
+                    if (!Number(p.charges_completed || 0)) return 'Ready — not yet charged';
+                    if (!p.current_period_paid_at) return 'This period unpaid';
+                    return 'Paid up';
+                })(),
+                period_paid: !!p.current_period_paid_at,
+                past_due: !p.current_period_paid_at && lateFees.isPastDue(p.next_charge_date),
+                days_late: p.current_period_paid_at ? 0 : lateFees.daysLate(p.next_charge_date),
                 // The true amount signed/invoiced/charged — see
                 // domainRenewalPricing(). Equal to p.amount except for
                 // domain_renewal plans, which add the mandatory fee + tax.

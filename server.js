@@ -937,7 +937,7 @@ ${ctaLabel && ctaUrl ? `
       <p style="margin:0;font-size:12px;color:#B8B8B8;line-height:1.8;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
         Web Development &amp; CRM Solutions<br>
         Austin, TX 78746<br>
-        <a href="tel:+15129800393" style="color:${accentColor};text-decoration:none;">(512) 980-0393</a>
+        <a href="tel:+19402178680" style="color:${accentColor};text-decoration:none;">(940) 217-8680</a>
       </p>
     </td>
     <td align="right" valign="top">
@@ -2871,7 +2871,7 @@ app.post('/api/client/subscription/:id/change-plan', authenticateClient, async (
                         ? 'Your upgrade takes effect immediately. You\'ll be charged a prorated amount for the remainder of this billing period.' 
                         : 'Your downgrade will take effect at your next billing date. You\'ll keep full access to your current plan until then.'}
                 </p>
-                <p style="font-size:13px;color:#888;">Questions? Call us at <strong>(512) 980-0393</strong></p>
+                <p style="font-size:13px;color:#888;">Questions? Call us at <strong>(940) 217-8680</strong></p>
             `, {
                 eyebrow: isUpgrade ? 'PLAN UPGRADED' : 'PLAN DOWNGRADED',
                 headline: isUpgrade ? 'Your plan has been upgraded' : 'Your plan has been downgraded',
@@ -3117,7 +3117,7 @@ app.post('/api/scheduling/webhook', async (req, res) => {
             </ul>
             
             <p style="margin-top: 24px; text-align: center; font-size: 13px; color: #666;">
-                Need to make changes? Contact us at <a href="tel:+15129800393" style="color: #FF6B35; font-weight: 600;">(512) 980-0393</a> or reply to this email.
+                Need to make changes? Contact us at <a href="tel:+19402178680" style="color: #FF6B35; font-weight: 600;">(940) 217-8680</a> or reply to this email.
             </p>
         `, {
             eyebrow: 'APPOINTMENT CONFIRMED',
@@ -3399,7 +3399,7 @@ app.post('/api/appointments/admin-create', authenticateToken, async (req, res) =
 
                     <p style="margin-top:24px;font-size:13px;color:#666;text-align:center;">
                         Need to reschedule or have questions?
-                        Call us at <a href="tel:+15129800393" style="color:#FF6B35;font-weight:600;">(512) 980-0393</a>
+                        Call us at <a href="tel:+19402178680" style="color:#FF6B35;font-weight:600;">(940) 217-8680</a>
                         or reply to this email.
                     </p>
                 `, {
@@ -3497,7 +3497,7 @@ app.put('/api/appointments/:id/reschedule', authenticateToken, async (req, res) 
             <p>We're looking forward to speaking with you at your new scheduled time!</p>
             
             <p style="margin-top: 24px; text-align: center; font-size: 13px; color: #666;">
-                Need to reschedule again? Contact us at <a href="tel:+15129800393" style="color: #1A7A3A; font-weight: 600;">(512) 980-0393</a> or reply to this email.
+                Need to reschedule again? Contact us at <a href="tel:+19402178680" style="color: #1A7A3A; font-weight: 600;">(940) 217-8680</a> or reply to this email.
             </p>
         `, {
             eyebrow: 'RESCHEDULED',
@@ -3579,7 +3579,7 @@ app.put('/api/appointments/:id/cancel', authenticateToken, async (req, res) => {
                     <p>If you'd like to reschedule, we'd love to connect at a time that works better for you.</p>
 
                     <p style="margin-top: 24px; font-size: 13px; color: #666;">
-                        Questions? Reach us at <a href="tel:+15129800393" style="color: #EF4444; font-weight: 600;">(512) 980-0393</a> or reply to this email.
+                        Questions? Reach us at <a href="tel:+19402178680" style="color: #EF4444; font-weight: 600;">(940) 217-8680</a> or reply to this email.
                     </p>
                 `, {
                     eyebrow: 'APPOINTMENT CANCELLED',
@@ -7252,7 +7252,7 @@ app.post('/api/email/send-timeline', authenticateToken, async (req, res) => {
                 ${nextSteps}
             </ol>
             
-            <p>Have questions? Reply to this email or call us at <a href="tel:+15129800393" style="color: ${accentColor}; font-weight: 600;">(512) 980-0393</a>.</p>
+            <p>Have questions? Reply to this email or call us at <a href="tel:+19402178680" style="color: ${accentColor}; font-weight: 600;">(940) 217-8680</a>.</p>
             
             <p style="margin-top: 32px;">We're excited to bring your vision to life!</p>
         `, {
@@ -10360,7 +10360,7 @@ app.post('/api/client/company/user/:id/cancel', authenticateClient, async (req, 
                         <strong>Want to reduce your bill?</strong> Log into the Company tab and click <em>"Remove Unused Seat"</em> to drop your subscription by $${parseFloat(user.price_per_user || cancelPrice).toFixed(2)}/mo.
                     </div>
                 </div>
-                <p style="font-size:13px;color:#888;">Questions? Call us at <strong>(512) 980-0393</strong></p>
+                <p style="font-size:13px;color:#888;">Questions? Call us at <strong>(940) 217-8680</strong></p>
             `, {
                 eyebrow: 'USER CANCELLED',
                 headline: `${user.user_name}'s seat has been cancelled`,
@@ -10623,7 +10623,7 @@ app.post('/api/client/company/reduce-seat', authenticateClient, async (req, res)
                     <div style="margin-bottom:10px;font-size:22px;font-weight:800;color:#15803d;">$${newTotal.toFixed(2)}<span style="font-size:13px;font-weight:400;color:#166534;">/month</span></div>
                     <div style="font-size:13px;color:#166534;"><strong>${newSeats} seat${newSeats !== 1 ? 's' : ''}</strong> × $${pricePerSeat.toFixed(2)}/mo</div>
                 </div>
-                <p style="font-size:13px;color:#888;">The change takes effect immediately. Questions? Call <strong>(512) 980-0393</strong>.</p>
+                <p style="font-size:13px;color:#888;">The change takes effect immediately. Questions? Call <strong>(940) 217-8680</strong>.</p>
             `, {
                 eyebrow: 'SEAT REMOVED',
                 headline: 'Unused seat removed from subscription',
@@ -10929,7 +10929,7 @@ app.post('/api/client/company/add-user', authenticateClient, async (req, res) =>
                 ${!password ? `<p style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:14px;font-size:13px;color:#856404;">
                     <strong>Tip:</strong> This is a temporary password. We recommend changing it after your first login in the Settings tab.
                 </p>` : ''}
-                <p style="font-size:13px;color:#888;margin-top:20px;">Questions? Contact your workspace admin or call (512) 980-0393.</p>
+                <p style="font-size:13px;color:#888;margin-top:20px;">Questions? Contact your workspace admin or call (940) 217-8680.</p>
             `, {
                 eyebrow: 'WELCOME TO THE TEAM',
                 headline: 'Your CRM account is ready.',
@@ -11637,7 +11637,7 @@ async function processSubscriptionWebhook(event) {
                         </ul>
 
                         <p style="font-size:13px;color:#888;margin-top:28px;">
-                            Questions? Call us at <strong>(512) 980-0393</strong> or reply to this email.
+                            Questions? Call us at <strong>(940) 217-8680</strong> or reply to this email.
                         </p>
                     `, {
                         eyebrow:     'WELCOME TO DIAMONDBACK CRM',
@@ -11830,7 +11830,7 @@ async function processSubscriptionWebhook(event) {
                            </p>`
                         : ''}
                     <p style="font-size:13px;color:#888;margin:0;">
-                        Questions? Call us at <strong>(512) 980-0393</strong> or reply to this email.
+                        Questions? Call us at <strong>(940) 217-8680</strong> or reply to this email.
                     </p>
                 `, {
                     eyebrow:     'PAYMENT CONFIRMED',
@@ -11909,7 +11909,7 @@ async function processSubscriptionWebhook(event) {
                     </div>
 
                     <p style="font-size:13px;color:#888;margin:0;">
-                        If you think this is a mistake, call us at <strong>(512) 980-0393</strong>
+                        If you think this is a mistake, call us at <strong>(940) 217-8680</strong>
                         or reply to this email and we'll sort it out right away.
                     </p>
                 `, {
@@ -12741,7 +12741,7 @@ app.post('/api/subscriptions/:id/cancel', authenticateToken, async (req, res) =>
                             we'd love the chance to make things right. Your success matters to us.
                         </p>
                         <p style="font-size:13px;color:#888;margin:0;">
-                            Changed your mind? Call us at <strong style="color:#222;">(512) 980-0393</strong>, 
+                            Changed your mind? Call us at <strong style="color:#222;">(940) 217-8680</strong>, 
                             or click below to reactivate your subscription with just one click.
                         </p>
                     </div>
@@ -15658,7 +15658,7 @@ app.post('/api/client/subscription/:id/cancel', authenticateClient, async (req, 
                         we'd love the chance to make things right. Your success matters to us.
                     </p>
                     <p style="font-size:13px;color:#888;margin:0;">
-                        Changed your mind? Call us at <strong style="color:#222;">(512) 980-0393</strong>, 
+                        Changed your mind? Call us at <strong style="color:#222;">(940) 217-8680</strong>, 
                         or click below to reactivate your subscription with just one click.
                     </p>
                 </div>
@@ -17308,7 +17308,7 @@ Our objective is to provide businesses with the best and most cost-effective web
 <tr><td style="padding:30px;text-align:center">
 <span style="color:#2C3E50;font-size:16px;font-weight:700;font-family:Arial,sans-serif;display:block;margin-bottom:15px">Contact Us</span>
 <span style="color:#6B7280;font-size:14px;font-family:Arial,sans-serif;line-height:2;display:block">
-<strong>Phone:</strong> <a href="tel:+15129800393" style="color:#F59E0B;text-decoration:none">(512) 980-0393</a><br>
+<strong>Phone:</strong> <a href="tel:+19402178680" style="color:#F59E0B;text-decoration:none">(940) 217-8680</a><br>
 <strong>Email:</strong> <a href="mailto:contact@diamondbackcoding.com" style="color:#F59E0B;text-decoration:none">contact@diamondbackcoding.com</a><br>
 <strong>Web:</strong> <a href="https://www.diamondbackcoding.com" style="color:#F59E0B;text-decoration:none">www.diamondbackcoding.com</a><br>
 <strong>Address:</strong> 5000 Plaza on the Lake, Suite 100 PMB 2017<br>Austin, TX 78746
@@ -19004,7 +19004,7 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
       <a href="https://diamondbackcoding.com/contact.html" style="display:block;padding:18px 52px;font-size:15px;font-weight:800;color:#FFFFFF;text-decoration:none;letter-spacing:1px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Schedule a Call</a>
     </td></tr>
     </table>
-    <p style="margin:20px 0 0;font-size:13px;color:#664D00;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Or call us directly: <a href="tel:+15129800393" style="color:#2D3142;font-weight:700;text-decoration:none;">(512) 980-0393</a></p>
+    <p style="margin:20px 0 0;font-size:13px;color:#664D00;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Or call us directly: <a href="tel:+19402178680" style="color:#2D3142;font-weight:700;text-decoration:none;">(940) 217-8680</a></p>
   </td></tr>
   </table>
 </td></tr>
@@ -19018,7 +19018,7 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
       <p style="margin:0;font-size:12px;color:#B8B8B8;line-height:1.8;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
         5000 Plaza on the Lake, Suite 100 PMB 2017<br>
         Austin, TX 78746<br>
-        <a href="tel:+15129800393" style="color:#FF6B35;text-decoration:none;">(512) 980-0393</a>
+        <a href="tel:+19402178680" style="color:#FF6B35;text-decoration:none;">(940) 217-8680</a>
       </p>
     </td>
     <td align="right" valign="top">
@@ -19169,7 +19169,7 @@ No longer want to receive these emails? <a href="https://diamondbackcoding.com/u
       <p style="margin:0;font-size:11px;color:#B8B8B8;line-height:1.6;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
         Web Development &amp; CRM Solutions<br>
         Austin, TX 78746<br>
-        <a href="tel:+15129800393" style="color:${fc.accentColor};text-decoration:none;">(512) 980-0393</a>
+        <a href="tel:+19402178680" style="color:${fc.accentColor};text-decoration:none;">(940) 217-8680</a>
       </p>
     </td>
     <td align="right" valign="top">

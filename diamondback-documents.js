@@ -50,7 +50,7 @@ const COMPANY = {
     city:       process.env.COMPANY_CITY        || 'Austin',
     state:      process.env.COMPANY_STATE       || 'TX',
     zip:        process.env.COMPANY_ZIP         || '78746',
-    phone:      process.env.COMPANY_PHONE       || '(512) 980-0393',
+    phone:      process.env.COMPANY_PHONE       || '(940) 217-8680',
     email:      process.env.COMPANY_EMAIL       || 'contact@diamondbackcoding.com',
     website:    process.env.COMPANY_WEBSITE     || 'https://diamondbackcoding.com',
     // Governing law. Travis County is where Austin sits — venue follows the
@@ -324,6 +324,39 @@ const CLAUSES = {
         body: ['{{PAYMENT_CLAUSE}}'],
     },
 
+    // Recurring plans have their OWN late-payment clause. The generic one below
+    // talks about invoices and payment terms, which makes no sense on a plan
+    // that charges the card on the due date — there is nothing to "pay within
+    // N days", and no invoice to be late against. Saying so plainly is also
+    // what makes the 1.5% fee enforceable: a fee has to attach to a clearly
+    // defined moment of default.
+    recurringLatePayment: {
+        heading: 'Failed payments and late fees',
+        body: [
+            `Each charge is taken automatically on its due date. There is no invoice, no payment terms and no grace for the charge itself — the amount is due, in full, on that date.`,
+            `A payment is LATE only if the due date passes and the amount is still unpaid, which normally means no valid payment method was on file or the charge was declined. An amount that is owed but whose due date has not yet arrived is not late and carries no fee.`,
+            `If a payment is late, a late fee of one and one-half percent (1.5%) of the amount due is added, or the maximum permitted by {{STATE_FULL}} law if lower. A further 1.5% is added for each additional {{INTERVAL_NOUN}} period that the amount remains unpaid. Late fees are compensation for the cost of chasing and carrying an unpaid balance, not a penalty.`,
+            `We allow {{GRACE_DAYS}} days after the due date before a late fee is applied, so that a card which fails and retries successfully does not incur one.`,
+            `If any amount remains unpaid fifteen (15) days after its due date we may suspend the service without notice and without liability for any consequence of that suspension, including downtime, lost data, missed updates or lost business. Service resumes when the account is brought current, and we may require the balance and all fees to be settled before it does.`,
+            `If a payment is reversed, charged back or returned unpaid, you are responsible for the original amount plus any fee our bank or processor charges us, plus the late fee, and we may require a different payment method going forward.`,
+            `You remain responsible for our costs of collection, including reasonable attorneys' fees and any collection agency charges.`,
+            `We may waive a late fee at our discretion. Waiving one does not waive any other, and does not change this clause.`,
+        ],
+    },
+
+    // Additional protections that only make sense on an ongoing plan.
+    recurringProtections: {
+        heading: 'Access, data and your obligations',
+        body: [
+            `You will keep a valid payment method on your account at all times, and will give us the access we need — hosting, domain, registrar, CMS and any third-party account — to do the work. If access is withdrawn or credentials stop working, the plan continues to be charged while we are unable to work, and we are not responsible for anything that goes wrong in the meantime.`,
+            `You are responsible for your own content and for anything you or anyone else with access changes. If a change made outside this plan breaks the site, restoring it is billable separately at our then-current rates.`,
+            `We keep routine backups as part of this plan, but you remain responsible for maintaining your own independent copy of your data and content. We are not liable for data loss.`,
+            `We may suspend or terminate this plan immediately, without refund, if the service is used unlawfully, to send unsolicited bulk email, to host malicious or infringing material, or in a way that threatens the security or stability of our systems or another customer's.`,
+            `Nothing in this plan transfers ownership of our tooling, monitoring, scripts or configuration to you. Those remain ours and the licence to benefit from them ends when the plan ends.`,
+            `If the plan ends for any reason, we will provide a copy of your site files and database on request within thirty (30) days, provided the account is fully settled. After that period we are under no obligation to retain anything.`,
+        ],
+    },
+
     latePayment: {
         heading: 'Late payment',
         body: [
@@ -373,8 +406,14 @@ const CLAUSES = {
         heading: 'What this plan covers',
         body: [
             `{{PLAN_SCOPE}}`,
-            `The plan covers ongoing maintenance and support as described. It does not cover new feature development, redesigns, migrations, content creation, or recovery from changes made by you or a third party. Those are quoted separately.`,
-            `Third-party costs — hosting, domains, licences, email and SMS platform fees — are passed through and are yours to pay unless this agreement says otherwise.`,
+            // Named inclusions. The old version said only "maintenance and
+            // support as described", which describes nothing and is unusable
+            // in a dispute about what was owed.
+            `Included each period: security and dependency updates, uptime monitoring, routine backups, bug fixes to work we built, and up to {{SUPPORT_HOURS}} of minor content or configuration changes. Unused time does not roll over.`,
+            `Support requests are answered within two (2) business days. This plan is not a guaranteed uptime or response-time commitment, and no service credits arise under it.`,
+            `NOT included, and quoted separately: new features or pages, redesigns, migrations, content creation, third-party integrations, SEO or marketing work, recovery from changes made by you or anyone else with access, and recovery from a hosting, platform or third-party failure outside our control.`,
+            `Third-party costs — hosting, domains, licences, email and SMS platform fees — are passed through and are yours to pay unless this agreement says otherwise. If we advance one on your behalf, you reimburse it on the next charge.`,
+            `We may perform the work at any time during the period and are not required to use a set number of hours in any given month.`,
         ],
     },
 
@@ -462,13 +501,21 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
         COUNTY:               COMPANY.county,
         CUSTOMER_NAME:        a.customer_name || 'Client',
         NOTICE_DAYS:          String(noticeDays),
+        GRACE_DAYS:           String(process.env.LATE_FEE_GRACE_DAYS || 3),
+        SUPPORT_HOURS:        process.env.PLAN_SUPPORT_HOURS || 'two (2) hours',
+        LATE_FEE_PCT:         ((Number(process.env.LATE_FEE_RATE || 0.015)) * 100)
+                                  .toFixed(2).replace(/\.?0+$/, ''),
         INTERVAL_NOUN:        isAnnual ? 'one-year' : 'one-month',
         AUTOPAY_AMOUNT:       money(recurringAmount),
         AUTOPAY_SCHEDULE_SENTENCE: scheduleSentence,
         AUTOPAY_START:        prettyDate(startDate) || 'the date this agreement is signed',
         STATEMENT_DESCRIPTOR: process.env.STRIPE_STATEMENT_DESCRIPTOR || 'DIAMONDBACK CODING',
+        // Falling back to the plan's own name produced "Monthly Maintenance as
+        // described in this agreement" — a sentence that describes nothing.
+        // The generic fallback at least states what the plan is for.
         PLAN_SCOPE:           a.intro || (plan && plan.description)
-                              || `${a.package_name || serviceLabel(a.service_type)} as described in this agreement.`,
+                              || `Ongoing ${String(a.package_name || serviceLabel(a.service_type)).toLowerCase()} `
+                               + `for the website, application and systems we maintain for you, as set out below.`,
         PAYMENT_CLAUSE:       requiresDeposit
             ? `A deposit of ${depositPct}% (${money(deposit)}) is due on signing and reserves your place in our schedule. Work begins once the deposit clears. The remaining balance of ${money(balance)} is due on completion, payable within ${a.net_days || 7} days of the completion invoice.`
             : `The full amount of ${money(subtotal)} is due on completion of the work, payable within ${a.net_days || 7} days of the invoice.`,
@@ -497,15 +544,19 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
         sections.push(clause(CLAUSES.recurringScope));
         sections.push(clause(CLAUSES.recurringTerm));
         sections.push(clause(CLAUSES.priceChanges));
+        // The recurring version, NOT the generic invoice-terms one: a plan
+        // charges the card on the due date, so "payable within N days of the
+        // invoice" describes something that does not exist here.
+        sections.push(clause(CLAUSES.recurringLatePayment));
+        sections.push(clause(CLAUSES.taxesAndFees));
+        sections.push(clause(CLAUSES.recurringProtections));
     } else {
         sections.push(clause(CLAUSES.scopeAndChanges));
         sections.push(clause(CLAUSES.projectPayment));
+        sections.push(clause(CLAUSES.latePayment));
+        sections.push(clause(CLAUSES.taxesAndFees));
+        sections.push(clause(CLAUSES.clientResponsibilities));
     }
-
-    sections.push(clause(CLAUSES.latePayment));
-    sections.push(clause(CLAUSES.taxesAndFees));
-
-    if (!isRecurring) sections.push(clause(CLAUSES.clientResponsibilities));
 
     sections.push(clause(CLAUSES.intellectualProperty));
     sections.push(clause(CLAUSES.confidentiality));
@@ -1222,9 +1273,22 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
     const p = payment || {};
     const receiptNo = p.receipt_number || `RCPT-${String(p.id).padStart(6, '0')}`;
 
+    // What this receipt is FOR — "Monthly Maintenance Cancellation", not just a
+    // receipt number. Used for the PDF's document title (what a viewer shows in
+    // its title bar and what a print dialog names) and, via the route, for the
+    // download filename.
+    const what = (p.description && String(p.description).trim())
+        || (plan && plan.label)
+        || (invoice && `Invoice ${invoice.invoice_number}`)
+        || null;
+
     const pdf = new PDFDocument({
         size: 'LETTER', margin: PAGE.margin, bufferPages: true,
-        info: { Title: `Receipt ${receiptNo}`, Author: COMPANY.legalName, Subject: 'Payment receipt' },
+        info: {
+            Title: what ? `Receipt — ${what} (${receiptNo})` : `Receipt ${receiptNo}`,
+            Author: COMPANY.legalName,
+            Subject: what ? `Payment receipt — ${what}` : 'Payment receipt',
+        },
     });
 
     // ---- masthead ----------------------------------------------------------
@@ -1245,7 +1309,14 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
     pdf.font('Courier').fontSize(9).fillColor(PALETTE.INK_INVERSE)
        .text(receiptNo, PAGE.width - PAGE.margin - 160, 44, { width: 160, align: 'right' });
 
-    pdf.y = 120;
+    pdf.y = 116;
+
+    // The headline: what this payment was for, above the amount.
+    if (what) {
+        pdf.font('Helvetica-Bold').fontSize(13).fillColor(PALETTE.INK_STRONG)
+           .text(what, PAGE.margin, pdf.y, { width: CONTENT_WIDTH });
+        pdf.y += 6;
+    }
 
     const refundedTotal = Number(p.refunded_amount || 0);
     const netPaid = Math.max(0, Number(p.amount || 0) - refundedTotal);
@@ -1293,10 +1364,17 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
         ['Payment date', prettyDateTime(p.paid_at) || prettyDate(p.created_at) || '—'],
         ['Payment method', p.method_last4
             ? `${(p.method_brand || p.method || 'Card')} ending ${p.method_last4}`
-            : (p.method || 'Card')],
-        ['Description', p.description
-            || (plan ? `${plan.label} — recurring payment` : null)
-            || (invoice ? `Invoice ${invoice.invoice_number}` : 'Payment')],
+            // Raw column values are lowercase ('card', 'us_bank_account').
+            // "card" on a customer document reads as a typo.
+            : ({ card: 'Card', us_bank_account: 'Bank account', manual: 'Manual' }[p.method]
+               || (p.method ? String(p.method).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                            : 'Card'))],
+        // Only when it adds something the headline above doesn't already say.
+        (!what || (p.description && p.description !== what))
+            ? ['Description', p.description
+                || (plan ? `${plan.label} — recurring payment` : null)
+                || (invoice ? `Invoice ${invoice.invoice_number}` : 'Payment')]
+            : null,
         invoice ? ['Invoice', invoice.invoice_number] : null,
         plan ? ['Plan', `${plan.label} (${plan.interval_unit === 'year' ? 'annual' : 'monthly'} autopay)`] : null,
         plan && plan.next_charge_date ? ['Next scheduled charge', prettyDate(plan.next_charge_date)] : null,
@@ -1307,11 +1385,16 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
     // this the customer sees only a total and cannot tell how much of it was
     // tax or the card surcharge — and an undisclosed surcharge is a chargeback
     // waiting to happen.
-    const hasBreakdown = Number(p.tax_amount || 0) > 0 || Number(p.processing_fee || 0) > 0;
+    const lateFee = Number(p.late_fee_amount || 0);
+    const hasBreakdown = Number(p.tax_amount || 0) > 0
+        || Number(p.processing_fee || 0) > 0 || lateFee > 0;
     const breakdownLines = hasBreakdown ? [
         ['Plan', money(p.base_amount ?? (Number(p.amount || 0)
-            - Number(p.tax_amount || 0) - Number(p.processing_fee || 0)))],
+            - Number(p.tax_amount || 0) - Number(p.processing_fee || 0) - lateFee))],
         Number(p.tax_amount || 0) > 0 ? ['Sales tax', money(p.tax_amount)] : null,
+        // Its own line, named for what it is. A fee folded into a total is a
+        // fee the customer disputes.
+        lateFee > 0 ? ['Late fee (1.5%)', money(lateFee)] : null,
         Number(p.processing_fee || 0) > 0
             ? ['Credit card processing fee', money(p.processing_fee)] : null,
         ['Total charged', money(p.amount)],
@@ -1356,6 +1439,7 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
             // Named as a CREDIT CARD surcharge, not a vague "processing fee".
             // Card network rules require the surcharge be identified as such on
             // the receipt; a generic label does not satisfy that.
+            invoice.late_fee_amount ? ['Late fee (1.5%)', money(invoice.late_fee_amount)] : null,
             invoice.processing_fee ? ['Credit card processing fee', money(invoice.processing_fee)] : null,
             ['Invoice total', money(invoice.total_amount ?? p.amount)],
         ].filter(Boolean);
@@ -1393,11 +1477,23 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
        .text('Thank you. This receipt confirms payment has been received and cleared. '
            + 'No action is required.', PAGE.margin, pdf.y, { width: CONTENT_WIDTH, lineGap: 2 });
     pdf.y += 8;
-    if (plan) {
+    // A cancellation settlement is the LAST payment on a plan. Telling the
+    // customer they can "cancel that authorization at any time" on a receipt
+    // for having just cancelled it is the kind of line that generates a
+    // support email.
+    const isCancellation = /cancellation|cancelled|canceled/i.test(what || '');
+    if (plan && !isCancellation) {
         pdf.font('Helvetica').fontSize(8.6).fillColor(PALETTE.INK_MUTED)
            .text(`This charge was made under your ${plan.interval_unit === 'year' ? 'annual' : 'monthly'} `
                + `automatic payment authorization for ${plan.label}. `
                + 'You can review or cancel that authorization at any time in your customer portal.',
+                 PAGE.margin, pdf.y, { width: CONTENT_WIDTH, lineGap: 1.5 });
+        pdf.y += 6;
+    } else if (plan && isCancellation) {
+        pdf.font('Helvetica').fontSize(8.6).fillColor(PALETTE.INK_MUTED)
+           .text(`This settles ${plan.label} through the end of your notice period. `
+               + 'No further payments will be taken, and your automatic payment authorization ends '
+               + 'with the plan.',
                  PAGE.margin, pdf.y, { width: CONTENT_WIDTH, lineGap: 1.5 });
         pdf.y += 6;
     }
@@ -1451,8 +1547,29 @@ function emailFooterAddress() {
     return `${esc(COMPANY.legalName)} &middot; ${esc(COMPANY.addressOneLine)}`;
 }
 
+/**
+ * Download filename for a receipt: "Receipt-Monthly-Maintenance-Cancellation-RCPT-INV000016.pdf".
+ * The route uses this so the saved file says what it is without being opened.
+ */
+function receiptFilename(payment, plan = null, invoice = null) {
+    const p = payment || {};
+    const no = p.receipt_number || `RCPT-${String(p.id).padStart(6, '0')}`;
+    const what = (p.description && String(p.description).trim())
+        || (plan && plan.label)
+        || (invoice && `Invoice ${invoice.invoice_number}`)
+        || '';
+    const slug = what
+        .replace(/[^\w\s-]/g, ' ')      // drop punctuation, keep words
+        .trim().split(/\s+/).join('-')
+        .slice(0, 60)
+        .replace(/-+$/, '');
+    return (slug ? `Receipt-${slug}-${no}` : `Receipt-${no}`)
+        .replace(/[^\w.\-]/g, '_') + '.pdf';
+}
+
 module.exports = {
     COMPANY,
+    receiptFilename,
     PALETTE,
     assertReadable,
     CLAUSES,

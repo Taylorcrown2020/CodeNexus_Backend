@@ -4834,10 +4834,10 @@ module.exports = function initLifecycle({
             description: p.description,
             plan_type: p.plan_type,
             amount: Number(p.amount),
-            // The true amount signed/invoiced/charged. Equal to `amount` for
-            // every plan_type except domain_renewal, which adds the mandatory
-            // fee + tax — see domainRenewalPricing(). Front ends should
-            // display this, not `amount`.
+            // The true amount signed/invoiced/charged: base + domain
+            // maintenance fee (renewals) + sales tax. Priced without a payment
+            // method, so it excludes the credit-card surcharge — that is in
+            // fee_breakdown. Front ends should display this, not `amount`.
             charge_total: planChargeTotal(p),
             // Full breakdown — base, domain fee, tax, and the credit-card
             // processing fee. Priced WITHOUT a method, so this is the fee-free
@@ -4850,6 +4850,12 @@ module.exports = function initLifecycle({
             item_reference: p.item_reference,
             status: p.status,
             next_charge_date: p.next_charge_date,
+            // The portal decides "First payment" vs "Next payment" from these,
+            // not from status — a plan that has been paid, cancelled,
+            // reinstated and cancelled again is not on its first payment, but
+            // its status alone cannot say so.
+            charges_completed: Number(p.charges_completed || 0),
+            last_charge_date: p.last_charge_date || null,
             cancels_at: p.cancels_at,
             days_until_cancellation: days(p.cancels_at),
             payment_method: p.pm_id ? {

@@ -286,6 +286,72 @@ module.exports = function initPortal({
         if (upd.rows.length === 0) return null;
         const inv = upd.rows[0];
 
+        // --------------------------------------------------------------------
+        // RECORD THE PAYMENT IN THE LEDGER.
+        //
+        // This function marked the invoice paid and stopped. Nothing was ever
+        // written to `payments`, so a card payment made through the portal
+        // appeared under Invoices as "paid" and NOWHERE under Receipts — not in
+        // Billing, not in Docs — and had no downloadable receipt at all,
+        // because the receipt route resolves from a payments row.
+        //
+        // Only the recurring autopay charger was writing to the ledger. Every
+        // invoice a customer paid by hand, including a cancellation
+        // settlement, was invisible to it.
+        //
+        // Idempotent on the payment intent, so the Stripe webhook and the
+        // client's confirm-paid call racing each other cannot double-record.
+        // --------------------------------------------------------------------
+        try {
+            const already = reference
+                ? await pool.query('SELECT 1 FROM payments WHERE stripe_payment_intent_id=$1', [reference])
+                : { rows: [] };
+
+            if (!already.rows.length) {
+                const receiptNo = `RCPT-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 900 + 100)}`;
+                // Split out tax and any card surcharge so the receipt itemises
+                // them, falling back to the whole amount as base when the
+                // invoice carries no breakdown.
+                const total = Number(inv.total_amount || 0);
+                const tax = Number(inv.tax_amount || 0);
+                const fee = Number(inv.processing_fee || 0);
+                const base = Number(inv.subtotal != null ? inv.subtotal : (total - tax - fee));
+                const kind = inv.maintenance_plan_id ? 'maintenance' : 'invoice';
+                const desc = `Invoice ${inv.invoice_number}`;
+
+                const cols = await pool.query(
+                    `SELECT column_name FROM information_schema.columns WHERE table_name='payments'`);
+                const has = new Set(cols.rows.map((c) => c.column_name));
+
+                if (has.has('base_amount') && has.has('tax_amount') && has.has('processing_fee')) {
+                    await pool.query(
+                        `INSERT INTO payments
+                            (lead_id, invoice_id, maintenance_plan_id, amount, method, kind, description,
+                             status, stripe_payment_intent_id, receipt_number,
+                             base_amount, tax_amount, processing_fee, paid_at)
+                         VALUES ($1,$2,$3,$4,'card',$5,$6,'succeeded',$7,$8,$9,$10,$11,NOW())
+                         ON CONFLICT (stripe_payment_intent_id) DO NOTHING`,
+                        [inv.lead_id, inv.id, inv.maintenance_plan_id || null, total,
+                         kind, desc, reference, receiptNo, base, tax, fee]
+                    );
+                } else {
+                    // Pre-012 database.
+                    await pool.query(
+                        `INSERT INTO payments
+                            (lead_id, invoice_id, maintenance_plan_id, amount, method, kind, description,
+                             status, stripe_payment_intent_id, receipt_number, paid_at)
+                         VALUES ($1,$2,$3,$4,'card',$5,$6,'succeeded',$7,$8,NOW())
+                         ON CONFLICT (stripe_payment_intent_id) DO NOTHING`,
+                        [inv.lead_id, inv.id, inv.maintenance_plan_id || null, total,
+                         kind, desc, reference, receiptNo]
+                    );
+                }
+            }
+        } catch (e) {
+            // Never fail a payment that has already cleared over bookkeeping.
+            console.warn('[MARK PAID] ledger row not written:', e.message);
+        }
+
         // ------------------------------------------------------------------
         // A paid invoice is the trigger for real-world work. Two cases:
         //
@@ -306,36 +372,74 @@ module.exports = function initPortal({
 
                 if (plan && plan.signed_at) {
                     const firstStart = !plan.activated_at;
-                    // Next charge = one interval from the day they paid.
-                    const paidOn = new Date();
-                    const next = new Date(paidOn);
-                    if (plan.interval_unit === 'year') next.setFullYear(next.getFullYear() + 1);
-                    else next.setMonth(next.getMonth() + 1);
 
-                    await pool.query(
-                        `UPDATE maintenance_plans
-                            SET status = CASE WHEN status IN ('cancelled') THEN status ELSE 'active' END,
-                                activated_at = COALESCE(activated_at, NOW()),
-                                billing_start_date = COALESCE(billing_start_date, CURRENT_DATE),
-                                last_charge_date = CURRENT_DATE,
-                                next_charge_date = $2,
-                                consecutive_failures = 0,
-                                updated_at = NOW()
-                          WHERE id = $1`,
-                        [plan.id, next.toISOString().slice(0, 10)]
-                    );
+                    // ----------------------------------------------------------
+                    // A PLAN THAT IS CANCELLING MUST NOT BE REVIVED BY A PAYMENT.
+                    //
+                    // This is the bug behind "First payment Sep 16" on a plan
+                    // that ends Sep 15. The cancellation settlement invoice is
+                    // paid THROUGH THIS FUNCTION, and the old code did:
+                    //
+                    //     status = CASE WHEN status IN ('cancelled') ... ELSE 'active'
+                    //     next_charge_date = <paid date + 1 interval>
+                    //
+                    // 'pending_cancellation' is not 'cancelled', so paying the
+                    // settlement flipped the plan back to ACTIVE and scheduled a
+                    // brand-new charge a month out. The cancellation record then
+                    // put the status back, leaving the phantom next_charge_date
+                    // behind — a date on which nothing would ever be charged,
+                    // shown to the customer as their next payment.
+                    //
+                    // Settling a cancellation is the closing act of ending the
+                    // plan. It starts nothing and schedules nothing.
+                    // ----------------------------------------------------------
+                    const winding = ['pending_cancellation', 'cancelled'].includes(plan.status);
+
+                    if (winding) {
+                        await pool.query(
+                            `UPDATE maintenance_plans
+                                SET last_charge_date = CURRENT_DATE,
+                                    consecutive_failures = 0,
+                                    updated_at = NOW()
+                              WHERE id = $1`,
+                            [plan.id]
+                        );
+                    } else {
+                        // Next charge = one interval from the day they paid.
+                        const paidOn = new Date();
+                        const next = new Date(paidOn);
+                        if (plan.interval_unit === 'year') next.setFullYear(next.getFullYear() + 1);
+                        else next.setMonth(next.getMonth() + 1);
+
+                        await pool.query(
+                            `UPDATE maintenance_plans
+                                SET status = 'active',
+                                    activated_at = COALESCE(activated_at, NOW()),
+                                    billing_start_date = COALESCE(billing_start_date, CURRENT_DATE),
+                                    last_charge_date = CURRENT_DATE,
+                                    next_charge_date = $2,
+                                    consecutive_failures = 0,
+                                    updated_at = NOW()
+                              WHERE id = $1`,
+                            [plan.id, next.toISOString().slice(0, 10)]
+                        );
+                    }
 
                     await pool.query(
                         `INSERT INTO admin_notifications
                             (kind, title, body, lead_id, entity_type, entity_id, severity, once_key)
                          VALUES ($1,$2,$3,$4,'maintenance_plan',$5,$6,$7)
                          ON CONFLICT (once_key) DO NOTHING`,
-                        [firstStart ? 'maintenance_started' : 'maintenance_paid',
-                         firstStart
+                        [winding ? 'maintenance_settled' : firstStart ? 'maintenance_started' : 'maintenance_paid',
+                         winding
+                            ? `${plan.label} — cancellation settled`
+                            : firstStart
                             ? `START SERVICE: ${plan.label} is paid and active`
                             : `${plan.label} — payment received`,
-                         `${Number(inv.total_amount || 0).toFixed(2)} paid${firstStart
-                            ? '. This is the first payment — service starts now.' : '.'} Next charge ${next.toISOString().slice(0, 10)}.`,
+                         `${Number(inv.total_amount || 0).toFixed(2)} paid${
+                            winding ? ' — cancellation settlement. No further charges.'
+                            : firstStart ? '. This is the first payment — service starts now.'
+                            : '.'}`,
                          inv.lead_id, plan.id,
                          firstStart ? 'success' : 'info',
                          `plan_paid:${plan.id}:${inv.id}`]

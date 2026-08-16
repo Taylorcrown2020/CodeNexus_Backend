@@ -1065,20 +1065,37 @@ function planCard(p){
        The old line said both, because it only distinguished active from
        everything-else — so a plan you had just cancelled cheerfully announced
        when its first payment would be and that it renews monthly. */
-    (p.next_charge_date
-      ? '<div style="font-size:13px;color:var(--muted);margin-top:10px">' + (
-          cancelling
-            ? (new Date(p.next_charge_date) < new Date(p.cancels_at || p.next_charge_date)
-                ? 'Final payment ' + fmtDate(p.next_charge_date) + ' &middot; no further charges'
-                : 'No further charges')
-          : needsSig ? 'First payment ' + fmtDate(p.next_charge_date) + ' &middot; once signed'
-          : needsPm  ? 'First payment ' + fmtDate(p.next_charge_date) + ' &middot; once a method is added'
-          : p.status === 'active'
-              ? 'Next payment ' + fmtDate(p.next_charge_date) +
-                (p.interval_unit === 'year' ? ' &middot; renews yearly' : ' &middot; then monthly')
-              : 'First payment ' + fmtDate(p.next_charge_date) +
-                (p.interval_unit === 'year' ? ' &middot; renews yearly' : ' &middot; then monthly')
-        ) + '</div>' : '') +
+    /* "First payment" means the plan has NEVER been charged. That is a fact
+       about the plan's history, not about its current status — the old line
+       inferred it from status alone, so a plan that had been paid, cancelled,
+       reinstated and cancelled again still announced its "first payment", on a
+       date it would never be charged.
+
+       hasBeenCharged is the real test. And a cancelling plan whose next charge
+       lands on or after its end date has no further payment at all: that date
+       is a leftover, not a schedule. */
+    (function(){
+      const hasBeenCharged = Number(p.charges_completed || 0) > 0 || !!p.last_charge_date;
+      if(cancelling){
+        const end = p.cancels_at ? new Date(p.cancels_at) : null;
+        const nxt = p.next_charge_date ? new Date(p.next_charge_date) : null;
+        const willCharge = nxt && end && nxt < end;
+        return '<div style="font-size:13px;color:var(--muted);margin-top:10px">' +
+          (willCharge
+            ? 'Final payment ' + fmtDate(p.next_charge_date) + ' &middot; nothing after that'
+            : 'No further payments' +
+              (hasBeenCharged && p.last_charge_date ? ' &middot; last paid ' + fmtDate(p.last_charge_date) : '')) +
+          '</div>';
+      }
+      if(!p.next_charge_date) return '';
+      const when = fmtDate(p.next_charge_date);
+      const cadence = p.interval_unit === 'year' ? ' &middot; renews yearly' : ' &middot; then monthly';
+      const label = hasBeenCharged ? 'Next payment ' : 'First payment ';
+      return '<div style="font-size:13px;color:var(--muted);margin-top:10px">' +
+        (needsSig ? label + when + ' &middot; once signed'
+         : needsPm ? label + when + ' &middot; once a method is added'
+         : label + when + cadence) + '</div>';
+    })() +
     '<div style="display:flex;gap:9px;margin-top:13px;flex-wrap:wrap">' +
       (needsSig && p.agreement_id ? '<button class="btn btn-primary btn-sm" onclick="openSign(' + p.agreement_id + ')">Review &amp; sign</button>' : '') +
       (p.can_change_payment_method && !needsSig

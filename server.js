@@ -464,18 +464,52 @@ app.post('/api/stripe/webhook', express.raw({type: 'application/json'}), async (
             
             try {
                 console.log(`[WEBHOOK] Processing payment for invoice ${invoiceId}`);
-                
-                // Mark invoice as paid
-                const updateResult = await pool.query(
-                    `UPDATE invoices 
-                     SET status = 'paid', 
-                         paid_at = CURRENT_TIMESTAMP,
-                         payment_method = 'Stripe',
-                         payment_reference = $1
-                     WHERE id = $2
-                     RETURNING *`,
-                    [session.id, invoiceId]
-                );
+
+                // ------------------------------------------------------------
+                // ROUTE THROUGH markInvoicePaidById — DO NOT UPDATE DIRECTLY.
+                //
+                // This handler used to run its own `UPDATE invoices SET
+                // status='paid'` and nothing else. That is a second, parallel
+                // way for an invoice to become paid, and it skipped everything
+                // markInvoicePaidById does — including WRITING THE payments
+                // ROW. An invoice paid through Stripe Checkout therefore showed
+                // as "paid" under Invoices and never appeared under Receipts or
+                // Payment history, and had no downloadable receipt, because
+                // both of those read from `payments`.
+                //
+                // Worse, it made the fix in markInvoicePaidById unreachable:
+                // once this had set status='paid', the client's later
+                // confirm-paid call hit its `if (invoice.status === 'paid')
+                // return alreadyPaid` guard and returned without ever calling
+                // markInvoicePaidById.
+                //
+                // markInvoicePaidById is exposed as a global by
+                // diamondback-portal.js precisely so this handler can use it.
+                // The direct UPDATE is kept only as a fallback for the case
+                // where that module has not finished loading.
+                // ------------------------------------------------------------
+                let updateResult;
+                if (typeof global.markInvoicePaidById === 'function') {
+                    // Prefer the payment intent over the checkout session id:
+                    // it is what the ledger and the receipt routes key on.
+                    const reference = session.payment_intent || session.id;
+                    const marked = await global.markInvoicePaidById(invoiceId, reference);
+                    updateResult = { rows: marked ? [marked] : [] };
+                } else {
+                    console.warn('[WEBHOOK] markInvoicePaidById unavailable — '
+                               + 'falling back to a direct update. NO RECEIPT WILL BE CREATED for '
+                               + `invoice ${invoiceId}; run scripts/backfill-payment-receipts.js.`);
+                    updateResult = await pool.query(
+                        `UPDATE invoices 
+                         SET status = 'paid', 
+                             paid_at = CURRENT_TIMESTAMP,
+                             payment_method = 'Stripe',
+                             payment_reference = $1
+                         WHERE id = $2
+                         RETURNING *`,
+                        [session.payment_intent || session.id, invoiceId]
+                    );
+                }
                 
                 if (updateResult.rows.length === 0) {
                     console.error('[WEBHOOK] Invoice not found:', invoiceId);

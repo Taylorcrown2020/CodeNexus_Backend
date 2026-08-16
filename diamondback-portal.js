@@ -276,10 +276,15 @@ module.exports = function initPortal({
     // Mark an invoice paid + convert lead → active customer + refresh lifetime value.
     // Hoisted (function declaration) so the Stripe webhook can call it.
     async function markInvoicePaidById(invoiceId, reference) {
+        // COALESCE on paid_at: this function may be called a second time to
+        // repair a missing ledger row on an invoice that is already paid, and
+        // it must not restamp the original payment date with today's.
         const upd = await pool.query(
             `UPDATE invoices
-                SET status = 'paid', paid_at = CURRENT_TIMESTAMP,
-                    payment_method = 'Card (Stripe)', payment_reference = $1
+                SET status = 'paid',
+                    paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP),
+                    payment_method = COALESCE(payment_method, 'Card (Stripe)'),
+                    payment_reference = COALESCE(payment_reference, $1)
               WHERE id = $2 RETURNING *`,
             [reference, invoiceId]
         );
@@ -723,7 +728,32 @@ module.exports = function initPortal({
             const r = await pool.query('SELECT * FROM invoices WHERE id = $1 AND lead_id = $2', [req.params.id, clientId]);
             if (r.rows.length === 0) return res.status(404).json({ success: false, message: 'Invoice not found.' });
             const invoice = r.rows[0];
-            if (invoice.status === 'paid') return res.json({ success: true, invoice, alreadyPaid: true });
+            if (invoice.status === 'paid') {
+                // ALREADY PAID IS NOT THE SAME AS ALREADY RECORDED.
+                //
+                // Something else may have marked this invoice paid first — the
+                // Stripe webhook usually wins the race with the browser. This
+                // used to return here, which meant markInvoicePaidById never
+                // ran and no `payments` row was ever written, so the invoice
+                // showed as paid with no receipt anywhere.
+                //
+                // Check the ledger, not just the invoice status, and fill the
+                // gap if the receipt is missing. markInvoicePaidById is
+                // idempotent on the payment intent, so this cannot double-record.
+                const ledger = await pool.query(
+                    'SELECT 1 FROM payments WHERE invoice_id = $1 LIMIT 1', [invoice.id]);
+                if (!ledger.rows.length) {
+                    const ref = (req.body && req.body.payment_intent_id)
+                        || invoice.stripe_payment_intent_id || invoice.payment_reference;
+                    console.warn(`[CLIENT] invoice ${invoice.id} was paid with no ledger row — recording it now.`);
+                    const fixed = await markInvoicePaidById(invoice.id, ref).catch((e) => {
+                        console.error('[CLIENT] could not backfill ledger row:', e.message);
+                        return null;
+                    });
+                    return res.json({ success: true, invoice: fixed || invoice, alreadyPaid: true, receiptCreated: true });
+                }
+                return res.json({ success: true, invoice, alreadyPaid: true });
+            }
 
             const piId = (req.body && req.body.payment_intent_id) || invoice.stripe_payment_intent_id;
             if (!piId) return res.status(400).json({ success: false, message: 'No payment to confirm.' });

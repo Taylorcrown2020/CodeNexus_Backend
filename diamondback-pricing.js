@@ -104,16 +104,30 @@ function priceFor(plan, method = null, opts = {}) {
     const active = opts.forceNewPricing || pricingActive(p, asOf);
 
     // A plan not yet switched over is charged exactly what it always was.
-    // No tax line, no fee line, no change to the amount.
+    //
+    // "Exactly what it always was" is NOT the same as "the bare amount".
+    // Domain renewals have always carried the mandatory maintenance fee AND
+    // sales tax — that was the whole point of the old domainRenewalPricing().
+    // Dropping their tax here would have quietly cut the price of every domain
+    // renewal by 8.25% the moment this shipped.
+    //
+    // So: domain renewals keep their historic fee-and-tax treatment; every
+    // other plan type keeps its flat amount. Neither gets the card surcharge,
+    // which is genuinely new and needs notice before it applies.
     if (!active) {
+        const legacyTaxRate = p.plan_type === 'domain_renewal'
+            ? (p.tax_rate != null ? Number(p.tax_rate) : DEFAULT_TAX_RATE)
+            : 0;
+        const legacyTax = round2(subtotal * legacyTaxRate);
         return {
             base, maintenanceFee, subtotal,
-            taxRate: 0, tax: 0, taxed: subtotal,
+            taxRate: legacyTaxRate, tax: legacyTax, taxed: round2(subtotal + legacyTax),
             feePct: 0, fee: 0, feeApplies: false,
             feeReason: 'legacy_pricing',
-            total: subtotal,
+            total: round2(subtotal + legacyTax),
             newPricing: false,
-            lines: buildLines({ base, maintenanceFee, tax: 0, taxRate: 0, fee: 0, feePct: 0, planType: p.plan_type }),
+            lines: buildLines({ base, maintenanceFee, tax: legacyTax, taxRate: legacyTaxRate,
+                                fee: 0, feePct: 0, planType: p.plan_type }),
         };
     }
 

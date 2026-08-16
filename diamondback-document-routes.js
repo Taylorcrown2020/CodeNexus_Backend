@@ -20,6 +20,10 @@
 // ============================================================================
 
 const docs = require('./diamondback-documents.js');
+// The outstanding figure has to be the REAL amount — base + tax + any credit
+// card surcharge — or the home screen quotes one number and the card is charged
+// another. Same engine the charge path uses.
+const pricingEngine = require('./diamondback-pricing.js');
 
 const {
     COMPANY, buildAgreementDocument, renderAgreementHTML, renderAgreementText,
@@ -374,10 +378,19 @@ module.exports = function initDocumentRoutes({
                     mp.next_charge_date, ${intervalCol} AS interval_unit,
                     ${periodStart} AS period_start,
                     (${periodClause}) AS period_unpaid,
-                    pc.effective_at AS cancels_at
+                    pc.effective_at AS cancels_at,
+                    mp.tax_rate, mp.processing_fee_pct, mp.pricing_effective_from,
+                    -- The method this plan will actually be charged on. The
+                    -- processing fee is credit-card-only, so the amount owed
+                    -- cannot be known without it.
+                    pmeth.type AS pm_type, pmeth.funding AS pm_funding
                FROM maintenance_plans mp
                LEFT JOIN plan_cancellations pc
                       ON pc.maintenance_plan_id = mp.id AND pc.status = 'pending'
+               LEFT JOIN leads l ON l.id = mp.lead_id
+               LEFT JOIN payment_methods pmeth
+                      ON pmeth.id = COALESCE(mp.payment_method_id, l.default_payment_method_id)
+                     AND pmeth.status = 'active'
               WHERE mp.lead_id = $1
                 AND mp.status IN ('active','past_due','pending_cancellation')
                 AND ${signedClause}
@@ -390,7 +403,12 @@ module.exports = function initDocumentRoutes({
         const today = new Date(); today.setHours(0, 0, 0, 0);
 
         plans.forEach((p) => {
-            const amount = Number(p.amount || 0);
+            // NOT p.amount. That is the base rate before sales tax and before
+            // the credit card processing fee — quoting it as the balance means
+            // the customer sees $450.00 and gets charged $501.74.
+            const method = p.pm_type ? { type: p.pm_type, funding: p.pm_funding } : null;
+            const price = pricingEngine.priceFor(p, method);
+            const amount = price.total;
             const cancelsAt = p.cancels_at ? new Date(p.cancels_at) : null;
             const dueDate = p.next_charge_date ? new Date(p.next_charge_date) : null;
 
@@ -423,6 +441,15 @@ module.exports = function initDocumentRoutes({
                 status: p.status,
                 cancelsAt: p.cancels_at || null,
                 cancelsAtLabel: prettyDate(p.cancels_at),
+                // So the portal can show WHY the figure is what it is, rather
+                // than a total the customer can't reconcile against the rate
+                // they signed for.
+                baseAmount: price.base,
+                tax: price.tax,
+                processingFee: price.fee,
+                feeApplies: price.feeApplies,
+                breakdown: price.lines,
+                feeNote: pricingEngine.feeExplanation(price),
             };
 
             if (p.interval_unit === 'year') {

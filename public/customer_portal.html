@@ -752,17 +752,62 @@ async function vHome(){
                    : dueNow.reduce((t,i) => t + Number(i.total_amount || 0), 0);
   const dueCount = OUT ? Number(OUT.count || 0) : dueNow.length;
   const planDue = OUT ? (OUT.dueNow || []).filter(x => x.kind === 'plan') : [];
+
+  /* WHAT CAN ACTUALLY BE PAID RIGHT NOW.
+     Not the same thing as what is outstanding. An autopay plan has no invoice
+     behind it — it charges itself on its date — so there is nothing for the
+     customer to pay and no payment sheet to open. Offering "Pay now" for one
+     was offering an action that does not exist: the button navigated to
+     Billing, where there was also nothing to pay, which is what made it look
+     broken.
+     Invoices are payable. Plans are not. */
+  const payableInvoices = OUT
+    ? (OUT.dueNow || []).filter(x => x.kind === 'invoice')
+    : dueNow.map(i => ({invoiceId: i.id, amount: Number(i.total_amount || 0)}));
+  const payableTotal = payableInvoices.reduce((t,x) => t + Number(x.amount || 0), 0);
+  /* A failed autopay charge is the one plan case the customer can act on — not
+     by paying an invoice, but by fixing the card we could not charge. */
+  const planOverdue = planDue.filter(p => p.overdue);
+  const nextPlanCharge = planDue.filter(p => !p.overdue)
+    .sort((a,b) => new Date(a.dueDate || 0) - new Date(b.dueDate || 0))[0] || null;
+
   const parts = money(owed).split('.');
 
   M().innerHTML =
     '<div class="balance">' +
       '<small>Outstanding balance</small>' +
       '<div class="amt">' + parts[0] + '<span class="cents">.' + parts[1] + '</span></div>' +
-      '<div class="note">' + (dueCount
-        ? dueCount + ' payment' + (dueCount === 1 ? '' : 's') + ' due now'
-        : 'You&rsquo;re all paid up &mdash; nothing due right now.') +
+      '<div class="note">' + (
+        dueCount === 0 ? 'You&rsquo;re all paid up &mdash; nothing due right now.'
+        /* Say what the money actually is. "2 payments due now" next to a
+           balance made entirely of automatic charges reads as a demand, and
+           the customer goes looking for a way to pay something that will pay
+           itself. */
+        : payableInvoices.length === 0 && nextPlanCharge
+          ? 'Scheduled automatically &mdash; charges on ' + esc(nextPlanCharge.dueDateLabel || 'its due date') +
+            '. Nothing for you to do.'
+        : payableInvoices.length === 0 && planOverdue.length
+          ? 'We couldn&rsquo;t take ' + (planOverdue.length === 1 ? 'this payment' : 'these payments') +
+            ' automatically. Check your payment method.'
+        : payableInvoices.length + ' invoice' + (payableInvoices.length === 1 ? '' : 's') + ' to pay' +
+          (planDue.length ? ' &middot; ' + money(planDue.reduce((t,p) => t + Number(p.amount || 0), 0)) + ' on autopay' : '')
+      ) +
         (laterTotal > 0 ? ' &middot; ' + money(laterTotal) + ' due on completion' : '') + '</div>' +
-      (dueCount ? '<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="go(\'billing\')">Pay now</button>' : '') +
+
+      /* The button offers only what is genuinely possible:
+           one invoice   -> open that payment sheet directly
+           several       -> Billing, where each has its own Pay button
+           none, failed  -> fix the payment method
+           none, healthy -> no button at all */
+      (payableInvoices.length === 1
+        ? '<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="openPay(' +
+            Number(payableInvoices[0].invoiceId) + ')">Pay ' + money(payableInvoices[0].amount) + '</button>'
+        : payableInvoices.length > 1
+          ? '<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="go(\'billing\')">Pay ' +
+              money(payableTotal) + ' &mdash; ' + payableInvoices.length + ' invoices</button>'
+          : planOverdue.length
+            ? '<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="go(\'billing\')">Update payment method</button>'
+            : '') +
     '</div>' +
 
     /* Monthly plans owed for the current period. Shown separately from
@@ -771,17 +816,31 @@ async function vHome(){
        without being handed a Pay button that does nothing. */
     (planDue.length ?
       '<div class="card">' +
-        '<div class="card-h"><h3>This month&rsquo;s plans</h3>' +
+        '<div class="card-h"><h3>' +
+          (planDue.every(p => p.cancelsAt) ? 'Final plan charges' : 'This month&rsquo;s plans') + '</h3>' +
           '<span class="tag ' + (planDue.some(p => p.overdue) ? 'amber' : 'grey') + '">' +
           money(planDue.reduce((t,p) => t + Number(p.amount || 0), 0)) + '</span></div>' +
         planDue.map(p =>
           '<div class="row">' +
             '<div class="chip green"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></div>' +
             '<div class="row-body"><b>' + esc(p.label || 'Plan') + '</b>' +
-              '<span>' + (p.overdue ? 'Payment overdue' : 'Charges automatically') +
-                (p.dueDateLabel ? ' &middot; ' + esc(p.dueDateLabel) : '') + '</span></div>' +
+              '<span>' + (p.overdue ? 'Payment overdue'
+                        : p.cancelsAt ? 'Final charge before cancelling'
+                        : 'Charges automatically') +
+                (p.dueDateLabel ? ' &middot; ' + esc(p.dueDateLabel) : '') + '</span>' +
+              /* Home now says the same thing Billing does about a cancelling
+                 plan, instead of presenting it as an ordinary renewal. */
+              (p.cancelsAt ? '<span>Cancels ' + esc(p.cancelsAtLabel || '') + '</span>' : '') +
+            '</div>' +
             '<div class="row-end"><b>' + money(p.amount) + '</b>' +
-              '<span>' + (p.overdue ? 'Past due' : 'Autopay') + '</span></div>' +
+              '<span>' + (p.overdue ? 'Past due' : p.cancelsAt ? 'Cancelling' : 'Autopay') + '</span>' +
+              /* p.amount is the real total — base + tax + any card surcharge.
+                 The base is shown underneath so the customer can reconcile it
+                 against the rate on their agreement. */
+              (p.baseAmount != null && Number(p.baseAmount) !== Number(p.amount)
+                ? '<span>' + money(p.baseAmount) + ' + tax' +
+                  (Number(p.processingFee) > 0 ? ' + fee' : '') + '</span>' : '') +
+            '</div>' +
           '</div>').join('') +
       '</div>' : '') +
 
@@ -995,13 +1054,31 @@ function planCard(p){
     '</div>' +
     (cancelling ? '<div class="alert alert-warn" style="margin:12px 0 0">Ends ' + fmtDate(p.cancels_at) +
       (p.days_until_cancellation != null ? ' &mdash; ' + p.days_until_cancellation + ' day' + (p.days_until_cancellation === 1 ? '' : 's') + ' away' : '') +
-      '. ' + (p.kind === 'crm' ? 'You keep CRM access until then.' : 'Service continues until then.') + '</div>' : '') +
+      '. ' + (p.kind === 'crm' ? 'You keep CRM access until then.' : 'Service continues until then.') +
+      /* When a charge inside the notice window paid for a period running past
+         the 30 days, the end date moves out to cover it. Saying so stops the
+         later date looking like a mistake. */
+      ' You keep everything you&rsquo;ve paid for through that date.' + '</div>' : '') +
     (needsSig ? '<div class="alert alert-info" style="margin:12px 0 0">Needs your signature before it can start. Nothing is charged until you sign.</div>' : '') +
     (needsPm ? '<div class="alert alert-info" style="margin:12px 0 0">Signed &mdash; add a payment method to start the plan.</div>' : '') +
+    /* A cancelling plan has no "first payment" and does not "renew monthly".
+       The old line said both, because it only distinguished active from
+       everything-else — so a plan you had just cancelled cheerfully announced
+       when its first payment would be and that it renews monthly. */
     (p.next_charge_date
-      ? '<div style="font-size:13px;color:var(--muted);margin-top:10px">' +
-        (p.status === 'active' ? 'Next payment ' : 'First payment ') + fmtDate(p.next_charge_date) +
-        (p.interval_unit === 'year' ? ' &middot; renews yearly' : ' &middot; then monthly') + '</div>' : '') +
+      ? '<div style="font-size:13px;color:var(--muted);margin-top:10px">' + (
+          cancelling
+            ? (new Date(p.next_charge_date) < new Date(p.cancels_at || p.next_charge_date)
+                ? 'Final payment ' + fmtDate(p.next_charge_date) + ' &middot; no further charges'
+                : 'No further charges')
+          : needsSig ? 'First payment ' + fmtDate(p.next_charge_date) + ' &middot; once signed'
+          : needsPm  ? 'First payment ' + fmtDate(p.next_charge_date) + ' &middot; once a method is added'
+          : p.status === 'active'
+              ? 'Next payment ' + fmtDate(p.next_charge_date) +
+                (p.interval_unit === 'year' ? ' &middot; renews yearly' : ' &middot; then monthly')
+              : 'First payment ' + fmtDate(p.next_charge_date) +
+                (p.interval_unit === 'year' ? ' &middot; renews yearly' : ' &middot; then monthly')
+        ) + '</div>' : '') +
     '<div style="display:flex;gap:9px;margin-top:13px;flex-wrap:wrap">' +
       (needsSig && p.agreement_id ? '<button class="btn btn-primary btn-sm" onclick="openSign(' + p.agreement_id + ')">Review &amp; sign</button>' : '') +
       (p.can_change_payment_method && !needsSig

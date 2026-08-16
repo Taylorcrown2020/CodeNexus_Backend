@@ -1013,7 +1013,16 @@ function payRow(p){
     '</div>' +
     '<div class="row-end" style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">' +
       '<b>' + money(p.amount) + '</b>' +
-      '<span>' + esc(String(p.receipt_number || '').slice(0,14)) + '</span>' +
+      /* Receipt numbers were sliced at 14 chars, which cut generated ones
+         mid-token and rendered "RCPT-MSV0UW80-" with a dangling dash. Break on
+         a separator instead, so what is shown is always a whole segment. */
+      '<span title="' + esc(p.receipt_number || '') + '">' +
+        esc((function(rn){
+          rn = String(rn || '');
+          if(rn.length <= 18) return rn;
+          const cut = rn.lastIndexOf('-', 18);
+          return (cut > 4 ? rn.slice(0, cut) : rn.slice(0, 18)) + '…';
+        })(p.receipt_number)) + '</span>' +
       '<button class="btn btn-ghost btn-sm" onclick="downloadReceipt(' + p.id + ',this)">Receipt</button>' +
     '</div>' +
   '</div>';

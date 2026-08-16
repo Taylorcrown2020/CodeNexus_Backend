@@ -1175,6 +1175,24 @@ async function agreementPDF(document) {
     return pdfToBuffer(pdf);
 }
 
+/**
+ * One label-and-amount row on a single line.
+ *
+ * pdf.text() MOVES pdf.y, so writing the label and then the amount at `pdf.y`
+ * puts the amount on the NEXT line — which is exactly what the breakdown block
+ * was doing. Both halves are drawn at a captured y, and pdf.y is set explicitly
+ * afterwards.
+ */
+function moneyRow(pdf, label, value, { bold = false, size = 9.5, gap = 16 } = {}) {
+    const y = pdf.y;
+    pdf.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(size)
+       .fillColor(bold ? PALETTE.INK_STRONG : PALETTE.INK);
+    pdf.text(label, PAGE.margin, y, { width: CONTENT_WIDTH - 120, lineBreak: false });
+    pdf.text(value, PAGE.margin + CONTENT_WIDTH - 120, y,
+             { width: 120, align: 'right', lineBreak: false });
+    pdf.y = y + gap;
+}
+
 /** Uppercase label with the heavy rule beneath it. Used throughout. */
 function sectionHeading(pdf, text) {
     pdf.font('Helvetica-Bold').fontSize(9).fillColor(PALETTE.INK_STRONG)
@@ -1216,8 +1234,11 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
     // Width stops short of the right column so the address can't run underneath
     // the receipt number stacked there.
     pdf.font('Helvetica').fontSize(8).fillColor(PALETTE.INK_INVERSE)
-       .text(`${COMPANY.addressOneLine}  ·  ${COMPANY.phone}  ·  ${COMPANY.email}`,
-             PAGE.margin, 52, { width: CONTENT_WIDTH - 175 });
+       .text(COMPANY.addressOneLine, PAGE.margin, 50,
+             { width: CONTENT_WIDTH - 175, lineBreak: false });
+    pdf.font('Helvetica').fontSize(8).fillColor(PALETTE.INK_INVERSE)
+       .text(`${COMPANY.phone}  ·  ${COMPANY.email}`, PAGE.margin, 62,
+             { width: CONTENT_WIDTH - 175, lineBreak: false });
     pdf.font('Helvetica-Bold').fontSize(9).fillColor(PALETTE.INK_INVERSE)
        .text('RECEIPT', PAGE.width - PAGE.margin - 120, 28,
              { width: 120, align: 'right', characterSpacing: 2.4 });
@@ -1282,6 +1303,20 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
         p.stripe_charge_id ? ['Processor reference', p.stripe_charge_id] : null,
     ].filter(Boolean);
 
+    // Breakdown for an autopay charge, which has no invoice behind it. Without
+    // this the customer sees only a total and cannot tell how much of it was
+    // tax or the card surcharge — and an undisclosed surcharge is a chargeback
+    // waiting to happen.
+    const hasBreakdown = Number(p.tax_amount || 0) > 0 || Number(p.processing_fee || 0) > 0;
+    const breakdownLines = hasBreakdown ? [
+        ['Plan', money(p.base_amount ?? (Number(p.amount || 0)
+            - Number(p.tax_amount || 0) - Number(p.processing_fee || 0)))],
+        Number(p.tax_amount || 0) > 0 ? ['Sales tax', money(p.tax_amount)] : null,
+        Number(p.processing_fee || 0) > 0
+            ? ['Credit card processing fee', money(p.processing_fee)] : null,
+        ['Total charged', money(p.amount)],
+    ].filter(Boolean) : null;
+
     const dRowH = 19;
     const dPanelH = details.length * dRowH + 16;
     const dTop = pdf.y;
@@ -1296,23 +1331,37 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
     });
     pdf.y = dTop + dPanelH + 22;
 
+    // ---- breakdown for an autopay charge (no invoice) ----------------------
+    if (breakdownLines && !invoice) {
+        sectionHeading(pdf, 'BREAKDOWN');
+        breakdownLines.forEach(([k, v], i) => {
+            const last = i === breakdownLines.length - 1;
+            moneyRow(pdf, k, v, { bold: last, size: last ? 10.5 : 9.5, gap: last ? 20 : 16 });
+        });
+        if (Number(p.processing_fee || 0) > 0) {
+            pdf.font('Helvetica-Oblique').fontSize(8).fillColor(PALETTE.INK_MUTED)
+               .text('The processing fee applies to credit card payments only. Paying by bank '
+                   + 'account or debit card avoids it — you can switch in your customer portal.',
+                     PAGE.margin, pdf.y, { width: CONTENT_WIDTH, lineGap: 1.2 });
+            pdf.y += 14;
+        }
+    }
+
     // ---- invoice breakdown, when one exists --------------------------------
     if (invoice) {
         sectionHeading(pdf, 'BREAKDOWN');
         const lines = [
             ['Subtotal', money(invoice.subtotal ?? invoice.amount ?? p.amount)],
             invoice.tax_amount ? [`Sales tax (${Number(invoice.tax_rate || COMPANY.taxRatePct)}%)`, money(invoice.tax_amount)] : null,
-            invoice.processing_fee ? ['Processing fee', money(invoice.processing_fee)] : null,
+            // Named as a CREDIT CARD surcharge, not a vague "processing fee".
+            // Card network rules require the surcharge be identified as such on
+            // the receipt; a generic label does not satisfy that.
+            invoice.processing_fee ? ['Credit card processing fee', money(invoice.processing_fee)] : null,
             ['Invoice total', money(invoice.total_amount ?? p.amount)],
         ].filter(Boolean);
         lines.forEach(([k, v], i) => {
             const last = i === lines.length - 1;
-            pdf.font(last ? 'Helvetica-Bold' : 'Helvetica').fontSize(last ? 10.5 : 9.5)
-               .fillColor(last ? PALETTE.INK_STRONG : PALETTE.INK)
-               .text(k, PAGE.margin, pdf.y, { width: CONTENT_WIDTH - 110, lineBreak: false });
-            pdf.text(v, PAGE.margin + CONTENT_WIDTH - 110, pdf.y,
-                     { width: 110, align: 'right', lineBreak: false });
-            pdf.y += last ? 20 : 16;
+            moneyRow(pdf, k, v, { bold: last, size: last ? 10.5 : 9.5, gap: last ? 20 : 16 });
         });
     }
 
@@ -1321,20 +1370,17 @@ async function receiptPDF({ payment, lead = {}, invoice = null, plan = null, ref
         ensureRoom(pdf, 70);
         sectionHeading(pdf, 'REFUNDS AGAINST THIS PAYMENT');
         refunds.forEach((r) => {
+            const y = pdf.y;
             pdf.font('Helvetica').fontSize(9.5).fillColor(PALETTE.INK)
                .text(`${prettyDate(r.created_at) || ''}${r.reason ? ` — ${r.reason}` : ''}`,
-                     PAGE.margin, pdf.y, { width: CONTENT_WIDTH - 110, lineBreak: false });
+                     PAGE.margin, y, { width: CONTENT_WIDTH - 120, lineBreak: false });
             pdf.font('Helvetica-Bold').fillColor(PALETTE.ATTENTION)
-               .text(`-${money(r.amount)}`, PAGE.margin + CONTENT_WIDTH - 110, pdf.y,
-                     { width: 110, align: 'right', lineBreak: false });
-            pdf.y += 17;
+               .text(`-${money(r.amount)}`, PAGE.margin + CONTENT_WIDTH - 120, y,
+                     { width: 120, align: 'right', lineBreak: false });
+            pdf.y = y + 17;
         });
         pdf.y += 4;
-        pdf.font('Helvetica-Bold').fontSize(11).fillColor(PALETTE.INK_STRONG)
-           .text('NET RETAINED', PAGE.margin, pdf.y, { width: CONTENT_WIDTH - 110, lineBreak: false });
-        pdf.text(money(netPaid), PAGE.margin + CONTENT_WIDTH - 110, pdf.y,
-                 { width: 110, align: 'right', lineBreak: false });
-        pdf.y += 22;
+        moneyRow(pdf, 'NET RETAINED', money(netPaid), { bold: true, size: 11, gap: 22 });
     }
 
     // ---- closing note ------------------------------------------------------

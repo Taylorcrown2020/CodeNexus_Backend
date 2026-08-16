@@ -143,24 +143,58 @@ module.exports = function initLifecycle({
     // Every other plan_type is unaffected: planChargeTotal() just returns
     // plan.amount for them.
     // ======================================================================
-    const DOMAIN_MAINTENANCE_FEE = 14.99;   // mandatory annual domain maintenance fee
-    const DOMAIN_RENEWAL_TAX_RATE = 0.0825; // confirm this matches the rate you actually need to charge
+    // ----------------------------------------------------------------------
+    // Pricing now lives in diamondback-pricing.js — one function, priceFor(),
+    // that every charge, invoice, agreement and receipt resolves through.
+    //
+    // The domain-renewal arithmetic that used to sit here is inside it, along
+    // with sales tax and the credit-card processing fee. Keeping two copies of
+    // this maths is how the signed agreement, the Stripe charge and the receipt
+    // ended up able to disagree, so there is deliberately only one now.
+    //
+    // THE FEE IS CREDIT-ONLY. Surcharging a debit or prepaid card is prohibited
+    // by federal law (Durbin Amendment), so it depends on the payment method,
+    // which means the total is not knowable from the plan row alone. Pass the
+    // method wherever you have it.
+    // ----------------------------------------------------------------------
+    const pricing = require('./diamondback-pricing.js');
+    const DOMAIN_MAINTENANCE_FEE = pricing.DOMAIN_MAINTENANCE_FEE;
 
-    function domainRenewalPricing(baseAmount) {
-        const base = Math.round((Number(baseAmount) || 0) * 100) / 100;
-        const fee = DOMAIN_MAINTENANCE_FEE;
-        const taxable = base + fee;
-        const tax = Math.round(taxable * DOMAIN_RENEWAL_TAX_RATE * 100) / 100;
-        const total = Math.round((taxable + tax) * 100) / 100;
-        return { base, fee, taxRate: DOMAIN_RENEWAL_TAX_RATE, tax, total };
+    /** Full breakdown for a plan on a given payment method. */
+    function planPricing(plan, method = null, opts = {}) {
+        return pricing.priceFor(plan, method, opts);
     }
 
-    /** The real amount to sign/invoice/charge/display for ANY plan. */
-    function planChargeTotal(plan) {
-        if (plan && plan.plan_type === 'domain_renewal') {
-            return domainRenewalPricing(plan.amount).total;
+    /**
+     * The real amount to sign/invoice/charge/display for ANY plan.
+     *
+     * `method` is optional and defaults to no method, which means NO processing
+     * fee — the safe direction to be wrong in. Every path that actually takes
+     * money passes the real method; display paths that don't have one show the
+     * fee-free figure, which is what a customer paying by bank would owe.
+     */
+    function planChargeTotal(plan, method = null) {
+        return planPricing(plan, method).total;
+    }
+
+    /** The payment method a plan will actually be charged on. */
+    async function methodForPlan(plan) {
+        if (!plan) return null;
+        const id = plan.payment_method_id;
+        try {
+            if (id) {
+                const r = await pool.query('SELECT * FROM payment_methods WHERE id=$1', [id]);
+                if (r.rows[0]) return r.rows[0];
+            }
+            const r = await pool.query(
+                `SELECT pm.* FROM payment_methods pm
+                   JOIN leads l ON l.default_payment_method_id = pm.id
+                  WHERE l.id = $1 AND pm.status = 'active'`, [plan.lead_id]);
+            return r.rows[0] || null;
+        } catch (e) {
+            console.warn('[PRICING] methodForPlan:', e.message);
+            return null;
         }
-        return Number(plan ? plan.amount : 0) || 0;
     }
 
     // ---- interval wording, so nothing says "month" for an annual plan ----
@@ -1566,19 +1600,23 @@ module.exports = function initLifecycle({
         const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [plan.lead_id])).rows[0];
         if (!lead) return { ok: false, error: 'lead missing' };
 
-        // The actual amount to charge/display. For domain_renewal this is
-        // plan.amount PLUS the mandatory maintenance fee PLUS tax — see
-        // domainRenewalPricing(). Everything below uses chargeAmount, never
-        // plan.amount directly, so the customer is never charged, invoiced,
-        // or shown a receipt for the bare domain cost.
-        const pricing = plan.plan_type === 'domain_renewal' ? domainRenewalPricing(plan.amount) : null;
-        const chargeAmount = pricing ? pricing.total : Number(plan.amount) || 0;
-
         // One payment method per ACCOUNT, not per plan. Resolution order:
         // an explicit per-plan override (legacy rows only), then the account
         // default, then any active method. Adding one card therefore covers
         // every plan the customer has.
+        //
+        // RESOLVED BEFORE PRICING, not after: the processing fee applies only
+        // to a credit card, so the amount is not knowable until we know what
+        // we are charging. Getting this order wrong is how you surcharge a
+        // debit card, which is a federal violation.
         const pm = await resolvePaymentMethod(plan.lead_id, plan.payment_method_id);
+
+        // The one source of truth for the amount: base + domain maintenance fee
+        // (renewals only) + sales tax + credit-card processing fee. Everything
+        // below uses priced.total, never plan.amount, so the charge, the
+        // receipt and the agreement cannot disagree.
+        const priced = planPricing(plan, pm);
+        const chargeAmount = priced.total;
 
         if (!pm) {
             // LOOPHOLE FIX: without this the plan just stopped billing and the
@@ -1595,11 +1633,15 @@ module.exports = function initLifecycle({
                   WHERE id=$1`,
                 [plan.id, missed]
             );
+            // No method means no surcharge, so this quote is the fee-free
+            // figure — which is also exactly what they would owe if they add a
+            // bank account or debit card.
+            const owedNoMethod = planPricing(plan, null).total;
             await notify({
                 lead, kind: 'maintenance_no_method',
                 subject: `Action needed — ${plan.label} has no payment method`,
                 bodyHtml: `<p style="margin:0 0 12px">We couldn't bill your <strong style="color:#0d0f12">${plan.label}</strong> plan because there's no payment method on file.</p>
-                           <p style="margin:0 0 12px">This period (${money(chargeAmount)}) is still owed. Add a method in your portal and we'll settle it straight away.</p>
+                           <p style="margin:0 0 12px">This period (${money(owedNoMethod)}) is still owed. Add a method in your portal and we'll settle it straight away.</p>
                            <p style="margin:0">${missed >= 3 ? 'The plan is now suspended until a method is added.' : 'The plan pauses if we cannot bill it after three attempts.'}</p>`,
                 smsText: `Diamondback Coding: ${plan.label} couldn't be billed — no payment method on file. Add one in your portal.`,
                 channels: ['email', 'sms', 'portal'],
@@ -2405,22 +2447,55 @@ module.exports = function initLifecycle({
             await pool.query('UPDATE payment_methods SET is_default=FALSE WHERE lead_id=$1', [leadId]);
         }
 
-        const r = await pool.query(
-            `INSERT INTO payment_methods
-                (lead_id, stripe_customer_id, stripe_pm_id, type, brand, last4,
-                 exp_month, exp_year, bank_name, is_default, status)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'active')
-             ON CONFLICT (stripe_pm_id) DO UPDATE
-                SET status='active', is_default=EXCLUDED.is_default
-             RETURNING *`,
-            [leadId, stripeCustomerId, pm.id, pm.type,
-             isCard ? card.brand : null,
-             isCard ? card.last4 : bank.last4,
-             isCard ? card.exp_month : null,
-             isCard ? card.exp_year : null,
-             isCard ? null : bank.bank_name,
-             makeDefault]
-        );
+        // card.funding is 'credit' | 'debit' | 'prepaid' | 'unknown'. It is the
+        // ONLY thing that makes credit-only surcharging possible, and
+        // surcharging a debit card is a federal violation — so if Stripe
+        // doesn't tell us, we store 'unknown' and the pricing engine declines
+        // to charge the fee rather than guessing.
+        const funding = isCard ? String(card.funding || 'unknown').toLowerCase() : 'unknown';
+
+        let r;
+        try {
+            r = await pool.query(
+                `INSERT INTO payment_methods
+                    (lead_id, stripe_customer_id, stripe_pm_id, type, brand, last4,
+                     exp_month, exp_year, bank_name, is_default, status,
+                     funding, funding_checked_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'active',$11,NOW())
+                 ON CONFLICT (stripe_pm_id) DO UPDATE
+                    SET status='active', is_default=EXCLUDED.is_default,
+                        funding=EXCLUDED.funding, funding_checked_at=NOW()
+                 RETURNING *`,
+                [leadId, stripeCustomerId, pm.id, pm.type,
+                 isCard ? card.brand : null,
+                 isCard ? card.last4 : bank.last4,
+                 isCard ? card.exp_month : null,
+                 isCard ? card.exp_year : null,
+                 isCard ? null : bank.bank_name,
+                 makeDefault, funding]
+            );
+        } catch (e) {
+            // Pre-012 database: save without the funding columns rather than
+            // refusing to store the customer's card.
+            console.warn('[PRICING] payment_methods.funding unavailable — '
+                       + 'run migrations/012_tax_and_processing_fee.sql:', e.message);
+            r = await pool.query(
+                `INSERT INTO payment_methods
+                    (lead_id, stripe_customer_id, stripe_pm_id, type, brand, last4,
+                     exp_month, exp_year, bank_name, is_default, status)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'active')
+                 ON CONFLICT (stripe_pm_id) DO UPDATE
+                    SET status='active', is_default=EXCLUDED.is_default
+                 RETURNING *`,
+                [leadId, stripeCustomerId, pm.id, pm.type,
+                 isCard ? card.brand : null,
+                 isCard ? card.last4 : bank.last4,
+                 isCard ? card.exp_month : null,
+                 isCard ? card.exp_year : null,
+                 isCard ? null : bank.bank_name,
+                 makeDefault]
+            );
+        }
 
         // One method per account: adding one makes it the default for
         // everything and releases any plan that was waiting for a card.
@@ -4014,9 +4089,16 @@ module.exports = function initLifecycle({
 
             // Every scheduled charge landing inside the notice window. The
             // service runs until the effective date, so those periods are owed.
+            // STRICTLY BEFORE the effective date. A charge landing exactly ON
+            // the end date opens a period that runs entirely after the plan has
+            // ended — billing it charges for service never provided. This must
+            // stay in step with the outstanding rule in
+            // diamondback-document-routes.js, which drops any charge dated
+            // >= the cancellation date; if one uses <= and the other <, the
+            // balance and the settlement quote disagree by a month.
             let cursor = plan.next_charge_date ? new Date(plan.next_charge_date) : null;
             let guard = 0;
-            while (cursor && cursor <= effective && guard < 24) {
+            while (cursor && cursor < effective && guard < 24) {
                 lines.push({
                     kind: 'notice_period',
                     label: `${plan.label} — ${prettyDate(cursor)}`,
@@ -4688,7 +4770,11 @@ module.exports = function initLifecycle({
             // fee + tax — see domainRenewalPricing(). Front ends should
             // display this, not `amount`.
             charge_total: planChargeTotal(p),
-            fee_breakdown: p.plan_type === 'domain_renewal' ? domainRenewalPricing(p.amount) : null,
+            // Full breakdown — base, domain fee, tax, and the credit-card
+            // processing fee. Priced WITHOUT a method, so this is the fee-free
+            // figure; the portal shows the credit total separately from the
+            // per-method quote, because we cannot know here how they will pay.
+            fee_breakdown: planPricing(p, null),
             billing_day: p.billing_day,
             interval_unit: p.interval_unit || 'month',
             billing_start_date: p.billing_start_date,
@@ -5364,7 +5450,11 @@ module.exports = function initLifecycle({
                 // domainRenewalPricing(). Equal to p.amount except for
                 // domain_renewal plans, which add the mandatory fee + tax.
                 charge_total: planChargeTotal(p),
-                fee_breakdown: p.plan_type === 'domain_renewal' ? domainRenewalPricing(p.amount) : null,
+                // Full breakdown — base, domain fee, tax, and the credit-card
+            // processing fee. Priced WITHOUT a method, so this is the fee-free
+            // figure; the portal shows the credit total separately from the
+            // per-method quote, because we cannot know here how they will pay.
+            fee_breakdown: planPricing(p, null),
                 days_until_cancellation: p.cancels_at
                     ? Math.max(0, Math.ceil((new Date(p.cancels_at) - Date.now()) / 86400000))
                     : null,
@@ -5505,21 +5595,56 @@ module.exports = function initLifecycle({
                 plan.billing_start_date = dateOnly(new Date());
             }
 
-            // For domain_renewal, `amount` is the domain cost only — the
-            // mandatory maintenance fee and tax are added here, ONCE, so the
-            // number the customer signs already matches what they'll actually
-            // be charged (see chargeMaintenancePlan / domainRenewalPricing).
-            const pricing = planType === 'domain_renewal' ? domainRenewalPricing(amount) : null;
-            const totalToSign = pricing ? pricing.total : Number(amount);
+            // What this plan costs, priced ONCE here so the signed number and
+            // the eventual charge cannot drift.
+            //
+            // `amount` is the base only. For a domain renewal the mandatory
+            // maintenance fee is added on top; sales tax applies to every plan;
+            // and a 3% processing fee applies ON TOP OF THAT if — and only if —
+            // they pay by credit card.
+            //
+            // A NEW plan gets the new pricing immediately: its customer is
+            // about to agree to it in the document itself, so there is no
+            // notice period to serve. (Existing plans are a different matter —
+            // see migration 012 section 5.)
+            //
+            // TWO TOTALS, NOT ONE. Because the fee depends on the card type,
+            // there is no single number to sign for. `totalToSign` is the
+            // fee-free figure — what they owe on a bank account or debit card,
+            // and the floor of what they can ever be charged. The credit
+            // total is stated alongside it in the agreement.
+            const planShape = { amount, plan_type: planType, lead_id: leadId,
+                                tax_rate: null, processing_fee_pct: null,
+                                pricing_effective_from: new Date() };
+            const quote       = planPricing(planShape, null, { forceNewPricing: true });
+            const creditQuote = planPricing(planShape, { type: 'card', funding: 'credit' },
+                                            { forceNewPricing: true });
+            const totalToSign = quote.total;
             plan.charge_total = totalToSign;
+
+            // Freeze the rates onto the plan, so a later change to the default
+            // rate cannot silently re-price something already signed.
+            await pool.query(
+                `UPDATE maintenance_plans
+                    SET tax_rate = $2, processing_fee_pct = $3,
+                        pricing_effective_from = COALESCE(pricing_effective_from, CURRENT_DATE),
+                        updated_at = NOW()
+                  WHERE id = $1`,
+                [plan.id, quote.taxRate, creditQuote.feePct]
+            ).catch((e) => console.warn('[PRICING] plan rates not stored — run migration 012:', e.message));
 
             // The plan agreement they sign before autopay can start.
             let agreement = null;
             if (sendAgreement) {
                 const num = `MA-${String(plan.id).padStart(5, '0')}`;
-                const breakdown = pricing
-                    ? ` (domain ${money(pricing.base)} + $${pricing.fee.toFixed(2)} mandatory domain maintenance fee + ${(pricing.taxRate * 100).toFixed(2)}% tax ${money(pricing.tax)})`
-                    : '';
+                // maintenanceFee is the mandatory domain fee. quote.fee is the
+                // CREDIT CARD processing fee and is deliberately zero here —
+                // this quote has no payment method, and the card surcharge is
+                // stated as its own conditional sentence below rather than
+                // folded into a single number the customer might not owe.
+                const breakdown = quote.maintenanceFee > 0
+                    ? ` (domain ${money(quote.base)} + ${money(quote.maintenanceFee)} mandatory domain maintenance fee + ${(quote.taxRate * 100).toFixed(3).replace(/\.?0+$/, '')}% tax ${money(quote.tax)})`
+                    : ` (${money(quote.base)} plus ${(quote.taxRate * 100).toFixed(3).replace(/\.?0+$/, '')}% sales tax ${money(quote.tax)})`;
                 // autopay_* are written here, at creation, so the SIGNED
                 // document carries its own record of what was authorized. A
                 // later edit to maintenance_plans then cannot silently restate
@@ -5530,9 +5655,10 @@ module.exports = function initLifecycle({
                         (agreement_number, lead_id, customer_name, customer_email, service_type,
                          package_name, price, status, agreement_kind, intro, terms,
                          autopay, autopay_interval, autopay_amount, autopay_day,
-                         billing_start_date, created_at, updated_at)
+                         billing_start_date, tax_rate, processing_fee_pct,
+                         created_at, updated_at)
                      VALUES ($1,$2,$3,$4,$5,$6,$7,'sent','maintenance',$8,$9,
-                             TRUE,$10,$7,$11,$12,NOW(),NOW())
+                             TRUE,$10,$7,$11,$12,$13,$14,NOW(),NOW())
                      RETURNING *`,
                     [num, leadId, lead.name, lead.email, planType, plan.label, totalToSign,
                      unit === 'year'
@@ -5557,9 +5683,14 @@ module.exports = function initLifecycle({
                      `contact@diamondbackcoding.com. Cancellation takes effect ${CANCELLATION_NOTICE_DAYS} days after we receive ` +
                      `your request; charges falling due within that notice period remain payable and service continues until ` +
                      `the cancellation date.\n\n` +
+                     `CREDIT CARD PROCESSING FEE. The amount above applies when you pay by bank account (ACH) or debit card. ` +
+                     `If you pay by CREDIT card, a ${(creditQuote.feePct * 100).toFixed(2).replace(/\.?0+$/, '')}% processing fee of ` +
+                     `${money(creditQuote.fee)} is added, making the total ${money(creditQuote.total)} ${unit === 'year' ? 'per year' : 'per month'}. ` +
+                     `This fee is not charged on debit cards, prepaid cards or bank payments, and is never more than our cost of ` +
+                     `accepting the card. You can switch payment method at any time in your portal to avoid it.\n\n` +
                      `If the amount or schedule ever changes we will tell you in writing at least ten (10) days beforehand, and ` +
                      `a change in price requires a new signed agreement from you.`,
-                     unit, day, dateOnly(firstCharge)]
+                     unit, day, dateOnly(firstCharge), quote.taxRate, creditQuote.feePct]
                 );
                 agreement = ag.rows[0];
                 await pool.query('UPDATE maintenance_plans SET agreement_id=$2 WHERE id=$1', [plan.id, agreement.id]);

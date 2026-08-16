@@ -365,12 +365,19 @@ module.exports = function initDocumentRoutes({
             ? 'COALESCE(mp.current_period_start, mp.billing_start_date, mp.next_charge_date)'
             : 'COALESCE(mp.billing_start_date, mp.next_charge_date)';
 
+        // A plan winding down has a cancellation date. Anything falling due ON
+        // OR AFTER that date is never charged, so it must not be shown as
+        // outstanding — see the filter below. Joined here rather than fetched
+        // separately so a plan and its end date can't disagree.
         const plans = await safeRows(
             `SELECT mp.id, mp.label, mp.plan_type, mp.amount, mp.status,
                     mp.next_charge_date, ${intervalCol} AS interval_unit,
                     ${periodStart} AS period_start,
-                    (${periodClause}) AS period_unpaid
+                    (${periodClause}) AS period_unpaid,
+                    pc.effective_at AS cancels_at
                FROM maintenance_plans mp
+               LEFT JOIN plan_cancellations pc
+                      ON pc.maintenance_plan_id = mp.id AND pc.status = 'pending'
               WHERE mp.lead_id = $1
                 AND mp.status IN ('active','past_due','pending_cancellation')
                 AND ${signedClause}
@@ -380,8 +387,28 @@ module.exports = function initDocumentRoutes({
         const monthlyDue = [];
         const annualUpcoming = [];
 
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+
         plans.forEach((p) => {
             const amount = Number(p.amount || 0);
+            const cancelsAt = p.cancels_at ? new Date(p.cancels_at) : null;
+            const dueDate = p.next_charge_date ? new Date(p.next_charge_date) : null;
+
+            // ------------------------------------------------------------
+            // A CANCELLED PLAN STOPS OWING AT ITS CANCELLATION DATE.
+            //
+            // The cancellation terms say charges falling due WITHIN the notice
+            // window remain payable — so a charge dated before the end date
+            // still counts. A charge dated on or after it never happens, and
+            // showing it as outstanding bills someone for a month of service
+            // they will not receive.
+            //
+            // Without this, pressing Cancel left next month's amount sitting in
+            // the balance, and the settlement quote would ask them to pay it
+            // before the cancellation could complete.
+            // ------------------------------------------------------------
+            const endsBeforeCharge = !!(cancelsAt && dueDate && dueDate >= cancelsAt);
+
             const entry = {
                 kind: 'plan',
                 planId: p.id,
@@ -394,19 +421,36 @@ module.exports = function initDocumentRoutes({
                 dueDateLabel: prettyDate(p.next_charge_date),
                 autopay: true,
                 status: p.status,
+                cancelsAt: p.cancels_at || null,
+                cancelsAtLabel: prettyDate(p.cancels_at),
             };
+
             if (p.interval_unit === 'year') {
-                // Annual: informational only. Never counted in dueNow.
-                annualUpcoming.push({ ...entry, outstanding: false });
-            } else if (p.period_unpaid) {
-                monthlyDue.push({
-                    ...entry,
-                    outstanding: true,
-                    // Distinguishes "this month isn't paid yet" from "this is
-                    // late", so the UI can word it without alarming anyone.
-                    overdue: !!(p.next_charge_date && new Date(p.next_charge_date) < new Date()),
-                });
+                // Annual: informational only. Never counted in dueNow. An
+                // annual renewal falling after the cancellation date is not
+                // upcoming either — it simply will not happen.
+                if (!endsBeforeCharge) annualUpcoming.push({ ...entry, outstanding: false });
+                return;
             }
+
+            if (!p.period_unpaid) return;
+
+            // Not billed, so not owed.
+            if (endsBeforeCharge) return;
+
+            // A zero-amount period is not a payment. Prices of 0.00 are
+            // legitimate here (a free period, a bundled service), but counting
+            // one toward "2 payments due now" against a $0.51 balance is just
+            // a wrong sentence on the home screen.
+            if (amount <= 0) return;
+
+            monthlyDue.push({
+                ...entry,
+                outstanding: true,
+                // Distinguishes "this month isn't paid yet" from "this is
+                // late", so the UI can word it without alarming anyone.
+                overdue: !!(dueDate && dueDate < today),
+            });
         });
 
         // ---- invoices -------------------------------------------------------
@@ -454,7 +498,9 @@ module.exports = function initDocumentRoutes({
                 annualUpcoming.reduce((s, x) => s + x.amount, 0) * 100) / 100,
             // Stated in the payload so the UI copy and this rule can't diverge.
             rule: 'Monthly plans count as outstanding for the current period even before the '
-                + 'charge date. Annual plans are shown under Billing and charged on their renewal date.',
+                + 'charge date. Annual plans are shown under Billing and charged on their renewal '
+                + 'date. A plan with a cancellation in progress stops counting from its '
+                + 'cancellation date, because nothing is charged on or after it.',
         };
     }
 

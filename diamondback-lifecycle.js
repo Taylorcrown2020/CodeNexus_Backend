@@ -4714,9 +4714,132 @@ module.exports = function initLifecycle({
     // ======================================================================
 
     // ---- customer portal: payment history --------------------------------
+    /**
+     * SELF-REPAIR: create the missing ledger rows for this customer, now.
+     *
+     * Three different code paths could mark an invoice `status='paid'`, and
+     * only one of them ever wrote to `payments`. Every invoice paid through the
+     * Stripe Checkout webhook — and every invoice paid before that was fixed —
+     * shows as paid with no receipt anywhere, because Receipts, Payment history
+     * and the receipt PDF route all read from `payments`.
+     *
+     * Fixing the write paths only helps payments made from now on. The rows
+     * already in the database stay broken until something repairs them, and a
+     * repair that requires shelling into the server to run a script is a repair
+     * that does not happen. So it happens here, when the customer opens the
+     * page that would otherwise be wrong.
+     *
+     * Cheap: one indexed query that returns nothing in the normal case, and it
+     * never writes twice — a payment is matched by invoice_id OR by the Stripe
+     * reference, so an existing row in either shape blocks the insert.
+     */
+    async function repairMissingReceipts(leadId) {
+        try {
+            const cols = await pool.query(
+                `SELECT column_name FROM information_schema.columns WHERE table_name='payments'`);
+            const have = new Set(cols.rows.map((c) => c.column_name));
+            if (!have.has('receipt_number')) return 0;   // pre-011 database
+            const extended = have.has('base_amount') && have.has('tax_amount')
+                          && have.has('processing_fee');
+
+            const gaps = await pool.query(
+                `SELECT i.id, i.invoice_number, i.total_amount, i.subtotal, i.tax_amount,
+                        i.paid_at, i.payment_method, i.payment_reference,
+                        i.maintenance_plan_id, i.lead_id, i.created_at
+                   FROM invoices i
+                   LEFT JOIN payments byinv ON byinv.invoice_id = i.id
+                   LEFT JOIN payments bypi  ON i.payment_reference IS NOT NULL
+                                           AND bypi.stripe_payment_intent_id = i.payment_reference
+                  WHERE i.lead_id = $1
+                    AND i.status = 'paid'
+                    AND byinv.id IS NULL
+                    AND bypi.id IS NULL`,
+                [leadId]);
+
+            // Always report the picture, so the Render logs answer "why is my
+            // receipt missing" without anyone shelling in to run a script.
+            const audit = await pool.query(
+                `SELECT
+                    (SELECT COUNT(*)::int FROM invoices WHERE lead_id=$1) AS invoices_total,
+                    (SELECT COUNT(*)::int FROM invoices WHERE lead_id=$1 AND status='paid') AS invoices_paid,
+                    (SELECT COUNT(*)::int FROM payments WHERE lead_id=$1) AS payments_total`,
+                [leadId]);
+            const a = audit.rows[0];
+            console.log(`[RECEIPTS] lead ${leadId}: ${a.invoices_paid} paid invoice(s), `
+                      + `${a.payments_total} payment(s) on file, ${gaps.rows.length} gap(s) to repair.`);
+
+            if (!gaps.rows.length) {
+                // No gaps, but fewer payments than paid invoices means rows
+                // exist under a DIFFERENT lead_id and this customer cannot see
+                // them — a different bug with a different fix, worth naming.
+                if (a.payments_total < a.invoices_paid) {
+                    const mismatched = await pool.query(
+                        `SELECT p.id, p.lead_id AS pay_lead, i.lead_id AS inv_lead, i.invoice_number
+                           FROM payments p JOIN invoices i ON i.id = p.invoice_id
+                          WHERE i.lead_id = $1 AND COALESCE(p.lead_id,-1) <> COALESCE(i.lead_id,-1)`,
+                        [leadId]);
+                    mismatched.rows.forEach((x) => console.warn(
+                        `[RECEIPTS] payment ${x.id} on ${x.invoice_number} is attached to lead `
+                        + `${x.pay_lead} but the invoice belongs to lead ${x.inv_lead} — `
+                        + `the customer cannot see it.`));
+                }
+                return 0;
+            }
+
+            let made = 0;
+            for (const inv of gaps.rows) {
+                // paid_at is the truth about when. Falling back to created_at
+                // rather than NOW() keeps an old payment showing its real date
+                // instead of today's.
+                const paidAt = inv.paid_at || inv.created_at || new Date();
+                const total = Number(inv.total_amount || 0);
+                const tax = Number(inv.tax_amount || 0);
+                const fee = Number(inv.processing_fee || 0);
+                const base = inv.subtotal != null ? Number(inv.subtotal)
+                                                  : Math.max(0, total - tax - fee);
+                // Derived from the invoice id, so the number is stable forever
+                // and a repeat run cannot mint a second one.
+                const receiptNo = `RCPT-INV${String(inv.id).padStart(6, '0')}`;
+                const method = /bank|ach/i.test(inv.payment_method || '') ? 'us_bank_account' : 'card';
+                const kind = inv.maintenance_plan_id ? 'maintenance' : 'invoice';
+
+                const sql = extended
+                    ? `INSERT INTO payments
+                        (lead_id, invoice_id, maintenance_plan_id, amount, method, kind, description,
+                         status, stripe_payment_intent_id, receipt_number,
+                         base_amount, tax_amount, processing_fee, paid_at)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,'succeeded',$8,$9,$10,$11,$12,$13)`
+                    : `INSERT INTO payments
+                        (lead_id, invoice_id, maintenance_plan_id, amount, method, kind, description,
+                         status, stripe_payment_intent_id, receipt_number, paid_at)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,'succeeded',$8,$9,$10)`;
+                const args = extended
+                    ? [inv.lead_id, inv.id, inv.maintenance_plan_id || null, total, method, kind,
+                       `Invoice ${inv.invoice_number}`, inv.payment_reference || null, receiptNo,
+                       base, tax, fee, paidAt]
+                    : [inv.lead_id, inv.id, inv.maintenance_plan_id || null, total, method, kind,
+                       `Invoice ${inv.invoice_number}`, inv.payment_reference || null, receiptNo,
+                       paidAt];
+
+                await pool.query(sql, args);
+                made += 1;
+                console.log(`[RECEIPTS] Repaired missing receipt for invoice ${inv.invoice_number} `
+                          + `(${receiptNo}, ${money(total)}, paid ${paidAt}).`);
+            }
+            return made;
+        } catch (e) {
+            // Never let a repair break the page it is repairing.
+            console.warn('[RECEIPTS] repair skipped:', e.message);
+            return 0;
+        }
+    }
+
     app.get('/api/portal/payments', authenticatePortal, async (req, res) => {
         try {
             const leadId = await resolveLeadId(req.user.id, req.user.email);
+            // Fill any gaps BEFORE reading, so the customer sees the repaired
+            // list on this request rather than having to reload.
+            const repaired = await repairMissingReceipts(leadId);
             const payments = await pool.query(
                 `SELECT p.id, p.amount, p.currency, p.method, p.method_last4, p.method_brand,
                         p.kind, p.description, p.status, p.refunded_amount, p.receipt_number,
@@ -4738,6 +4861,7 @@ module.exports = function initLifecycle({
             res.json({
                 success: true,
                 payments: payments.rows,
+                repaired,
                 totals: {
                     paid: Number(totals.rows[0].paid),
                     refunded: Number(totals.rows[0].refunded),

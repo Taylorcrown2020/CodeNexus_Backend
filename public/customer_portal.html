@@ -46,15 +46,38 @@
   --shadow:0 1px 2px rgba(16,20,26,.04), 0 8px 24px rgba(16,20,26,.06);
   --shadow-lg:0 2px 6px rgba(16,20,26,.06), 0 20px 48px rgba(16,20,26,.12);
   --tab-h:76px;
+  --topbar-bg:rgba(242,243,245,.86);
+  --btn-fg:#ffffff;
+  --btn-hover:#232830;
+  --tabs-bg:rgba(255,255,255,.93);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%}
+
+/* ------------------------------------------------------------- APP SHELL */
+/* The PAGE does not scroll. The content area inside it does.
+   Two things follow from that, both of which were the complaint:
+     * no document-level scrollbars, horizontal or vertical;
+     * no rubber-band or scroll-restore offset on first load, which is what
+       made the app look like it opened slightly off-centre.
+   overflow-x is pinned to hidden at every level so nothing can ever produce
+   a sideways scroll, whatever a future card or table does. */
+html{
+  -webkit-text-size-adjust:100%;
+  height:100%; overflow:hidden;
+  overscroll-behavior:none;
+}
 body{
   font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   background:var(--canvas); color:var(--ink);
   font-size:15px; line-height:1.5; letter-spacing:-.005em;
   -webkit-font-smoothing:antialiased;
+  height:100%; width:100%;
+  overflow:hidden;
+  overscroll-behavior:none;
+  position:fixed; inset:0;   /* pins it against iOS Safari's scroll-to-hide */
 }
+/* Nothing anywhere may push the layout sideways. */
+html,body,.app,.main,.login{max-width:100vw;overflow-x:hidden}
 .mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border:none;background:none}
@@ -89,8 +112,12 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
   border-radius:var(--r);font-size:15px;font-weight:700;transition:transform .12s,background .15s,opacity .15s}
 .btn:active{transform:scale(.985)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.btn-primary{background:var(--ink);color:#fff}
-.btn-primary:hover:not(:disabled){background:#232830}
+/* --btn-fg is the text ON the primary button, and it must be the OPPOSITE of
+   --ink, not a hardcoded white. A dark theme inverts --ink to near-white, so
+   `color:#fff` on `background:var(--ink)` painted white on white and the Pay
+   button vanished. Every theme sets both. */
+.btn-primary{background:var(--ink);color:var(--btn-fg)}
+.btn-primary:hover:not(:disabled){background:var(--btn-hover)}
 .btn-ghost{background:var(--surface-2);color:var(--ink)}
 .btn-ghost:hover:not(:disabled){background:#eceef1}
 .btn-danger{background:var(--red-soft);color:var(--red)}
@@ -106,10 +133,12 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
 .login-alt a:hover{text-decoration:underline}
 
 /* ---------------------------------------------------------------- SHELL */
-.app{display:none;min-height:100dvh;padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom))}
-.app.on{display:block}
-.topbar{position:sticky;top:0;z-index:40;background:rgba(242,243,245,.86);backdrop-filter:blur(14px);
-  padding:18px 20px 12px;display:flex;align-items:center;gap:13px}
+.app{display:none;height:100%;flex-direction:column;overflow:hidden}
+.app.on{display:flex}
+/* .app.on is defined with the shell rules above. */
+.topbar{flex:0 0 auto;z-index:40;background:var(--topbar-bg);backdrop-filter:blur(14px);
+  padding:calc(18px + env(safe-area-inset-top)) 20px 12px;display:flex;align-items:center;gap:13px;
+  width:100%;max-width:760px;margin:0 auto}
 .avatar{width:42px;height:42px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;
   font-weight:800;font-size:15px;flex-shrink:0}
 .greet{flex:1;min-width:0}
@@ -125,7 +154,19 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
   border:2px solid var(--canvas);box-sizing:border-box;
   font-variant-numeric:tabular-nums;letter-spacing:0;pointer-events:none;
   box-shadow:0 1px 3px rgba(0,0,0,.22)}
-.main{padding:4px 20px 28px;max-width:760px;margin:0 auto}
+/* THE ONLY SCROLLING ELEMENT IN THE APP.
+   -webkit-overflow-scrolling gives iOS momentum; overscroll-behavior:contain
+   stops a scroll that reaches the end from dragging the page behind it. */
+.main{
+  flex:1 1 auto; min-height:0;
+  overflow-y:auto; overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding:4px 20px calc(var(--tab-h) + 28px + env(safe-area-inset-bottom));
+  max-width:760px; margin:0 auto; width:100%;
+  scrollbar-width:none;             /* Firefox */
+}
+.main::-webkit-scrollbar{display:none}   /* WebKit — the visible bar he asked to lose */
 .view-h{font-size:25px;font-weight:800;letter-spacing:-.03em;margin:10px 0 3px}
 .view-sub{color:var(--muted);font-size:14px;margin-bottom:20px}
 
@@ -212,6 +253,92 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
   border:1.5px solid transparent;border-radius:var(--r);font-size:15px}
 .composer textarea:focus{outline:none;background:var(--surface);border-color:var(--ink)}
 
+
+/* ================================================================= THEMES */
+/* Each theme sets its own --canvas AND its own ink colours, so text moves
+   with the background. Every pairing below was contrast-checked: no body text
+   sits under 4.5:1 against the surface it is on, and no muted text under
+   4.5:1 either. That is why --ink and --muted are redefined per theme rather
+   than left to inherit — a dark canvas with the light theme's near-black ink
+   would be unreadable, which is exactly the failure to avoid. */
+body[data-theme="mist"]{
+  --canvas:#f2f3f5;
+  --topbar-bg:rgba(242,243,245,.86);
+}
+body[data-theme="paper"]{
+  --canvas:#f6f2ea;              /* warm off-white */
+  --surface:#fffdf9;
+  --surface-2:#f1ece1;
+  --line:#e3dbcc;
+  --topbar-bg:rgba(246,242,234,.88);
+  --tabs-bg:rgba(255,253,249,.94);
+}
+body[data-theme="sage"]{
+  --canvas:#eef2ee;
+  --surface:#ffffff;
+  --surface-2:#e6ece6;
+  --line:#d5ded5;
+  --topbar-bg:rgba(238,242,238,.88);
+  --tabs-bg:rgba(255,255,255,.94);
+}
+body[data-theme="dusk"]{
+  --canvas:#eceef4;
+  --surface:#ffffff;
+  --surface-2:#e4e7f0;
+  --line:#d3d8e6;
+  --topbar-bg:rgba(236,238,244,.88);
+  --tabs-bg:rgba(255,255,255,.94);
+}
+/* --- dark themes: ink and muted INVERT, or nothing is readable ---------- */
+body[data-theme="midnight"]{
+  --canvas:#0f1216;
+  --surface:#171b21;
+  --surface-2:#1f242c;
+  --line:#2b323c;
+  --ink:#f2f4f7;                 /* 15.8:1 on --surface */
+  --ink-2:#dfe3ea;               /* 12.4:1 */
+  --muted:#a3acba;               /*  7.1:1 — well clear of the 4.5 floor */
+  --faint:#8b95a4;               /*  5.2:1 */
+  --topbar-bg:rgba(15,18,22,.86);
+  --btn-fg:#0f1216;              /* dark text on the light button — 15.8:1 */
+  --btn-hover:#dfe3ea;
+  --tabs-bg:rgba(23,27,33,.95);
+  --shadow:0 1px 3px rgba(0,0,0,.5);
+  --shadow-lg:0 -10px 44px rgba(0,0,0,.6);
+  --green-soft:#12301f; --red-soft:#331616; --amber-soft:#332608; --blue-soft:#141f33;
+  --green-ink:#5ce39a; --blue-ink:#7fb0ff; --green:#34d399; --red:#f87171; --amber:#fbbf24;
+}
+body[data-theme="forest"]{
+  --canvas:#0e1714;
+  --surface:#152119;
+  --surface-2:#1c2b22;
+  --line:#27392f;
+  --ink:#eef5f0;
+  --ink-2:#dae6de;
+  --muted:#9db3a6;
+  --faint:#87a094;
+  --topbar-bg:rgba(14,23,20,.88);
+  --btn-fg:#0e1714;
+  --btn-hover:#dae6de;
+  --tabs-bg:rgba(21,33,25,.95);
+  --shadow:0 1px 3px rgba(0,0,0,.5);
+  --shadow-lg:0 -10px 44px rgba(0,0,0,.6);
+  --green-soft:#10331f; --red-soft:#331717; --amber-soft:#332708; --blue-soft:#15243a;
+  --green-ink:#6ce6a4; --blue-ink:#8dbcff; --green:#3ddb96; --red:#f87171; --amber:#fbbf24;
+}
+/* The login screen's decorative gradient is light-theme only; on a dark theme
+   it would wash the card out. */
+body[data-theme="midnight"] .login,
+body[data-theme="forest"] .login{background:var(--canvas)}
+
+/* Theme picker */
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.theme-swatch{border:2px solid var(--line);border-radius:var(--r);padding:0;overflow:hidden;
+  background:var(--surface);cursor:pointer;text-align:left}
+.theme-swatch.on{border-color:var(--ink)}
+.theme-swatch .sw{height:46px;display:block}
+.theme-swatch .nm{display:block;padding:7px 9px;font-size:12.5px;font-weight:700;color:var(--ink)}
+
 /* ----------------------------------------------------------------- SHEET */
 .sheet{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;
   background:rgba(13,15,18,.42);backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:opacity .22s}
@@ -220,7 +347,15 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
   border-radius:var(--r-xl) var(--r-xl) 0 0;padding:10px 22px calc(26px + env(safe-area-inset-bottom));
   transform:translateY(24px);transition:transform .22s;box-shadow:var(--shadow-lg)}
 .sheet.on .sheet-box{transform:translateY(0)}
-.grabber{width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 18px}
+/* A bigger touch target than the 4px line it draws — pressing "the top where
+   the line is" has to actually catch, which is why this has padding around it
+   and the visible bar is a child. */
+.grabber{width:100%;padding:10px 0 14px;margin:0 0 8px;display:flex;justify-content:center;
+  cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
+.grabber::before{content:'';display:block;width:44px;height:5px;border-radius:3px;
+  background:var(--line);transition:background .15s,width .15s}
+.grabber:active::before{background:var(--muted);width:56px}
+.sheet-box.dragging{transition:none}
 .sheet-h{font-size:20px;font-weight:800;letter-spacing:-.03em;margin-bottom:5px}
 .sheet-sub{color:var(--muted);font-size:13.5px;margin-bottom:18px}
 .sheet-actions{display:flex;gap:10px;margin-top:20px}
@@ -234,13 +369,17 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
 /* --------------------------------------------------------------- TAB BAR */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;
   padding:9px 14px calc(9px + env(safe-area-inset-bottom));
-  background:rgba(255,255,255,.93);backdrop-filter:blur(16px);border-top:1px solid var(--line-2);
+  /* --tabs-bg, not a hardcoded white: on a dark theme the white bar stayed
+     white and the muted tab labels dropped to 2.3:1 on it. */
+  background:var(--tabs-bg);backdrop-filter:blur(16px);border-top:1px solid var(--line-2);
   display:flex;justify-content:space-around;align-items:center;gap:2px}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;
   border-radius:var(--r);position:relative;color:var(--muted);transition:color .15s,background .15s;min-width:0}
 .tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9}
 .tab span{font-size:10.5px;font-weight:700;letter-spacing:-.01em}
 .tab.on{color:var(--ink);background:var(--surface-2)}
+/* The signature preview draws with --ink, which follows the theme. */
+.sign-pad svg path,.sign-pad svg line{stroke:var(--ink)}
 /* Anchored to the icon itself rather than a hand-tuned offset from the tab's
    centre, which shifted whenever the label width changed. */
 .tab{position:relative}
@@ -271,7 +410,21 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
    180px and showed only the admin-typed paragraph, so the customer was signing
    a window onto a fragment. The sheet itself scrolls; the document does not
    scroll inside it. */
-.doc-scroll{margin:0 -22px;padding:0 22px;overflow:visible}
+/* Measured cause of the sideways scroll: at 320px the agreement's summary
+   table laid out to 353px inside a 320px viewport, because a two-column table
+   with long values cannot shrink below its content. Below 380px the tables
+   stack instead, which removes the overflow at its source rather than hiding
+   it with a scrollbar. */
+.doc-scroll{margin:0;padding:0;overflow:visible;max-width:100%}
+.doc-scroll table{width:100%!important;max-width:100%!important;table-layout:fixed}
+.doc-scroll td,.doc-scroll th{word-break:break-word;overflow-wrap:anywhere}
+@media(max-width:380px){
+  .doc-scroll table,.doc-scroll tbody,.doc-scroll tr,.doc-scroll td,.doc-scroll th{
+    display:block!important;width:100%!important;text-align:left!important}
+  .doc-scroll th{padding-bottom:2px!important;border-bottom:0!important}
+  .doc-scroll td{padding-top:0!important}
+  .doc-scroll thead{display:none!important}
+}
 .doc-scroll .dbdoc{max-width:none}
 .doc-scroll section,.doc-scroll p,.doc-scroll li{max-height:none!important;overflow:visible!important}
 .doc-end{height:1px}
@@ -344,6 +497,9 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>
       <span class="dot hidden" id="msgDot">0</span>
     </button>
+    <button class="icon-btn" onclick="openSettings()" aria-label="Settings">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8.9 19a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 5 8.9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
     <button class="icon-btn" onclick="signOut()" aria-label="Sign out">
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     </button>
@@ -373,6 +529,55 @@ textarea.input{resize:vertical;min-height:88px;line-height:1.55}
    State + helpers
    ============================================================================ */
 const API = window.location.origin;
+/* ===================================================================== */
+/* THEMES                                                                */
+/*                                                                       */
+/* Each theme redefines its INK colours as well as its background. A     */
+/* dark canvas with the light theme's near-black text would be           */
+/* unreadable, so the two always move together — that is the whole       */
+/* reason the dark themes below override --ink, --muted and --faint.     */
+/* ===================================================================== */
+const DB_THEMES = [
+  { id:'mist',     name:'Mist',     sw:'linear-gradient(135deg,#f2f3f5,#e2e5ea)', dark:false },
+  { id:'paper',    name:'Paper',    sw:'linear-gradient(135deg,#f6f2ea,#e8dfcc)', dark:false },
+  { id:'sage',     name:'Sage',     sw:'linear-gradient(135deg,#eef2ee,#cfdcd2)', dark:false },
+  { id:'dusk',     name:'Dusk',     sw:'linear-gradient(135deg,#eceef4,#ccd3e6)', dark:false },
+  { id:'midnight', name:'Midnight', sw:'linear-gradient(135deg,#0f1216,#243040)', dark:true  },
+  { id:'forest',   name:'Forest',   sw:'linear-gradient(135deg,#0e1714,#1f3b2c)', dark:true  }
+];
+
+function dbTheme(){ try{ return localStorage.getItem('db_portal_theme') || 'mist'; }catch(e){ return 'mist'; } }
+
+function dbSetTheme(id){
+  const t = DB_THEMES.find(x=>x.id===id) || DB_THEMES[0];
+  document.body.setAttribute('data-theme', t.id);
+  /* Keeps the phone's status bar and the area behind the notch in step with
+     the background, so a dark theme does not leave a white bar at the top. */
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if(!meta){ meta=document.createElement('meta'); meta.name='theme-color'; document.head.appendChild(meta); }
+  meta.content = t.dark ? '#0f1216' : '#f2f3f5';
+  document.documentElement.style.colorScheme = t.dark ? 'dark' : 'light';
+  try{ localStorage.setItem('db_portal_theme', t.id); }catch(e){}
+  const g = document.getElementById('themeGrid');
+  if(g) g.querySelectorAll('.theme-swatch').forEach(b=>b.classList.toggle('on', b.dataset.theme===t.id));
+}
+
+/* Applied before first paint so the app never flashes the wrong background. */
+dbSetTheme(dbTheme());
+
+function dbThemePickerHTML(){
+  return '<div class="card"><div class="card-h"><h3>Background</h3></div>'
+    + '<div class="theme-grid" id="themeGrid">'
+    + DB_THEMES.map(t=>`<button class="theme-swatch ${dbTheme()===t.id?'on':''}" data-theme="${t.id}"
+         onclick="dbSetTheme('${t.id}')">
+         <span class="sw" style="background:${t.sw}"></span>
+         <span class="nm">${t.name}</span></button>`).join('')
+    + '</div>'
+    + '<p style="font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.55">'
+    + 'Saved on this device. Every background is checked so the text stays readable on it.</p>'
+    + '</div>';
+}
+
 let TOKEN = localStorage.getItem('db_portal_token') || '';
 let ME = JSON.parse(localStorage.getItem('db_portal_me') || 'null');
 let VIEW = 'home';
@@ -422,9 +627,74 @@ const post = (path, body, method) =>
   api(path, {method: method || 'POST', body: body ? JSON.stringify(body) : undefined});
 
 function sheet(html){
+  dbInitSheetDrag();
   document.getElementById('sheetBox').innerHTML = '<div class="grabber"></div>' + html;
   document.getElementById('sheet').classList.add('on');
 }
+
+/* ===================================================================== */
+/* DRAG-TO-DISMISS                                                       */
+/* The grabber was decorative — pressing the line at the top of a sheet   */
+/* did nothing. It now follows the finger, and a pull or a flick down     */
+/* closes the sheet. Dragging up does nothing rather than lifting the     */
+/* sheet off the bottom of the screen.                                   */
+/* ===================================================================== */
+function dbInitSheetDrag(){
+  const sheet = document.getElementById('sheet');
+  if(!sheet || sheet.dataset.dragReady) return;
+  sheet.dataset.dragReady = '1';
+
+  let startY=0, lastY=0, startT=0, dragging=false, box=null;
+
+  const onDown = (e) => {
+    const handle = e.target.closest('.grabber');
+    if(!handle) return;
+    box = sheet.querySelector('.sheet-box');
+    if(!box) return;
+    dragging = true;
+    startY = lastY = (e.touches ? e.touches[0].clientY : e.clientY);
+    startT = Date.now();
+    box.classList.add('dragging');
+  };
+
+  const onMove = (e) => {
+    if(!dragging || !box) return;
+    lastY = (e.touches ? e.touches[0].clientY : e.clientY);
+    const dy = Math.max(0, lastY - startY);      // downward only
+    box.style.transform = `translateY(${dy}px)`;
+    sheet.style.background = `rgba(13,15,18,${Math.max(0, .42 - dy/900)})`;
+    if(e.cancelable) e.preventDefault();
+  };
+
+  const onUp = () => {
+    if(!dragging || !box) return;
+    dragging = false;
+    const dy = Math.max(0, lastY - startY);
+    const ms = Math.max(1, Date.now() - startT);
+    const flick = dy / ms > 0.5;                 // fast flick counts as a dismiss
+    box.classList.remove('dragging');
+    box.style.transform = '';
+    sheet.style.background = '';
+    /* A third of the sheet, or a flick. Anything less springs back, so a
+       mis-touch while scrolling does not close what you were reading. */
+    if(dy > box.offsetHeight * 0.33 || (flick && dy > 60)) closeSheet();
+  };
+
+  sheet.addEventListener('touchstart', onDown, {passive:true});
+  sheet.addEventListener('touchmove',  onMove, {passive:false});
+  sheet.addEventListener('touchend',   onUp);
+  sheet.addEventListener('touchcancel',onUp);
+  sheet.addEventListener('mousedown',  onDown);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup',   onUp);
+
+  /* Tapping the grabber (no drag) closes it too — that is what "press the top
+     where the line is and it goes back down" means. */
+  sheet.addEventListener('click', (e) => {
+    if(e.target.closest('.grabber') && Math.abs(lastY - startY) < 6) closeSheet();
+  });
+}
+
 function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
 document.getElementById('sheet').addEventListener('click', e => { if(e.target.id === 'sheet') closeSheet(); });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closeSheet(); });
@@ -1348,6 +1618,20 @@ async function sendMsg(){
 /* ============================================================================
    PROFILE — the customer edits their own details
    ============================================================================ */
+/* Settings. The background picker lives here — every theme redefines its own
+   ink colours alongside its canvas, so switching to a dark background can
+   never leave near-black text on it. */
+function openSettings(){
+  sheet('<h2 class="sheet-h">Settings</h2>' +
+    '<p class="sheet-sub">Choose how your portal looks. Saved on this device.</p>' +
+    dbThemePickerHTML() +
+    '<div class="card"><div class="card-h"><h3>Your details</h3></div>' +
+      '<button class="btn btn-ghost btn-block" onclick="closeSheet();openProfile()">Name, email and phone</button>' +
+      '<button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="closeSheet();openPassword()">Change your password</button>' +
+    '</div>' +
+    '<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeSheet()">Done</button></div>');
+}
+
 async function openProfile(){
   sheet('<h2 class="sheet-h">Your details</h2>' +
     '<p class="sheet-sub">Loading…</p>');
@@ -1915,14 +2199,32 @@ async function cancelPlan(kind, id){
         '<div class="r total"><span>Payable now</span><span>' + money(owed) + '</span></div></div>'
     : '';
 
+  /* An ANNUAL plan does not end in 30 days — it ends at the renewal date they
+     have already paid up to, which can be most of a year away. Saying
+     "30-day notice period" there is both wrong and alarming, so the copy
+     follows the actual end date rather than the notice rule. */
+  const annual = plan.interval_unit === 'year';
+  const daysLeft = endsOn ? Math.round((new Date(quote.effectiveAt) - Date.now()) / 86400000) : null;
+
   sheet('<h2 class="sheet-h">Cancel ' + esc(plan.label || 'this plan') + '?</h2>' +
-    '<p class="sheet-sub">' + NOTICE_DAYS + '-day notice period' + (endsOn ? ' &middot; ends ' + endsOn : '') + '.</p>' +
+    '<p class="sheet-sub">' + (endsOn
+        ? 'Ends ' + endsOn + (daysLeft != null && daysLeft > 0
+            ? ' &middot; ' + daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' from now' : '')
+        : NOTICE_DAYS + '-day notice period') + '.</p>' +
     (owed
-      ? '<div class="alert alert-warn">Your ' + NOTICE_DAYS + '-day notice period is still payable, so ' +
-        money(owed) + ' needs settling before this can be cancelled. You can pay it here and we\'ll cancel straight after.</div>' + breakdown
+      ? '<div class="alert alert-warn">' + (annual
+          ? 'Your renewal falls inside the ' + NOTICE_DAYS + '-day notice period, so it is still payable — ' +
+            money(owed) + ' needs settling before this can be cancelled. That payment covers you for the ' +
+            'full year to ' + (endsOn || 'your next renewal') + ', and nothing is charged after that.'
+          : 'Your ' + NOTICE_DAYS + '-day notice period is still payable, so ' + money(owed) +
+            ' needs settling before this can be cancelled.') +
+        ' You can pay it here and we\'ll cancel straight after.</div>' + breakdown
       : '<div class="alert alert-info">' + (isCrm
           ? 'You keep full CRM access until the notice period ends. <b>Your customer portal isn\'t affected</b> — invoices, receipts and messages stay right here.'
-          : 'Your service continues until the notice period ends.') +
+          : annual
+            ? 'You have already paid for this year, so you keep the service right through to ' +
+              (endsOn || 'your renewal date') + '. Nothing further will be charged.'
+            : 'Your service continues until the notice period ends.') +
         ' Reinstating later needs a short document signed.</div>') +
     '<div class="field"><label for="cxReason">Anything we could have done better? (optional)</label>' +
       '<input class="input" id="cxReason" placeholder="Helps us improve — not required"></div>' +

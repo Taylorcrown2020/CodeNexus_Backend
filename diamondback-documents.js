@@ -391,14 +391,37 @@ const CLAUSES = {
         ],
     },
 
+    // MONTHLY plans. Annual plans get their own version below — the notice
+    // rule reads very differently when a period is a year long.
     recurringTerm: {
         heading: 'Term, renewal and cancellation',
         body: [
             `This plan begins on {{AUTOPAY_START}} and renews automatically for successive {{INTERVAL_NOUN}} periods until cancelled.`,
             `You may cancel at any time from your customer portal or by emailing {{COMPANY_EMAIL}}. Cancellation takes effect {{NOTICE_DAYS}} days after we receive your request. Service continues through that date, and anything already due or falling due within the notice period must be settled before the cancellation completes.`,
+            `You keep the service through the end of every period you have paid for. If a charge falls due inside the notice period, it is payable, and the plan then runs to the end of the period that charge covers — you do not lose time you have paid for.`,
             `Fees already paid are non-refundable, including for a period that is only partly used. We do not pro-rate.`,
             `We may terminate this plan on {{NOTICE_DAYS}} days' notice, or immediately for non-payment.`,
             `After cancellation, reinstating the plan requires signing a new reinstatement agreement, and may be subject to our then-current pricing.`,
+        ],
+    },
+
+    // ANNUAL plans. A one-year period changes what the notice rule means in
+    // both directions, and both directions have to be stated plainly:
+    //   * the customer keeps the WHOLE year they paid for, not 30 days;
+    //   * cancelling inside 30 days of a renewal does not dodge that renewal.
+    // The second half is the part that gets disputed, so it is spelt out with
+    // a worked example rather than left to be inferred.
+    annualTerm: {
+        heading: 'Term, renewal and cancellation',
+        body: [
+            `This plan begins on {{AUTOPAY_START}} and renews automatically for successive one-year periods until cancelled.`,
+            `YOU KEEP THE FULL YEAR YOU HAVE PAID FOR. Cancelling does not end the service {{NOTICE_DAYS}} days later — it ends it on your renewal date, which is the last day of the year you have already paid for. Nothing further is charged after that.`,
+            `CANCELLING CLOSE TO A RENEWAL. You must give at least {{NOTICE_DAYS}} days' notice before a renewal date to avoid that renewal. If we receive your cancellation within {{NOTICE_DAYS}} days of the renewal date, THE RENEWAL IS STILL CHARGED and is payable in full. That renewal buys you the following year, and the plan then ends at the end of that year.`,
+            `For example: if your renewal date is 1 March and you cancel on 20 February, the 1 March charge is still taken because it falls inside the {{NOTICE_DAYS}}-day notice period. You keep the service until the following 1 March, and nothing is charged after that. To avoid the March renewal entirely, cancel on or before {{ANNUAL_NOTICE_EXAMPLE}}.`,
+            `Fees already paid are non-refundable, including where you stop using the service part-way through a year. We do not pro-rate and we do not refund unused months.`,
+            `We may terminate this plan on {{NOTICE_DAYS}} days' notice, or immediately for non-payment. If we terminate for a reason other than non-payment, we will refund the unused whole months of the year you have paid for.`,
+            `Where this plan covers a domain name or another item that must be renewed with a third party, cancelling means we stop renewing it. Anything registered in our name will be transferred to you on request, provided the account is settled; if you take no action, it may lapse or expire, and we are not responsible for that.`,
+            `After cancellation, reinstating the plan requires signing a new reinstatement agreement, and may be subject to our then-current pricing. A lapsed domain may not be recoverable at the original price, or at all.`,
         ],
     },
 
@@ -509,6 +532,16 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
         AUTOPAY_AMOUNT:       money(recurringAmount),
         AUTOPAY_SCHEDULE_SENTENCE: scheduleSentence,
         AUTOPAY_START:        prettyDate(startDate) || 'the date this agreement is signed',
+        // The last day they could cancel and still avoid the next renewal.
+        // Computed from THIS plan's own renewal date so the example in the
+        // clause is about their plan, not a generic one.
+        ANNUAL_NOTICE_EXAMPLE: (() => {
+            if (!startDate) return `${noticeDays} days before your renewal date`;
+            const d = new Date(startDate);
+            if (isNaN(d)) return `${noticeDays} days before your renewal date`;
+            d.setDate(d.getDate() - noticeDays);
+            return prettyDate(d) || `${noticeDays} days before your renewal date`;
+        })(),
         STATEMENT_DESCRIPTOR: process.env.STRIPE_STATEMENT_DESCRIPTOR || 'DIAMONDBACK CODING',
         // Falling back to the plan's own name produced "Monthly Maintenance as
         // described in this agreement" — a sentence that describes nothing.
@@ -542,7 +575,9 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
     if (isRecurring) {
         sections.push(clause(CLAUSES.autopayAuthorization));
         sections.push(clause(CLAUSES.recurringScope));
-        sections.push(clause(CLAUSES.recurringTerm));
+        // A one-year period changes what "30 days' notice" means, so annual
+        // plans get their own cancellation clause rather than the monthly one.
+        sections.push(clause(isAnnual ? CLAUSES.annualTerm : CLAUSES.recurringTerm));
         sections.push(clause(CLAUSES.priceChanges));
         // The recurring version, NOT the generic invoice-terms one: a plan
         // charges the card on the due date, so "payable within N days of the

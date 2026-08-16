@@ -4112,9 +4112,23 @@ module.exports = function initLifecycle({
 
             // A period already paid for runs to the next charge date. If that
             // is past the notice date, they keep what they've bought.
-            if (plan.current_period_paid_at && plan.next_charge_date) {
-                const paidThrough = new Date(plan.next_charge_date);
-                if (!isNaN(paidThrough) && paidThrough > effective) effective = paidThrough;
+            //
+            // THIS MATTERS MOST FOR ANNUAL PLANS. Someone who paid for a year
+            // in March and cancels in August has ten months left. Ending them
+            // 30 days after the request would take a year's money and give
+            // back four weeks.
+            //
+            // current_period_paid_at is the reliable signal, but it only
+            // exists from migration 011 onward. For a plan charged before
+            // that, last_charge_date with a FUTURE next_charge_date says the
+            // same thing: the current period is paid and runs to that date.
+            // Without this fallback, every pre-011 annual customer would lose
+            // the year they had already paid for.
+            const paidThrough = plan.next_charge_date ? new Date(plan.next_charge_date) : null;
+            const periodIsPaid = !!plan.current_period_paid_at
+                || (!!plan.last_charge_date && paidThrough && paidThrough > new Date());
+            if (periodIsPaid && paidThrough && !isNaN(paidThrough) && paidThrough > effective) {
+                effective = paidThrough;
             }
 
             // Unpaid invoices already raised against this plan.
@@ -5988,7 +6002,13 @@ module.exports = function initLifecycle({
 
             const sets = ['updated_at = NOW()'];
             const vals = [req.params.id];
-            const put = (col, val) => { vals.push(val); sets.push(`${col} = ${vals.length}`); };
+            // NOTE THE $$: `${col} = $${vals.length}` produces "amount = $2".
+            // Without the second $ it produced "amount = 2" — a literal, not a
+            // placeholder — so every edit either set the column to the
+            // parameter's INDEX or failed on a type mismatch. This is why
+            // changing a plan's amount did nothing. The identical helper at
+            // line ~3940 has it right; this one was a character short.
+            const put = (col, val) => { vals.push(val); sets.push(`${col} = $${vals.length}`); };
 
             if (b.label !== undefined && String(b.label).trim()) put('label', String(b.label).trim().slice(0, 200));
             if (b.description !== undefined) put('description', String(b.description || '').trim() || null);

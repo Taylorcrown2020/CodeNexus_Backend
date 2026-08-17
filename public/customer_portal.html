@@ -1351,7 +1351,7 @@ function planCard(p){
         'onclick="openSign(' + Number(p.pending_agreement_id) + ')">Review the change</button></div>' +
         '</div>'
       : '') +
-    (cancelling ? '<div class="alert alert-warn" style="margin:12px 0 0">Ends ' + fmtDate(p.cancels_at) +
+    (cancelling ? '<div class="alert alert-warn" style="margin:12px 0 0">Last day of service: ' + fmtDate(p.cancels_at) +
       (p.days_until_cancellation != null ? ' &mdash; ' + p.days_until_cancellation + ' day' + (p.days_until_cancellation === 1 ? '' : 's') + ' away' : '') +
       '. ' + (p.kind === 'crm' ? 'You keep CRM access until then.' : 'Service continues until then.') +
       /* When a charge inside the notice window paid for a period running past
@@ -2223,23 +2223,27 @@ async function cancelPlan(kind, id){
   const daysLeft = endsOn ? Math.round((new Date(quote.effectiveAt) - Date.now()) / 86400000) : null;
 
   sheet('<h2 class="sheet-h">Cancel ' + esc(plan.label || 'this plan') + '?</h2>' +
+    /* "Ends Oct 9" on a plan that bills on the 9th reads like they might be
+       charged again that day. The end date is now the LAST DAY OF SERVICE, so
+       say that — it is unambiguous and it is what they actually get. */
     '<p class="sheet-sub">' + (endsOn
-        ? 'Ends ' + endsOn + (daysLeft != null && daysLeft > 0
+        ? 'Last day of service: ' + endsOn + (daysLeft != null && daysLeft > 0
             ? ' &middot; ' + daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' from now' : '')
         : NOTICE_DAYS + '-day notice period') + '.</p>' +
     (owed
       ? '<div class="alert alert-warn">' + (annual
           ? 'Your renewal falls inside the ' + NOTICE_DAYS + '-day notice period, so it is still payable — ' +
             money(owed) + ' needs settling before this can be cancelled. That payment covers you for the ' +
-            'full year to ' + (endsOn || 'your next renewal') + ', and nothing is charged after that.'
+            'full year through ' + (endsOn || 'your next renewal') + ', and nothing is charged after that.'
           : 'Your ' + NOTICE_DAYS + '-day notice period is still payable, so ' + money(owed) +
             ' needs settling before this can be cancelled.') +
         ' You can pay it here and we\'ll cancel straight after.</div>' + breakdown
       : '<div class="alert alert-info">' + (isCrm
           ? 'You keep full CRM access until the notice period ends. <b>Your customer portal isn\'t affected</b> — invoices, receipts and messages stay right here.'
           : annual
-            ? 'You have already paid for this year, so you keep the service right through to ' +
-              (endsOn || 'your renewal date') + '. Nothing further will be charged.'
+            ? 'You have already paid for this year, so you keep the service through ' +
+              (endsOn || 'your renewal date') + ' — the last day of the year you paid for. ' +
+              'Nothing further will be charged.'
             : 'Your service continues until the notice period ends.') +
         ' Reinstating later needs a short document signed.</div>') +
     '<div class="field"><label for="cxReason">Anything we could have done better? (optional)</label>' +

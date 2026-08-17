@@ -4320,11 +4320,38 @@ module.exports = function initLifecycle({
             // same thing: the current period is paid and runs to that date.
             // Without this fallback, every pre-011 annual customer would lose
             // the year they had already paid for.
+            // ------------------------------------------------------------
+            // A BILLING BOUNDARY IS NOT THE LAST DAY OF SERVICE.
+            //
+            // A period that runs 9 Sep -> 9 Oct gives service through 8 Oct.
+            // The 9th is the FIRST day of the next period, not the last day of
+            // this one. Setting the end date to the 9th on a plan that bills on
+            // the 9th means the cancellation date and a charge date land on the
+            // same day, and whether they get charged again comes down to which
+            // job runs first and what time it is. That is not a coin-flip worth
+            // having in a billing system.
+            //
+            // So a boundary-derived end date is pulled back one day: the plan
+            // ends on the last day they actually paid for, and the charge date
+            // is safely past it.
+            //
+            // The 30-day NOTICE date is different — it is a plain date, not a
+            // period boundary, so 15 Sep means service through 15 Sep. Only
+            // boundary dates get the adjustment, which is why the two are
+            // tracked separately here.
+            // ------------------------------------------------------------
+            const dayBefore = (d) => {
+                const x = new Date(d);
+                x.setDate(x.getDate() - 1);
+                return x;
+            };
+
             const paidThrough = plan.next_charge_date ? new Date(plan.next_charge_date) : null;
             const periodIsPaid = !!plan.current_period_paid_at
                 || (!!plan.last_charge_date && paidThrough && paidThrough > new Date());
-            if (periodIsPaid && paidThrough && !isNaN(paidThrough) && paidThrough > effective) {
-                effective = paidThrough;
+            if (periodIsPaid && paidThrough && !isNaN(paidThrough)) {
+                const lastPaidDay = dayBefore(paidThrough);
+                if (lastPaidDay > effective) effective = lastPaidDay;
             }
 
             // Unpaid invoices already raised against this plan.
@@ -4383,7 +4410,12 @@ module.exports = function initLifecycle({
                     date: dateOnly(cursor),
                 });
                 const periodEnd = nextChargeFor(plan, cursor);
-                if (periodEnd && periodEnd > effective) effective = periodEnd;
+                // Same rule: the period this charge buys runs UP TO the next
+                // boundary, so the last day of service is the day before it.
+                if (periodEnd) {
+                    const lastDay = dayBefore(periodEnd);
+                    if (lastDay > effective) effective = lastDay;
+                }
                 cursor = periodEnd;
                 guard += 1;
             }
@@ -6308,57 +6340,125 @@ module.exports = function initLifecycle({
                         `SELECT COALESCE(MAX(NULLIF(regexp_replace(agreement_number,'\\D','','g'),'')::bigint),0)+1 AS n
                            FROM sales_agreements WHERE agreement_number LIKE 'PC-%'`);
                     const num = `PC-${String(pcNum.rows[0].n).padStart(5, '0')}`;
+
+                    // The customer's details live on LEADS, not on the plan —
+                    // maintenance_plans has no customer_name/customer_email, so
+                    // reading them from `plan` produced undefined and the
+                    // amendment came out with a blank client.
+                    const lead = (await pool.query(
+                        'SELECT * FROM leads WHERE id = $1', [plan.lead_id])).rows[0] || {};
+
+                    // BUILD THE INSERT FROM COLUMNS THAT ACTUALLY EXIST.
+                    //
+                    // previous_price, amends_agreement_id and
+                    // price_effective_from arrive with migration 014; the
+                    // autopay_* columns with 011. Naming them unconditionally
+                    // meant one un-run migration made the whole save fail with
+                    // nothing saved and no useful message — which is what you
+                    // hit. Now the amendment is still created, minus whatever
+                    // the database cannot store yet, and the response says so.
+                    const agCols = new Set((await pool.query(
+                        `SELECT column_name FROM information_schema.columns
+                          WHERE table_name='sales_agreements'`)).rows.map((r) => r.column_name));
+
+                    const cols = [];
+                    const vals = [];
+                    const add = (col, val) => {
+                        if (!agCols.has(col)) return false;
+                        cols.push(col); vals.push(val); return true;
+                    };
+
+                    add('agreement_number', num);
+                    add('lead_id', plan.lead_id);
+                    add('customer_name', lead.name || null);
+                    add('customer_email', lead.email || null);
+                    add('service_type', upd.plan_type);
+                    add('package_name', `${upd.label} — price change`);
+                    add('price', proposed);
+                    add('status', 'sent');
+                    add('agreement_kind', 'price_change');
+                    add('intro', `A change to the price of your existing ${upd.label} plan. `
+                               + 'Everything else about the plan stays exactly the same.');
+
+                    const missing = [];
+                    if (!add('previous_price', current)) missing.push('previous_price');
+                    if (!add('amends_agreement_id', plan.agreement_id)) missing.push('amends_agreement_id');
+                    if (!add('price_effective_from', dateOnly(effectiveFrom))) missing.push('price_effective_from');
+                    add('autopay', true);
+                    add('autopay_interval', unit === 'year' ? 'year' : 'month');
+                    add('autopay_amount', proposed);
+                    add('autopay_day', upd.billing_day || null);
+
+                    add('terms',
+                        `PRICE CHANGE. Your ${upd.label} plan currently costs ${money(current)} per `
+                      + `${unit}. From ${prettyDate(effectiveFrom) || 'your next charge'} it will be `
+                      + `${money(proposed)} per ${unit} — ${direction === 'increase' ? 'an increase' : 'a decrease'} `
+                      + `of ${money(Math.abs(proposed - current))} per ${unit}.\n\n`
+                      + `NOTHING ELSE CHANGES. This is not a new plan and not a replacement `
+                      + `agreement. Your existing plan, its start date, what it covers, its `
+                      + `cancellation terms and your automatic payment authorization all continue `
+                      + `unchanged. Only the amount changes.\n\n`
+                      + `YOU KEEP PAYING THE OLD PRICE UNTIL YOU SIGN. We will continue to charge `
+                      + `${money(current)} per ${unit} until this is signed. If you do not sign it, `
+                      + `your plan simply carries on at ${money(current)} per ${unit} — you are not `
+                      + `cancelled and nothing is interrupted.\n\n`
+                      + `By signing you authorize the automatic payment amount to change to `
+                      + `${money(proposed)} per ${unit} from ${prettyDate(effectiveFrom) || 'your next charge'}, `
+                      + `on the same payment method${dayChanged
+                            ? ` and on the ${Math.min(28, Math.max(1, Number(b.billing_day) || 1))}`
+                              + ` of each ${unit} instead of the ${plan.billing_day}`
+                            : ' and the same schedule as now'}.`);
+
+                    if (missing.length) {
+                        console.warn('[PRICE CHANGE] sales_agreements is missing '
+                                   + missing.join(', ') + ' — run migration 014. '
+                                   + 'The amendment was still created.');
+                    }
+
+                    const ph = cols.map((_, i) => `$${i + 1}`).join(',');
                     const ag = (await pool.query(
-                        `INSERT INTO sales_agreements
-                            (agreement_number, lead_id, customer_name, customer_email,
-                             service_type, package_name, price, previous_price,
-                             status, agreement_kind, amends_agreement_id, price_effective_from,
-                             autopay, autopay_interval, autopay_amount, autopay_day,
-                             intro, terms, created_at, updated_at)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'sent','price_change',$9,$10,
-                                 TRUE,$11,$7,$12,$13,$14,NOW(),NOW())
-                         RETURNING *`,
-                        [num, plan.lead_id, plan.customer_name || null, plan.customer_email || null,
-                         upd.plan_type, `${upd.label} — price change`, proposed, current,
-                         plan.agreement_id, dateOnly(effectiveFrom),
-                         unit === 'year' ? 'year' : 'month', upd.billing_day || null,
-                         `A change to the price of your existing ${upd.label} plan. Everything else `
-                         + `about the plan stays exactly the same.`,
-                         `PRICE CHANGE. Your ${upd.label} plan currently costs ${money(current)} per `
-                         + `${unit}. From ${prettyDate(effectiveFrom) || 'your next charge'} it will be `
-                         + `${money(proposed)} per ${unit} — ${direction === 'increase' ? 'an increase' : 'a decrease'} `
-                         + `of ${money(Math.abs(proposed - current))} per ${unit}.\n\n`
-                         + `NOTHING ELSE CHANGES. This is not a new plan and not a replacement `
-                         + `agreement. Your existing plan, its start date, what it covers, its `
-                         + `cancellation terms and your automatic payment authorization all continue `
-                         + `unchanged. Only the amount changes.\n\n`
-                         + `YOU KEEP PAYING THE OLD PRICE UNTIL YOU SIGN. We will continue to charge `
-                         + `${money(current)} per ${unit} until this is signed. If you do not sign it, `
-                         + `your plan simply carries on at ${money(current)} per ${unit} — you are not `
-                         + `cancelled and nothing is interrupted.\n\n`
-                         + `By signing you authorize the automatic payment amount to change to `
-                         + `${money(proposed)} per ${unit} from ${prettyDate(effectiveFrom) || 'your next charge'}, `
-                         + `on the same payment method${dayChanged
-                                ? ` and on the ${Math.min(28, Math.max(1, Number(b.billing_day) || 1))}`
-                                  + ` of each ${unit} instead of the ${plan.billing_day}`
-                                : ' and the same schedule as now'}.`]
-                    )).rows[0];
+                        `INSERT INTO sales_agreements (${cols.join(', ')}, created_at, updated_at)
+                         VALUES (${ph}, NOW(), NOW()) RETURNING *`, vals)).rows[0];
 
                     // Park the proposal on the plan. `amount` is untouched.
-                    await pool.query(
-                        `UPDATE maintenance_plans
-                            SET pending_amount = $2, pending_agreement_id = $3,
-                                pending_billing_day = $4,
-                                pending_since = NOW(), updated_at = NOW()
-                          WHERE id = $1`,
-                        [plan.id, newAmount, ag.id,
-                         dayChanged ? Math.min(28, Math.max(1, Number(b.billing_day) || 1)) : null]);
+                    // Guarded the same way: without 014 there is nowhere to
+                    // park it, and the admin needs telling rather than a
+                    // silent failure.
+                    const mpCols = new Set((await pool.query(
+                        `SELECT column_name FROM information_schema.columns
+                          WHERE table_name='maintenance_plans'`)).rows.map((r) => r.column_name));
+
+                    if (mpCols.has('pending_amount') && mpCols.has('pending_agreement_id')) {
+                        const dayCol = mpCols.has('pending_billing_day');
+                        await pool.query(
+                            `UPDATE maintenance_plans
+                                SET pending_amount = $2, pending_agreement_id = $3,
+                                    ${dayCol ? 'pending_billing_day = $4,' : ''}
+                                    ${mpCols.has('pending_since') ? 'pending_since = NOW(),' : ''}
+                                    updated_at = NOW()
+                              WHERE id = $1`,
+                            dayCol
+                                ? [plan.id, newAmount, ag.id,
+                                   dayChanged ? Math.min(28, Math.max(1, Number(b.billing_day) || 1)) : null]
+                                : [plan.id, newAmount, ag.id]);
+                    } else {
+                        // No 014. The document exists but nothing will apply it
+                        // when signed, so refuse rather than leave a dead
+                        // agreement the customer can sign to no effect.
+                        await pool.query('DELETE FROM sales_agreements WHERE id=$1', [ag.id]).catch(() => {});
+                        return res.status(500).json({
+                            success: false,
+                            message: 'Cannot send a price change yet: this database has not had '
+                                   + 'migration 014 applied, so there is nowhere to hold the new '
+                                   + 'price until the customer signs. Run '
+                                   + 'migrations/014_price_change_amendments.sql and try again. '
+                                   + 'Nothing was changed.',
+                        });
+                    }
 
                     amendment = ag;
 
-                    const lead = (await pool.query('SELECT * FROM leads WHERE id=$1',
-                                                   [plan.lead_id])).rows[0];
-                    if (lead) {
+                    if (lead && lead.email) {
                         await notify({
                             lead, kind: 'price_change_agreement',
                             subject: `A change to your ${upd.label} price`,
@@ -6374,11 +6474,16 @@ module.exports = function initLifecycle({
                         }).catch((e) => console.warn('[PRICE CHANGE] notify:', e.message));
                     }
                 } catch (e) {
-                    console.error('[PRICE CHANGE] could not raise the amendment:', e.message);
+                    console.error('[PRICE CHANGE] could not raise the amendment:', e.code, e.message);
+                    const col = /column "?([\w.]+)"? does not exist/i.exec(e.message || '');
                     return res.status(500).json({
                         success: false,
-                        message: 'The plan was saved but the price change agreement could not be '
-                               + 'created: ' + e.message + '. Run migration 014 if you have not.',
+                        message: col
+                            ? `Cannot send the price change: the database is missing "${col[1]}". `
+                            + 'Run migrations/011, 012, 013 and 014 against this database, then try '
+                            + 'again. Nothing was changed.'
+                            : 'Could not create the price change agreement: ' + e.message
+                            + '. Nothing was changed.',
                     });
                 }
             }

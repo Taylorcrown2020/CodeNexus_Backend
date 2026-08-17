@@ -1335,6 +1335,22 @@ function planCard(p){
         '<span style="font-size:13px;color:var(--muted)">' + money(p.charge_total != null ? p.charge_total : p.amount) + (p.interval_unit === 'year' ? '/yr' : '/mo') + ' &middot; ' + method + '</span>' +
       '</div><span class="tag ' + tone + '">' + esc(String(p.status || '').replace(/_/g,' ')) + '</span>' +
     '</div>' +
+    /* A price or schedule change is waiting on their signature. Show BOTH
+       amounts: the plan is still billing the old one, and saying only the new
+       one would look like they had already been moved onto it. */
+    (p.pending_agreement_id && p.pending_total != null
+      ? '<div class="alert alert-info" style="margin:12px 0 0">' +
+        '<b>Price change waiting for your signature.</b><br>' +
+        'Still billing ' + money(p.charge_total != null ? p.charge_total : p.amount) +
+        (p.interval_unit === 'year' ? '/yr' : '/mo') +
+        ' &rarr; becomes ' + money(p.pending_total) +
+        (p.interval_unit === 'year' ? '/yr' : '/mo') +
+        (p.pending_billing_day ? ', charged on the ' + p.pending_billing_day : '') +
+        ' once signed. Nothing changes until you sign it.' +
+        '<div style="margin-top:10px"><button class="btn btn-sm btn-primary" ' +
+        'onclick="openSign(' + Number(p.pending_agreement_id) + ')">Review the change</button></div>' +
+        '</div>'
+      : '') +
     (cancelling ? '<div class="alert alert-warn" style="margin:12px 0 0">Ends ' + fmtDate(p.cancels_at) +
       (p.days_until_cancellation != null ? ' &mdash; ' + p.days_until_cancellation + ' day' + (p.days_until_cancellation === 1 ? '' : 's') + ' away' : '') +
       '. ' + (p.kind === 'crm' ? 'You keep CRM access until then.' : 'Service continues until then.') +

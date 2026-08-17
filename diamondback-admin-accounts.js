@@ -25,6 +25,22 @@ module.exports = function initAdminAccounts({
 
     const money = (n) => Number(n || 0);
 
+    /** Does a column exist? Cached per process — schema does not change under us. */
+    const _colCache = new Map();
+    async function hasColumn(column, table) {
+        const key = `${table}.${column}`;
+        if (_colCache.has(key)) return _colCache.get(key);
+        let ok = false;
+        try {
+            const r = await pool.query(
+                `SELECT 1 FROM information_schema.columns
+                  WHERE table_name = $1 AND column_name = $2`, [table, column]);
+            ok = r.rows.length > 0;
+        } catch { ok = false; }
+        _colCache.set(key, ok);
+        return ok;
+    }
+
     /** Optional tables/columns differ across databases — never 500 over one. */
     async function safe(sql, params, label, fallback = []) {
         try {
@@ -41,15 +57,42 @@ module.exports = function initAdminAccounts({
     app.get('/api/admin/accounts/:leadId', authenticateToken, async (req, res) => {
         const leadId = req.params.leadId;
         try {
-            const lead = (await pool.query(
-                `SELECT id, name, email, phone, company, address, status, portal_kind,
-                        client_password IS NOT NULL AS has_portal_login,
-                        portal_last_login, default_payment_method_id,
-                        COALESCE(late_fees_exempt, FALSE) AS late_fees_exempt,
-                        portal_welcome_sent_at, COALESCE(portal_welcome_count,0) AS portal_welcome_count,
-                        created_at
+            // ------------------------------------------------------------
+            // SELECT * PLUS DERIVED FIELDS, not a hand-written column list.
+            //
+            // The previous version named late_fees_exempt,
+            // portal_welcome_sent_at and portal_welcome_count directly. Those
+            // arrive with migration 013 — so on a database where 013 has not
+            // run, this single query threw and the ENTIRE account screen
+            // returned "Could not load that account". Every other query in
+            // this route is wrapped in safe(); this one was not, which made it
+            // the one place a missing migration could take the whole screen
+            // down.
+            //
+            // Now: take the row as it is, and default anything the migration
+            // would have added. The screen degrades to "no late-fee controls"
+            // instead of failing.
+            // ------------------------------------------------------------
+            const leadRow = (await pool.query(
+                `SELECT *, client_password IS NOT NULL AS has_portal_login
                    FROM leads WHERE id = $1`, [leadId])).rows[0];
-            if (!lead) return res.status(404).json({ success: false, message: 'Customer not found.' });
+            if (!leadRow) return res.status(404).json({ success: false, message: 'Customer not found.' });
+
+            const lead = {
+                ...leadRow,
+                late_fees_exempt: leadRow.late_fees_exempt === true,
+                portal_welcome_sent_at: leadRow.portal_welcome_sent_at || null,
+                portal_welcome_count: Number(leadRow.portal_welcome_count || 0),
+            };
+            delete lead.client_password;      // never send the hash to a browser
+
+            // Tell the front end what it can actually offer, so the UI can hide
+            // a control rather than showing one that will fail.
+            const features = {
+                lateFees: await hasColumn('late_fees_exempt', 'leads'),
+                welcomeTracking: await hasColumn('portal_welcome_sent_at', 'leads'),
+                periodTracking: await hasColumn('current_period_paid_at', 'maintenance_plans'),
+            };
 
             // Charge anything that has genuinely fallen late before we read, so
             // the figure on screen is current rather than waiting on a nightly
@@ -59,21 +102,38 @@ module.exports = function initAdminAccounts({
             const standing = await lateFees.accountStanding(leadId);
 
             // ---- plans, split by cadence -----------------------------------
+            // Aggregates come from ONE grouped pass joined in, not two
+            // correlated subqueries per row. Same result, one scan of payments
+            // instead of 2N, and it is a shape that can actually be tested.
             const plans = await safe(
                 `SELECT mp.*, pc.effective_at AS cancels_at,
                         pm.brand, pm.last4, pm.type AS method_type, pm.funding,
-                        (SELECT COALESCE(SUM(amount),0) FROM payments
-                          WHERE maintenance_plan_id = mp.id AND status='succeeded') AS collected,
-                        (SELECT COUNT(*) FROM payments
-                          WHERE maintenance_plan_id = mp.id AND status='succeeded') AS charges
+                        COALESCE(pay.collected, 0) AS collected,
+                        COALESCE(pay.charges, 0)   AS charges,
+                        ${await hasColumn('current_period_paid_at','maintenance_plans')
+                            ? 'mp.current_period_paid_at' : 'NULL'} AS period_paid_at
                    FROM maintenance_plans mp
                    LEFT JOIN plan_cancellations pc
-                          ON pc.maintenance_plan_id = mp.id AND pc.status='pending'
-                   LEFT JOIN payment_methods pm
-                          ON pm.id = COALESCE(mp.payment_method_id, $2)
+                          ON pc.maintenance_plan_id = mp.id AND pc.status = 'pending'
+                   LEFT JOIN payment_methods pm ON pm.id = mp.payment_method_id
+                   LEFT JOIN (
+                        SELECT maintenance_plan_id,
+                               COALESCE(SUM(amount),0) AS collected,
+                               COUNT(*) AS charges
+                          FROM payments
+                         WHERE status = 'succeeded' AND maintenance_plan_id IS NOT NULL
+                         GROUP BY maintenance_plan_id
+                   ) pay ON pay.maintenance_plan_id = mp.id
                   WHERE mp.lead_id = $1
-                  ORDER BY mp.status, mp.next_charge_date NULLS LAST`,
-                [leadId, lead.default_payment_method_id], 'plans');
+                  ORDER BY mp.next_charge_date NULLS LAST, mp.id`,
+                [leadId], 'plans');
+
+            // The account default, resolved once and applied to any plan with
+            // no override of its own.
+            const defaultMethod = lead.default_payment_method_id
+                ? (await safe('SELECT * FROM payment_methods WHERE id = $1',
+                              [lead.default_payment_method_id], 'default method'))[0] || null
+                : null;
 
             /**
              * Where this plan is in its life. The admin's first question is
@@ -84,15 +144,19 @@ module.exports = function initAdminAccounts({
             const stageOf = (p) => {
                 if (p.status === 'cancelled') return { key: 'cancelled', label: 'Cancelled', tone: 'grey' };
                 if (p.cancels_at) return { key: 'cancelling', label: 'Cancelling', tone: 'warn' };
+                if (p.pending_agreement_id) {
+                    return { key: 'price_change_pending',
+                             label: 'Price change awaiting signature', tone: 'warn' };
+                }
                 if (!p.signed_at) return { key: 'awaiting_signature', label: 'Awaiting signature', tone: 'warn' };
                 if (!p.payment_method_id && !lead.default_payment_method_id) {
                     return { key: 'awaiting_method', label: 'No payment method', tone: 'bad' };
                 }
-                if (lateFees.isPastDue(p.next_charge_date) && !p.current_period_paid_at) {
+                if (lateFees.isPastDue(p.next_charge_date) && !p.period_paid_at) {
                     return { key: 'past_due', label: 'Past due', tone: 'bad' };
                 }
                 if (!Number(p.charges)) return { key: 'ready', label: 'Ready — not yet charged', tone: 'ok' };
-                if (!p.current_period_paid_at) {
+                if (!p.period_paid_at) {
                     return { key: 'due_soon', label: 'This period unpaid', tone: 'ok' };
                 }
                 return { key: 'current', label: 'Paid up', tone: 'good' };
@@ -100,27 +164,42 @@ module.exports = function initAdminAccounts({
 
             const shaped = plans.map((p) => ({
                 ...p,
+                // The method this plan actually bills on: its own override, or
+                // the account default.
+                brand: p.brand || (defaultMethod && defaultMethod.brand) || null,
+                last4: p.last4 || (defaultMethod && defaultMethod.last4) || null,
+                method_type: p.method_type || (defaultMethod && defaultMethod.type) || null,
+                funding: p.funding || (defaultMethod && defaultMethod.funding) || null,
                 stage: stageOf(p),
                 is_annual: p.interval_unit === 'year',
-                period_paid: !!p.current_period_paid_at,
-                past_due: lateFees.isPastDue(p.next_charge_date) && !p.current_period_paid_at,
-                days_late: p.current_period_paid_at ? 0 : lateFees.daysLate(p.next_charge_date),
+                period_paid: !!p.period_paid_at,
+                past_due: lateFees.isPastDue(p.next_charge_date) && !p.period_paid_at,
+                days_late: p.period_paid_at ? 0 : lateFees.daysLate(p.next_charge_date),
                 has_method: !!(p.payment_method_id || lead.default_payment_method_id),
+                // A price/schedule change awaiting signature. Both figures are
+                // sent because the plan is still billing the old one.
+                pending_amount: p.pending_amount != null ? Number(p.pending_amount) : null,
+                pending_billing_day: p.pending_billing_day != null ? Number(p.pending_billing_day) : null,
+                pending_agreement_id: p.pending_agreement_id || null,
+                pending_since: p.pending_since || null,
             }));
 
+            const hasInvLateFee = await hasColumn('late_fee_amount', 'invoices');
             const invoices = await safe(
                 `SELECT id, invoice_number, short_description, total_amount, status,
                         due_date, paid_at, obligation, maintenance_plan_id, agreement_id,
-                        COALESCE(late_fee_amount,0) AS late_fee_amount, created_at
+                        ${hasInvLateFee ? 'COALESCE(late_fee_amount,0)' : '0'} AS late_fee_amount,
+                        created_at
                    FROM invoices WHERE lead_id = $1 ORDER BY created_at DESC`,
                 [leadId], 'invoices');
 
+            const hasPayBreakdown = await hasColumn('base_amount', 'payments');
             const payments = await safe(
                 `SELECT p.id, p.amount, p.status, p.kind, p.description, p.receipt_number,
                         p.method, p.method_brand, p.method_last4, p.paid_at,
-                        COALESCE(p.base_amount,p.amount) AS base_amount,
-                        COALESCE(p.tax_amount,0) AS tax_amount,
-                        COALESCE(p.processing_fee,0) AS processing_fee,
+                        ${hasPayBreakdown ? 'COALESCE(p.base_amount,p.amount)' : 'p.amount'} AS base_amount,
+                        ${hasPayBreakdown ? 'COALESCE(p.tax_amount,0)' : '0'} AS tax_amount,
+                        ${hasPayBreakdown ? 'COALESCE(p.processing_fee,0)' : '0'} AS processing_fee,
                         COALESCE(p.refunded_amount,0) AS refunded_amount,
                         i.invoice_number
                    FROM payments p
@@ -177,6 +256,7 @@ module.exports = function initAdminAccounts({
             res.json({
                 success: true,
                 lead,
+                features,
                 standing,          // caughtUp, lateItems, lateFees, lateTotal
                 plans: {
                     monthly: shaped.filter((p) => !p.is_annual),
@@ -195,8 +275,18 @@ module.exports = function initAdminAccounts({
                 totals,
             });
         } catch (e) {
-            console.error('[ADMIN ACCOUNT]', e.message);
-            res.status(500).json({ success: false, message: 'Could not load that account.' });
+            // Say WHAT failed. "Could not load that account" sent me looking in
+            // the wrong place for an hour; the Postgres message names the
+            // missing column and the migration that adds it.
+            console.error('[ADMIN ACCOUNT] lead', leadId, '-', e.code, e.message);
+            const missingCol = /column "?([\w.]+)"? does not exist/i.exec(e.message || '');
+            res.status(500).json({
+                success: false,
+                message: missingCol
+                    ? `The database is missing "${missingCol[1]}". Run the migrations in migrations/ `
+                    + `(011, 012 and 013) against this database, then reload.`
+                    : `Could not load that account: ${e.message}`,
+            });
         }
     });
 
@@ -413,5 +503,132 @@ module.exports = function initAdminAccounts({
         }
     });
 
-    console.log('[ADMIN ACCOUNTS] Customer account routes mounted.');
+    // ======================================================================
+    // RECURRING REVENUE FORECAST
+    //
+    // What the plans are actually worth, at the prices they will really be
+    // charged — base plus tax plus the card fee where it applies, per plan,
+    // not a flat SUM(amount) that would understate every plan on the new
+    // pricing and overstate nothing.
+    //
+    // Annual plans are converted to a monthly equivalent for the MRR figure
+    // and shown separately as well, because a $70/yr domain renewal sitting in
+    // the same column as a $450/mo plan makes the number meaningless.
+    // ======================================================================
+    app.get('/api/admin/revenue-forecast', authenticateToken, async (req, res) => {
+        try {
+            const pricing = require('./diamondback-pricing.js');
+            const months = Math.min(24, Math.max(1, Number((req.query || {}).months) || 12));
+
+            const rows = await safe(
+                `SELECT mp.*, l.name AS customer, l.id AS lead_id,
+                        pm.type AS pm_type, pm.funding AS pm_funding,
+                        pc.effective_at AS cancels_at
+                   FROM maintenance_plans mp
+                   JOIN leads l ON l.id = mp.lead_id
+                   LEFT JOIN payment_methods pm
+                          ON pm.id = COALESCE(mp.payment_method_id, l.default_payment_method_id)
+                   LEFT JOIN plan_cancellations pc
+                          ON pc.maintenance_plan_id = mp.id AND pc.status = 'pending'
+                  WHERE mp.status IN ('active','past_due','pending_cancellation','pending_payment_method')
+                  ORDER BY mp.next_charge_date NULLS LAST`, [], 'forecast plans');
+
+            const priced = rows.map((p) => {
+                const method = p.pm_type ? { type: p.pm_type, funding: p.pm_funding } : null;
+                const q = pricing.priceFor(p, method);
+                return {
+                    id: p.id, customer: p.customer, leadId: p.lead_id, label: p.label,
+                    planType: p.plan_type,
+                    interval: p.interval_unit === 'year' ? 'year' : 'month',
+                    base: q.base, tax: q.tax, fee: q.fee, total: q.total,
+                    newPricing: q.newPricing,
+                    status: p.status,
+                    cancelsAt: p.cancels_at || null,
+                    nextCharge: p.next_charge_date,
+                    // A plan that cannot be charged is not revenue, however
+                    // good it looks in a total.
+                    billable: !!p.signed_at && !!method,
+                    blockedReason: !p.signed_at ? 'not signed'
+                                 : !method ? 'no payment method' : null,
+                };
+            });
+
+            const live = priced.filter((p) => p.billable && !p.cancelsAt);
+            const monthly = live.filter((p) => p.interval === 'month');
+            const annual  = live.filter((p) => p.interval === 'year');
+            const atRisk  = priced.filter((p) => !p.billable || p.cancelsAt);
+
+            const sum = (a) => Math.round(a.reduce((s, x) => s + x.total, 0) * 100) / 100;
+            const mrr = sum(monthly);
+            const arrFromAnnual = sum(annual);
+            // MRR counts annual plans at a twelfth of their value.
+            const blendedMrr = Math.round((mrr + arrFromAnnual / 12) * 100) / 100;
+
+            // ---- month-by-month, so a forecast is a shape and not one number ----
+            const timeline = [];
+            const start = new Date(); start.setDate(1); start.setHours(0, 0, 0, 0);
+            for (let i = 0; i < months; i++) {
+                const from = new Date(start); from.setMonth(from.getMonth() + i);
+                const to   = new Date(from);  to.setMonth(to.getMonth() + 1);
+
+                let expected = 0;
+                const items = [];
+                live.forEach((p) => {
+                    if (p.interval === 'month') {
+                        expected += p.total;
+                        if (i === 0) items.push(p.label);
+                    } else if (p.nextCharge) {
+                        // An annual plan lands in exactly one month of the year.
+                        const due = new Date(p.nextCharge);
+                        const anniversary = new Date(due);
+                        while (anniversary < from) anniversary.setFullYear(anniversary.getFullYear() + 1);
+                        if (anniversary >= from && anniversary < to) {
+                            expected += p.total;
+                            items.push(p.label);
+                        }
+                    }
+                });
+                timeline.push({
+                    month: from.toISOString().slice(0, 7),
+                    label: from.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                    expected: Math.round(expected * 100) / 100,
+                    annualRenewals: items.filter((x, n) => items.indexOf(x) === n),
+                });
+            }
+
+            const next12 = Math.round(
+                timeline.slice(0, 12).reduce((s, m) => s + m.expected, 0) * 100) / 100;
+
+            res.json({
+                success: true,
+                summary: {
+                    mrr,                                   // monthly plans only
+                    blendedMrr,                            // + annual / 12
+                    arr: Math.round(blendedMrr * 12 * 100) / 100,
+                    annualRenewalsPerYear: arrFromAnnual,
+                    next12Months: next12,
+                    monthlyPlans: monthly.length,
+                    annualPlans: annual.length,
+                    // Revenue you are NOT going to collect unless something is fixed.
+                    atRiskCount: atRisk.length,
+                    atRiskValue: sum(atRisk),
+                    taxCollectedPerMonth: Math.round(
+                        monthly.reduce((s, p) => s + p.tax, 0) * 100) / 100,
+                    feesCollectedPerMonth: Math.round(
+                        monthly.reduce((s, p) => s + p.fee, 0) * 100) / 100,
+                    onOldPricing: priced.filter((p) => !p.newPricing).length,
+                },
+                timeline,
+                monthly, annual, atRisk,
+                note: 'Figures are what each plan will actually be charged — base plus tax plus '
+                    + 'the card fee where the customer pays by credit card. Plans that cannot be '
+                    + 'charged (unsigned, or no payment method) are excluded and listed under atRisk.',
+            });
+        } catch (e) {
+            console.error('[FORECAST]', e.message);
+            res.status(500).json({ success: false, message: 'Could not build the forecast: ' + e.message });
+        }
+    });
+
+    console.log('[ADMIN ACCOUNTS] Customer account + forecast routes mounted.');
 };

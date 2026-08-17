@@ -1111,6 +1111,94 @@ module.exports = function initLifecycle({
             return { signed: true, kind: 'reinstatement', signatureSvg: svg };
         }
 
+        // ------------------------------------------------------------------
+        // A PRICE CHANGE AGREEMENT does exactly one thing: move the pending
+        // price onto the plan. It creates nothing, cancels nothing, and starts
+        // nothing — the plan has been running throughout on the old price.
+        // ------------------------------------------------------------------
+        if (a.agreement_kind === 'price_change') {
+            const plan = (await pool.query(
+                'SELECT * FROM maintenance_plans WHERE pending_agreement_id = $1 LIMIT 1',
+                [agreementId])).rows[0];
+
+            if (!plan) {
+                // The plan may have been cancelled while the amendment sat
+                // unsigned. Signing it then means nothing, and must not
+                // resurrect anything.
+                console.warn(`[LIFECYCLE] price change ${agreementId} signed but its plan is gone`);
+                return { signed: true, kind: 'price_change', plan: null, signatureSvg: svg };
+            }
+
+            const oldAmount = Number(plan.amount || 0);
+            const newAmount = plan.pending_amount != null
+                ? Number(plan.pending_amount) : oldAmount;
+
+            // Apply the amount AND the day, then clear the pending fields.
+            // next_charge_date is recomputed from the new day so the next
+            // charge lands where the customer just agreed it would, rather
+            // than keeping the old date and moving only afterwards.
+            const newDay = plan.pending_billing_day != null
+                ? Number(plan.pending_billing_day) : null;
+            await pool.query(
+                `UPDATE maintenance_plans
+                    SET amount = $2,
+                        billing_day = COALESCE($3, billing_day),
+                        pending_amount = NULL,
+                        pending_agreement_id = NULL,
+                        pending_billing_day = NULL,
+                        pending_since = NULL,
+                        updated_at = NOW()
+                  WHERE id = $1`, [plan.id, newAmount, newDay]);
+
+            if (newDay != null) {
+                const reshaped = { ...plan, billing_day: newDay };
+                await pool.query(
+                    'UPDATE maintenance_plans SET next_charge_date = $2 WHERE id = $1',
+                    [plan.id, dateOnly(nextChargeFor(reshaped, new Date()))]
+                ).catch((e) => console.warn('[PRICE CHANGE] next charge not moved:', e.message));
+            }
+
+            // Keep the ORIGINAL agreement's headline price in step, so the
+            // plan and the document the customer keeps do not disagree. Its
+            // signature and its terms are untouched — only the figure moves,
+            // and the amendment is the record of why.
+            if (plan.agreement_id) {
+                await pool.query(
+                    `UPDATE sales_agreements
+                        SET price = $2, autopay_amount = $2, updated_at = NOW()
+                      WHERE id = $1`,
+                    [plan.agreement_id, planChargeTotal({ ...plan, amount: newAmount })]
+                ).catch((e) => console.warn('[PRICE CHANGE] original not updated:', e.message));
+            }
+
+            const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [plan.lead_id])).rows[0];
+            const unit = intervalUnit(plan);
+            const newTotal = planChargeTotal({ ...plan, amount: newAmount });
+            if (lead) {
+                await notify({
+                    lead, kind: 'price_change_signed',
+                    subject: `Your ${plan.label} price is now ${money(newTotal)}`,
+                    bodyHtml:
+                        `<p style="margin:0 0 12px">Thanks for signing. Your `
+                        + `<strong style="color:#0d0f12">${plan.label}</strong> plan is now `
+                        + `${money(newTotal)} per ${unit}, starting from your next charge on `
+                        + `${prettyDate(plan.next_charge_date) || 'the usual date'}.</p>`
+                        + `<p style="margin:0 0 12px">Nothing else about your plan has changed.</p>`,
+                    cta: { url: PORTAL_URL, label: 'View your plan' },
+                }).catch(() => {});
+            }
+
+            console.log(`[LIFECYCLE] price change ${a.agreement_number} signed — `
+                      + `plan ${plan.id} moved from ${oldAmount} to ${newAmount}.`);
+
+            return {
+                signed: true, kind: 'price_change', plan,
+                previousAmount: oldAmount, newAmount,
+                message: `Signed. Your plan is now ${money(newTotal)} per ${unit}.`,
+                signatureSvg: svg,
+            };
+        }
+
         if (a.agreement_kind === 'maintenance') {
             const plan = (await pool.query(
                 `SELECT * FROM maintenance_plans WHERE agreement_id = $1 OR (lead_id = $2 AND agreement_id IS NULL)
@@ -1774,10 +1862,42 @@ module.exports = function initLifecycle({
                     charges_completed=COALESCE(charges_completed,0)+1,
                     consecutive_failures=0, last_payment_id=$3,
                     status = CASE WHEN status='past_due' THEN 'active' ELSE status END,
+                    -- CLOSE THE PERIOD THAT WAS JUST PAID, and open the next.
+                    -- These two columns are what the outstanding balance reads.
+                    -- settlePlanPeriod() existed for this and was never wired
+                    -- up, so a plan charged successfully still showed the month
+                    -- as unpaid on the customer's dashboard — forever, and it
+                    -- would have accrued a late fee on money already taken.
+                    current_period_start = $2,
+                    current_period_paid_at = NULL,
+                    past_due_since = NULL,
                     updated_at=NOW()
               WHERE id=$1`,
             [plan.id, dateOnly(next), payment.id]
-        );
+        ).catch(async (e) => {
+            // Pre-011/013 database: fall back to the columns that do exist
+            // rather than losing the charge bookkeeping entirely.
+            console.warn('[LIFECYCLE] period columns unavailable:', e.message);
+            await pool.query(
+                `UPDATE maintenance_plans
+                    SET last_charge_date=CURRENT_DATE, next_charge_date=$2,
+                        charges_completed=COALESCE(charges_completed,0)+1,
+                        consecutive_failures=0, last_payment_id=$3,
+                        status = CASE WHEN status='past_due' THEN 'active' ELSE status END,
+                        updated_at=NOW()
+                  WHERE id=$1`,
+                [plan.id, dateOnly(next), payment.id]);
+        });
+
+        // Any late fee raised against the period we just collected is settled
+        // with it — a fee for being late on money that has now been taken is
+        // not a fee anyone should be chasing.
+        await pool.query(
+            `UPDATE late_fees SET status='paid', paid_at=NOW(), payment_id=$2, updated_at=NOW()
+              WHERE maintenance_plan_id=$1 AND status='outstanding'
+                AND due_date <= CURRENT_DATE`,
+            [plan.id, payment.id]
+        ).catch(() => { /* pre-013 */ });
 
         // One row per component — plan, domain maintenance fee, sales tax, and
         // the credit card processing fee. Colour is --muted at 6:1, not the old
@@ -2230,7 +2350,83 @@ module.exports = function initLifecycle({
         // just settled an invoice, and there's no sense dunning something that
         // was paid ninety seconds ago.
         try { out.dunning = await runDunning(); } catch (e) { out.dunningError = e.message; }
+        // Late fees last: a charge earlier in this run may have settled the
+        // very thing that would otherwise have been assessed as late.
+        try { out.lateFees = (await lateFees.assessLateFees({})).length; }
+        catch (e) { out.lateFeesError = e.message; }
+        out.ranAt = new Date().toISOString();
         return out;
+    }
+
+    // ======================================================================
+    // THE SCHEDULER
+    //
+    // AUTOPAY DOES NOT RUN BY ITSELF WITHOUT THIS.
+    //
+    // Everything above — charging plans, dunning, completing cancellations,
+    // late fees — only happens when runDailyJobs() is called. Until now the
+    // only caller was POST /api/cron/lifecycle-daily, which requires an
+    // external scheduler AND a CRON_TOKEN environment variable. If either was
+    // missing, no recurring charge was ever taken and nothing said so.
+    //
+    // An external cron is still the better answer on a multi-instance deploy,
+    // because it runs exactly once. But "no cron configured" must not silently
+    // mean "no billing", so this runs in-process as a fallback.
+    //
+    // The advisory lock is what makes that safe: if the app is running on two
+    // instances, only one of them wins the lock and does the work. Without it,
+    // two instances would both charge the same plan on the same day.
+    // ======================================================================
+    const BILLING_LOCK_KEY = 8472913;          // arbitrary, but must be stable
+    let _lastDailyRun = null;
+
+    async function runDailyJobsOnce(source = 'timer') {
+        // One run per calendar day, whatever wakes it up.
+        const today = new Date().toISOString().slice(0, 10);
+        if (_lastDailyRun === today) return { skipped: 'already ran today' };
+
+        let client;
+        try {
+            client = await pool.connect();
+            // Non-blocking: if another instance holds it, we simply don't run.
+            const got = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [BILLING_LOCK_KEY]);
+            if (!got.rows[0].ok) {
+                console.log('[LIFECYCLE] daily jobs already running elsewhere — skipping.');
+                return { skipped: 'locked by another instance' };
+            }
+            try {
+                _lastDailyRun = today;
+                console.log(`[LIFECYCLE] running daily jobs (${source})…`);
+                const out = await runDailyJobs();
+                const charged = Array.isArray(out.charges) ? out.charges.length : 0;
+                console.log(`[LIFECYCLE] daily jobs done — ${charged} charge(s) processed, `
+                          + `${out.lateFees || 0} late fee(s), ${(out.dunning || []).length || 0} dunning.`);
+                return out;
+            } finally {
+                await client.query('SELECT pg_advisory_unlock($1)', [BILLING_LOCK_KEY]).catch(() => {});
+            }
+        } catch (e) {
+            console.error('[LIFECYCLE] daily jobs failed:', e.message);
+            _lastDailyRun = null;      // let it retry on the next tick
+            return { error: e.message };
+        } finally {
+            if (client) client.release();
+        }
+    }
+
+    // Set BILLING_SCHEDULER=off if you run an external cron and would rather
+    // this stayed out of the way.
+    if (String(process.env.BILLING_SCHEDULER || 'on').toLowerCase() !== 'off') {
+        // First run shortly after boot, so a restart cannot mean a missed day,
+        // then hourly. runDailyJobsOnce() dedupes to one run per day.
+        setTimeout(() => { runDailyJobsOnce('startup'); }, 90 * 1000);
+        setInterval(() => { runDailyJobsOnce('hourly tick'); }, 60 * 60 * 1000);
+        console.log('[LIFECYCLE] Billing scheduler ON — daily jobs run in-process '
+                  + '(hourly tick, once per day, advisory-locked). '
+                  + 'Set BILLING_SCHEDULER=off if an external cron handles this.');
+    } else {
+        console.log('[LIFECYCLE] Billing scheduler OFF — an external cron must POST '
+                  + '/api/cron/lifecycle-daily or NOTHING WILL BE CHARGED.');
     }
 
     // ======================================================================
@@ -5006,6 +5202,14 @@ module.exports = function initLifecycle({
             // its status alone cannot say so.
             charges_completed: Number(p.charges_completed || 0),
             last_charge_date: p.last_charge_date || null,
+            // A price/schedule change waiting on the customer's signature. The
+            // plan keeps billing the CURRENT amount until then, so both figures
+            // have to be visible or the customer cannot tell which is which.
+            pending_amount: p.pending_amount != null ? Number(p.pending_amount) : null,
+            pending_billing_day: p.pending_billing_day != null ? Number(p.pending_billing_day) : null,
+            pending_agreement_id: p.pending_agreement_id || null,
+            pending_total: p.pending_amount != null
+                ? planChargeTotal({ ...p, amount: Number(p.pending_amount) }) : null,
             cancels_at: p.cancels_at,
             days_until_cancellation: days(p.cancels_at),
             payment_method: p.pm_id ? {
@@ -5996,7 +6200,12 @@ module.exports = function initLifecycle({
                     success: false,
                     code: 'PRICE_NEEDS_RESIGN',
                     needsResign: true,
-                    message: `${plan.label} is signed at ${money(planChargeTotal(plan))}. Changing the price replaces what they agreed to, so they'll be asked to sign again and billing pauses until they do. Confirm to go ahead.`,
+                    message: `${plan.label} is signed at ${money(planChargeTotal(plan))}`
+                           + `${dayChanged ? `, charged on day ${plan.billing_day}` : ''}. `
+                           + `This is sent as a separate PRICE CHANGE AGREEMENT — the plan `
+                           + `and the original agreement stay exactly as they are, and billing `
+                           + `continues at ${money(planChargeTotal(plan))} until the customer signs it. `
+                           + `The new price takes effect from their next charge after signing. Confirm to send it.`,
                 });
             }
 
@@ -6012,11 +6221,24 @@ module.exports = function initLifecycle({
 
             if (b.label !== undefined && String(b.label).trim()) put('label', String(b.label).trim().slice(0, 200));
             if (b.description !== undefined) put('description', String(b.description || '').trim() || null);
-            if (b.amount !== undefined && b.amount !== '') put('amount', Number(b.amount));
+            // A price change on a SIGNED plan does not touch `amount`. The plan
+            // keeps billing what the customer agreed to until they sign the
+            // amendment; the proposed figure waits in `pending_amount`.
+            // On an unsigned plan there is nothing to amend, so it applies now.
+            // A change to the billing DAY changes the automatic payment
+            // authorization exactly as much as a change to the amount does —
+            // "we will charge you on the 12th" is part of what they consented
+            // to. Both go through the amendment; neither applies until signed.
+            const dayChanged = b.billing_day !== undefined && b.billing_day !== ''
+                && Number(b.billing_day) !== Number(plan.billing_day);
+            const amendPrice = (priceChanged || dayChanged) && isSigned;
+            if (b.amount !== undefined && b.amount !== '' && !amendPrice) {
+                put('amount', Number(b.amount));
+            }
             if (b.item_reference !== undefined) put('item_reference', String(b.item_reference || '').trim() || null);
 
             // Moving the billing day moves the NEXT charge, never a past one.
-            if (b.billing_day !== undefined && b.billing_day !== '') {
+            if (b.billing_day !== undefined && b.billing_day !== '' && !amendPrice) {
                 const day = Math.min(28, Math.max(1, Number(b.billing_day) || 1));
                 put('billing_day', day);
             }
@@ -6024,13 +6246,13 @@ module.exports = function initLifecycle({
                 put('next_charge_date', dateOnly(b.next_charge_date));
             }
 
-            // A price change on a signed plan sends it back for signature, and
-            // billing stops until it's signed again — runMaintenanceCharges
-            // requires signed_at.
-            if (priceChanged && isSigned) {
-                put('signed_at', null);
-                put('status', 'pending_signature');
-            }
+            // DELIBERATELY NOT unsigning the plan any more.
+            //
+            // The old behaviour blanked signed_at and set 'pending_signature',
+            // which stopped runMaintenanceCharges dead — so a price change cost
+            // a month's revenue and left the customer's service in limbo. The
+            // plan is signed; what is unsigned is the AMENDMENT, and that is
+            // tracked separately below.
 
             const upd = (await pool.query(
                 `UPDATE maintenance_plans SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, vals
@@ -6041,22 +6263,123 @@ module.exports = function initLifecycle({
             if (plan.agreement_id) {
                 const unit = intervalUnit(upd);
                 const updTotal = planChargeTotal(upd);
-                await pool.query(
-                    `UPDATE sales_agreements
-                        SET package_name = $2, price = $3,
-                            status = CASE WHEN $4::bool THEN 'sent' ELSE status END,
-                            signed_at = CASE WHEN $4::bool THEN NULL ELSE signed_at END,
-                            intro = $5, updated_at = NOW()
-                      WHERE id = $1`,
-                    [plan.agreement_id, upd.label, updTotal, !!(priceChanged && isSigned),
-                     `${upd.label} at ${money(updTotal)} per ${unit}, charged automatically.`]
-                );
-                if (priceChanged && isSigned) {
-                    // The old signature is no longer evidence of THIS price.
-                    await pool.query('DELETE FROM agreement_signatures WHERE agreement_id=$1',
-                                     [plan.agreement_id]).catch(() => {});
-                    await pool.query('DELETE FROM lifecycle_events WHERE once_key = $1',
-                                     [`sla_signed:agreement:${plan.agreement_id}`]).catch(() => {});
+
+                if (amendPrice) {
+                    // THE ORIGINAL AGREEMENT IS NOT TOUCHED. It stays signed at
+                    // the old price, because that is what the customer actually
+                    // agreed to and it is the only evidence of it. Only the
+                    // name/description follow an edit; the price does not.
+                    await pool.query(
+                        `UPDATE sales_agreements SET package_name = $2, updated_at = NOW()
+                          WHERE id = $1`, [plan.agreement_id, upd.label]).catch(() => {});
+                } else {
+                    await pool.query(
+                        `UPDATE sales_agreements
+                            SET package_name = $2, price = $3, intro = $4, updated_at = NOW()
+                          WHERE id = $1`,
+                        [plan.agreement_id, upd.label, updTotal,
+                         `${upd.label} at ${money(updTotal)} per ${unit}, charged automatically.`]
+                    );
+                }
+            }
+
+            // ------------------------------------------------------------
+            // RAISE THE PRICE CHANGE AGREEMENT
+            //
+            // A separate, differently-named document that changes one thing:
+            // the price. The plan carries on billing the old amount until it
+            // is signed, so nothing breaks and no revenue is lost while the
+            // customer takes their time.
+            // ------------------------------------------------------------
+            let amendment = null;
+            if (amendPrice) {
+                const newAmount = Number(b.amount);
+                const proposed = planChargeTotal({ ...upd, amount: newAmount });
+                const current = planChargeTotal(plan);
+                const unit = intervalUnit(upd);
+                const effectiveFrom = upd.next_charge_date || plan.next_charge_date || null;
+                const direction = proposed > current ? 'increase' : 'decrease';
+
+                try {
+                    // PC-00001, continuing from the highest existing. Same
+                    // shape as SA- and RI- elsewhere in this file, so the
+                    // prefix alone tells you what kind of document it is.
+                    const pcNum = await pool.query(
+                        `SELECT COALESCE(MAX(NULLIF(regexp_replace(agreement_number,'\\D','','g'),'')::bigint),0)+1 AS n
+                           FROM sales_agreements WHERE agreement_number LIKE 'PC-%'`);
+                    const num = `PC-${String(pcNum.rows[0].n).padStart(5, '0')}`;
+                    const ag = (await pool.query(
+                        `INSERT INTO sales_agreements
+                            (agreement_number, lead_id, customer_name, customer_email,
+                             service_type, package_name, price, previous_price,
+                             status, agreement_kind, amends_agreement_id, price_effective_from,
+                             autopay, autopay_interval, autopay_amount, autopay_day,
+                             intro, terms, created_at, updated_at)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'sent','price_change',$9,$10,
+                                 TRUE,$11,$7,$12,$13,$14,NOW(),NOW())
+                         RETURNING *`,
+                        [num, plan.lead_id, plan.customer_name || null, plan.customer_email || null,
+                         upd.plan_type, `${upd.label} — price change`, proposed, current,
+                         plan.agreement_id, dateOnly(effectiveFrom),
+                         unit === 'year' ? 'year' : 'month', upd.billing_day || null,
+                         `A change to the price of your existing ${upd.label} plan. Everything else `
+                         + `about the plan stays exactly the same.`,
+                         `PRICE CHANGE. Your ${upd.label} plan currently costs ${money(current)} per `
+                         + `${unit}. From ${prettyDate(effectiveFrom) || 'your next charge'} it will be `
+                         + `${money(proposed)} per ${unit} — ${direction === 'increase' ? 'an increase' : 'a decrease'} `
+                         + `of ${money(Math.abs(proposed - current))} per ${unit}.\n\n`
+                         + `NOTHING ELSE CHANGES. This is not a new plan and not a replacement `
+                         + `agreement. Your existing plan, its start date, what it covers, its `
+                         + `cancellation terms and your automatic payment authorization all continue `
+                         + `unchanged. Only the amount changes.\n\n`
+                         + `YOU KEEP PAYING THE OLD PRICE UNTIL YOU SIGN. We will continue to charge `
+                         + `${money(current)} per ${unit} until this is signed. If you do not sign it, `
+                         + `your plan simply carries on at ${money(current)} per ${unit} — you are not `
+                         + `cancelled and nothing is interrupted.\n\n`
+                         + `By signing you authorize the automatic payment amount to change to `
+                         + `${money(proposed)} per ${unit} from ${prettyDate(effectiveFrom) || 'your next charge'}, `
+                         + `on the same payment method${dayChanged
+                                ? ` and on the ${Math.min(28, Math.max(1, Number(b.billing_day) || 1))}`
+                                  + ` of each ${unit} instead of the ${plan.billing_day}`
+                                : ' and the same schedule as now'}.`]
+                    )).rows[0];
+
+                    // Park the proposal on the plan. `amount` is untouched.
+                    await pool.query(
+                        `UPDATE maintenance_plans
+                            SET pending_amount = $2, pending_agreement_id = $3,
+                                pending_billing_day = $4,
+                                pending_since = NOW(), updated_at = NOW()
+                          WHERE id = $1`,
+                        [plan.id, newAmount, ag.id,
+                         dayChanged ? Math.min(28, Math.max(1, Number(b.billing_day) || 1)) : null]);
+
+                    amendment = ag;
+
+                    const lead = (await pool.query('SELECT * FROM leads WHERE id=$1',
+                                                   [plan.lead_id])).rows[0];
+                    if (lead) {
+                        await notify({
+                            lead, kind: 'price_change_agreement',
+                            subject: `A change to your ${upd.label} price`,
+                            bodyHtml:
+                                `<p style="margin:0 0 12px">We've sent you a short document covering a `
+                                + `change to what your <strong style="color:#0d0f12">${upd.label}</strong> plan costs.</p>`
+                                + `<p style="margin:0 0 12px">From ${money(current)} to `
+                                + `<strong style="color:#0d0f12">${money(proposed)}</strong> per ${unit}, `
+                                + `starting ${prettyDate(effectiveFrom) || 'your next charge'}.</p>`
+                                + `<p style="margin:0 0 12px">Nothing else about your plan changes, and you'll `
+                                + `keep paying ${money(current)} until you sign it.</p>`,
+                            cta: { url: PORTAL_URL, label: 'Review the change' },
+                        }).catch((e) => console.warn('[PRICE CHANGE] notify:', e.message));
+                    }
+                } catch (e) {
+                    console.error('[PRICE CHANGE] could not raise the amendment:', e.message);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'The plan was saved but the price change agreement could not be '
+                               + 'created: ' + e.message + '. Run migration 014 if you have not.',
+                    });
                 }
             }
 
@@ -6284,7 +6607,48 @@ module.exports = function initLifecycle({
             return res.status(401).json({ success: false, message: 'Invalid cron token.' });
         }
         try {
-            res.json({ success: true, results: await runDailyJobs() });
+            // force=1 re-runs even if the in-process timer already ran today —
+            // useful when you want to see it work right now.
+            const force = (req.query || {}).force === '1' || (req.body || {}).force === true;
+            if (force) _lastDailyRun = null;
+            res.json({ success: true, results: await runDailyJobsOnce('cron') });
+        } catch (e) {
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
+    /**
+     * Is billing actually running? Answers the question "will my customers be
+     * charged" without anyone reading logs.
+     */
+    app.get('/api/admin/billing-health', authenticateToken, async (req, res) => {
+        try {
+            const due = await pool.query(
+                `SELECT COUNT(*)::int AS n FROM maintenance_plans
+                  WHERE status IN ('active','pending_cancellation')
+                    AND signed_at IS NOT NULL AND next_charge_date IS NOT NULL
+                    AND next_charge_date <= CURRENT_DATE`);
+            const blocked = await pool.query(
+                `SELECT mp.id, mp.label, l.name, l.email,
+                        CASE WHEN mp.signed_at IS NULL THEN 'not signed'
+                             WHEN COALESCE(mp.payment_method_id, l.default_payment_method_id) IS NULL
+                                  THEN 'no payment method'
+                             ELSE 'other' END AS reason
+                   FROM maintenance_plans mp JOIN leads l ON l.id = mp.lead_id
+                  WHERE mp.status IN ('active','pending_signature','pending_payment_method')
+                    AND (mp.signed_at IS NULL
+                         OR COALESCE(mp.payment_method_id, l.default_payment_method_id) IS NULL)`);
+            res.json({
+                success: true,
+                schedulerEnabled: String(process.env.BILLING_SCHEDULER || 'on').toLowerCase() !== 'off',
+                externalCronConfigured: !!process.env.CRON_TOKEN,
+                stripeConfigured: !!process.env.STRIPE_SECRET_KEY,
+                lastRun: _lastDailyRun,
+                dueToday: due.rows[0].n,
+                blocked: blocked.rows,
+                note: 'dueToday is how many plans are ready to charge right now. '
+                    + 'blocked lists plans that will NOT charge, and why.',
+            });
         } catch (e) {
             res.status(500).json({ success: false, message: e.message });
         }

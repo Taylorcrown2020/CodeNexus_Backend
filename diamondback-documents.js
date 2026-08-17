@@ -472,6 +472,8 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
     // Recurring is decided from the agreement's own autopay flag first (011
     // sets it), falling back to the plan and the kind. Order matters: the
     // signed document's own record of itself outranks a row that can be edited.
+    const isPriceChange = kind === 'price_change';
+
     const isRecurring = !!a.autopay
         || kind === 'maintenance' || kind === 'subscription'
         || !!(plan && plan.id);
@@ -572,6 +574,117 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
 
     sections.push(clause(CLAUSES.parties));
 
+    // ------------------------------------------------------------------
+    // A PRICE CHANGE AGREEMENT IS DELIBERATELY SHORT.
+    //
+    // It amends one term of an agreement that is already in force. Restating
+    // liability, IP, termination and the rest would imply those are being
+    // renegotiated too, and would bury the one thing the customer needs to
+    // read. Everything not mentioned here continues unchanged, which the
+    // clause below says explicitly.
+    // ------------------------------------------------------------------
+    if (isPriceChange) {
+        // Replace the generic parties clause: an amendment does not run "until
+        // the work is complete", it takes effect on signing and then gets out
+        // of the way.
+        sections.length = 0;
+        sections.push({
+            heading: 'The parties',
+            emphasis: false,
+            paragraphs: [
+                `This is an amendment between ${COMPANY.legalName}, a ${COMPANY.state_full} business at `
+                + `${COMPANY.addressOneLine} ("Provider", "we", "us"), and ${a.customer_name || 'Client'} `
+                + `("Client", "you").`,
+                `It amends the agreement already in force between us for your `
+                + `${a.package_name ? String(a.package_name).replace(/ — price change$/, '') : 'plan'}. `
+                + `It takes effect when you sign it and changes only what is set out below.`,
+            ],
+        });
+
+        const from = money(a.previous_price != null ? a.previous_price : 0);
+        const to = money(a.price != null ? a.price : 0);
+        const per = interval === 'year' ? 'year' : 'month';
+        const startsOn = prettyDate(a.price_effective_from) || 'your next scheduled charge';
+        const delta = Math.abs(Number(a.price || 0) - Number(a.previous_price || 0));
+        const dir = Number(a.price || 0) >= Number(a.previous_price || 0) ? 'increase' : 'decrease';
+
+        sections.push({
+            heading: 'What is changing',
+            emphasis: true,
+            paragraphs: [
+                `THIS DOCUMENT CHANGES ONE THING: the amount you pay for your existing ${a.package_name || 'plan'}.`,
+                `Now: ${from} per ${per}.   From ${startsOn}: ${to} per ${per}. That is ${dir === 'increase' ? 'an increase' : 'a decrease'} of ${money(delta)} per ${per}.`,
+                `THIS IS NOT A NEW PLAN AND NOT A REPLACEMENT AGREEMENT. Your existing plan continues exactly as it is — the same start date, the same services, the same billing day, the same cancellation terms and the same payment method. Your original agreement remains in force and is unchanged apart from this amount.`,
+                `YOU KEEP PAYING ${from} UNTIL YOU SIGN THIS. Nothing changes while this sits unsigned, and you will continue to be charged ${from} per ${per}. If you never sign it, your plan simply carries on at ${from} per ${per} — you are not cancelled and nothing is interrupted.`,
+                `By signing, you authorize ${COMPANY.legalName} to change the automatic payment on your existing authorization to ${to} per ${per}, taken on the same day and the same payment method as now, beginning ${startsOn}.`,
+            ],
+        });
+
+        sections.push({
+            heading: 'Everything else stays the same',
+            emphasis: false,
+            paragraphs: [
+                `All other terms of the agreement this amends continue in full force: what the plan covers, the automatic payment authorization, term and renewal, cancellation and notice, late fees, taxes and processing fees, liability, and governing law. Nothing in this document alters any of them.`,
+                `If this amount and the amount in the original agreement ever appear to conflict, this document controls, because it is the later of the two.`,
+                `You may cancel the plan instead of accepting this change, on the notice set out in your original agreement. Cancelling is not a breach and carries no penalty beyond what that agreement already provides.`,
+                `Your right to a copy: this document and the original agreement are both downloadable from your customer portal at any time.`,
+            ],
+        });
+
+        sections.push(clause(CLAUSES.electronicSignature));
+
+        const customText = (a.terms || '').trim();
+        if (customText) {
+            sections.push({
+                heading: 'Details of this change',
+                emphasis: false,
+                paragraphs: customText.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean),
+            });
+        }
+
+        const pcSummary = [
+            ['Document number', a.agreement_number || `#${a.id}`],
+            ['Date issued', prettyDate(a.created_at) || prettyDate(new Date())],
+            ['Client', a.customer_name || '—'],
+            ['Plan', a.package_name || '—'],
+            ['Current price', `${from} per ${per}`],
+            ['New price', `${to} per ${per}`],
+            ['Takes effect', startsOn],
+            ['Amends', a.amends_agreement_id ? `Agreement #${a.amends_agreement_id}` : 'your existing agreement'],
+        ];
+
+        return {
+            meta: {
+                id: a.id, number: a.agreement_number || `#${a.id}`,
+                title: 'Price Change Agreement',
+                kind, isRecurring: true, isAnnual, interval,
+                autopay: true,
+                autopayAmount: Number(a.price || 0),
+                autopayScheduleSentence: `${to} per ${per}`,
+                autopayStart: a.price_effective_from,
+                noticeDays,
+                isPriceChange: true,
+                previousPrice: Number(a.previous_price || 0),
+                signed: !!(a.signed_at || a.status === 'signed'),
+                signedAt: a.signed_at || null,
+                signatureName: a.signature_name || null,
+                company: COMPANY,
+            },
+            summary: pcSummary,
+            totals: {
+                lineItems: [], subtotal: Number(a.price || 0), deposit: 0, balance: 0,
+                requiresDeposit: false, depositPct: 0,
+                recurringAmount: Number(a.price || 0), isRecurring: true, isAnnual,
+            },
+            milestones: [],
+            sections,
+            autopayConsentText:
+                `I authorize ${COMPANY.legalName} to change my automatic payment for `
+                + `${a.package_name || 'my plan'} from ${from} to ${to} per ${per}, beginning `
+                + `${startsOn}, on the same payment method and schedule as now.`,
+        };
+    }
+
     if (isRecurring) {
         sections.push(clause(CLAUSES.autopayAuthorization));
         sections.push(clause(CLAUSES.recurringScope));
@@ -652,9 +765,15 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
         meta: {
             id: a.id,
             number: a.agreement_number || `#${a.id}`,
-            title: isRecurring
-                ? (isAnnual ? 'Annual Service Agreement' : 'Monthly Service Agreement')
-                : 'Service Agreement',
+            // A price change is an AMENDMENT to a plan that already exists.
+            // Calling it a "Service Agreement" would make a customer think
+            // they are re-signing the whole thing, which is exactly the
+            // confusion this document was created to avoid.
+            title: isPriceChange
+                ? 'Price Change Agreement'
+                : isRecurring
+                    ? (isAnnual ? 'Annual Service Agreement' : 'Monthly Service Agreement')
+                    : 'Service Agreement',
             kind,
             isRecurring,
             isAnnual,
@@ -929,11 +1048,16 @@ function renderAgreementHTML(doc) {
     ${doc.meta.autopay ? `
     <div style="background:${P.INK_STRONG};color:${P.INK_INVERSE};border-radius:10px;padding:16px 18px;margin:0 0 24px;">
       <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;opacity:.85;margin-bottom:6px;">
-        Automatic payment</div>
+        ${doc.meta.isPriceChange ? 'Price change' : 'Automatic payment'}</div>
       <div style="font-size:15.5px;line-height:1.6;font-weight:600;color:${P.INK_INVERSE};">
-        Signing this agreement enrolls you in autopay: ${esc(doc.meta.autopayScheduleSentence)}, starting
-        ${esc(prettyDate(doc.meta.autopayStart) || 'on signing')}. Cancel any time from your portal with
-        ${doc.meta.noticeDays} days' notice.</div>
+        ${doc.meta.isPriceChange
+          ? `Your automatic payment changes from ${esc(money(doc.meta.previousPrice))} to
+             ${esc(doc.meta.autopayScheduleSentence)}, from
+             ${esc(prettyDate(doc.meta.autopayStart) || 'your next charge')}. Your plan, your payment
+             method and everything else stay exactly as they are.`
+          : `Signing this agreement enrolls you in autopay: ${esc(doc.meta.autopayScheduleSentence)}, starting
+             ${esc(prettyDate(doc.meta.autopayStart) || 'on signing')}. Cancel any time from your portal with
+             ${doc.meta.noticeDays} days' notice.`}</div>
     </div>` : ''}
 
     <section class="dbdoc-block">
@@ -1061,9 +1185,16 @@ async function agreementPDF(document) {
 
     // ---- autopay banner, straight under the title --------------------------
     if (d.meta.autopay) {
-        const text = `AUTOMATIC PAYMENT: Signing enrolls you in autopay — ${d.meta.autopayScheduleSentence}, `
-                   + `starting ${prettyDate(d.meta.autopayStart) || 'on signing'}. `
-                   + `Cancel any time from your customer portal with ${d.meta.noticeDays} days' notice.`;
+        const text = d.meta.isPriceChange
+            // They are already enrolled. "Signing enrolls you in autopay" on an
+            // amendment reads as though they are signing up again.
+            ? `PRICE CHANGE: your automatic payment changes from ${money(d.meta.previousPrice)} to `
+              + `${d.meta.autopayScheduleSentence}, from `
+              + `${prettyDate(d.meta.autopayStart) || 'your next charge'}. Your plan, your payment `
+              + `method and everything else stay exactly as they are.`
+            : `AUTOMATIC PAYMENT: Signing enrolls you in autopay — ${d.meta.autopayScheduleSentence}, `
+              + `starting ${prettyDate(d.meta.autopayStart) || 'on signing'}. `
+              + `Cancel any time from your customer portal with ${d.meta.noticeDays} days' notice.`;
         const h = pdf.font('Helvetica-Bold').fontSize(9.5)
                      .heightOfString(text, { width: CONTENT_WIDTH - 24, lineGap: 1.5 }) + 22;
         // pdf.text() MOVES pdf.y. Capture the top first and set y from it

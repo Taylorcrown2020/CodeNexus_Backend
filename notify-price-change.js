@@ -44,9 +44,14 @@ const pricing = require('../diamondback-pricing.js');
 const argv = process.argv.slice(2);
 const DRY = argv.includes('--dry-run');
 const RESIGN = argv.includes('--require-resign');
+// --days is now OPTIONAL and defaults to 0: the new pricing applies from each
+// plan's NEXT CHARGE, with no waiting period. That is what was asked for.
+//
+// The notice email still goes out — it is worth sending regardless, and it
+// costs nothing — but it no longer gates when the price changes.
 const DAYS = (() => {
     const i = argv.indexOf('--days');
-    return i >= 0 ? Math.max(10, parseInt(argv[i + 1], 10) || 10) : 10;
+    return i >= 0 ? Math.max(0, parseInt(argv[i + 1], 10) || 0) : 0;
 })();
 
 const pool = new Pool({
@@ -68,9 +73,10 @@ const fmt = (d) => new Date(d).toLocaleDateString('en-US',
         process.exit(1);
     }
 
-    const effective = new Date();
-    effective.setDate(effective.getDate() + DAYS);
-    const effectiveISO = effective.toISOString().slice(0, 10);
+    // Per plan, not one global date: "the next payment" means a different day
+    // for a plan billing on the 3rd than one billing on the 28th.
+    const globalEffective = new Date();
+    globalEffective.setDate(globalEffective.getDate() + DAYS);
 
     const { rows: plans } = await pool.query(
         `SELECT mp.*, l.name AS lead_name, l.email AS lead_email,
@@ -91,7 +97,9 @@ const fmt = (d) => new Date(d).toLocaleDateString('en-US',
     }
 
     console.log(`${plans.length} plan(s) on legacy pricing.`);
-    console.log(`New pricing would start ${fmt(effective)} (${DAYS} days).`);
+    console.log(DAYS > 0
+        ? `New pricing would start ${fmt(globalEffective)} (${DAYS} days).`
+        : 'New pricing starts at each plan\'s NEXT CHARGE — no waiting period.');
     console.log(RESIGN ? 'Mode: require a new signature before anything changes.\n'
                        : 'Mode: notice only.\n');
 
@@ -102,6 +110,13 @@ const fmt = (d) => new Date(d).toLocaleDateString('en-US',
         const after = pricing.priceFor(p, method, { forceNewPricing: true });
         const delta = after.total - before.total;
         const pct = before.total > 0 ? (delta / before.total) * 100 : 0;
+
+        // Their next charge, or today if it is already past.
+        const planEffective = (() => {
+            const d = p.next_charge_date ? new Date(p.next_charge_date) : new Date();
+            return (isNaN(d) || d < globalEffective) ? globalEffective : d;
+        })();
+        const planEffectiveISO = planEffective.toISOString().slice(0, 10);
 
         const methodLabel = !p.pm_type ? 'no method on file'
             : p.pm_type !== 'card' ? 'bank account'
@@ -123,12 +138,12 @@ const fmt = (d) => new Date(d).toLocaleDateString('en-US',
             `Hi ${p.lead_name || 'there'},\n\n`
           + `We're writing to give you advance notice of a change to what you pay for `
           + `${p.label}.\n\n`
-          + `From ${fmt(effective)}, sales tax will be added to your plan`
+          + `From ${fmt(planEffective)}, sales tax will be added to your plan`
           + (after.feeApplies
                 ? `, and because your plan is paid by credit card a ${(after.feePct * 100).toFixed(2)}% `
                 + `processing fee will apply as well.`
                 : `.`)
-          + `\n\nToday: ${money(before.total)}\nFrom ${fmt(effective)}: ${money(after.total)}\n\n${lines}\n\n`
+          + `\n\nToday: ${money(before.total)}\nFrom ${fmt(planEffective)}: ${money(after.total)}\n\n${lines}\n\n`
           + (after.feeApplies
                 ? `You can avoid the credit card processing fee entirely by switching to a bank `
                 + `account or debit card in your portal — that would make your total `
@@ -137,9 +152,9 @@ const fmt = (d) => new Date(d).toLocaleDateString('en-US',
           + (RESIGN
                 ? `Because this changes what you agreed to, we've sent you an updated agreement to `
                 + `sign. Nothing changes until you do, and you can cancel instead if you'd rather.\n\n`
-                : `This is the ten days' written notice your agreement provides for. If you'd rather `
-                + `not continue, you can cancel from your portal at any time with 30 days' notice.\n\n`)
-          + `Questions: contact@diamondbackcoding.com or (512) 980-0393.\n\n`
+                : `This change applies from your next payment. If you'd rather not continue, you can `
+                + `cancel from your portal at any time with 30 days' notice.\n\n`)
+          + `Questions: contact@diamondbackcoding.com or (940) 217-8680.\n\n`
           + `Diamondback Coding\n3600 N Capital of Texas Hwy, Building B, Suite 350, Austin, TX 78746`;
 
         // Queued through the same notifications table the lifecycle module
@@ -168,7 +183,7 @@ const fmt = (d) => new Date(d).toLocaleDateString('en-US',
                         pricing_effective_from = $2,
                         tax_rate = $3, processing_fee_pct = $4, updated_at = NOW()
                   WHERE id = $1`,
-                [p.id, effectiveISO, after.taxRate, after.feePct]);
+                [p.id, planEffectiveISO, after.taxRate, after.feePct]);
         }
         notified += 1;
     }
@@ -181,7 +196,7 @@ const fmt = (d) => new Date(d).toLocaleDateString('en-US',
         console.log(`${notified} notice(s) queued.`);
         console.log(RESIGN
             ? 'No prices change until each customer signs their updated agreement.'
-            : `New pricing starts automatically on ${fmt(effective)}.`);
+            : 'New pricing applies from each plan\'s next charge.');
     }
 
     await pool.end();

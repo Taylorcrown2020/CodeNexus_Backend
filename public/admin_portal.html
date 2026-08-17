@@ -24055,7 +24055,7 @@ async function dbmEditPlan(id){
         ${dbmEsc(p.customer_name || '')} · ${dbmEsc(p.label || '')}
       </p>
       ${signed ? `<div style="font-size:12.5px;color:#eab308;background:rgba(234,179,8,.09);border:1px solid rgba(234,179,8,.3);border-radius:8px;padding:10px 12px;margin-bottom:16px;">
-        This plan is signed at ${dbmMoney(p.charge_total != null ? p.charge_total : p.amount)}${annual ? '/yr' : '/mo'}. Changing the <strong>price</strong> asks the customer to sign again, and billing pauses until they do. Everything else saves straight away.
+        This plan is signed at ${dbmMoney(p.charge_total != null ? p.charge_total : p.amount)}${annual ? '/yr' : '/mo'}. Changing the <strong>price</strong> or the <strong>billing day</strong> sends a separate <strong>Price Change Agreement</strong>. The plan keeps billing ${dbmMoney(p.charge_total != null ? p.charge_total : p.amount)} until the customer signs it &mdash; nothing pauses. Everything else saves straight away.
       </div>` : ''}
       <div style="display:grid;gap:14px;">
         <div>
@@ -24108,25 +24108,56 @@ async function dbmEditPlan(id){
     if(!body.label) return dbmNote('Give the plan a name.', 'error');
     if(body.amount === '' || Number(body.amount) < 0) return dbmNote('Enter an amount of 0 or more.', 'error');
 
+    // ------------------------------------------------------------------
+    // EVERYTHING BELOW IS INSIDE try/catch/finally.
+    //
+    // Without it, ANY throw — a dropped connection, a token read failing, an
+    // error inside the re-render afterwards — left this button frozen on
+    // "Saving..." with no message at all. That is the "I press save and
+    // nothing happens" symptom: the failure was real but completely silent.
+    //
+    // The finally block guarantees the button always comes back, whatever
+    // happened, and the catch says what went wrong instead of swallowing it.
+    // ------------------------------------------------------------------
     btn.disabled = true; btn.textContent = 'Saving\u2026';
-    let d = await dbmSend('/api/admin/maintenance-plans/' + id, body, 'PATCH');
+    try{
+      let d = await dbmSend('/api/admin/maintenance-plans/' + id, body, 'PATCH');
 
-    // A price change on a signed plan needs the customer's signature again.
-    if(d && d.needsResign){
-      btn.disabled = false; btn.textContent = 'Save changes';
-      if(!confirm(d.message + '\n\nGo ahead?')) return;
-      btn.disabled = true; btn.textContent = 'Saving\u2026';
-      body.confirmResign = true;
-      d = await dbmSend('/api/admin/maintenance-plans/' + id, body, 'PATCH');
-    }
+      // A price change on a signed plan is sent as a separate Price Change
+      // Agreement. The plan keeps billing the old amount until it is signed.
+      if(d && d.needsResign){
+        btn.disabled = false; btn.textContent = 'Save changes';
+        if(!confirm(d.message + '\n\nGo ahead?')) return;
+        btn.disabled = true; btn.textContent = 'Saving\u2026';
+        body.confirmResign = true;
+        d = await dbmSend('/api/admin/maintenance-plans/' + id, body, 'PATCH');
+      }
 
-    if(!d || !d.success){
-      btn.disabled = false; btn.textContent = 'Save changes';
-      return dbmNote((d && d.message) || 'Could not save the plan.', 'error');
+      if(!d || !d.success){
+        return dbmNote((d && d.message) || 'Could not save the plan.', 'error');
+      }
+
+      ov.remove();
+      dbmNote(d.message || 'Plan updated.', 'success');
+
+      // Re-rendering must not be able to swallow a save that already worked.
+      // Before, a throw here looked identical to the save failing.
+      try{
+        const host = document.getElementById('contentArea');
+        if(host && typeof renderMaintenance === 'function') renderMaintenance(host);
+      }catch(reErr){
+        console.error('[EDIT PLAN] saved, but the list did not refresh:', reErr);
+        dbmNote('Saved. Refresh the page to see it in the list.', 'success');
+      }
+    }catch(err){
+      console.error('[EDIT PLAN] save failed:', err);
+      dbmNote('Could not save: ' + (err && err.message ? err.message : err)
+            + ' — nothing was changed.', 'error');
+    }finally{
+      // Always give the button back, whatever happened above.
+      const b2 = document.getElementById('epSave');
+      if(b2){ b2.disabled = false; b2.textContent = 'Save changes'; }
     }
-    ov.remove();
-    dbmNote(d.message || 'Plan updated.', 'success');
-    renderMaintenance(document.getElementById('contentArea'));
   };
 }
 
